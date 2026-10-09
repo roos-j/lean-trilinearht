@@ -1,0 +1,1 @@
+﻿Read and follow `.codex/skills/autoformalize/SKILL.md` when present, otherwise `~/.codex/skills/autoformalize/SKILL.md`. Read `automation/instructions.md` and the other applicable records in `automation/`. Local instructions supersede conflicting skill guidance; current explicit user instructions take precedence over both.
