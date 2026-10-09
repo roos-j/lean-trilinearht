@@ -1,0 +1,14 @@
+name = "trilinearht"
+version = "0.1.0"
+defaultTargets = ["TrilinearHT"]
+
+[leanOptions]
+weak.linter.mathlibStandardSet = true
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "6be3d352cec3ceabd28bf85266d28646e02f1975"
+
+[[lean_lib]]
+name = "TrilinearHT"
