@@ -27,6 +27,8 @@ lines 416–420. Verified library references are
 `Mathlib.Analysis.InnerProductSpace.Projection.Basic` (orthogonal projection).
 The rational height convention agrees with `Rat.mulHeight₁_eq_max` in
 `Mathlib.NumberTheory.Height.NumberField`.
+The bounded-height frequency development uses the same independent
+denominator and determinant machinery (`lem:height`, lines 603–619).
 -/
 
 @[expose] public section
@@ -1084,5 +1086,1720 @@ theorem rationalMatrix_projection_bounds {m n d : ℕ} (hn : n ≤ d)
     exact Submodule.starProjection_norm_le _
   · rw [hq]
     exact Submodule.starProjection_norm_le _
+
+/-- Blueprint `lem:height`, proof line 617: clearing one vector's
+denominators gives integer entries bounded by `B^d`, where `d` is the
+number of coordinates. The coordinate's own denominator is canceled
+before estimating the product of the remaining denominators. -/
+theorem rational_clear_denominators_sharp {ι : Type*} [Fintype ι] (a : ι → ℚ)
+    {B : ℕ} (ha : ∀ i, rationalHeight (a i) ≤ B) :
+    ∃ z : ι → ℤ, ∀ i,
+      (z i : ℚ) = rationalCommonDenominator a * a i ∧
+      (z i).natAbs ≤ B ^ Fintype.card ι := by
+  classical
+  let p := fun i => ∏ j ∈ Finset.univ.erase i, (a j).den
+  let z := fun i => (a i).num * (p i : ℤ)
+  refine ⟨z, fun i => ⟨?_, ?_⟩⟩
+  · have hp : rationalCommonDenominator a = (a i).den * p i :=
+      (Finset.mul_prod_erase Finset.univ (fun j => (a j).den) (Finset.mem_univ i)).symm
+    have hn : ((a i).num : ℚ) = a i * (a i).den :=
+      (div_eq_iff (by exact_mod_cast (a i).den_nz)).mp (a i).num_div_den
+    dsimp only [z]
+    rw [hp]
+    push_cast
+    rw [hn]
+    ring
+  · have hp : p i ≤ B ^ (Finset.univ.erase i).card := by
+      calc
+        _ ≤ ∏ _j ∈ Finset.univ.erase i, B := Finset.prod_le_prod
+          (fun j _ => (le_max_right _ _).trans (ha j))
+        _ = _ := by simp
+    have hcard : (Finset.univ.erase i).card + 1 = Fintype.card ι := by
+      simpa using Finset.card_erase_add_one (Finset.mem_univ i)
+    calc
+      _ = (a i).num.natAbs * p i := by
+        dsimp only [z]
+        rw [Int.natAbs_mul, Int.natAbs_natCast]
+      _ ≤ B * B ^ (Finset.univ.erase i).card :=
+        Nat.mul_le_mul ((le_max_left _ _).trans (ha i)) hp
+      _ = B ^ ((Finset.univ.erase i).card + 1) := by rw [pow_succ, mul_comm]
+      _ = _ := congrArg (fun n => B ^ n) hcard
+
+/-- Replacement determinants give the sharp Cramer numerator bound
+needed in the circuit argument of `lem:height`, proof line 617. -/
+theorem integerMatrix_cramer_bound {n K : ℕ}
+    (Z : Matrix (Fin n) (Fin n) ℤ) (b : Fin n → ℤ)
+    (hZ : ∀ i j, (Z i j).natAbs ≤ K) (hb : ∀ i, (b i).natAbs ≤ K) (j : Fin n) :
+    (Z.cramer b j).natAbs ≤ n.factorial * K ^ n := by
+  rw [Matrix.cramer_apply]
+  apply integerMatrix_det_bound
+  intro i k
+  simp only [Matrix.updateCol_apply]
+  split_ifs
+  · exact hb i
+  · exact hZ i k
+
+theorem integerMatrix_cramer_cast {n : ℕ}
+    (Z : Matrix (Fin n) (Fin n) ℤ) (b : Fin n → ℤ) (i : Fin n) :
+    (Z.cramer b i : ℚ) = ((Int.castRingHom ℚ).mapMatrix Z).cramer (fun j => (b j : ℚ)) i := by
+  have he : (Int.castRingHom ℚ).mapMatrix (Z.updateCol i b) =
+      ((Int.castRingHom ℚ).mapMatrix Z).updateCol i (fun j => (b j : ℚ)) := by
+    ext j k
+    by_cases h : k = i
+    · subst k
+      simp
+    · simp [h]
+  rw [Matrix.cramer_apply, Matrix.cramer_apply]
+  exact ((Int.castRingHom ℚ).map_det (Z.updateCol i b)).trans (congrArg Matrix.det he)
+
+/-- A dependent column family has a proper nonsingular pivot minor,
+so at least one column remains available for the Cramer dependence. -/
+theorem rational_pivot_minor_of_dependent {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℚ)
+    (hdep : ¬LinearIndependent ℚ A.col) :
+    ∃ (r : ℕ) (_hrm : r ≤ m) (_hrn : r < n)
+      (rows : Fin r ↪ Fin m) (cols : Fin r ↪ Fin n),
+      (A.submatrix rows cols).det ≠ 0 ∧
+      Submodule.span ℚ (Set.range (fun j => A.col (cols j))) =
+        Submodule.span ℚ (Set.range A.col) := by
+  obtain ⟨r, hrm, hrn, rows, cols, hdet, hspan⟩ := rational_pivot_minor A
+  let L : (Fin m → ℚ) →ₗ[ℚ] (Fin r → ℚ) :=
+    LinearMap.pi (fun i => LinearMap.proj (rows i))
+  have hli : LinearIndependent ℚ (fun j => A.col (cols j)) := by
+    apply LinearIndependent.of_comp L
+    change LinearIndependent ℚ (A.submatrix rows cols).col
+    exact Matrix.linearIndependent_col_iff_isUnit.mpr
+      ((Matrix.isUnit_iff_isUnit_det _).mpr (isUnit_iff_ne_zero.mpr hdet))
+  have hrank : r = (Set.range A.col).finrank ℚ := by
+    have h := linearIndependent_iff_card_eq_finrank_span.mp hli
+    simp only [Fintype.card_fin, Set.finrank] at h ⊢
+    rwa [hspan] at h
+  have hlt : r < n := by
+    by_contra hlt
+    have he : r = n := by omega
+    apply hdep
+    apply linearIndependent_iff_card_eq_finrank_span.mpr
+    simpa only [Fintype.card_fin, he] using hrank
+  exact ⟨r, hrm, hlt, rows, cols, hdet, hspan⟩
+
+/-- Cramer numerators for a pivot minor reproduce any column after
+embedding back into the full row space. -/
+theorem rational_pivot_cramer {m n r : ℕ}
+    (A : Matrix (Fin m) (Fin n) ℚ) (rows : Fin r ↪ Fin m) (cols : Fin r ↪ Fin n)
+    (hdet : (A.submatrix rows cols).det ≠ 0)
+    (hspan : Submodule.span ℚ (Set.range (fun j => A.col (cols j))) =
+      Submodule.span ℚ (Set.range A.col)) (j : Fin n) :
+    (A.submatrix id cols).mulVec ((A.submatrix rows cols).cramer (A.col j ∘ rows)) =
+      (A.submatrix rows cols).det • A.col j := by
+  have hy : A.col j ∈ LinearMap.range A.mulVecLin := by
+    rw [Matrix.range_mulVecLin]
+    exact Submodule.subset_span (Set.mem_range_self j)
+  have h := rational_pivot_rightInverse A rows cols hdet hspan (A.col j) hy
+  rw [rationalMatrixZeroExtend_mulVec, rational_mulVec_extend] at h
+  rw [← Matrix.det_smul_inv_mulVec_eq_cramer _ _ (isUnit_iff_ne_zero.mpr hdet),
+    Matrix.mulVec_smul, h]
+
+/-- An integer matrix with dependent columns has a nonzero integral
+kernel vector with the determinant bound, independent of the number of columns. -/
+theorem integerMatrix_small_kernel {m n K : ℕ} (A : Matrix (Fin m) (Fin n) ℤ)
+    (hK : 1 ≤ K) (hA : ∀ i j, (A i j).natAbs ≤ K)
+    (hdep : ¬LinearIndependent ℚ (A.map (fun z => (z : ℚ))).col) :
+    ∃ c : Fin n → ℤ, c ≠ 0 ∧ A.mulVec c = 0 ∧
+      ∀ i, (c i).natAbs ≤ m.factorial * K ^ m := by
+  classical
+  let Q := A.map (fun z => (z : ℚ))
+  obtain ⟨r, hrm, hrn, rows, cols, hdet, hspan⟩ :=
+    rational_pivot_minor_of_dependent Q hdep
+  have hnotsurj : ¬Function.Surjective cols := by
+    intro hs
+    have hh := Fintype.card_le_of_surjective cols hs
+    simp only [Fintype.card_fin] at hh
+    omega
+  have hex : ∃ j, j ∉ Set.range cols := by
+    by_contra hh
+    push Not at hh
+    exact hnotsurj hh
+  obtain ⟨j, hj⟩ := hex
+  let S := A.submatrix rows cols
+  let b := fun i => A (rows i) j
+  let w := S.cramer b
+  let c : Fin n → ℤ := Function.extend cols w 0 - Pi.single j S.det
+  have hcastdet : (S.det : ℚ) = (Q.submatrix rows cols).det :=
+    (Int.castRingHom ℚ).map_det S
+  have hdetZ : S.det ≠ 0 := by
+    intro hz
+    apply hdet
+    rw [← hcastdet, hz, Int.cast_zero]
+  have hcastw : (fun i => (w i : ℚ)) =
+      (Q.submatrix rows cols).cramer (Q.col j ∘ rows) := by
+    funext i
+    exact integerMatrix_cramer_cast S b i
+  have hfull : (A.submatrix id cols).mulVec w = S.det • A.col j := by
+    have hh := rational_pivot_cramer Q rows cols hdet hspan j
+    rw [← hcastw, ← hcastdet] at hh
+    ext i
+    apply Int.cast_injective (α := ℚ)
+    have he := congrFun hh i
+    simpa only [Q, Matrix.map_apply, Matrix.submatrix_apply, Matrix.col_apply,
+      Matrix.mulVec, dotProduct, Int.cast_sum, Int.cast_mul,
+      Pi.smul_apply, smul_eq_mul] using he
+  refine ⟨c, ?_, ?_, ?_⟩
+  · intro hc
+    have he := congrFun hc j
+    have hnj : j ∉ Set.range cols := hj
+    simp only [c, Pi.sub_apply, Function.extend_apply' _ _ _ hnj,
+      Pi.zero_apply, Pi.single_eq_same, zero_sub] at he
+    exact hdetZ (neg_eq_zero.mp he)
+  · have hext : A.mulVec (Function.extend cols w 0) =
+        (A.submatrix id cols).mulVec w := by
+      ext i
+      change (∑ k, A i k * Function.extend cols w 0 k) = ∑ k, A i (cols k) * w k
+      symm
+      apply Fintype.sum_of_injective cols cols.injective
+      · intro k hk
+        rw [Function.extend_apply' _ _ _ hk]
+        exact mul_zero _
+      · intro k
+        rw [cols.injective.extend_apply]
+    dsimp only [c]
+    rw [Matrix.mulVec_sub, hext, hfull, Matrix.mulVec_single]
+    ext i
+    simp [Matrix.col_apply, mul_comm]
+  · have hbnd : r.factorial * K ^ r ≤ m.factorial * K ^ m :=
+      Nat.mul_le_mul (Nat.factorial_le hrm) (pow_le_pow_right₀ hK hrm)
+    intro i
+    by_cases hi : i = j
+    · subst i
+      have hnj : j ∉ Set.range cols := hj
+      simpa only [c, Pi.sub_apply, Function.extend_apply' _ _ _ hnj,
+        Pi.zero_apply, Pi.single_eq_same, zero_sub, Int.natAbs_neg] using
+        (integerMatrix_det_bound S (fun i k => hA (rows i) (cols k))).trans hbnd
+    · have hs : (Pi.single j S.det : Fin n → ℤ) i = 0 := Pi.single_eq_of_ne hi _
+      simp only [c, Pi.sub_apply, hs, sub_zero]
+      by_cases hir : i ∈ Set.range cols
+      · obtain ⟨k, rfl⟩ := hir
+        rw [cols.injective.extend_apply]
+        exact (integerMatrix_cramer_bound S b (fun i k => hA (rows i) (cols k))
+          (fun i => hA (rows i) j) k).trans hbnd
+      · rw [Function.extend_apply' _ _ _ hir]
+        simp
+
+/-- Every dependent bounded-height rational family has an integral
+relation with the sharp coefficient budget from `lem:height`. -/
+theorem rational_small_dependence {d n B : ℕ} (v : Fin n → Fin d → ℚ)
+    (hB : 1 ≤ B) (hv : ∀ i j, rationalHeight (v i j) ≤ B)
+    (hdep : ¬LinearIndependent ℚ v) :
+    ∃ c : Fin n → ℤ, c ≠ 0 ∧ (∑ i, (c i : ℚ) • v i) = 0 ∧
+      ∀ i, (c i).natAbs ≤ d.factorial * B ^ (d ^ 2 + d) := by
+  classical
+  choose z hz using fun i => rational_clear_denominators_sharp (v i) (hv i)
+  let q := fun i => rationalCommonDenominator (v i)
+  have hq : ∀ i, (q i : ℚ) ≠ 0 := by
+    intro i
+    exact_mod_cast (rationalCommonDenominator_pos (v i)).ne'
+  let A : Matrix (Fin d) (Fin n) ℤ := fun j i => z i j
+  have hA : ∀ j i, (A j i).natAbs ≤ B ^ d := by
+    intro j i
+    simpa using (hz i j).2
+  let u : Fin n → ℚˣ := fun i => Units.mk0 (q i : ℚ) (hq i)
+  have hcols : (A.map (fun x => (x : ℚ))).col = u • v := by
+    funext i j
+    exact (hz i j).1
+  have hdepA : ¬LinearIndependent ℚ (A.map (fun x => (x : ℚ))).col := by
+    rw [hcols, LinearIndependent.units_smul_iff]
+    exact hdep
+  obtain ⟨c, hc, hzero, hbound⟩ :=
+    integerMatrix_small_kernel A (one_le_pow₀ hB) hA hdepA
+  let w := fun i => c i * (q i : ℤ)
+  refine ⟨w, ?_, ?_, ?_⟩
+  · intro hw
+    apply hc
+    funext i
+    have he := congrFun hw i
+    have hqi : (q i : ℤ) ≠ 0 := by exact_mod_cast (rationalCommonDenominator_pos (v i)).ne'
+    exact (mul_eq_zero.mp he).resolve_right hqi
+  · ext j
+    have he := congrFun hzero j
+    have heQ := congrArg (fun x : ℤ => (x : ℚ)) he
+    simp only [Matrix.mulVec, dotProduct, Int.cast_sum, Int.cast_mul] at heQ
+    simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul, Pi.zero_apply]
+    calc
+      _ = ∑ i, (A j i : ℚ) * (c i : ℚ) := by
+        apply Finset.sum_congr rfl
+        intro i _
+        rw [show (A j i : ℚ) = (q i : ℚ) * v i j from (hz i j).1]
+        dsimp only [w]
+        push_cast
+        ring
+      _ = 0 := heQ
+  · intro i
+    have hqi : q i ≤ B ^ d := by simpa using rationalCommonDenominator_le (v i) (hv i)
+    calc
+      (w i).natAbs = (c i).natAbs * q i := by
+        dsimp only [w]
+        rw [Int.natAbs_mul, Int.natAbs_natCast]
+      _ ≤ (d.factorial * (B ^ d) ^ d) * B ^ d := Nat.mul_le_mul (hbound i) hqi
+      _ = d.factorial * B ^ (d ^ 2 + d) := by
+        rw [mul_assoc, ← pow_mul, ← pow_add, pow_two]
+
+/-- In a minimal rational dependence all coefficients of a nontrivial
+relation are nonzero, and there are at most `d+1` vectors. The integral
+relation retains the exact height budget of the blueprint. -/
+theorem rational_minimal_dependence_bound {d n B : ℕ} (v : Fin n → Fin d → ℚ)
+    (hB : 1 ≤ B) (hv : ∀ i j, rationalHeight (v i j) ≤ B)
+    (hdep : ¬LinearIndependent ℚ v)
+    (hproper : ∀ j : Fin n, LinearIndependent ℚ (fun i : {i : Fin n // i ≠ j} => v i)) :
+    n ≤ d + 1 ∧ ∃ c : Fin n → ℤ, (∀ i, c i ≠ 0) ∧
+      (∑ i, (c i : ℚ) • v i) = 0 ∧
+      ∀ i, (c i).natAbs ≤ d.factorial * B ^ (d ^ 2 + d) := by
+  classical
+  obtain ⟨c, hc, hzero, hbound⟩ := rational_small_dependence v hB hv hdep
+  have hall : ∀ j, c j ≠ 0 := by
+    intro j hj
+    have hs : (∑ i : {i : Fin n // i ≠ j}, (c i : ℚ) • v i) = 0 := by
+      rw [← hzero]
+      apply Fintype.sum_of_injective Subtype.val Subtype.val_injective
+      · intro i hi
+        have he : i = j := by
+          by_contra hh
+          exact hi ⟨⟨i, hh⟩, rfl⟩
+        simp [he, hj]
+      · intro i
+        rfl
+    have hz := Fintype.linearIndependent_iff.mp (hproper j)
+      (fun i => (c i : ℚ)) hs
+    apply hc
+    funext i
+    by_cases hi : i = j
+    · simpa [hi] using hj
+    · exact_mod_cast hz ⟨i, hi⟩
+  have hn : n ≤ d + 1 := by
+    by_cases hn0 : n = 0
+    · omega
+    let j : Fin n := ⟨0, Nat.pos_of_ne_zero hn0⟩
+    have hh := (hproper j).fintype_card_le_finrank
+    have hcard : Fintype.card {i : Fin n // i ≠ j} = n - 1 := by
+      simp [Fintype.card_subtype_compl]
+    rw [hcard] at hh
+    simp only [Module.finrank_pi, Fintype.card_fin] at hh
+    omega
+  exact ⟨hn, c, hall, hzero, hbound⟩
+
+/-- The largest nonzero term prevents cancellation in an integral
+linear combination of sufficiently separated real magnitudes. -/
+theorem separated_integer_sum_ne_zero {n H : ℕ} {R : ℝ}
+    (hR : (n : ℝ) * H < R) (x : Fin n → ℝ) (hx : ∀ i, x i ≠ 0)
+    (hsep : ∀ i j, i < j → R * |x i| ≤ |x j|)
+    (c : Fin n → ℤ) (hc : c ≠ 0) (hbound : ∀ i, (c i).natAbs ≤ H) :
+    (∑ i, (c i : ℝ) * x i) ≠ 0 := by
+  classical
+  let s := Finset.univ.filter (fun i => c i ≠ 0)
+  have hs : s.Nonempty := by
+    by_contra hh
+    apply hc
+    funext i
+    by_contra hi
+    exact hh ⟨i, Finset.mem_filter.mpr ⟨Finset.mem_univ i, hi⟩⟩
+  let j := s.max' hs
+  have hj : c j ≠ 0 := (Finset.mem_filter.mp (s.max'_mem hs)).2
+  have hmax : ∀ i, c i ≠ 0 → i ≤ j := by
+    intro i hi
+    exact s.le_max' i (Finset.mem_filter.mpr ⟨Finset.mem_univ i, hi⟩)
+  have hRpos : 0 < R := lt_of_le_of_lt (by positivity) hR
+  have habs : ∀ i, |(c i : ℝ)| ≤ H := by
+    intro i
+    have hh : ((c i).natAbs : ℝ) ≤ H := by exact_mod_cast hbound i
+    simpa [Nat.cast_natAbs, Int.cast_abs] using hh
+  have hjone : 1 ≤ |(c j : ℝ)| := by
+    have hh : 1 ≤ (c j).natAbs := Nat.one_le_iff_ne_zero.mpr (Int.natAbs_ne_zero.mpr hj)
+    have hhR : (1 : ℝ) ≤ (c j).natAbs := by exact_mod_cast hh
+    simpa [Nat.cast_natAbs, Int.cast_abs] using hhR
+  have hxj : 0 < |x j| := abs_pos.mpr (hx j)
+  have hterm : ∀ i ∈ Finset.univ.erase j,
+      R * |(c i : ℝ) * x i| ≤ (H : ℝ) * |x j| := by
+    intro i hi
+    by_cases hci : c i = 0
+    · simp only [hci, Int.cast_zero, zero_mul, abs_zero, mul_zero]
+      positivity
+    · have hij : i < j := lt_of_le_of_ne (hmax i hci) (Finset.ne_of_mem_erase hi)
+      calc
+        _ = |(c i : ℝ)| * (R * |x i|) := by rw [abs_mul]; ring
+        _ ≤ (H : ℝ) * |x j| := mul_le_mul (habs i) (hsep i j hij)
+          (by positivity) (by positivity)
+  intro hzero
+  have hsum : ∑ i ∈ Finset.univ.erase j, (c i : ℝ) * x i = -(c j : ℝ) * x j := by
+    have hh := Finset.sum_erase_add Finset.univ (fun i => (c i : ℝ) * x i)
+      (Finset.mem_univ j)
+    rw [hzero] at hh
+    linarith
+  have hupper : R * |(c j : ℝ) * x j| ≤ (n : ℝ) * H * |x j| := by
+    calc
+      _ = R * |∑ i ∈ Finset.univ.erase j, (c i : ℝ) * x i| := by
+        rw [hsum, neg_mul, abs_neg]
+      _ ≤ R * ∑ i ∈ Finset.univ.erase j, |(c i : ℝ) * x i| :=
+        mul_le_mul_of_nonneg_left (Finset.abs_sum_le_sum_abs _ _) hRpos.le
+      _ = ∑ i ∈ Finset.univ.erase j, R * |(c i : ℝ) * x i| := Finset.mul_sum _ _ _
+      _ ≤ ∑ _i ∈ Finset.univ.erase j, (H : ℝ) * |x j| := Finset.sum_le_sum hterm
+      _ ≤ ∑ _i : Fin n, (H : ℝ) * |x j| :=
+        Finset.sum_le_sum_of_subset_of_nonneg (Finset.erase_subset _ _)
+          (fun _ _ _ => by positivity)
+      _ = (n : ℝ) * H * |x j| := by simp [mul_assoc]
+  have hlower : R * |x j| ≤ R * |(c j : ℝ) * x j| := by
+    rw [abs_mul]
+    exact mul_le_mul_of_nonneg_left (le_mul_of_one_le_left hxj.le hjone) hRpos.le
+  have hstrict : (n : ℝ) * H * |x j| < R * |x j| := mul_lt_mul_of_pos_right hR hxj
+  exact (not_lt_of_ge (hlower.trans hupper)) hstrict
+
+/-- The geometric separation ratio in the height-bin argument. -/
+noncomputable def rationalHeightRatio (d B : ℕ) : ℝ :=
+  4 * d * (d.factorial * B ^ (d ^ 2 + d) : ℕ)
+
+theorem rational_separated_independent_of_card {d n B : ℕ} (hd : 0 < d)
+    (hn : n ≤ d + 1) (hB : 1 ≤ B) (v : Fin n → Fin d → ℚ)
+    (hv : ∀ i j, rationalHeight (v i j) ≤ B) (L : (Fin d → ℚ) →ₗ[ℚ] ℝ)
+    (hx : ∀ i, L (v i) ≠ 0)
+    (hsep : ∀ i j, i < j → rationalHeightRatio d B * |L (v i)| ≤ |L (v j)|) :
+    LinearIndependent ℚ v := by
+  by_contra hdep
+  obtain ⟨c, hc, hzero, hbound⟩ := rational_small_dependence v hB hv hdep
+  have hH : (0 : ℝ) < (d.factorial * B ^ (d ^ 2 + d) : ℕ) := by
+    exact_mod_cast Nat.mul_pos (Nat.factorial_pos d) (pow_pos (by omega) _)
+  have hdR : (1 : ℝ) ≤ d := by exact_mod_cast hd
+  have hnR : (n : ℝ) ≤ d + 1 := by exact_mod_cast hn
+  have hR : (n : ℝ) * (d.factorial * B ^ (d ^ 2 + d) : ℕ) <
+      rationalHeightRatio d B := by
+    unfold rationalHeightRatio
+    nlinarith
+  have hne := separated_integer_sum_ne_zero hR (fun i => L (v i)) hx hsep c hc hbound
+  apply hne
+  have he := congrArg L hzero
+  simpa only [map_sum, map_smul, map_zero, Rat.smul_def, Rat.cast_intCast] using he
+
+/-- Blueprint `lem:height`, proof line 617: bounded-height rational
+vectors with geometrically separated nonzero evaluations are independent. -/
+theorem rational_separated_independent_of_pos {d n B : ℕ} (hd : 0 < d)
+    (hB : 1 ≤ B) (v : Fin n → Fin d → ℚ)
+    (hv : ∀ i j, rationalHeight (v i j) ≤ B) (L : (Fin d → ℚ) →ₗ[ℚ] ℝ)
+    (hx : ∀ i, L (v i) ≠ 0)
+    (hsep : ∀ i j, i < j → rationalHeightRatio d B * |L (v i)| ≤ |L (v j)|) :
+    LinearIndependent ℚ v := by
+  by_cases hn : n ≤ d + 1
+  · exact rational_separated_independent_of_card hd hn hB v hv L hx hsep
+  · have hdn : d + 1 ≤ n := by omega
+    let e : Fin (d + 1) → Fin n := Fin.castLE hdn
+    have hli := rational_separated_independent_of_card hd (le_refl (d + 1)) hB
+      (v ∘ e) (fun i j => hv (e i) j) L (fun i => hx (e i))
+      (fun i j hij => hsep (e i) (e j) hij)
+    have hh := hli.fintype_card_le_finrank
+    simp only [Fintype.card_fin, Module.finrank_pi] at hh
+    omega
+
+/-- The same independence statement includes the empty, zero-dimensional case. -/
+theorem rational_separated_independent {d n B : ℕ}
+    (hB : 1 ≤ B) (v : Fin n → Fin d → ℚ)
+    (hv : ∀ i j, rationalHeight (v i j) ≤ B) (L : (Fin d → ℚ) →ₗ[ℚ] ℝ)
+    (hx : ∀ i, L (v i) ≠ 0)
+    (hsep : ∀ i j, i < j → rationalHeightRatio d B * |L (v i)| ≤ |L (v j)|) :
+    LinearIndependent ℚ v := by
+  rcases Nat.eq_zero_or_pos d with rfl | hd
+  · have hn : n = 0 := by
+      by_contra hn
+      let i : Fin n := ⟨0, Nat.pos_of_ne_zero hn⟩
+      have hv0 : v i = 0 := Subsingleton.elim _ _
+      exact hx i (hv0 ▸ map_zero L)
+    subst n
+    exact linearIndependent_empty_type
+  · exact rational_separated_independent_of_pos hd hB v hv L hx hsep
+
+/-- Evaluation of rational vectors against a real frequency. -/
+noncomputable def rationalEvaluation {d : ℕ} (ξ : Fin d → ℝ) :
+    (Fin d → ℚ) →ₗ[ℚ] ℝ where
+  toFun v := ∑ j, (v j : ℝ) * ξ j
+  map_add' v w := by simp [add_mul, Finset.sum_add_distrib]
+  map_smul' q v := by simp [Rat.smul_def, mul_assoc, Finset.mul_sum]
+
+theorem rational_separated_evaluations_independent {d n B : ℕ}
+    (hB : 1 ≤ B) (v : Fin n → Fin d → ℚ)
+    (hv : ∀ i j, rationalHeight (v i j) ≤ B) (ξ : Fin d → ℝ)
+    (hx : ∀ i, (∑ j, (v i j : ℝ) * ξ j) ≠ 0)
+    (hsep : ∀ i j, i < j →
+      rationalHeightRatio d B * |∑ k, (v i k : ℝ) * ξ k| ≤ |∑ k, (v j k : ℝ) * ξ k|) :
+    LinearIndependent ℚ v :=
+  rational_separated_independent hB v hv (rationalEvaluation ξ) hx hsep
+
+/-- Greedily covering a finite positive set by multiplicative intervals
+produces centers that are separated by more than the interval ratio. -/
+theorem finite_positive_geometric_cover (s : Finset ℝ) {R : ℝ} (hR : 1 ≤ R)
+    (hs : ∀ x ∈ s, 0 < x) :
+    ∃ t : Finset ℝ, t ⊆ s ∧
+      (∀ x ∈ s, ∃ a ∈ t, a ≤ x ∧ x ≤ R * a) ∧
+      ∀ a ∈ t, ∀ b ∈ t, a < b → R * a < b := by
+  classical
+  induction s using Finset.strongInductionOn with
+  | _ s ih =>
+    by_cases hne : s.Nonempty
+    · let a := s.min' hne
+      have ha : a ∈ s := s.min'_mem hne
+      have hapos : 0 < a := hs a ha
+      have haR : a ≤ R * a := le_mul_of_one_le_left hapos.le hR
+      let u := s.filter (fun x => R * a < x)
+      have hus : u ⊆ s := Finset.filter_subset _ _
+      have hau : a ∉ u := by
+        intro hh
+        exact (not_lt_of_ge haR) (Finset.mem_filter.mp hh).2
+      have hproper : u ⊂ s := Finset.ssubset_iff_subset_ne.mpr ⟨hus, by
+        intro he
+        exact hau (he.symm ▸ ha)⟩
+      obtain ⟨t, htu, hcover, hsep⟩ := ih u hproper (fun x hx => hs x (hus hx))
+      refine ⟨insert a t, Finset.insert_subset ha (htu.trans hus), ?_, ?_⟩
+      · intro x hx
+        by_cases hax : R * a < x
+        · obtain ⟨b, hb, hbx, hxb⟩ := hcover x (Finset.mem_filter.mpr ⟨hx, hax⟩)
+          exact ⟨b, Finset.mem_insert_of_mem hb, hbx, hxb⟩
+        · exact ⟨a, Finset.mem_insert_self _ _, s.min'_le x hx, le_of_not_gt hax⟩
+      · intro b hb c hc hbc
+        rcases Finset.mem_insert.mp hb with rfl | hb
+        · rcases Finset.mem_insert.mp hc with rfl | hc
+          · exact (lt_irrefl _ hbc).elim
+          · exact (Finset.mem_filter.mp (htu hc)).2
+        · rcases Finset.mem_insert.mp hc with rfl | hc
+          · have hab : R * a < b := (Finset.mem_filter.mp (htu hb)).2
+            exact (not_lt_of_ge (haR.trans hab.le) hbc).elim
+          · exact hsep b hb c hc hbc
+    · have he : s = ∅ := Finset.not_nonempty_iff_eq_empty.mp hne
+      subst s
+      exact ⟨∅, by simp⟩
+
+/-- A finite positive set of bounded-height evaluations is covered by
+at most `d` multiplicative intervals. -/
+theorem rational_geometric_cover {d B : ℕ} (hB : 1 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (s : Finset ℝ) (hs : ∀ x ∈ s, 0 < x)
+    (hrepr : ∀ x ∈ s, ∃ v : Fin d → ℚ,
+      (∀ j, rationalHeight (v j) ≤ B) ∧ |L v| = x)
+    {R : ℝ} (hR : 1 ≤ R) (hlarge : rationalHeightRatio d B ≤ R) :
+    ∃ t : Finset ℝ, t ⊆ s ∧ t.card ≤ d ∧
+      ∀ x ∈ s, ∃ a ∈ t, a ≤ x ∧ x ≤ R * a := by
+  classical
+  obtain ⟨t, hts, hcover, hsep⟩ := finite_positive_geometric_cover s hR hs
+  let e := t.orderEmbOfFin rfl
+  have he : ∀ i : Fin t.card, e i ∈ t := t.orderEmbOfFin_mem rfl
+  choose v hv hve using fun i : Fin t.card => hrepr (e i) (hts (he i))
+  have hx : ∀ i, L (v i) ≠ 0 := by
+    intro i
+    apply abs_pos.mp
+    rw [hve i]
+    exact hs (e i) (hts (he i))
+  have hsepv : ∀ i j, i < j →
+      rationalHeightRatio d B * |L (v i)| ≤ |L (v j)| := by
+    intro i j hij
+    rw [hve i, hve j]
+    exact (mul_le_mul_of_nonneg_right hlarge (hs (e i) (hts (he i))).le).trans
+      (hsep (e i) (he i) (e j) (he j) (e.strictMono hij)).le
+  have hli := rational_separated_independent hB v hv L hx hsepv
+  have hcard : t.card ≤ d := by
+    simpa only [Fintype.card_fin, Module.finrank_pi] using hli.fintype_card_le_finrank
+  exact ⟨t, hts, hcard, hcover⟩
+
+/-- A finite enumeration of precisely the rational vectors of bounded height. -/
+noncomputable def boundedRationalVectors (d B : ℕ) : Finset (Fin d → ℚ) := by
+  classical
+  exact (Fintype.piFinset (fun _ : Fin d => boundedRationalEnumeration B)).filter
+    (fun v => ∀ j, rationalHeight (v j) ≤ B)
+
+theorem mem_boundedRationalVectors {d B : ℕ} {v : Fin d → ℚ} :
+    v ∈ boundedRationalVectors d B ↔ ∀ j, rationalHeight (v j) ≤ B := by
+  classical
+  simp only [boundedRationalVectors, Finset.mem_filter]
+  exact ⟨And.right, fun h => ⟨Fintype.mem_piFinset.mpr
+    (fun j => mem_boundedRationalEnumeration (h j)), h⟩⟩
+
+/-- The nonzero evaluation magnitudes of all bounded-height vectors. -/
+noncomputable def boundedRationalMagnitudes {d : ℕ} (B : ℕ)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) : Finset ℝ := by
+  classical
+  exact ((boundedRationalVectors d B).image (fun v => |L v|)).erase 0
+
+theorem mem_boundedRationalMagnitudes {d B : ℕ} {L : (Fin d → ℚ) →ₗ[ℚ] ℝ} {x : ℝ} :
+    x ∈ boundedRationalMagnitudes B L ↔
+      0 < x ∧ ∃ v : Fin d → ℚ, (∀ j, rationalHeight (v j) ≤ B) ∧ |L v| = x := by
+  classical
+  simp only [boundedRationalMagnitudes, Finset.mem_erase, Finset.mem_image,
+    mem_boundedRationalVectors]
+  constructor
+  · rintro ⟨hne, v, hv, rfl⟩
+    exact ⟨lt_of_le_of_ne (abs_nonneg _) (Ne.symm hne), v, hv, rfl⟩
+  · rintro ⟨hpos, hv⟩
+    exact ⟨hpos.ne', hv⟩
+
+theorem rationalHeightRatio_log_bound (d : ℕ) {B : ℕ} (hB : 2 ≤ B) :
+    Real.log (max 1 (rationalHeightRatio d B)) ≤
+      8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by
+  have hBR : (2 : ℝ) ≤ B := by exact_mod_cast hB
+  have hBP : (0 : ℝ) < B := by linarith
+  have hL : 1 ≤ Real.log (2 * B) := by
+    have h2 : (1 : ℝ) / 2 ≤ Real.log 2 := by
+      have hh := Real.one_sub_inv_le_log_of_pos (by norm_num : (0 : ℝ) < 2)
+      norm_num at hh ⊢
+      linarith
+    have h4 : (1 : ℝ) ≤ Real.log 4 := by
+      rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.log_pow]
+      norm_num
+      linarith
+    exact h4.trans (Real.log_le_log (by norm_num) (by linarith))
+  rcases Nat.eq_zero_or_pos d with rfl | hd
+  · simp only [rationalHeightRatio, Nat.cast_zero, mul_zero, zero_mul, max_eq_left zero_le_one,
+      Real.log_one]
+    positivity
+  have hdP : (0 : ℝ) < d := by exact_mod_cast hd
+  have hd1 : (1 : ℝ) ≤ d := by exact_mod_cast hd
+  have hfP : (0 : ℝ) < d.factorial := by exact_mod_cast Nat.factorial_pos d
+  have hH1 : (1 : ℝ) ≤ (d.factorial * B ^ (d ^ 2 + d) : ℕ) := by
+    exact_mod_cast Nat.one_le_iff_ne_zero.mpr
+      (Nat.mul_ne_zero (Nat.factorial_ne_zero d) (pow_ne_zero _ (by omega)))
+  have hR1 : 1 ≤ rationalHeightRatio d B := by
+    unfold rationalHeightRatio
+    nlinarith
+  have hfac : Real.log (d.factorial : ℝ) ≤ (d : ℝ) ^ 2 := by
+    calc
+      _ ≤ Real.log ((d : ℝ) ^ d) := Real.log_le_log hfP (by exact_mod_cast Nat.factorial_le_pow d)
+      _ = (d : ℝ) * Real.log d := Real.log_pow _ _
+      _ ≤ (d : ℝ) * d := mul_le_mul_of_nonneg_left
+        ((Real.log_le_sub_one_of_pos hdP).trans (by linarith)) hdP.le
+      _ = _ := by ring
+  have hlogd : Real.log (d : ℝ) ≤ d :=
+    (Real.log_le_sub_one_of_pos hdP).trans (by linarith)
+  have hlog4 : Real.log (4 : ℝ) ≤ 3 := by
+    have hh := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 4)
+    norm_num at hh
+    exact hh
+  have hlogB : Real.log (B : ℝ) ≤ Real.log (2 * B) :=
+    Real.log_le_log hBP (by linarith)
+  have heq : rationalHeightRatio d B =
+      4 * (d : ℝ) * (d.factorial : ℝ) * (B : ℝ) ^ (d ^ 2 + d) := by
+    unfold rationalHeightRatio
+    push_cast
+    ring
+  rw [max_eq_right hR1, heq, Real.log_mul (by positivity) (by positivity),
+    Real.log_mul (by positivity) (by positivity), Real.log_mul (by norm_num) hdP.ne',
+    Real.log_pow]
+  push_cast
+  calc
+    _ ≤ 3 + (d : ℝ) + (d : ℝ) ^ 2 + ((d : ℝ) ^ 2 + d) * Real.log (2 * B) :=
+      add_le_add (add_le_add (add_le_add hlog4 hlogd) hfac)
+        (mul_le_mul_of_nonneg_left hlogB (by positivity))
+    _ ≤ 3 * (d + 1 : ℝ) ^ 2 + (d + 1 : ℝ) ^ 2 * Real.log (2 * B) := by
+      apply add_le_add
+      · nlinarith
+      · apply mul_le_mul_of_nonneg_right _ (by linarith)
+        nlinarith
+    _ ≤ 4 * (d + 1 : ℝ) ^ 2 * Real.log (2 * B) := by
+      nlinarith [mul_nonneg (sq_nonneg (d + 1 : ℝ)) (sub_nonneg.mpr hL)]
+    _ ≤ 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by
+      apply mul_le_mul_of_nonneg_right _ (by linarith)
+      exact mul_le_mul (by norm_num : (4 : ℝ) ≤ 8)
+        (pow_le_pow_right₀ (by linarith : (1 : ℝ) ≤ d + 1) (by omega : 2 ≤ 3))
+        (sq_nonneg _) (by norm_num)
+
+/-- Blueprint `lem:height`, lines 603 and 617: the logarithms of all
+nonzero bounded-height evaluations lie in at most `d` intervals, each
+of length `8 (d+1)^3 log(2B)`. -/
+theorem rational_logarithmic_cover_nat {d B : ℕ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) :
+    ∃ t : Finset ℝ, t.card ≤ d ∧ ∀ v : Fin d → ℚ,
+      (∀ j, rationalHeight (v j) ≤ B) → L v ≠ 0 →
+      ∃ a ∈ t, Real.log |L v| ∈
+        Set.Icc a (a + 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B)) := by
+  classical
+  let s := boundedRationalMagnitudes B L
+  let R := max 1 (rationalHeightRatio d B)
+  have hR : 1 ≤ R := le_max_left _ _
+  have hRP : 0 < R := lt_of_lt_of_le zero_lt_one hR
+  have hs : ∀ x ∈ s, 0 < x := fun _ hx => (mem_boundedRationalMagnitudes.mp hx).1
+  obtain ⟨t, hts, hcard, hcover⟩ := rational_geometric_cover (by omega) L s hs
+    (fun _ hx => (mem_boundedRationalMagnitudes.mp hx).2) hR (le_max_right _ _)
+  refine ⟨t.image Real.log, Finset.card_image_le.trans hcard, ?_⟩
+  intro v hv hx
+  have hxpos : 0 < |L v| := abs_pos.mpr hx
+  have hxmem : |L v| ∈ s := mem_boundedRationalMagnitudes.mpr ⟨hxpos, v, hv, rfl⟩
+  obtain ⟨a, ha, hax, hxa⟩ := hcover _ hxmem
+  have hap : 0 < a := hs a (hts ha)
+  refine ⟨Real.log a, Finset.mem_image.mpr ⟨a, ha, rfl⟩,
+    Real.log_le_log hap hax, ?_⟩
+  calc
+    _ ≤ Real.log (R * a) := Real.log_le_log hxpos hxa
+    _ = Real.log a + Real.log R := by rw [Real.log_mul hRP.ne' hap.ne', add_comm]
+    _ ≤ _ := add_le_add_right (rationalHeightRatio_log_bound d hB) _
+
+/-- Real-valued height budgets are handled by their natural floor,
+without enlarging either the dimension or the logarithmic width. -/
+theorem rational_logarithmic_cover {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) :
+    ∃ t : Finset ℝ, t.card ≤ d ∧ ∀ v : Fin d → ℚ,
+      (∀ j, (rationalHeight (v j) : ℝ) ≤ B) → L v ≠ 0 →
+      ∃ a ∈ t, Real.log |L v| ∈
+        Set.Icc a (a + 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B)) := by
+  have hfloor : 2 ≤ ⌊B⌋₊ := Nat.le_floor hB
+  obtain ⟨t, ht, hcover⟩ := rational_logarithmic_cover_nat hfloor L
+  refine ⟨t, ht, ?_⟩
+  intro v hv hx
+  obtain ⟨a, ha, hlo, hhi⟩ := hcover v (fun j => Nat.le_floor (hv j)) hx
+  refine ⟨a, ha, hlo, hhi.trans ?_⟩
+  apply add_le_add_right
+  apply mul_le_mul_of_nonneg_left _ (by positivity)
+  apply Real.log_le_log
+  · have hp : (0 : ℝ) < ⌊B⌋₊ := by exact_mod_cast (by omega : 0 < ⌊B⌋₊)
+    positivity
+  · exact mul_le_mul_of_nonneg_left (Nat.floor_le (by linarith)) (by norm_num)
+
+/-- The logarithmic cover for the source's dot-product frequencies. -/
+theorem rational_frequency_logarithmic_cover {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (ξ : Fin d → ℝ) :
+    ∃ t : Finset ℝ, t.card ≤ d ∧ ∀ v : Fin d → ℚ,
+      (∀ j, (rationalHeight (v j) : ℝ) ≤ B) → (∑ j, (v j : ℝ) * ξ j) ≠ 0 →
+      ∃ a ∈ t, Real.log |∑ j, (v j : ℝ) * ξ j| ∈
+        Set.Icc a (a + 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B)) :=
+  rational_logarithmic_cover hB (rationalEvaluation ξ)
+
+/-- Rounding the endpoints of a real interval costs fewer than two
+additional integer positions. -/
+theorem integer_floor_interval_card_le {a b : ℝ} (hab : a ≤ b) :
+    ((Finset.Icc ⌊a⌋ ⌊b⌋).card : ℝ) ≤ b - a + 2 := by
+  have hf : ⌊a⌋ ≤ ⌊b⌋ + 1 := (Int.floor_mono hab).trans (by omega)
+  have he : ((Finset.Icc ⌊a⌋ ⌊b⌋).card : ℝ) = (⌊b⌋ : ℝ) + 1 - (⌊a⌋ : ℝ) := by
+    exact_mod_cast Int.card_Icc_of_le ⌊a⌋ ⌊b⌋ hf
+  rw [he]
+  linarith [Int.floor_le b, Int.lt_floor_add_one a]
+
+/-- Bins of fixed logarithmic width occupied by a finite magnitude set. -/
+noncomputable def logarithmicMagnitudeBins (s : Finset ℝ) (δ : ℝ) : Finset ℤ := by
+  classical
+  exact s.image (fun x => ⌊Real.log x / δ⌋)
+
+theorem logarithmicMagnitudeBins_card_le (s t : Finset ℝ) {δ W : ℝ}
+    (hδ : 0 < δ) (hW : 0 ≤ W)
+    (hcover : ∀ x ∈ s, ∃ a ∈ t, Real.log x ∈ Set.Icc a (a + W)) :
+    ((logarithmicMagnitudeBins s δ).card : ℝ) ≤ t.card * (W / δ + 2) := by
+  classical
+  let J := fun a : ℝ => Finset.Icc ⌊a / δ⌋ ⌊(a + W) / δ⌋
+  have hsub : logarithmicMagnitudeBins s δ ⊆ t.biUnion J := by
+    intro j hj
+    obtain ⟨x, hx, rfl⟩ := Finset.mem_image.mp hj
+    obtain ⟨a, ha, hlo, hhi⟩ := hcover x hx
+    exact Finset.mem_biUnion.mpr ⟨a, ha, Finset.mem_Icc.mpr
+      ⟨Int.floor_mono (div_le_div_of_nonneg_right hlo hδ.le),
+        Int.floor_mono (div_le_div_of_nonneg_right hhi hδ.le)⟩⟩
+  have hJ : ∀ a, ((J a).card : ℝ) ≤ W / δ + 2 := by
+    intro a
+    have hh := integer_floor_interval_card_le
+      (div_le_div_of_nonneg_right (show a ≤ a + W by linarith) hδ.le)
+    convert hh using 1; ring
+  calc
+    _ ≤ ((t.biUnion J).card : ℝ) := by exact_mod_cast Finset.card_le_card hsub
+    _ ≤ ∑ a ∈ t, ((J a).card : ℝ) := by exact_mod_cast Finset.card_biUnion_le
+    _ ≤ ∑ _a ∈ t, (W / δ + 2) := Finset.sum_le_sum (fun a _ => hJ a)
+    _ = _ := by simp; ring
+
+/-- The logarithmic bin index agrees with the usual half-open dyadic
+magnitude interval. -/
+theorem dyadicMagnitudeBin_spec {x : ℝ} (hx : 0 < x) :
+    (2 : ℝ) ^ ⌊Real.log x / Real.log 2⌋ ≤ x ∧
+      x < (2 : ℝ) ^ (⌊Real.log x / Real.log 2⌋ + 1) := by
+  have he : ⌊Real.log x / Real.log 2⌋ = Int.log 2 x :=
+    Real.floor_logb_natCast hx.le
+  rw [he]
+  exact ⟨Int.zpow_log_le_self (by norm_num) hx, Int.lt_zpow_succ_log_self (by norm_num) x⟩
+
+theorem height_log_one_le {B : ℝ} (hB : 2 ≤ B) : 1 ≤ Real.log (2 * B) := by
+  have h2 : (1 : ℝ) / 2 ≤ Real.log 2 := by
+    have hh := Real.one_sub_inv_le_log_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at hh ⊢
+    linarith
+  have h4 : (1 : ℝ) ≤ Real.log 4 := by
+    rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.log_pow]
+    norm_num
+    linarith
+  exact h4.trans (Real.log_le_log (by norm_num) (by linarith))
+
+/-- Any finite set of bounded-height evaluation magnitudes occupies
+at most the source's polynomial-logarithmic number of dyadic bins. -/
+theorem rational_magnitude_bins_card_le {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (s : Finset ℝ) (hs : ∀ x ∈ s, 0 < x)
+    (hrepr : ∀ x ∈ s, ∃ v : Fin d → ℚ,
+      (∀ j, (rationalHeight (v j) : ℝ) ≤ B) ∧ |L v| = x) :
+    ((logarithmicMagnitudeBins s (Real.log 2)).card : ℝ) ≤
+      32 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) := by
+  obtain ⟨t, ht, hcover⟩ := rational_logarithmic_cover hB L
+  have hcov : ∀ x ∈ s, ∃ a ∈ t, Real.log x ∈
+      Set.Icc a (a + 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B)) := by
+    intro x hx
+    obtain ⟨v, hv, he⟩ := hrepr x hx
+    have hne : L v ≠ 0 := abs_pos.mp (he.symm ▸ hs x hx)
+    simpa only [he] using hcover v hv hne
+  have hL := height_log_one_le hB
+  have h2 : (1 : ℝ) / 2 ≤ Real.log 2 := by
+    have hh := Real.one_sub_inv_le_log_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at hh ⊢
+    linarith
+  have h2p : 0 < Real.log 2 := by linarith
+  have hD : (1 : ℝ) ≤ d + 1 := le_add_of_nonneg_left (Nat.cast_nonneg d)
+  have hA : 1 ≤ (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by
+    have hp := one_le_pow₀ hD (n := 3)
+    nlinarith
+  have hW : 0 ≤ 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by positivity
+  have hdiv : 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) / Real.log 2 ≤
+      16 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by
+    apply (div_le_iff₀ h2p).mpr
+    nlinarith [mul_nonneg (show 0 ≤ (d + 1 : ℝ) ^ 3 * Real.log (2 * B) by linarith)
+      (sub_nonneg.mpr h2)]
+  calc
+    _ ≤ (t.card : ℝ) * (8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) / Real.log 2 + 2) :=
+      logarithmicMagnitudeBins_card_le s t h2p hW hcov
+    _ ≤ (d + 1 : ℝ) * (32 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B)) := by
+      apply mul_le_mul
+      · have hh : (t.card : ℝ) ≤ d := by exact_mod_cast ht
+        linarith
+      · nlinarith
+      · positivity
+      · positivity
+    _ = _ := by ring
+
+theorem dyadicMagnitudeBin_eq_iff {x : ℝ} (hx : 0 < x) (j : ℤ) :
+    ⌊Real.log x / Real.log 2⌋ = j ↔
+      (2 : ℝ) ^ j ≤ x ∧ x < (2 : ℝ) ^ (j + 1) := by
+  have he : ⌊Real.log x / Real.log 2⌋ = Int.log 2 x := Real.floor_logb_natCast hx.le
+  have hlo := Int.zpow_le_iff_le_log (b := 2) (x := j) (by norm_num) hx
+  have hhi := Int.lt_zpow_iff_log_lt (b := 2) (x := j + 1) (by norm_num) hx
+  norm_num only [Nat.cast_ofNat] at hlo hhi
+  rw [he, hlo, hhi]
+  omega
+
+/-- The exact finite set of dyadic bins occupied by nonzero rational
+evaluations with real height budget `B`. -/
+noncomputable def rationalMagnitudeBins {d : ℕ} (B : ℝ)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) : Finset ℤ :=
+  logarithmicMagnitudeBins (boundedRationalMagnitudes ⌊B⌋₊ L) (Real.log 2)
+
+theorem mem_rationalMagnitudeBins {d : ℕ} {B : ℝ} (hB : 0 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (j : ℤ) :
+    j ∈ rationalMagnitudeBins B L ↔ ∃ v : Fin d → ℚ,
+      (∀ k, (rationalHeight (v k) : ℝ) ≤ B) ∧
+      (2 : ℝ) ^ j ≤ |L v| ∧ |L v| < (2 : ℝ) ^ (j + 1) := by
+  classical
+  change j ∈ (boundedRationalMagnitudes ⌊B⌋₊ L).image
+    (fun x => ⌊Real.log x / Real.log 2⌋) ↔ _
+  constructor
+  · intro hj
+    obtain ⟨x, hx, hj⟩ := Finset.mem_image.mp hj
+    obtain ⟨hxpos, v, hv, rfl⟩ := mem_boundedRationalMagnitudes.mp hx
+    exact ⟨v, fun k => (Nat.le_floor_iff hB).mp (hv k),
+      (dyadicMagnitudeBin_eq_iff hxpos j).mp hj⟩
+  · rintro ⟨v, hv, hlo, hhi⟩
+    have hxpos : 0 < |L v| := (zpow_pos (by norm_num : (0 : ℝ) < 2) j).trans_le hlo
+    exact Finset.mem_image.mpr ⟨|L v|, mem_boundedRationalMagnitudes.mpr
+      ⟨hxpos, v, fun k => Nat.le_floor (hv k), rfl⟩,
+      (dyadicMagnitudeBin_eq_iff hxpos j).mpr ⟨hlo, hhi⟩⟩
+
+/-- Blueprint `lem:height`, line 603: all bounded-height frequencies
+occupy at most `32 (d+1)^4 log(2B)` dyadic magnitude bins. -/
+theorem rationalMagnitudeBins_card_le {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) :
+    ((rationalMagnitudeBins B L).card : ℝ) ≤
+      32 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) := by
+  apply rational_magnitude_bins_card_le hB L
+  · intro x hx
+    exact (mem_boundedRationalMagnitudes.mp hx).1
+  · intro x hx
+    obtain ⟨_, v, hv, he⟩ := mem_boundedRationalMagnitudes.mp hx
+    exact ⟨v, fun k => (Nat.le_floor_iff (by linarith)).mp (hv k), he⟩
+
+/-- Translating logarithmic intervals along an integer grid gives a
+finite set of crossing scales with a uniform count. -/
+theorem finite_logarithmic_scale_count (s t : Finset ℝ) {δ W A B : ℝ}
+    (hδ : 0 < δ) (hW : 0 ≤ W) (hAB : A ≤ B) (v : ℝ)
+    (hcover : ∀ x ∈ s, ∃ a ∈ t, Real.log x ∈ Set.Icc a (a + W)) :
+    ∃ N : Finset ℤ,
+      (∀ n, n ∈ N ↔ ∃ x ∈ s, A ≤ Real.log x + v - δ * n ∧
+        Real.log x + v - δ * n ≤ B) ∧
+      (N.card : ℝ) ≤ t.card * ((W + B - A) / δ + 2) := by
+  classical
+  let J := fun a : ℝ => Finset.Icc ⌊(a + v - B) / δ⌋ ⌊(a + W + v - A) / δ⌋
+  let U := t.biUnion J
+  let P := fun n : ℤ => ∃ x ∈ s, A ≤ Real.log x + v - δ * n ∧
+    Real.log x + v - δ * n ≤ B
+  have hcontains : ∀ n, P n → n ∈ U := by
+    intro n hn
+    obtain ⟨x, hx, hlow, hhigh⟩ := hn
+    obtain ⟨a, ha, haLow, haHigh⟩ := hcover x hx
+    have hlo : (a + v - B) / δ ≤ (n : ℝ) := (div_le_iff₀ hδ).mpr (by nlinarith)
+    have hhi : (n : ℝ) ≤ (a + W + v - A) / δ := (le_div_iff₀ hδ).mpr (by nlinarith)
+    have hfl : ⌊(a + v - B) / δ⌋ ≤ n := by simpa using Int.floor_mono hlo
+    exact Finset.mem_biUnion.mpr ⟨a, ha, Finset.mem_Icc.mpr ⟨hfl, Int.le_floor.mpr hhi⟩⟩
+  have hJ : ∀ a, ((J a).card : ℝ) ≤ (W + B - A) / δ + 2 := by
+    intro a
+    have hh := integer_floor_interval_card_le
+      (div_le_div_of_nonneg_right
+        (show a + v - B ≤ a + W + v - A by linarith) hδ.le)
+    convert hh using 1; ring
+  refine ⟨U.filter P, ?_, ?_⟩
+  · intro n
+    exact ⟨fun hn => (Finset.mem_filter.mp hn).2,
+      fun hn => Finset.mem_filter.mpr ⟨hcontains n hn, hn⟩⟩
+  · calc
+      _ ≤ (U.card : ℝ) := by exact_mod_cast Finset.card_filter_le U P
+      _ ≤ ∑ a ∈ t, ((J a).card : ℝ) := by exact_mod_cast Finset.card_biUnion_le
+      _ ≤ ∑ _a ∈ t, ((W + B - A) / δ + 2) := Finset.sum_le_sum (fun a _ => hJ a)
+      _ = _ := by simp; ring
+
+/-- Uniform translated-scale count for bounded-height evaluations in
+logarithmic coordinates; the grid spacing may be any value at least `log 2`. -/
+theorem rational_logarithmic_scale_count {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) {δ : ℝ} (hδ : Real.log 2 ≤ δ)
+    (v p q : ℝ) (hpq : p ≤ q) :
+    ∃ N : Finset ℤ,
+      (∀ n, n ∈ N ↔ ∃ a : Fin d → ℚ,
+        (∀ j, (rationalHeight (a j) : ℝ) ≤ B) ∧ L a ≠ 0 ∧
+        p ≤ Real.log |L a| + v - δ * n ∧ Real.log |L a| + v - δ * n ≤ q) ∧
+      (N.card : ℝ) ≤ 32 * (d + 1 : ℝ) ^ 4 * (Real.log (2 * B) + q - p) := by
+  classical
+  obtain ⟨t, ht, hcover⟩ := rational_logarithmic_cover hB L
+  let s := boundedRationalMagnitudes ⌊B⌋₊ L
+  have hcov : ∀ x ∈ s, ∃ a ∈ t, Real.log x ∈
+      Set.Icc a (a + 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B)) := by
+    intro x hx
+    obtain ⟨hxpos, a, ha, rfl⟩ := mem_boundedRationalMagnitudes.mp hx
+    exact hcover a (fun j => (Nat.le_floor_iff (by linarith)).mp (ha j)) (abs_pos.mp hxpos)
+  have hL := height_log_one_le hB
+  have hhalf : (1 : ℝ) / 2 ≤ Real.log 2 := by
+    have hh := Real.one_sub_inv_le_log_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at hh ⊢
+    linarith
+  have hδp : 0 < δ := by linarith
+  have hW : 0 ≤ 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by positivity
+  obtain ⟨N, hN, hcard⟩ := finite_logarithmic_scale_count s t hδp hW hpq v hcov
+  refine ⟨N, ?_, ?_⟩
+  · intro n
+    rw [hN n]
+    constructor
+    · rintro ⟨x, hx, hlo, hhi⟩
+      obtain ⟨hxpos, a, ha, rfl⟩ := mem_boundedRationalMagnitudes.mp hx
+      exact ⟨a, fun j => (Nat.le_floor_iff (by linarith)).mp (ha j),
+        abs_pos.mp hxpos, hlo, hhi⟩
+    · rintro ⟨a, ha, hne, hlo, hhi⟩
+      exact ⟨|L a|, mem_boundedRationalMagnitudes.mpr
+        ⟨abs_pos.mpr hne, a, fun j => Nat.le_floor (ha j), rfl⟩, hlo, hhi⟩
+  · have hD : (1 : ℝ) ≤ d + 1 := le_add_of_nonneg_left (Nat.cast_nonneg d)
+    have hD3 : 1 ≤ (d + 1 : ℝ) ^ 3 := one_le_pow₀ hD
+    have hM : 1 ≤ Real.log (2 * B) + q - p := by linarith
+    have hprod : 1 ≤ (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) := by nlinarith
+    have hwidth : 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + q - p ≤
+        8 * (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) := by
+      nlinarith [mul_nonneg (sub_nonneg.mpr hD3) (sub_nonneg.mpr hpq)]
+    have hdiv : (8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + q - p) / δ ≤
+        16 * (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) := by
+      apply (div_le_iff₀ hδp).mpr
+      nlinarith [mul_nonneg
+        (show 0 ≤ (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) by linarith)
+        (show 0 ≤ δ - 1 / 2 by linarith)]
+    calc
+      _ ≤ (t.card : ℝ) * ((8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + q - p) / δ + 2) := hcard
+      _ ≤ (d + 1 : ℝ) * (32 * (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p)) := by
+        apply mul_le_mul
+        · have hh : (t.card : ℝ) ≤ d := by exact_mod_cast ht
+          linarith
+        · nlinarith
+        · apply add_nonneg
+          · exact div_nonneg (by linarith) hδp.le
+          · norm_num
+        · positivity
+      _ = _ := by ring
+
+/-- The translated dyadic scale count, uniform in the scale multiplier
+and valid for every positive integral dilation exponent. -/
+theorem rational_dyadic_scale_count {d u : ℕ} {B α β : ℝ} (hB : 2 ≤ B)
+    (hu : 1 ≤ u) (hα : 0 < α) (hαβ : α ≤ β)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (c : ℝ) :
+    ∃ N : Finset ℤ,
+      (∀ n, n ∈ N ↔ ∃ a : Fin d → ℚ,
+        (∀ j, (rationalHeight (a j) : ℝ) ≤ B) ∧
+        α ≤ c * ((2 : ℝ) ^ (-n)) ^ u * |L a| ∧
+        c * ((2 : ℝ) ^ (-n)) ^ u * |L a| ≤ β) ∧
+      (N.card : ℝ) ≤ 32 * (d + 1 : ℝ) ^ 4 *
+        (Real.log (2 * B) + Real.log (2 * β / α)) := by
+  have hβ : 0 < β := hα.trans_le hαβ
+  have hratio : 0 ≤ Real.log (2 * β / α) := Real.log_nonneg
+    ((le_div_iff₀ hα).mpr (by linarith))
+  have hL := height_log_one_le hB
+  by_cases hc : 0 < c
+  · have hlog2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
+    have huR : (1 : ℝ) ≤ u := by exact_mod_cast hu
+    have hδ : Real.log 2 ≤ (u : ℝ) * Real.log 2 :=
+      le_mul_of_one_le_left hlog2.le huR
+    obtain ⟨N, hN, hcard⟩ := rational_logarithmic_scale_count hB L hδ
+      (Real.log c) (Real.log α) (Real.log β) (Real.log_le_log hα hαβ)
+    have heq : ∀ (a : Fin d → ℚ) (n : ℤ), L a ≠ 0 →
+        Real.log (c * ((2 : ℝ) ^ (-n)) ^ u * |L a|) =
+          Real.log |L a| + Real.log c - ((u : ℝ) * Real.log 2) * n := by
+      intro a n ha
+      have hp : 0 < (2 : ℝ) ^ (-n) := zpow_pos (by norm_num) _
+      rw [Real.log_mul (mul_pos hc (pow_pos hp _)).ne' (abs_pos.mpr ha).ne',
+        Real.log_mul hc.ne' (pow_pos hp _).ne', Real.log_pow, Real.log_zpow]
+      push_cast
+      ring
+    refine ⟨N, ?_, hcard.trans ?_⟩
+    · intro n
+      rw [hN n]
+      constructor
+      · rintro ⟨a, ha, hne, hlo, hhi⟩
+        have hp : 0 < c * ((2 : ℝ) ^ (-n)) ^ u * |L a| := by
+          exact mul_pos (mul_pos hc (pow_pos (zpow_pos (by norm_num) _) _)) (abs_pos.mpr hne)
+        rw [← heq a n hne] at hlo hhi
+        exact ⟨a, ha, (Real.log_le_log_iff hα hp).mp hlo,
+          (Real.log_le_log_iff hp hβ).mp hhi⟩
+      · rintro ⟨a, ha, hlo, hhi⟩
+        have hne : L a ≠ 0 := by
+          intro hz
+          simp only [hz, abs_zero, mul_zero] at hlo
+          exact (not_le_of_gt hα) hlo
+        refine ⟨a, ha, hne, ?_, ?_⟩
+        · rw [← heq a n hne]
+          exact Real.log_le_log hα hlo
+        · rw [← heq a n hne]
+          exact Real.log_le_log (hα.trans_le hlo) hhi
+    · apply mul_le_mul_of_nonneg_left _ (by positivity)
+      have hh : Real.log β - Real.log α ≤ Real.log (2 * β / α) := by
+        rw [← Real.log_div hβ.ne' hα.ne']
+        exact Real.log_le_log (div_pos hβ hα)
+          (div_le_div_of_nonneg_right (by linarith) hα.le)
+      linarith
+  · refine ⟨∅, ?_, ?_⟩
+    · intro n
+      simp only [Finset.notMem_empty, false_iff]
+      rintro ⟨a, _, hlo, _⟩
+      have hp : 0 ≤ ((2 : ℝ) ^ (-n)) ^ u := pow_nonneg (zpow_nonneg (by norm_num) _) _
+      have hnonpos : c * ((2 : ℝ) ^ (-n)) ^ u * |L a| ≤ 0 :=
+        mul_nonpos_of_nonpos_of_nonneg
+          (mul_nonpos_of_nonpos_of_nonneg (le_of_not_gt hc) hp) (abs_nonneg _)
+      linarith
+    · simp only [Finset.card_empty, Nat.cast_zero]
+      positivity
+
+/-- Blueprint `lem:height`, lines 603-607: the source scale formula
+`r_n = r_0 2^(-n)`, for every positive integer exponent (in particular 1 and 2). -/
+theorem rational_frequency_scale_count {d u : ℕ} {B α β : ℝ} (hB : 2 ≤ B)
+    (hu : 1 ≤ u) (hα : 0 < α) (hαβ : α ≤ β) (ξ : Fin d → ℝ) (r₀ : ℝ) :
+    ∃ N : Finset ℤ,
+      (∀ n, n ∈ N ↔ ∃ a : Fin d → ℚ,
+        (∀ j, (rationalHeight (a j) : ℝ) ≤ B) ∧
+        α ≤ (r₀ * (2 : ℝ) ^ (-n)) ^ u * |∑ j, (a j : ℝ) * ξ j| ∧
+        (r₀ * (2 : ℝ) ^ (-n)) ^ u * |∑ j, (a j : ℝ) * ξ j| ≤ β) ∧
+      (N.card : ℝ) ≤ 32 * (d + 1 : ℝ) ^ 4 *
+        (Real.log (2 * B) + Real.log (2 * β / α)) := by
+  simpa only [mul_pow, rationalEvaluation, LinearMap.coe_mk, AddHom.coe_mk] using
+    rational_dyadic_scale_count hB hu hα hαβ (rationalEvaluation ξ) (r₀ ^ u)
+
+/-- Keep a nonnegative magnitude only when it is below the specified threshold. -/
+noncomputable def upperTruncatedMagnitude (ε x : ℝ) : ℝ := if x ≤ ε then x else 0
+
+theorem upperTruncatedMagnitude_nonneg (ε : ℝ) {x : ℝ} (hx : 0 ≤ x) :
+    0 ≤ upperTruncatedMagnitude ε x := by
+  unfold upperTruncatedMagnitude
+  split_ifs <;> positivity
+
+/-- A geometrically decreasing integer sequence contributes at most
+twice the cutoff threshold to every finite truncated sum. -/
+theorem integer_geometric_truncated_sum_le (q : ℤ → ℝ) {ε : ℝ} (hε : 0 ≤ ε)
+    (hdecay : ∀ m n : ℤ, m ≤ n → q n ≤ q m * ((1 : ℝ) / 2) ^ (n - m).toNat)
+    (F : Finset ℤ) :
+    ∑ n ∈ F, upperTruncatedMagnitude ε (q n) ≤ 2 * ε := by
+  classical
+  let I := F.filter (fun n => q n ≤ ε)
+  have heq : ∑ n ∈ F, upperTruncatedMagnitude ε (q n) = ∑ n ∈ I, q n := by
+    simp [I, upperTruncatedMagnitude, Finset.sum_filter]
+  rw [heq]
+  by_cases hI : I.Nonempty
+  · let m := I.min' hI
+    have hm : m ∈ I := I.min'_mem hI
+    have hqm : q m ≤ ε := (Finset.mem_filter.mp hm).2
+    have hmin : ∀ n ∈ I, m ≤ n := fun n hn => I.min'_le n hn
+    have hinj : Set.InjOn (fun n : ℤ => (n - m).toNat) (I : Set ℤ) := by
+      intro n hn k hk he
+      have hn0 : 0 ≤ n - m := sub_nonneg.mpr (hmin n hn)
+      have hk0 : 0 ≤ k - m := sub_nonneg.mpr (hmin k hk)
+      have hecast := congrArg (fun r : ℕ => (r : ℤ)) he
+      dsimp only at hecast
+      rw [Int.toNat_of_nonneg hn0, Int.toNat_of_nonneg hk0] at hecast
+      omega
+    calc
+      _ ≤ ∑ n ∈ I, ε * ((1 : ℝ) / 2) ^ (n - m).toNat := by
+        apply Finset.sum_le_sum
+        intro n hn
+        exact (hdecay m n (hmin n hn)).trans
+          (mul_le_mul_of_nonneg_right hqm (by positivity))
+      _ = ∑ k ∈ I.image (fun n : ℤ => (n - m).toNat), ε * ((1 : ℝ) / 2) ^ k :=
+        (Finset.sum_image (f := fun k => ε * ((1 : ℝ) / 2) ^ k) hinj).symm
+      _ ≤ ∑' k : ℕ, ε * ((1 : ℝ) / 2) ^ k :=
+        (summable_geometric_two.mul_left ε).sum_le_tsum _ (fun _ _ => by positivity)
+      _ = 2 * ε := by
+        rw [(hasSum_geometric_two.mul_left ε).tsum_eq, mul_comm]
+  · have hh : I = ∅ := Finset.not_nonempty_iff_eq_empty.mp hI
+    rw [hh, Finset.sum_empty]
+    positivity
+
+theorem integer_geometric_truncated_summable (q : ℤ → ℝ) {ε : ℝ} (hε : 0 ≤ ε)
+    (hq : ∀ n, 0 ≤ q n)
+    (hdecay : ∀ m n : ℤ, m ≤ n → q n ≤ q m * ((1 : ℝ) / 2) ^ (n - m).toNat) :
+    Summable (fun n => upperTruncatedMagnitude ε (q n)) ∧
+      (∑' n : ℤ, upperTruncatedMagnitude ε (q n)) ≤ 2 * ε := by
+  have hnonneg : 0 ≤ fun n => upperTruncatedMagnitude ε (q n) :=
+    fun n => upperTruncatedMagnitude_nonneg ε (hq n)
+  have hsum := integer_geometric_truncated_sum_le q hε hdecay
+  exact ⟨summable_of_sum_le hnonneg hsum, Real.tsum_le_of_sum_le hnonneg hsum⟩
+
+/-- A dyadically decaying magnitude profile, indexed by every integer scale. -/
+noncomputable def dyadicMagnitudeProfile (c : ℝ) (u : ℕ) (n : ℤ) : ℝ :=
+  c * ((2 : ℝ) ^ (-n)) ^ u
+
+theorem dyadicMagnitudeProfile_nonneg {c : ℝ} (hc : 0 ≤ c) (u : ℕ) (n : ℤ) :
+    0 ≤ dyadicMagnitudeProfile c u n := by
+  unfold dyadicMagnitudeProfile
+  positivity
+
+theorem dyadicMagnitudeProfile_decay {c : ℝ} (hc : 0 ≤ c) {u : ℕ} (hu : 1 ≤ u)
+    (m n : ℤ) (hmn : m ≤ n) :
+    dyadicMagnitudeProfile c u n ≤
+      dyadicMagnitudeProfile c u m * ((1 : ℝ) / 2) ^ (n - m).toNat := by
+  let k := (n - m).toNat
+  have hkcast : (k : ℤ) = n - m := Int.toNat_of_nonneg (sub_nonneg.mpr hmn)
+  have hn : n = m + (k : ℤ) := by omega
+  have hbase : (2 : ℝ) ^ (-n) = (2 : ℝ) ^ (-m) * ((1 : ℝ) / 2) ^ k := by
+    rw [hn, neg_add, zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0), zpow_neg (2 : ℝ) (k : ℤ),
+      zpow_natCast, ← inv_pow]
+    norm_num
+  have hk1 : ((1 : ℝ) / 2) ^ k ≤ 1 := pow_le_one₀ (by norm_num) (by norm_num)
+  have hku : (((1 : ℝ) / 2) ^ k) ^ u ≤ ((1 : ℝ) / 2) ^ k := by
+    obtain ⟨v, rfl⟩ := Nat.exists_eq_add_of_le hu
+    rw [pow_add, pow_one]
+    exact mul_le_of_le_one_right (by positivity) (pow_le_one₀ (by positivity) hk1)
+  calc
+    _ = dyadicMagnitudeProfile c u m * (((1 : ℝ) / 2) ^ k) ^ u := by
+      unfold dyadicMagnitudeProfile
+      rw [hbase, mul_pow]
+      ring
+    _ ≤ _ := mul_le_mul_of_nonneg_left hku (dyadicMagnitudeProfile_nonneg hc u m)
+
+theorem dyadicMagnitudeProfile_truncated_sum_le {c ε : ℝ} (hc : 0 ≤ c) (hε : 0 ≤ ε)
+    {u : ℕ} (hu : 1 ≤ u) (F : Finset ℤ) :
+    ∑ n ∈ F, upperTruncatedMagnitude ε (dyadicMagnitudeProfile c u n) ≤ 2 * ε :=
+  integer_geometric_truncated_sum_le _ hε (dyadicMagnitudeProfile_decay hc hu) F
+
+/-- Maximum of the positive scaled magnitudes below `ε`, with the
+source convention that an empty maximum is zero. -/
+noncomputable def finiteTinyMaximum (s : Finset ℝ) (w ε : ℝ) : ℝ := by
+  classical
+  exact (insert 0 ((s.image (fun x => w * x)).filter (fun y => 0 < y ∧ y ≤ ε))).max'
+    (Finset.insert_nonempty _ _)
+
+theorem finiteTinyMaximum_nonneg (s : Finset ℝ) (w ε : ℝ) :
+    0 ≤ finiteTinyMaximum s w ε := by
+  classical
+  unfold finiteTinyMaximum
+  exact Finset.le_max' _ _ (Finset.mem_insert_self _ _)
+
+theorem finiteTinyMaximum_le (s : Finset ℝ) (w ε : ℝ) {M : ℝ} (hM : 0 ≤ M)
+    (hs : ∀ x ∈ s, 0 < w * x → w * x ≤ ε → w * x ≤ M) :
+    finiteTinyMaximum s w ε ≤ M := by
+  classical
+  unfold finiteTinyMaximum
+  apply Finset.max'_le
+  intro y hy
+  rcases Finset.mem_insert.mp hy with rfl | hy
+  · exact hM
+  · obtain ⟨hy, hpos, hsmall⟩ := Finset.mem_filter.mp hy
+    obtain ⟨x, hx, rfl⟩ := Finset.mem_image.mp hy
+    exact hs x hx hpos hsmall
+
+theorem finiteTinyMaximum_eq_zero_of_nonpos (s : Finset ℝ) (ε : ℝ)
+    (hs : ∀ x ∈ s, 0 ≤ x) {w : ℝ} (hw : w ≤ 0) :
+    finiteTinyMaximum s w ε = 0 := by
+  apply le_antisymm _ (finiteTinyMaximum_nonneg s w ε)
+  apply finiteTinyMaximum_le s w ε le_rfl
+  intro x hx _ _
+  exact mul_nonpos_of_nonpos_of_nonneg hw (hs x hx)
+
+/-- In one occupied dyadic bin the small maximum is at most twice
+its lower endpoint, provided that endpoint is below the cutoff. -/
+theorem finiteTinyMaximum_le_bins (s : Finset ℝ) (hs : ∀ x ∈ s, 0 < x)
+    {w : ℝ} (hw : 0 ≤ w) (ε : ℝ) :
+    finiteTinyMaximum s w ε ≤
+      ∑ j ∈ logarithmicMagnitudeBins s (Real.log 2),
+        2 * upperTruncatedMagnitude ε (w * (2 : ℝ) ^ j) := by
+  classical
+  have hnonneg : ∀ j : ℤ, 0 ≤ 2 * upperTruncatedMagnitude ε (w * (2 : ℝ) ^ j) := by
+    intro j
+    exact mul_nonneg (by norm_num) (upperTruncatedMagnitude_nonneg ε (by positivity))
+  apply finiteTinyMaximum_le s w ε (Finset.sum_nonneg (fun j _ => hnonneg j))
+  intro x hx _ hsmall
+  let j := ⌊Real.log x / Real.log 2⌋
+  have hj : j ∈ logarithmicMagnitudeBins s (Real.log 2) := Finset.mem_image.mpr ⟨x, hx, rfl⟩
+  have hbin := dyadicMagnitudeBin_spec (hs x hx)
+  have hlow : w * (2 : ℝ) ^ j ≤ ε := (mul_le_mul_of_nonneg_left hbin.1 hw).trans hsmall
+  have hhigh : w * x ≤ 2 * (w * (2 : ℝ) ^ j) := by
+    have hh := mul_le_mul_of_nonneg_left hbin.2.le hw
+    change w * x ≤ w * (2 : ℝ) ^ (j + 1) at hh
+    rw [zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0), zpow_one] at hh
+    nlinarith
+  calc
+    _ ≤ 2 * (w * (2 : ℝ) ^ j) := hhigh
+    _ = 2 * upperTruncatedMagnitude ε (w * (2 : ℝ) ^ j) := by
+      rw [upperTruncatedMagnitude, ite_eq_left hlow]
+    _ ≤ _ := Finset.single_le_sum (fun k _ => hnonneg k) hj
+
+theorem finiteTinyMaximum_dyadic_sum_le (s : Finset ℝ) (hs : ∀ x ∈ s, 0 < x)
+    (c : ℝ) {u : ℕ} (hu : 1 ≤ u) {ε : ℝ} (hε : 0 ≤ ε) (F : Finset ℤ) :
+    ∑ n ∈ F, finiteTinyMaximum s (dyadicMagnitudeProfile c u n) ε ≤
+      4 * (logarithmicMagnitudeBins s (Real.log 2)).card * ε := by
+  classical
+  by_cases hc : 0 ≤ c
+  · have hpoint : ∀ n : ℤ, finiteTinyMaximum s (dyadicMagnitudeProfile c u n) ε ≤
+        ∑ j ∈ logarithmicMagnitudeBins s (Real.log 2),
+          2 * upperTruncatedMagnitude ε (dyadicMagnitudeProfile (c * (2 : ℝ) ^ j) u n) := by
+      intro n
+      have hh := finiteTinyMaximum_le_bins s hs (dyadicMagnitudeProfile_nonneg hc u n) ε
+      convert hh using 1
+      apply Finset.sum_congr rfl
+      intro j _
+      congr 2
+      unfold dyadicMagnitudeProfile
+      ring
+    calc
+      _ ≤ ∑ n ∈ F, ∑ j ∈ logarithmicMagnitudeBins s (Real.log 2),
+          2 * upperTruncatedMagnitude ε (dyadicMagnitudeProfile (c * (2 : ℝ) ^ j) u n) :=
+        Finset.sum_le_sum (fun n _ => hpoint n)
+      _ = ∑ j ∈ logarithmicMagnitudeBins s (Real.log 2), ∑ n ∈ F,
+          2 * upperTruncatedMagnitude ε (dyadicMagnitudeProfile (c * (2 : ℝ) ^ j) u n) :=
+        Finset.sum_comm
+      _ ≤ ∑ _j ∈ logarithmicMagnitudeBins s (Real.log 2), 4 * ε := by
+        apply Finset.sum_le_sum
+        intro j _
+        rw [← Finset.mul_sum]
+        have hh := dyadicMagnitudeProfile_truncated_sum_le
+          (show 0 ≤ c * (2 : ℝ) ^ j by positivity) hε hu F
+        nlinarith
+      _ = _ := by simp; ring
+  · have hzero : ∀ n, finiteTinyMaximum s (dyadicMagnitudeProfile c u n) ε = 0 := by
+      intro n
+      apply finiteTinyMaximum_eq_zero_of_nonpos s ε (fun x hx => (hs x hx).le)
+      exact mul_nonpos_of_nonpos_of_nonneg (le_of_not_ge hc) (by positivity)
+    simp only [hzero, Finset.sum_const_zero]
+    positivity
+
+/-- The tiny maxima are summable over all integer scales, with four
+times the cutoff threshold per occupied dyadic magnitude bin. -/
+theorem finiteTinyMaximum_dyadic_tsum_le (s : Finset ℝ) (hs : ∀ x ∈ s, 0 < x)
+    (c : ℝ) {u : ℕ} (hu : 1 ≤ u) {ε : ℝ} (hε : 0 ≤ ε) :
+    Summable (fun n : ℤ => finiteTinyMaximum s (dyadicMagnitudeProfile c u n) ε) ∧
+      (∑' n : ℤ, finiteTinyMaximum s (dyadicMagnitudeProfile c u n) ε) ≤
+        4 * (logarithmicMagnitudeBins s (Real.log 2)).card * ε := by
+  have hnonneg : 0 ≤ fun n : ℤ => finiteTinyMaximum s (dyadicMagnitudeProfile c u n) ε :=
+    fun n => finiteTinyMaximum_nonneg s _ ε
+  have hsum := finiteTinyMaximum_dyadic_sum_le s hs c hu hε
+  exact ⟨summable_of_sum_le hnonneg hsum, Real.tsum_le_of_sum_le hnonneg hsum⟩
+
+theorem le_finiteTinyMaximum {s : Finset ℝ} {w ε x : ℝ} (hx : x ∈ s)
+    (hpos : 0 < w * x) (hsmall : w * x ≤ ε) :
+    w * x ≤ finiteTinyMaximum s w ε := by
+  classical
+  unfold finiteTinyMaximum
+  exact Finset.le_max' _ _ (Finset.mem_insert_of_mem (Finset.mem_filter.mpr
+    ⟨Finset.mem_image.mpr ⟨x, hx, rfl⟩, hpos, hsmall⟩))
+
+/-- The exact tiny maximum over all bounded-height rational evaluations. -/
+noncomputable def rationalTinyMaximum {d : ℕ} (B : ℝ)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (c : ℝ) (u : ℕ) (ε : ℝ) (n : ℤ) : ℝ :=
+  finiteTinyMaximum (boundedRationalMagnitudes ⌊B⌋₊ L) (dyadicMagnitudeProfile c u n) ε
+
+theorem rationalTinyMaximum_le_iff {d : ℕ} {B : ℝ} (hB : 0 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (c : ℝ) (u : ℕ) (ε : ℝ) (n : ℤ) (M : ℝ) :
+    rationalTinyMaximum B L c u ε n ≤ M ↔ 0 ≤ M ∧
+      ∀ a : Fin d → ℚ, (∀ j, (rationalHeight (a j) : ℝ) ≤ B) →
+        0 < dyadicMagnitudeProfile c u n * |L a| →
+        dyadicMagnitudeProfile c u n * |L a| ≤ ε →
+        dyadicMagnitudeProfile c u n * |L a| ≤ M := by
+  constructor
+  · intro hM
+    refine ⟨(finiteTinyMaximum_nonneg _ _ _).trans hM, ?_⟩
+    intro a ha hpos hsmall
+    have hne : L a ≠ 0 := by
+      intro hh
+      simp only [hh, abs_zero, mul_zero] at hpos
+      exact lt_irrefl _ hpos
+    have hamem : |L a| ∈ boundedRationalMagnitudes ⌊B⌋₊ L :=
+      mem_boundedRationalMagnitudes.mpr ⟨abs_pos.mpr hne, a,
+        fun j => Nat.le_floor (ha j), rfl⟩
+    exact (le_finiteTinyMaximum hamem hpos hsmall).trans hM
+  · rintro ⟨hM, hbound⟩
+    apply finiteTinyMaximum_le _ _ _ hM
+    intro x hx hpos hsmall
+    obtain ⟨_, a, ha, rfl⟩ := mem_boundedRationalMagnitudes.mp hx
+    exact hbound a (fun j => (Nat.le_floor_iff hB).mp (ha j)) hpos hsmall
+
+/-- Blueprint `lem:height`, tiny-sum formula, lines 608-614 and 617:
+the exact tiny maxima are summable and bounded by the occupied-bin count. -/
+theorem rationalTinyMaximum_tsum_le {d u : ℕ} {B ε : ℝ} (hB : 2 ≤ B)
+    (hu : 1 ≤ u) (hε : 0 ≤ ε) (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (c : ℝ) :
+    Summable (rationalTinyMaximum B L c u ε) ∧
+      (∑' n : ℤ, rationalTinyMaximum B L c u ε n) ≤
+        128 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) * ε := by
+  obtain ⟨hsum, hbound⟩ := finiteTinyMaximum_dyadic_tsum_le
+    (boundedRationalMagnitudes ⌊B⌋₊ L)
+    (fun _ hx => (mem_boundedRationalMagnitudes.mp hx).1) c hu hε
+  refine ⟨hsum, hbound.trans ?_⟩
+  have hcard := rationalMagnitudeBins_card_le hB L
+  calc
+    _ ≤ 4 * (32 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B)) * ε :=
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hcard (by norm_num)) hε
+    _ = _ := by ring
+
+/-- The source tiny-sum estimate with `r_n = r_0 2^(-n)` and dot-product
+frequencies, including the empty-maximum convention and actual summability. -/
+theorem rational_frequency_tiny_sum {d u : ℕ} {B ε : ℝ} (hB : 2 ≤ B)
+    (hu : 1 ≤ u) (hε : 0 ≤ ε) (ξ : Fin d → ℝ) (r₀ : ℝ) :
+    Summable (fun n : ℤ => finiteTinyMaximum
+      (boundedRationalMagnitudes ⌊B⌋₊ (rationalEvaluation ξ))
+      ((r₀ * (2 : ℝ) ^ (-n)) ^ u) ε) ∧
+      (∑' n : ℤ, finiteTinyMaximum
+        (boundedRationalMagnitudes ⌊B⌋₊ (rationalEvaluation ξ))
+        ((r₀ * (2 : ℝ) ^ (-n)) ^ u) ε) ≤
+          128 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) * ε := by
+  obtain ⟨hs, hb⟩ := rationalTinyMaximum_tsum_le hB hu hε (rationalEvaluation ξ) (r₀ ^ u)
+  constructor
+  · convert hs using 1
+    funext n
+    simp only [rationalTinyMaximum, dyadicMagnitudeProfile, mul_pow]
+  · simpa only [rationalTinyMaximum, dyadicMagnitudeProfile, mul_pow] using hb
+
+/-- A nonzero finite coordinate supremum is attained by one coordinate. -/
+theorem finite_coordinate_norm_attained {h : ℕ} (x : Fin h → ℝ) (hx : ‖x‖ ≠ 0) :
+    ∃ i : Fin h, |x i| = ‖x‖ := by
+  classical
+  have hex : ∃ i, x i ≠ 0 := by
+    by_contra hh
+    push Not at hh
+    have he : x = 0 := funext hh
+    exact hx (he ▸ norm_zero)
+  obtain ⟨i, _⟩ := hex
+  obtain ⟨j, _, hj⟩ := Finset.exists_max_image Finset.univ (fun i => |x i|)
+    ⟨i, Finset.mem_univ i⟩
+  refine ⟨j, le_antisymm ?_ ?_⟩
+  · simpa only [Real.norm_eq_abs] using norm_le_pi_norm x j
+  · apply (pi_norm_le_iff_of_nonneg (abs_nonneg (x j))).mpr
+    intro k
+    simpa only [Real.norm_eq_abs] using hj k (Finset.mem_univ k)
+
+/-- A Euclidean norm lies between its largest coordinate and `sqrt h`
+times that coordinate, with no nonempty-coordinate assumption needed. -/
+theorem euclidean_norm_coordinate_comparison {h : ℕ} (x : Fin h → ℝ)
+    (hx : ‖(WithLp.toLp 2 x : EuclideanSpace ℝ (Fin h))‖ ≠ 0) :
+    ∃ i : Fin h, 0 < |x i| ∧
+      |x i| ≤ ‖(WithLp.toLp 2 x : EuclideanSpace ℝ (Fin h))‖ ∧
+      ‖(WithLp.toLp 2 x : EuclideanSpace ℝ (Fin h))‖ ≤ Real.sqrt h * |x i| := by
+  have hx0 : x ≠ 0 := by
+    intro he
+    subst x
+    simp at hx
+  obtain ⟨i, hi⟩ := finite_coordinate_norm_attained x (norm_ne_zero_iff.mpr hx0)
+  have hpos : 0 < |x i| := hi ▸ norm_pos_iff.mpr hx0
+  have hmax : ∀ j, |x j| ≤ |x i| := by
+    intro j
+    rw [hi]
+    simpa only [Real.norm_eq_abs] using norm_le_pi_norm x j
+  refine ⟨i, hpos, ?_, ?_⟩
+  · simpa only [Real.norm_eq_abs] using
+      PiLp.norm_apply_le (WithLp.toLp 2 x : EuclideanSpace ℝ (Fin h)) i
+  · apply (sq_le_sq₀ (norm_nonneg _) (mul_nonneg (Real.sqrt_nonneg _) hpos.le)).mp
+    rw [mul_pow, Real.sq_sqrt (Nat.cast_nonneg h), EuclideanSpace.norm_sq_eq]
+    calc
+      _ ≤ ∑ _j : Fin h, |x i| ^ 2 := by
+        apply Finset.sum_le_sum
+        intro j _
+        simpa only [Real.norm_eq_abs] using pow_le_pow_left₀ (abs_nonneg (x j)) (hmax j) 2
+      _ = _ := by simp
+
+/-- Finite enumeration of all positive magnitudes formed from `h`
+bounded-height rational coordinates by a specified magnitude function. -/
+noncomputable def boundedCoordinateMagnitudes {d : ℕ} (h : ℕ) (B : ℝ)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (ν : (Fin h → ℝ) → ℝ) : Finset ℝ := by
+  classical
+  exact ((Fintype.piFinset (fun _ : Fin h => boundedRationalVectors d ⌊B⌋₊)).image
+    (fun a => ν (fun i => L (a i)))).filter (fun x => 0 < x)
+
+theorem mem_boundedCoordinateMagnitudes {d h : ℕ} {B : ℝ} (hB : 0 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (ν : (Fin h → ℝ) → ℝ) {x : ℝ} :
+    x ∈ boundedCoordinateMagnitudes h B L ν ↔ 0 < x ∧
+      ∃ a : Fin h → Fin d → ℚ,
+        (∀ i j, (rationalHeight (a i j) : ℝ) ≤ B) ∧ ν (fun i => L (a i)) = x := by
+  classical
+  simp only [boundedCoordinateMagnitudes, Finset.mem_filter, Finset.mem_image,
+    Fintype.mem_piFinset, mem_boundedRationalVectors]
+  constructor
+  · rintro ⟨⟨a, ha, he⟩, hx⟩
+    exact ⟨hx, a, fun i j => (Nat.le_floor_iff hB).mp (ha i j), he⟩
+  · rintro ⟨hx, a, ha, he⟩
+    exact ⟨⟨a, fun i j => Nat.le_floor (ha i j), he⟩, hx⟩
+
+/-- A magnitude obtained by enlarging one nonzero bounded-height
+rational evaluation by a factor of at most `ρ`. -/
+def IsRationalMagnitudeEnlargement {d : ℕ} (B : ℝ)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (ρ x : ℝ) : Prop :=
+  ∃ a : Fin d → ℚ, (∀ j, (rationalHeight (a j) : ℝ) ≤ B) ∧
+    L a ≠ 0 ∧ |L a| ≤ x ∧ x ≤ ρ * |L a|
+
+theorem rational_enlarged_logarithmic_cover {d : ℕ} {B ρ : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (hρ : 1 ≤ ρ) :
+    ∃ t : Finset ℝ, t.card ≤ d ∧ ∀ x : ℝ,
+      IsRationalMagnitudeEnlargement B L ρ x →
+      ∃ a ∈ t, Real.log x ∈
+        Set.Icc a (a + (8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + Real.log ρ)) := by
+  obtain ⟨t, ht, hcover⟩ := rational_logarithmic_cover hB L
+  refine ⟨t, ht, ?_⟩
+  rintro x ⟨v, hv, hne, hlo, hhi⟩
+  obtain ⟨a, ha, haLow, haHigh⟩ := hcover v hv hne
+  have hvpos : 0 < |L v| := abs_pos.mpr hne
+  have hxpos : 0 < x := hvpos.trans_le hlo
+  have hρpos : 0 < ρ := by linarith
+  refine ⟨a, ha, haLow.trans (Real.log_le_log hvpos hlo), ?_⟩
+  have hh := Real.log_le_log hxpos hhi
+  rw [Real.log_mul hρpos.ne' hvpos.ne'] at hh
+  linarith
+
+/-- Quantitative interval counting with an additive enlargement cost;
+the additional logarithmic width is charged only once per interval. -/
+theorem height_grid_count_bound {d k : ℕ} (hk : k ≤ d) {M E δ : ℝ}
+    (hM : 1 ≤ M) (hE : 0 ≤ E) (hδ : (1 : ℝ) / 2 ≤ δ) :
+    (k : ℝ) * ((8 * (d + 1 : ℝ) ^ 3 * M + E) / δ + 2) ≤
+      32 * (d + 1 : ℝ) ^ 4 * M + 2 * d * E := by
+  have hδp : 0 < δ := by linarith
+  have hD : (1 : ℝ) ≤ d + 1 := le_add_of_nonneg_left (Nat.cast_nonneg d)
+  have hD3 : 1 ≤ (d + 1 : ℝ) ^ 3 := one_le_pow₀ hD
+  have hprod : 1 ≤ (d + 1 : ℝ) ^ 3 * M := by nlinarith
+  have hkR : (k : ℝ) ≤ d := by exact_mod_cast hk
+  have hbase : 8 * (d + 1 : ℝ) ^ 3 * M / δ ≤ 16 * (d + 1 : ℝ) ^ 3 * M := by
+    apply (div_le_iff₀ hδp).mpr
+    nlinarith [mul_nonneg (show 0 ≤ (d + 1 : ℝ) ^ 3 * M by linarith)
+      (sub_nonneg.mpr hδ)]
+  have hextra : E / δ ≤ 2 * E := by
+    apply (div_le_iff₀ hδp).mpr
+    nlinarith [mul_nonneg hE (sub_nonneg.mpr hδ)]
+  have hfirst : (k : ℝ) * (8 * (d + 1 : ℝ) ^ 3 * M / δ + 2) ≤
+      32 * (d + 1 : ℝ) ^ 4 * M := by
+    calc
+      _ ≤ (d + 1 : ℝ) * (32 * (d + 1 : ℝ) ^ 3 * M) := by
+        apply mul_le_mul
+        · linarith
+        · nlinarith
+        · positivity
+        · positivity
+      _ = _ := by ring
+  calc
+    _ = (k : ℝ) * (8 * (d + 1 : ℝ) ^ 3 * M / δ + 2) + (k : ℝ) * (E / δ) := by
+      rw [add_div]
+      ring
+    _ ≤ 32 * (d + 1 : ℝ) ^ 4 * M + (d : ℝ) * (2 * E) :=
+      add_le_add hfirst (mul_le_mul hkR hextra (div_nonneg hE hδp.le) (Nat.cast_nonneg d))
+    _ = _ := by ring
+
+theorem rational_enlarged_bins_card_le {d : ℕ} {B ρ : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (hρ : 1 ≤ ρ) (s : Finset ℝ)
+    (hs : ∀ x ∈ s, IsRationalMagnitudeEnlargement B L ρ x) :
+    ((logarithmicMagnitudeBins s (Real.log 2)).card : ℝ) ≤
+      32 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) + 2 * d * Real.log ρ := by
+  obtain ⟨t, ht, hcover⟩ := rational_enlarged_logarithmic_cover hB L hρ
+  have hL := height_log_one_le hB
+  have hlogρ : 0 ≤ Real.log ρ := Real.log_nonneg hρ
+  have hhalf : (1 : ℝ) / 2 ≤ Real.log 2 := by
+    have hh := Real.one_sub_inv_le_log_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at hh ⊢
+    linarith
+  exact (logarithmicMagnitudeBins_card_le s t (by linarith) (by positivity)
+    (fun x hx => hcover x (hs x hx))).trans
+      (height_grid_count_bound ht hL hlogρ hhalf)
+
+theorem rational_enlarged_logarithmic_scale_count {d : ℕ} {B ρ : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (hρ : 1 ≤ ρ) (s : Finset ℝ)
+    (hs : ∀ x ∈ s, IsRationalMagnitudeEnlargement B L ρ x)
+    {δ : ℝ} (hδ : Real.log 2 ≤ δ) (v p q : ℝ) (hpq : p ≤ q) :
+    ∃ N : Finset ℤ,
+      (∀ n, n ∈ N ↔ ∃ x ∈ s, p ≤ Real.log x + v - δ * n ∧
+        Real.log x + v - δ * n ≤ q) ∧
+      (N.card : ℝ) ≤ 32 * (d + 1 : ℝ) ^ 4 * (Real.log (2 * B) + q - p) +
+        2 * d * Real.log ρ := by
+  obtain ⟨t, ht, hcover⟩ := rational_enlarged_logarithmic_cover hB L hρ
+  have hL := height_log_one_le hB
+  have hlogρ : 0 ≤ Real.log ρ := Real.log_nonneg hρ
+  have hhalf : (1 : ℝ) / 2 ≤ Real.log 2 := by
+    have hh := Real.one_sub_inv_le_log_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at hh ⊢
+    linarith
+  have hδp : 0 < δ := by linarith
+  obtain ⟨N, hN, hcard⟩ := finite_logarithmic_scale_count s t hδp
+    (show 0 ≤ 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + Real.log ρ by positivity)
+    hpq v (fun x hx => hcover x (hs x hx))
+  refine ⟨N, hN, hcard.trans ?_⟩
+  have hD : (1 : ℝ) ≤ d + 1 := le_add_of_nonneg_left (Nat.cast_nonneg d)
+  have hD3 : 1 ≤ (d + 1 : ℝ) ^ 3 := one_le_pow₀ hD
+  have hwidth : 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + Real.log ρ + q - p ≤
+      8 * (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) + Real.log ρ := by
+    nlinarith [mul_nonneg (sub_nonneg.mpr hD3) (sub_nonneg.mpr hpq)]
+  calc
+    _ ≤ (t.card : ℝ) * ((8 * (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) +
+        Real.log ρ) / δ + 2) := by
+      apply mul_le_mul_of_nonneg_left _ (Nat.cast_nonneg _)
+      exact add_le_add_left (div_le_div_of_nonneg_right hwidth hδp.le) _
+    _ ≤ _ := height_grid_count_bound ht (by linarith) hlogρ (hhalf.trans hδ)
+
+theorem rational_enlarged_dyadic_scale_count {d u : ℕ} {B ρ α β : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (hρ : 1 ≤ ρ) (s : Finset ℝ)
+    (hs : ∀ x ∈ s, IsRationalMagnitudeEnlargement B L ρ x)
+    (hu : 1 ≤ u) (hα : 0 < α) (hαβ : α ≤ β) (c : ℝ) :
+    ∃ N : Finset ℤ,
+      (∀ n, n ∈ N ↔ ∃ x ∈ s, α ≤ dyadicMagnitudeProfile c u n * x ∧
+        dyadicMagnitudeProfile c u n * x ≤ β) ∧
+      (N.card : ℝ) ≤ 32 * (d + 1 : ℝ) ^ 4 *
+        (Real.log (2 * B) + Real.log (2 * β / α)) + 2 * d * Real.log ρ := by
+  have hβ : 0 < β := hα.trans_le hαβ
+  have hpos : ∀ x ∈ s, 0 < x := by
+    intro x hx
+    obtain ⟨a, _, hne, hlo, _⟩ := hs x hx
+    exact (abs_pos.mpr hne).trans_le hlo
+  have hratio : 0 ≤ Real.log (2 * β / α) := Real.log_nonneg
+    ((le_div_iff₀ hα).mpr (by linarith))
+  have hL := height_log_one_le hB
+  have hlogρ : 0 ≤ Real.log ρ := Real.log_nonneg hρ
+  by_cases hc : 0 < c
+  · have hlog2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
+    have huR : (1 : ℝ) ≤ u := by exact_mod_cast hu
+    have hδ : Real.log 2 ≤ (u : ℝ) * Real.log 2 :=
+      le_mul_of_one_le_left hlog2.le huR
+    obtain ⟨N, hN, hcard⟩ := rational_enlarged_logarithmic_scale_count hB L hρ s hs hδ
+      (Real.log c) (Real.log α) (Real.log β) (Real.log_le_log hα hαβ)
+    have heq : ∀ (x : ℝ) (n : ℤ), 0 < x →
+        Real.log (dyadicMagnitudeProfile c u n * x) =
+          Real.log x + Real.log c - ((u : ℝ) * Real.log 2) * n := by
+      intro x n hx
+      have hp : 0 < (2 : ℝ) ^ (-n) := zpow_pos (by norm_num) _
+      unfold dyadicMagnitudeProfile
+      rw [Real.log_mul (mul_pos hc (pow_pos hp _)).ne' hx.ne',
+        Real.log_mul hc.ne' (pow_pos hp _).ne', Real.log_pow, Real.log_zpow]
+      push_cast
+      ring
+    refine ⟨N, ?_, hcard.trans ?_⟩
+    · intro n
+      rw [hN n]
+      constructor
+      · rintro ⟨x, hx, hlo, hhi⟩
+        have hp : 0 < dyadicMagnitudeProfile c u n * x := by
+          exact mul_pos (mul_pos hc (pow_pos (zpow_pos (by norm_num) _) _)) (hpos x hx)
+        rw [← heq x n (hpos x hx)] at hlo hhi
+        exact ⟨x, hx, (Real.log_le_log_iff hα hp).mp hlo,
+          (Real.log_le_log_iff hp hβ).mp hhi⟩
+      · rintro ⟨x, hx, hlo, hhi⟩
+        refine ⟨x, hx, ?_, ?_⟩
+        · rw [← heq x n (hpos x hx)]
+          exact Real.log_le_log hα hlo
+        · rw [← heq x n (hpos x hx)]
+          exact Real.log_le_log (hα.trans_le hlo) hhi
+    · apply add_le_add_left
+      apply mul_le_mul_of_nonneg_left _ (by positivity)
+      have hh : Real.log β - Real.log α ≤ Real.log (2 * β / α) := by
+        rw [← Real.log_div hβ.ne' hα.ne']
+        exact Real.log_le_log (div_pos hβ hα)
+          (div_le_div_of_nonneg_right (by linarith) hα.le)
+      linarith
+  · refine ⟨∅, ?_, ?_⟩
+    · intro n
+      simp only [Finset.notMem_empty, false_iff]
+      rintro ⟨x, hx, hlo, _⟩
+      have hn : dyadicMagnitudeProfile c u n * x ≤ 0 :=
+        mul_nonpos_of_nonpos_of_nonneg
+          (mul_nonpos_of_nonpos_of_nonneg (le_of_not_gt hc) (by positivity)) (hpos x hx).le
+      linarith
+    · simp only [Finset.card_empty, Nat.cast_zero]
+      positivity
+
+theorem rational_enlarged_tiny_sum {d u : ℕ} {B ρ ε : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (hρ : 1 ≤ ρ) (s : Finset ℝ)
+    (hs : ∀ x ∈ s, IsRationalMagnitudeEnlargement B L ρ x)
+    (hu : 1 ≤ u) (hε : 0 ≤ ε) (c : ℝ) :
+    Summable (fun n : ℤ => finiteTinyMaximum s (dyadicMagnitudeProfile c u n) ε) ∧
+      (∑' n : ℤ, finiteTinyMaximum s (dyadicMagnitudeProfile c u n) ε) ≤
+        (128 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) + 8 * d * Real.log ρ) * ε := by
+  have hpos : ∀ x ∈ s, 0 < x := by
+    intro x hx
+    obtain ⟨a, _, hne, hlo, _⟩ := hs x hx
+    exact (abs_pos.mpr hne).trans_le hlo
+  obtain ⟨hsum, hbound⟩ := finiteTinyMaximum_dyadic_tsum_le s hpos c hu hε
+  refine ⟨hsum, hbound.trans ?_⟩
+  have hcard := rational_enlarged_bins_card_le hB L hρ s hs
+  calc
+    _ ≤ 4 * (32 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) + 2 * d * Real.log ρ) * ε :=
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hcard (by norm_num)) hε
+    _ = _ := by ring
+
+noncomputable def coordinateNormFactor (h : ℕ) : ℝ := max 1 (Real.sqrt h)
+
+theorem coordinateNormFactor_one_le (h : ℕ) : 1 ≤ coordinateNormFactor h := le_max_left _ _
+
+theorem coordinateNormFactor_log_le (h : ℕ) :
+    Real.log (coordinateNormFactor h) ≤ Real.log (2 * h) := by
+  rcases Nat.eq_zero_or_pos h with rfl | hh
+  · simp [coordinateNormFactor]
+  · have hhR : (1 : ℝ) ≤ h := by exact_mod_cast hh
+    have hsqrt : Real.sqrt (h : ℝ) ≤ h := Real.sqrt_le_self_iff.mpr (Or.inr hhR)
+    apply Real.log_le_log (lt_of_lt_of_le zero_lt_one (coordinateNormFactor_one_le h))
+    exact max_le (by linarith) (hsqrt.trans (by linarith))
+
+noncomputable def boundedSupremumMagnitudes {d : ℕ} (h : ℕ) (B : ℝ)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) : Finset ℝ :=
+  boundedCoordinateMagnitudes h B L (fun x => ‖x‖)
+
+noncomputable def boundedEuclideanMagnitudes {d : ℕ} (h : ℕ) (B : ℝ)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) : Finset ℝ :=
+  boundedCoordinateMagnitudes h B L (fun x => ‖(WithLp.toLp 2 x : EuclideanSpace ℝ (Fin h))‖)
+
+theorem boundedSupremumMagnitudes_enlargement {d h : ℕ} {B : ℝ} (hB : 0 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) {x : ℝ} (hx : x ∈ boundedSupremumMagnitudes h B L) :
+    IsRationalMagnitudeEnlargement B L 1 x := by
+  obtain ⟨hxpos, a, ha, rfl⟩ := mem_boundedCoordinateMagnitudes hB L (fun x => ‖x‖) |>.mp hx
+  obtain ⟨i, hi⟩ := finite_coordinate_norm_attained (fun i => L (a i)) hxpos.ne'
+  refine ⟨a i, ha i, abs_pos.mp (hi.symm ▸ hxpos), hi.le, ?_⟩
+  rw [one_mul, hi]
+
+theorem boundedEuclideanMagnitudes_enlargement {d h : ℕ} {B : ℝ} (hB : 0 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) {x : ℝ} (hx : x ∈ boundedEuclideanMagnitudes h B L) :
+    IsRationalMagnitudeEnlargement B L (coordinateNormFactor h) x := by
+  obtain ⟨hxpos, a, ha, rfl⟩ := mem_boundedCoordinateMagnitudes hB L
+    (fun x => ‖(WithLp.toLp 2 x : EuclideanSpace ℝ (Fin h))‖) |>.mp hx
+  obtain ⟨i, hipos, hlo, hhi⟩ := euclidean_norm_coordinate_comparison
+    (fun i => L (a i)) hxpos.ne'
+  exact ⟨a i, ha i, abs_pos.mp hipos, hlo,
+    hhi.trans (mul_le_mul_of_nonneg_right (le_max_right _ _) hipos.le)⟩
+
+theorem coordinate_sup_logarithmic_cover {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (h : ℕ) :
+    ∃ t : Finset ℝ, t.card ≤ d ∧ ∀ x ∈ boundedSupremumMagnitudes h B L,
+      ∃ a ∈ t, Real.log x ∈ Set.Icc a (a + 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B)) := by
+  obtain ⟨t, ht, hcover⟩ := rational_enlarged_logarithmic_cover hB L (le_refl (1 : ℝ))
+  refine ⟨t, ht, ?_⟩
+  intro x hx
+  simpa only [Real.log_one, add_zero] using
+    hcover x (boundedSupremumMagnitudes_enlargement (by linarith) L hx)
+
+theorem coordinate_euclidean_logarithmic_cover {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (h : ℕ) :
+    ∃ t : Finset ℝ, t.card ≤ d ∧ ∀ x ∈ boundedEuclideanMagnitudes h B L,
+      ∃ a ∈ t, Real.log x ∈ Set.Icc a
+        (a + (8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + Real.log (2 * h))) := by
+  obtain ⟨t, ht, hcover⟩ := rational_enlarged_logarithmic_cover hB L (coordinateNormFactor_one_le h)
+  refine ⟨t, ht, ?_⟩
+  intro x hx
+  obtain ⟨a, ha, hlo, hhi⟩ := hcover x (boundedEuclideanMagnitudes_enlargement (by linarith) L hx)
+  refine ⟨a, ha, hlo, hhi.trans ?_⟩
+  exact add_le_add_right (add_le_add_right (coordinateNormFactor_log_le h) _) _
+
+theorem coordinate_sup_bins_card_le {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (h : ℕ) :
+    ((logarithmicMagnitudeBins (boundedSupremumMagnitudes h B L) (Real.log 2)).card : ℝ) ≤
+      32 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) := by
+  simpa only [Real.log_one, mul_zero, add_zero] using
+    rational_enlarged_bins_card_le hB L (le_refl (1 : ℝ)) _
+      (fun _ hx => boundedSupremumMagnitudes_enlargement (by linarith) L hx)
+
+theorem coordinate_euclidean_bins_card_le {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (h : ℕ) :
+    ((logarithmicMagnitudeBins (boundedEuclideanMagnitudes h B L) (Real.log 2)).card : ℝ) ≤
+      32 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) + 2 * d * Real.log (2 * h) := by
+  apply (rational_enlarged_bins_card_le hB L (coordinateNormFactor_one_le h) _
+    (fun _ hx => boundedEuclideanMagnitudes_enlargement (by linarith) L hx)).trans
+  exact add_le_add_right (mul_le_mul_of_nonneg_left (coordinateNormFactor_log_le h)
+    (by positivity)) _
+
+theorem coordinate_sup_scale_count {d u : ℕ} {B α β : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (h : ℕ) (hu : 1 ≤ u)
+    (hα : 0 < α) (hαβ : α ≤ β) (r₀ : ℝ) :
+    ∃ N : Finset ℤ,
+      (∀ n, n ∈ N ↔ ∃ x ∈ boundedSupremumMagnitudes h B L,
+        α ≤ (r₀ * (2 : ℝ) ^ (-n)) ^ u * x ∧ (r₀ * (2 : ℝ) ^ (-n)) ^ u * x ≤ β) ∧
+      (N.card : ℝ) ≤ 32 * (d + 1 : ℝ) ^ 4 *
+        (Real.log (2 * B) + Real.log (2 * β / α)) := by
+  simpa only [Real.log_one, mul_zero, add_zero, dyadicMagnitudeProfile, mul_pow] using
+    rational_enlarged_dyadic_scale_count hB L (le_refl (1 : ℝ))
+      (boundedSupremumMagnitudes h B L)
+      (fun _ hx => boundedSupremumMagnitudes_enlargement (by linarith) L hx)
+      hu hα hαβ (r₀ ^ u)
+
+theorem coordinate_euclidean_scale_count {d u : ℕ} {B α β : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (h : ℕ) (hu : 1 ≤ u)
+    (hα : 0 < α) (hαβ : α ≤ β) (r₀ : ℝ) :
+    ∃ N : Finset ℤ,
+      (∀ n, n ∈ N ↔ ∃ x ∈ boundedEuclideanMagnitudes h B L,
+        α ≤ (r₀ * (2 : ℝ) ^ (-n)) ^ u * x ∧ (r₀ * (2 : ℝ) ^ (-n)) ^ u * x ≤ β) ∧
+      (N.card : ℝ) ≤ 32 * (d + 1 : ℝ) ^ 4 *
+        (Real.log (2 * B) + Real.log (2 * β / α)) + 2 * d * Real.log (2 * h) := by
+  obtain ⟨N, hN, hcard⟩ := rational_enlarged_dyadic_scale_count hB L
+    (coordinateNormFactor_one_le h) (boundedEuclideanMagnitudes h B L)
+    (fun _ hx => boundedEuclideanMagnitudes_enlargement (by linarith) L hx)
+    hu hα hαβ (r₀ ^ u)
+  refine ⟨N, ?_, hcard.trans ?_⟩
+  · simpa only [dyadicMagnitudeProfile, mul_pow] using hN
+  · exact add_le_add_right (mul_le_mul_of_nonneg_left (coordinateNormFactor_log_le h)
+      (by positivity)) _
+
+theorem coordinate_sup_tiny_sum {d u : ℕ} {B ε : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (h : ℕ) (hu : 1 ≤ u) (hε : 0 ≤ ε) (r₀ : ℝ) :
+    Summable (fun n : ℤ => finiteTinyMaximum (boundedSupremumMagnitudes h B L)
+      ((r₀ * (2 : ℝ) ^ (-n)) ^ u) ε) ∧
+      (∑' n : ℤ, finiteTinyMaximum (boundedSupremumMagnitudes h B L)
+        ((r₀ * (2 : ℝ) ^ (-n)) ^ u) ε) ≤
+          128 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) * ε := by
+  simpa only [Real.log_one, mul_zero, add_zero, dyadicMagnitudeProfile, mul_pow] using
+    rational_enlarged_tiny_sum hB L (le_refl (1 : ℝ)) (boundedSupremumMagnitudes h B L)
+      (fun _ hx => boundedSupremumMagnitudes_enlargement (by linarith) L hx) hu hε (r₀ ^ u)
+
+theorem coordinate_euclidean_tiny_sum {d u : ℕ} {B ε : ℝ} (hB : 2 ≤ B)
+    (L : (Fin d → ℚ) →ₗ[ℚ] ℝ) (h : ℕ) (hu : 1 ≤ u) (hε : 0 ≤ ε) (r₀ : ℝ) :
+    Summable (fun n : ℤ => finiteTinyMaximum (boundedEuclideanMagnitudes h B L)
+      ((r₀ * (2 : ℝ) ^ (-n)) ^ u) ε) ∧
+      (∑' n : ℤ, finiteTinyMaximum (boundedEuclideanMagnitudes h B L)
+        ((r₀ * (2 : ℝ) ^ (-n)) ^ u) ε) ≤
+          (128 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) + 8 * d * Real.log (2 * h)) * ε := by
+  obtain ⟨hsum, hbound⟩ := rational_enlarged_tiny_sum hB L (coordinateNormFactor_one_le h)
+    (boundedEuclideanMagnitudes h B L)
+    (fun _ hx => boundedEuclideanMagnitudes_enlargement (by linarith) L hx) hu hε (r₀ ^ u)
+  constructor
+  · simpa only [dyadicMagnitudeProfile, mul_pow] using hsum
+  · have hh : (∑' n : ℤ, finiteTinyMaximum (boundedEuclideanMagnitudes h B L)
+        ((r₀ * (2 : ℝ) ^ (-n)) ^ u) ε) ≤
+          (128 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B) +
+            8 * d * Real.log (coordinateNormFactor h)) * ε := by
+      simpa only [dyadicMagnitudeProfile, mul_pow] using hbound
+    apply hh.trans
+    exact mul_le_mul_of_nonneg_right
+      (add_le_add_right
+        (mul_le_mul_of_nonneg_left (coordinateNormFactor_log_le h) (by positivity)) _) hε
+
+/-- The Euclidean allowance is monotone in the permitted number of
+coordinates, so the estimates also apply to families of at most `h` coordinates. -/
+theorem coordinate_log_allowance_mono {k h : ℕ} (hkh : k ≤ h) :
+    Real.log (2 * k) ≤ Real.log (2 * h) := by
+  rcases Nat.eq_zero_or_pos k with rfl | hk
+  · simp only [Nat.cast_zero, mul_zero, Real.log_zero]
+    rcases Nat.eq_zero_or_pos h with rfl | hh
+    · simp
+    · apply Real.log_nonneg
+      have hhR : (1 : ℝ) ≤ h := by exact_mod_cast hh
+      linarith
+  · apply Real.log_le_log
+    · have hkR : (0 : ℝ) < k := by exact_mod_cast hk
+      positivity
+    · exact mul_le_mul_of_nonneg_left (by exact_mod_cast hkh) (by norm_num)
 
 end Auto

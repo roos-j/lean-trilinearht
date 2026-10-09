@@ -25,6 +25,14 @@ public import TrilinearHT.Auto.FeffermanStein
 public import TrilinearHT.Auto.LatticeTransference
 public import TrilinearHT.Auto.RationalLinearAlgebra
 public import TrilinearHT.Auto.DyadicStopping
+public import TrilinearHT.Auto.GowersCauchySchwarz
+public import TrilinearHT.Auto.GevreyCutoffs
+public import TrilinearHT.Auto.RademacherMenshov
+public import TrilinearHT.Auto.FourierApproximation
+public import TrilinearHT.Auto.KhintchineSampling
+public import TrilinearHT.Auto.BalogSzemerediGowers
+public import TrilinearHT.Auto.ChangSpectrum
+public import TrilinearHT.Auto.DenseBogolyubov
 public import Mathlib.LinearAlgebra.BilinearForm.DualLattice
 public import Mathlib.Analysis.Convex.Gauge
 public import Mathlib.Analysis.Convex.KreinMilman
@@ -371,1498 +379,9 @@ theorem fixed_power_eventually_le_ceiling_power {p α θ ε : ℝ}
       simpa [mul_comm] using mul_le_mul_of_nonneg_left hlog hp
     _ ≤ _ := hk
 
-open Polynomial
-
-/-- The derivative-polynomial recurrence in blueprint Lemma `lem:gevrey`. -/
-noncomputable def gevreyDerivativePolynomial : ℕ → Polynomial ℝ
-  | 0 => 1
-  | n + 1 => X ^ 2 * (gevreyDerivativePolynomial n - (gevreyDerivativePolynomial n).derivative)
-
-/-- Blueprint Lemma `lem:gevrey`: the recurrence describes all derivatives,
-including at the gluing point and on the negative half-line. -/
-theorem iteratedDeriv_expNegInvGlue (n : ℕ) :
-    iteratedDeriv n expNegInvGlue =
-      fun x => (gevreyDerivativePolynomial n).eval x⁻¹ * expNegInvGlue x := by
-  induction n with
-  | zero => simp [gevreyDerivativePolynomial, iteratedDeriv_zero]
-  | succ n ih =>
-    rw [iteratedDeriv_succ, ih]
-    funext x
-    exact (expNegInvGlue.hasDerivAt_polynomial_eval_inv_mul _ x).deriv
-
-/-- Blueprint Lemma `lem:gevrey`: derivative polynomials have degree at most `2n`. -/
-theorem gevreyDerivativePolynomial_natDegree (n : ℕ) :
-    (gevreyDerivativePolynomial n).natDegree ≤ 2 * n := by
-  induction n with
-  | zero => simp [gevreyDerivativePolynomial]
-  | succ n ih =>
-    have hd := Polynomial.natDegree_derivative_le (gevreyDerivativePolynomial n)
-    have hs := Polynomial.natDegree_sub_le
-      (gevreyDerivativePolynomial n) (gevreyDerivativePolynomial n).derivative
-    have hm := Polynomial.natDegree_mul_le (p := (X ^ 2 : Polynomial ℝ))
-      (q := gevreyDerivativePolynomial n - (gevreyDerivativePolynomial n).derivative)
-    simp only [Polynomial.natDegree_X_pow] at hm
-    change (X ^ 2 * (gevreyDerivativePolynomial n -
-      (gevreyDerivativePolynomial n).derivative)).natDegree ≤ 2 * (n + 1)
-    omega
-
-/-- Coefficient bound for one step of the source's derivative recurrence. -/
-theorem polynomial_derivative_step_coeff_le {p : Polynomial ℝ} {d : ℕ} {M : ℝ}
-    (hd : p.natDegree ≤ d) (hM : 0 ≤ M) (hp : ∀ i, |p.coeff i| ≤ M) (i : ℕ) :
-    |(X ^ 2 * (p - p.derivative)).coeff i| ≤ (d + 1 : ℝ) * M := by
-  rw [Polynomial.coeff_X_pow_mul']
-  split_ifs with hi
-  · rw [Polynomial.coeff_sub, Polynomial.coeff_derivative]
-    have hder : |(i - 2 + 1 : ℕ) * p.coeff (i - 2 + 1)| ≤ (d : ℝ) * M := by
-      by_cases hk : i - 2 + 1 ≤ d
-      · rw [abs_mul, abs_of_nonneg (Nat.cast_nonneg _)]
-        exact mul_le_mul (by exact_mod_cast hk) (hp _) (abs_nonneg _) (Nat.cast_nonneg _)
-      · have hz : p.coeff (i - 2 + 1) = 0 := Polynomial.coeff_eq_zero_of_natDegree_lt (by omega)
-        simp only [hz, mul_zero, abs_zero]
-        positivity
-    have hsub := abs_sub (p.coeff (i - 2)) ((i - 2 + 1 : ℕ) * p.coeff (i - 2 + 1))
-    have := hp (i - 2)
-    push_cast at hder hsub
-    rw [mul_comm (p.coeff (i - 2 + 1))]
-    nlinarith
-  · simp only [abs_zero]
-    positivity
-
-/-- Blueprint Lemma `lem:gevrey`: a factorial coefficient majorant.
-This slightly coarser bound still gives one fixed Gevrey order. -/
-theorem gevreyDerivativePolynomial_coeff_le (n i : ℕ) :
-    |(gevreyDerivativePolynomial n).coeff i| ≤ ((2 * n).factorial : ℝ) := by
-  induction n generalizing i with
-  | zero => simp [gevreyDerivativePolynomial, Polynomial.coeff_one]; split_ifs <;> norm_num
-  | succ n ih =>
-    have h := polynomial_derivative_step_coeff_le (gevreyDerivativePolynomial_natDegree n)
-      (show (0 : ℝ) ≤ (2 * n).factorial by positivity) ih i
-    change |(X ^ 2 * (gevreyDerivativePolynomial n -
-      (gevreyDerivativePolynomial n).derivative)).coeff i| ≤ ((2 * (n + 1)).factorial : ℝ)
-    refine h.trans ?_
-    have heq : 2 * (n + 1) = (2 * n + 1) + 1 := by omega
-    rw [heq, Nat.factorial_succ, Nat.factorial_succ]
-    push_cast
-    exact le_mul_of_one_le_left (by positivity) (by have := Nat.cast_nonneg (α := ℝ) n; linarith)
-
-/-- The exponential series controls every monomial in a derivative polynomial. -/
-theorem monomial_mul_exp_neg_le_factorial {z : ℝ} (hz : 0 ≤ z) (i : ℕ) :
-    z ^ i * Real.exp (-z) ≤ (i.factorial : ℝ) := by
-  have hi : (0 : ℝ) < i.factorial := by positivity
-  have h := (div_le_iff₀ hi).mp (Real.pow_div_factorial_le_exp z hz i)
-  calc
-    z ^ i * Real.exp (-z) ≤ (Real.exp z * (i.factorial : ℝ)) * Real.exp (-z) := by gcongr
-    _ = i.factorial := by rw [mul_right_comm, ← Real.exp_add]; simp
-
-/-- A quantitative derivative bound for the source's smooth gluing function. -/
-theorem iteratedDeriv_expNegInvGlue_factorial_bound (n : ℕ) (x : ℝ) :
-    |iteratedDeriv n expNegInvGlue x| ≤ (2 * n + 1 : ℝ) * ((2 * n).factorial : ℝ) ^ 2 := by
-  rw [iteratedDeriv_expNegInvGlue]
-  dsimp only
-  by_cases hx : x ≤ 0
-  · rw [expNegInvGlue.zero_of_nonpos hx, mul_zero, abs_zero]
-    positivity
-  have hxpos : 0 < x := lt_of_not_ge hx
-  have hz : 0 ≤ x⁻¹ := inv_nonneg.mpr hxpos.le
-  have hglue : expNegInvGlue x = Real.exp (-x⁻¹) := by
-    simp [expNegInvGlue, hx]
-  rw [hglue, abs_mul, abs_of_pos (Real.exp_pos _),
-    Polynomial.eval_eq_sum_range' (Nat.lt_succ_of_le (gevreyDerivativePolynomial_natDegree n))]
-  calc
-    |∑ i ∈ Finset.range (2 * n + 1), (gevreyDerivativePolynomial n).coeff i * (x⁻¹) ^ i| *
-        Real.exp (-x⁻¹) ≤
-        (∑ i ∈ Finset.range (2 * n + 1),
-          |(gevreyDerivativePolynomial n).coeff i * (x⁻¹) ^ i|) * Real.exp (-x⁻¹) := by
-      gcongr
-      exact Finset.abs_sum_le_sum_abs _ _
-    _ = ∑ i ∈ Finset.range (2 * n + 1),
-        |(gevreyDerivativePolynomial n).coeff i| * ((x⁻¹) ^ i * Real.exp (-x⁻¹)) := by
-      rw [Finset.sum_mul]
-      apply Finset.sum_congr rfl
-      intro i hi
-      rw [abs_mul, abs_of_nonneg (pow_nonneg hz i)]
-      ring
-    _ ≤ ∑ _i ∈ Finset.range (2 * n + 1), ((2 * n).factorial : ℝ) ^ 2 := by
-      apply Finset.sum_le_sum
-      intro i hi
-      have hi' : i ≤ 2 * n := by simp only [Finset.mem_range] at hi; omega
-      have hf : (i.factorial : ℝ) ≤ (2 * n).factorial := by exact_mod_cast Nat.factorial_le hi'
-      calc
-        _ ≤ ((2 * n).factorial : ℝ) * (i.factorial : ℝ) :=
-          mul_le_mul (gevreyDerivativePolynomial_coeff_le n i)
-            (monomial_mul_exp_neg_le_factorial hz i) (by positivity) (by positivity)
-        _ ≤ _ := by rw [pow_two]; gcongr
-    _ = _ := by simp
-
-/-- Blueprint Lemma `lem:gevrey`: the gluing function has a fixed Gevrey order.
-The explicit order four is sufficient for the source's existential fixed-order requirement. -/
-theorem iteratedDeriv_expNegInvGlue_gevrey_bound (n : ℕ) (x : ℝ) :
-    |iteratedDeriv n expNegInvGlue x| ≤ (4 * ((n : ℝ) + 1)) ^ (4 * (n + 1)) := by
-  have hn : 0 ≤ (n : ℝ) := Nat.cast_nonneg _
-  have hb : 1 ≤ 4 * ((n : ℝ) + 1) := by linarith
-  have hf : ((2 * n).factorial : ℝ) ≤ (4 * ((n : ℝ) + 1)) ^ (2 * n) := by
-    calc
-      _ ≤ ((2 * n : ℕ) : ℝ) ^ (2 * n) := by exact_mod_cast Nat.factorial_le_pow (2 * n)
-      _ ≤ _ := by push_cast; gcongr <;> linarith
-  calc
-    _ ≤ (2 * n + 1 : ℝ) * ((2 * n).factorial : ℝ) ^ 2 :=
-      iteratedDeriv_expNegInvGlue_factorial_bound n x
-    _ ≤ (4 * ((n : ℝ) + 1)) * ((4 * ((n : ℝ) + 1)) ^ (2 * n)) ^ 2 := by
-      gcongr
-      linarith
-    _ = (4 * ((n : ℝ) + 1)) ^ (4 * n + 1) := by
-      rw [← pow_mul, show 2 * n * 2 = 4 * n by omega, pow_succ]
-      ring
-    _ ≤ _ := pow_le_pow_right₀ hb (by omega)
-
-/-- The compact bump `g(x)g(1-x)` in blueprint Lemma `lem:gevrey`. -/
-noncomputable def gevreyBump (x : ℝ) : ℝ := expNegInvGlue x * expNegInvGlue (1 - x)
-
-theorem gevreyBump_nonneg (x : ℝ) : 0 ≤ gevreyBump x :=
-  mul_nonneg (expNegInvGlue.nonneg x) (expNegInvGlue.nonneg (1 - x))
-
-theorem gevreyBump_pos {x : ℝ} (hx : x ∈ Set.Ioo (0 : ℝ) 1) : 0 < gevreyBump x :=
-  mul_pos (expNegInvGlue.pos_of_pos hx.1) (expNegInvGlue.pos_of_pos (sub_pos.mpr hx.2))
-
-theorem gevreyBump_zero {x : ℝ} (hx : x ∉ Set.Ioo (0 : ℝ) 1) : gevreyBump x = 0 := by
-  by_cases h : x ≤ 0
-  · simp [gevreyBump, expNegInvGlue.zero_of_nonpos h]
-  · have h' : 1 ≤ x := by
-      simp only [Set.mem_Ioo, not_and_or, not_lt] at hx
-      rcases hx with hx | hx <;> linarith
-    simp [gevreyBump, expNegInvGlue.zero_of_nonpos (show 1 - x ≤ 0 by linarith)]
-
-theorem gevreyBump_contDiff {n : ℕ∞} : ContDiff ℝ n gevreyBump := by
-  exact expNegInvGlue.contDiff.mul
-    (expNegInvGlue.contDiff.comp (contDiff_const.sub contDiff_id))
-
-theorem gevreyBump_hasCompactSupport : HasCompactSupport gevreyBump := by
-  apply HasCompactSupport.intro (K := Set.Icc (0 : ℝ) 1) isCompact_Icc
-  intro x hx
-  exact gevreyBump_zero (fun h => hx ⟨h.1.le, h.2.le⟩)
-
-/-- Blueprint Lemma `lem:gevrey`: a compact positive bump with a fixed all-orders bound. -/
-theorem iteratedDeriv_gevreyBump_bound (n : ℕ) (x : ℝ) :
-    |iteratedDeriv n gevreyBump x| ≤ (8 * ((n : ℝ) + 1)) ^ (8 * (n + 1)) := by
-  let B : ℝ := 8 * ((n : ℝ) + 1)
-  have hB : 1 ≤ B := by dsimp [B]; have := Nat.cast_nonneg (α := ℝ) n; linarith
-  have hder (i : ℕ) (hi : i ≤ n) (y : ℝ) :
-      |iteratedDeriv i expNegInvGlue y| ≤ B ^ (4 * (i + 1)) := by
-    refine (iteratedDeriv_expNegInvGlue_gevrey_bound i y).trans ?_
-    apply pow_le_pow_left₀ (by positivity)
-    dsimp [B]
-    have hi' : (i : ℝ) ≤ n := by exact_mod_cast hi
-    have := Nat.cast_nonneg (α := ℝ) n
-    linarith
-  have hrefl (i : ℕ) :
-      |iteratedDeriv i (fun y : ℝ => expNegInvGlue (1 - y)) x| =
-        |iteratedDeriv i expNegInvGlue (1 - x)| := by
-    simp [iteratedDeriv_comp_const_sub, abs_mul, abs_pow]
-  have hleft : ContDiffAt ℝ n expNegInvGlue x := expNegInvGlue.contDiff.contDiffAt
-  have hright : ContDiffAt ℝ n (fun y : ℝ => expNegInvGlue (1 - y)) x := by
-    fun_prop
-  change |iteratedDeriv n (fun y => expNegInvGlue y * expNegInvGlue (1 - y)) x| ≤ _
-  rw [iteratedDeriv_fun_mul hleft hright]
-  calc
-    _ ≤ ∑ i ∈ Finset.range (n + 1),
-        |(n.choose i : ℝ) * iteratedDeriv i expNegInvGlue x *
-          iteratedDeriv (n - i) (fun y : ℝ => expNegInvGlue (1 - y)) x| :=
-      Finset.abs_sum_le_sum_abs _ _
-    _ ≤ ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) * B ^ (4 * (n + 2)) := by
-      apply Finset.sum_le_sum
-      intro i hi
-      have hi' : i ≤ n := by simp only [Finset.mem_range] at hi; omega
-      rw [abs_mul, abs_mul, abs_of_nonneg (Nat.cast_nonneg _), hrefl]
-      calc
-        _ ≤ (n.choose i : ℝ) * B ^ (4 * (i + 1)) * B ^ (4 * (n - i + 1)) := by
-          gcongr
-          · exact hder i hi' x
-          · exact hder (n - i) (Nat.sub_le _ _) (1 - x)
-        _ = _ := by
-          rw [mul_assoc, ← pow_add]
-          congr 2
-          omega
-    _ = (2 : ℝ) ^ n * B ^ (4 * (n + 2)) := by
-      rw [← Finset.sum_mul]
-      congr 1
-      exact_mod_cast Nat.sum_range_choose n
-    _ ≤ B ^ n * B ^ (4 * (n + 2)) := by
-      gcongr
-      dsimp [B]
-      have := Nat.cast_nonneg (α := ℝ) n
-      linarith
-    _ ≤ B ^ (8 * (n + 1)) := by
-      rw [← pow_add]
-      apply pow_le_pow_right₀ hB
-      omega
-
-open MeasureTheory
-
-/-- The positive normalization constant for the bump in blueprint Lemma `lem:gevrey`. -/
-noncomputable def gevreyBumpIntegral : ℝ := ∫ x : ℝ, gevreyBump x
-
-theorem gevreyBump_integrable : Integrable gevreyBump :=
-  (gevreyBump_contDiff (n := 0)).continuous.integrable_of_hasCompactSupport
-    gevreyBump_hasCompactSupport
-
-theorem gevreyBumpIntegral_pos : 0 < gevreyBumpIntegral := by
-  exact integral_pos_of_integrable_nonneg_nonzero
-    (gevreyBump_contDiff (n := 0)).continuous gevreyBump_integrable
-    gevreyBump_nonneg (ne_of_gt (gevreyBump_pos (x := 1 / 2) (by constructor <;> norm_num)))
-
-/-- The normalized positive bump in blueprint Lemma `lem:gevrey`. -/
-noncomputable def gevreyDensity (x : ℝ) : ℝ := gevreyBump x / gevreyBumpIntegral
-
-theorem gevreyDensity_nonneg (x : ℝ) : 0 ≤ gevreyDensity x :=
-  div_nonneg (gevreyBump_nonneg x) gevreyBumpIntegral_pos.le
-
-theorem gevreyDensity_contDiff {n : ℕ∞} : ContDiff ℝ n gevreyDensity :=
-  gevreyBump_contDiff.div_const _
-
-theorem gevreyDensity_integrable : Integrable gevreyDensity :=
-  gevreyBump_integrable.div_const _
-
-theorem gevreyDensity_integral : ∫ x : ℝ, gevreyDensity x = 1 := by
-  simp only [gevreyDensity, integral_div]
-  exact div_self gevreyBumpIntegral_pos.ne'
-
-theorem gevreyDensity_zero {x : ℝ} (hx : x ∉ Set.Ioo (0 : ℝ) 1) : gevreyDensity x = 0 := by
-  simp [gevreyDensity, gevreyBump_zero hx]
-
-/-- Blueprint Lemma `lem:gevrey`: normalization costs one fixed positive factor. -/
-theorem iteratedDeriv_gevreyDensity_bound (n : ℕ) (x : ℝ) :
-    |iteratedDeriv n gevreyDensity x| ≤
-      gevreyBumpIntegral⁻¹ * (8 * ((n : ℝ) + 1)) ^ (8 * (n + 1)) := by
-  have heq : gevreyDensity = fun y => gevreyBump y * gevreyBumpIntegral⁻¹ := by
-    funext y
-    exact div_eq_mul_inv _ _
-  rw [heq, iteratedDeriv_mul_const_field, abs_mul, abs_of_pos (inv_pos.mpr gevreyBumpIntegral_pos)]
-  simpa [mul_comm] using mul_le_mul_of_nonneg_right
-    (iteratedDeriv_gevreyBump_bound n x) (inv_nonneg.mpr gevreyBumpIntegral_pos.le)
-
-/-- The smooth increasing step obtained by integrating the probability bump. -/
-noncomputable def gevreyStep (x : ℝ) : ℝ := ∫ t in (0 : ℝ)..x, gevreyDensity t
-
-theorem gevreyStep_hasDerivAt (x : ℝ) : HasDerivAt gevreyStep (gevreyDensity x) x := by
-  exact ((gevreyDensity_contDiff (n := 0)).continuous.integral_hasStrictDerivAt 0 x).hasDerivAt
-
-theorem gevreyStep_deriv : deriv gevreyStep = gevreyDensity := by
-  funext x
-  exact (gevreyStep_hasDerivAt x).deriv
-
-theorem gevreyStep_contDiff (n : ℕ) : ContDiff ℝ n gevreyStep := by
-  have hd : Differentiable ℝ gevreyStep := fun x => (gevreyStep_hasDerivAt x).differentiableAt
-  cases n with
-  | zero => exact contDiff_zero.mpr hd.continuous
-  | succ n =>
-    rw [show ((n + 1 : ℕ) : WithTop ℕ∞) = n + 1 from rfl]
-    apply contDiff_succ_iff_deriv.mpr
-    refine ⟨hd, by simp, ?_⟩
-    rw [gevreyStep_deriv]
-    exact gevreyDensity_contDiff
-
-theorem iteratedDeriv_gevreyStep_succ (n : ℕ) :
-    iteratedDeriv (n + 1) gevreyStep = iteratedDeriv n gevreyDensity := by
-  rw [iteratedDeriv_succ', gevreyStep_deriv]
-
-theorem gevreyStep_zero {x : ℝ} (hx : x ≤ 0) : gevreyStep x = 0 := by
-  unfold gevreyStep
-  calc
-    _ = ∫ _t in (0 : ℝ)..x, (0 : ℝ) := by
-      apply intervalIntegral.integral_congr
-      intro t ht
-      rw [Set.uIcc_of_ge hx] at ht
-      have ht0 : t ≤ 0 := ht.2
-      exact gevreyDensity_zero (fun h => (not_lt_of_ge ht0) h.1)
-    _ = 0 := by simp
-
-theorem gevreyStep_one {x : ℝ} (hx : 1 ≤ x) : gevreyStep x = 1 := by
-  unfold gevreyStep
-  rw [intervalIntegral.integral_eq_integral_of_support_subset, gevreyDensity_integral]
-  intro t ht
-  have ht' : t ∈ Set.Ioo (0 : ℝ) 1 := by
-    by_contra h
-    exact ht (gevreyDensity_zero h)
-  exact ⟨ht'.1, ht'.2.le.trans hx⟩
-
-theorem gevreyStep_monotone : Monotone gevreyStep :=
-  monotone_of_hasDerivAt_nonneg gevreyStep_hasDerivAt gevreyDensity_nonneg
-
-theorem gevreyStep_mem_Icc (x : ℝ) : gevreyStep x ∈ Set.Icc (0 : ℝ) 1 := by
-  constructor
-  · by_cases hx : x ≤ 0
-    · rw [gevreyStep_zero hx]
-    · have := gevreyStep_monotone (le_of_not_ge hx)
-      simpa [gevreyStep_zero (le_refl (0 : ℝ))] using this
-  · by_cases hx : 1 ≤ x
-    · rw [gevreyStep_one hx]
-    · have := gevreyStep_monotone (le_of_not_ge hx)
-      simpa [gevreyStep_one (le_refl (1 : ℝ))] using this
-
-/-- The compact partition function from blueprint Lemma `lem:gevrey`, expressed
-as a difference of antiderivatives, equivalently as convolution with an interval. -/
-noncomputable def gevreyPartition (x : ℝ) : ℝ :=
-  gevreyStep (2 * x + 3 / 2) - gevreyStep (2 * x - 1 / 2)
-
-theorem gevreyPartition_nonneg (x : ℝ) : 0 ≤ gevreyPartition x := by
-  exact sub_nonneg.mpr (gevreyStep_monotone (by linarith))
-
-theorem gevreyPartition_le_one (x : ℝ) : gevreyPartition x ≤ 1 := by
-  have h₁ := (gevreyStep_mem_Icc (2 * x + 3 / 2)).2
-  have h₂ := (gevreyStep_mem_Icc (2 * x - 1 / 2)).1
-  dsimp [gevreyPartition]
-  linarith
-
-theorem gevreyPartition_zero_left {x : ℝ} (hx : x ≤ -(3 / 4)) : gevreyPartition x = 0 := by
-  rw [gevreyPartition, gevreyStep_zero (show 2 * x + 3 / 2 ≤ 0 by linarith),
-    gevreyStep_zero (show 2 * x - 1 / 2 ≤ 0 by linarith), sub_self]
-
-theorem gevreyPartition_zero_right {x : ℝ} (hx : 3 / 4 ≤ x) : gevreyPartition x = 0 := by
-  rw [gevreyPartition, gevreyStep_one (show 1 ≤ 2 * x + 3 / 2 by linarith),
-    gevreyStep_one (show 1 ≤ 2 * x - 1 / 2 by linarith), sub_self]
-
-theorem gevreyPartition_contDiff (n : ℕ) : ContDiff ℝ n gevreyPartition := by
-  exact ((gevreyStep_contDiff n).comp ((contDiff_const.mul contDiff_id).add contDiff_const)).sub
-    ((gevreyStep_contDiff n).comp ((contDiff_const.mul contDiff_id).sub contDiff_const))
-
-theorem gevreyPartition_tsupport_subset :
-    tsupport gevreyPartition ⊆ Set.Icc (-(3 / 4) : ℝ) (3 / 4) := by
-  apply closure_minimal _ isClosed_Icc
-  intro x hx
-  constructor
-  · by_contra h
-    exact hx (gevreyPartition_zero_left (le_of_not_ge h))
-  · by_contra h
-    exact hx (gevreyPartition_zero_right (le_of_not_ge h))
-
-theorem gevreyPartition_hasCompactSupport : HasCompactSupport gevreyPartition :=
-  isCompact_Icc.of_isClosed_subset (isClosed_tsupport _) gevreyPartition_tsupport_subset
-
-theorem gevreyPartition_tsupport_subset_open :
-    tsupport gevreyPartition ⊆ Set.Ioo (-1 : ℝ) 1 := by
-  intro x hx
-  have := gevreyPartition_tsupport_subset hx
-  constructor <;> linarith [this.1, this.2]
-
-/-- The two nonzero possible translates telescope on a fundamental interval. -/
-theorem gevreyPartition_add_shift {x : ℝ} (hx : x ∈ Set.Icc (0 : ℝ) 1) :
-    gevreyPartition x + gevreyPartition (x - 1) = 1 := by
-  unfold gevreyPartition
-  rw [show 2 * (x - 1) + 3 / 2 = 2 * x - 1 / 2 by ring]
-  rw [gevreyStep_one (show 1 ≤ 2 * x + 3 / 2 by linarith [hx.1]),
-    gevreyStep_zero (show 2 * (x - 1) - 1 / 2 ≤ 0 by linarith [hx.2])]
-  ring
-
-/-- Blueprint Lemma `lem:gevrey`: the integer translates sum exactly to one. -/
-theorem gevreyPartition_tsum (x : ℝ) : ∑' k : ℤ, gevreyPartition (x - k) = 1 := by
-  let k : ℤ := ⌊x⌋
-  have hk : (k : ℝ) ≤ x := Int.floor_le x
-  have hk' : x < (k : ℝ) + 1 := Int.lt_floor_add_one x
-  have hsum : (∑' j : ℤ, gevreyPartition (x - j)) =
-      ∑ j ∈ ({k, k + 1} : Finset ℤ), gevreyPartition (x - j) := by
-    apply tsum_eq_sum
-    intro j hj
-    simp only [Finset.mem_insert, Finset.mem_singleton, not_or] at hj
-    rcases lt_or_ge j k with h | h
-    · apply gevreyPartition_zero_right
-      have h' : (j : ℝ) + 1 ≤ k := by exact_mod_cast h
-      linarith
-    · apply gevreyPartition_zero_left
-      have h' : k + 2 ≤ j := by omega
-      have h'' : (k : ℝ) + 2 ≤ j := by exact_mod_cast h'
-      linarith
-  rw [hsum]
-  have hne : k ≠ k + 1 := by omega
-  rw [Finset.sum_pair hne]
-  simp only [Int.cast_add, Int.cast_one]
-  rw [show x - ((k : ℝ) + 1) = (x - k) - 1 by ring]
-  exact gevreyPartition_add_shift ⟨by linarith, by linarith⟩
-
-/-- Affine rescaling multiplies the `n`th derivative by the `n`th power of the slope. -/
-theorem iteratedDeriv_affine (n : ℕ) {f : ℝ → ℝ} (hf : ContDiff ℝ n f) (c a : ℝ) :
-    iteratedDeriv n (fun x => f (c * x + a)) =
-      fun x => c ^ n * iteratedDeriv n f (c * x + a) := by
-  have ht : ContDiff ℝ n (fun x => f (x + a)) := hf.comp (contDiff_id.add contDiff_const)
-  have h := iteratedDeriv_comp_const_mul ht c
-  simpa only [iteratedDeriv_comp_add_const] using h
-
-/-- The source's normalized step inherits quantitative derivative bounds. -/
-theorem iteratedDeriv_gevreyStep_bound (n : ℕ) (x : ℝ) :
-    |iteratedDeriv n gevreyStep x| ≤ max 1 gevreyBumpIntegral⁻¹ *
-      (8 * ((n : ℝ) + 1)) ^ (8 * (n + 1)) := by
-  have hK : 1 ≤ max 1 gevreyBumpIntegral⁻¹ := le_max_left _ _
-  cases n with
-  | zero =>
-    simp only [iteratedDeriv_zero, Nat.cast_zero, zero_add]
-    have hx := gevreyStep_mem_Icc x
-    rw [abs_of_nonneg hx.1]
-    norm_num
-    nlinarith [hx.2]
-  | succ n =>
-    rw [iteratedDeriv_gevreyStep_succ]
-    refine (iteratedDeriv_gevreyDensity_bound n x).trans ?_
-    have hpow : (8 * ((n : ℝ) + 1)) ^ (8 * (n + 1)) ≤
-        (8 * (((n + 1 : ℕ) : ℝ) + 1)) ^ (8 * (n + 1 + 1)) := by
-      calc
-        _ ≤ (8 * (((n + 1 : ℕ) : ℝ) + 1)) ^ (8 * (n + 1)) := by
-          gcongr
-          norm_num
-        _ ≤ _ := by
-          apply pow_le_pow_right₀
-          · push_cast; have := Nat.cast_nonneg (α := ℝ) n; linarith
-          · omega
-    exact mul_le_mul (le_max_right _ _) hpow (by positivity) (by linarith)
-
-/-- Blueprint Lemma `lem:gevrey`: the partition has one fixed Gevrey order. -/
-theorem iteratedDeriv_gevreyPartition_bound (n : ℕ) (x : ℝ) :
-    |iteratedDeriv n gevreyPartition x| ≤ (2 * max 1 gevreyBumpIntegral⁻¹) *
-      (8 * ((n : ℝ) + 1)) ^ (9 * (n + 1)) := by
-  let B : ℝ := 8 * ((n : ℝ) + 1)
-  let K : ℝ := max 1 gevreyBumpIntegral⁻¹
-  have hB : 2 ≤ B := by dsimp [B]; have := Nat.cast_nonneg (α := ℝ) n; linarith
-  have hK : 0 ≤ K := by dsimp [K]; have := le_max_left (1 : ℝ) gevreyBumpIntegral⁻¹; linarith
-  have h₁ : ContDiffAt ℝ n (fun y => gevreyStep (2 * y + 3 / 2)) x := by
-    exact ((gevreyStep_contDiff n).comp
-      ((contDiff_const.mul contDiff_id).add contDiff_const)).contDiffAt
-  have h₂ : ContDiffAt ℝ n (fun y => gevreyStep (2 * y + -(1 / 2))) x := by
-    exact ((gevreyStep_contDiff n).comp
-      ((contDiff_const.mul contDiff_id).add contDiff_const)).contDiffAt
-  have heq : gevreyPartition = fun y =>
-      gevreyStep (2 * y + 3 / 2) - gevreyStep (2 * y + -(1 / 2)) := by
-    funext y
-    simp only [gevreyPartition, sub_eq_add_neg]
-  rw [heq, iteratedDeriv_fun_sub h₁ h₂,
-    iteratedDeriv_affine n (gevreyStep_contDiff n),
-    iteratedDeriv_affine n (gevreyStep_contDiff n)]
-  dsimp only
-  calc
-    _ ≤ |(2 : ℝ) ^ n * iteratedDeriv n gevreyStep (2 * x + 3 / 2)| +
-        |(2 : ℝ) ^ n * iteratedDeriv n gevreyStep (2 * x + -(1 / 2))| := abs_sub _ _
-    _ ≤ (2 : ℝ) ^ n * (K * B ^ (8 * (n + 1))) +
-        (2 : ℝ) ^ n * (K * B ^ (8 * (n + 1))) := by
-      simp only [abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ 2 ^ n)]
-      gcongr <;> exact iteratedDeriv_gevreyStep_bound n _
-    _ ≤ (2 * K) * B ^ (9 * (n + 1)) := by
-      calc
-        _ = (2 * K) * ((2 : ℝ) ^ n * B ^ (8 * (n + 1))) := by ring
-        _ ≤ (2 * K) * (B ^ n * B ^ (8 * (n + 1))) := by gcongr
-        _ ≤ _ := by
-          rw [← pow_add]
-          gcongr
-          · linarith
-          · omega
-
-/-- Cutoff for `[b,c]` with support strictly inside `(a,d)`, from the source's step construction. -/
-noncomputable def gevreyIntervalCutoff (a b c d x : ℝ) : ℝ :=
-  gevreyStep ((2 * x - a - b) / (b - a)) * gevreyStep ((c + d - 2 * x) / (d - c))
-
-theorem gevreyIntervalCutoff_mem_Icc (a b c d x : ℝ) :
-    gevreyIntervalCutoff a b c d x ∈ Set.Icc (0 : ℝ) 1 := by
-  have h₁ := gevreyStep_mem_Icc ((2 * x - a - b) / (b - a))
-  have h₂ := gevreyStep_mem_Icc ((c + d - 2 * x) / (d - c))
-  refine ⟨mul_nonneg h₁.1 h₂.1, ?_⟩
-  calc
-    _ ≤ 1 * gevreyStep ((c + d - 2 * x) / (d - c)) :=
-      mul_le_mul_of_nonneg_right h₁.2 h₂.1
-    _ ≤ 1 := by simpa using h₂.2
-
-theorem gevreyIntervalCutoff_eq_one {a b c d x : ℝ} (hab : a < b) (hcd : c < d)
-    (hx : x ∈ Set.Icc b c) : gevreyIntervalCutoff a b c d x = 1 := by
-  have h₁ : 1 ≤ (2 * x - a - b) / (b - a) := by
-    apply (le_div_iff₀ (sub_pos.mpr hab)).mpr
-    linarith [hx.1]
-  have h₂ : 1 ≤ (c + d - 2 * x) / (d - c) := by
-    apply (le_div_iff₀ (sub_pos.mpr hcd)).mpr
-    linarith [hx.2]
-  rw [gevreyIntervalCutoff, gevreyStep_one h₁, gevreyStep_one h₂, mul_one]
-
-theorem gevreyIntervalCutoff_contDiff (n : ℕ) (a b c d : ℝ) :
-    ContDiff ℝ n (gevreyIntervalCutoff a b c d) := by
-  apply ContDiff.mul
-  · exact (gevreyStep_contDiff n).comp
-      ((((contDiff_const.mul contDiff_id).sub contDiff_const).sub contDiff_const).div_const _)
-  · exact (gevreyStep_contDiff n).comp
-      ((contDiff_const.sub (contDiff_const.mul contDiff_id)).div_const _)
-
-theorem gevreyIntervalCutoff_zero_left {a b c d x : ℝ} (hab : a < b)
-    (hx : x ≤ (a + b) / 2) : gevreyIntervalCutoff a b c d x = 0 := by
-  have h₁ : (2 * x - a - b) / (b - a) ≤ 0 :=
-    div_nonpos_of_nonpos_of_nonneg (by linarith) (sub_pos.mpr hab).le
-  rw [gevreyIntervalCutoff, gevreyStep_zero h₁, zero_mul]
-
-theorem gevreyIntervalCutoff_zero_right {a b c d x : ℝ} (hcd : c < d)
-    (hx : (c + d) / 2 ≤ x) : gevreyIntervalCutoff a b c d x = 0 := by
-  have h₂ : (c + d - 2 * x) / (d - c) ≤ 0 :=
-    div_nonpos_of_nonpos_of_nonneg (by linarith) (sub_pos.mpr hcd).le
-  rw [gevreyIntervalCutoff, gevreyStep_zero h₂, mul_zero]
-
-theorem gevreyIntervalCutoff_tsupport_subset {a b c d : ℝ} (hab : a < b) (hcd : c < d) :
-    tsupport (gevreyIntervalCutoff a b c d) ⊆ Set.Icc ((a + b) / 2) ((c + d) / 2) := by
-  apply closure_minimal _ isClosed_Icc
-  intro x hx
-  constructor
-  · by_contra h
-    exact hx (gevreyIntervalCutoff_zero_left hab (le_of_not_ge h))
-  · by_contra h
-    exact hx (gevreyIntervalCutoff_zero_right hcd (le_of_not_ge h))
-
-theorem gevreyIntervalCutoff_hasCompactSupport {a b c d : ℝ} (hab : a < b) (hcd : c < d) :
-    HasCompactSupport (gevreyIntervalCutoff a b c d) :=
-  isCompact_Icc.of_isClosed_subset (isClosed_tsupport _)
-    (gevreyIntervalCutoff_tsupport_subset hab hcd)
-
-theorem gevreyIntervalCutoff_tsupport_subset_open {a b c d : ℝ} (hab : a < b) (hcd : c < d) :
-    tsupport (gevreyIntervalCutoff a b c d) ⊆ Set.Ioo a d := by
-  intro x hx
-  have := gevreyIntervalCutoff_tsupport_subset hab hcd hx
-  constructor <;> linarith [this.1, this.2]
-
-/-- Quantitative Leibniz rule for derivative bounds of geometric form. -/
-theorem iteratedDeriv_mul_geometric_bound {n : ℕ} {f g : ℝ → ℝ} {x A B R : ℝ}
-    (hf : ContDiffAt ℝ n f x) (hg : ContDiffAt ℝ n g x)
-    (hA : 0 ≤ A) (_hB : 0 ≤ B) (hR : 0 ≤ R)
-    (hfi : ∀ i ≤ n, |iteratedDeriv i f x| ≤ A * R ^ i)
-    (hgi : ∀ i ≤ n, |iteratedDeriv i g x| ≤ B * R ^ i) :
-    |iteratedDeriv n (fun y => f y * g y) x| ≤ A * B * (2 * R) ^ n := by
-  rw [iteratedDeriv_fun_mul hf hg]
-  calc
-    _ ≤ ∑ i ∈ Finset.range (n + 1),
-        |(n.choose i : ℝ) * iteratedDeriv i f x * iteratedDeriv (n - i) g x| :=
-      Finset.abs_sum_le_sum_abs _ _
-    _ ≤ ∑ i ∈ Finset.range (n + 1), (n.choose i : ℝ) * (A * B * R ^ n) := by
-      apply Finset.sum_le_sum
-      intro i hi
-      have hi' : i ≤ n := by simp only [Finset.mem_range] at hi; omega
-      rw [abs_mul, abs_mul, abs_of_nonneg (Nat.cast_nonneg _)]
-      calc
-        _ ≤ (n.choose i : ℝ) * (A * R ^ i) * (B * R ^ (n - i)) := by
-          gcongr
-          · exact hfi i hi'
-          · exact hgi (n - i) (Nat.sub_le _ _)
-        _ = _ := by
-          have hp : R ^ i * R ^ (n - i) = R ^ n := by
-            rw [← pow_add, Nat.add_sub_of_le hi']
-          calc
-            _ = (n.choose i : ℝ) * (A * B * (R ^ i * R ^ (n - i))) := by ring
-            _ = _ := by rw [hp]
-    _ = (2 : ℝ) ^ n * (A * B * R ^ n) := by
-      rw [← Finset.sum_mul]
-      congr 1
-      exact_mod_cast Nat.sum_range_choose n
-    _ = _ := by rw [mul_pow]; ring
-
-/-- Derivatives of an affine step, uniformly over orders up to a fixed `n`. -/
-theorem iteratedDeriv_affine_step_bound {n i : ℕ} (hi : i ≤ n)
-    (c a x S : ℝ) (hS : 0 ≤ S) (hc : |c| ≤ S) :
-    |iteratedDeriv i (fun y => gevreyStep (c * y + a)) x| ≤
-      (max 1 gevreyBumpIntegral⁻¹ * (8 * ((n : ℝ) + 1)) ^ (8 * (n + 1))) * S ^ i := by
-  rw [iteratedDeriv_affine i (gevreyStep_contDiff i), abs_mul, abs_pow]
-  have hi' : (i : ℝ) ≤ n := by exact_mod_cast hi
-  have hpow : (8 * ((i : ℝ) + 1)) ^ (8 * (i + 1)) ≤
-      (8 * ((n : ℝ) + 1)) ^ (8 * (n + 1)) := by
-    calc
-      _ ≤ (8 * ((n : ℝ) + 1)) ^ (8 * (i + 1)) := by gcongr
-      _ ≤ _ := by
-        apply pow_le_pow_right₀
-        · have := Nat.cast_nonneg (α := ℝ) n; linarith
-        · omega
-  calc
-    _ ≤ S ^ i * (max 1 gevreyBumpIntegral⁻¹ *
-        (8 * ((i : ℝ) + 1)) ^ (8 * (i + 1))) := by
-      gcongr
-      exact iteratedDeriv_gevreyStep_bound i _
-    _ ≤ _ := by
-      rw [mul_comm (S ^ i)]
-      gcongr
-
-/-- Blueprint Lemma `lem:gevrey`: explicit derivative bound for interval cutoffs.
-The interval dependence is isolated in the maximum of the two transition slopes. -/
-theorem iteratedDeriv_gevreyIntervalCutoff_bound (n : ℕ) (a b c d x : ℝ) :
-    |iteratedDeriv n (gevreyIntervalCutoff a b c d) x| ≤
-      (max 1 gevreyBumpIntegral⁻¹) ^ 2 *
-      (8 * ((n : ℝ) + 1)) ^ (16 * (n + 1)) *
-      (2 * max |2 / (b - a)| |(-2) / (d - c)|) ^ n := by
-  let S := max |2 / (b - a)| |(-2) / (d - c)|
-  let A := max 1 gevreyBumpIntegral⁻¹ * (8 * ((n : ℝ) + 1)) ^ (8 * (n + 1))
-  have hS : 0 ≤ S := (abs_nonneg _).trans (le_max_left _ _)
-  have hA : 0 ≤ A := by dsimp [A]; positivity
-  have heq : gevreyIntervalCutoff a b c d = fun y =>
-      gevreyStep ((2 / (b - a)) * y + (-a - b) / (b - a)) *
-      gevreyStep (((-2) / (d - c)) * y + (c + d) / (d - c)) := by
-    funext y
-    unfold gevreyIntervalCutoff
-    congr 1 <;> congr 1 <;> ring
-  rw [heq]
-  have hf : ContDiffAt ℝ n (fun y => gevreyStep ((2 / (b - a)) * y + (-a - b) / (b - a))) x :=
-    ((gevreyStep_contDiff n).comp ((contDiff_const.mul contDiff_id).add contDiff_const)).contDiffAt
-  have hg : ContDiffAt ℝ n (fun y => gevreyStep (((-2) / (d - c)) * y + (c + d) / (d - c))) x :=
-    ((gevreyStep_contDiff n).comp ((contDiff_const.mul contDiff_id).add contDiff_const)).contDiffAt
-  have h := iteratedDeriv_mul_geometric_bound hf hg hA hA hS
-    (fun i hi => iteratedDeriv_affine_step_bound hi _ _ x S hS (le_max_left _ _))
-    (fun i hi => iteratedDeriv_affine_step_bound hi _ _ x S hS (le_max_right _ _))
-  convert h using 1
-  dsimp [A, S]
-  rw [← pow_two, mul_pow (max 1 gevreyBumpIntegral⁻¹)
-    ((8 * ((n : ℝ) + 1)) ^ (8 * (n + 1))) 2, ← pow_mul]
-  rw [show 8 * (n + 1) * 2 = 16 * (n + 1) by omega]
-
-/-- Fixed scalar and rescaling factors can be absorbed in one Gevrey constant. -/
-theorem absorb_gevrey_constants {A R : ℝ} (_hA : 0 ≤ A) (hR : 0 ≤ R) (s : ℕ) :
-    ∃ C : ℕ, 1 ≤ C ∧ ∀ n : ℕ,
-      A * R ^ n * (8 * ((n : ℝ) + 1)) ^ (s * (n + 1)) ≤
-        ((C : ℝ) * ((n : ℝ) + 1)) ^ (C * (n + 1)) := by
-  let C : ℕ := s + 9 + ⌈A⌉₊ + ⌈R⌉₊
-  have hC : 1 ≤ C := by dsimp [C]; omega
-  have hC8 : (8 : ℝ) ≤ C := by exact_mod_cast (show 8 ≤ C by dsimp [C]; omega)
-  have hAC : A ≤ C := (Nat.le_ceil A).trans (by exact_mod_cast (show ⌈A⌉₊ ≤ C by dsimp [C]; omega))
-  have hRC : R ≤ C := (Nat.le_ceil R).trans (by exact_mod_cast (show ⌈R⌉₊ ≤ C by dsimp [C]; omega))
-  refine ⟨C, hC, ?_⟩
-  intro n
-  let B : ℝ := (C : ℝ) * ((n : ℝ) + 1)
-  have hn : 0 ≤ (n : ℝ) := Nat.cast_nonneg _
-  have hCB : (C : ℝ) ≤ B := by dsimp [B]; nlinarith
-  have hB : 1 ≤ B := by linarith
-  calc
-    _ ≤ B * B ^ n * B ^ (s * (n + 1)) := by
-      gcongr
-      · exact hAC.trans hCB
-      · exact hRC.trans hCB
-      · dsimp [B]; gcongr
-    _ = B ^ (n + 1 + s * (n + 1)) := by rw [pow_add, pow_succ]; ring
-    _ ≤ _ := by
-      apply pow_le_pow_right₀ hB
-      have hs : s + 1 ≤ C := by dsimp [C]; omega
-      nlinarith
-
-/-- The precise fixed-order Gevrey assertion for the partition in the blueprint. -/
-theorem gevreyPartition_exists_derivative_bound :
-    ∃ C : ℕ, 1 ≤ C ∧ ∀ (n : ℕ) (x : ℝ),
-      |iteratedDeriv n gevreyPartition x| ≤
-        ((C : ℝ) * ((n : ℝ) + 1)) ^ (C * (n + 1)) := by
-  have hK : 0 ≤ 2 * max 1 gevreyBumpIntegral⁻¹ := by positivity
-  obtain ⟨C, hC, h⟩ := absorb_gevrey_constants hK (show (0 : ℝ) ≤ 1 by norm_num) 9
-  refine ⟨C, hC, fun n x => (iteratedDeriv_gevreyPartition_bound n x).trans ?_⟩
-  simpa using h n
-
-/-- The precise fixed-order Gevrey assertion for arbitrary interval cutoffs. -/
-theorem gevreyIntervalCutoff_exists_derivative_bound (a b c d : ℝ) :
-    ∃ C : ℕ, 1 ≤ C ∧ ∀ (n : ℕ) (x : ℝ),
-      |iteratedDeriv n (gevreyIntervalCutoff a b c d) x| ≤
-        ((C : ℝ) * ((n : ℝ) + 1)) ^ (C * (n + 1)) := by
-  have hA : 0 ≤ (max 1 gevreyBumpIntegral⁻¹) ^ 2 := sq_nonneg _
-  have hR : 0 ≤ 2 * max |2 / (b - a)| |(-2) / (d - c)| := by positivity
-  obtain ⟨C, hC, h⟩ := absorb_gevrey_constants hA hR 16
-  refine ⟨C, hC, fun n x => (iteratedDeriv_gevreyIntervalCutoff_bound n a b c d x).trans ?_⟩
-  simpa [mul_assoc, mul_left_comm, mul_comm] using h n
-
-/-- Coordinate differentiation, for the mixed partial bounds in blueprint Lemma `lem:gevrey`. -/
-noncomputable def coordinateDeriv {ι : Type*} [DecidableEq ι]
-    (i : ι) (f : (ι → ℝ) → ℝ) (x : ι → ℝ) : ℝ :=
-  deriv (fun t => f (Function.update x i t)) (x i)
-
-/-- A mixed partial, with derivative directions specified by a finite list. -/
-noncomputable def mixedPartial {ι : Type*} [DecidableEq ι]
-    : List ι → ((ι → ℝ) → ℝ) → (ι → ℝ) → ℝ
-  | [], f => f
-  | i :: l, f => coordinateDeriv i (mixedPartial l f)
-
-theorem coordinateDeriv_pi_product {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (i : ι) (f : ι → ℝ → ℝ) (x : ι → ℝ) :
-    coordinateDeriv i (fun y => ∏ j, f j (y j)) x =
-      deriv (f i) (x i) * ∏ j ∈ Finset.univ.erase i, f j (x j) := by
-  unfold coordinateDeriv
-  have heq : (fun t => ∏ j, f j (Function.update x i t j)) =
-      fun t => f i t * ∏ j ∈ Finset.univ.erase i, f j (x j) := by
-    funext t
-    rw [← Finset.mul_prod_erase Finset.univ (fun j => f j (Function.update x i t j))
-      (Finset.mem_univ i)]
-    simp only [Function.update_self]
-    congr 1
-    apply Finset.prod_congr rfl
-    intro j hj
-    have hji : j ≠ i := (Finset.mem_erase.mp hj).1
-    simp [Function.update_of_ne hji]
-  rw [heq, deriv_mul_const_field]
-
-/-- Blueprint Lemma `lem:gevrey`: mixed partials of a product cutoff factor
-into the corresponding one-variable derivatives. -/
-theorem mixedPartial_pi_product {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (l : List ι) (f : ι → ℝ → ℝ) (x : ι → ℝ) :
-    mixedPartial l (fun y => ∏ j, f j (y j)) x =
-      ∏ j, iteratedDeriv (l.count j) (f j) (x j) := by
-  induction l generalizing x with
-  | nil => simp [mixedPartial, iteratedDeriv_zero]
-  | cons i l ih =>
-    have heq : mixedPartial l (fun y => ∏ j, f j (y j)) =
-        fun y => ∏ j, iteratedDeriv (l.count j) (f j) (y j) := funext ih
-    rw [mixedPartial, heq, coordinateDeriv_pi_product,
-      ← Finset.mul_prod_erase Finset.univ
-        (fun j => iteratedDeriv ((i :: l).count j) (f j) (x j)) (Finset.mem_univ i)]
-    congr 1
-    · simp only [List.count_cons_self, iteratedDeriv_succ]
-    · apply Finset.prod_congr rfl
-      intro j hj
-      have hji : j ≠ i := (Finset.mem_erase.mp hj).1
-      simp [Ne.symm hji]
-
-/-- The product derivative bounds promised in blueprint Lemma `lem:gevrey`. -/
-theorem mixedPartial_pi_product_bound {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (l : List ι) (f : ι → ℝ → ℝ) (B : ι → ℕ → ℝ) (x : ι → ℝ)
-    (h : ∀ j, |iteratedDeriv (l.count j) (f j) (x j)| ≤ B j (l.count j)) :
-    |mixedPartial l (fun y => ∏ j, f j (y j)) x| ≤ ∏ j, B j (l.count j) := by
-  rw [mixedPartial_pi_product, Finset.abs_prod]
-  exact Finset.prod_le_prod₀ (fun j _ => abs_nonneg _) (fun j _ => h j)
-
-/-- Blueprint Lemma `lem:gevrey`, partition-of-unity assertion: there is a
-nonnegative smooth compactly supported function in `(-1,1)` whose integer translates
-sum to one and whose derivatives satisfy a single fixed Gevrey bound. -/
-theorem existsGevreyPartition :
-    ∃ ρ : ℝ → ℝ, (∀ n : ℕ, ContDiff ℝ n ρ) ∧ (∀ x, 0 ≤ ρ x) ∧
-      HasCompactSupport ρ ∧ tsupport ρ ⊆ Set.Ioo (-1 : ℝ) 1 ∧
-      (∀ x : ℝ, ∑' k : ℤ, ρ (x - k) = 1) ∧
-      ∃ C : ℕ, 1 ≤ C ∧ ∀ (n : ℕ) (x : ℝ),
-        |iteratedDeriv n ρ x| ≤ ((C : ℝ) * ((n : ℝ) + 1)) ^ (C * (n + 1)) :=
-  ⟨gevreyPartition, gevreyPartition_contDiff, gevreyPartition_nonneg,
-    gevreyPartition_hasCompactSupport, gevreyPartition_tsupport_subset_open,
-    gevreyPartition_tsum, gevreyPartition_exists_derivative_bound⟩
-
-/-- Blueprint Lemma `lem:gevrey`, interval-cutoff assertion: for a compact
-interval inside an open interval, a smooth nonnegative cutoff equals one on the
-compact interval and has compact support in the open interval, with Gevrey bounds. -/
-theorem existsGevreyIntervalCutoff {a b c d : ℝ} (hab : a < b) (_hbc : b ≤ c) (hcd : c < d) :
-    ∃ χ : ℝ → ℝ, (∀ n : ℕ, ContDiff ℝ n χ) ∧ (∀ x, χ x ∈ Set.Icc (0 : ℝ) 1) ∧
-      HasCompactSupport χ ∧ tsupport χ ⊆ Set.Ioo a d ∧
-      (∀ x ∈ Set.Icc b c, χ x = 1) ∧
-      ∃ C : ℕ, 1 ≤ C ∧ ∀ (n : ℕ) (x : ℝ),
-        |iteratedDeriv n χ x| ≤ ((C : ℝ) * ((n : ℝ) + 1)) ^ (C * (n + 1)) :=
-  ⟨gevreyIntervalCutoff a b c d, fun n => gevreyIntervalCutoff_contDiff n a b c d,
-    gevreyIntervalCutoff_mem_Icc a b c d, gevreyIntervalCutoff_hasCompactSupport hab hcd,
-    gevreyIntervalCutoff_tsupport_subset_open hab hcd,
-    fun _ hx => gevreyIntervalCutoff_eq_one hab hcd hx,
-    gevreyIntervalCutoff_exists_derivative_bound a b c d⟩
-
-/-- The integer translates in the constructed partition are locally finite. -/
-theorem gevreyPartition_locallyFinite :
-    LocallyFinite (fun k : ℤ => Function.support (fun x : ℝ => gevreyPartition (x - k))) := by
-  intro x
-  refine ⟨Set.Ioo (x - 1) (x + 1), Ioo_mem_nhds (by linarith) (by linarith), ?_⟩
-  apply (Set.finite_Icc (⌊x⌋ - 2) (⌊x⌋ + 3)).subset
-  rintro k ⟨y, hy, hyx⟩
-  have hlo : -(3 / 4 : ℝ) < y - k := by
-    by_contra h
-    exact hy (gevreyPartition_zero_left (le_of_not_gt h))
-  have hhi : y - k < (3 / 4 : ℝ) := by
-    by_contra h
-    exact hy (gevreyPartition_zero_right (le_of_not_gt h))
-  have hf := Int.floor_le x
-  have hf' := Int.lt_floor_add_one x
-  constructor
-  · have : (⌊x⌋ : ℝ) - 2 ≤ (k : ℝ) := by linarith [hyx.1]
-    exact_mod_cast this
-  · have : (k : ℝ) ≤ (⌊x⌋ : ℝ) + 3 := by linarith [hyx.2]
-    exact_mod_cast this
-
-/-! ### Fourier coefficient estimates
-
-The following one-dimensional integration-by-parts proofs are adapted from
-`../lean-dfr/DFR/Auto/Twisted/ConeDecompositionMultiplierTheorem/`,
-`ConeDecompositionMultiplierTheorem.lean`, copyright 2026 Joris Roos,
-Apache 2.0. They implement the coordinate estimate in blueprint
-Lemma `lem:fourier-foundation`, lines 130–146.
--/
+open Polynomial MeasureTheory
 
 open AddCircle
-
-theorem fourierCoeffOn_of_hasDerivAt_zeroBoundary
-    {a b : ℝ} (hab : a < b) {f f' : ℝ → ℂ} {n : ℤ} (hn : n ≠ 0)
-    (hf : ∀ x ∈ Set.uIcc a b, HasDerivAt f (f' x) x)
-    (hf' : IntervalIntegrable f' volume a b)
-    (hboundary : f b = f a) :
-    fourierCoeffOn hab f n =
-      -(1 / (-2 * Real.pi * Complex.I * n)) *
-        ((b - a) * fourierCoeffOn hab f' n) := by
-  rw [fourierCoeffOn_of_hasDerivAt hab hn hf hf', hboundary, sub_self, mul_zero, zero_sub]
-  ring_nf
-
-theorem norm_fourierCoeffOn_of_hasDerivAt_zeroBoundary
-    {a b : ℝ} (hab : a < b) {f f' : ℝ → ℂ} {n : ℤ} (hn : n ≠ 0)
-    (hf : ∀ x ∈ Set.uIcc a b, HasDerivAt f (f' x) x)
-    (hf' : IntervalIntegrable f' volume a b)
-    (hboundary : f b = f a) :
-    ‖fourierCoeffOn hab f n‖ =
-      ‖1 / (-2 * Real.pi * Complex.I * n)‖ * |b - a| * ‖fourierCoeffOn hab f' n‖ := by
-  rw [fourierCoeffOn_of_hasDerivAt_zeroBoundary hab hn hf hf' hboundary]
-  simp only [norm_neg, norm_mul]
-  have hcast : (↑b : ℂ) - ↑a = ↑(b - a) := by push_cast; ring
-  rw [hcast, Complex.norm_real, Real.norm_eq_abs]
-  ring
-
-theorem norm_fourierCoeffOn_le_of_norm_le
-    {a b C : ℝ} (hab : a < b) {f : ℝ → ℂ} (n : ℤ)
-    (hf : ∀ x ∈ Set.uIoc a b, ‖f x‖ ≤ C) :
-    ‖fourierCoeffOn hab f n‖ ≤ C := by
-  have hperiod : Fact (0 < b - a) := ⟨by linarith⟩
-  let : Fact (0 < b - a) := hperiod
-  rw [fourierCoeffOn_eq_integral]
-  have hint : ‖∫ x in a..b,
-      fourier (-n) (x : AddCircle (b - a)) • f x‖ ≤ C * |b - a| := by
-    apply intervalIntegral.norm_integral_le_of_norm_le_const
-    intro x hx
-    have hfourier : ‖fourier (-n) (x : AddCircle (b - a))‖ = 1 := Circle.norm_coe _
-    rw [norm_smul, hfourier, one_mul]
-    exact hf x hx
-  rw [norm_smul, Real.norm_eq_abs]
-  calc
-    |1 / (b - a)| * ‖∫ x in a..b,
-        fourier (-n) (x : AddCircle (b - a)) • f x‖ ≤
-        |1 / (b - a)| * (C * |b - a|) :=
-      mul_le_mul_of_nonneg_left hint (abs_nonneg _)
-    _ = C := by
-      rw [abs_of_pos (by positivity : 0 < b - a)]
-      rw [abs_of_pos (by positivity : 0 < 1 / (b - a))]
-      calc
-        1 / (b - a) * (C * (b - a)) =
-            C * ((b - a)⁻¹ * (b - a)) := by rw [one_div]; ring
-        _ = C := by rw [inv_mul_cancel₀ (ne_of_gt (sub_pos.mpr hab)), mul_one]
-
-theorem norm_fourier_antideriv_factor (n : ℤ) :
-    ‖1 / (-2 * Real.pi * Complex.I * n)‖ =
-      (2 * Real.pi * |(n : ℝ)|)⁻¹ := by
-  rw [one_div, norm_inv, norm_mul, norm_mul, norm_mul]
-  have htwoC : ‖(2 : ℂ)‖ = (2 : ℝ) := by norm_num
-  rw [norm_neg, htwoC, Complex.norm_real, Complex.norm_I, Complex.norm_intCast]
-  simp only [Real.norm_eq_abs]
-  rw [abs_of_pos Real.pi_pos]
-  simp
-
-theorem norm_fourierCoeffOn_le_of_deriv_bound
-    {a b C : ℝ} (hab : a < b) {f f' : ℝ → ℂ} {n : ℤ} (hn : n ≠ 0)
-    (hf : ∀ x ∈ Set.uIcc a b, HasDerivAt f (f' x) x)
-    (hf' : IntervalIntegrable f' volume a b)
-    (hboundary : f b = f a)
-    (hbound : ∀ x ∈ Set.uIoc a b, ‖f' x‖ ≤ C) :
-    ‖fourierCoeffOn hab f n‖ ≤
-      (2 * Real.pi * |(n : ℝ)|)⁻¹ * |b - a| * C := by
-  rw [norm_fourierCoeffOn_of_hasDerivAt_zeroBoundary
-    hab hn hf hf' hboundary, norm_fourier_antideriv_factor]
-  exact mul_le_mul_of_nonneg_left
-    (norm_fourierCoeffOn_le_of_norm_le hab n hbound)
-    (mul_nonneg (inv_nonneg.mpr (by positivity)) (abs_nonneg _))
-
-theorem norm_fourierCoeffOn_le_of_iteratedDeriv_bound
-    {a b C : ℝ} (hab : a < b) {f : ℝ → ℂ} {n : ℤ} (hn : n ≠ 0)
-    (N : ℕ) (hf : ContDiff ℝ N f)
-    (hboundary : ∀ r : ℕ, r < N →
-      iteratedDeriv r f b = iteratedDeriv r f a)
-    (hbound : ∀ x ∈ Set.uIoc a b, ‖iteratedDeriv N f x‖ ≤ C) :
-    ‖fourierCoeffOn hab f n‖ ≤
-      ((2 * Real.pi * |(n : ℝ)|)⁻¹ * |b - a|) ^ N * C := by
-  induction N generalizing f with
-  | zero =>
-      simpa using norm_fourierCoeffOn_le_of_norm_le hab n hbound
-  | succ N ih =>
-      let g : ℝ → ℂ := deriv f
-      have hg : ContDiff ℝ N g := by
-        dsimp [g]
-        exact hf.deriv'
-      have hgboundary : ∀ r : ℕ, r < N →
-          iteratedDeriv r g b = iteratedDeriv r g a := by
-        intro r hr
-        change iteratedDeriv r (deriv f) b = iteratedDeriv r (deriv f) a
-        rw [← iteratedDeriv_succ']
-        exact hboundary (r + 1) (Nat.succ_lt_succ hr)
-      have hgbound : ∀ x ∈ Set.uIoc a b, ‖iteratedDeriv N g x‖ ≤ C := by
-        intro x hx
-        rw [← iteratedDeriv_succ']
-        exact hbound x hx
-      have hrec := ih hg hgboundary hgbound
-      let d : ℝ := (2 * Real.pi * |(n : ℝ)|)⁻¹ * |b - a|
-      have hd : 0 ≤ d := mul_nonneg (inv_nonneg.mpr (by positivity)) (abs_nonneg _)
-      have hderiv : ∀ x ∈ Set.uIcc a b, HasDerivAt f (g x) x := by
-        intro x _
-        dsimp [g]
-        exact (hf.differentiable_iteratedDeriv 0
-          (by exact_mod_cast Nat.zero_lt_succ N)).differentiableAt.hasDerivAt
-      have hgint : IntervalIntegrable g volume a b := by
-        exact (hf.continuous_deriv
-          (by exact_mod_cast Nat.succ_le_succ (Nat.zero_le N))).intervalIntegrable a b
-      have hzero : f b = f a := by
-        simpa using hboundary 0 (by omega)
-      have hstep : ‖fourierCoeffOn hab f n‖ = d * ‖fourierCoeffOn hab g n‖ := by
-        dsimp [d]
-        rw [show (2 * Real.pi * |(n : ℝ)|)⁻¹ * |b - a| =
-            ‖1 / (-2 * Real.pi * Complex.I * n)‖ * |b - a| by
-              rw [norm_fourier_antideriv_factor]]
-        exact norm_fourierCoeffOn_of_hasDerivAt_zeroBoundary
-          hab hn hderiv hgint hzero
-      rw [hstep]
-      calc
-        d * ‖fourierCoeffOn hab g n‖ ≤ d * (d ^ N * C) :=
-          mul_le_mul_of_nonneg_left hrec hd
-        _ = d ^ (N + 1) * C := by ring
-
-/-- Derivatives preserve the period, including the endpoint identities needed
-for repeated integration by parts. -/
-theorem periodic_iteratedDeriv {f : ℝ → ℂ} {T : ℝ}
-    (hf : Function.Periodic f T) (m : ℕ) : Function.Periodic (iteratedDeriv m f) T := by
-  have heq : (fun x => f (x + T)) = f := funext hf
-  intro x
-  have h := congrFun (iteratedDeriv_comp_add_const m f T) x
-  rw [heq] at h
-  exact h.symm
-
-/-- Blueprint Lemma `lem:fourier-foundation`, lines 130–146, in one
-coordinate of the unit torus. The coefficient is Mathlib's Haar coefficient. -/
-theorem norm_fourierCoeff_le_of_periodic_derivative_bound
-    (F : UnitAddCircle → ℂ) {n : ℤ} (hn : n ≠ 0) (m : ℕ) {A : ℝ}
-    (hf : ContDiff ℝ m (fun x : ℝ => F x))
-    (hbound : ∀ x : ℝ, ‖iteratedDeriv m (fun t : ℝ => F t) x‖ ≤ A) :
-    ‖fourierCoeff F n‖ ≤ (2 * Real.pi * |(n : ℝ)|)⁻¹ ^ m * A := by
-  have hp : Function.Periodic (fun t : ℝ => F t) 1 := by
-    intro t
-    change F ((t + 1 : ℝ) : UnitAddCircle) = F (t : UnitAddCircle)
-    rw [coe_add_period]
-  have hb : ∀ r : ℕ, r < m →
-      iteratedDeriv r (fun t : ℝ => F t) 1 = iteratedDeriv r (fun t : ℝ => F t) 0 := by
-    intro r _
-    simpa using periodic_iteratedDeriv hp r 0
-  have h := norm_fourierCoeffOn_le_of_iteratedDeriv_bound
-    (by norm_num : (0 : ℝ) < 1) hn m hf hb (fun x _ => hbound x)
-  have heq : fourierCoeffOn (by norm_num : (0 : ℝ) < 1) (fun x : ℝ => F x) n =
-      fourierCoeff F n := by
-    rw [fourierCoeffOn_eq_integral, fourierCoeff_eq_intervalIntegral F n 0]
-    simp
-  simpa [heq] using h
-
-noncomputable section TorusFourier
-
-local instance : MeasureSpace UnitAddCircle := ⟨AddCircle.haarAddCircle⟩
-
-local instance : IsProbabilityMeasure (volume : Measure UnitAddCircle) :=
-  inferInstanceAs (IsProbabilityMeasure AddCircle.haarAddCircle)
-
-/-- Splitting off an arbitrary torus coordinate in the Fourier integral. -/
-theorem mFourierCoeff_eq_coordinate_integral {d : ℕ}
-    (F : UnitAddTorus (Fin (d + 1)) → ℂ) (hF : Continuous F)
-    (n : Fin (d + 1) → ℤ) (i : Fin (d + 1)) :
-    UnitAddTorus.mFourierCoeff F n =
-      ∫ y : UnitAddTorus (Fin d),
-        (∏ j, fourier (-(n (i.succAbove j))) (y j)) *
-          fourierCoeff (fun t => F (i.insertNth t y)) (n i) := by
-  let G : UnitAddTorus (Fin (d + 1)) → ℂ :=
-    fun x => UnitAddTorus.mFourier (-n) x * F x
-  have hG : Continuous G := (UnitAddTorus.mFourier (-n)).continuous.mul hF
-  have hIns : Continuous (fun p : UnitAddCircle × UnitAddTorus (Fin d) =>
-      i.insertNth (α := fun _ => UnitAddCircle) p.1 p.2) := by
-    apply continuous_pi
-    intro j
-    refine i.succAboveCases ?_ (fun k => ?_) j
-    · simpa using continuous_fst
-    · simp only [Fin.insertNth_apply_succAbove]
-      exact (continuous_apply k).comp continuous_snd
-  have hGI : Integrable (fun p : UnitAddCircle × UnitAddTorus (Fin d) =>
-      G (i.insertNth p.1 p.2)) := (hG.comp hIns).integrable_of_hasCompactSupport
-        (HasCompactSupport.of_compactSpace _)
-  change (∫ x, G x) = _
-  rw [← (volume_preserving_piFinSuccAbove
-    (fun _ : Fin (d + 1) => UnitAddCircle) i).symm.integral_comp']
-  change (∫ p : UnitAddCircle × UnitAddTorus (Fin d), G (i.insertNth p.1 p.2)) = _
-  rw [Measure.volume_eq_prod, integral_prod_symm _ hGI]
-  apply integral_congr_ae
-  filter_upwards [] with y
-  simp only [G, UnitAddTorus.mFourier, ContinuousMap.coe_mk, Pi.neg_apply]
-  simp only [fourierCoeff]
-  rw [← integral_const_mul]
-  apply integral_congr_ae
-  filter_upwards [] with t
-  rw [i.prod_univ_succAbove]
-  simp only [Fin.insertNth_apply_same, Fin.insertNth_apply_succAbove]
-  change _ = _ * (fourier (-(n i)) t * F (i.insertNth t y))
-  ring
-
-/-- The multivariate coefficient inherits the one-dimensional derivative
-bound in each nonzero frequency coordinate. -/
-theorem norm_mFourierCoeff_le_coordinate {d : ℕ}
-    (F : UnitAddTorus (Fin (d + 1)) → ℂ) (hF : Continuous F)
-    (n : Fin (d + 1) → ℤ) (i : Fin (d + 1)) (hi : n i ≠ 0)
-    (m : ℕ) {A : ℝ}
-    (hsmooth : ∀ y : UnitAddTorus (Fin d),
-      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)))
-    (hbound : ∀ (y : UnitAddTorus (Fin d)) (x : ℝ),
-      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) x‖ ≤ A) :
-    ‖UnitAddTorus.mFourierCoeff F n‖ ≤ (2 * Real.pi * |(n i : ℝ)|)⁻¹ ^ m * A := by
-  rw [mFourierCoeff_eq_coordinate_integral F hF n i]
-  have h : ∀ y : UnitAddTorus (Fin d),
-      ‖(∏ j, fourier (-(n (i.succAbove j))) (y j)) *
-        fourierCoeff (fun t => F (i.insertNth t y)) (n i)‖ ≤
-          (2 * Real.pi * |(n i : ℝ)|)⁻¹ ^ m * A := by
-    intro y
-    rw [norm_mul, norm_prod]
-    have hnorm : ∏ j : Fin d, ‖fourier (-(n (i.succAbove j))) (y j)‖ = 1 := by
-      simp only [fourier_apply, Circle.norm_coe, Finset.prod_const_one]
-    rw [hnorm, one_mul]
-    exact norm_fourierCoeff_le_of_periodic_derivative_bound
-      (fun t => F (i.insertNth t y)) hi m (hsmooth y) (hbound y)
-  simpa using norm_integral_le_of_norm_le_const
-    (μ := (volume : Measure (UnitAddTorus (Fin d)))) (Filter.Eventually.of_forall h)
-
-/-- Euclidean length of an integer frequency, as in the blueprint's torus estimates. -/
-def frequencyLength {d : ℕ} (n : Fin d → ℤ) : ℝ :=
-  Real.sqrt (∑ j, (n j : ℝ) ^ 2)
-
-theorem frequencyLength_nonneg {d : ℕ} (n : Fin d → ℤ) : 0 ≤ frequencyLength n :=
-  Real.sqrt_nonneg _
-
-theorem frequencyLength_pos {d : ℕ} {n : Fin d → ℤ} (hn : n ≠ 0) :
-    0 < frequencyLength n := by
-  have hne : ∃ i, n i ≠ 0 := by
-    by_contra h
-    push Not at h
-    exact hn (funext h)
-  obtain ⟨i, hi⟩ := hne
-  apply Real.sqrt_pos.mpr
-  apply lt_of_lt_of_le (sq_pos_of_ne_zero (by exact_mod_cast hi : (n i : ℝ) ≠ 0))
-  exact Finset.single_le_sum (fun j _ => sq_nonneg (n j : ℝ)) (Finset.mem_univ i)
-
-/-- A largest coordinate controls the Euclidean frequency length. -/
-theorem exists_dominant_frequency {d : ℕ} (n : Fin (d + 1) → ℤ) :
-    ∃ i, frequencyLength n ≤ Real.sqrt (d + 1 : ℝ) * |(n i : ℝ)| := by
-  obtain ⟨i, _, hi⟩ := Finset.exists_max_image Finset.univ
-    (fun j => |(n j : ℝ)|) Finset.univ_nonempty
-  refine ⟨i, ?_⟩
-  have hsum : (∑ j, (n j : ℝ) ^ 2) ≤ (d + 1 : ℝ) * |(n i : ℝ)| ^ 2 := by
-    calc
-      _ = ∑ j, |(n j : ℝ)| ^ 2 := by simp
-      _ ≤ ∑ _j : Fin (d + 1), |(n i : ℝ)| ^ 2 := by
-        apply Finset.sum_le_sum
-        intro j hj
-        exact pow_le_pow_left₀ (abs_nonneg _) (hi j hj) 2
-      _ = _ := by simp [mul_comm]
-  calc
-    frequencyLength n ≤ Real.sqrt ((d + 1 : ℝ) * |(n i : ℝ)| ^ 2) :=
-      Real.sqrt_le_sqrt hsum
-    _ = _ := by rw [Real.sqrt_mul (by positivity), Real.sqrt_sq (abs_nonneg _)]
-
-/-- Blueprint Lemma `lem:fourier-foundation`, lines 130–133: the exact
-Euclidean-frequency decay estimate. Coordinate derivatives are taken on real lifts
-of torus slices, so their periodic boundary conditions follow automatically. -/
-theorem norm_mFourierCoeff_le_derivative_bound {d : ℕ}
-    (F : UnitAddTorus (Fin (d + 1)) → ℂ) (hF : Continuous F)
-    (n : Fin (d + 1) → ℤ) (hn : n ≠ 0) (m : ℕ) {A : ℝ}
-    (hsmooth : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)),
-      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)))
-    (hbound : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) (x : ℝ),
-      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) x‖ ≤ A) :
-    ‖UnitAddTorus.mFourierCoeff F n‖ ≤
-      A * (Real.sqrt (d + 1 : ℝ) / (2 * Real.pi * frequencyLength n)) ^ m := by
-  obtain ⟨i, hi⟩ := exists_dominant_frequency n
-  have hlen := frequencyLength_pos hn
-  have hni : n i ≠ 0 := by
-    intro h
-    simp [h] at hi
-    linarith
-  have hA : 0 ≤ A := (norm_nonneg _).trans (hbound i (fun _ => 0) 0)
-  have hbase : (2 * Real.pi * |(n i : ℝ)|)⁻¹ ≤
-      Real.sqrt (d + 1 : ℝ) / (2 * Real.pi * frequencyLength n) := by
-    have habs : 0 < |(n i : ℝ)| := abs_pos.mpr (by exact_mod_cast hni)
-    rw [inv_eq_one_div, div_le_div_iff₀ (by positivity) (by positivity)]
-    nlinarith [mul_le_mul_of_nonneg_left hi (show 0 ≤ 2 * Real.pi by positivity)]
-  calc
-    _ ≤ (2 * Real.pi * |(n i : ℝ)|)⁻¹ ^ m * A :=
-      norm_mFourierCoeff_le_coordinate F hF n i hni m (hsmooth i) (hbound i)
-    _ ≤ _ := by
-      rw [mul_comm A]
-      exact mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (by positivity) hbase m) hA
-
-theorem abs_frequency_coordinate_le {d : ℕ} (n : Fin d → ℤ) (i : Fin d) :
-    |(n i : ℝ)| ≤ frequencyLength n := by
-  rw [← Real.sqrt_sq_eq_abs (n i : ℝ)]
-  apply Real.sqrt_le_sqrt
-  exact Finset.single_le_sum (fun j _ => sq_nonneg (n j : ℝ)) (Finset.mem_univ i)
-
-theorem one_le_frequencyLength {d : ℕ} {n : Fin d → ℤ} (hn : n ≠ 0) :
-    1 ≤ frequencyLength n := by
-  have hne : ∃ i, n i ≠ 0 := by
-    by_contra h
-    push Not at h
-    exact hn (funext h)
-  obtain ⟨i, hi⟩ := hne
-  have h : (1 : ℝ) ≤ |(n i : ℝ)| := by exact_mod_cast Int.one_le_abs hi
-  exact h.trans (abs_frequency_coordinate_le n i)
-
-/-- A finite box containing all frequencies in a bounded Euclidean ball. -/
-def frequencyBox (d N : ℕ) : Finset (Fin d → ℤ) :=
-  Fintype.piFinset (fun _ => Finset.Icc (-(N : ℤ)) N)
-
-theorem card_frequencyBox (d N : ℕ) : (frequencyBox d N).card = (2 * N + 1) ^ d := by
-  have h : (Finset.Icc (-(N : ℤ)) N).card = 2 * N + 1 := by
-    rw [Int.card_Icc]
-    omega
-  simp [frequencyBox, h]
-
-theorem mem_frequencyBox_of_length_le {d N : ℕ} {n : Fin d → ℤ}
-    (h : frequencyLength n ≤ N) : n ∈ frequencyBox d N := by
-  apply Fintype.mem_piFinset.mpr
-  intro i
-  have hi := abs_frequency_coordinate_le n i |>.trans h
-  have hi' : |n i| ≤ (N : ℤ) := by exact_mod_cast hi
-  exact Finset.mem_Icc.mpr (abs_le.mp hi')
-
-/-- The nonzero portion of a dyadic shell. The zero mode is deliberately
-separate: see `automation/ErrorReport.md` for the printed first-shell omission. -/
-def frequencyShell (d : ℕ) (T : ℝ) : Finset (Fin d → ℤ) :=
-  (frequencyBox d ⌈2 * T⌉₊).filter
-    (fun n => n ≠ 0 ∧ T ≤ 1 + frequencyLength n ∧ 1 + frequencyLength n < 2 * T)
-
-theorem mem_frequencyShell {d : ℕ} {T : ℝ} {n : Fin d → ℤ} :
-    n ∈ frequencyShell d T ↔
-      n ≠ 0 ∧ T ≤ 1 + frequencyLength n ∧ 1 + frequencyLength n < 2 * T := by
-  rw [frequencyShell, Finset.mem_filter]
-  constructor
-  · exact fun h => h.2
-  · intro h
-    refine ⟨mem_frequencyBox_of_length_le ?_, h⟩
-    exact (by linarith [h.2.2] : frequencyLength n ≤ 2 * T).trans (Nat.le_ceil _)
-
-theorem card_frequencyShell_le {d : ℕ} {T : ℝ} (hT : 1 ≤ T) :
-    ((frequencyShell d T).card : ℝ) ≤ (7 * T) ^ d := by
-  have hcard : (frequencyShell d T).card ≤ (2 * ⌈2 * T⌉₊ + 1) ^ d := by
-    rw [← card_frequencyBox]
-    exact Finset.card_le_card (Finset.filter_subset _ _)
-  have hceil := Nat.ceil_lt_add_one (show 0 ≤ 2 * T by linarith)
-  have hbase : (2 * ⌈2 * T⌉₊ + 1 : ℝ) ≤ 7 * T := by linarith
-  calc
-    _ ≤ ((2 * ⌈2 * T⌉₊ + 1 : ℕ) : ℝ) ^ d := by exact_mod_cast hcard
-    _ = (2 * (⌈2 * T⌉₊ : ℝ) + 1) ^ d := by push_cast; rfl
-    _ ≤ _ := pow_le_pow_left₀ (by positivity) hbase d
-
-/-- Absolute shell mass from the blueprint's coefficient estimate. The explicit
-constant `7 ^ d` is independent of the derivative order `m`. The expression
-`(sqrt d) ^ m` is the factor `d ^ (m/2)` in the source. -/
-theorem sum_frequencyShell_le {d m : ℕ} {A T : ℝ} (hA : 0 ≤ A) (hT : 1 ≤ T)
-    (c : (Fin d → ℤ) → ℂ)
-    (hc : ∀ n, n ≠ 0 → ‖c n‖ ≤
-      A * (Real.sqrt (d : ℝ) / (2 * Real.pi * frequencyLength n)) ^ m) :
-    ∑ n ∈ frequencyShell d T, ‖c n‖ ≤
-      (7 : ℝ) ^ d * A * (Real.sqrt (d : ℝ)) ^ m * T ^ ((d : ℝ) - m) := by
-  have hTpos : 0 < T := by linarith
-  have hpoint : ∀ n ∈ frequencyShell d T,
-      ‖c n‖ ≤ A * (Real.sqrt (d : ℝ) / T) ^ m := by
-    intro n hn
-    obtain ⟨hn0, hnlo, _⟩ := mem_frequencyShell.mp hn
-    have hlen := one_le_frequencyLength hn0
-    have hden : T ≤ 2 * Real.pi * frequencyLength n := by
-      nlinarith [mul_le_mul_of_nonneg_right Real.two_le_pi (frequencyLength_nonneg n)]
-    refine (hc n hn0).trans (mul_le_mul_of_nonneg_left ?_ hA)
-    apply pow_le_pow_left₀ (by positivity)
-    exact div_le_div_of_nonneg_left (Real.sqrt_nonneg _) hTpos hden
-  calc
-    _ ≤ ∑ _n ∈ frequencyShell d T, A * (Real.sqrt (d : ℝ) / T) ^ m :=
-      Finset.sum_le_sum hpoint
-    _ = ((frequencyShell d T).card : ℝ) * (A * (Real.sqrt (d : ℝ) / T) ^ m) := by
-      simp
-    _ ≤ (7 * T) ^ d * (A * (Real.sqrt (d : ℝ) / T) ^ m) :=
-      mul_le_mul_of_nonneg_right (card_frequencyShell_le hT) (by positivity)
-    _ = _ := by
-      rw [Real.rpow_sub hTpos, Real.rpow_natCast, Real.rpow_natCast, mul_pow, div_pow]
-      ring
-
-/-- Blueprint Lemma `lem:fourier-foundation`, the nonzero Fourier shell
-estimate obtained from smooth coordinate derivatives. -/
-theorem sum_mFourierCoeff_frequencyShell_le {d m : ℕ} {A T : ℝ} (hT : 1 ≤ T)
-    (F : UnitAddTorus (Fin (d + 1)) → ℂ) (hF : Continuous F)
-    (hsmooth : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)),
-      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)))
-    (hbound : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) (x : ℝ),
-      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) x‖ ≤ A) :
-    ∑ n ∈ frequencyShell (d + 1) T, ‖UnitAddTorus.mFourierCoeff F n‖ ≤
-      (7 : ℝ) ^ (d + 1) * A * (Real.sqrt (d + 1 : ℝ)) ^ m *
-        T ^ ((d + 1 : ℝ) - m) := by
-  have hA : 0 ≤ A := (norm_nonneg _).trans (hbound 0 (fun _ => 0) 0)
-  simpa only [Nat.cast_add, Nat.cast_one] using sum_frequencyShell_le hA hT
-    (UnitAddTorus.mFourierCoeff F)
-    (fun n hn => by
-      simpa only [Nat.cast_add, Nat.cast_one] using
-        norm_mFourierCoeff_le_derivative_bound F hF n hn m hsmooth hbound)
-
-/-- Nonzero integer frequencies are covered by the dyadic shells. -/
-theorem exists_mem_dyadic_frequencyShell {d : ℕ} {n : Fin d → ℤ} (hn : n ≠ 0) :
-    ∃ k : ℕ, n ∈ frequencyShell d ((2 : ℝ) ^ k) := by
-  obtain ⟨k, hk, hk'⟩ := exists_nat_pow_near
-    (show 1 ≤ 1 + frequencyLength n by linarith [frequencyLength_nonneg n])
-    (show (1 : ℝ) < 2 by norm_num)
-  refine ⟨k, mem_frequencyShell.mpr ⟨hn, hk, ?_⟩⟩
-  simpa [pow_succ, mul_comm] using hk'
-
-/-- The shell estimates form a convergent geometric series once the derivative
-order exceeds the dimension. -/
-theorem summable_dyadic_frequencyShell {d m : ℕ} {A : ℝ} (hA : 0 ≤ A) (hm : d < m)
-    (c : (Fin d → ℤ) → ℂ)
-    (hc : ∀ n, n ≠ 0 → ‖c n‖ ≤
-      A * (Real.sqrt (d : ℝ) / (2 * Real.pi * frequencyLength n)) ^ m) :
-    Summable (fun k : ℕ => ∑ n ∈ frequencyShell d ((2 : ℝ) ^ k), ‖c n‖) := by
-  let r : ℝ := (2 : ℝ) ^ ((d : ℝ) - m)
-  have hr0 : 0 ≤ r := by positivity
-  have hr1 : r < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num)
-    (by have h : (d : ℝ) < m := by exact_mod_cast hm
-        linarith)
-  have hgeom := (summable_geometric_of_lt_one hr0 hr1).mul_left
-    ((7 : ℝ) ^ d * A * (Real.sqrt (d : ℝ)) ^ m)
-  apply hgeom.of_nonneg_of_le
-  · intro k; exact Finset.sum_nonneg (fun _ _ => norm_nonneg _)
-  · intro k
-    have h := sum_frequencyShell_le hA (show 1 ≤ (2 : ℝ) ^ k by
-      exact one_le_pow₀ (by norm_num)) c hc
-    convert h using 1
-    dsimp [r]
-    rw [Real.rpow_pow_comm (by norm_num)]
-
-/-- A countable collection of finite shells with summable masses controls
-the entire series, with one separately handled exceptional index. -/
-theorem summable_norm_of_finite_shells {β : Type*}
-    (c : β → ℂ) (z : β) (s : ℕ → Finset β)
-    (hcover : ∀ b, b ≠ z → ∃ k, b ∈ s k)
-    (hmass : Summable (fun k => ∑ b ∈ s k, ‖c b‖)) : Summable (fun b => ‖c b‖) := by
-  classical
-  let B : ℕ × β → ℝ := fun p => if p.2 ∈ s p.1 then ‖c p.2‖ else 0
-  have hB0 : ∀ p, 0 ≤ B p := by intro p; dsimp [B]; split_ifs <;> positivity
-  have hBs : ∀ k, Summable (fun b => B (k, b)) := by
-    intro k
-    exact summable_of_ne_finset_zero (s := s k) (fun b hb => by simp [B, hb])
-  have hBt : ∀ k, (∑' b, B (k, b)) = ∑ b ∈ s k, ‖c b‖ := by
-    intro k
-    rw [tsum_eq_sum (s := s k) (fun b hb => by simp [B, hb])]
-    exact Finset.sum_congr rfl (fun b hb => by simp [B, hb])
-  have hprod : Summable B := (summable_prod_of_nonneg hB0).mpr ⟨hBs, by simpa [hBt]⟩
-  have hsingle : Summable (fun b => if b = z then ‖c z‖ else 0) :=
-    summable_of_ne_finset_zero (s := {z}) (by
-      intro b hb
-      simp only [Finset.mem_singleton] at hb
-      simp [hb])
-  apply (hsingle.add hprod.prod_symm.prod).of_nonneg_of_le (fun b => norm_nonneg _)
-  intro b
-  by_cases hb : b = z
-  · subst b
-    simp only [ite_true]
-    exact le_add_of_nonneg_right (tsum_nonneg (fun k => hB0 (k, z)))
-  · obtain ⟨k, hk⟩ := hcover b hb
-    simp only [ite_eq_right hb, zero_add]
-    have h := hprod.prod_symm.prod_factor b |>.le_tsum k (fun j _ => hB0 (j, b))
-    simpa [B, hk] using h
-
-/-- Absolute convergence of a coefficient sequence with decay order above dimension. -/
-theorem summable_norm_of_frequency_decay {d m : ℕ} {A : ℝ} (hA : 0 ≤ A) (hm : d < m)
-    (c : (Fin d → ℤ) → ℂ)
-    (hc : ∀ n, n ≠ 0 → ‖c n‖ ≤
-      A * (Real.sqrt (d : ℝ) / (2 * Real.pi * frequencyLength n)) ^ m) :
-    Summable (fun n => ‖c n‖) :=
-  summable_norm_of_finite_shells c 0 (fun k => frequencyShell d ((2 : ℝ) ^ k))
-    (fun _ hn => exists_mem_dyadic_frequencyShell hn)
-    (summable_dyadic_frequencyShell hA hm c hc)
-
-/-- Blueprint Lemma `lem:fourier-foundation`: choosing a derivative order
-above the dimension gives absolute convergence of the torus Fourier coefficients. -/
-theorem summable_norm_mFourierCoeff {d m : ℕ} {A : ℝ} (hm : d + 1 < m)
-    (F : UnitAddTorus (Fin (d + 1)) → ℂ) (hF : Continuous F)
-    (hsmooth : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)),
-      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)))
-    (hbound : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) (x : ℝ),
-      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) x‖ ≤ A) :
-    Summable (fun n => ‖UnitAddTorus.mFourierCoeff F n‖) := by
-  have hA : 0 ≤ A := (norm_nonneg _).trans (hbound 0 (fun _ => 0) 0)
-  exact summable_norm_of_frequency_decay hA hm (UnitAddTorus.mFourierCoeff F)
-    (fun n hn => by
-      simpa only [Nat.cast_add, Nat.cast_one] using
-        norm_mFourierCoeff_le_derivative_bound F hF n hn m hsmooth hbound)
-
-/-- Blueprint Lemma `lem:fourier-foundation`: the Fourier series converges
-in the uniform norm of continuous functions on the torus. -/
-theorem hasSum_mFourier_of_derivative_bound {d m : ℕ} {A : ℝ} (hm : d + 1 < m)
-    (F : C(UnitAddTorus (Fin (d + 1)), ℂ))
-    (hsmooth : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)),
-      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)))
-    (hbound : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) (x : ℝ),
-      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) x‖ ≤ A) :
-    HasSum (fun n => UnitAddTorus.mFourierCoeff F n • UnitAddTorus.mFourier n) F :=
-  UnitAddTorus.hasSum_mFourier_series_of_summable
-    (summable_norm_mFourierCoeff hm F F.continuous hsmooth hbound).of_norm
-
-/-- Summable shell masses bound the total absolute mass whenever the shells
-cover the support. Overlap of shells is harmless for this upper bound. -/
-theorem tsum_norm_le_shell_masses {β : Type*}
-    (c : β → ℂ) (s : ℕ → Finset β)
-    (hcover : ∀ b, c b ≠ 0 → ∃ k, b ∈ s k)
-    (hmass : Summable (fun k => ∑ b ∈ s k, ‖c b‖)) :
-    Summable (fun b => ‖c b‖) ∧
-      (∑' b, ‖c b‖) ≤ ∑' k, ∑ b ∈ s k, ‖c b‖ := by
-  classical
-  let B : ℕ × β → ℝ := fun p => if p.2 ∈ s p.1 then ‖c p.2‖ else 0
-  have hB0 : ∀ p, 0 ≤ B p := by intro p; dsimp [B]; split_ifs <;> positivity
-  have hBs : ∀ k, Summable (fun b => B (k, b)) := by
-    intro k
-    exact summable_of_ne_finset_zero (s := s k) (fun b hb => by simp [B, hb])
-  have hBt : ∀ k, (∑' b, B (k, b)) = ∑ b ∈ s k, ‖c b‖ := by
-    intro k
-    rw [tsum_eq_sum (s := s k) (fun b hb => by simp [B, hb])]
-    exact Finset.sum_congr rfl (fun b hb => by simp [B, hb])
-  have hprod : Summable B := (summable_prod_of_nonneg hB0).mpr ⟨hBs, by simpa [hBt]⟩
-  have hpoint : ∀ b, ‖c b‖ ≤ ∑' k, B (k, b) := by
-    intro b
-    by_cases hb : c b = 0
-    · simpa [hb] using tsum_nonneg (fun k => hB0 (k, b))
-    · obtain ⟨k, hk⟩ := hcover b hb
-      have h := hprod.prod_symm.prod_factor b |>.le_tsum k (fun j _ => hB0 (j, b))
-      simpa [B, hk] using h
-  have hs := hprod.prod_symm.prod.of_nonneg_of_le (fun b => norm_nonneg _) hpoint
-  refine ⟨hs, (hs.tsum_le_tsum hpoint hprod.prod_symm.prod).trans_eq ?_⟩
-  have ht : Summable (Function.uncurry (fun k b => B (k, b))) := hprod
-  exact ht.tsum_comm.trans (tsum_congr hBt)
-
-/-- Frequencies past a dyadic cutoff are covered by the later shells. -/
-theorem exists_mem_late_frequencyShell {d : ℕ} {n : Fin d → ℤ} (hn : n ≠ 0)
-    (K : ℕ) (hK : (2 : ℝ) ^ K ≤ 1 + frequencyLength n) :
-    ∃ k : ℕ, n ∈ frequencyShell d ((2 : ℝ) ^ (K + k)) := by
-  obtain ⟨j, hj⟩ := exists_mem_dyadic_frequencyShell hn
-  have hj' := mem_frequencyShell.mp hj
-  have hKj : K ≤ j := by
-    by_contra h
-    have hle : j + 1 ≤ K := by omega
-    have hpow := pow_le_pow_right₀ (show (1 : ℝ) ≤ 2 by norm_num) hle
-    have hlt : 1 + frequencyLength n < (2 : ℝ) ^ (j + 1) := by
-      simpa [pow_succ, mul_comm] using hj'.2.2
-    linarith
-  refine ⟨j - K, ?_⟩
-  simpa [Nat.add_sub_of_le hKj] using hj
-
-/-- Quantitative absolute Fourier tail. Taking `m` greater than the dimension
-plus a requested tail power gives that power of decay, with explicit constants. -/
-theorem frequency_tail_bound {d m : ℕ} {A : ℝ} (hA : 0 ≤ A) (hm : d < m)
-    (c : (Fin d → ℤ) → ℂ)
-    (hc : ∀ n, n ≠ 0 → ‖c n‖ ≤
-      A * (Real.sqrt (d : ℝ) / (2 * Real.pi * frequencyLength n)) ^ m) (K : ℕ) :
-    (∑' n, if n ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength n then ‖c n‖ else 0) ≤
-      (7 : ℝ) ^ d * A * (Real.sqrt (d : ℝ)) ^ m *
-        ((2 : ℝ) ^ K) ^ ((d : ℝ) - m) / (1 - (2 : ℝ) ^ ((d : ℝ) - m)) := by
-  classical
-  let ctail : (Fin d → ℤ) → ℂ := fun n =>
-    if n ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength n then c n else 0
-  let s : ℕ → Finset (Fin d → ℤ) := fun k => frequencyShell d ((2 : ℝ) ^ (K + k))
-  let C : ℝ := (7 : ℝ) ^ d * A * (Real.sqrt (d : ℝ)) ^ m
-  let r : ℝ := (2 : ℝ) ^ ((d : ℝ) - m)
-  have hr0 : 0 ≤ r := by positivity
-  have hr1 : r < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num)
-    (by have h : (d : ℝ) < m := by exact_mod_cast hm
-        linarith)
-  have hgeom : Summable (fun k : ℕ => (C * r ^ K) * r ^ k) :=
-    (summable_geometric_of_lt_one hr0 hr1).mul_left _
-  have hct : ∀ n, ‖ctail n‖ ≤ ‖c n‖ := by
-    intro n
-    dsimp [ctail]
-    split_ifs <;> simp
-  have hmassle : ∀ k, (∑ n ∈ s k, ‖ctail n‖) ≤ (C * r ^ K) * r ^ k := by
-    intro k
-    calc
-      _ ≤ ∑ n ∈ s k, ‖c n‖ := Finset.sum_le_sum (fun n _ => hct n)
-      _ ≤ C * ((2 : ℝ) ^ (K + k)) ^ ((d : ℝ) - m) :=
-        sum_frequencyShell_le hA (one_le_pow₀ (by norm_num)) c hc
-      _ = _ := by
-        dsimp [r]
-        rw [← Real.rpow_pow_comm (by norm_num), pow_add]
-        ring
-  have hmass : Summable (fun k => ∑ n ∈ s k, ‖ctail n‖) :=
-    hgeom.of_nonneg_of_le (fun k => Finset.sum_nonneg (fun _ _ => norm_nonneg _)) hmassle
-  have hcover : ∀ n, ctail n ≠ 0 → ∃ k, n ∈ s k := by
-    intro n hn
-    have ht : n ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength n := by
-      by_contra h
-      exact hn (by simp [ctail, h])
-    exact exists_mem_late_frequencyShell ht.1 K ht.2
-  have hsum := (tsum_norm_le_shell_masses ctail s hcover hmass).2
-  have heq : (∑' n, ‖ctail n‖) =
-      ∑' n, if n ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength n then ‖c n‖ else 0 := by
-    apply tsum_congr
-    intro n
-    dsimp [ctail]
-    split_ifs <;> simp
-  rw [← heq]
-  calc
-    _ ≤ ∑' k, ∑ n ∈ s k, ‖ctail n‖ := hsum
-    _ ≤ ∑' k, (C * r ^ K) * r ^ k := hmass.tsum_le_tsum hmassle hgeom
-    _ = C * r ^ K * (1 - r)⁻¹ := by rw [tsum_mul_left, tsum_geometric_of_lt_one hr0 hr1]
-    _ = _ := by
-      dsimp [C, r]
-      rw [Real.rpow_pow_comm (by norm_num)]
-      rfl
-
-/-- Frequencies retained by a dyadic Fourier truncation, including the constant mode. -/
-def frequencyTruncationSet (d K : ℕ) : Finset (Fin d → ℤ) :=
-  (frequencyBox d ⌈(2 : ℝ) ^ K⌉₊).filter
-    (fun n => n = 0 ∨ 1 + frequencyLength n < (2 : ℝ) ^ K)
-
-theorem mem_frequencyTruncationSet {d K : ℕ} {n : Fin d → ℤ} :
-    n ∈ frequencyTruncationSet d K ↔
-      n = 0 ∨ 1 + frequencyLength n < (2 : ℝ) ^ K := by
-  rw [frequencyTruncationSet, Finset.mem_filter]
-  constructor
-  · exact fun h => h.2
-  · intro h
-    refine ⟨mem_frequencyBox_of_length_le ?_, h⟩
-    apply le_trans (b := (2 : ℝ) ^ K) _ (Nat.le_ceil _)
-    rcases h with rfl | h
-    · simp [frequencyLength]
-    · linarith
-
-/-- Blueprint Lemma `lem:fourier-foundation`: quantitative truncation in the
-uniform norm, with the constant Fourier mode retained separately. -/
-theorem norm_mFourier_truncation_error {d m : ℕ} {A : ℝ} (hm : d + 1 < m)
-    (F : C(UnitAddTorus (Fin (d + 1)), ℂ))
-    (hsmooth : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)),
-      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)))
-    (hbound : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) (x : ℝ),
-      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) x‖ ≤ A)
-    (K : ℕ) :
-    ‖F - ∑ n ∈ frequencyTruncationSet (d + 1) K,
-      UnitAddTorus.mFourierCoeff F n • UnitAddTorus.mFourier n‖ ≤
-      (7 : ℝ) ^ (d + 1) * A * (Real.sqrt (d + 1 : ℝ)) ^ m *
-        ((2 : ℝ) ^ K) ^ ((d + 1 : ℝ) - m) /
-          (1 - (2 : ℝ) ^ ((d + 1 : ℝ) - m)) := by
-  classical
-  let s := frequencyTruncationSet (d + 1) K
-  let t : (Fin (d + 1) → ℤ) → C(UnitAddTorus (Fin (d + 1)), ℂ) :=
-    fun n => UnitAddTorus.mFourierCoeff F n • UnitAddTorus.mFourier n
-  have hnorm : ∀ n, ‖t n‖ = ‖UnitAddTorus.mFourierCoeff F n‖ := by
-    intro n
-    simp [t, norm_smul, UnitAddTorus.mFourier_norm]
-  have htn : Summable (fun n => ‖t n‖) := by
-    simpa only [hnorm] using summable_norm_mFourierCoeff hm F F.continuous hsmooth hbound
-  have hsum : HasSum t F := hasSum_mFourier_of_derivative_bound hm F hsmooth hbound
-  have heq : F - ∑ n ∈ s, t n =
-      ∑' n : ↥((↑s : Set (Fin (d + 1) → ℤ))ᶜ), t n := by
-    have h := htn.of_norm.sum_add_tsum_compl (s := s)
-    rw [hsum.tsum_eq] at h
-    symm
-    apply eq_sub_iff_add_eq.mpr
-    simpa [add_comm] using h
-  change ‖F - ∑ n ∈ s, t n‖ ≤ _
-  rw [heq]
-  have hA : 0 ≤ A := (norm_nonneg _).trans (hbound 0 (fun _ => 0) 0)
-  calc
-    _ ≤ ∑' n : ↥((↑s : Set (Fin (d + 1) → ℤ))ᶜ), ‖t n‖ :=
-      norm_tsum_le_tsum_norm (htn.subtype _)
-    _ = ∑' n, if n ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength n then
-        ‖UnitAddTorus.mFourierCoeff F n‖ else 0 := by
-      rw [tsum_subtype ((↑s : Set (Fin (d + 1) → ℤ))ᶜ) (fun n => ‖t n‖)]
-      apply tsum_congr
-      intro n
-      simp [Set.indicator, s, mem_frequencyTruncationSet, hnorm, not_or]
-    _ ≤ _ := by
-      simpa only [Nat.cast_add, Nat.cast_one] using frequency_tail_bound hA hm
-        (UnitAddTorus.mFourierCoeff F)
-        (fun n hn => by
-          simpa only [Nat.cast_add, Nat.cast_one] using
-            norm_mFourierCoeff_le_derivative_bound F F.continuous n hn m hsmooth hbound) K
-
-end TorusFourier
 
 /-! ### Separated-frequency rows
 
@@ -2640,245 +1159,6 @@ theorem quadratic_oscillatory_integral_bound (α β γ : ℝ) {a b A : ℝ}
   rw [div_eq_mul_inv]
   linarith
 
-/-! ### Haar cube averages
-
-The Boolean parity and vertex splitting algebra below is adapted from
-`../lean-dfr/DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`, copyright 2026 Joris Roos,
-Apache 2.0. Here parity counts true coordinates, exactly as in the supplied blueprint.
--/
-
-/-- Conjugation to the power of a natural number, reduced modulo two. -/
-noncomputable def cubeConj (n : ℕ) (z : ℂ) : ℂ := if Even n then z else conj z
-
-theorem cubeConj_zero (z : ℂ) : cubeConj 0 z = z := by simp [cubeConj]
-
-theorem cubeConj_succ (n : ℕ) (z : ℂ) : cubeConj (n + 1) z = conj (cubeConj n z) := by
-  by_cases h : Even n <;> simp [cubeConj, h, Nat.even_add_one]
-
-theorem norm_cubeConj (n : ℕ) (z : ℂ) : ‖cubeConj n z‖ = ‖z‖ := by
-  by_cases h : Even n <;> simp [cubeConj, h]
-
-/-- Hamming weight of a Boolean cube vertex. -/
-def cubeWeight {j : ℕ} (ω : Fin j → Bool) : ℕ := ∑ i, if ω i then 1 else 0
-
-/-- The group-valued shift `ω · h` at a cube vertex. -/
-def cubeShift {G : Type*} [AddCommMonoid G] {j : ℕ}
-    (h : Fin j → G) (ω : Fin j → Bool) : G := ∑ i, if ω i then h i else 0
-
-theorem cubeWeight_cons {j : ℕ} (b : Bool) (ω : Fin j → Bool) :
-    cubeWeight (Fin.cons b ω) = (if b then 1 else 0) + cubeWeight ω := by
-  rw [cubeWeight, cubeWeight, Fin.sum_univ_succ]
-  simp
-
-theorem cubeShift_cons {G : Type*} [AddCommMonoid G] {j : ℕ}
-    (h : Fin (j + 1) → G) (b : Bool) (ω : Fin j → Bool) :
-    cubeShift h (Fin.cons b ω) = (if b then h 0 else 0) +
-      cubeShift (fun i => h i.succ) ω := by
-  simp [cubeShift, Fin.sum_univ_succ]
-
-/-- Splitting a Boolean vertex into its first coordinate and its remaining face. -/
-def cubeConsEquiv (j : ℕ) : Bool × (Fin j → Bool) ≃ (Fin (j + 1) → Bool) where
-  toFun p := Fin.cons p.1 p.2
-  invFun ω := (ω 0, fun i => ω i.succ)
-  left_inv p := by ext <;> simp
-  right_inv ω := by funext i; induction i using Fin.cases <;> simp
-
-/-- The literal mixed cube integrand in blueprint `cube-definition`. -/
-noncomputable def cubeIntegrand {G : Type*} [AddCommMonoid G] {j : ℕ}
-    (f : (Fin j → Bool) → G → ℂ) (h : Fin j → G) (x : G) : ℂ :=
-  ∏ ω : Fin j → Bool, cubeConj (cubeWeight ω) (f ω (x + cubeShift h ω))
-
-/-- The mixed Gowers cube average with probability measure on every variable. -/
-noncomputable def cubeAverage {G : Type*} [AddCommMonoid G] [MeasurableSpace G]
-    (μ : Measure G) (j : ℕ) (f : (Fin j → Bool) → G → ℂ) : ℂ :=
-  ∫ h : Fin j → G, ∫ x, cubeIntegrand f h x ∂μ ∂Measure.pi (fun _ => μ)
-
-/-- The diagonal cube integrand, before taking a nonnegative root. -/
-noncomputable def diagonalCubeIntegrand {G : Type*} [AddCommMonoid G]
-    (j : ℕ) (f : G → ℂ) (h : Fin j → G) (x : G) : ℂ :=
-  cubeIntegrand (fun _ => f) h x
-
-theorem diagonalCubeIntegrand_zero {G : Type*} [AddCommMonoid G]
-    (f : G → ℂ) (h : Fin 0 → G) (x : G) : diagonalCubeIntegrand 0 f h x = f x := by
-  rw [diagonalCubeIntegrand, cubeIntegrand, Fintype.prod_unique]
-  simp [cubeWeight, cubeShift, cubeConj]
-
-/-- Separating one increment gives the product of a face and its conjugate translate. -/
-theorem diagonalCubeIntegrand_succ {G : Type*} [AddCommMonoid G]
-    (j : ℕ) (f : G → ℂ) (h : Fin (j + 1) → G) (x : G) :
-    diagonalCubeIntegrand (j + 1) f h x =
-      diagonalCubeIntegrand j f (fun i => h i.succ) x *
-        conj (diagonalCubeIntegrand j f (fun i => h i.succ) (x + h 0)) := by
-  unfold diagonalCubeIntegrand cubeIntegrand
-  rw [← (cubeConsEquiv j).prod_comp
-    (fun ω => cubeConj (cubeWeight ω) (f (x + cubeShift h ω))),
-    Fintype.prod_prod_type, Fintype.prod_bool, map_prod, ← Finset.prod_mul_distrib,
-    ← Finset.prod_mul_distrib]
-  apply Finset.prod_congr rfl
-  intro ω _
-  simp [cubeConsEquiv, cubeWeight_cons, cubeShift_cons, Nat.add_comm 1,
-    cubeConj_succ, add_assoc, mul_comm]
-
-theorem measurable_cubeConj (n : ℕ) : Measurable (cubeConj n) := by
-  change Measurable (fun z : ℂ => cubeConj n z)
-  by_cases h : Even n
-  · simp only [cubeConj, ite_eq_left h]
-    exact measurable_id
-  · simp only [cubeConj, ite_eq_right h]
-    exact Complex.continuous_conj.measurable
-
-theorem measurable_cubeShift {G : Type*} [AddCommMonoid G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] {j : ℕ} (ω : Fin j → Bool) :
-    Measurable (fun h : Fin j → G => cubeShift h ω) := by
-  unfold cubeShift
-  fun_prop
-
-theorem measurable_cubeIntegrand {G : Type*} [AddCommMonoid G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] {j : ℕ} (f : (Fin j → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) :
-    Measurable (fun p : (Fin j → G) × G => cubeIntegrand f p.1 p.2) := by
-  unfold cubeIntegrand
-  apply Finset.measurable_prod
-  intro ω _
-  exact (measurable_cubeConj _).comp ((hf ω).comp
-    (measurable_snd.add ((measurable_cubeShift ω).comp measurable_fst)))
-
-theorem norm_cubeIntegrand_le {G : Type*} [AddCommMonoid G] {j : ℕ}
-    (f : (Fin j → Bool) → G → ℂ) {M : ℝ}
-    (hf : ∀ ω x, ‖f ω x‖ ≤ M) (h : Fin j → G) (x : G) :
-    ‖cubeIntegrand f h x‖ ≤ M ^ (2 ^ j) := by
-  unfold cubeIntegrand
-  rw [norm_prod]
-  have hp : (∏ ω : Fin j → Bool, ‖cubeConj (cubeWeight ω) (f ω (x + cubeShift h ω))‖) ≤
-      ∏ _ω : Fin j → Bool, M :=
-    Finset.prod_le_prod₀ (fun _ _ => norm_nonneg _) (fun ω _ => by
-      simpa only [norm_cubeConj] using hf ω (x + cubeShift h ω))
-  simpa using hp
-
-/-- A bounded measurable complex function on a finite measure space is integrable. -/
-theorem integrable_of_measurable_bounded {X : Type*} [MeasurableSpace X]
-    {μ : Measure X} [IsFiniteMeasure μ] {f : X → ℂ} (hf : Measurable f)
-    {M : ℝ} (hbound : ∀ x, ‖f x‖ ≤ M) : Integrable f μ :=
-  (integrable_const M).mono' hf.aestronglyMeasurable (Filter.Eventually.of_forall hbound)
-
-/-- Haar independence of a point and its independent translate. -/
-theorem integral_haar_correlation {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    (f : G → ℂ) (hf : Measurable f) {M : ℝ} (hbound : ∀ x, ‖f x‖ ≤ M) :
-    (∫ h, ∫ x, f x * conj (f (x + h)) ∂μ ∂μ) = ((‖∫ x, f x ∂μ‖ ^ 2 : ℝ) : ℂ) := by
-  have hM : 0 ≤ M := (norm_nonneg (f 0)).trans (hbound 0)
-  have hmeas : Measurable (fun p : G × G => f p.2 * conj (f (p.2 + p.1))) :=
-    (hf.comp measurable_snd).mul (Complex.continuous_conj.measurable.comp
-      (hf.comp (measurable_snd.add measurable_fst)))
-  have hint : Integrable (fun p : G × G => f p.2 * conj (f (p.2 + p.1))) (μ.prod μ) :=
-    integrable_of_measurable_bounded hmeas (fun p => by
-      rw [norm_mul, Complex.norm_conj]
-      exact mul_le_mul (hbound _) (hbound _) (norm_nonneg _) hM)
-  rw [integral_integral_swap hint]
-  simp_rw [integral_const_mul]
-  have htranslation (x : G) : (∫ h, conj (f (x + h)) ∂μ) = ∫ h, conj (f h) ∂μ :=
-    integral_add_left_eq_self (fun h => conj (f h)) x
-  simp_rw [htranslation]
-  rw [integral_conj, integral_mul_const, Complex.mul_conj, Complex.normSq_eq_norm_sq]
-
-/-- Fubini splitting of the first coordinate of a finite probability product. -/
-theorem integral_pi_cons {G : Type*} [MeasurableSpace G]
-    (μ : Measure G) [IsProbabilityMeasure μ] {j : ℕ}
-    (F : (Fin (j + 1) → G) → ℂ) (hF : Measurable F) {M : ℝ}
-    (hbound : ∀ h, ‖F h‖ ≤ M) :
-    (∫ h, F h ∂Measure.pi (fun _ : Fin (j + 1) => μ)) =
-      ∫ h, ∫ t, F (Fin.cons t h) ∂μ ∂Measure.pi (fun _ : Fin j => μ) := by
-  let e := MeasurableEquiv.piFinSuccAbove (fun _ : Fin (j + 1) => G) 0
-  have hmp := (measurePreserving_piFinSuccAbove (fun _ : Fin (j + 1) => μ) 0).symm
-  have hInt : Integrable (fun p : G × (Fin j → G) => F (e.symm p))
-      (μ.prod (Measure.pi (fun _ : Fin j => μ))) :=
-    integrable_of_measurable_bounded (hF.comp e.symm.measurable) (fun p => hbound _)
-  rw [← hmp.integral_comp']
-  change (∫ p : G × (Fin j → G), F (e.symm p) ∂μ.prod (Measure.pi (fun _ => μ))) = _
-  rw [integral_prod_symm _ hInt]
-  apply integral_congr_ae
-  filter_upwards [] with h
-  apply integral_congr_ae
-  filter_upwards [] with t
-  congr 1
-  simp [e, MeasurableEquiv.piFinSuccAbove_symm_apply, Fin.insertNthEquiv]
-
-/-- Blueprint `cube-definition`, lines 168–172: the diagonal cube average
-is the average of squared absolute face averages. This proves both reality and positivity. -/
-theorem cubeAverage_diagonal_eq_integral_sq {G : Type*} [AddCommGroup G]
-    [MeasurableSpace G] [MeasurableAdd₂ G]
-    (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    (j : ℕ) (f : G → ℂ) (hf : Measurable f) {M : ℝ} (hbound : ∀ x, ‖f x‖ ≤ M) :
-    cubeAverage μ (j + 1) (fun _ => f) =
-      ((∫ h : Fin j → G, ‖∫ x, diagonalCubeIntegrand j f h x ∂μ‖ ^ 2
-        ∂Measure.pi (fun _ => μ) : ℝ) : ℂ) := by
-  have hmeas := measurable_cubeIntegrand (j := j + 1) (fun _ => f) (fun _ => hf)
-  have hinnerMeas : Measurable (fun h : Fin (j + 1) → G =>
-      ∫ x, cubeIntegrand (fun _ => f) h x ∂μ) :=
-    hmeas.stronglyMeasurable.integral_prod_right.measurable
-  have hinnerBound : ∀ h : Fin (j + 1) → G,
-      ‖∫ x, cubeIntegrand (fun _ => f) h x ∂μ‖ ≤ M ^ (2 ^ (j + 1)) := by
-    intro h
-    simpa using norm_integral_le_of_norm_le_const (μ := μ)
-      (Filter.Eventually.of_forall (fun x => norm_cubeIntegrand_le
-        (fun _ => f) (fun _ => hbound) h x))
-  rw [cubeAverage, integral_pi_cons μ _ hinnerMeas hinnerBound, ← integral_complex_ofReal]
-  apply integral_congr_ae
-  filter_upwards [] with h
-  have hfaceMeas : Measurable (diagonalCubeIntegrand j f h) :=
-    (measurable_cubeIntegrand (fun _ => f) (fun _ => hf)).comp
-      (measurable_const.prodMk measurable_id)
-  have hfaceBound : ∀ x, ‖diagonalCubeIntegrand j f h x‖ ≤ M ^ (2 ^ j) :=
-    fun x => norm_cubeIntegrand_le (fun _ => f) (fun _ => hbound) h x
-  have heq : ∀ t x, cubeIntegrand (fun _ => f) (Fin.cons t h) x =
-      diagonalCubeIntegrand j f h x * conj (diagonalCubeIntegrand j f h (x + t)) := by
-    intro t x
-    change diagonalCubeIntegrand (j + 1) f (Fin.cons t h) x = _
-    simpa only [Fin.cons_zero, Fin.cons_succ] using diagonalCubeIntegrand_succ j f (Fin.cons t h) x
-  simp_rw [heq]
-  exact integral_haar_correlation μ _ hfaceMeas hfaceBound
-
-/-- Reality of every positive-order diagonal Haar cube average. -/
-theorem cubeAverage_diagonal_im_eq_zero {G : Type*} [AddCommGroup G]
-    [MeasurableSpace G] [MeasurableAdd₂ G]
-    (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (hj : 1 ≤ j) (f : G → ℂ) (hf : Measurable f)
-    {M : ℝ} (hbound : ∀ x, ‖f x‖ ≤ M) : (cubeAverage μ j (fun _ => f)).im = 0 := by
-  obtain ⟨j, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : j ≠ 0)
-  rw [cubeAverage_diagonal_eq_integral_sq μ j f hf hbound]
-  exact Complex.ofReal_im _
-
-/-- Nonnegativity of every positive-order diagonal Haar cube average. -/
-theorem cubeAverage_diagonal_re_nonneg {G : Type*} [AddCommGroup G]
-    [MeasurableSpace G] [MeasurableAdd₂ G]
-    (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (hj : 1 ≤ j) (f : G → ℂ) (hf : Measurable f)
-    {M : ℝ} (hbound : ∀ x, ‖f x‖ ≤ M) : 0 ≤ (cubeAverage μ j (fun _ => f)).re := by
-  obtain ⟨j, rfl⟩ := Nat.exists_eq_succ_of_ne_zero (by omega : j ≠ 0)
-  rw [cubeAverage_diagonal_eq_integral_sq μ j f hf hbound, Complex.ofReal_re]
-  exact integral_nonneg (fun _ => sq_nonneg _)
-
-/-- Blueprint `cube-definition`, line 174: the nonnegative `2^j`-th root
-of the diagonal cube average. Its positivity and root identity hold for `j ≥ 1`. -/
-noncomputable def gowersNorm {G : Type*} [AddCommMonoid G] [MeasurableSpace G]
-    (μ : Measure G) (j : ℕ) (f : G → ℂ) : ℝ :=
-  (cubeAverage μ j (fun _ => f)).re ^ (((2 ^ j : ℕ) : ℝ)⁻¹)
-
-theorem gowersNorm_nonneg {G : Type*} [AddCommGroup G]
-    [MeasurableSpace G] [MeasurableAdd₂ G]
-    (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (hj : 1 ≤ j) (f : G → ℂ) (hf : Measurable f)
-    {M : ℝ} (hbound : ∀ x, ‖f x‖ ≤ M) : 0 ≤ gowersNorm μ j f :=
-  Real.rpow_nonneg (cubeAverage_diagonal_re_nonneg μ hj f hf hbound) _
-
-theorem gowersNorm_pow {G : Type*} [AddCommGroup G]
-    [MeasurableSpace G] [MeasurableAdd₂ G]
-    (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (hj : 1 ≤ j) (f : G → ℂ) (hf : Measurable f)
-    {M : ℝ} (hbound : ∀ x, ‖f x‖ ≤ M) :
-    gowersNorm μ j f ^ (2 ^ j) = (cubeAverage μ j (fun _ => f)).re :=
-  Real.rpow_inv_natCast_pow (cubeAverage_diagonal_re_nonneg μ hj f hf hbound) (by positivity)
-
 open scoped ENNReal
 
 /-- Normalized counting measure, the Haar probability measure on a finite group. -/
@@ -2898,752 +1178,11 @@ instance finiteHaar_isAddLeftInvariant (G : Type*) [AddGroup G] [Fintype G]
   unfold finiteHaar
   infer_instance
 
-/-- Probability-counting expectation written as a finite sum. -/
-noncomputable def finiteAverage {G : Type*} [Fintype G] (f : G → ℂ) : ℂ :=
-  (Fintype.card G : ℂ)⁻¹ * ∑ x, f x
-
 theorem integral_finiteHaar {G : Type*} [Fintype G] [MeasurableSpace G]
     [MeasurableSingletonClass G] (f : G → ℂ) :
     (∫ x, f x ∂finiteHaar G) = finiteAverage f := by
   rw [finiteHaar, integral_smul_measure, integral_count]
   simp [finiteAverage, ENNReal.toReal_inv, Complex.real_smul]
-
-/-- Probability-normalized convolution, with the source's subtraction convention. -/
-noncomputable def finiteConvolution {G : Type*} [Fintype G] [AddGroup G]
-    (f g : G → ℂ) (x : G) : ℂ := finiteAverage (fun y => f y * g (x - y))
-
-/-! The following sign-moment helpers are adapted from
-`../lean-variationalsw/VariationalSW/Auto/KhintchineInequality.lean`
-(Copyright 2026 Joris Roos, Apache 2.0; original author Claude).
-Only the upper-moment argument is needed here. -/
-section Signs
-
-variable {ι : Type*} [DecidableEq ι]
-
-/-- The Rademacher signed sum `∑_{i ∈ s} ε_i v_i` attached to the sign pattern `u ⊆ s`:
-`ε_i = 1` if `i ∈ u` and `ε_i = -1` otherwise. -/
-def rademacherSum {G : Type*} [AddCommGroup G] (s u : Finset ι) (v : ι → G) : G :=
-  ∑ i ∈ s, if i ∈ u then v i else -v i
-
-/-- The uniform average `2^{-|s|} ∑_{u ⊆ s} F u` over all sign patterns on `s`. -/
-noncomputable def rademacherMean (s : Finset ι) (F : Finset ι → ℝ) : ℝ :=
-  (2 ^ s.card : ℝ)⁻¹ * ∑ u ∈ s.powerset, F u
-
-/-- Additive maps commute with Rademacher signed sums. -/
-theorem map_rademacherSum {G G' : Type*} [AddCommGroup G] [AddCommGroup G']
-    (φ : G →+ G') (s u : Finset ι) (v : ι → G) :
-    φ (rademacherSum s u v) = rademacherSum s u (fun i => φ (v i)) := by
-  unfold rademacherSum
-  rw [map_sum]
-  refine Finset.sum_congr rfl fun i _ => ?_
-  split_ifs <;> simp
-
-/-- Adding a new index `a` with sign `-1`. -/
-theorem rademacherSum_insert_of_subset {G : Type*} [AddCommGroup G] {s u : Finset ι} {a : ι}
-    (ha : a ∉ s) (hu : u ⊆ s) (v : ι → G) :
-    rademacherSum (insert a s) u v = -v a + rademacherSum s u v := by
-  have hau : a ∉ u := fun h => ha (hu h)
-  unfold rademacherSum
-  rw [Finset.sum_insert ha]
-  simp [hau]
-
-/-- Adding a new index `a` with sign `+1`. -/
-theorem rademacherSum_insert_insert {G : Type*} [AddCommGroup G] {s u : Finset ι} {a : ι}
-    (ha : a ∉ s) (v : ι → G) :
-    rademacherSum (insert a s) (insert a u) v = v a + rademacherSum s u v := by
-  unfold rademacherSum
-  rw [Finset.sum_insert ha]
-  simp only [Finset.mem_insert_self, ↓reduceIte]
-  congr 1
-  refine Finset.sum_congr rfl fun i hi => ?_
-  have hia : i ≠ a := fun h => ha (h ▸ hi)
-  simp [Finset.mem_insert, hia]
-
-end Signs
-
-/-- Real two-point inequality driving the upper moment bound:
-if `w² ≤ 4PA` and `4m ≤ c + 3`, `1 ≤ c`, then
-`(P+A+w)^m + (P+A-w)^m ≤ 2 (P + cA)^m`. -/
-theorem two_point_pow_aux {P A w c : ℝ} (hP : 0 ≤ P) (hA : 0 ≤ A) (hw : w ^ 2 ≤ 4 * P * A)
-    (hc : 1 ≤ c) (hQ : 0 < P + c * A) :
-    ∀ m : ℕ, 4 * (m : ℝ) ≤ c + 3 →
-      (P + A + w) ^ m + (P + A - w) ^ m ≤ 2 * (P + c * A) ^ m ∧
-        (P + c * A) * (w * ((P + A + w) ^ m - (P + A - w) ^ m)) ≤
-          2 * m * w ^ 2 * (P + c * A) ^ m := by
-  set Q := P + c * A with hQdef
-  set u := P + A with hudef
-  have huQ : u ≤ Q := by nlinarith
-  have hu : 0 ≤ u := by positivity
-  intro m
-  induction m with
-  | zero => intro _; norm_num
-  | succ m ih =>
-    intro hm
-    have hm' : 4 * (m : ℝ) ≤ c + 3 := by push_cast at hm; linarith
-    obtain ⟨hF, hG⟩ := ih hm'
-    have hQm : 0 ≤ Q ^ m := pow_nonneg hQ.le m
-    have hstep1 : (u + w) ^ (m + 1) + (u - w) ^ (m + 1) =
-        u * ((u + w) ^ m + (u - w) ^ m) + w * ((u + w) ^ m - (u - w) ^ m) := by ring
-    have hstep2 : (u + w) ^ (m + 1) - (u - w) ^ (m + 1) =
-        u * ((u + w) ^ m - (u - w) ^ m) + w * ((u + w) ^ m + (u - w) ^ m) := by ring
-    have hmc : 4 * (m : ℝ) + 1 ≤ c := by push_cast at hm; linarith
-    have hm0 : (0 : ℝ) ≤ m := Nat.cast_nonneg m
-    constructor
-    · -- Q * F_{m+1} ≤ 2 Q^{m+2}
-      have key : Q * ((u + w) ^ (m + 1) + (u - w) ^ (m + 1)) ≤ Q * (2 * Q ^ (m + 1)) := by
-        rw [hstep1]
-        have h1 : Q * (u * ((u + w) ^ m + (u - w) ^ m)) ≤ Q * (u * (2 * Q ^ m)) :=
-          mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hF hu) hQ.le
-        have h2 : u * Q + m * w ^ 2 ≤ Q ^ 2 := by
-          have : m * w ^ 2 ≤ m * (4 * P * A) := mul_le_mul_of_nonneg_left hw hm0
-          have hPA : 0 ≤ P * A := mul_nonneg hP hA
-          have hcc : c ≤ c * c := by nlinarith
-          have hid : Q ^ 2 - u * Q - m * (4 * P * A) =
-              (c - 4 * m - 1) * (P * A) + (c * c - c) * A ^ 2 := by
-            rw [hQdef, hudef]; ring
-          nlinarith [mul_le_mul_of_nonneg_left hmc hPA, mul_le_mul_of_nonneg_left hcc (sq_nonneg A)]
-        have : Q * (u * ((u + w) ^ m + (u - w) ^ m)) + Q * (w * ((u + w) ^ m - (u - w) ^ m))
-            ≤ Q * (u * (2 * Q ^ m)) + 2 * m * w ^ 2 * Q ^ m := by
-          linarith
-        calc Q * (u * ((u + w) ^ m + (u - w) ^ m) + w * ((u + w) ^ m - (u - w) ^ m))
-            = Q * (u * ((u + w) ^ m + (u - w) ^ m)) + Q * (w * ((u + w) ^ m - (u - w) ^ m)) := by
-              ring
-          _ ≤ Q * (u * (2 * Q ^ m)) + 2 * m * w ^ 2 * Q ^ m := this
-          _ = 2 * Q ^ m * (u * Q + m * w ^ 2) := by ring
-          _ ≤ 2 * Q ^ m * (Q ^ 2) := by
-              exact mul_le_mul_of_nonneg_left h2 (by positivity)
-          _ = Q * (2 * Q ^ (m + 1)) := by ring
-      exact le_of_mul_le_mul_left key hQ
-    · rw [hstep2]
-      have hw2 : 0 ≤ w ^ 2 := sq_nonneg w
-      have h1 : u * (Q * (w * ((u + w) ^ m - (u - w) ^ m))) ≤ u * (2 * m * w ^ 2 * Q ^ m) :=
-        mul_le_mul_of_nonneg_left hG hu
-      have h2 : Q * w ^ 2 * ((u + w) ^ m + (u - w) ^ m) ≤ Q * w ^ 2 * (2 * Q ^ m) :=
-        mul_le_mul_of_nonneg_left hF (mul_nonneg hQ.le hw2)
-      have h3 : u * (2 * m * w ^ 2 * Q ^ m) ≤ Q * (2 * m * w ^ 2 * Q ^ m) :=
-        mul_le_mul_of_nonneg_right huQ (by positivity)
-      calc Q * (w * (u * ((u + w) ^ m - (u - w) ^ m) + w * ((u + w) ^ m + (u - w) ^ m)))
-          = u * (Q * (w * ((u + w) ^ m - (u - w) ^ m))) +
-              Q * w ^ 2 * ((u + w) ^ m + (u - w) ^ m) := by ring
-        _ ≤ Q * (2 * m * w ^ 2 * Q ^ m) + Q * w ^ 2 * (2 * Q ^ m) := by linarith
-        _ = 2 * ((m + 1 : ℕ) : ℝ) * w ^ 2 * Q ^ (m + 1) := by push_cast; ring
-
-section Vectors
-
-variable {ι : Type*} [DecidableEq ι]
-variable (𝕜 : Type*) {H : Type*} [RCLike 𝕜] [NormedAddCommGroup H] [InnerProductSpace 𝕜 H]
-include 𝕜
-
-/-- Two-point inequality in an inner product space:
-`(‖x+a‖²+μ)^n + (‖x-a‖²+μ)^n ≤ 2 (‖x‖²+μ+c‖a‖²)^n` whenever `1 ≤ c` and `4n ≤ c+3`. -/
-theorem two_point_norm_pow (x a : H) {μ c : ℝ} (hμ : 0 ≤ μ) (hc : 1 ≤ c) (n : ℕ)
-    (hn : 4 * (n : ℝ) ≤ c + 3) :
-    (‖x + a‖ ^ 2 + μ) ^ n + (‖x - a‖ ^ 2 + μ) ^ n ≤ 2 * (‖x‖ ^ 2 + μ + c * ‖a‖ ^ 2) ^ n := by
-  have hadd := norm_add_sq (𝕜 := 𝕜) x a
-  have hsub := norm_sub_sq (𝕜 := 𝕜) x a
-  set t := RCLike.re (inner 𝕜 x a) with ht
-  have htle : t ^ 2 ≤ (‖x‖ * ‖a‖) ^ 2 := by
-    have h1 : |t| ≤ ‖x‖ * ‖a‖ :=
-      (RCLike.abs_re_le_norm _).trans (norm_inner_le_norm (𝕜 := 𝕜) x a)
-    rw [← sq_abs]
-    exact pow_le_pow_left₀ (abs_nonneg _) h1 2
-  have hP : 0 ≤ ‖x‖ ^ 2 + μ := by positivity
-  have hA : 0 ≤ ‖a‖ ^ 2 := by positivity
-  have hw : (2 * t) ^ 2 ≤ 4 * (‖x‖ ^ 2 + μ) * ‖a‖ ^ 2 := by
-    have : 0 ≤ μ * ‖a‖ ^ 2 := mul_nonneg hμ hA
-    nlinarith
-  rcases (show 0 ≤ ‖x‖ ^ 2 + μ + c * ‖a‖ ^ 2 by positivity).lt_or_eq with hQ | hQ
-  · have := (two_point_pow_aux hP hA hw hc hQ n hn).1
-    have e1 : ‖x + a‖ ^ 2 + μ = ‖x‖ ^ 2 + μ + ‖a‖ ^ 2 + 2 * t := by rw [hadd]; ring
-    have e2 : ‖x - a‖ ^ 2 + μ = ‖x‖ ^ 2 + μ + ‖a‖ ^ 2 - 2 * t := by rw [hsub]; ring
-    rw [e1, e2]
-    exact this
-  · have hx : ‖x‖ ^ 2 = 0 := by nlinarith [sq_nonneg ‖x‖, sq_nonneg ‖a‖]
-    have ha : ‖a‖ ^ 2 = 0 := by nlinarith [sq_nonneg ‖x‖, sq_nonneg ‖a‖]
-    have hμ0 : μ = 0 := by nlinarith [sq_nonneg ‖x‖, sq_nonneg ‖a‖]
-    have hx0 : x = 0 := by simpa using hx
-    have ha0 : a = 0 := by simpa using ha
-    subst hx0 ha0 hμ0
-    rcases n with _ | n <;> norm_num
-
-/-- Even-moment bound with a free base point: for `1 ≤ c`, `4n ≤ c+3`, `μ ≥ 0`,
-`∑_{u ⊆ s} (‖x + ∑ ε_i v_i‖² + μ)^n ≤ 2^{|s|} (‖x‖² + μ + c ∑ ‖v_i‖²)^n`. -/
-theorem sum_powerset_norm_sq_add_pow_le (s : Finset ι) (v : ι → H) {c : ℝ} (hc : 1 ≤ c)
-    (n : ℕ) (hn : 4 * (n : ℝ) ≤ c + 3) :
-    ∀ (x : H) (μ : ℝ), 0 ≤ μ →
-      ∑ u ∈ s.powerset, (‖x + rademacherSum s u v‖ ^ 2 + μ) ^ n ≤
-        2 ^ s.card * (‖x‖ ^ 2 + μ + c * ∑ i ∈ s, ‖v i‖ ^ 2) ^ n := by
-  induction s using Finset.induction_on with
-  | empty => intro x μ _; simp [rademacherSum]
-  | @insert a s ha ih =>
-    intro x μ hμ
-    rw [Finset.sum_powerset_insert ha]
-    have e1 : ∀ u ∈ s.powerset, (‖x + rademacherSum (insert a s) u v‖ ^ 2 + μ) ^ n =
-        (‖(x - v a) + rademacherSum s u v‖ ^ 2 + μ) ^ n := by
-      intro u hu
-      rw [rademacherSum_insert_of_subset ha (Finset.mem_powerset.mp hu)]
-      rw [sub_eq_add_neg, add_assoc]
-    have e2 : ∀ u ∈ s.powerset, (‖x + rademacherSum (insert a s) (insert a u) v‖ ^ 2 + μ) ^ n =
-        (‖(x + v a) + rademacherSum s u v‖ ^ 2 + μ) ^ n := by
-      intro u _
-      rw [rademacherSum_insert_insert ha]
-      rw [add_assoc]
-    rw [Finset.sum_congr rfl e1, Finset.sum_congr rfl e2]
-    set S := ∑ i ∈ s, ‖v i‖ ^ 2
-    have hS : 0 ≤ S := Finset.sum_nonneg fun i _ => sq_nonneg _
-    have hμ' : 0 ≤ μ + c * S := by nlinarith
-    have htp := two_point_norm_pow 𝕜 x (v a) hμ' hc n hn
-    calc _ ≤ 2 ^ s.card * (‖x - v a‖ ^ 2 + μ + c * S) ^ n +
-          2 ^ s.card * (‖x + v a‖ ^ 2 + μ + c * S) ^ n := add_le_add (ih _ _ hμ) (ih _ _ hμ)
-      _ = 2 ^ s.card * ((‖x + v a‖ ^ 2 + (μ + c * S)) ^ n +
-          (‖x - v a‖ ^ 2 + (μ + c * S)) ^ n) := by ring
-      _ ≤ 2 ^ s.card * (2 * (‖x‖ ^ 2 + (μ + c * S) + c * ‖v a‖ ^ 2) ^ n) :=
-          mul_le_mul_of_nonneg_left htp (by positivity)
-      _ = _ := by
-          rw [Finset.card_insert_of_notMem ha, Finset.sum_insert ha, pow_succ]
-          ring
-
-/-- Exact second moment with a free base point:
-`∑_{u ⊆ s} ‖x + ∑ ε_i v_i‖² = 2^{|s|} (‖x‖² + ∑ ‖v_i‖²)`. -/
-theorem sum_powerset_norm_add_sq (s : Finset ι) (v : ι → H) :
-    ∀ x : H, ∑ u ∈ s.powerset, ‖x + rademacherSum s u v‖ ^ 2 =
-      2 ^ s.card * (‖x‖ ^ 2 + ∑ i ∈ s, ‖v i‖ ^ 2) := by
-  induction s using Finset.induction_on with
-  | empty => intro x; simp [rademacherSum]
-  | @insert a s ha ih =>
-    intro x
-    rw [Finset.sum_powerset_insert ha]
-    have e1 : ∀ u ∈ s.powerset, ‖x + rademacherSum (insert a s) u v‖ ^ 2 =
-        ‖(x - v a) + rademacherSum s u v‖ ^ 2 := by
-      intro u hu
-      rw [rademacherSum_insert_of_subset ha (Finset.mem_powerset.mp hu)]
-      rw [sub_eq_add_neg, add_assoc]
-    have e2 : ∀ u ∈ s.powerset, ‖x + rademacherSum (insert a s) (insert a u) v‖ ^ 2 =
-        ‖(x + v a) + rademacherSum s u v‖ ^ 2 := by
-      intro u _
-      rw [rademacherSum_insert_insert ha]
-      rw [add_assoc]
-    rw [Finset.sum_congr rfl e1, Finset.sum_congr rfl e2, ih, ih,
-      Finset.card_insert_of_notMem ha, Finset.sum_insert ha, pow_succ]
-    have hadd := norm_add_sq (𝕜 := 𝕜) x (v a)
-    have hsub := norm_sub_sq (𝕜 := 𝕜) x (v a)
-    linear_combination (2 : ℝ) ^ s.card * (hsub + hadd)
-
-/-- Exact second moment: `∑_{u ⊆ s} ‖∑ ε_i v_i‖² = 2^{|s|} ∑ ‖v_i‖²`. -/
-theorem sum_powerset_norm_rademacherSum_sq (s : Finset ι) (v : ι → H) :
-    ∑ u ∈ s.powerset, ‖rademacherSum s u v‖ ^ 2 = 2 ^ s.card * ∑ i ∈ s, ‖v i‖ ^ 2 := by
-  simpa using sum_powerset_norm_add_sq 𝕜 s v 0
-
-/-- Even moments: `∑_{u ⊆ s} ‖∑ ε_i v_i‖^{2n} ≤ 2^{|s|} (c ∑ ‖v_i‖²)^n` for `1 ≤ c`, `4n ≤ c+3`. -/
-theorem sum_powerset_norm_rademacherSum_pow_le (s : Finset ι) (v : ι → H) {c : ℝ}
-    (hc : 1 ≤ c) (n : ℕ) (hn : 4 * (n : ℝ) ≤ c + 3) :
-    ∑ u ∈ s.powerset, ‖rademacherSum s u v‖ ^ (2 * n) ≤
-      2 ^ s.card * (c * ∑ i ∈ s, ‖v i‖ ^ 2) ^ n := by
-  have := sum_powerset_norm_sq_add_pow_le 𝕜 s v hc n hn 0 0 le_rfl
-  simpa [pow_mul] using this
-
-/-- The explicit upper Khintchine constant `C_p = √(4 ⌈p/2⌉)`. -/
-noncomputable def khintchineUpperConst (p : ℝ) : ℝ := Real.sqrt (4 * (⌈p / 2⌉₊ : ℝ))
-
-omit 𝕜 in
-/-- Positivity of the upper Khintchine constant. -/
-theorem khintchineUpperConst_pos {p : ℝ} (hp : 0 < p) : 0 < khintchineUpperConst p := by
-  unfold khintchineUpperConst
-  have : (0 : ℝ) < ⌈p / 2⌉₊ := by exact_mod_cast Nat.ceil_pos.mpr (half_pos hp)
-  positivity
-
-
-/-- Upper Khintchine inequality, `p`-th power form:
-`2^{-|s|} ∑_{u ⊆ s} ‖∑ ε_i v_i‖^p ≤ (C_p (∑ ‖v_i‖²)^{1/2})^p` for `0 < p`. -/
-theorem khintchine_upper_rpow (s : Finset ι) (v : ι → H) {p : ℝ} (hp : 0 < p) :
-    rademacherMean s (fun u => ‖rademacherSum s u v‖ ^ p) ≤
-      (khintchineUpperConst p * Real.sqrt (∑ i ∈ s, ‖v i‖ ^ 2)) ^ p := by
-  set n := ⌈p / 2⌉₊ with hndef
-  have hn1 : 1 ≤ n := Nat.one_le_iff_ne_zero.mpr (Nat.ceil_pos.mpr (half_pos hp)).ne'
-  have hn1' : (1 : ℝ) ≤ n := by exact_mod_cast hn1
-  set c : ℝ := 4 * (n : ℝ) with hcdef
-  have hc : 1 ≤ c := by linarith
-  have hnc : 4 * (n : ℝ) ≤ c + 3 := by linarith
-  set S := ∑ i ∈ s, ‖v i‖ ^ 2 with hSdef
-  have hS : 0 ≤ S := Finset.sum_nonneg fun i _ => sq_nonneg _
-  set N : ℝ := 2 ^ s.card with hNdef
-  have hN : 0 < N := by positivity
-  have heven := sum_powerset_norm_rademacherSum_pow_le 𝕜 s v hc n hnc
-  set q : ℝ := 2 * n / p with hqdef
-  have hpn : p ≤ 2 * n := by
-    have := Nat.le_ceil (p / 2)
-    rw [← hndef] at this
-    linarith
-  have hq : 1 ≤ q := by rw [hqdef, le_div_iff₀ hp]; linarith
-  have hq0 : 0 < q := by linarith
-  have hw : ∑ _u ∈ s.powerset, N⁻¹ = 1 := by
-    rw [Finset.sum_const, Finset.card_powerset, nsmul_eq_mul]
-    push_cast
-    exact mul_inv_cancel₀ hN.ne'
-  have hpm := Real.rpow_arith_mean_le_arith_mean_rpow s.powerset (fun _ => N⁻¹)
-    (fun u => ‖rademacherSum s u v‖ ^ p) (fun _ _ => (inv_pos.mpr hN).le) hw
-    (fun _ _ => Real.rpow_nonneg (norm_nonneg _) _) hq
-  have hzq : ∀ u : Finset ι,
-      (‖rademacherSum s u v‖ ^ p) ^ q = ‖rademacherSum s u v‖ ^ (2 * n) := by
-    intro u
-    rw [← Real.rpow_mul (norm_nonneg _), hqdef, mul_div_cancel₀ _ hp.ne', ← Real.rpow_natCast]
-    push_cast; ring_nf
-  simp only [hzq] at hpm
-  rw [← Finset.mul_sum, ← Finset.mul_sum] at hpm
-  have hM : 0 ≤ rademacherMean s (fun u => ‖rademacherSum s u v‖ ^ p) := by
-    unfold rademacherMean
-    exact mul_nonneg (inv_nonneg.mpr (by positivity))
-      (Finset.sum_nonneg fun _ _ => Real.rpow_nonneg (norm_nonneg _) _)
-  have hMq : (rademacherMean s (fun u => ‖rademacherSum s u v‖ ^ p)) ^ q ≤ (c * S) ^ n := by
-    unfold rademacherMean
-    refine hpm.trans ?_
-    rw [inv_mul_le_iff₀ hN]
-    exact heven
-  have hcS : 0 ≤ c * S := by positivity
-  calc rademacherMean s (fun u => ‖rademacherSum s u v‖ ^ p)
-      = ((rademacherMean s (fun u => ‖rademacherSum s u v‖ ^ p)) ^ q) ^ q⁻¹ :=
-        (Real.rpow_rpow_inv hM hq0.ne').symm
-    _ ≤ ((c * S) ^ n) ^ q⁻¹ :=
-        Real.rpow_le_rpow (Real.rpow_nonneg hM _) hMq (inv_nonneg.mpr hq0.le)
-    _ = (khintchineUpperConst p * Real.sqrt S) ^ p := by
-        unfold khintchineUpperConst
-        rw [← hndef, ← hcdef, ← Real.sqrt_mul (by positivity), Real.sqrt_eq_rpow,
-          ← Real.rpow_mul hcS, ← Real.rpow_natCast, ← Real.rpow_mul hcS, hqdef]
-        congr 1
-        field_simp
-
-/-- Upper Khintchine inequality (Blueprint Lemma 2.6 (`lem:khintchine`), upper bound):
-for vectors `v_i` in a real or complex inner product space and `0 < p < ∞`,
-`(𝔼_ε ‖∑_{i ∈ s} ε_i v_i‖^p)^{1/p} ≤ C_p (∑_{i ∈ s} ‖v_i‖²)^{1/2}`, where the expectation is the
-uniform average over the `2^{|s|}` sign patterns and `C_p = khintchineUpperConst p` depends
-only on `p`. -/
-theorem khintchine_upper (s : Finset ι) (v : ι → H) {p : ℝ} (hp : 0 < p) :
-    (rademacherMean s (fun u => ‖rademacherSum s u v‖ ^ p)) ^ (1 / p) ≤
-      khintchineUpperConst p * Real.sqrt (∑ i ∈ s, ‖v i‖ ^ 2) := by
-  have hC := (khintchineUpperConst_pos hp).le
-  have hM : 0 ≤ rademacherMean s (fun u => ‖rademacherSum s u v‖ ^ p) := by
-    unfold rademacherMean
-    exact mul_nonneg (inv_nonneg.mpr (by positivity))
-      (Finset.sum_nonneg fun _ _ => Real.rpow_nonneg (norm_nonneg _) _)
-  calc _ ≤ ((khintchineUpperConst p * Real.sqrt (∑ i ∈ s, ‖v i‖ ^ 2)) ^ p) ^ (1 / p) :=
-        Real.rpow_le_rpow hM (khintchine_upper_rpow 𝕜 s v hp) (by positivity)
-    _ = _ := by rw [one_div, Real.rpow_rpow_inv (by positivity) hp.ne']
-
-end Vectors
-
-theorem khintchineUpperConst_le {p : ℝ} (hp : 2 ≤ p) :
-    khintchineUpperConst p ≤ 2 * Real.sqrt p := by
-  have hp0 : 0 ≤ p := by linarith
-  have hc := Nat.ceil_lt_add_one (show 0 ≤ p / 2 by positivity)
-  calc khintchineUpperConst p ≤ Real.sqrt (4 * p) := by
-        apply Real.sqrt_le_sqrt
-        linarith
-    _ = 2 * Real.sqrt p := by rw [Real.sqrt_mul (by norm_num)]; norm_num
-
-/-- The source's dimension-free sign estimate, with the absolute constant `2`. -/
-theorem signs_moment_bound {ι : Type*} [DecidableEq ι] (s : Finset ι)
-    (a : ι → ℂ) {p : ℝ} (hp : 2 ≤ p) :
-    (rademacherMean s (fun u => ‖rademacherSum s u a‖ ^ p)) ^ (1 / p) ≤
-      2 * Real.sqrt p * Real.sqrt (∑ i ∈ s, ‖a i‖ ^ 2) :=
-  (khintchine_upper ℂ s a (by linarith)).trans
-    (mul_le_mul_of_nonneg_right (khintchineUpperConst_le hp) (Real.sqrt_nonneg _))
-
-theorem rademacherMean_mono {ι : Type*} (s : Finset ι)
-    {f g : Finset ι → ℝ} (h : ∀ u ∈ s.powerset, f u ≤ g u) :
-    rademacherMean s f ≤ rademacherMean s g :=
-  mul_le_mul_of_nonneg_left (Finset.sum_le_sum h) (by positivity)
-
-theorem rademacherMean_const_mul {ι : Type*} (s : Finset ι)
-    (c : ℝ) (f : Finset ι → ℝ) :
-    rademacherMean s (fun u => c * f u) = c * rademacherMean s f := by
-  simp only [rademacherMean, ← Finset.mul_sum]
-  ring
-
-/-- Two independent sign families, with a constant depending only on the moment. -/
-theorem double_signs_moment_bound {ι κ : Type*} [DecidableEq ι] [DecidableEq κ]
-    [Fintype κ] (s : Finset ι) (a : ι → κ → ℂ) {p : ℝ} (hp : 0 < p) :
-    rademacherMean s (fun u => rademacherMean Finset.univ (fun v =>
-      ‖rademacherSum Finset.univ v (fun j => rademacherSum s u (fun i => a i j))‖ ^ p)) ≤
-      (khintchineUpperConst p ^ 2 * Real.sqrt (∑ i ∈ s, ∑ j, ‖a i j‖ ^ 2)) ^ p := by
-  let b : ι → EuclideanSpace ℂ κ := fun i => WithLp.toLp 2 (a i)
-  have hb (u : Finset ι) (j : κ) :
-      (rademacherSum s u b) j = rademacherSum s u (fun i => a i j) := by
-    simp only [rademacherSum, WithLp.ofLp_sum, Finset.sum_apply]
-    apply Finset.sum_congr rfl
-    intro i _
-    split_ifs <;> rfl
-  have hnorm (u : Finset ι) :
-      Real.sqrt (∑ j, ‖rademacherSum s u (fun i => a i j)‖ ^ 2) =
-        ‖rademacherSum s u b‖ := by rw [EuclideanSpace.norm_eq]; simp only [hb]
-  have hC : 0 ≤ khintchineUpperConst p := (khintchineUpperConst_pos hp).le
-  calc _ ≤ rademacherMean s (fun u =>
-          (khintchineUpperConst p * ‖rademacherSum s u b‖) ^ p) := by
-        apply rademacherMean_mono
-        intro u _
-        simpa only [hnorm] using
-          khintchine_upper_rpow ℂ Finset.univ (fun j => rademacherSum s u (fun i => a i j)) hp
-    _ = khintchineUpperConst p ^ p *
-          rademacherMean s (fun u => ‖rademacherSum s u b‖ ^ p) := by
-        simp_rw [Real.mul_rpow hC (norm_nonneg _)]
-        exact rademacherMean_const_mul _ _ _
-    _ ≤ khintchineUpperConst p ^ p *
-          (khintchineUpperConst p * Real.sqrt (∑ i ∈ s, ‖b i‖ ^ 2)) ^ p :=
-        mul_le_mul_of_nonneg_left (khintchine_upper_rpow ℂ s b hp) (by positivity)
-    _ = _ := by
-        rw [← Real.mul_rpow hC (by positivity)]
-        congr 1
-        simp only [EuclideanSpace.norm_sq_eq, b]
-        ring
-
-/-! Finite uniform expectations used in sampling symmetrization. -/
-
-noncomputable def uniformMean {A E : Type*} [Fintype A] [AddCommMonoid E]
-    [Module ℝ E] (f : A → E) : E := (Fintype.card A : ℝ)⁻¹ • ∑ a, f a
-
-theorem uniformMean_const {A E : Type*} [Fintype A] [Nonempty A]
-    [AddCommMonoid E] [Module ℝ E] (c : E) : uniformMean (fun _ : A => c) = c := by
-  simp only [uniformMean, Finset.sum_const, Finset.card_univ]
-  rw [← Nat.cast_smul_eq_nsmul ℝ, smul_smul, inv_mul_cancel₀ (by positivity), one_smul]
-
-theorem uniformMean_add {A E : Type*} [Fintype A] [AddCommMonoid E]
-    [Module ℝ E] (f g : A → E) :
-    uniformMean (fun a => f a + g a) = uniformMean f + uniformMean g := by
-  simp [uniformMean, Finset.sum_add_distrib, smul_add]
-
-theorem uniformMean_sub {A E : Type*} [Fintype A] [AddCommGroup E]
-    [Module ℝ E] (f g : A → E) :
-    uniformMean (fun a => f a - g a) = uniformMean f - uniformMean g := by
-  simp [uniformMean, Finset.sum_sub_distrib, smul_sub]
-
-theorem uniformMean_sum {A I E : Type*} [Fintype A] [AddCommMonoid E]
-    [Module ℝ E] (s : Finset I) (f : I → A → E) :
-    uniformMean (fun a => ∑ i ∈ s, f i a) = ∑ i ∈ s, uniformMean (f i) := by
-  simp only [uniformMean, Finset.smul_sum]
-  exact Finset.sum_comm
-
-theorem uniformMean_smul {A E : Type*} [Fintype A] [AddCommMonoid E]
-    [Module ℝ E] (c : ℝ) (f : A → E) :
-    uniformMean (fun a => c • f a) = c • uniformMean f := by
-  simp only [uniformMean, ← Finset.smul_sum]
-  exact smul_comm _ _ _
-
-theorem uniformMean_mono {A : Type*} [Fintype A] {f g : A → ℝ}
-    (h : ∀ a, f a ≤ g a) : uniformMean f ≤ uniformMean g :=
-  mul_le_mul_of_nonneg_left (Finset.sum_le_sum (fun a _ => h a)) (by positivity)
-
-theorem uniformMean_nonneg {A : Type*} [Fintype A] {f : A → ℝ}
-    (h : ∀ a, 0 ≤ f a) : 0 ≤ uniformMean f := by
-  exact mul_nonneg (by positivity) (Finset.sum_nonneg (fun a _ => h a))
-
-theorem uniformMean_equiv {A B E : Type*} [Fintype A] [Fintype B]
-    [AddCommMonoid E] [Module ℝ E] (e : A ≃ B) (f : B → E) :
-    uniformMean (fun a => f (e a)) = uniformMean f := by
-  unfold uniformMean
-  rw [Fintype.card_congr e, Equiv.sum_comp e]
-
-theorem uniformMean_prod {A B E : Type*} [Fintype A] [Fintype B]
-    [AddCommMonoid E] [Module ℝ E] (f : A × B → E) :
-    uniformMean f = uniformMean (fun a => uniformMean (fun b => f (a, b))) := by
-  simp only [uniformMean, Fintype.card_prod, Nat.cast_mul, mul_inv_rev,
-    Fintype.sum_prod_type, ← Finset.smul_sum, smul_smul]
-  rw [mul_comm]
-
-theorem uniformMean_norm_rpow_le {A : Type*} [Fintype A] [Nonempty A]
-    (f : A → ℂ) {p : ℝ} (hp : 1 ≤ p) :
-    ‖uniformMean f‖ ^ p ≤ uniformMean (fun a => ‖f a‖ ^ p) := by
-  have hcard : 0 < (Fintype.card A : ℝ) := by positivity
-  have hn : ‖uniformMean f‖ ≤ uniformMean (fun a => ‖f a‖) := by
-    unfold uniformMean
-    rw [norm_smul, Real.norm_of_nonneg (by positivity)]
-    exact mul_le_mul_of_nonneg_left (norm_sum_le _ _) (by positivity)
-  refine (Real.rpow_le_rpow (norm_nonneg _) hn (by linarith)).trans ?_
-  have hw : ∑ _ : A, (Fintype.card A : ℝ)⁻¹ = 1 := by
-    simp [← Nat.cast_smul_eq_nsmul ℝ, hcard.ne']
-  simpa only [uniformMean, smul_eq_mul, Finset.mul_sum] using
-    Real.rpow_arith_mean_le_arith_mean_rpow Finset.univ
-      (fun _ : A => (Fintype.card A : ℝ)⁻¹) (fun a => ‖f a‖)
-      (fun _ _ => by positivity) hw (fun _ _ => norm_nonneg _) hp
-
-theorem uniformMean_eval {I A E : Type*} [Fintype I] [DecidableEq I]
-    [Fintype A] [Nonempty A] [AddCommMonoid E] [Module ℝ E]
-    (i : I) (f : A → E) : uniformMean (fun a : I → A => f (a i)) = uniformMean f := by
-  rw [← uniformMean_equiv (Equiv.funSplitAt i A).symm]
-  simp only [Equiv.funSplitAt_symm_apply, dite_true]
-  rw [uniformMean_prod]
-  simp only [uniformMean_const]
-
-/-- Jensen's introduction of an independent copy of the entire sample. -/
-theorem sampling_ghost_bound {I A : Type*} [Fintype I] [DecidableEq I]
-    [Fintype A] [Nonempty A] (f : A → ℂ) {p : ℝ} (hp : 1 ≤ p) :
-    uniformMean (fun a : I → A =>
-      ‖∑ i, (f (a i) - uniformMean f)‖ ^ p) ≤
-    uniformMean (fun a : I → A => uniformMean (fun b : I → A =>
-      ‖∑ i, (f (a i) - f (b i))‖ ^ p)) := by
-  apply uniformMean_mono
-  intro a
-  have heq : uniformMean (fun b : I → A => ∑ i, (f (a i) - f (b i))) =
-      ∑ i, (f (a i) - uniformMean f) := by
-    rw [uniformMean_sum]
-    simp only [uniformMean_sub, uniformMean_const, uniformMean_eval]
-  rw [← heq]
-  exact uniformMean_norm_rpow_le _ hp
-
-/-- Swapping sample pairs at selected coordinates preserves the uniform distribution. -/
-def samplePairSwap {I A : Type*} [DecidableEq I] (u : Finset I) :
-    ((I → A) × (I → A)) ≃ ((I → A) × (I → A)) where
-  toFun ab := (fun i => if i ∈ u then ab.1 i else ab.2 i,
-    fun i => if i ∈ u then ab.2 i else ab.1 i)
-  invFun ab := (fun i => if i ∈ u then ab.1 i else ab.2 i,
-    fun i => if i ∈ u then ab.2 i else ab.1 i)
-  left_inv ab := by ext i <;> dsimp <;> split_ifs <;> rfl
-  right_inv ab := by ext i <;> dsimp <;> split_ifs <;> rfl
-
-theorem samplePairSwap_difference {I A : Type*} [Fintype I] [DecidableEq I]
-    (u : Finset I) (f : A → ℂ) (ab : (I → A) × (I → A)) :
-    (∑ i, (f ((samplePairSwap u ab).1 i) - f ((samplePairSwap u ab).2 i))) =
-      rademacherSum Finset.univ u (fun i => f (ab.1 i) - f (ab.2 i)) := by
-  apply Finset.sum_congr rfl
-  intro i _
-  dsimp [samplePairSwap]
-  split_ifs <;> simp
-
-theorem uniformMean_rademacherMean_comm {A I : Type*} [Fintype A]
-    (s : Finset I) (f : A → Finset I → ℝ) :
-    uniformMean (fun a => rademacherMean s (f a)) =
-      rademacherMean s (fun u => uniformMean (fun a => f a u)) := by
-  simp only [uniformMean, rademacherMean, smul_eq_mul, Finset.mul_sum]
-  rw [Finset.sum_comm]
-  apply Finset.sum_congr rfl
-  intro u _
-  apply Finset.sum_congr rfl
-  intro a _
-  ring
-
-theorem rademacherMean_const {I : Type*} (s : Finset I) (c : ℝ) :
-    rademacherMean s (fun _ => c) = c := by
-  simp [rademacherMean, Finset.card_powerset]
-
-theorem sampling_sign_symmetrization {I A : Type*} [Fintype I] [DecidableEq I]
-    [Fintype A] (f : A → ℂ) (p : ℝ) :
-    uniformMean (fun a : I → A => uniformMean (fun b : I → A =>
-      ‖∑ i, (f (a i) - f (b i))‖ ^ p)) =
-    uniformMean (fun ab : (I → A) × (I → A) =>
-      rademacherMean Finset.univ (fun u =>
-        ‖rademacherSum Finset.univ u (fun i => f (ab.1 i) - f (ab.2 i))‖ ^ p)) := by
-  rw [← uniformMean_prod (fun ab : (I → A) × (I → A) =>
-    ‖∑ i, (f (ab.1 i) - f (ab.2 i))‖ ^ p), uniformMean_rademacherMean_comm]
-  have heq (u : Finset I) :
-      uniformMean (fun ab : (I → A) × (I → A) =>
-        ‖rademacherSum Finset.univ u (fun i => f (ab.1 i) - f (ab.2 i))‖ ^ p) =
-      uniformMean (fun ab : (I → A) × (I → A) =>
-        ‖∑ i, (f (ab.1 i) - f (ab.2 i))‖ ^ p) := by
-    simpa only [samplePairSwap_difference] using uniformMean_equiv (samplePairSwap u)
-      (fun ab : (I → A) × (I → A) => ‖∑ i, (f (ab.1 i) - f (ab.2 i))‖ ^ p)
-  simp only [heq, rademacherMean_const]
-
-theorem signs_moment_le_sum_rpow {I : Type*} [Fintype I] [DecidableEq I]
-    (a : I → ℂ) {p : ℝ} (hp : 2 ≤ p) :
-    rademacherMean Finset.univ (fun u => ‖rademacherSum Finset.univ u a‖ ^ p) ≤
-      khintchineUpperConst p ^ p * (Fintype.card I : ℝ) ^ (p / 2 - 1) *
-        ∑ i, ‖a i‖ ^ p := by
-  have hC := (khintchineUpperConst_pos (show 0 < p by linarith)).le
-  refine (khintchine_upper_rpow ℂ Finset.univ a (by linarith)).trans ?_
-  rw [Real.mul_rpow hC (Real.sqrt_nonneg _), Real.sqrt_eq_rpow,
-    ← Real.rpow_mul (Finset.sum_nonneg (fun i _ => sq_nonneg ‖a i‖))]
-  have heq : (1 / 2 : ℝ) * p = p / 2 := by ring
-  rw [heq, mul_assoc]
-  apply mul_le_mul_of_nonneg_left _ (by positivity)
-  have h := Real.rpow_sum_le_const_mul_sum_rpow_of_nonneg Finset.univ
-    (f := fun i => ‖a i‖ ^ 2) (show 1 ≤ p / 2 by linarith) (fun i _ => sq_nonneg _)
-  convert h using 1
-  simp only [Finset.card_univ]
-  congr 1
-  apply Finset.sum_congr rfl
-  intro i _
-  rw [← Real.rpow_natCast, ← Real.rpow_mul (norm_nonneg _)]
-  congr 1
-  push_cast
-  ring
-
-theorem norm_sub_rpow_le (a b : ℂ) {p : ℝ} (hp : 1 ≤ p) :
-    ‖a - b‖ ^ p ≤ (2 : ℝ) ^ (p - 1) * (‖a‖ ^ p + ‖b‖ ^ p) := by
-  refine (Real.rpow_le_rpow (norm_nonneg _) (norm_sub_le a b) (by linarith)).trans ?_
-  have h := Real.rpow_sum_le_const_mul_sum_rpow_of_nonneg Finset.univ
-    (f := fun i : Fin 2 => if i = 0 then ‖a‖ else ‖b‖) hp
-    (fun i _ => by split_ifs <;> positivity)
-  simpa [Fin.sum_univ_two] using h
-
-theorem uniformMean_comm {A B E : Type*} [Fintype A] [Fintype B]
-    [AddCommMonoid E] [Module ℝ E] (f : A → B → E) :
-    uniformMean (fun a => uniformMean (f a)) =
-      uniformMean (fun b => uniformMean (fun a => f a b)) := by
-  simp only [uniformMean, ← Finset.smul_sum, smul_smul]
-  rw [Finset.sum_comm, mul_comm]
-
-theorem sample_difference_moment {I A : Type*} [Fintype I] [DecidableEq I]
-    [Fintype A] [Nonempty A] (f : A → ℂ) (i : I) {p : ℝ} (hp : 1 ≤ p) :
-    uniformMean (fun ab : (I → A) × (I → A) =>
-      ‖f (ab.1 i) - f (ab.2 i)‖ ^ p) ≤
-        (2 : ℝ) ^ p * uniformMean (fun a => ‖f a‖ ^ p) := by
-  refine (uniformMean_mono (fun ab : (I → A) × (I → A) =>
-    norm_sub_rpow_le (f (ab.1 i)) (f (ab.2 i)) hp)).trans_eq ?_
-  change uniformMean (fun ab : (I → A) × (I → A) =>
-    (2 : ℝ) ^ (p - 1) • (‖f (ab.1 i)‖ ^ p + ‖f (ab.2 i)‖ ^ p)) = _
-  rw [uniformMean_smul, uniformMean_add]
-  rw [uniformMean_prod (fun ab : (I → A) × (I → A) => ‖f (ab.1 i)‖ ^ p),
-    uniformMean_prod (fun ab : (I → A) × (I → A) => ‖f (ab.2 i)‖ ^ p)]
-  simp only [uniformMean_const, smul_eq_mul]
-  rw [uniformMean_eval i (fun a => ‖f a‖ ^ p)]
-  rw [Real.rpow_sub (by norm_num), Real.rpow_one]
-  ring
-
-/-- Centered sums of independent uniform samples have square-root sample-size growth. -/
-theorem sampling_sum_moment_bound {I A : Type*} [Fintype I] [DecidableEq I]
-    [Nonempty I] [Fintype A] [Nonempty A] (f : A → ℂ) {p : ℝ} (hp : 2 ≤ p) :
-    uniformMean (fun a : I → A => ‖∑ i, (f (a i) - uniformMean f)‖ ^ p) ≤
-      (2 * khintchineUpperConst p * Real.sqrt (Fintype.card I)) ^ p *
-        uniformMean (fun a => ‖f a‖ ^ p) := by
-  let D := khintchineUpperConst p ^ p * (Fintype.card I : ℝ) ^ (p / 2 - 1)
-  have hD : 0 ≤ D := by dsimp [D, khintchineUpperConst]; positivity
-  have hN : 0 < (Fintype.card I : ℝ) := by positivity
-  have hC := (khintchineUpperConst_pos (show 0 < p by linarith)).le
-  calc _ ≤ uniformMean (fun a : I → A => uniformMean (fun b : I → A =>
-          ‖∑ i, (f (a i) - f (b i))‖ ^ p)) := sampling_ghost_bound f (by linarith)
-    _ = _ := sampling_sign_symmetrization f p
-    _ ≤ uniformMean (fun ab : (I → A) × (I → A) =>
-          D * ∑ i, ‖f (ab.1 i) - f (ab.2 i)‖ ^ p) :=
-        uniformMean_mono (fun ab => signs_moment_le_sum_rpow _ hp)
-    _ = D * ∑ i, uniformMean (fun ab : (I → A) × (I → A) =>
-          ‖f (ab.1 i) - f (ab.2 i)‖ ^ p) := by
-        change uniformMean (fun ab : (I → A) × (I → A) =>
-          D • ∑ i, ‖f (ab.1 i) - f (ab.2 i)‖ ^ p) = _
-        rw [uniformMean_smul, uniformMean_sum, smul_eq_mul]
-    _ ≤ D * ∑ _ : I, ((2 : ℝ) ^ p * uniformMean (fun a => ‖f a‖ ^ p)) :=
-        mul_le_mul_of_nonneg_left (Finset.sum_le_sum (fun i _ =>
-          sample_difference_moment f i (by linarith))) hD
-    _ = _ := by
-        simp only [Finset.sum_const, Finset.card_univ, nsmul_eq_mul, D]
-        rw [Real.mul_rpow (mul_nonneg (by norm_num) hC) (Real.sqrt_nonneg _),
-          Real.mul_rpow (by norm_num) hC, Real.sqrt_eq_rpow,
-          ← Real.rpow_mul hN.le, Real.rpow_sub hN, Real.rpow_one]
-        have he : (1 / 2 : ℝ) * p = p / 2 := by ring
-        rw [he]
-        field_simp
-
-theorem sampling_mean_moment_bound {I A : Type*} [Fintype I] [DecidableEq I]
-    [Nonempty I] [Fintype A] [Nonempty A] (f : A → ℂ) {p : ℝ} (hp : 2 ≤ p) :
-    uniformMean (fun a : I → A => ‖uniformMean (fun i => f (a i)) - uniformMean f‖ ^ p) ≤
-      (4 * Real.sqrt (p / Fintype.card I)) ^ p * uniformMean (fun a => ‖f a‖ ^ p) := by
-  have hN : 0 < (Fintype.card I : ℝ) := by positivity
-  have hC := (khintchineUpperConst_pos (show 0 < p by linarith)).le
-  have heq (a : I → A) : uniformMean (fun i => f (a i)) - uniformMean f =
-      (Fintype.card I : ℝ)⁻¹ • ∑ i, (f (a i) - uniformMean f) := by
-    calc _ = uniformMean (fun i => f (a i) - uniformMean f) := by
-          rw [uniformMean_sub, uniformMean_const]
-      _ = _ := rfl
-  simp_rw [heq, norm_smul, Real.norm_of_nonneg (inv_nonneg.mpr hN.le),
-    Real.mul_rpow (inv_nonneg.mpr hN.le) (norm_nonneg _)]
-  change uniformMean (fun a : I → A => (Fintype.card I : ℝ)⁻¹ ^ p •
-    ‖∑ i, (f (a i) - uniformMean f)‖ ^ p) ≤ _
-  rw [uniformMean_smul, smul_eq_mul]
-  refine (mul_le_mul_of_nonneg_left (sampling_sum_moment_bound f hp)
-    (by positivity)).trans ?_
-  rw [← mul_assoc, ← Real.mul_rpow (inv_nonneg.mpr hN.le) (by positivity)]
-  apply mul_le_mul_of_nonneg_right _ (uniformMean_nonneg (fun a => by positivity))
-  apply Real.rpow_le_rpow (by positivity) _ (by linarith)
-  have hs := Real.sq_sqrt hN.le
-  have hs0 : 0 < Real.sqrt (Fintype.card I) := Real.sqrt_pos.mpr hN
-  calc (Fintype.card I : ℝ)⁻¹ * (2 * khintchineUpperConst p * Real.sqrt (Fintype.card I))
-      = 2 * khintchineUpperConst p / Real.sqrt (Fintype.card I) := by
-        field_simp
-        nlinarith
-    _ ≤ 4 * Real.sqrt p / Real.sqrt (Fintype.card I) := by
-        apply div_le_div_of_nonneg_right _ hs0.le
-        nlinarith [khintchineUpperConst_le hp]
-    _ = 4 * Real.sqrt (p / Fintype.card I) := by rw [Real.sqrt_div (by linarith)]; ring
-
-/-- Finite `Lᵖ` norm with probability counting measure. -/
-noncomputable def finiteLpNorm {G : Type*} [Fintype G] (p : ℝ) (f : G → ℂ) : ℝ :=
-  uniformMean (fun x => ‖f x‖ ^ p) ^ (1 / p)
-
-theorem finiteLpNorm_rpow {G : Type*} [Fintype G] (f : G → ℂ) {p : ℝ} (hp : 0 < p) :
-    finiteLpNorm p f ^ p = uniformMean (fun x => ‖f x‖ ^ p) := by
-  unfold finiteLpNorm
-  rw [one_div]
-  exact Real.rpow_inv_rpow (uniformMean_nonneg (fun x : G =>
-    Real.rpow_nonneg (norm_nonneg (f x)) p)) hp.ne'
-
-theorem uniformMean_translate {G E : Type*} [AddGroup G] [Fintype G]
-    [AddCommMonoid E] [Module ℝ E] (f : G → E) (a : G) :
-    uniformMean (fun x => f (x - a)) = uniformMean f :=
-  uniformMean_equiv (Equiv.subRight a) f
-
-/-- Sampling estimate for translates; samples may be drawn uniformly from any finite type. -/
-theorem sampling_translate_moment_bound {G A I : Type*} [AddCommGroup G] [Fintype G]
-    [Fintype A] [Nonempty A] [Fintype I] [DecidableEq I] [Nonempty I]
-    (z : A → G) (f : G → ℂ) {p : ℝ} (hp : 2 ≤ p) :
-    uniformMean (fun a : I → A => finiteLpNorm p (fun x =>
-      uniformMean (fun i => f (x - z (a i))) - uniformMean (fun b => f (x - z b))) ^ p) ≤
-      (4 * Real.sqrt (p / Fintype.card I) * finiteLpNorm p f) ^ p := by
-  simp only [finiteLpNorm_rpow _ (show 0 < p by linarith)]
-  rw [uniformMean_comm]
-  refine (uniformMean_mono (fun x =>
-    sampling_mean_moment_bound (fun b => f (x - z b)) hp)).trans_eq ?_
-  change uniformMean (fun x => (4 * Real.sqrt (p / Fintype.card I)) ^ p •
-    uniformMean (fun b => ‖f (x - z b)‖ ^ p)) = _
-  rw [uniformMean_smul, uniformMean_comm]
-  have ht (b : A) : uniformMean (fun x => ‖f (x - z b)‖ ^ p) =
-      uniformMean (fun x => ‖f x‖ ^ p) :=
-    uniformMean_translate (fun x => ‖f x‖ ^ p) (z b)
-  simp only [ht, uniformMean_const, smul_eq_mul]
-  rw [Real.mul_rpow (x := 4 * Real.sqrt (p / Fintype.card I))
-      (y := finiteLpNorm p f) (by positivity) (Real.rpow_nonneg
-        (uniformMean_nonneg (fun x => Real.rpow_nonneg (norm_nonneg (f x)) p)) _),
-    finiteLpNorm_rpow _ (by linarith)]
-
-theorem uniformMean_complex_eq {G : Type*} [Fintype G] (f : G → ℂ) :
-    uniformMean f = finiteAverage f := by
-  simp [uniformMean, finiteAverage, Complex.real_smul]
-
-/-- The probability-density normalization `1_A / (|A| / |G|)`. -/
-noncomputable def finiteSetDensity {G : Type*} [Fintype G] [DecidableEq G]
-    (A : Finset G) (x : G) : ℂ :=
-  if x ∈ A then (Fintype.card G : ℂ) / A.card else 0
-
-theorem finiteConvolution_comm {G : Type*} [AddCommGroup G] [Fintype G]
-    (f g : G → ℂ) (x : G) : finiteConvolution f g x = finiteConvolution g f x := by
-  unfold finiteConvolution finiteAverage
-  congr 1
-  simpa only [Equiv.subLeft_apply, sub_sub_cancel, mul_comm] using
-    (Equiv.sum_comp (Equiv.subLeft x) (fun y => g y * f (x - y)))
-
-theorem finiteConvolution_setDensity {G : Type*} [AddCommGroup G] [Fintype G]
-    [DecidableEq G] (A : Finset G) (f : G → ℂ) (x : G) :
-    finiteConvolution f (finiteSetDensity A) x = uniformMean (fun a : A => f (x - a)) := by
-  rw [finiteConvolution_comm]
-  simp only [finiteConvolution, finiteAverage, finiteSetDensity, ite_mul, zero_mul]
-  rw [Finset.sum_ite_mem, ← Finset.mul_sum]
-  rw [uniformMean_complex_eq]
-  simp only [finiteAverage, Fintype.card_coe]
-  have hG : (Fintype.card G : ℂ) ≠ 0 := by exact_mod_cast Fintype.card_ne_zero
-  field_simp
-  simp only [Finset.univ_inter]
-  congr 1
-  exact (A.sum_coe_sort (fun a => f (x - a))).symm
-
-/-- Blueprint `lem:finite-fourier`: the sampling inequality with probability counting
-norms and convolution, with the absolute constant `4`. -/
-theorem sampling_convolution_bound {G : Type*} [AddCommGroup G] [Fintype G]
-    [DecidableEq G] (A : Finset G) (hA : A.Nonempty) (n : ℕ) (hn : 0 < n)
-    (f : G → ℂ) {p : ℝ} (hp : 2 ≤ p) :
-    uniformMean (fun a : Fin n → A => finiteLpNorm p (fun x =>
-      uniformMean (fun i => f (x - a i)) - finiteConvolution f (finiteSetDensity A) x) ^ p) ≤
-      (4 * Real.sqrt (p / n) * finiteLpNorm p f) ^ p := by
-  let : NeZero n := ⟨Nat.ne_of_gt hn⟩
-  let : Nonempty A := by obtain ⟨a, ha⟩ := hA; exact ⟨⟨a, ha⟩⟩
-  simp only [finiteConvolution_setDensity]
-  simpa only [Fintype.card_fin] using
-    sampling_translate_moment_bound (I := Fin n) (fun a : A => (a : G)) f hp
 
 /-! Probability-normalized Fourier analysis on finite cyclic groups. -/
 
@@ -3839,30 +1378,6 @@ theorem finiteFourier_gowers_two {q : ℕ} [NeZero q] (f : ZMod q → ℂ) :
     norm_mul, Complex.norm_conj]
   ring
 
-theorem cubeConj_mul (n : ℕ) (a b : ℂ) : cubeConj n (a * b) = cubeConj n a * cubeConj n b := by
-  by_cases h : Even n <;> simp [cubeConj, h]
-
-theorem cubeConj_conj (n : ℕ) (a : ℂ) : cubeConj n (conj a) = conj (cubeConj n a) := by
-  by_cases h : Even n <;> simp [cubeConj, h]
-
-theorem diagonalCubeIntegrand_mul {G : Type*} [AddCommGroup G] (j : ℕ)
-    (f g : G → ℂ) (h : Fin j → G) (x : G) :
-    diagonalCubeIntegrand j (fun x => f x * g x) h x =
-      diagonalCubeIntegrand j f h x * diagonalCubeIntegrand j g h x := by
-  simp [diagonalCubeIntegrand, cubeIntegrand, cubeConj_mul, Finset.prod_mul_distrib]
-
-theorem diagonalCubeIntegrand_conj {G : Type*} [AddCommGroup G] (j : ℕ)
-    (f : G → ℂ) (h : Fin j → G) (x : G) :
-    diagonalCubeIntegrand j (fun x => conj (f x)) h x =
-      conj (diagonalCubeIntegrand j f h x) := by
-  simp [diagonalCubeIntegrand, cubeIntegrand, cubeConj_conj, map_prod]
-
-theorem diagonalCubeIntegrand_translate {G : Type*} [AddCommGroup G] (j : ℕ)
-    (f : G → ℂ) (h : Fin j → G) (x t : G) :
-    diagonalCubeIntegrand j (fun y => f (y + t)) h x =
-      diagonalCubeIntegrand j f h (x + t) := by
-  simp [diagonalCubeIntegrand, cubeIntegrand, add_right_comm]
-
 theorem uniformMean_fin_cons {G E : Type*} [Fintype G] [AddCommMonoid E] [Module ℝ E]
     (j : ℕ) (f : (Fin (j + 1) → G) → E) :
     uniformMean f = uniformMean (fun t => uniformMean (fun h : Fin j → G => f (Fin.cons t h))) := by
@@ -3932,919 +1447,6 @@ theorem finite_gowers_three_recursion {G : Type*} [AddCommGroup G] [Fintype G]
     funext x
     simp [mul_comm]
   rw [heq, finite_cubeAverage_conj, Complex.conj_re]
-
-/-! Coordinate reflection for the Haar cube Cauchy–Schwarz inequality. -/
-
-def cubeFace {j : ℕ} {E : Type*} (i : Fin (j + 1)) (b : Bool)
-    (f : (Fin (j + 1) → Bool) → E) : (Fin j → Bool) → E :=
-  fun ω => f (Fin.insertNth i b ω)
-
-def cubeCopy {j : ℕ} {E : Type*} (i : Fin j) (b : Bool)
-    (f : (Fin j → Bool) → E) : (Fin j → Bool) → E :=
-  fun ω => f (Function.update ω i b)
-
-theorem cubeWeight_insertNth {j : ℕ} (i : Fin (j + 1)) (b : Bool) (ω : Fin j → Bool) :
-    cubeWeight (Fin.insertNth i b ω) = (if b then 1 else 0) + cubeWeight ω := by
-  unfold cubeWeight
-  rw [Fin.sum_univ_succAbove _ i]
-  simp
-
-theorem cubeShift_insertNth {G : Type*} [AddCommMonoid G] {j : ℕ}
-    (i : Fin (j + 1)) (h : Fin (j + 1) → G) (b : Bool) (ω : Fin j → Bool) :
-    cubeShift h (Fin.insertNth i b ω) = (if b then h i else 0) +
-      cubeShift (fun k => h (i.succAbove k)) ω := by
-  unfold cubeShift
-  rw [Fin.sum_univ_succAbove _ i]
-  simp
-
-theorem cubeIntegrand_split {G : Type*} [AddCommMonoid G] {j : ℕ}
-    (i : Fin (j + 1)) (f : (Fin (j + 1) → Bool) → G → ℂ)
-    (h : Fin j → G) (t x : G) :
-    cubeIntegrand f (Fin.insertNth i t h) x =
-      cubeIntegrand (cubeFace i false f) h x *
-        conj (cubeIntegrand (cubeFace i true f) h (x + t)) := by
-  unfold cubeIntegrand
-  rw [← (Fin.insertNthEquiv (fun _ : Fin (j + 1) => Bool) i).prod_comp
-    (fun ω => cubeConj (cubeWeight ω) (f ω (x + cubeShift (Fin.insertNth i t h) ω))),
-    Fintype.prod_prod_type, Fintype.prod_bool, map_prod, ← Finset.prod_mul_distrib,
-    ← Finset.prod_mul_distrib]
-  apply Finset.prod_congr rfl
-  intro ω _
-  simp [Fin.insertNthEquiv, cubeWeight_insertNth, cubeShift_insertNth,
-    cubeFace, Nat.add_comm 1, cubeConj_succ, add_assoc, mul_comm]
-
-theorem integral_pi_insertNth {G : Type*} [MeasurableSpace G]
-    (μ : Measure G) [IsProbabilityMeasure μ] {j : ℕ} (i : Fin (j + 1))
-    (F : (Fin (j + 1) → G) → ℂ) (hF : Measurable F) {M : ℝ}
-    (hbound : ∀ h, ‖F h‖ ≤ M) :
-    (∫ h, F h ∂Measure.pi (fun _ : Fin (j + 1) => μ)) =
-      ∫ h, ∫ t, F (Fin.insertNth i t h) ∂μ ∂Measure.pi (fun _ : Fin j => μ) := by
-  let e := MeasurableEquiv.piFinSuccAbove (fun _ : Fin (j + 1) => G) i
-  have hmp := (measurePreserving_piFinSuccAbove (fun _ : Fin (j + 1) => μ) i).symm
-  have hInt : Integrable (fun p : G × (Fin j → G) => F (e.symm p))
-      (μ.prod (Measure.pi (fun _ : Fin j => μ))) :=
-    integrable_of_measurable_bounded (hF.comp e.symm.measurable) (fun p => hbound _)
-  rw [← hmp.integral_comp']
-  change (∫ p : G × (Fin j → G), F (e.symm p) ∂μ.prod (Measure.pi (fun _ => μ))) = _
-  rw [integral_prod_symm _ hInt]
-  apply integral_congr_ae
-  filter_upwards [] with h
-  apply integral_congr_ae
-  filter_upwards [] with t
-  rfl
-
-theorem integral_haar_cross_correlation {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    (f g : G → ℂ) (hf : Measurable f) (hg : Measurable g) {M N : ℝ}
-    (hboundf : ∀ x, ‖f x‖ ≤ M) (hboundg : ∀ x, ‖g x‖ ≤ N) :
-    (∫ h, ∫ x, f x * conj (g (x + h)) ∂μ ∂μ) =
-      (∫ x, f x ∂μ) * conj (∫ x, g x ∂μ) := by
-  have hM : 0 ≤ M := (norm_nonneg (f 0)).trans (hboundf 0)
-  have hmeas : Measurable (fun p : G × G => f p.2 * conj (g (p.2 + p.1))) :=
-    (hf.comp measurable_snd).mul (Complex.continuous_conj.measurable.comp
-      (hg.comp (measurable_snd.add measurable_fst)))
-  have hint : Integrable (fun p : G × G => f p.2 * conj (g (p.2 + p.1))) (μ.prod μ) :=
-    integrable_of_measurable_bounded hmeas (fun p => by
-      rw [norm_mul, Complex.norm_conj]
-      exact mul_le_mul (hboundf _) (hboundg _) (norm_nonneg _) hM)
-  rw [integral_integral_swap hint]
-  simp_rw [integral_const_mul]
-  have ht (x : G) : (∫ h, conj (g (x + h)) ∂μ) = ∫ h, conj (g h) ∂μ :=
-    integral_add_left_eq_self (fun h => conj (g h)) x
-  simp_rw [ht]
-  rw [integral_conj, integral_mul_const]
-
-/-- Every coordinate splitting expresses a mixed cube as an inner product of face averages. -/
-theorem cubeAverage_split {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (i : Fin (j + 1)) (f : (Fin (j + 1) → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) {M : ℝ} (hbound : ∀ ω x, ‖f ω x‖ ≤ M) :
-    cubeAverage μ (j + 1) f = ∫ h : Fin j → G,
-      (∫ x, cubeIntegrand (cubeFace i false f) h x ∂μ) *
-        conj (∫ x, cubeIntegrand (cubeFace i true f) h x ∂μ)
-          ∂Measure.pi (fun _ => μ) := by
-  have hmeas := measurable_cubeIntegrand f hf
-  have hm : Measurable (fun h : Fin (j + 1) → G => ∫ x, cubeIntegrand f h x ∂μ) :=
-    hmeas.stronglyMeasurable.integral_prod_right.measurable
-  have hb : ∀ h : Fin (j + 1) → G, ‖∫ x, cubeIntegrand f h x ∂μ‖ ≤ M ^ (2 ^ (j + 1)) := by
-    intro h
-    simpa using norm_integral_le_of_norm_le_const (μ := μ)
-      (Filter.Eventually.of_forall (norm_cubeIntegrand_le f hbound h))
-  rw [cubeAverage, integral_pi_insertNth μ i _ hm hb]
-  apply integral_congr_ae
-  filter_upwards [] with h
-  simp only [cubeIntegrand_split]
-  apply integral_haar_cross_correlation μ
-  · exact (measurable_cubeIntegrand _ (fun ω => hf _)).comp
-      (measurable_const.prodMk measurable_id)
-  · exact (measurable_cubeIntegrand _ (fun ω => hf _)).comp
-      (measurable_const.prodMk measurable_id)
-  · exact norm_cubeIntegrand_le _ (fun ω => hbound _) h
-  · exact norm_cubeIntegrand_le _ (fun ω => hbound _) h
-
-theorem norm_integral_mul_conj_sq_le {X : Type*} [MeasurableSpace X]
-    (μ : Measure X) [IsFiniteMeasure μ] (f g : X → ℂ)
-    (hf : Measurable f) (hg : Measurable g) {M N : ℝ}
-    (hbf : ∀ x, ‖f x‖ ≤ M) (hbg : ∀ x, ‖g x‖ ≤ N) :
-    ‖∫ x, f x * conj (g x) ∂μ‖ ^ 2 ≤
-      (∫ x, ‖f x‖ ^ 2 ∂μ) * (∫ x, ‖g x‖ ^ 2 ∂μ) := by
-  have hfl : MemLp f (ENNReal.ofReal 2) μ :=
-    MemLp.of_bound hf.aestronglyMeasurable M (Filter.Eventually.of_forall hbf)
-  have hgl : MemLp g (ENNReal.ofReal 2) μ :=
-    MemLp.of_bound hg.aestronglyMeasurable N (Filter.Eventually.of_forall hbg)
-  have hholder := integral_mul_norm_le_Lp_mul_Lq
-    (show Real.HolderConjugate 2 2 by norm_num [Real.holderConjugate_iff]) hfl hgl
-  have hnorm := norm_integral_le_integral_norm (fun x => f x * conj (g x)) (μ := μ)
-  simp only [norm_mul, Complex.norm_conj] at hnorm
-  have h : ‖∫ x, f x * conj (g x) ∂μ‖ ≤
-      Real.sqrt (∫ x, ‖f x‖ ^ 2 ∂μ) * Real.sqrt (∫ x, ‖g x‖ ^ 2 ∂μ) := by
-    simpa only [Real.rpow_two, ← Real.sqrt_eq_rpow] using hnorm.trans hholder
-  have hsq := (sq_le_sq₀ (norm_nonneg _) (mul_nonneg (Real.sqrt_nonneg _)
-    (Real.sqrt_nonneg _))).mpr h
-  simpa only [mul_pow, Real.sq_sqrt (integral_nonneg (fun x => sq_nonneg ‖f x‖)),
-    Real.sq_sqrt (integral_nonneg (fun x => sq_nonneg ‖g x‖))] using hsq
-
-theorem cubeFace_copy {j : ℕ} {E : Type*} (i : Fin (j + 1)) (b c : Bool)
-    (f : (Fin (j + 1) → Bool) → E) : cubeFace i c (cubeCopy i b f) = cubeFace i b f := by
-  funext ω
-  unfold cubeFace cubeCopy
-  rw [Fin.update_insertNth]
-
-/-- The two reflected cubes are squares of face averages, hence real and nonnegative. -/
-theorem cubeAverage_copy_eq_sq {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (i : Fin (j + 1)) (b : Bool) (f : (Fin (j + 1) → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) {M : ℝ} (hbound : ∀ ω x, ‖f ω x‖ ≤ M) :
-    cubeAverage μ (j + 1) (cubeCopy i b f) =
-      (∫ h : Fin j → G, ‖∫ x, cubeIntegrand (cubeFace i b f) h x ∂μ‖ ^ 2
-        ∂Measure.pi (fun _ => μ) : ℝ) := by
-  rw [cubeAverage_split μ i (cubeCopy i b f) (fun ω => hf _) (fun ω => hbound _)]
-  simp only [cubeFace_copy, Complex.mul_conj, Complex.normSq_eq_norm_sq,
-    integral_complex_ofReal]
-
-theorem cubeAverage_copy_re_nonneg {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (i : Fin (j + 1)) (b : Bool) (f : (Fin (j + 1) → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) {M : ℝ} (hbound : ∀ ω x, ‖f ω x‖ ≤ M) :
-    0 ≤ (cubeAverage μ (j + 1) (cubeCopy i b f)).re := by
-  rw [cubeAverage_copy_eq_sq μ i b f hf hbound, Complex.ofReal_re]
-  exact integral_nonneg (fun h => sq_nonneg _)
-
-/-- One coordinate-reflection Cauchy–Schwarz step from `lem:cube-foundation`. -/
-theorem cubeAverage_coordinate_cs {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (i : Fin (j + 1)) (f : (Fin (j + 1) → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) {M : ℝ} (hbound : ∀ ω x, ‖f ω x‖ ≤ M) :
-    ‖cubeAverage μ (j + 1) f‖ ^ 2 ≤
-      (cubeAverage μ (j + 1) (cubeCopy i false f)).re *
-        (cubeAverage μ (j + 1) (cubeCopy i true f)).re := by
-  rw [cubeAverage_split μ i f hf hbound,
-    cubeAverage_copy_eq_sq μ i false f hf hbound,
-    cubeAverage_copy_eq_sq μ i true f hf hbound, Complex.ofReal_re, Complex.ofReal_re]
-  apply norm_integral_mul_conj_sq_le
-  · exact (measurable_cubeIntegrand _ (fun ω => hf _)).stronglyMeasurable
-      |>.integral_prod_right.measurable
-  · exact (measurable_cubeIntegrand _ (fun ω => hf _)).stronglyMeasurable
-      |>.integral_prod_right.measurable
-  · intro h
-    simpa using norm_integral_le_of_norm_le_const (μ := μ)
-      (Filter.Eventually.of_forall (norm_cubeIntegrand_le (cubeFace i false f)
-        (fun ω => hbound _) h))
-  · intro h
-    simpa using norm_integral_le_of_norm_le_const (μ := μ)
-      (Filter.Eventually.of_forall (norm_cubeIntegrand_le (cubeFace i true f)
-        (fun ω => hbound _) h))
-
-/-- Apply the specified coordinate reflections in order. -/
-def cubeReflections {d : ℕ} {E : Type*} : (n : ℕ) → (Fin n → Fin d) →
-    (Fin n → Bool) → ((Fin d → Bool) → E) → ((Fin d → Bool) → E)
-  | 0, _, _, f => f
-  | n + 1, c, ω, f => cubeReflections n (fun i => c i.succ) (fun i => ω i.succ)
-      (cubeCopy (c 0) (ω 0) f)
-
-/-- The finite Cauchy–Schwarz iteration, restricted to any class closed under reflections. -/
-theorem cube_reflection_iteration {d : ℕ} {E : Type*}
-    (P : ((Fin d → Bool) → E) → Prop) (Q : ((Fin d → Bool) → E) → ℝ)
-    (hQ : ∀ f, P f → 0 ≤ Q f)
-    (hcopy : ∀ i b f, P f → P (cubeCopy i b f))
-    (hcs : ∀ i f, P f → Q f ^ 2 ≤ Q (cubeCopy i false f) * Q (cubeCopy i true f))
-    (n : ℕ) (c : Fin n → Fin d) (f : (Fin d → Bool) → E) (hf : P f) :
-    Q f ^ (2 ^ n) ≤ ∏ ω : Fin n → Bool, Q (cubeReflections n c ω f) := by
-  induction n generalizing f with
-  | zero => simp [cubeReflections]
-  | succ n ih =>
-    have hbranch (b : Bool) :
-        Q (cubeCopy (c 0) b f) ^ (2 ^ n) ≤
-          ∏ ω : Fin n → Bool, Q (cubeReflections n (fun i => c i.succ) ω
-            (cubeCopy (c 0) b f)) := ih _ _ (hcopy _ _ _ hf)
-    calc Q f ^ (2 ^ (n + 1)) = (Q f ^ 2) ^ (2 ^ n) := by
-          rw [← pow_mul, pow_succ]; congr 1; omega
-      _ ≤ (Q (cubeCopy (c 0) false f) * Q (cubeCopy (c 0) true f)) ^ (2 ^ n) :=
-          pow_le_pow_left₀ (sq_nonneg _) (hcs _ f hf) _
-      _ = ∏ b : Bool, Q (cubeCopy (c 0) b f) ^ (2 ^ n) := by
-          rw [mul_pow, Fintype.prod_bool]; ring
-      _ ≤ ∏ b : Bool, ∏ ω : Fin n → Bool,
-          Q (cubeReflections n (fun i => c i.succ) ω (cubeCopy (c 0) b f)) :=
-          Finset.prod_le_prod₀ (fun b _ => pow_nonneg (hQ _ (hcopy _ _ _ hf)) _)
-            (fun b _ => hbranch b)
-      _ = ∏ ω : Fin (n + 1) → Bool, Q (cubeReflections (n + 1) c ω f) := by
-          rw [← (cubeConsEquiv n).prod_comp
-            (fun ω => Q (cubeReflections (n + 1) c ω f)), Fintype.prod_prod_type]
-          simp only [cubeConsEquiv, Equiv.coe_fn_mk, cubeReflections, Fin.cons_zero, Fin.cons_succ]
-
-theorem cubeReflections_three {E : Type*} (ω : Fin 3 → Bool) (f : (Fin 3 → Bool) → E) :
-    cubeReflections 3 id ω f = fun _ => f ω := by
-  funext ν
-  simp only [cubeReflections, id_eq, cubeCopy]
-  congr 1
-  ext i
-  fin_cases i <;> simp
-
-theorem cubeAverage_diagonal_norm_eq_re {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    {j : ℕ} (hj : 1 ≤ j) (f : G → ℂ) (hf : Measurable f) {M : ℝ}
-    (hbound : ∀ x, ‖f x‖ ≤ M) :
-    ‖cubeAverage μ j (fun _ => f)‖ = (cubeAverage μ j (fun _ => f)).re := by
-  rw [← Complex.abs_re_eq_norm.mpr (cubeAverage_diagonal_im_eq_zero μ hj f hf hbound),
-    abs_of_nonneg (cubeAverage_diagonal_re_nonneg μ hj f hf hbound)]
-
-/-- The eightfold reflection estimate before taking nonnegative eighth roots. -/
-theorem cubeAverage_three_cs_pow {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    (f : (Fin 3 → Bool) → G → ℂ) (hf : ∀ ω, Measurable (f ω))
-    {M : ℝ} (hbound : ∀ ω x, ‖f ω x‖ ≤ M) :
-    ‖cubeAverage μ 3 f‖ ^ 8 ≤ ∏ ω, (cubeAverage μ 3 (fun _ => f ω)).re := by
-  let P : ((Fin 3 → Bool) → G → ℂ) → Prop :=
-    fun g => (∀ ω, Measurable (g ω)) ∧ ∀ ω x, ‖g ω x‖ ≤ M
-  have hcopy (i : Fin 3) (b : Bool) (g : (Fin 3 → Bool) → G → ℂ) (hg : P g) :
-      P (cubeCopy i b g) := ⟨fun ω => hg.1 _, fun ω => hg.2 _⟩
-  have hcs (i : Fin 3) (g : (Fin 3 → Bool) → G → ℂ) (hg : P g) :
-      ‖cubeAverage μ 3 g‖ ^ 2 ≤
-        ‖cubeAverage μ 3 (cubeCopy i false g)‖ * ‖cubeAverage μ 3 (cubeCopy i true g)‖ := by
-    refine (cubeAverage_coordinate_cs μ i g hg.1 hg.2).trans ?_
-    exact mul_le_mul (Complex.re_le_norm _) (Complex.re_le_norm _)
-      (cubeAverage_copy_re_nonneg μ i true g hg.1 hg.2) (norm_nonneg _)
-  have h := cube_reflection_iteration P (fun g => ‖cubeAverage μ 3 g‖)
-    (fun _ _ => norm_nonneg _) hcopy hcs 3 id f ⟨hf, hbound⟩
-  norm_num only at h
-  simpa only [cubeReflections_three, cubeAverage_diagonal_norm_eq_re μ
-    (by norm_num : 1 ≤ 3) _ (hf _) (hbound _)] using h
-
-/-- Blueprint `lem:cube-foundation`: mixed Gowers–Cauchy–Schwarz on Haar probability groups. -/
-theorem cubeAverage_three_cs {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    (f : (Fin 3 → Bool) → G → ℂ) (hf : ∀ ω, Measurable (f ω))
-    {M : ℝ} (hbound : ∀ ω x, ‖f ω x‖ ≤ M) :
-    ‖cubeAverage μ 3 f‖ ≤ ∏ ω, gowersNorm μ 3 (f ω) := by
-  have hn (ω : Fin 3 → Bool) : 0 ≤ gowersNorm μ 3 (f ω) :=
-    gowersNorm_nonneg μ (by norm_num) _ (hf ω) (hbound ω)
-  have hp (ω : Fin 3 → Bool) : gowersNorm μ 3 (f ω) ^ 8 =
-      (cubeAverage μ 3 (fun _ => f ω)).re :=
-    gowersNorm_pow μ (by norm_num) _ (hf ω) (hbound ω)
-  have h := cubeAverage_three_cs_pow μ f hf hbound
-  simp only [← hp, Finset.prod_pow] at h
-  exact (pow_le_pow_iff_left₀ (norm_nonneg _) (Finset.prod_nonneg (fun ω _ => hn ω))
-    (by norm_num : (8 : ℕ) ≠ 0)).mp h
-
-theorem cubeConj_add (n : ℕ) (a b : ℂ) : cubeConj n (a + b) = cubeConj n a + cubeConj n b := by
-  by_cases h : Even n <;> simp [cubeConj, h]
-
-def cubeChoice {G : Type*} {j : ℕ} (f g : G → ℂ)
-    (σ : (Fin j → Bool) → Bool) : (Fin j → Bool) → G → ℂ :=
-  fun ω => if σ ω then f else g
-
-theorem cubeIntegrand_add_expansion {G : Type*} [AddCommGroup G] (j : ℕ)
-    (f g : G → ℂ) (h : Fin j → G) (x : G) :
-    cubeIntegrand (fun _ x => f x + g x) h x =
-      ∑ σ : (Fin j → Bool) → Bool, cubeIntegrand (cubeChoice f g σ) h x := by
-  unfold cubeIntegrand
-  have heq (ω : Fin j → Bool) : cubeConj (cubeWeight ω) (f (x + cubeShift h ω) +
-      g (x + cubeShift h ω)) = ∑ b : Bool,
-        cubeConj (cubeWeight ω) ((if b then f else g) (x + cubeShift h ω)) := by
-    simp [cubeConj_add]
-  simp only [heq, Fintype.prod_sum, cubeChoice]
-
-theorem measurable_cubeChoice {G : Type*} [MeasurableSpace G] {j : ℕ}
-    (f g : G → ℂ) (hf : Measurable f) (hg : Measurable g)
-    (σ : (Fin j → Bool) → Bool) (ω : Fin j → Bool) :
-    Measurable (cubeChoice f g σ ω) := by
-  unfold cubeChoice
-  split_ifs <;> assumption
-
-theorem norm_cubeChoice_le {G : Type*} {j : ℕ} (f g : G → ℂ)
-    {M : ℝ} (hf : ∀ x, ‖f x‖ ≤ M) (hg : ∀ x, ‖g x‖ ≤ M)
-    (σ : (Fin j → Bool) → Bool) (ω : Fin j → Bool) (x : G) :
-    ‖cubeChoice f g σ ω x‖ ≤ M := by
-  unfold cubeChoice
-  split_ifs <;> first | exact hf x | exact hg x
-
-set_option maxHeartbeats 800000 in
--- The finite expansion has a function space of cube vertices as its summation index.
-theorem cubeAverage_add_expansion {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] (j : ℕ)
-    (f g : G → ℂ) (hf : Measurable f) (hg : Measurable g) {M : ℝ}
-    (hbf : ∀ x, ‖f x‖ ≤ M) (hbg : ∀ x, ‖g x‖ ≤ M) :
-    cubeAverage μ j (fun _ x => f x + g x) =
-      ∑ σ : (Fin j → Bool) → Bool, cubeAverage μ j (cubeChoice f g σ) := by
-  have hm (σ : (Fin j → Bool) → Bool) :=
-    measurable_cubeIntegrand (cubeChoice f g σ) (measurable_cubeChoice f g hf hg σ)
-  have hb (σ : (Fin j → Bool) → Bool) :=
-    norm_cubeIntegrand_le (cubeChoice f g σ) (norm_cubeChoice_le f g hbf hbg σ)
-  have hi (σ : (Fin j → Bool) → Bool) (h : Fin j → G) :
-      Integrable (cubeIntegrand (cubeChoice f g σ) h) μ :=
-    integrable_of_measurable_bounded ((hm σ).comp (measurable_const.prodMk measurable_id)) (hb σ h)
-  have ho (σ : (Fin j → Bool) → Bool) : Integrable (fun h : Fin j → G =>
-      ∫ x, cubeIntegrand (cubeChoice f g σ) h x ∂μ) (Measure.pi (fun _ => μ)) := by
-    apply integrable_of_measurable_bounded
-      ((hm σ).stronglyMeasurable.integral_prod_right.measurable) (M := M ^ (2 ^ j))
-    intro h
-    simpa using norm_integral_le_of_norm_le_const (μ := μ)
-      (Filter.Eventually.of_forall (hb σ h))
-  unfold cubeAverage
-  simp_rw [cubeIntegrand_add_expansion, integral_finsetSum _ (fun σ _ => hi σ _)]
-  exact integral_finsetSum _ (fun σ _ => ho σ)
-
-theorem sum_cubeChoice_products {j : ℕ} (a b : ℝ) :
-    (∑ σ : (Fin j → Bool) → Bool, ∏ ω : Fin j → Bool, if σ ω then a else b) =
-      (a + b) ^ (2 ^ j) := by
-  rw [← Fintype.prod_sum (fun _ : Fin j → Bool => fun c : Bool => if c then a else b)]
-  simp
-
-/-- The triangle inequality for the order-three Haar Gowers seminorm
-on bounded measurable inputs. -/
-theorem gowersNorm_three_add_le {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    (f g : G → ℂ) (hf : Measurable f) (hg : Measurable g) {M : ℝ}
-    (hbf : ∀ x, ‖f x‖ ≤ M) (hbg : ∀ x, ‖g x‖ ≤ M) :
-    gowersNorm μ 3 (fun x => f x + g x) ≤ gowersNorm μ 3 f + gowersNorm μ 3 g := by
-  have hsum : ∀ x, ‖f x + g x‖ ≤ M + M :=
-    fun x => (norm_add_le _ _).trans (add_le_add (hbf x) (hbg x))
-  have hnorm (σ : (Fin 3 → Bool) → Bool) :
-      ‖cubeAverage μ 3 (cubeChoice f g σ)‖ ≤
-        ∏ ω : Fin 3 → Bool, if σ ω then gowersNorm μ 3 f else gowersNorm μ 3 g := by
-    convert cubeAverage_three_cs μ (cubeChoice f g σ)
-      (measurable_cubeChoice f g hf hg σ) (norm_cubeChoice_le f g hbf hbg σ) using 1
-    congr 1
-    funext ω
-    unfold cubeChoice
-    split_ifs <;> rfl
-  have hp : gowersNorm μ 3 (fun x => f x + g x) ^ 8 ≤
-      (gowersNorm μ 3 f + gowersNorm μ 3 g) ^ 8 := by
-    calc _ = (cubeAverage μ 3 (fun _ x => f x + g x)).re :=
-          gowersNorm_pow μ (by norm_num) _ (hf.add hg) hsum
-      _ ≤ ‖cubeAverage μ 3 (fun _ x => f x + g x)‖ := Complex.re_le_norm _
-      _ = ‖∑ σ : (Fin 3 → Bool) → Bool, cubeAverage μ 3 (cubeChoice f g σ)‖ := by
-          rw [cubeAverage_add_expansion μ 3 f g hf hg hbf hbg]
-      _ ≤ ∑ σ : (Fin 3 → Bool) → Bool, ‖cubeAverage μ 3 (cubeChoice f g σ)‖ := norm_sum_le _ _
-      _ ≤ ∑ σ : (Fin 3 → Bool) → Bool, ∏ ω : Fin 3 → Bool,
-          if σ ω then gowersNorm μ 3 f else gowersNorm μ 3 g :=
-          Finset.sum_le_sum (fun σ _ => hnorm σ)
-      _ = _ := sum_cubeChoice_products _ _
-  exact (pow_le_pow_iff_left₀ (gowersNorm_nonneg μ (by norm_num) _ (hf.add hg) hsum)
-    (add_nonneg (gowersNorm_nonneg μ (by norm_num) f hf hbf)
-      (gowersNorm_nonneg μ (by norm_num) g hg hbg)) (by norm_num : (8 : ℕ) ≠ 0)).mp hp
-
-theorem diagonalCubeIntegrand_const_three {G : Type*} [AddCommGroup G]
-    (c : ℂ) (h : Fin 3 → G) (x : G) :
-    diagonalCubeIntegrand 3 (fun _ => c) h x = (‖c‖ : ℂ) ^ 8 := by
-  calc _ = (c * conj c) ^ 4 := by
-        simp only [diagonalCubeIntegrand_succ, diagonalCubeIntegrand_zero,
-          map_mul, starRingEnd_self_apply]
-        ring
-    _ = _ := by rw [Complex.mul_conj, Complex.normSq_eq_norm_sq]; push_cast; ring
-
-theorem cubeAverage_three_const_mul {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    (μ : Measure G) (c : ℂ) (f : G → ℂ) :
-    cubeAverage μ 3 (fun _ x => c * f x) = (‖c‖ : ℂ) ^ 8 * cubeAverage μ 3 (fun _ => f) := by
-  unfold cubeAverage
-  have heq (h : Fin 3 → G) (x : G) : cubeIntegrand (fun _ x => c * f x) h x =
-      (‖c‖ : ℂ) ^ 8 * cubeIntegrand (fun _ => f) h x := by
-    exact (diagonalCubeIntegrand_mul 3 (fun _ => c) f h x).trans
-      (congrArg (fun z => z * diagonalCubeIntegrand 3 f h x)
-        (diagonalCubeIntegrand_const_three c h x))
-  simp only [heq, integral_const_mul]
-
-/-- Absolute homogeneity of the order-three Haar Gowers seminorm. -/
-theorem gowersNorm_three_const_mul {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    (c : ℂ) (f : G → ℂ) (hf : Measurable f) {M : ℝ} (hbf : ∀ x, ‖f x‖ ≤ M) :
-    gowersNorm μ 3 (fun x => c * f x) = ‖c‖ * gowersNorm μ 3 f := by
-  have hm : Measurable (fun x => c * f x) := measurable_const.mul hf
-  have hb : ∀ x, ‖c * f x‖ ≤ ‖c‖ * M := fun x => by
-    rw [norm_mul]
-    exact mul_le_mul_of_nonneg_left (hbf x) (norm_nonneg _)
-  have hp : gowersNorm μ 3 (fun x => c * f x) ^ 8 = (‖c‖ * gowersNorm μ 3 f) ^ 8 := by
-    rw [show 8 = 2 ^ 3 from rfl, gowersNorm_pow μ (by norm_num) _ hm hb,
-      mul_pow, gowersNorm_pow μ (by norm_num) _ hf hbf, cubeAverage_three_const_mul]
-    simp [← Complex.ofReal_pow, Complex.mul_re]
-  exact (pow_left_inj₀ (gowersNorm_nonneg μ (by norm_num) _ hm hb)
-    (mul_nonneg (norm_nonneg _) (gowersNorm_nonneg μ (by norm_num) f hf hbf))
-    (by norm_num : (8 : ℕ) ≠ 0)).mp hp
-
-theorem gowersNorm_three_zero {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant] :
-    gowersNorm μ 3 (fun _ : G => 0) = 0 := by
-  simpa only [zero_mul, norm_zero] using
-    gowersNorm_three_const_mul μ 0 (fun _ : G => 0) measurable_const (M := 0) (by simp)
-
-/-- The complex vector space of pointwise bounded measurable functions. -/
-def boundedMeasurableSubmodule (G : Type*) [MeasurableSpace G] : Submodule ℂ (G → ℂ) where
-  carrier := {f | Measurable f ∧ ∃ M : ℝ, ∀ x, ‖f x‖ ≤ M}
-  zero_mem' := ⟨measurable_const, 0, by simp⟩
-  add_mem' := by
-    rintro f g ⟨hf, M, hM⟩ ⟨hg, N, hN⟩
-    exact ⟨hf.add hg, M + N, fun x =>
-      (norm_add_le _ _).trans (add_le_add (hM x) (hN x))⟩
-  smul_mem' := by
-    rintro c f ⟨hf, M, hM⟩
-    refine ⟨measurable_const.mul hf, ‖c‖ * M, fun x => ?_⟩
-    change ‖c * f x‖ ≤ _
-    rw [norm_mul]
-    exact mul_le_mul_of_nonneg_left (hM x) (norm_nonneg _)
-
-/-- The order-three Gowers seminorm, bundled on bounded measurable functions. -/
-noncomputable def gowersThreeSeminorm {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant] :
-    Seminorm ℂ (boundedMeasurableSubmodule G) :=
-  Seminorm.of (fun f => gowersNorm μ 3 f.1)
-    (by
-      intro f g
-      obtain ⟨M, hM⟩ := f.2.2
-      obtain ⟨N, hN⟩ := g.2.2
-      exact gowersNorm_three_add_le μ f.1 g.1 f.2.1 g.2.1
-        (fun x => (hM x).trans (le_max_left M N))
-        (fun x => (hN x).trans (le_max_right M N)))
-    (by
-      intro c f
-      obtain ⟨M, hM⟩ := f.2.2
-      exact gowersNorm_three_const_mul μ c f.1 f.2.1 hM)
-
-/-! Independent tetrahedral vertex coordinates for the cube `L²` estimate. -/
-
-def tetrahedronShear {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (j : ℕ) :
-    (G × (Fin j → G)) ≃ᵐ (G × (Fin j → G)) where
-  toFun p := (p.1, fun i => p.1 + p.2 i)
-  invFun p := (p.1, fun i => p.2 i - p.1)
-  left_inv p := by ext <;> simp
-  right_inv p := by ext <;> simp
-  measurable_toFun := measurable_fst.prodMk (Measurable.of_eval (fun i =>
-    measurable_fst.add ((measurable_pi_apply i).comp measurable_snd)))
-  measurable_invFun := measurable_fst.prodMk (Measurable.of_eval (fun i =>
-    ((measurable_pi_apply i).comp measurable_snd).sub measurable_fst))
-
-theorem measurePreserving_tetrahedronShear {G : Type*} [AddCommGroup G]
-    [MeasurableSpace G] [MeasurableAdd₂ G] [MeasurableNeg G]
-    (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant] (j : ℕ) :
-    MeasurePreserving (tetrahedronShear (G := G) j)
-      (μ.prod (Measure.pi (fun _ : Fin j => μ))) (μ.prod (Measure.pi (fun _ : Fin j => μ))) := by
-  change MeasurePreserving (fun p : G × (Fin j → G) => (p.1, fun i => p.1 + p.2 i)) _ _
-  apply (MeasurePreserving.id μ).skew_product
-    (g := fun (x : G) (h : Fin j → G) (i : Fin j) => x + h i)
-  · exact Measurable.of_eval (fun i =>
-      measurable_fst.add ((measurable_pi_apply i).comp measurable_snd))
-  · filter_upwards [] with x
-    exact (measurePreserving_pi (fun _ : Fin j => μ) (fun _ : Fin j => μ)
-      (fun _ => measurePreserving_add_left μ x)).map_eq
-
-/-- The base vertex and its three edge neighbors have independent Haar distributions. -/
-theorem integral_tetrahedron_product {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] (j : ℕ) (f : G → ℝ) (g : Fin j → G → ℝ) :
-    (∫ p : G × (Fin j → G), f p.1 * ∏ i, g i (p.1 + p.2 i)
-      ∂μ.prod (Measure.pi (fun _ => μ))) =
-        (∫ x, f x ∂μ) * ∏ i, ∫ x, g i x ∂μ := by
-  have hs := (measurePreserving_tetrahedronShear μ j).integral_comp'
-    (fun p : G × (Fin j → G) => f p.1 * ∏ i, g i (p.2 i))
-  change (∫ p : G × (Fin j → G), f p.1 * ∏ i, g i (p.1 + p.2 i)
-    ∂μ.prod (Measure.pi (fun _ => μ))) = _ at hs
-  rw [hs, integral_prod_mul f (fun h : Fin j → G => ∏ i, g i (h i)),
-    integral_fintype_prod_eq_prod]
-
-def cubeOpposite {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (j : ℕ) :
-    (G × (Fin j → G)) ≃ᵐ (G × (Fin j → G)) where
-  toFun p := (p.1 + ∑ i, p.2 i, fun i => -p.2 i)
-  invFun p := (p.1 + ∑ i, p.2 i, fun i => -p.2 i)
-  left_inv p := by ext <;> simp
-  right_inv p := by ext <;> simp
-  measurable_toFun := (measurable_fst.add (Finset.measurable_sum _ (fun i _ =>
-    (measurable_pi_apply i).comp measurable_snd))).prodMk
-      (Measurable.of_eval (fun i => ((measurable_pi_apply i).comp measurable_snd).neg))
-  measurable_invFun := (measurable_fst.add (Finset.measurable_sum _ (fun i _ =>
-    (measurable_pi_apply i).comp measurable_snd))).prodMk
-      (Measurable.of_eval (fun i => ((measurable_pi_apply i).comp measurable_snd).neg))
-
-theorem measurePreserving_cubeOpposite {G : Type*} [AddCommGroup G]
-    [MeasurableSpace G] [MeasurableAdd₂ G] [MeasurableNeg G]
-    (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant] [μ.IsNegInvariant] (j : ℕ) :
-    MeasurePreserving (cubeOpposite (G := G) j)
-      (μ.prod (Measure.pi (fun _ : Fin j => μ))) (μ.prod (Measure.pi (fun _ : Fin j => μ))) := by
-  let ν := Measure.pi (fun _ : Fin j => μ)
-  have hs : MeasurePreserving (fun p : (Fin j → G) × G =>
-      (p.1, (∑ i, p.1 i) + p.2)) (ν.prod μ) (ν.prod μ) := by
-    apply (MeasurePreserving.id ν).skew_product
-      (g := fun (h : Fin j → G) (x : G) => (∑ i, h i) + x)
-    · exact (Finset.measurable_sum _ (fun i _ =>
-        (measurable_pi_apply i).comp measurable_fst)).add measurable_snd
-    · filter_upwards [] with h
-      exact (measurePreserving_add_left μ (∑ i, h i)).map_eq
-  have hb := (Measure.measurePreserving_swap (μ := ν) (ν := μ)).comp
-    (hs.comp (Measure.measurePreserving_swap (μ := μ) (ν := ν)))
-  have hn := (MeasurePreserving.id μ).prod
-    (measurePreserving_pi (fun _ : Fin j => μ) (fun _ : Fin j => μ)
-      (fun _ => Measure.measurePreserving_neg μ))
-  convert hn.comp hb using 1
-  ext p <;> simp [cubeOpposite, Function.comp_def, add_comm]
-
-/-- The opposite vertex and its three edge neighbors also have independent Haar distributions. -/
-theorem integral_opposite_tetrahedron_product {G : Type*} [AddCommGroup G]
-    [MeasurableSpace G] [MeasurableAdd₂ G] [MeasurableNeg G]
-    (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant] [μ.IsNegInvariant]
-    (j : ℕ) (f : G → ℝ) (g : Fin j → G → ℝ) :
-    (∫ p : G × (Fin j → G), f (p.1 + ∑ i, p.2 i) *
-      ∏ i, g i (p.1 + (∑ k, p.2 k) - p.2 i)
-        ∂μ.prod (Measure.pi (fun _ => μ))) =
-          (∫ x, f x ∂μ) * ∏ i, ∫ x, g i x ∂μ := by
-  have hs := (measurePreserving_cubeOpposite μ j).integral_comp'
-    (fun p : G × (Fin j → G) => f p.1 * ∏ i, g i (p.1 + p.2 i))
-  change (∫ p : G × (Fin j → G), f (p.1 + ∑ i, p.2 i) *
-    ∏ i, g i (p.1 + (∑ k, p.2 k) + -p.2 i) ∂μ.prod (Measure.pi (fun _ => μ))) = _ at hs
-  simpa only [← sub_eq_add_neg, integral_tetrahedron_product] using hs
-
-def cubeUnitVertex (i : Fin 3) : Fin 3 → Bool :=
-  ![![true, false, false], ![false, true, false], ![false, false, true]] i
-
-def cubeCoUnitVertex (i : Fin 3) : Fin 3 → Bool :=
-  ![![false, true, true], ![true, false, true], ![true, true, false]] i
-
-theorem prod_boolCube_succ {R : Type*} [CommMonoid R] (j : ℕ)
-    (F : (Fin (j + 1) → Bool) → R) :
-    (∏ ω, F ω) = (∏ ω : Fin j → Bool, F (Fin.cons false ω)) *
-      ∏ ω : Fin j → Bool, F (Fin.cons true ω) := by
-  rw [← (cubeConsEquiv j).prod_comp F, Fintype.prod_prod_type, Fintype.prod_bool]
-  simp [cubeConsEquiv, mul_comm]
-
-theorem cube_vertex_product_three {G R : Type*} [AddCommGroup G] [CommRing R]
-    (F : (Fin 3 → Bool) → G → R) (h : Fin 3 → G) (x : G) :
-    (∏ ω : Fin 3 → Bool, F ω (x + cubeShift h ω)) =
-      (F ![false, false, false] x * ∏ i : Fin 3, F (cubeUnitVertex i) (x + h i)) *
-        (F ![true, true, true] (x + ∑ i, h i) *
-          ∏ i : Fin 3, F (cubeCoUnitVertex i) (x + (∑ k, h k) - h i)) := by
-  have hF : F = fun ω y => F ![ω 0, ω 1, ω 2] y := by
-    funext ω y
-    congr 1
-    ext i
-    fin_cases i <;> rfl
-  conv_lhs => rw [hF]
-  simp only [prod_boolCube_succ, Fintype.prod_unique]
-  simp [cubeShift, Fin.sum_univ_succ, Fin.prod_univ_succ, cubeUnitVertex, cubeCoUnitVertex,
-    add_assoc, add_left_comm, add_comm, sub_eq_add_neg]
-  simp only [show (2 : Fin 3) = (1 : Fin 2).succ by decide, Fin.cons_succ,
-    show (1 : Fin 2) = (0 : Fin 1).succ by decide, Fin.cons_zero]
-  ring
-
-/-- Products of independent `L²` factors remain in `L²` on the product probability space. -/
-theorem memLp_tetrahedron_product {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] (j : ℕ) (f : G → ℝ) (g : Fin j → G → ℝ)
-    (hf : Measurable f) (hg : ∀ i, Measurable (g i))
-    (hfl : MemLp f 2 μ) (hgl : ∀ i, MemLp (g i) 2 μ) :
-    MemLp (fun p : G × (Fin j → G) => f p.1 * ∏ i, g i (p.1 + p.2 i)) 2
-      (μ.prod (Measure.pi (fun _ => μ))) := by
-  have hm : Measurable (fun p : G × (Fin j → G) => f p.1 * ∏ i, g i (p.2 i)) :=
-    (hf.comp measurable_fst).mul (Finset.measurable_prod _ (fun i _ =>
-      (hg i).comp ((measurable_pi_apply i).comp measurable_snd)))
-  have hi := hfl.integrable_sq.mul_prod (Integrable.fintype_prod (fun i => (hgl i).integrable_sq))
-  have hl : MemLp (fun p : G × (Fin j → G) => f p.1 * ∏ i, g i (p.2 i)) 2
-      (μ.prod (Measure.pi (fun _ => μ))) := by
-    apply (memLp_two_iff_integrable_sq hm.aestronglyMeasurable).mpr
-    simpa only [mul_pow, ← Finset.prod_pow] using hi
-  exact hl.comp_measurePreserving (measurePreserving_tetrahedronShear μ j)
-
-theorem prod_cube_vertices_three {R : Type*} [CommRing R] (F : (Fin 3 → Bool) → R) :
-    (∏ ω, F ω) = (F ![false, false, false] * ∏ i : Fin 3, F (cubeUnitVertex i)) *
-      (F ![true, true, true] * ∏ i : Fin 3, F (cubeCoUnitVertex i)) := by
-  simpa using cube_vertex_product_three (G := ℤ) (fun ω _ => F ω) (fun _ => 0) 0
-
-/-- The full cube integrand is integrable for eight measurable `L²` inputs. -/
-theorem cubeIntegrand_three_integrable {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] (f : (Fin 3 → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) (hfl : ∀ ω, MemLp (f ω) 2 μ) :
-    Integrable (fun p : G × (Fin 3 → G) => cubeIntegrand f p.2 p.1)
-      (μ.prod (Measure.pi (fun _ => μ))) := by
-  let A := fun p : G × (Fin 3 → G) => ‖f ![false, false, false] p.1‖ *
-    ∏ i : Fin 3, ‖f (cubeUnitVertex i) (p.1 + p.2 i)‖
-  let B := fun p : G × (Fin 3 → G) => ‖f ![true, true, true] (p.1 + ∑ i, p.2 i)‖ *
-    ∏ i : Fin 3, ‖f (cubeCoUnitVertex i) (p.1 + (∑ k, p.2 k) - p.2 i)‖
-  have hA : MemLp A 2 (μ.prod (Measure.pi (fun _ => μ))) :=
-    memLp_tetrahedron_product μ 3 (fun x => ‖f ![false, false, false] x‖)
-      (fun i x => ‖f (cubeUnitVertex i) x‖) (hf _).norm (fun i => (hf _).norm)
-      (hfl _).norm (fun i => (hfl _).norm)
-  have hB : MemLp B 2 (μ.prod (Measure.pi (fun _ => μ))) := by
-    have h := (memLp_tetrahedron_product μ 3
-      (fun x => ‖f ![true, true, true] x‖) (fun i x => ‖f (cubeCoUnitVertex i) x‖)
-      (hf _).norm (fun i => (hf _).norm) (hfl _).norm (fun i => (hfl _).norm))
-        |>.comp_measurePreserving
-        (measurePreserving_cubeOpposite μ 3)
-    simpa only [Function.comp_def, cubeOpposite, MeasurableEquiv.coe_mk, Equiv.coe_fn_mk,
-      ← sub_eq_add_neg] using h
-  have hp : Integrable (fun p => A p * B p) (μ.prod (Measure.pi (fun _ => μ))) :=
-    memLp_one_iff_integrable.mp (hA.fun_mul hB)
-  apply hp.mono' ((measurable_cubeIntegrand f hf).comp measurable_swap).aestronglyMeasurable
-  filter_upwards [] with p
-  change ‖cubeIntegrand f p.2 p.1‖ ≤ A p * B p
-  simp only [cubeIntegrand, norm_prod, norm_cubeConj]
-  exact le_of_eq (cube_vertex_product_three (fun ω x => ‖f ω x‖) p.2 p.1)
-
-noncomputable def haarL2Norm {G : Type*} [MeasurableSpace G] (μ : Measure G) (f : G → ℂ) : ℝ :=
-  Real.sqrt (∫ x, ‖f x‖ ^ 2 ∂μ)
-
-theorem haarL2Norm_sq {G : Type*} [MeasurableSpace G] (μ : Measure G) (f : G → ℂ) :
-    haarL2Norm μ f ^ 2 = ∫ x, ‖f x‖ ^ 2 ∂μ :=
-  Real.sq_sqrt (integral_nonneg (fun _x => sq_nonneg _))
-
-/-- Blueprint `eq:cube-L2`, in the stronger form valid on any abelian Haar probability
-group with measurable inversion: all eight measurable inputs may already lie in `L²`. -/
-theorem cubeAverage_three_le_L2 {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] (f : (Fin 3 → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) (hfl : ∀ ω, MemLp (f ω) 2 μ) :
-    ‖cubeAverage μ 3 f‖ ≤ ∏ ω, haarL2Norm μ (f ω) := by
-  let ν := μ.prod (Measure.pi (fun _ : Fin 3 => μ))
-  let A := fun p : G × (Fin 3 → G) => ‖f ![false, false, false] p.1‖ *
-    ∏ i : Fin 3, ‖f (cubeUnitVertex i) (p.1 + p.2 i)‖
-  let B := fun p : G × (Fin 3 → G) => ‖f ![true, true, true] (p.1 + ∑ i, p.2 i)‖ *
-    ∏ i : Fin 3, ‖f (cubeCoUnitVertex i) (p.1 + (∑ k, p.2 k) - p.2 i)‖
-  have hA : MemLp A 2 ν :=
-    memLp_tetrahedron_product μ 3 (fun x => ‖f ![false, false, false] x‖)
-      (fun i x => ‖f (cubeUnitVertex i) x‖) (hf _).norm (fun i => (hf _).norm)
-      (hfl _).norm (fun i => (hfl _).norm)
-  have hB : MemLp B 2 ν := by
-    have h := (memLp_tetrahedron_product μ 3
-      (fun x => ‖f ![true, true, true] x‖) (fun i x => ‖f (cubeCoUnitVertex i) x‖)
-      (hf _).norm (fun i => (hf _).norm) (hfl _).norm (fun i => (hfl _).norm))
-        |>.comp_measurePreserving
-        (measurePreserving_cubeOpposite μ 3)
-    simpa only [Function.comp_def, cubeOpposite, MeasurableEquiv.coe_mk, Equiv.coe_fn_mk,
-      ← sub_eq_add_neg] using h
-  have hAn (p) : 0 ≤ A p := by dsimp [A]; positivity
-  have hBn (p) : 0 ≤ B p := by dsimp [B]; positivity
-  have hnorm (p : G × (Fin 3 → G)) : ‖cubeIntegrand f p.2 p.1‖ = A p * B p := by
-    simp only [cubeIntegrand, norm_prod, norm_cubeConj]
-    exact cube_vertex_product_three (fun ω x => ‖f ω x‖) p.2 p.1
-  have hcube : cubeAverage μ 3 f = ∫ p, cubeIntegrand f p.2 p.1 ∂ν :=
-    (integral_prod_symm _ (cubeIntegrand_three_integrable μ f hf hfl)).symm
-  have hholder : (∫ p, A p * B p ∂ν) ≤
-      Real.sqrt (∫ p, A p ^ 2 ∂ν) * Real.sqrt (∫ p, B p ^ 2 ∂ν) := by
-    have h := integral_mul_norm_le_Lp_mul_Lq
-      (show Real.HolderConjugate 2 2 by norm_num [Real.holderConjugate_iff])
-      (show MemLp A (ENNReal.ofReal 2) ν by simpa using hA)
-      (show MemLp B (ENNReal.ofReal 2) ν by simpa using hB)
-    simpa only [Real.norm_of_nonneg (hAn _), Real.norm_of_nonneg (hBn _),
-      Real.rpow_two, ← Real.sqrt_eq_rpow] using h
-  have hle : ‖cubeAverage μ 3 f‖ ≤
-      Real.sqrt (∫ p, A p ^ 2 ∂ν) * Real.sqrt (∫ p, B p ^ 2 ∂ν) := by
-    rw [hcube]
-    refine (norm_integral_le_integral_norm _).trans ?_
-    simpa only [hnorm] using hholder
-  have hsq := (sq_le_sq₀ (norm_nonneg _) (mul_nonneg (Real.sqrt_nonneg _)
-    (Real.sqrt_nonneg _))).mpr hle
-  rw [mul_pow, Real.sq_sqrt (integral_nonneg (fun p => sq_nonneg (A p))),
-    Real.sq_sqrt (integral_nonneg (fun p => sq_nonneg (B p)))] at hsq
-  have hAi : (∫ p, A p ^ 2 ∂ν) = (∫ x, ‖f ![false, false, false] x‖ ^ 2 ∂μ) *
-      ∏ i : Fin 3, ∫ x, ‖f (cubeUnitVertex i) x‖ ^ 2 ∂μ := by
-    simp only [A, ν, mul_pow, ← Finset.prod_pow]
-    exact integral_tetrahedron_product μ 3 (fun x => ‖f ![false, false, false] x‖ ^ 2)
-      (fun i x => ‖f (cubeUnitVertex i) x‖ ^ 2)
-  have hBi : (∫ p, B p ^ 2 ∂ν) = (∫ x, ‖f ![true, true, true] x‖ ^ 2 ∂μ) *
-      ∏ i : Fin 3, ∫ x, ‖f (cubeCoUnitVertex i) x‖ ^ 2 ∂μ := by
-    simp only [B, ν, mul_pow, ← Finset.prod_pow]
-    exact integral_opposite_tetrahedron_product μ 3 (fun x => ‖f ![true, true, true] x‖ ^ 2)
-      (fun i x => ‖f (cubeCoUnitVertex i) x‖ ^ 2)
-  have heq : (∏ ω, haarL2Norm μ (f ω)) ^ 2 =
-      (∫ p, A p ^ 2 ∂ν) * (∫ p, B p ^ 2 ∂ν) := by
-    rw [← Finset.prod_pow]
-    simp only [haarL2Norm_sq]
-    rw [prod_cube_vertices_three, hAi, hBi]
-  rw [← heq] at hsq
-  exact (sq_le_sq₀ (norm_nonneg _) (Finset.prod_nonneg (fun ω _ => Real.sqrt_nonneg _))).mp hsq
-
-theorem measurePreserving_cubeVertex {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
-    (j : ℕ) (ω : Fin j → Bool) :
-    MeasurePreserving (fun p : G × (Fin j → G) => p.1 + cubeShift p.2 ω)
-      (μ.prod (Measure.pi (fun _ => μ))) μ := by
-  let ν := Measure.pi (fun _ : Fin j => μ)
-  have hs := (MeasurePreserving.id ν).skew_product
-    (g := fun (h : Fin j → G) (x : G) => cubeShift h ω + x)
-    ((measurable_cubeShift ω).comp measurable_fst |>.add measurable_snd)
-    (Filter.Eventually.of_forall (fun h =>
-      (measurePreserving_add_left μ (cubeShift h ω)).map_eq))
-  have hp := (measurePreserving_snd (μ := ν) (ν := μ)).comp
-    (hs.comp (Measure.measurePreserving_swap (μ := μ) (ν := ν)))
-  simpa only [Function.comp_def, Prod.swap, ν, add_comm] using hp
-
-theorem cubeAverage_three_congr_ae {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] (f g : (Fin 3 → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) (hg : ∀ ω, Measurable (g ω))
-    (hfl : ∀ ω, MemLp (f ω) 2 μ) (hgl : ∀ ω, MemLp (g ω) 2 μ)
-    (heq : ∀ ω, f ω =ᵐ[μ] g ω) : cubeAverage μ 3 f = cubeAverage μ 3 g := by
-  rw [cubeAverage, cubeAverage, ← integral_prod_symm _
-    (cubeIntegrand_three_integrable μ f hf hfl), ← integral_prod_symm _
-    (cubeIntegrand_three_integrable μ g hg hgl)]
-  apply integral_congr_ae
-  have h := fun ω => (measurePreserving_cubeVertex μ 3 ω).quasiMeasurePreserving.ae
-    (heq ω)
-  filter_upwards [ae_all_iff.mpr h] with p hp
-  simp only [cubeIntegrand, hp]
-
-/-- A measurable representative is used only to evaluate integrals; the cube form below
-is independent of this choice by `cubeAverage_three_congr_ae`. -/
-noncomputable def l2Representative {G : Type*} [MeasurableSpace G] (μ : Measure G)
-    (f : Lp ℂ 2 μ) : G → ℂ := (Lp.aestronglyMeasurable f).mk f
-
-theorem l2Representative_measurable {G : Type*} [MeasurableSpace G] (μ : Measure G)
-    (f : Lp ℂ 2 μ) : Measurable (l2Representative μ f) :=
-  (Lp.aestronglyMeasurable f).stronglyMeasurable_mk.measurable
-
-theorem l2Representative_ae {G : Type*} [MeasurableSpace G] (μ : Measure G)
-    (f : Lp ℂ 2 μ) : l2Representative μ f =ᵐ[μ] f :=
-  (Lp.aestronglyMeasurable f).ae_eq_mk.symm
-
-theorem l2Representative_memLp {G : Type*} [MeasurableSpace G] (μ : Measure G)
-    (f : Lp ℂ 2 μ) : MemLp (l2Representative μ f) 2 μ :=
-  (memLp_congr_ae (l2Representative_ae μ f)).mpr (Lp.memLp f)
-
-theorem haarL2Norm_l2Representative {G : Type*} [MeasurableSpace G] (μ : Measure G)
-    (f : Lp ℂ 2 μ) : haarL2Norm μ (l2Representative μ f) = ‖f‖ := by
-  have hi : (∫ x, ‖f x‖ ^ 2 ∂μ) = ‖f‖ ^ 2 := by
-    simpa only [L2.inner_def, real_inner_self_eq_norm_sq] using
-      (real_inner_self_eq_norm_sq f)
-  have heq : (∫ x, ‖l2Representative μ f x‖ ^ 2 ∂μ) = ∫ x, ‖f x‖ ^ 2 ∂μ := by
-    apply integral_congr_ae
-    filter_upwards [l2Representative_ae μ f] with x hx
-    rw [hx]
-  rw [haarL2Norm, heq, hi, Real.sqrt_sq (norm_nonneg _)]
-
-theorem cubeIntegrand_update {G : Type*} [AddCommGroup G] {j : ℕ}
-    (f : (Fin j → Bool) → G → ℂ) (ω : Fin j → Bool) (g : G → ℂ)
-    (h : Fin j → G) (x : G) :
-    cubeIntegrand (Function.update f ω g) h x =
-      cubeConj (cubeWeight ω) (g (x + cubeShift h ω)) *
-        ∏ v ∈ Finset.univ.erase ω, cubeConj (cubeWeight v) (f v (x + cubeShift h v)) := by
-  classical
-  rw [cubeIntegrand, ← Finset.mul_prod_erase _ _ (Finset.mem_univ ω)]
-  simp only [Function.update_self]
-  congr 1
-  apply Finset.prod_congr rfl
-  intro v hv
-  rw [Function.update_of_ne (Finset.mem_erase.mp hv).1]
-
-theorem cubeConj_real_smul (n : ℕ) (r : ℝ) (z : ℂ) :
-    cubeConj n (r • z) = r • cubeConj n z := by
-  by_cases hn : Even n <;> simp [cubeConj, hn]
-
-theorem cubeIntegrand_update_add {G : Type*} [AddCommGroup G] {j : ℕ}
-    (f : (Fin j → Bool) → G → ℂ) (ω : Fin j → Bool) (g k : G → ℂ)
-    (h : Fin j → G) (x : G) :
-    cubeIntegrand (Function.update f ω (g + k)) h x =
-      cubeIntegrand (Function.update f ω g) h x +
-      cubeIntegrand (Function.update f ω k) h x := by
-  simp only [cubeIntegrand_update, Pi.add_apply, cubeConj_add, add_mul]
-
-theorem cubeIntegrand_update_smul {G : Type*} [AddCommGroup G] {j : ℕ}
-    (f : (Fin j → Bool) → G → ℂ) (ω : Fin j → Bool) (r : ℝ) (g : G → ℂ)
-    (h : Fin j → G) (x : G) :
-    cubeIntegrand (Function.update f ω (r • g)) h x =
-      r • cubeIntegrand (Function.update f ω g) h x := by
-  simp only [cubeIntegrand_update, Pi.smul_apply, cubeConj_real_smul, smul_mul_assoc]
-
-theorem cubeAverage_three_update_add {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] (f : (Fin 3 → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) (hfl : ∀ ω, MemLp (f ω) 2 μ)
-    (ω : Fin 3 → Bool) (g k : G → ℂ) (hg : Measurable g) (hk : Measurable k)
-    (hgl : MemLp g 2 μ) (hkl : MemLp k 2 μ) :
-    cubeAverage μ 3 (Function.update f ω (g + k)) =
-      cubeAverage μ 3 (Function.update f ω g) + cubeAverage μ 3 (Function.update f ω k) := by
-  classical
-  have hm (u : G → ℂ) (hu : Measurable u) : ∀ v, Measurable (Function.update f ω u v) := by
-    intro v
-    by_cases h : v = ω <;> simp [Function.update, h, hu, hf]
-  have hl (u : G → ℂ) (hu : MemLp u 2 μ) : ∀ v, MemLp (Function.update f ω u v) 2 μ := by
-    intro v
-    by_cases h : v = ω <;> simp [Function.update, h, hu, hfl]
-  have hi (u : G → ℂ) (hu : Measurable u) (hul : MemLp u 2 μ) :=
-    cubeIntegrand_three_integrable μ (Function.update f ω u) (hm u hu) (hl u hul)
-  simp only [cubeAverage]
-  rw [← integral_prod_symm _ (hi (g + k) (hg.add hk) (hgl.add hkl)),
-    ← integral_prod_symm _ (hi g hg hgl), ← integral_prod_symm _ (hi k hk hkl)]
-  simp only [cubeIntegrand_update_add]
-  exact integral_add (hi g hg hgl) (hi k hk hkl)
-
-theorem cubeAverage_three_update_smul {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) (f : (Fin 3 → Bool) → G → ℂ)
-    (ω : Fin 3 → Bool) (r : ℝ) (g : G → ℂ) :
-    cubeAverage μ 3 (Function.update f ω (r • g)) =
-      r • cubeAverage μ 3 (Function.update f ω g) := by
-  simp only [cubeAverage, cubeIntegrand_update_smul, integral_smul]
-
-noncomputable def l2CubeAverage {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    (μ : Measure G) (f : (Fin 3 → Bool) → Lp ℂ 2 μ) : ℂ :=
-  cubeAverage μ 3 (fun ω => l2Representative μ (f ω))
-
-theorem l2CubeAverage_update_eq {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] (f : (Fin 3 → Bool) → Lp ℂ 2 μ)
-    (ω : Fin 3 → Bool) (u : Lp ℂ 2 μ) (g : G → ℂ)
-    (hg : Measurable g) (hgl : MemLp g 2 μ) (hgu : g =ᵐ[μ] u) :
-    l2CubeAverage μ (Function.update f ω u) =
-      cubeAverage μ 3 (Function.update (fun v => l2Representative μ (f v)) ω g) := by
-  classical
-  refine cubeAverage_three_congr_ae μ _ _
-    (fun v => l2Representative_measurable μ _) ?_
-    (fun v => l2Representative_memLp μ _) ?_ ?_
-  · intro v
-    by_cases h : v = ω <;> simp [Function.update, h, hg, l2Representative_measurable]
-  · intro v
-    by_cases h : v = ω <;> simp [Function.update, h, hgl, l2Representative_memLp]
-  · intro v
-    by_cases h : v = ω
-    · subst v
-      simpa only [Function.update_self] using (l2Representative_ae μ u).trans hgu.symm
-    · simp only [Function.update_of_ne h]
-      exact Filter.EventuallyEq.rfl
-
-/-- The cube form is real multilinear: odd vertices conjugate their complex input. -/
-noncomputable def l2CubeMultilinear {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] :
-    MultilinearMap ℝ (fun _ : Fin 3 → Bool => Lp ℂ 2 μ) ℂ :=
-  MultilinearMap.mk' (l2CubeAverage μ) (by
-    intro f ω u v
-    rw [l2CubeAverage_update_eq μ f ω (u + v)
-      (l2Representative μ u + l2Representative μ v)
-      ((l2Representative_measurable μ u).add (l2Representative_measurable μ v))
-      ((l2Representative_memLp μ u).add (l2Representative_memLp μ v))
-      (((l2Representative_ae μ u).add (l2Representative_ae μ v)).trans
-        (Lp.coeFn_add u v).symm)]
-    rw [l2CubeAverage_update_eq μ f ω u _ (l2Representative_measurable μ u)
-      (l2Representative_memLp μ u) (l2Representative_ae μ u),
-      l2CubeAverage_update_eq μ f ω v _ (l2Representative_measurable μ v)
-      (l2Representative_memLp μ v) (l2Representative_ae μ v)]
-    exact cubeAverage_three_update_add μ _ (fun i => l2Representative_measurable μ _)
-      (fun i => l2Representative_memLp μ _) ω _ _
-      (l2Representative_measurable μ u) (l2Representative_measurable μ v)
-      (l2Representative_memLp μ u) (l2Representative_memLp μ v)) (by
-    intro f ω r u
-    rw [l2CubeAverage_update_eq μ f ω (r • u) (r • l2Representative μ u)
-      ((l2Representative_measurable μ u).const_smul r)
-      ((l2Representative_memLp μ u).const_smul r)
-      (((l2Representative_ae μ u).const_smul r).trans (Lp.coeFn_smul r u).symm)]
-    rw [l2CubeAverage_update_eq μ f ω u _ (l2Representative_measurable μ u)
-      (l2Representative_memLp μ u) (l2Representative_ae μ u)]
-    exact cubeAverage_three_update_smul μ _ ω r _)
-
-/-- Blueprint `lem:cube-foundation`: the continuous extension to eight `L²` inputs. -/
-noncomputable def l2CubeContinuous {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] :
-    ContinuousMultilinearMap ℝ (fun _ : Fin 3 → Bool => Lp ℂ 2 μ) ℂ :=
-  (l2CubeMultilinear μ).mkContinuous 1 (fun f => by
-    change ‖cubeAverage μ 3 (fun ω => l2Representative μ (f ω))‖ ≤ 1 * ∏ ω, ‖f ω‖
-    simpa only [one_mul, haarL2Norm_l2Representative] using
-      cubeAverage_three_le_L2 μ (fun ω => l2Representative μ (f ω))
-        (fun ω => l2Representative_measurable μ _) (fun ω => l2Representative_memLp μ _))
-
-theorem l2CubeContinuous_toLp {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] (f : (Fin 3 → Bool) → G → ℂ)
-    (hf : ∀ ω, Measurable (f ω)) (hfl : ∀ ω, MemLp (f ω) 2 μ) :
-    l2CubeContinuous μ (fun ω => (hfl ω).toLp (f ω)) = cubeAverage μ 3 f := by
-  apply cubeAverage_three_congr_ae μ _ f (fun ω => l2Representative_measurable μ _)
-    hf (fun ω => l2Representative_memLp μ _) hfl
-  intro ω
-  exact (l2Representative_ae μ _).trans (MemLp.coeFn_toLp (hfl ω))
-
-theorem l2CubeContinuous_norm_le_one {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] : ‖l2CubeContinuous μ‖ ≤ 1 :=
-  MultilinearMap.mkContinuous_norm_le _ (by norm_num) _
-
-/-- Specialization to every real torus with normalized Haar measure, in particular
-the period-sixteen torus used later in the blueprint. -/
-noncomputable def torusCubeContinuous (T : ℝ) [Fact (0 < T)] (d : ℕ) :
-    ContinuousMultilinearMap ℝ
-      (fun _ : Fin 3 → Bool => Lp ℂ 2
-        (Measure.pi (fun _ : Fin d => (AddCircle.haarAddCircle : Measure (AddCircle T))))) ℂ := by
-  let μ : Measure (AddCircle T) := AddCircle.haarAddCircle
-  letI : (Measure.pi (fun _ : Fin d => μ)).IsNegInvariant :=
-    ⟨(measurePreserving_pi (fun _ : Fin d => μ) (fun _ => μ)
-      (fun _ => Measure.measurePreserving_neg μ)).map_eq⟩
-  exact l2CubeContinuous _
 
 open ClassicalMaximal
 
@@ -7070,5 +3672,6246 @@ theorem finiteDepthConstant_finite (κ : LocalKernelClass) {q : ℝ}
         ENNReal.ofReal c * finiteDepthDenominator D) → finiteDepthConstant κ q N ≤ c) :=
   ⟨finiteDepthConstant_bounds κ hq.1.le N,
     finiteDepthConstant_spec hq.1.le, fun _ => finiteDepthConstant_least⟩
+
+/-- The source Hilbert space has one physical coordinate and one distinct
+private coordinate for each label (`column-data`, lines 470–474). -/
+abbrev ColumnHilbert (V : Type*) := EuclideanSpace ℂ (Option V)
+
+/-- Global L2 space in which cell-supported column projections act. -/
+noncomputable abbrev ColumnL2 (V : Type*) [Fintype V] :=
+  Lp (ColumnHilbert V) 2 (volume : Measure ℝ)
+
+open scoped Classical in
+/-- The augmented column `(φᵥ(y), sqrt(εᵥ) eᵥ)` from blueprint line 473. -/
+noncomputable def privateColumnValue {V : Type*} [Fintype V]
+    (φ : V → ℝ → ℂ) (ε : V → ℝ) (v : V) (y : ℝ) : ColumnHilbert V :=
+  φ v y • EuclideanSpace.single none (1 : ℂ) +
+    (Real.sqrt (ε v) : ℂ) • EuclideanSpace.single (some v) (1 : ℂ)
+
+theorem privateColumnValue_physical {V : Type*} [Fintype V]
+    (φ : V → ℝ → ℂ) (ε : V → ℝ) (v : V) (y : ℝ) :
+    privateColumnValue φ ε v y none = φ v y := by
+  classical
+  simp [privateColumnValue]
+
+open scoped Classical in
+theorem privateColumnValue_private {V : Type*} [Fintype V]
+    (φ : V → ℝ → ℂ) (ε : V → ℝ) (v w : V) (y : ℝ) :
+    privateColumnValue φ ε v y (some w) = if w = v then (Real.sqrt (ε v) : ℂ) else 0 := by
+  classical
+  by_cases hw : w = v <;> simp [privateColumnValue, hw]
+
+theorem privateColumnValue_measurable {V : Type*} [Fintype V]
+    (φ : V → ℝ → ℂ) (ε : V → ℝ) (v : V) (hφ : Measurable (φ v)) :
+    Measurable (privateColumnValue φ ε v) := by
+  exact (hφ.smul measurable_const).add measurable_const
+
+open scoped Classical in
+/-- Finite column data from `eq:columnbudget` and `column-data`, lines
+470–483. The budget counts available labels at each point, without bounding
+the total number of labels on disjoint branches. -/
+structure ColumnTreeData (V : Type*) [Fintype V] where
+  grid : RealDyadicGrid
+  cells : Finset (ℤ × ℤ)
+  root : ℤ × ℤ
+  below_root : ∀ c ∈ cells, dyadicGridCell grid c.1 c.2 ⊆ dyadicGridCell grid root.1 root.2
+  birth : V → ℤ × ℤ
+  birth_mem : ∀ v, birth v ∈ cells
+  scalar : V → ℝ → ℂ
+  scalar_measurable : ∀ v, Measurable (scalar v)
+  privateWeight : V → ℝ
+  privateWeight_pos : ∀ v, 0 < privateWeight v
+  budget : ℝ
+  two_le_budget : 2 ≤ budget
+  private_lower : ∀ v, budget⁻¹ ≤ Real.sqrt (privateWeight v)
+  column_bound : ∀ v, ∀ᵐ y ∂volume.restrict (dyadicGridCell grid (birth v).1 (birth v).2),
+    ‖privateColumnValue scalar privateWeight v y‖ ≤ budget
+  path_count : ∀ y : ℝ,
+    ((Finset.univ.filter
+      (fun v => y ∈ dyadicGridCell grid (birth v).1 (birth v).2)).card : ℝ) ≤ budget
+
+/-- A fixed inherited mask: available birth cells contain the decision
+cell, and every old label remains available on each descendant in the tree. -/
+structure InheritedColumnMask {V : Type*} [Fintype V] (D : ColumnTreeData V) where
+  labels : (ℤ × ℤ) → Finset V
+  available : ∀ c ∈ D.cells, ∀ v ∈ labels c,
+    dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid (D.birth v).1 (D.birth v).2
+  inherited : ∀ c ∈ D.cells, ∀ d ∈ D.cells,
+    dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid d.1 d.2 → labels d ⊆ labels c
+
+/-- Each decision-cell mask has at most the path budget many columns,
+although labels on other branches need not be bounded in number. -/
+theorem InheritedColumnMask_card_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    ((A.labels c).card : ℝ) ≤ D.budget := by
+  classical
+  let y := dyadicGridLeft D.grid c.1 c.2
+  have hy : y ∈ dyadicGridCell D.grid c.1 c.2 := dyadicGridCell_left_mem D.grid c.1 c.2
+  have hsub : A.labels c ⊆ Finset.univ.filter
+      (fun v => y ∈ dyadicGridCell D.grid (D.birth v).1 (D.birth v).2) := by
+    intro v hv
+    exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, A.available c hc v hv hy⟩
+  exact (Nat.cast_le.mpr (Finset.card_le_card hsub)).trans (D.path_count y)
+
+/-- The birth-cell essential bound passes to every decision cell on
+which the fixed mask makes the label available. -/
+theorem InheritedColumnMask_ae_column_bound {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) {v : V} (hv : v ∈ A.labels c) :
+    ∀ᵐ y ∂volume.restrict (dyadicGridCell D.grid c.1 c.2),
+      ‖privateColumnValue D.scalar D.privateWeight v y‖ ≤ D.budget :=
+  ae_restrict_of_ae_restrict_of_subset (A.available c hc v hv) (D.column_bound v)
+
+/-- Available columns, restricted to a decision cell and extended by zero,
+belong to L2 by the source essential bound and the finite cell measure. -/
+theorem cellColumn_memLp {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) {v : V} (hv : v ∈ A.labels c) :
+    MemLp ((dyadicGridCell D.grid c.1 c.2).indicator
+      (privateColumnValue D.scalar D.privateWeight v)) 2 volume := by
+  apply (memLp_indicator_iff_restrict
+    (dyadicGridCell_measurable D.grid c.1 c.2).nullMeasurableSet).mpr
+  let : IsFiniteMeasure (volume.restrict (dyadicGridCell D.grid c.1 c.2)) :=
+    isFiniteMeasure_restrict.mpr (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
+  have hm := privateColumnValue_measurable D.scalar D.privateWeight v (D.scalar_measurable v)
+  exact MemLp.of_bound hm.aestronglyMeasurable D.budget
+    (InheritedColumnMask_ae_column_bound D A hc hv)
+
+/-- The cell-supported L2 column, with its exact original representative. -/
+noncomputable def cellColumnLp {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (v : {v // v ∈ A.labels c}) : ColumnL2 V :=
+  MemLp.toLp _ (cellColumn_memLp D A hc v.property)
+
+theorem cellColumnLp_coeFn {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (v : {v // v ∈ A.labels c}) :
+    (cellColumnLp D A hc v : ℝ → ColumnHilbert V) =ᵐ[volume]
+      (dyadicGridCell D.grid c.1 c.2).indicator (privateColumnValue D.scalar D.privateWeight v) :=
+  MemLp.coeFn_toLp (cellColumn_memLp D A hc v.property)
+
+/-- The source projection range is the span of constant-coefficient
+combinations of the restricted available columns (`column-data`, line 483). -/
+noncomputable def cellColumnRange {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    Submodule ℂ (ColumnL2 V) :=
+  Submodule.span ℂ (Set.range (cellColumnLp D A hc))
+
+instance cellColumnRange_finiteDimensional {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    FiniteDimensional ℂ (cellColumnRange D A hc) := by
+  classical
+  unfold cellColumnRange
+  exact FiniteDimensional.span_of_finite ℂ (Set.finite_range _)
+
+/-- Orthogonal projection onto the finite-dimensional column range. No
+basis-selection algorithm is part of this definition. -/
+noncomputable def cellColumnProjection {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    ColumnL2 V →L[ℂ] ColumnL2 V :=
+  (cellColumnRange D A hc).starProjection
+
+theorem cellColumnProjection_mem {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    cellColumnProjection D A hc z ∈ cellColumnRange D A hc :=
+  Submodule.starProjection_apply_mem _ _
+
+theorem cellColumnProjection_norm_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    ‖cellColumnProjection D A hc‖ ≤ 1 := Submodule.starProjection_norm_le _
+
+theorem cellColumnProjection_fixes_column {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (v : {v // v ∈ A.labels c}) :
+    cellColumnProjection D A hc (cellColumnLp D A hc v) = cellColumnLp D A hc v := by
+  apply Submodule.starProjection_eq_self_iff.mpr
+  exact Submodule.subset_span (Set.mem_range_self v)
+
+open scoped Classical in
+/-- Membership in the projection range is exactly a constant-coefficient
+combination of the available restricted columns. -/
+theorem cellColumnRange_mem_iff {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    z ∈ cellColumnRange D A hc ↔
+      ∃ a : {v // v ∈ A.labels c} → ℂ, ∑ v, a v • cellColumnLp D A hc v = z := by
+  exact Submodule.mem_span_range_iff_exists_fun ℂ
+
+open scoped Classical in
+/-- The orthogonal projection is represented by coefficients constant on
+the decision cell, exactly as required by `column-data`, line 480. -/
+theorem cellColumnProjection_representation {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    ∃ a : {v // v ∈ A.labels c} → ℂ,
+      ∑ v, a v • cellColumnLp D A hc v = cellColumnProjection D A hc z :=
+  (cellColumnRange_mem_iff D A hc _).mp (cellColumnProjection_mem D A hc z)
+
+/-- Multiplication of an L2 column-space vector by a measurable decision
+set, retaining its original values on the set and zero elsewhere. -/
+noncomputable def columnL2Indicator {V : Type*} [Fintype V] (s : Set ℝ)
+    (hs : MeasurableSet s) (z : ColumnL2 V) : ColumnL2 V :=
+  MemLp.toLp (s.indicator z) (MemLp.indicator hs.nullMeasurableSet (Lp.memLp z))
+
+theorem columnL2Indicator_coeFn {V : Type*} [Fintype V] (s : Set ℝ)
+    (hs : MeasurableSet s) (z : ColumnL2 V) :
+    (columnL2Indicator s hs z : ℝ → ColumnHilbert V) =ᵐ[volume] s.indicator z :=
+  MemLp.coeFn_toLp _
+
+theorem columnL2Indicator_add {V : Type*} [Fintype V] (s : Set ℝ)
+    (hs : MeasurableSet s) (z w : ColumnL2 V) :
+    columnL2Indicator s hs (z + w) = columnL2Indicator s hs z + columnL2Indicator s hs w := by
+  classical
+  apply Lp.ext
+  filter_upwards [columnL2Indicator_coeFn s hs (z + w), columnL2Indicator_coeFn s hs z,
+    columnL2Indicator_coeFn s hs w, Lp.coeFn_add z w,
+    Lp.coeFn_add (columnL2Indicator s hs z) (columnL2Indicator s hs w)] with y h1 h2 h3 h4 h5
+  rw [h1, h5]
+  by_cases hy : y ∈ s
+  · simpa only [Set.indicator_of_mem hy, Pi.add_apply, h2, h3] using h4
+  · simp only [Set.indicator_of_notMem hy, Pi.add_apply, h2, h3, add_zero]
+
+theorem columnL2Indicator_smul {V : Type*} [Fintype V] (s : Set ℝ)
+    (hs : MeasurableSet s) (a : ℂ) (z : ColumnL2 V) :
+    columnL2Indicator s hs (a • z) = a • columnL2Indicator s hs z := by
+  classical
+  apply Lp.ext
+  filter_upwards [columnL2Indicator_coeFn s hs (a • z), columnL2Indicator_coeFn s hs z,
+    Lp.coeFn_smul a z, Lp.coeFn_smul a (columnL2Indicator s hs z)] with y h1 h2 h3 h4
+  rw [h1, h4]
+  by_cases hy : y ∈ s
+  · simpa only [Set.indicator_of_mem hy, Pi.smul_apply, h2] using h3
+  · simp only [Set.indicator_of_notMem hy, Pi.smul_apply, h2, smul_zero]
+
+theorem columnL2Indicator_norm_le {V : Type*} [Fintype V] (s : Set ℝ)
+    (hs : MeasurableSet s) (z : ColumnL2 V) : ‖columnL2Indicator s hs z‖ ≤ ‖z‖ := by
+  unfold columnL2Indicator
+  rw [Lp.norm_toLp, Lp.norm_def]
+  exact ENNReal.toReal_mono (Lp.eLpNorm_ne_top z) (eLpNorm_indicator_le z hs.nullMeasurableSet)
+
+/-- The bounded linear decision-set restriction operator. -/
+noncomputable def columnL2Restriction {V : Type*} [Fintype V] (s : Set ℝ)
+    (hs : MeasurableSet s) : ColumnL2 V →L[ℂ] ColumnL2 V := by
+  let L : ColumnL2 V →ₗ[ℂ] ColumnL2 V :=
+    { toFun := columnL2Indicator s hs
+      map_add' := columnL2Indicator_add s hs
+      map_smul' := columnL2Indicator_smul s hs }
+  exact L.mkContinuous 1 (fun z => by
+    change ‖columnL2Indicator s hs z‖ ≤ 1 * ‖z‖
+    simpa only [one_mul] using columnL2Indicator_norm_le s hs z)
+
+/-- Restricting an old column to a descendant gives exactly the same
+label's descendant column, using the inherited-mask inclusion. -/
+theorem cellColumn_restrict_descendant {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c d : ℤ × ℤ} (hc : c ∈ D.cells) (hd : d ∈ D.cells)
+    (hcd : dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid d.1 d.2)
+    (v : {v // v ∈ A.labels d}) :
+    columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2) (cellColumnLp D A hd v) =
+      cellColumnLp D A hc ⟨v, A.inherited c hc d hd hcd v.property⟩ := by
+  classical
+  apply Lp.ext
+  filter_upwards [columnL2Indicator_coeFn (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2) (cellColumnLp D A hd v),
+    cellColumnLp_coeFn D A hd v,
+    cellColumnLp_coeFn D A hc ⟨v, A.inherited c hc d hd hcd v.property⟩] with y h1 h2 h3
+  change (columnL2Indicator (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2)
+    (cellColumnLp D A hd v) : ℝ → ColumnHilbert V) y = _
+  rw [h1, h3]
+  by_cases hy : y ∈ dyadicGridCell D.grid c.1 c.2
+  · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy, h2, Set.indicator_of_mem (hcd hy)]
+  · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy]
+
+/-- Blueprint `column-data`, lines 480–483: restriction to a descendant
+preserves the range of old constant-coefficient column combinations. -/
+theorem cellColumnRange_restrict_descendant {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c d : ℤ × ℤ} (hc : c ∈ D.cells) (hd : d ∈ D.cells)
+    (hcd : dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid d.1 d.2)
+    {z : ColumnL2 V} (hz : z ∈ cellColumnRange D A hd) :
+    columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2) z ∈ cellColumnRange D A hc := by
+  let R := columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2) (V := V)
+  have hsub : cellColumnRange D A hd ≤ (cellColumnRange D A hc).comap R.toLinearMap := by
+    apply Submodule.span_le.mpr
+    rintro _ ⟨v, rfl⟩
+    change R (cellColumnLp D A hd v) ∈ cellColumnRange D A hc
+    rw [show R (cellColumnLp D A hd v) = _ from cellColumn_restrict_descendant D A hc hd hcd v]
+    exact Submodule.subset_span (Set.mem_range_self _)
+  exact hsub hz
+
+/-- Every vector in a cell's column range is fixed by restriction to that
+cell, making the zero extension in the source projection explicit. -/
+theorem cellColumnRange_fixed_restriction {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    {z : ColumnL2 V} (hz : z ∈ cellColumnRange D A hc) :
+    columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2) z = z := by
+  let R := columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2) (V := V)
+  change R z = z
+  change z ∈ Submodule.span ℂ (Set.range (cellColumnLp D A hc)) at hz
+  induction hz using Submodule.span_induction with
+  | mem z hz =>
+    obtain ⟨v, rfl⟩ := hz
+    exact cellColumn_restrict_descendant D A hc hc (Set.Subset.refl _) v
+  | zero => exact map_zero R
+  | add z w _ _ hz hw => simp only [map_add, hz, hw]
+  | smul a z _ hz => simp only [map_smul, hz]
+
+/-- Column-range vectors vanish almost everywhere off their decision cell. -/
+theorem cellColumnRange_ae_zero_off {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    {z : ColumnL2 V} (hz : z ∈ cellColumnRange D A hc) :
+    ∀ᵐ y ∂volume, y ∉ dyadicGridCell D.grid c.1 c.2 → z y = 0 := by
+  have heq := cellColumnRange_fixed_restriction D A hc hz
+  have hae := columnL2Indicator_coeFn (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2) z
+  change (columnL2Indicator (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2) z) = z at heq
+  rw [heq] at hae
+  filter_upwards [hae] with y hy
+  intro hout
+  simpa only [Set.indicator_of_notMem hout] using hy
+
+/-- The ranges of columns on disjoint decision cells are orthogonal,
+justifying the source's direct sums on stopping partitions. -/
+theorem cellColumnRange_inner_eq_zero_of_disjoint {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : InheritedColumnMask D) {c d : ℤ × ℤ}
+    (hc : c ∈ D.cells) (hd : d ∈ D.cells)
+    (hdis : Disjoint (dyadicGridCell D.grid c.1 c.2) (dyadicGridCell D.grid d.1 d.2))
+    {z w : ColumnL2 V} (hz : z ∈ cellColumnRange D A hc) (hw : w ∈ cellColumnRange D A hd) :
+    inner ℂ z w = 0 := by
+  rw [MeasureTheory.L2.inner_def]
+  have heq : (fun y => inner ℂ (z y) (w y)) =ᵐ[volume] 0 := by
+    filter_upwards [cellColumnRange_ae_zero_off D A hc hz,
+      cellColumnRange_ae_zero_off D A hd hw] with y hz0 hw0
+    by_cases hy : y ∈ dyadicGridCell D.grid c.1 c.2
+    · have hyd : y ∉ dyadicGridCell D.grid d.1 d.2 := fun hyd => Set.disjoint_left.mp hdis hy hyd
+      simp only [hw0 hyd, inner_zero_right, Pi.zero_apply]
+    · simp only [hz0 hy, inner_zero_left, Pi.zero_apply]
+  rw [integral_congr_ae heq]
+  simp only [Pi.zero_apply, integral_zero]
+
+/-- A finite stopping partition of the source root, using cells of the
+fixed column tree. Half-open cells make the disjoint cover exact. -/
+structure ColumnStoppingPartition {V : Type*} [Fintype V] (D : ColumnTreeData V) where
+  cells : Finset (ℤ × ℤ)
+  subset : cells ⊆ D.cells
+  disjoint : Set.PairwiseDisjoint (cells : Set (ℤ × ℤ))
+    (fun c => dyadicGridCell D.grid c.1 c.2)
+  cover : (⋃ c ∈ cells, dyadicGridCell D.grid c.1 c.2) =
+    dyadicGridCell D.grid D.root.1 D.root.2
+
+/-- Orthogonal direct sum of the cell column ranges on a stopping partition. -/
+noncomputable def partitionColumnRange {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (π : ColumnStoppingPartition D) : Submodule ℂ (ColumnL2 V) :=
+  ⨆ c : {c // c ∈ π.cells}, cellColumnRange D A (π.subset c.property)
+
+instance partitionColumnRange_finiteDimensional {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (π : ColumnStoppingPartition D) :
+    FiniteDimensional ℂ (partitionColumnRange D A π) := by
+  classical
+  unfold partitionColumnRange
+  infer_instance
+
+/-- The source stopping-partition projection, defined from its range. -/
+noncomputable def partitionColumnProjection {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (π : ColumnStoppingPartition D) :
+    ColumnL2 V →L[ℂ] ColumnL2 V := (partitionColumnRange D A π).starProjection
+
+theorem partitionColumnRange_orthogonalFamily {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (π : ColumnStoppingPartition D) :
+    OrthogonalFamily ℂ (fun c : {c // c ∈ π.cells} => cellColumnRange D A (π.subset c.property))
+      (fun c => (cellColumnRange D A (π.subset c.property)).subtypeₗᵢ) := by
+  intro c d hcd z w
+  apply cellColumnRange_inner_eq_zero_of_disjoint D A (π.subset c.property) (π.subset d.property)
+    (π.disjoint c.property d.property (fun h => hcd (Subtype.ext h))) z.property w.property
+
+open scoped Classical in
+/-- Blueprint `column-data`, line 480: the partition projection equals the
+finite direct sum of its cell projections. -/
+theorem partitionColumnProjection_eq_sum {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (π : ColumnStoppingPartition D) (z : ColumnL2 V) :
+    partitionColumnProjection D A π z =
+      ∑ c : {c // c ∈ π.cells}, cellColumnProjection D A (π.subset c.property) z := by
+  let W := fun c : {c // c ∈ π.cells} => cellColumnRange D A (π.subset c.property)
+  have horth := partitionColumnRange_orthogonalFamily D A π
+  have hm : partitionColumnProjection D A π z ∈ ⨆ c, W c :=
+    Submodule.starProjection_apply_mem _ _
+  have hh := horth.sum_projection_of_mem_iSup (partitionColumnProjection D A π z) hm
+  calc
+    _ = ∑ c, (W c).starProjection (partitionColumnProjection D A π z) := hh.symm
+    _ = _ := by
+      apply Finset.sum_congr rfl
+      intro c _
+      have hle : W c ≤ partitionColumnRange D A π := le_iSup W c
+      have hcomp := Submodule.starProjection_comp_starProjection_of_le hle
+      exact congrArg (fun L : ColumnL2 V →L[ℂ] ColumnL2 V => L z) hcomp
+
+theorem partitionColumnProjection_norm_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (π : ColumnStoppingPartition D) :
+    ‖partitionColumnProjection D A π‖ ≤ 1 := Submodule.starProjection_norm_le _
+
+theorem cellColumnRange_restrict_superset {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    {s : Set ℝ} (hs : MeasurableSet s) (hcs : dyadicGridCell D.grid c.1 c.2 ⊆ s)
+    {z : ColumnL2 V} (hz : z ∈ cellColumnRange D A hc) : columnL2Restriction s hs z = z := by
+  classical
+  apply Lp.ext
+  filter_upwards [columnL2Indicator_coeFn s hs z, cellColumnRange_ae_zero_off D A hc hz]
+    with y hy hz0
+  change (columnL2Indicator s hs z : ℝ → ColumnHilbert V) y = z y
+  rw [hy]
+  by_cases hys : y ∈ s
+  · exact Set.indicator_of_mem hys _
+  · rw [Set.indicator_of_notMem hys, hz0 (fun hyc => hys (hcs hyc))]
+
+theorem cellColumnRange_restrict_disjoint {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    {s : Set ℝ} (hs : MeasurableSet s) (hdis : Disjoint s (dyadicGridCell D.grid c.1 c.2))
+    {z : ColumnL2 V} (hz : z ∈ cellColumnRange D A hc) : columnL2Restriction s hs z = 0 := by
+  classical
+  apply Lp.ext
+  filter_upwards [columnL2Indicator_coeFn s hs z, cellColumnRange_ae_zero_off D A hc hz,
+    Lp.coeFn_zero (E := ColumnHilbert V) (p := (2 : ℝ≥0∞)) (μ := (volume : Measure ℝ))]
+    with y hy hz0 hzero
+  change (columnL2Indicator s hs z : ℝ → ColumnHilbert V) y = _
+  rw [hy, hzero]
+  by_cases hys : y ∈ s
+  · rw [Set.indicator_of_mem hys, hz0 (fun hyc => Set.disjoint_left.mp hdis hys hyc)]
+    rfl
+  · rw [Set.indicator_of_notMem hys]
+    rfl
+
+open scoped Classical in
+/-- The decision-cell restriction operators on a stopping partition sum
+to restriction to the root, an exact L2 identity. -/
+theorem columnPartition_restriction_sum {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (π : ColumnStoppingPartition D) (z : ColumnL2 V) :
+    (∑ c : {c // c ∈ π.cells}, columnL2Restriction (dyadicGridCell D.grid c.val.1 c.val.2)
+      (dyadicGridCell_measurable D.grid c.val.1 c.val.2) z) =
+      columnL2Restriction (dyadicGridCell D.grid D.root.1 D.root.2)
+        (dyadicGridCell_measurable D.grid D.root.1 D.root.2) z := by
+  classical
+  let R := fun c : {c // c ∈ π.cells} => columnL2Restriction
+    (dyadicGridCell D.grid c.val.1 c.val.2) (dyadicGridCell_measurable D.grid c.val.1 c.val.2) z
+  have hall : ∀ᵐ y ∂volume, ∀ c : {c // c ∈ π.cells},
+      (R c : ℝ → ColumnHilbert V) y = (dyadicGridCell D.grid c.val.1 c.val.2).indicator z y :=
+    ae_all_iff.mpr (fun c => columnL2Indicator_coeFn
+      (dyadicGridCell D.grid c.val.1 c.val.2)
+      (dyadicGridCell_measurable D.grid c.val.1 c.val.2) z)
+  apply Lp.ext
+  filter_upwards [Lp.coeFn_fun_finsetSum Finset.univ R, hall,
+    columnL2Indicator_coeFn (dyadicGridCell D.grid D.root.1 D.root.2)
+      (dyadicGridCell_measurable D.grid D.root.1 D.root.2) z] with y hsum hall hroot
+  change (∑ c, R c : ColumnL2 V) y =
+    (columnL2Indicator _ (dyadicGridCell_measurable D.grid D.root.1 D.root.2) z :
+      ℝ → ColumnHilbert V) y
+  rw [hsum, hroot]
+  simp only [hall]
+  by_cases hyr : y ∈ dyadicGridCell D.grid D.root.1 D.root.2
+  · rw [← π.cover] at hyr
+    obtain ⟨c, hc, hyc⟩ := Set.mem_iUnion₂.mp hyr
+    rw [Finset.sum_eq_single (⟨c, hc⟩ : {c // c ∈ π.cells})]
+    · rw [Set.indicator_of_mem hyc, Set.indicator_of_mem (D.below_root c (π.subset hc) hyc)]
+    · intro d _ hdc
+      have hyd : y ∉ dyadicGridCell D.grid d.val.1 d.val.2 := by
+        intro hyd
+        exact Set.disjoint_left.mp
+          (π.disjoint d.property hc (fun h => hdc (Subtype.ext h))) hyd hyc
+      exact Set.indicator_of_notMem hyd _
+    · simp
+  · rw [Set.indicator_of_notMem hyr]
+    apply Finset.sum_eq_zero
+    intro c _
+    exact Set.indicator_of_notMem (fun hyc => hyr (D.below_root c.val (π.subset c.property) hyc)) _
+
+/-- Every fine stopping cell is contained in one old stopping cell. -/
+def ColumnPartitionRefines {V : Type*} [Fintype V] {D : ColumnTreeData V}
+    (σ π : ColumnStoppingPartition D) : Prop :=
+  ∀ c ∈ σ.cells, ∃ d ∈ π.cells,
+    dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid d.1 d.2
+
+/-- Blueprint `column-data`, lines 480–483: inherited masks make the old
+partition range a subspace of every refining stopping-partition range. -/
+theorem partitionColumnRange_mono {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {σ π : ColumnStoppingPartition D}
+    (href : ColumnPartitionRefines σ π) :
+    partitionColumnRange D A π ≤ partitionColumnRange D A σ := by
+  classical
+  apply iSup_le
+  intro d z hz
+  have hsum : (∑ c : {c // c ∈ σ.cells}, columnL2Restriction
+      (dyadicGridCell D.grid c.val.1 c.val.2)
+      (dyadicGridCell_measurable D.grid c.val.1 c.val.2) z) = z :=
+    (columnPartition_restriction_sum D σ z).trans
+      (cellColumnRange_restrict_superset D A (π.subset d.property)
+        (dyadicGridCell_measurable D.grid D.root.1 D.root.2)
+        (D.below_root d.val (π.subset d.property)) hz)
+  rw [← hsum]
+  apply Submodule.sum_mem
+  intro c _
+  obtain ⟨d', hd', hcd'⟩ := href c.val c.property
+  by_cases heq : d' = d.val
+  · have hcd : dyadicGridCell D.grid c.val.1 c.val.2 ⊆
+        dyadicGridCell D.grid d.val.1 d.val.2 := by simpa only [heq] using hcd'
+    exact (le_iSup (fun c : {c // c ∈ σ.cells} => cellColumnRange D A (σ.subset c.property)) c)
+      (cellColumnRange_restrict_descendant D A (σ.subset c.property) (π.subset d.property) hcd hz)
+  · have hdis : Disjoint (dyadicGridCell D.grid c.val.1 c.val.2)
+        (dyadicGridCell D.grid d.val.1 d.val.2) :=
+      (π.disjoint hd' d.property heq).mono_left hcd'
+    rw [cellColumnRange_restrict_disjoint D A (π.subset d.property)
+      (dyadicGridCell_measurable D.grid c.val.1 c.val.2) hdis hz]
+    exact Submodule.zero_mem _
+
+/-- The orthogonal projections on refining stopping partitions are nested;
+this is derived from the inherited masks, not assumed in the interface. -/
+theorem partitionColumnProjection_nested {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {σ π : ColumnStoppingPartition D}
+    (href : ColumnPartitionRefines σ π) :
+    (partitionColumnProjection D A π).comp (partitionColumnProjection D A σ) =
+      partitionColumnProjection D A π :=
+  Submodule.starProjection_comp_starProjection_of_le (partitionColumnRange_mono D A href)
+
+/-- Restriction to a measurable decision set is self-adjoint on the
+column L2 space. -/
+theorem columnL2Restriction_inner {V : Type*} [Fintype V] (s : Set ℝ)
+    (hs : MeasurableSet s) (z w : ColumnL2 V) :
+    inner ℂ (columnL2Restriction s hs z) w = inner ℂ z (columnL2Restriction s hs w) := by
+  classical
+  rw [MeasureTheory.L2.inner_def, MeasureTheory.L2.inner_def]
+  apply integral_congr_ae
+  filter_upwards [columnL2Indicator_coeFn s hs z, columnL2Indicator_coeFn s hs w] with y hz hw
+  change inner ℂ ((columnL2Indicator s hs z : ℝ → ColumnHilbert V) y) (w y) =
+    inner ℂ (z y) ((columnL2Indicator s hs w : ℝ → ColumnHilbert V) y)
+  rw [hz, hw]
+  by_cases hy : y ∈ s
+  · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy]
+  · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy,
+      inner_zero_left, inner_zero_right]
+
+/-- Exact output locality of the cell projection. -/
+theorem cellColumnProjection_output_locality {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    (columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2)).comp (cellColumnProjection D A hc) =
+        cellColumnProjection D A hc := by
+  apply ContinuousLinearMap.ext
+  intro z
+  exact cellColumnRange_fixed_restriction D A hc (cellColumnProjection_mem D A hc z)
+
+/-- Blueprint `column-data`, line 483: the cell projection is unchanged by
+right multiplication by its decision-cell indicator. -/
+theorem cellColumnProjection_input_locality {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    (cellColumnProjection D A hc).comp (columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2)) = cellColumnProjection D A hc := by
+  apply ContinuousLinearMap.ext
+  intro z
+  apply ext_inner_right ℂ
+  intro w
+  change inner ℂ ((cellColumnRange D A hc).starProjection
+      (columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+        (dyadicGridCell_measurable D.grid c.1 c.2) z)) w =
+    inner ℂ ((cellColumnRange D A hc).starProjection z) w
+  rw [Submodule.inner_starProjection_left_eq_right, Submodule.inner_starProjection_left_eq_right,
+    columnL2Restriction_inner, cellColumnRange_fixed_restriction D A hc
+      (Submodule.starProjection_apply_mem _ w)]
+
+/-- Fixed row-family interface in blueprint `column-data`, line 483.
+The square-sum bound and exact input-cell equation remain explicit data
+when later constructions assemble and compose row families. -/
+structure ColumnRowFamily {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (ι F : Type*) [Fintype ι] [NormedAddCommGroup F] [NormedSpace ℂ F] where
+  decision : ι → ℤ × ℤ
+  decision_mem : ∀ i, decision i ∈ D.cells
+  row : ι → ColumnL2 V →L[ℂ] F
+  bound : ℝ
+  bound_nonneg : 0 ≤ bound
+  square_sum : ∀ z, ∑ i, ‖row i z‖ ^ 2 ≤ bound ^ 2 * ‖z‖ ^ 2
+  input_locality : ∀ i, (row i).comp (columnL2Restriction
+    (dyadicGridCell D.grid (decision i).1 (decision i).2)
+    (dyadicGridCell_measurable D.grid (decision i).1 (decision i).2)) = row i
+
+/-- Left composition preserves the exact decision-cell locality equation. -/
+theorem columnRowFamily_postcompose_locality {V ι F K : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] [NormedAddCommGroup K] [NormedSpace ℂ K]
+    (D : ColumnTreeData V) (B : ColumnRowFamily D ι F) (L : ι → F →L[ℂ] K) (i : ι) :
+    ((L i).comp (B.row i)).comp (columnL2Restriction
+      (dyadicGridCell D.grid (B.decision i).1 (B.decision i).2)
+      (dyadicGridCell_measurable D.grid (B.decision i).1 (B.decision i).2)) =
+      (L i).comp (B.row i) := by
+  rw [ContinuousLinearMap.comp_assoc, B.input_locality]
+
+/-- Euclidean coefficient space for the labels available on a decision cell. -/
+abbrev CellCoefficients {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) := EuclideanSpace ℂ {v // v ∈ A.labels c}
+
+open scoped Classical in
+/-- Evaluation of a constant-coefficient combination of available columns. -/
+noncomputable def columnCombination {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c) (y : ℝ) :
+    ColumnHilbert V :=
+  ∑ v : {v // v ∈ A.labels c}, a v • privateColumnValue D.scalar D.privateWeight v y
+
+open scoped Classical in
+theorem columnCombination_physical {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c) (y : ℝ) :
+    columnCombination D A c a y none = ∑ v : {v // v ∈ A.labels c}, a v * D.scalar v y := by
+  simp [columnCombination, privateColumnValue_physical, smul_eq_mul]
+
+open scoped Classical in
+theorem columnCombination_private {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c) (y : ℝ)
+    (w : {v // v ∈ A.labels c}) :
+    columnCombination D A c a y (some w.val) = a w * (Real.sqrt (D.privateWeight w) : ℂ) := by
+  classical
+  simp only [columnCombination, WithLp.ofLp_sum, Finset.sum_apply, WithLp.ofLp_smul,
+    Pi.smul_apply, privateColumnValue_private, smul_eq_mul]
+  rw [Finset.sum_eq_single w]
+  · simp
+  · intro v _ hv
+    have hne : w.val ≠ v.val := fun h => hv (Subtype.ext h.symm)
+    simp only [ite_eq_right hne, mul_zero]
+  · simp
+
+open scoped Classical in
+/-- The private coordinates alone control the coefficient norm, the lower
+bound in blueprint `lem:coeff`, lines 487–491. -/
+theorem columnCombination_lower {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c) (y : ℝ) :
+    D.budget⁻¹ * ‖a‖ ≤ ‖columnCombination D A c a y‖ := by
+  classical
+  have hD : 0 < D.budget := lt_of_lt_of_le (by norm_num) D.two_le_budget
+  have hi : 0 ≤ D.budget⁻¹ := inv_nonneg.mpr hD.le
+  let e : {v // v ∈ A.labels c} → Option V := fun v => some v.val
+  have he : Function.Injective e := fun v w h => Subtype.ext (Option.some.inj h)
+  have hsq : (D.budget⁻¹ * ‖a‖) ^ 2 ≤ ‖columnCombination D A c a y‖ ^ 2 := by
+    calc
+      _ = ∑ v : {v // v ∈ A.labels c}, (D.budget⁻¹ * ‖a v‖) ^ 2 := by
+        rw [mul_pow, EuclideanSpace.norm_sq_eq, Finset.mul_sum]
+        exact Finset.sum_congr rfl (fun v _ => (mul_pow _ _ 2).symm)
+      _ ≤ ∑ v : {v // v ∈ A.labels c},
+          ‖columnCombination D A c a y (some v.val)‖ ^ 2 := by
+        apply Finset.sum_le_sum
+        intro v _
+        rw [columnCombination_private, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+          abs_of_nonneg (Real.sqrt_nonneg _)]
+        have h := mul_le_mul_of_nonneg_right (D.private_lower v) (norm_nonneg (a v))
+        have h0 := mul_nonneg hi (norm_nonneg (a v))
+        have h1 := mul_nonneg (Real.sqrt_nonneg (D.privateWeight v)) (norm_nonneg (a v))
+        nlinarith
+      _ = ∑ o ∈ Finset.univ.image e, ‖columnCombination D A c a y o‖ ^ 2 := by
+        rw [Finset.sum_image (fun v _ w _ h => he h)]
+      _ ≤ ∑ o : Option V, ‖columnCombination D A c a y o‖ ^ 2 :=
+        Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ _)
+          (fun _ _ _ => sq_nonneg _)
+      _ = _ := (EuclideanSpace.norm_sq_eq _).symm
+  exact (sq_le_sq₀ (mul_nonneg hi (norm_nonneg a)) (norm_nonneg _)).mp hsq
+
+open scoped Classical in
+theorem columnCombination_upper_of_bound {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a : CellCoefficients D A c) (y : ℝ)
+    (hcol : ∀ v : {v // v ∈ A.labels c},
+      ‖privateColumnValue D.scalar D.privateWeight v y‖ ≤ D.budget) :
+    ‖columnCombination D A c a y‖ ≤ (D.budget * Real.sqrt D.budget) * ‖a‖ := by
+  classical
+  have hD : 0 ≤ D.budget := le_trans (by norm_num) D.two_le_budget
+  have hcard : (Fintype.card {v // v ∈ A.labels c} : ℝ) ≤ D.budget := by
+    simpa only [Fintype.card_coe] using InheritedColumnMask_card_le D A hc
+  have hcs := Real.sum_mul_le_sqrt_mul_sqrt Finset.univ
+    (fun v : {v // v ∈ A.labels c} => ‖a v‖) (fun _ => (1 : ℝ))
+  simp only [mul_one, one_pow, Finset.sum_const, Finset.card_univ, nsmul_eq_mul] at hcs
+  have hsum : ∑ v : {v // v ∈ A.labels c}, ‖a v‖ ≤ Real.sqrt D.budget * ‖a‖ := by
+    calc
+      _ ≤ Real.sqrt (∑ v, ‖a v‖ ^ 2) * Real.sqrt (Fintype.card {v // v ∈ A.labels c}) := by
+        simpa only [mul_one] using hcs
+      _ = ‖a‖ * Real.sqrt (Fintype.card {v // v ∈ A.labels c}) := by rw [← EuclideanSpace.norm_eq]
+      _ ≤ ‖a‖ * Real.sqrt D.budget :=
+        mul_le_mul_of_nonneg_left (Real.sqrt_le_sqrt hcard) (norm_nonneg a)
+      _ = _ := mul_comm _ _
+  calc
+    _ ≤ ∑ v : {v // v ∈ A.labels c}, ‖a v • privateColumnValue D.scalar D.privateWeight v y‖ :=
+      norm_sum_le _ _
+    _ = ∑ v : {v // v ∈ A.labels c}, ‖a v‖ *
+        ‖privateColumnValue D.scalar D.privateWeight v y‖ :=
+      Finset.sum_congr rfl (fun v _ => norm_smul _ _)
+    _ ≤ ∑ v : {v // v ∈ A.labels c}, ‖a v‖ * D.budget :=
+      Finset.sum_le_sum (fun v _ => mul_le_mul_of_nonneg_left (hcol v) (norm_nonneg _))
+    _ = D.budget * ∑ v : {v // v ∈ A.labels c}, ‖a v‖ := by rw [← Finset.sum_mul, mul_comm]
+    _ ≤ D.budget * (Real.sqrt D.budget * ‖a‖) := mul_le_mul_of_nonneg_left hsum hD
+    _ = _ := (mul_assoc _ _ _).symm
+
+theorem columnBudget_rpow_three_halves {V : Type*} [Fintype V] (D : ColumnTreeData V) :
+    D.budget ^ (3 / 2 : ℝ) = D.budget * Real.sqrt D.budget := by
+  have hD : 0 < D.budget := lt_of_lt_of_le (by norm_num) D.two_le_budget
+  rw [show (3 / 2 : ℝ) = 1 + 1 / 2 by norm_num, Real.rpow_add hD,
+    Real.rpow_one, Real.sqrt_eq_rpow]
+
+open scoped Classical in
+/-- Blueprint `lem:coeff`, lines 487–491: the two-sided coefficient norm
+bound holds uniformly in all coefficients on a common full-measure subset
+of the decision cell, using the source essential-supremum convention. -/
+theorem columnCombination_bounds {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    ∀ᵐ y ∂volume.restrict (dyadicGridCell D.grid c.1 c.2),
+      ∀ a : CellCoefficients D A c,
+        D.budget⁻¹ * ‖a‖ ≤ ‖columnCombination D A c a y‖ ∧
+        ‖columnCombination D A c a y‖ ≤ D.budget ^ (3 / 2 : ℝ) * ‖a‖ := by
+  have hall : ∀ᵐ y ∂volume.restrict (dyadicGridCell D.grid c.1 c.2),
+      ∀ v : {v // v ∈ A.labels c},
+        ‖privateColumnValue D.scalar D.privateWeight v y‖ ≤ D.budget :=
+    ae_all_iff.mpr (fun v => InheritedColumnMask_ae_column_bound D A hc v.property)
+  filter_upwards [hall] with y hy
+  intro a
+  refine ⟨columnCombination_lower D A c a y, ?_⟩
+  rw [columnBudget_rpow_three_halves]
+  exact columnCombination_upper_of_bound D A hc a y hy
+
+open scoped Classical in
+/-- The cell synthesis map used to form the averaged Gram operator in
+blueprint `lem:coeff`, line 503. -/
+noncomputable def cellColumnSynthesis {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    CellCoefficients D A c →L[ℂ] ColumnL2 V :=
+  LinearMap.toContinuousLinearMap
+    { toFun := fun a => ∑ v : {v // v ∈ A.labels c}, a v • cellColumnLp D A hc v
+      map_add' := by intros; simp [add_smul, Finset.sum_add_distrib]
+      map_smul' := by intros; simp [mul_smul, Finset.smul_sum] }
+
+open scoped Classical in
+theorem cellColumnSynthesis_coeFn {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a : CellCoefficients D A c) :
+    (cellColumnSynthesis D A hc a : ℝ → ColumnHilbert V) =ᵐ[volume]
+      (dyadicGridCell D.grid c.1 c.2).indicator (columnCombination D A c a) := by
+  classical
+  have hs := Lp.coeFn_fun_finsetSum Finset.univ
+    (fun v : {v // v ∈ A.labels c} => a v • cellColumnLp D A hc v)
+  have hm := ae_all_iff.mpr (fun v : {v // v ∈ A.labels c} =>
+    Lp.coeFn_smul (a v) (cellColumnLp D A hc v))
+  have hv := ae_all_iff.mpr (fun v : {v // v ∈ A.labels c} =>
+    cellColumnLp_coeFn D A hc v)
+  filter_upwards [hs, hm, hv] with y hys hym hyv
+  change (∑ v : {v // v ∈ A.labels c}, a v • cellColumnLp D A hc v) y = _
+  rw [hys]
+  simp only [hym, Pi.smul_apply, hyv]
+  by_cases hy : y ∈ dyadicGridCell D.grid c.1 c.2
+  · simp [hy, columnCombination]
+  · simp [hy]
+
+/-- The normalized Gram operator is the adjoint-square of cell synthesis,
+divided by the cell length. This is the averaged Gram operator of `lem:coeff`. -/
+noncomputable def cellColumnGram {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    CellCoefficients D A c →L[ℂ] CellCoefficients D A c :=
+  (((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) •
+    (cellColumnSynthesis D A hc).adjoint.comp (cellColumnSynthesis D A hc)
+
+set_option backward.isDefEq.respectTransparency false in
+theorem cellColumnGram_inner {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a b : CellCoefficients D A c) :
+    inner ℂ a (cellColumnGram D A hc b) =
+      (dyadicGridLength D.grid c.1)⁻¹ •
+        inner ℂ (cellColumnSynthesis D A hc a) (cellColumnSynthesis D A hc b) := by
+  change inner ℂ a
+    ((((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) •
+      (cellColumnSynthesis D A hc).adjoint (cellColumnSynthesis D A hc b)) = _
+  rw [inner_smul_right, ContinuousLinearMap.adjoint_inner_right]
+  rfl
+
+theorem cellColumnSynthesis_inner_integral {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a b : CellCoefficients D A c) :
+    inner ℂ (cellColumnSynthesis D A hc a) (cellColumnSynthesis D A hc b) =
+      ∫ y in dyadicGridCell D.grid c.1 c.2,
+        inner ℂ (columnCombination D A c a y) (columnCombination D A c b y) := by
+  rw [MeasureTheory.L2.inner_def, ← integral_indicator (dyadicGridCell_measurable D.grid c.1 c.2)]
+  apply integral_congr_ae
+  filter_upwards [cellColumnSynthesis_coeFn D A hc a,
+    cellColumnSynthesis_coeFn D A hc b] with y ha hb
+  rw [ha, hb]
+  by_cases hy : y ∈ dyadicGridCell D.grid c.1 c.2 <;> simp [hy]
+
+set_option backward.isDefEq.respectTransparency false in
+theorem cellColumnSynthesis_norm_sq_integral {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a : CellCoefficients D A c) :
+    ‖cellColumnSynthesis D A hc a‖ ^ 2 =
+      ∫ y in dyadicGridCell D.grid c.1 c.2, ‖columnCombination D A c a y‖ ^ 2 := by
+  apply Complex.ofReal_injective
+  calc
+    _ = inner ℂ (cellColumnSynthesis D A hc a) (cellColumnSynthesis D A hc a) := by
+      simp only [inner_self_eq_norm_sq_to_K, Complex.ofReal_pow]
+      rfl
+    _ = _ := cellColumnSynthesis_inner_integral D A hc a a
+    _ = _ := by
+      rw [← integral_complex_ofReal]
+      apply integral_congr_ae
+      exact ae_of_all _ (fun y => by
+        simp only [inner_self_eq_norm_sq_to_K, Complex.ofReal_pow]
+        rfl)
+
+theorem columnCombination_memLp {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a : CellCoefficients D A c) :
+    MemLp (columnCombination D A c a) 2
+      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) := by
+  apply (memLp_indicator_iff_restrict
+    (dyadicGridCell_measurable D.grid c.1 c.2).nullMeasurableSet).mp
+  exact (memLp_congr_ae (cellColumnSynthesis_coeFn D A hc a)).mp
+    (Lp.memLp (cellColumnSynthesis D A hc a))
+
+theorem cellColumnSynthesis_lower_sq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a : CellCoefficients D A c) :
+    dyadicGridLength D.grid c.1 * (D.budget⁻¹ * ‖a‖) ^ 2 ≤
+      ‖cellColumnSynthesis D A hc a‖ ^ 2 := by
+  rw [cellColumnSynthesis_norm_sq_integral]
+  have hi : Integrable (fun _ : ℝ => (D.budget⁻¹ * ‖a‖) ^ 2)
+      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) :=
+    integrableOn_const (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
+  have hn := (columnCombination_memLp D A hc a).integrable_norm_pow (by norm_num : 2 ≠ 0)
+  have h := integral_mono_ae hi hn (ae_of_all _ (fun y =>
+    (sq_le_sq₀ (mul_nonneg (inv_nonneg.mpr
+      (le_trans (by norm_num) D.two_le_budget)) (norm_nonneg a)) (norm_nonneg _)).mpr
+        (columnCombination_lower D A c a y)))
+  simpa only [integral_const, Measure.real, Measure.restrict_apply_univ, dyadicGridCell_volume,
+    ENNReal.toReal_ofReal (dyadicGridLength_pos D.grid c.1).le, smul_eq_mul] using h
+
+set_option backward.isDefEq.respectTransparency false in
+/-- Coercivity of the averaged Gram form, with the source constant `D⁻²`. -/
+theorem cellColumnGram_coercive {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a : CellCoefficients D A c) :
+    (D.budget⁻¹) ^ 2 * ‖a‖ ^ 2 ≤ (inner ℂ a (cellColumnGram D A hc a)).re := by
+  rw [cellColumnGram_inner]
+  have hn : (inner ℂ (cellColumnSynthesis D A hc a)
+      (cellColumnSynthesis D A hc a)).re = ‖cellColumnSynthesis D A hc a‖ ^ 2 :=
+    inner_self_eq_norm_sq (𝕜 := ℂ) _
+  simp only [Complex.smul_re, smul_eq_mul, hn]
+  have h := cellColumnSynthesis_lower_sq D A hc a
+  have hL := dyadicGridLength_pos D.grid c.1
+  have h' := mul_le_mul_of_nonneg_left h (inv_nonneg.mpr hL.le)
+  simpa only [← mul_assoc, inv_mul_cancel₀ hL.ne', one_mul, mul_pow] using h'
+
+theorem cellColumnGram_bounded_below {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a : CellCoefficients D A c) :
+    (D.budget⁻¹) ^ 2 * ‖a‖ ≤ ‖cellColumnGram D A hc a‖ := by
+  have h := (cellColumnGram_coercive D A hc a).trans
+    ((Complex.re_le_norm _).trans (norm_inner_le_norm a (cellColumnGram D A hc a)))
+  by_cases ha : a = 0
+  · simp [ha]
+  · have hpos := norm_pos_iff.mpr ha
+    nlinarith
+
+theorem cellColumnGram_injective {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    Function.Injective (cellColumnGram D A hc) := by
+  intro a b hab
+  have h := cellColumnGram_bounded_below D A hc (a - b)
+  rw [map_sub, hab, sub_self, norm_zero] at h
+  have hD : 0 < D.budget := lt_of_lt_of_le (by norm_num) D.two_le_budget
+  have hp : 0 < (D.budget⁻¹) ^ 2 := sq_pos_of_pos (inv_pos.mpr hD)
+  exact sub_eq_zero.mp (norm_eq_zero.mp
+    (le_antisymm (by nlinarith [norm_nonneg (a - b)]) (norm_nonneg (a - b))))
+
+/-- The positive averaged Gram operator is invertible, including an empty mask. -/
+noncomputable def cellColumnGramEquiv {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    CellCoefficients D A c ≃L[ℂ] CellCoefficients D A c :=
+  (LinearEquiv.ofBijective (cellColumnGram D A hc).toLinearMap
+    ⟨cellColumnGram_injective D A hc,
+      LinearMap.injective_iff_surjective.mp
+        (cellColumnGram_injective D A hc)⟩).toContinuousLinearEquiv
+
+set_option backward.isDefEq.respectTransparency false in
+theorem cellColumnGramEquiv_symm_norm_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    ‖(cellColumnGramEquiv D A hc).symm.toContinuousLinearMap‖ ≤ D.budget ^ 2 := by
+  apply ContinuousLinearMap.opNorm_le_bound _ (sq_nonneg _)
+  intro a
+  have h := cellColumnGram_bounded_below D A hc ((cellColumnGramEquiv D A hc).symm a)
+  have he : cellColumnGram D A hc ((cellColumnGramEquiv D A hc).symm a) = a :=
+    (cellColumnGramEquiv D A hc).apply_symm_apply a
+  rw [he] at h
+  have hD : D.budget ≠ 0 := ne_of_gt (lt_of_lt_of_le (by norm_num) D.two_le_budget)
+  have hh := mul_le_mul_of_nonneg_left h (sq_nonneg D.budget)
+  simp only [← mul_assoc, ← mul_pow, mul_inv_cancel₀ hD, one_pow, one_mul] at hh
+  convert hh using 1
+  rfl
+
+/-- The Gram form is exactly the cell average of the pointwise column forms. -/
+theorem cellColumnGram_average {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a b : CellCoefficients D A c) :
+    inner ℂ a (cellColumnGram D A hc b) =
+      (dyadicGridLength D.grid c.1)⁻¹ •
+        ∫ y in dyadicGridCell D.grid c.1 c.2,
+          inner ℂ (columnCombination D A c a y) (columnCombination D A c b y) := by
+  rw [cellColumnGram_inner, cellColumnSynthesis_inner_integral]
+
+open scoped Classical in
+theorem cellColumnSynthesis_range {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    (cellColumnSynthesis D A hc).range = cellColumnRange D A hc := by
+  ext z
+  rw [cellColumnRange_mem_iff]
+  constructor
+  · rintro ⟨a, rfl⟩
+    exact ⟨a.ofLp, rfl⟩
+  · rintro ⟨a, ha⟩
+    exact ⟨WithLp.toLp 2 a, ha⟩
+
+/-- The coefficient vector in the source projection kernel formula. -/
+noncomputable def cellProjectionCoefficients {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    CellCoefficients D A c :=
+  (cellColumnGramEquiv D A hc).symm
+    ((((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) • (cellColumnSynthesis D A hc).adjoint z)
+
+theorem cellProjectionCoefficients_normal {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    (cellColumnSynthesis D A hc).adjoint
+        (cellColumnSynthesis D A hc (cellProjectionCoefficients D A hc z)) =
+      (cellColumnSynthesis D A hc).adjoint z := by
+  have he := (cellColumnGramEquiv D A hc).apply_symm_apply
+    ((((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) • (cellColumnSynthesis D A hc).adjoint z)
+  change (((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) •
+    (cellColumnSynthesis D A hc).adjoint
+      (cellColumnSynthesis D A hc (cellProjectionCoefficients D A hc z)) = _ at he
+  exact smul_right_injective (CellCoefficients D A c) (by
+    exact_mod_cast inv_ne_zero (dyadicGridLength_pos D.grid c.1).ne') he
+
+/-- Blueprint `lem:coeff`, line 503: the inverse-Gram formula agrees with
+the orthogonal projection defined from the column range. -/
+theorem cellColumnProjection_eq_synthesis {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    cellColumnProjection D A hc z =
+      cellColumnSynthesis D A hc (cellProjectionCoefficients D A hc z) := by
+  apply Submodule.eq_starProjection_of_mem_of_inner_eq_zero
+  · rw [← cellColumnSynthesis_range]
+    exact ⟨_, rfl⟩
+  · intro w hw
+    rw [← cellColumnSynthesis_range] at hw
+    obtain ⟨a, rfl⟩ := hw
+    change inner ℂ (z - cellColumnSynthesis D A hc (cellProjectionCoefficients D A hc z))
+      (cellColumnSynthesis D A hc a) = 0
+    rw [← ContinuousLinearMap.adjoint_inner_left, map_sub,
+      cellProjectionCoefficients_normal, sub_self, inner_zero_left]
+
+theorem cellColumnProjection_coeFn {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    (cellColumnProjection D A hc z : ℝ → ColumnHilbert V) =ᵐ[volume]
+      (dyadicGridCell D.grid c.1 c.2).indicator
+        (columnCombination D A c (cellProjectionCoefficients D A hc z)) := by
+  rw [cellColumnProjection_eq_synthesis]
+  exact cellColumnSynthesis_coeFn D A hc _
+
+open scoped Classical in
+/-- Pointwise column evaluation, denoted `E_y` in blueprint `lem:coeff`. -/
+noncomputable def columnEvaluation {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (y : ℝ) :
+    CellCoefficients D A c →L[ℂ] ColumnHilbert V :=
+  ∑ v : {v // v ∈ A.labels c},
+    ContinuousLinearMap.smulRightL ℂ (CellCoefficients D A c) (ColumnHilbert V)
+      (PiLp.proj 2 (fun _ : {v // v ∈ A.labels c} => ℂ) v)
+      (privateColumnValue D.scalar D.privateWeight v y)
+
+theorem columnEvaluation_apply {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (y : ℝ) (a : CellCoefficients D A c) :
+    columnEvaluation D A c y a = columnCombination D A c a y := by
+  classical
+  simp [columnEvaluation, columnCombination]
+
+theorem columnEvaluation_measurable {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) : Measurable (columnEvaluation D A c) := by
+  classical
+  apply Finset.measurable_sum
+  intro v _
+  exact (ContinuousLinearMap.smulRightL ℂ (CellCoefficients D A c) (ColumnHilbert V)
+    (PiLp.proj 2 (fun _ : {v // v ∈ A.labels c} => ℂ) v)).measurable.comp
+      (privateColumnValue_measurable D.scalar D.privateWeight v (D.scalar_measurable v))
+
+theorem columnEvaluation_ae_norm_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    ∀ᵐ y ∂volume.restrict (dyadicGridCell D.grid c.1 c.2),
+      ‖columnEvaluation D A c y‖ ≤ D.budget * Real.sqrt D.budget := by
+  filter_upwards [columnCombination_bounds D A hc] with y hy
+  apply ContinuousLinearMap.opNorm_le_bound _
+    (mul_nonneg (le_trans (by norm_num) D.two_le_budget) (Real.sqrt_nonneg _))
+  intro a
+  rw [columnEvaluation_apply]
+  simpa only [columnBudget_rpow_three_halves] using (hy a).2
+
+/-- The kernel relative to normalized integration on the decision cell. -/
+noncomputable def cellProjectionKernel {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (y t : ℝ) :
+    ColumnHilbert V →L[ℂ] ColumnHilbert V :=
+  (columnEvaluation D A c y).comp
+    ((cellColumnGramEquiv D A hc).symm.toContinuousLinearMap.comp
+      (columnEvaluation D A c t).adjoint)
+
+theorem cellProjectionKernel_norm_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (y t : ℝ)
+    (hy : ‖columnEvaluation D A c y‖ ≤ D.budget * Real.sqrt D.budget)
+    (ht : ‖columnEvaluation D A c t‖ ≤ D.budget * Real.sqrt D.budget) :
+    ‖cellProjectionKernel D A hc y t‖ ≤ D.budget ^ 5 := by
+  have hD : 0 ≤ D.budget := le_trans (by norm_num) D.two_le_budget
+  have hB : 0 ≤ D.budget * Real.sqrt D.budget := mul_nonneg hD (Real.sqrt_nonneg _)
+  calc
+    _ ≤ ‖columnEvaluation D A c y‖ *
+        ‖(cellColumnGramEquiv D A hc).symm.toContinuousLinearMap.comp
+          (columnEvaluation D A c t).adjoint‖ := ContinuousLinearMap.opNorm_comp_le _ _
+    _ ≤ (D.budget * Real.sqrt D.budget) *
+        (D.budget ^ 2 * (D.budget * Real.sqrt D.budget)) := by
+      apply mul_le_mul hy _ (norm_nonneg _) hB
+      exact (ContinuousLinearMap.opNorm_comp_le _ _).trans
+        (mul_le_mul (cellColumnGramEquiv_symm_norm_le D A hc)
+          (by simpa using ht) (norm_nonneg _) (sq_nonneg _))
+    _ = _ := by
+      calc
+        _ = D.budget ^ 4 * (Real.sqrt D.budget) ^ 2 := by ring
+        _ = _ := by rw [Real.sq_sqrt hD]; ring
+
+theorem columnEvaluation_adjoint_integrable {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    Integrable (fun t => (columnEvaluation D A c t).adjoint (z t))
+      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) := by
+  have hE : AEStronglyMeasurable (fun t => (columnEvaluation D A c t).adjoint)
+      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) :=
+    ContinuousLinearMap.adjoint.continuous.comp_aestronglyMeasurable
+      (columnEvaluation_measurable D A c).stronglyMeasurable.aestronglyMeasurable
+  have hz : AEStronglyMeasurable (z : ℝ → ColumnHilbert V)
+      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) :=
+    (Lp.aestronglyMeasurable z).restrict
+  have hm : AEStronglyMeasurable (fun t => (columnEvaluation D A c t).adjoint (z t))
+      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) :=
+    isBoundedBilinearMap_apply.continuous.comp_aestronglyMeasurable₂ hE hz
+  have hi := (integrableOn_Lp_of_measure_ne_top (s := dyadicGridCell D.grid c.1 c.2)
+    z (by norm_num : (1 : ENNReal) ≤ 2)
+    (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)).norm.const_mul
+      (D.budget * Real.sqrt D.budget)
+  apply hi.mono' hm
+  filter_upwards [columnEvaluation_ae_norm_le D A hc] with t ht
+  exact ((columnEvaluation D A c t).adjoint.le_opNorm (z t)).trans
+    (mul_le_mul_of_nonneg_right (by simpa using ht) (norm_nonneg _))
+
+theorem cellColumnSynthesis_adjoint_integral {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    (cellColumnSynthesis D A hc).adjoint z =
+      ∫ t in dyadicGridCell D.grid c.1 c.2, (columnEvaluation D A c t).adjoint (z t) := by
+  apply ext_inner_left ℂ
+  intro a
+  rw [ContinuousLinearMap.adjoint_inner_right,
+    ← integral_inner (columnEvaluation_adjoint_integrable D A hc z) a,
+    MeasureTheory.L2.inner_def,
+    ← integral_indicator (dyadicGridCell_measurable D.grid c.1 c.2)]
+  apply integral_congr_ae
+  filter_upwards [cellColumnSynthesis_coeFn D A hc a] with t ht
+  rw [ht]
+  by_cases ht' : t ∈ dyadicGridCell D.grid c.1 c.2
+  · simp [ht', ContinuousLinearMap.adjoint_inner_right, columnEvaluation_apply]
+  · simp [ht']
+
+theorem cellProjectionKernel_integral {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (z : ColumnL2 V) (y : ℝ) :
+    columnCombination D A c (cellProjectionCoefficients D A hc z) y =
+      (((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) •
+        ∫ t in dyadicGridCell D.grid c.1 c.2, cellProjectionKernel D A hc y t (z t) := by
+  let L := (columnEvaluation D A c y).comp
+    (cellColumnGramEquiv D A hc).symm.toContinuousLinearMap
+  have hi := columnEvaluation_adjoint_integrable D A hc z
+  have h := L.integral_comp_comm hi
+  change (∫ t in dyadicGridCell D.grid c.1 c.2,
+      cellProjectionKernel D A hc y t (z t)) =
+    columnEvaluation D A c y ((cellColumnGramEquiv D A hc).symm
+      (∫ t in dyadicGridCell D.grid c.1 c.2,
+        (columnEvaluation D A c t).adjoint (z t))) at h
+  rw [h, ← cellColumnSynthesis_adjoint_integral]
+  rw [← columnEvaluation_apply, cellProjectionCoefficients, map_smul, map_smul]
+
+/-- Blueprint `lem:coeff`, line 503: the orthogonal projection is given by
+the normalized integral kernel `E_y G⁻¹ E_t*`, on a common almost-everywhere representative. -/
+theorem cellColumnProjection_kernel {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    (cellColumnProjection D A hc z : ℝ → ColumnHilbert V) =ᵐ[volume]
+      (dyadicGridCell D.grid c.1 c.2).indicator (fun y =>
+        (((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) •
+          ∫ t in dyadicGridCell D.grid c.1 c.2, cellProjectionKernel D A hc y t (z t)) := by
+  have h := cellColumnProjection_coeFn D A hc z
+  have heq := funext (cellProjectionKernel_integral D A hc z)
+  rw [heq] at h
+  exact h
+
+/-- The normalized projection kernel has the exact `D⁵` bound from the source. -/
+theorem cellProjectionKernel_ae_norm_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    ∀ᵐ y ∂volume.restrict (dyadicGridCell D.grid c.1 c.2),
+      ∀ᵐ t ∂volume.restrict (dyadicGridCell D.grid c.1 c.2),
+        ‖cellProjectionKernel D A hc y t‖ ≤ D.budget ^ 5 := by
+  filter_upwards [columnEvaluation_ae_norm_le D A hc] with y hy
+  filter_upwards [columnEvaluation_ae_norm_le D A hc] with t ht
+  exact cellProjectionKernel_norm_le D A hc y t hy ht
+
+/-- The pointwise form of the source average-to-supremum projection bound. -/
+theorem cellColumnProjection_ae_bound {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    ∀ᵐ y ∂volume.restrict (dyadicGridCell D.grid c.1 c.2),
+      ‖cellColumnProjection D A hc z y‖ ≤ D.budget ^ 5 *
+        ((∫ t in dyadicGridCell D.grid c.1 c.2, ‖z t‖) / dyadicGridLength D.grid c.1) := by
+  have hL := dyadicGridLength_pos D.grid c.1
+  have hi := (integrableOn_Lp_of_measure_ne_top (s := dyadicGridCell D.grid c.1 c.2)
+    z (by norm_num : (1 : ENNReal) ≤ 2)
+    (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)).norm
+  filter_upwards [ae_restrict_of_ae (cellColumnProjection_kernel D A hc z),
+    ae_restrict_mem (dyadicGridCell_measurable D.grid c.1 c.2),
+    cellProjectionKernel_ae_norm_le D A hc] with y hy hym hyk
+  have hk : Integrable (fun t => cellProjectionKernel D A hc y t (z t))
+      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) :=
+    ((columnEvaluation D A c y).comp
+      (cellColumnGramEquiv D A hc).symm.toContinuousLinearMap).integrable_comp
+        (columnEvaluation_adjoint_integrable D A hc z)
+  have hb : (∫ t in dyadicGridCell D.grid c.1 c.2,
+      ‖cellProjectionKernel D A hc y t (z t)‖) ≤
+        D.budget ^ 5 * ∫ t in dyadicGridCell D.grid c.1 c.2, ‖z t‖ := by
+    rw [← integral_const_mul]
+    apply integral_mono_ae hk.norm (hi.const_mul _)
+    filter_upwards [hyk] with t ht
+    exact ((cellProjectionKernel D A hc y t).le_opNorm (z t)).trans
+      (mul_le_mul_of_nonneg_right ht (norm_nonneg _))
+  rw [hy, Set.indicator_of_mem hym, norm_smul, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_pos (inv_pos.mpr hL)]
+  calc
+    _ ≤ (dyadicGridLength D.grid c.1)⁻¹ *
+        ∫ t in dyadicGridCell D.grid c.1 c.2,
+          ‖cellProjectionKernel D A hc y t (z t)‖ :=
+      mul_le_mul_of_nonneg_left (norm_integral_le_integral_norm _)
+        (inv_nonneg.mpr hL.le)
+    _ ≤ (dyadicGridLength D.grid c.1)⁻¹ *
+        (D.budget ^ 5 * ∫ t in dyadicGridCell D.grid c.1 c.2, ‖z t‖) :=
+      mul_le_mul_of_nonneg_left hb (inv_nonneg.mpr hL.le)
+    _ = _ := by rw [div_eq_mul_inv]; ring
+
+/-- Blueprint `lem:coeff`, lines 492–495: the cell projection has essential
+supremum at most `D⁵` times the cell average of the input norm. -/
+theorem cellColumnProjection_eLpNorm_top_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    eLpNorm (cellColumnProjection D A hc z : ℝ → ColumnHilbert V) ∞
+      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) ≤
+        ENNReal.ofReal (D.budget ^ 5 *
+          ((∫ t in dyadicGridCell D.grid c.1 c.2, ‖z t‖) / dyadicGridLength D.grid c.1)) := by
+  rw [eLpNorm_exponent_top (Lp.aestronglyMeasurable _).restrict]
+  exact eLpNormEssSup_le_of_ae_bound (cellColumnProjection_ae_bound D A hc z)
+
+theorem cellColumnSynthesis_injective {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    Function.Injective (cellColumnSynthesis D A hc) := by
+  intro a b hab
+  apply cellColumnGram_injective D A hc
+  simp only [cellColumnGram, smul_apply, ContinuousLinearMap.comp_apply, hab]
+
+/-- The coefficients of a cell projection are unique, as asserted in
+blueprint `lem:coeff`, line 503. -/
+theorem cellColumnProjection_unique_coefficients {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : InheritedColumnMask D) {c : ℤ × ℤ}
+    (hc : c ∈ D.cells) (z : ColumnL2 V) :
+    ∃! a : CellCoefficients D A c, cellColumnSynthesis D A hc a =
+      cellColumnProjection D A hc z := by
+  refine ⟨cellProjectionCoefficients D A hc z,
+    (cellColumnProjection_eq_synthesis D A hc z).symm, ?_⟩
+  intro a ha
+  apply cellColumnSynthesis_injective D A hc
+  rw [ha, cellColumnProjection_eq_synthesis]
+
+open scoped Classical in
+/-- The physical input `(f,0)` in the column Hilbert space. -/
+noncomputable def physicalColumnInput {V : Type*} [Fintype V]
+    (f : Lp ℂ 2 (volume : Measure ℝ)) : ColumnL2 V :=
+  (ContinuousLinearMap.toSpanSingleton ℂ (EuclideanSpace.single (none : Option V) 1)).compLp f
+
+open scoped Classical in
+theorem physicalColumnInput_coeFn {V : Type*} [Fintype V]
+    (f : Lp ℂ 2 (volume : Measure ℝ)) :
+    (physicalColumnInput (V := V) f : ℝ → ColumnHilbert V) =ᵐ[volume]
+      fun y => f y • EuclideanSpace.single none 1 :=
+  (ContinuousLinearMap.toSpanSingleton ℂ
+    (EuclideanSpace.single (none : Option V) 1)).coeFn_compLp f
+
+theorem privateColumnValue_inner {V : Type*} [Fintype V] (φ : V → ℝ → ℂ)
+    (ε : V → ℝ) (v : V) (y : ℝ) (z : ColumnHilbert V) :
+    inner ℂ (privateColumnValue φ ε v y) z =
+      star (φ v y) * z none + (Real.sqrt (ε v) : ℂ) * z (some v) := by
+  simp [privateColumnValue, EuclideanSpace.inner_single_left, mul_comm]
+
+open scoped Classical in
+theorem privateColumnValue_inner_residual {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c)
+    (v : {v // v ∈ A.labels c}) (y : ℝ) (f : ℂ) :
+    inner ℂ (privateColumnValue D.scalar D.privateWeight v y)
+      (f • EuclideanSpace.single none 1 - columnCombination D A c a y) =
+        (f - columnCombination D A c a y none) * star (D.scalar v y) -
+          (D.privateWeight v : ℂ) * a v := by
+  rw [privateColumnValue_inner]
+  simp only [WithLp.ofLp_sub, Pi.sub_apply, WithLp.ofLp_smul, Pi.smul_apply,
+    PiLp.single_apply, smul_eq_mul, columnCombination_private]
+  simp only [ite_true, Option.some_ne_none, ite_false, mul_zero, zero_sub, mul_one]
+  have hs : (Real.sqrt (D.privateWeight v) : ℂ) ^ 2 = (D.privateWeight v : ℂ) := by
+    norm_cast
+    exact Real.sq_sqrt (D.privateWeight_pos v).le
+  calc
+    _ = (f - columnCombination D A c a y none) * star (D.scalar v y) -
+        (Real.sqrt (D.privateWeight v) : ℂ) ^ 2 * a v := by ring
+    _ = _ := by rw [hs]
+
+theorem cellColumn_residual_integral_zero {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (z : ColumnL2 V) (v : {v // v ∈ A.labels c}) :
+    (∫ y in dyadicGridCell D.grid c.1 c.2,
+      inner ℂ (privateColumnValue D.scalar D.privateWeight v y)
+        (z y - cellColumnProjection D A hc z y)) = 0 := by
+  have ho : inner ℂ (cellColumnLp D A hc v) (z - cellColumnProjection D A hc z) = 0 := by
+    apply inner_eq_zero_symm.mp
+    exact Submodule.starProjection_inner_eq_zero (K := cellColumnRange D A hc) z _
+      (Submodule.subset_span (Set.mem_range_self v))
+  rw [MeasureTheory.L2.inner_def] at ho
+  rw [← integral_indicator (dyadicGridCell_measurable D.grid c.1 c.2)]
+  calc
+    _ = ∫ y, inner ℂ (cellColumnLp D A hc v y)
+        ((z - cellColumnProjection D A hc z) y) := by
+      apply integral_congr_ae
+      filter_upwards [cellColumnLp_coeFn D A hc v,
+        Lp.coeFn_sub z (cellColumnProjection D A hc z)] with y hv hz
+      rw [hv, hz]
+      by_cases hy : y ∈ dyadicGridCell D.grid c.1 c.2 <;> simp [hy]
+    _ = 0 := ho
+
+open scoped Classical in
+/-- Blueprint `eq:predictor-moment`, lines 496–503: for the physical input
+`(f,0)`, the averaged scalar prediction error against each column equals
+its private weight times its unique projection coefficient. -/
+theorem cellColumnProjection_predictor_moment {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : InheritedColumnMask D) {c : ℤ × ℤ}
+    (hc : c ∈ D.cells) (f : Lp ℂ 2 (volume : Measure ℝ))
+    (v : {v // v ∈ A.labels c}) :
+    (((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) *
+      (∫ y in dyadicGridCell D.grid c.1 c.2,
+        (f y - cellColumnProjection D A hc (physicalColumnInput f) y none) *
+          star (D.scalar v y)) =
+      (D.privateWeight v : ℂ) * cellProjectionCoefficients D A hc (physicalColumnInput f) v := by
+  let z : ColumnL2 V := physicalColumnInput f
+  let a := cellProjectionCoefficients D A hc z
+  let g : ℝ → ℂ := fun y => inner ℂ (privateColumnValue D.scalar D.privateWeight v y)
+    (z y - cellColumnProjection D A hc z y)
+  let m : ℝ → ℂ := fun y =>
+    (f y - cellColumnProjection D A hc z y none) * star (D.scalar v y)
+  let b : ℂ := (D.privateWeight v : ℂ) * a v
+  have he : g =ᵐ[volume.restrict (dyadicGridCell D.grid c.1 c.2)] fun y => m y - b := by
+    filter_upwards [ae_restrict_of_ae (physicalColumnInput_coeFn (V := V) f),
+      ae_restrict_of_ae (cellColumnProjection_coeFn D A hc z),
+      ae_restrict_mem (dyadicGridCell_measurable D.grid c.1 c.2)] with y hf hp hy
+    change inner ℂ (privateColumnValue D.scalar D.privateWeight v y)
+      (physicalColumnInput f y - cellColumnProjection D A hc z y) =
+        (f y - cellColumnProjection D A hc z y none) * star (D.scalar v y) - b
+    rw [hf, hp, Set.indicator_of_mem hy]
+    exact privateColumnValue_inner_residual D A c a v y (f y)
+  have hg : Integrable g (volume.restrict (dyadicGridCell D.grid c.1 c.2)) := by
+    apply ((MeasureTheory.L2.integrable_inner (𝕜 := ℂ) (cellColumnLp D A hc v)
+      (z - cellColumnProjection D A hc z)).restrict).congr
+    filter_upwards [ae_restrict_of_ae (cellColumnLp_coeFn D A hc v),
+      ae_restrict_of_ae (Lp.coeFn_sub z (cellColumnProjection D A hc z)),
+      ae_restrict_mem (dyadicGridCell_measurable D.grid c.1 c.2)] with y hv hz hy
+    rw [hv, hz, Set.indicator_of_mem hy]
+    rfl
+  have hb : Integrable (fun _ : ℝ => b) (volume.restrict (dyadicGridCell D.grid c.1 c.2)) :=
+    integrableOn_const (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
+  have hem : m =ᵐ[volume.restrict (dyadicGridCell D.grid c.1 c.2)] fun y => g y + b := by
+    filter_upwards [he] with y hy
+    rw [hy, sub_add_cancel]
+  have hm : (∫ y in dyadicGridCell D.grid c.1 c.2, m y) =
+      (dyadicGridLength D.grid c.1) • b := by
+    rw [integral_congr_ae hem, integral_add hg hb]
+    change (∫ y in dyadicGridCell D.grid c.1 c.2,
+      inner ℂ (privateColumnValue D.scalar D.privateWeight v y)
+        (z y - cellColumnProjection D A hc z y)) + _ = _
+    rw [cellColumn_residual_integral_zero, zero_add, integral_const]
+    simp only [Measure.real, Measure.restrict_apply_univ, dyadicGridCell_volume,
+      ENNReal.toReal_ofReal (dyadicGridLength_pos D.grid c.1).le]
+  change (((dyadicGridLength D.grid c.1)⁻¹ : ℝ) : ℂ) *
+    (∫ y in dyadicGridCell D.grid c.1 c.2, m y) = b
+  rw [hm, Complex.real_smul, ← mul_assoc, ← Complex.ofReal_mul,
+    inv_mul_cancel₀ (dyadicGridLength_pos D.grid c.1).ne', Complex.ofReal_one, one_mul]
+
+/-- Enlarge the finite cell set without changing any columns or their budget.
+This supplies the completion in `lem:compression`, line 553. -/
+def enlargedColumnTree {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (S : Finset (ℤ × ℤ)) (hDS : D.cells ⊆ S)
+    (hS : ∀ c ∈ S, dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid D.root.1 D.root.2) :
+    ColumnTreeData V :=
+  { D with cells := S, below_root := hS, birth_mem := fun v => hDS (D.birth_mem v) }
+
+open scoped Classical in
+/-- Extend a mask by taking the union of labels on original ancestor cells.
+Inheritance makes this extension agree with the mask on every original cell. -/
+noncomputable def extendedColumnLabels {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) : Finset V :=
+  (D.cells.filter (fun d : ℤ × ℤ => dyadicGridCell D.grid c.1 c.2 ⊆
+    dyadicGridCell D.grid d.1 d.2)).biUnion A.labels
+
+theorem extendedColumnLabels_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    extendedColumnLabels D A c = A.labels c := by
+  classical
+  ext v
+  constructor
+  · intro hv
+    obtain ⟨d, hd, hvd⟩ := Finset.mem_biUnion.mp hv
+    obtain ⟨hd, hcd⟩ := Finset.mem_filter.mp hd
+    exact A.inherited c hc d hd hcd hvd
+  · intro hv
+    exact Finset.mem_biUnion.mpr ⟨c, Finset.mem_filter.mpr ⟨hc, Set.Subset.rfl⟩, hv⟩
+
+open scoped Classical in
+noncomputable def extendedColumnMask {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (S : Finset (ℤ × ℤ)) (hDS : D.cells ⊆ S)
+    (hS : ∀ c ∈ S, dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid D.root.1 D.root.2) :
+    InheritedColumnMask (enlargedColumnTree D S hDS hS) where
+  labels := extendedColumnLabels D A
+  available := by
+    intro c _ v hv
+    obtain ⟨d, hd, hvd⟩ := Finset.mem_biUnion.mp hv
+    obtain ⟨hd, hcd⟩ := Finset.mem_filter.mp hd
+    exact hcd.trans (A.available d hd v hvd)
+  inherited := by
+    intro c _ d _ hcd v hv
+    obtain ⟨e, he, hve⟩ := Finset.mem_biUnion.mp hv
+    obtain ⟨he, hde⟩ := Finset.mem_filter.mp he
+    exact Finset.mem_biUnion.mpr ⟨e, Finset.mem_filter.mpr ⟨he, hcd.trans hde⟩, hve⟩
+
+theorem extendedColumnMask_column_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (S : Finset (ℤ × ℤ)) (hDS : D.cells ⊆ S)
+    (hS : ∀ c ∈ S, dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid D.root.1 D.root.2)
+    {c : ℤ × ℤ} (hc : c ∈ D.cells) (v : {v // v ∈ A.labels c}) :
+    cellColumnLp (enlargedColumnTree D S hDS hS) (extendedColumnMask D A S hDS hS)
+      (hDS hc) ⟨v, by
+        change v.val ∈ extendedColumnLabels D A c
+        rw [extendedColumnLabels_eq D A hc]
+        exact v.property⟩ =
+      cellColumnLp D A hc v := by
+  rfl
+
+/-- Completing the tree preserves exactly the column range on every original
+cell; no extra columns have been introduced there (`lem:compression`, line 553). -/
+theorem extendedColumnMask_range_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (S : Finset (ℤ × ℤ)) (hDS : D.cells ⊆ S)
+    (hS : ∀ c ∈ S, dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid D.root.1 D.root.2)
+    {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    cellColumnRange (enlargedColumnTree D S hDS hS) (extendedColumnMask D A S hDS hS)
+      (hDS hc) = cellColumnRange D A hc := by
+  unfold cellColumnRange
+  congr 1
+  ext z
+  constructor
+  · rintro ⟨v, rfl⟩
+    have hv : v.val ∈ A.labels c := by
+      have hv := v.property
+      change v.val ∈ extendedColumnLabels D A c at hv
+      rwa [extendedColumnLabels_eq D A hc] at hv
+    exact ⟨⟨v.val, hv⟩, rfl⟩
+  · rintro ⟨v, rfl⟩
+    exact ⟨⟨v.val, by
+      change v.val ∈ extendedColumnLabels D A c
+      rw [extendedColumnLabels_eq D A hc]
+      exact v.property⟩, rfl⟩
+
+/-- The actual orthogonal projections are unchanged on original cells, so
+completion does not alter any row input in spatial compression. -/
+theorem extendedColumnMask_projection_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (S : Finset (ℤ × ℤ)) (hDS : D.cells ⊆ S)
+    (hS : ∀ c ∈ S, dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid D.root.1 D.root.2)
+    {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    cellColumnProjection (enlargedColumnTree D S hDS hS) (extendedColumnMask D A S hDS hS)
+      (hDS hc) = cellColumnProjection D A hc := by
+  unfold cellColumnProjection
+  congr 1
+  exact extendedColumnMask_range_eq D A S hDS hS hc
+
+/-- Original local rows retain their operators, bounds and exact input
+locality after completing the tree (`lem:compression`, lines 553 and 569). -/
+def enlargedColumnRows {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (B : ColumnRowFamily D ι F) (S : Finset (ℤ × ℤ)) (hDS : D.cells ⊆ S)
+    (hS : ∀ c ∈ S, dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid D.root.1 D.root.2) :
+    ColumnRowFamily (enlargedColumnTree D S hDS hS) ι F where
+  decision := B.decision
+  decision_mem := fun i => hDS (B.decision_mem i)
+  row := B.row
+  bound := B.bound
+  bound_nonneg := B.bound_nonneg
+  square_sum := B.square_sum
+  input_locality := B.input_locality
+
+/-- A complete finite horizon strictly below every original column-tree cell. -/
+noncomputable def columnCompletionDepth {V : Type*} [Fintype V] (D : ColumnTreeData V) : ℕ :=
+  Classical.choose (dyadicFiniteTree_encloses D.grid D.root D.cells D.below_root)
+
+theorem columnCompletion_contains {V : Type*} [Fintype V] (D : ColumnTreeData V) :
+    D.cells ⊆ dyadicFiniteTree D.grid D.root (columnCompletionDepth D) :=
+  (Classical.choose_spec (dyadicFiniteTree_encloses D.grid D.root D.cells D.below_root)).1
+
+theorem columnCompletion_extra_generation {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    {c : ℤ × ℤ} (hc : c ∈ D.cells) : c.1 < D.root.1 + columnCompletionDepth D :=
+  (Classical.choose_spec (dyadicFiniteTree_encloses D.grid D.root D.cells D.below_root)).2 c hc
+
+/-- Complete the source tree while preserving its original column data. -/
+noncomputable def completedColumnTree {V : Type*} [Fintype V] (D : ColumnTreeData V) :
+    ColumnTreeData V :=
+  enlargedColumnTree D (dyadicFiniteTree D.grid D.root (columnCompletionDepth D))
+    (columnCompletion_contains D)
+    (fun c hc => ((dyadicFiniteTree_mem_iff D.grid D.root c (columnCompletionDepth D)).mp hc).1)
+
+noncomputable def completedColumnMask {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) : InheritedColumnMask (completedColumnTree D) :=
+  extendedColumnMask D A _ (columnCompletion_contains D)
+    (fun c hc => ((dyadicFiniteTree_mem_iff D.grid D.root c (columnCompletionDepth D)).mp hc).1)
+
+theorem completedColumnMask_projection_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    cellColumnProjection (completedColumnTree D) (completedColumnMask D A)
+      (columnCompletion_contains D hc) = cellColumnProjection D A hc :=
+  extendedColumnMask_projection_eq D A _ (columnCompletion_contains D) _ hc
+
+noncomputable def completedColumnRows {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (B : ColumnRowFamily D ι F) : ColumnRowFamily (completedColumnTree D) ι F :=
+  enlargedColumnRows D B _ (columnCompletion_contains D) _
+
+/-- The size used for the source stopping decomposition is the average of
+the actual Hilbert-valued L2 input's norm. -/
+noncomputable def columnCellAverage {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (c : ℤ × ℤ) : ℝ :=
+  dyadicCellAverage D.grid (fun y => ‖z y‖) c
+
+theorem columnCellAverage_nonneg {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (c : ℤ × ℤ) : 0 ≤ columnCellAverage D z c :=
+  dyadicCellAverage_nonneg D.grid _ (fun _ => norm_nonneg _) c
+
+theorem columnInput_norm_integrableOn {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (c : ℤ × ℤ) :
+    IntegrableOn (fun y => ‖z y‖) (dyadicGridCell D.grid c.1 c.2) :=
+  (integrableOn_Lp_of_measure_ne_top (s := dyadicGridCell D.grid c.1 c.2)
+    z (by norm_num : (1 : ENNReal) ≤ 2)
+    (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)).norm
+
+noncomputable def columnSizeRoots {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) : Finset (ℤ × ℤ) :=
+  dyadicSizeRoots D.grid D.root (columnCompletionDepth D) (columnCellAverage D z)
+
+noncomputable def columnSizeSegment {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (K : ℤ × ℤ) : Finset (ℤ × ℤ) :=
+  dyadicSizeSegment D.grid (completedColumnTree D).cells (columnCellAverage D z) K
+
+noncomputable def columnSizeCuts {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (K : ℤ × ℤ) : Finset (ℤ × ℤ) :=
+  dyadicSizeSegmentCuts D.grid D.root (columnCompletionDepth D) (columnCellAverage D z) K
+
+theorem columnSizeRoots_subset {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) : columnSizeRoots D z ⊆ (completedColumnTree D).cells :=
+  dyadicSizeRoots_subset D.grid D.root (columnCompletionDepth D) _
+
+/-- Every original decision cell has a deepest doubling-average root and
+belongs to its segment (`lem:compression`, line 553). -/
+theorem columnSizeRoot_assignment {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) {u : ℤ × ℤ} (hu : u ∈ D.cells) :
+    ∃ K ∈ columnSizeRoots D z, u ∈ columnSizeSegment D z K ∧
+      ∀ L ∈ columnSizeRoots D z,
+        dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid L.1 L.2 → L.1 ≤ K.1 :=
+  dyadicSizeSegment_exists D.grid D.root (columnCompletionDepth D) (columnCellAverage D z)
+    (fun c _ => columnCellAverage_nonneg D z c) (columnCompletion_contains D hu)
+
+theorem columnSizeSegment_average_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (K : ℤ × ℤ) {u : ℤ × ℤ} (hu : u ∈ columnSizeSegment D z K) :
+    columnCellAverage D z u ≤ 2 * columnCellAverage D z K :=
+  dyadicSizeSegment_average_le D.grid _ _ K hu
+
+theorem columnSizeCuts_subset {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    columnSizeCuts D z K ⊆ (completedColumnTree D).cells :=
+  dyadicSizeSegmentCuts_subset D.grid D.root (columnCompletionDepth D) _
+    (columnSizeRoots_subset D z hK)
+
+theorem columnSizeCuts_pairwiseDisjoint {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (K : ℤ × ℤ) :
+    (columnSizeCuts D z K : Set (ℤ × ℤ)).PairwiseDisjoint
+      (fun c => dyadicGridCell D.grid c.1 c.2) :=
+  dyadicSizeSegmentCuts_pairwiseDisjoint D.grid D.root (columnCompletionDepth D) _ K
+
+theorem columnSizeCuts_union {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (K : ℤ × ℤ) :
+    (⋃ c ∈ columnSizeCuts D z K, dyadicGridCell D.grid c.1 c.2) =
+      dyadicGridCell D.grid K.1 K.2 :=
+  dyadicSizeSegmentCuts_union D.grid D.root (columnCompletionDepth D) _ K
+
+open scoped Classical in
+theorem columnSizeCuts_union_below {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) {K u : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z)
+    (hu : u ∈ columnSizeSegment D z K) :
+    (⋃ c ∈ (columnSizeCuts D z K).filter (fun c : ℤ × ℤ =>
+      dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid u.1 u.2),
+      dyadicGridCell D.grid c.1 c.2) = dyadicGridCell D.grid u.1 u.2 :=
+  dyadicSizeSegmentCuts_union_below D.grid D.root (columnCompletionDepth D) _
+    (columnSizeRoots_subset D z hK) hu
+
+/-- Blueprint `lem:compression`, line 553: every cut-cell average of the
+input norm is at most four times the segment-root average. -/
+theorem columnSizeCuts_average_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (K : ℤ × ℤ) {c : ℤ × ℤ} (hc : c ∈ columnSizeCuts D z K) :
+    columnCellAverage D z c ≤ 4 * columnCellAverage D z K :=
+  dyadicDoublingCut_average_le D.grid K (dyadicRemainingDepth D.root (columnCompletionDepth D) K)
+    (fun y => ‖z y‖) (fun _ => norm_nonneg _) (columnInput_norm_integrableOn D z K) hc
+
+open scoped Classical in
+/-- On each cut retain exactly the columns used by its ancestors in the
+selected segment (`eq:moment-representative`, lines 555–556). -/
+noncomputable def columnAncestorMask {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (S : Finset (ℤ × ℤ)) (hS : S ⊆ D.cells) :
+    InheritedColumnMask D where
+  labels c := (S.filter (fun d : ℤ × ℤ => dyadicGridCell D.grid c.1 c.2 ⊆
+    dyadicGridCell D.grid d.1 d.2)).biUnion A.labels
+  available := by
+    intro c _ v hv
+    obtain ⟨d, hd, hvd⟩ := Finset.mem_biUnion.mp hv
+    obtain ⟨hd, hcd⟩ := Finset.mem_filter.mp hd
+    exact hcd.trans (A.available d (hS hd) v hvd)
+  inherited := by
+    intro c _ d _ hcd v hv
+    obtain ⟨e, he, hve⟩ := Finset.mem_biUnion.mp hv
+    obtain ⟨he, hde⟩ := Finset.mem_filter.mp he
+    exact Finset.mem_biUnion.mpr ⟨e, Finset.mem_filter.mpr ⟨he, hcd.trans hde⟩, hve⟩
+
+theorem columnAncestorMask_labels_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (S : Finset (ℤ × ℤ)) (hS : S ⊆ D.cells)
+    {c : ℤ × ℤ} (hc : c ∈ S) : (columnAncestorMask D A S hS).labels c = A.labels c := by
+  classical
+  ext v
+  constructor
+  · intro hv
+    obtain ⟨d, hd, hvd⟩ := Finset.mem_biUnion.mp hv
+    obtain ⟨hd, hcd⟩ := Finset.mem_filter.mp hd
+    exact A.inherited c (hS hc) d (hS hd) hcd hvd
+  · intro hv
+    exact Finset.mem_biUnion.mpr ⟨c, Finset.mem_filter.mpr ⟨hc, Set.Subset.rfl⟩, hv⟩
+
+/-- The orthogonal sum of column ranges on any finite disjoint cut family.
+Unlike a root stopping partition, it can be supported inside a segment root. -/
+noncomputable def cutColumnRange {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells) :
+    Submodule ℂ (ColumnL2 V) :=
+  ⨆ c : {c // c ∈ C}, cellColumnRange D A (hC c.property)
+
+instance cutColumnRange_finiteDimensional {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells) :
+    FiniteDimensional ℂ (cutColumnRange D A C hC) := by
+  classical
+  unfold cutColumnRange
+  infer_instance
+
+noncomputable def cutColumnProjection {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells) :
+    ColumnL2 V →L[ℂ] ColumnL2 V :=
+  (cutColumnRange D A C hC).starProjection
+
+theorem cutColumnRange_orthogonalFamily {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells)
+    (hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2)) :
+    OrthogonalFamily ℂ (fun c : {c // c ∈ C} => cellColumnRange D A (hC c.property))
+      (fun c => (cellColumnRange D A (hC c.property)).subtypeₗᵢ) := by
+  intro c d hcd z w
+  exact cellColumnRange_inner_eq_zero_of_disjoint D A (hC c.property) (hC d.property)
+    (hdis c.property d.property (fun h => hcd (Subtype.ext h))) z.property w.property
+
+open scoped Classical in
+theorem cutColumnProjection_eq_sum {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells)
+    (hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2))
+    (z : ColumnL2 V) :
+    cutColumnProjection D A C hC z =
+      ∑ c : {c // c ∈ C}, cellColumnProjection D A (hC c.property) z := by
+  let W := fun c : {c // c ∈ C} => cellColumnRange D A (hC c.property)
+  have horth := cutColumnRange_orthogonalFamily D A C hC hdis
+  have hm : cutColumnProjection D A C hC z ∈ ⨆ c, W c :=
+    Submodule.starProjection_apply_mem _ _
+  have hh := horth.sum_projection_of_mem_iSup (cutColumnProjection D A C hC z) hm
+  calc
+    _ = ∑ c, (W c).starProjection (cutColumnProjection D A C hC z) := hh.symm
+    _ = _ := by
+      apply Finset.sum_congr rfl
+      intro c _
+      have hle : W c ≤ cutColumnRange D A C hC := le_iSup W c
+      exact congrArg (fun L : ColumnL2 V →L[ℂ] ColumnL2 V => L z)
+        (Submodule.starProjection_comp_starProjection_of_le hle)
+
+open scoped Classical in
+noncomputable def columnSegmentMask {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) (K : ℤ × ℤ) :
+    InheritedColumnMask (completedColumnTree D) :=
+  columnAncestorMask (completedColumnTree D) (completedColumnMask D A) (columnSizeSegment D z K)
+    (Finset.filter_subset _ _)
+
+/-- The source moment representative is the orthogonal projection onto the
+segment-ancestor columns on each cut cell, extended by zero off the segment root. -/
+noncomputable def columnMomentRepresentative {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    ColumnL2 V :=
+  cutColumnProjection (completedColumnTree D) (columnSegmentMask D A z K) (columnSizeCuts D z K)
+    (columnSizeCuts_subset D z hK) z
+
+open scoped Classical in
+theorem columnMomentRepresentative_eq_sum {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    columnMomentRepresentative D A z hK = ∑ c : {c // c ∈ columnSizeCuts D z K},
+      cellColumnProjection (completedColumnTree D) (columnSegmentMask D A z K)
+        (columnSizeCuts_subset D z hK c.property) z :=
+  cutColumnProjection_eq_sum (completedColumnTree D) (columnSegmentMask D A z K) _ _
+    (columnSizeCuts_pairwiseDisjoint D z K) z
+
+theorem columnMomentRepresentative_ae_zero_off {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    ∀ᵐ y ∂volume, y ∉ dyadicGridCell D.grid K.1 K.2 →
+      (columnMomentRepresentative D A z hK : ℝ → ColumnHilbert V) y = 0 := by
+  classical
+  let F := fun c : {c // c ∈ columnSizeCuts D z K} =>
+    cellColumnProjection (completedColumnTree D) (columnSegmentMask D A z K)
+      (columnSizeCuts_subset D z hK c.property) z
+  have hzero : ∀ᵐ y ∂volume, ∀ c : {c // c ∈ columnSizeCuts D z K},
+      y ∉ dyadicGridCell D.grid c.val.1 c.val.2 → (F c : ℝ → ColumnHilbert V) y = 0 :=
+    ae_all_iff.mpr (fun c => cellColumnRange_ae_zero_off (completedColumnTree D)
+      (columnSegmentMask D A z K) (columnSizeCuts_subset D z hK c.property)
+      (cellColumnProjection_mem _ _ _ z))
+  rw [columnMomentRepresentative_eq_sum]
+  change ∀ᵐ y ∂volume, y ∉ dyadicGridCell D.grid K.1 K.2 → (∑ c, F c : ColumnL2 V) y = 0
+  filter_upwards [Lp.coeFn_fun_finsetSum Finset.univ F, hzero] with y hsum hz
+  intro hy
+  rw [hsum]
+  apply Finset.sum_eq_zero
+  intro c _
+  apply hz c
+  intro hyc
+  apply hy
+  rw [← columnSizeCuts_union D z K]
+  exact Set.mem_iUnion₂.mpr ⟨c.val, c.property, hyc⟩
+
+/-- Blueprint `eq:moment-representative`, line 558: the representative has
+global essential bound `4 D^5 a_K`, with no cost for the number of cut cells. -/
+theorem columnMomentRepresentative_ae_bound {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    ∀ᵐ y ∂volume, ‖columnMomentRepresentative D A z hK y‖ ≤
+      4 * D.budget ^ 5 * columnCellAverage D z K := by
+  classical
+  let F := fun c : {c // c ∈ columnSizeCuts D z K} =>
+    cellColumnProjection (completedColumnTree D) (columnSegmentMask D A z K)
+      (columnSizeCuts_subset D z hK c.property) z
+  have hrep : columnMomentRepresentative D A z hK = ∑ c, F c :=
+    columnMomentRepresentative_eq_sum D A z hK
+  have hbound : ∀ᵐ y ∂volume, ∀ c : {c // c ∈ columnSizeCuts D z K},
+      y ∈ dyadicGridCell D.grid c.val.1 c.val.2 → ‖F c y‖ ≤
+        4 * D.budget ^ 5 * columnCellAverage D z K := by
+    apply ae_all_iff.mpr
+    intro c
+    apply (ae_restrict_iff' (dyadicGridCell_measurable D.grid c.val.1 c.val.2)).mp
+    filter_upwards [cellColumnProjection_ae_bound (completedColumnTree D)
+      (columnSegmentMask D A z K) (columnSizeCuts_subset D z hK c.property) z] with y hy
+    change ‖F c y‖ ≤ D.budget ^ 5 * columnCellAverage D z c.val at hy
+    exact hy.trans (by
+      have hb := mul_le_mul_of_nonneg_left (columnSizeCuts_average_le D z K c.property)
+        (pow_nonneg (le_trans (by norm_num : (0 : ℝ) ≤ 2) D.two_le_budget) 5)
+      nlinarith)
+  have hzero : ∀ᵐ y ∂volume, ∀ c : {c // c ∈ columnSizeCuts D z K},
+      y ∉ dyadicGridCell D.grid c.val.1 c.val.2 → (F c : ℝ → ColumnHilbert V) y = 0 :=
+    ae_all_iff.mpr (fun c => cellColumnRange_ae_zero_off (completedColumnTree D)
+      (columnSegmentMask D A z K) (columnSizeCuts_subset D z hK c.property)
+      (cellColumnProjection_mem _ _ _ z))
+  filter_upwards [Lp.coeFn_fun_finsetSum Finset.univ F, hbound, hzero,
+    columnMomentRepresentative_ae_zero_off D A z hK] with y hsum hb hz hg
+  by_cases hyK : y ∈ dyadicGridCell D.grid K.1 K.2
+  · rw [← columnSizeCuts_union D z K] at hyK
+    obtain ⟨c, hc, hyc⟩ := Set.mem_iUnion₂.mp hyK
+    rw [hrep, hsum, Finset.sum_eq_single (⟨c, hc⟩ : {c // c ∈ columnSizeCuts D z K})]
+    · exact hb ⟨c, hc⟩ hyc
+    · intro d _ hdc
+      apply hz d
+      intro hyd
+      exact Set.disjoint_left.mp
+        (columnSizeCuts_pairwiseDisjoint D z K d.property hc
+          (fun h => hdc (Subtype.ext h))) hyd hyc
+    · simp
+  · rw [hg hyK, norm_zero]
+    exact mul_nonneg (mul_nonneg (by norm_num)
+      (pow_nonneg (le_trans (by norm_num : (0 : ℝ) ≤ 2) D.two_le_budget) 5))
+      (columnCellAverage_nonneg D z K)
+
+theorem columnMomentRepresentative_eLpNorm_top_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    eLpNorm (columnMomentRepresentative D A z hK) ∞ volume ≤
+      ENNReal.ofReal (4 * D.budget ^ 5 * columnCellAverage D z K) := by
+  rw [eLpNorm_exponent_top (Lp.aestronglyMeasurable _)]
+  exact eLpNormEssSup_le_of_ae_bound (columnMomentRepresentative_ae_bound D A z hK)
+
+/-- Blueprint `eq:moment-representative`, line 559: the representative's
+squared L2 norm is exactly its pairing with the original input. -/
+theorem columnMomentRepresentative_inner {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    inner ℂ z (columnMomentRepresentative D A z hK) =
+      ((‖columnMomentRepresentative D A z hK‖ ^ 2 : ℝ) : ℂ) := by
+  let W := cutColumnRange (completedColumnTree D) (columnSegmentMask D A z K)
+    (columnSizeCuts D z K) (columnSizeCuts_subset D z hK)
+  have hm : columnMomentRepresentative D A z hK ∈ W := Submodule.starProjection_apply_mem W z
+  have ho := Submodule.starProjection_inner_eq_zero (K := W) z
+    (columnMomentRepresentative D A z hK) hm
+  change inner ℂ (z - columnMomentRepresentative D A z hK)
+    (columnMomentRepresentative D A z hK) = 0 at ho
+  rw [inner_sub_left, inner_self_eq_norm_sq_to_K] at ho
+  exact_mod_cast sub_eq_zero.mp ho
+
+theorem columnMomentRepresentative_norm_sq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    ‖columnMomentRepresentative D A z hK‖ ^ 2 =
+      (inner ℂ z (columnMomentRepresentative D A z hK)).re := by
+  rw [columnMomentRepresentative_inner, Complex.ofReal_re]
+
+theorem cellColumnRange_congr_labels {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A B : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (h : A.labels c = B.labels c) : cellColumnRange D A hc = cellColumnRange D B hc := by
+  unfold cellColumnRange
+  congr 1
+  ext z
+  constructor
+  · rintro ⟨v, rfl⟩
+    exact ⟨⟨v.val, by rw [← h]; exact v.property⟩, rfl⟩
+  · rintro ⟨v, rfl⟩
+    exact ⟨⟨v.val, by rw [h]; exact v.property⟩, rfl⟩
+
+theorem cellColumnProjection_congr_labels {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A B : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (h : A.labels c = B.labels c) :
+    cellColumnProjection D A hc = cellColumnProjection D B hc := by
+  unfold cellColumnProjection
+  congr 1
+  exact cellColumnRange_congr_labels D A B hc h
+
+open scoped Classical in
+/-- Restriction to a cell is the sum of restrictions to an exact finite
+disjoint partition of that cell, without requiring it to be the tree root. -/
+theorem cutColumn_restriction_sum {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (C : Finset (ℤ × ℤ))
+    (hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2))
+    (u : ℤ × ℤ) (hcover : (⋃ c ∈ C, dyadicGridCell D.grid c.1 c.2) =
+      dyadicGridCell D.grid u.1 u.2) (z : ColumnL2 V) :
+    (∑ c : {c // c ∈ C}, columnL2Restriction (dyadicGridCell D.grid c.val.1 c.val.2)
+      (dyadicGridCell_measurable D.grid c.val.1 c.val.2) z) =
+      columnL2Restriction (dyadicGridCell D.grid u.1 u.2)
+        (dyadicGridCell_measurable D.grid u.1 u.2) z := by
+  classical
+  have hsub : ∀ c ∈ C, dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid u.1 u.2 := by
+    intro c hc y hy
+    rw [← hcover]
+    exact Set.mem_iUnion₂.mpr ⟨c, hc, hy⟩
+  let R := fun c : {c // c ∈ C} => columnL2Restriction
+    (dyadicGridCell D.grid c.val.1 c.val.2) (dyadicGridCell_measurable D.grid c.val.1 c.val.2) z
+  have hall : ∀ᵐ y ∂volume, ∀ c : {c // c ∈ C},
+      (R c : ℝ → ColumnHilbert V) y = (dyadicGridCell D.grid c.val.1 c.val.2).indicator z y :=
+    ae_all_iff.mpr (fun c => columnL2Indicator_coeFn
+      (dyadicGridCell D.grid c.val.1 c.val.2)
+      (dyadicGridCell_measurable D.grid c.val.1 c.val.2) z)
+  apply Lp.ext
+  filter_upwards [Lp.coeFn_fun_finsetSum Finset.univ R, hall,
+    columnL2Indicator_coeFn (dyadicGridCell D.grid u.1 u.2)
+      (dyadicGridCell_measurable D.grid u.1 u.2) z] with y hsum hall hu
+  change (∑ c, R c : ColumnL2 V) y =
+    (columnL2Indicator _ (dyadicGridCell_measurable D.grid u.1 u.2) z : ℝ → ColumnHilbert V) y
+  rw [hsum, hu]
+  simp only [hall]
+  by_cases hyu : y ∈ dyadicGridCell D.grid u.1 u.2
+  · have hyu' := hyu
+    rw [← hcover] at hyu'
+    obtain ⟨c, hc, hyc⟩ := Set.mem_iUnion₂.mp hyu'
+    rw [Finset.sum_eq_single (⟨c, hc⟩ : {c // c ∈ C})]
+    · rw [Set.indicator_of_mem hyc, Set.indicator_of_mem hyu]
+    · intro d _ hdc
+      apply Set.indicator_of_notMem
+      intro hyd
+      exact Set.disjoint_left.mp (hdis d.property hc (fun h => hdc (Subtype.ext h))) hyd hyc
+    · simp
+  · rw [Set.indicator_of_notMem hyu]
+    apply Finset.sum_eq_zero
+    intro c _
+    exact Set.indicator_of_notMem (fun hyc => hyu (hsub c.val c.property hyc)) _
+
+theorem cellColumnRange_le_cutColumnRange {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells)
+    (hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2))
+    {u : ℤ × ℤ} (hu : u ∈ D.cells)
+    (hcover : (⋃ c ∈ C, dyadicGridCell D.grid c.1 c.2) = dyadicGridCell D.grid u.1 u.2) :
+    cellColumnRange D A hu ≤ cutColumnRange D A C hC := by
+  classical
+  intro z hz
+  have hsum : (∑ c : {c // c ∈ C}, columnL2Restriction
+      (dyadicGridCell D.grid c.val.1 c.val.2)
+      (dyadicGridCell_measurable D.grid c.val.1 c.val.2) z) = z :=
+    (cutColumn_restriction_sum D C hdis u hcover z).trans
+      (cellColumnRange_fixed_restriction D A hu hz)
+  rw [← hsum]
+  apply Submodule.sum_mem
+  intro c _
+  have hcu : dyadicGridCell D.grid c.val.1 c.val.2 ⊆ dyadicGridCell D.grid u.1 u.2 := by
+    intro y hy
+    rw [← hcover]
+    exact Set.mem_iUnion₂.mpr ⟨c.val, c.property, hy⟩
+  exact (le_iSup (fun d : {d // d ∈ C} => cellColumnRange D A (hC d.property)) c)
+    (cellColumnRange_restrict_descendant D A (hC c.property) hu hcu hz)
+
+theorem cutColumnRange_mono {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (C E : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells) (hE : E ⊆ D.cells)
+    (hCE : C ⊆ E) : cutColumnRange D A C hC ≤ cutColumnRange D A E hE := by
+  apply iSup_le
+  intro c
+  exact le_iSup (fun d : {d // d ∈ E} => cellColumnRange D A (hE d.property))
+    ⟨c.val, hCE c.property⟩
+
+open scoped Classical in
+theorem columnMomentRepresentative_preserves_completed {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : InheritedColumnMask D) (z : ColumnL2 V)
+    {K u : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) (hu : u ∈ columnSizeSegment D z K) :
+    cellColumnProjection (completedColumnTree D) (completedColumnMask D A)
+      (Finset.mem_filter.mp hu).1 (columnMomentRepresentative D A z hK) =
+    cellColumnProjection (completedColumnTree D) (completedColumnMask D A)
+      (Finset.mem_filter.mp hu).1 z := by
+  classical
+  let C := (columnSizeCuts D z K).filter (fun c : ℤ × ℤ =>
+    dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid u.1 u.2)
+  have hCE : C ⊆ columnSizeCuts D z K := Finset.filter_subset _ _
+  have hC : C ⊆ (completedColumnTree D).cells := hCE.trans (columnSizeCuts_subset D z hK)
+  have hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint
+      (fun c => dyadicGridCell D.grid c.1 c.2) := by
+    intro c hc d hd hne
+    exact columnSizeCuts_pairwiseDisjoint D z K (hCE hc) (hCE hd) hne
+  have hcover := columnSizeCuts_union_below D z hK hu
+  have huT : u ∈ (completedColumnTree D).cells := (Finset.mem_filter.mp hu).1
+  have hle := (cellColumnRange_le_cutColumnRange (completedColumnTree D)
+    (columnSegmentMask D A z K) C hC hdis huT hcover).trans
+      (cutColumnRange_mono (completedColumnTree D) (columnSegmentMask D A z K)
+        C (columnSizeCuts D z K) hC (columnSizeCuts_subset D z hK) hCE)
+  have hlabels : (columnSegmentMask D A z K).labels u = (completedColumnMask D A).labels u :=
+    columnAncestorMask_labels_eq (completedColumnTree D) (completedColumnMask D A)
+      (columnSizeSegment D z K) (Finset.filter_subset _ _) hu
+  have heq := cellColumnProjection_congr_labels (completedColumnTree D)
+    (columnSegmentMask D A z K) (completedColumnMask D A) huT hlabels
+  rw [← heq]
+  exact congrArg (fun L : ColumnL2 V →L[ℂ] ColumnL2 V => L z)
+    (Submodule.starProjection_comp_starProjection_of_le hle)
+
+/-- Blueprint `eq:moment-representative`, lines 559–561: every original
+first-layer projection in the segment has exactly the same value on `g_K` and `z`. -/
+theorem columnMomentRepresentative_preserves_projection {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : InheritedColumnMask D) (z : ColumnL2 V)
+    {K u : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) (hu : u ∈ D.cells)
+    (hsegment : u ∈ columnSizeSegment D z K) :
+    cellColumnProjection D A hu (columnMomentRepresentative D A z hK) =
+      cellColumnProjection D A hu z := by
+  rw [← completedColumnMask_projection_eq D A hu]
+  exact columnMomentRepresentative_preserves_completed D A z hK hsegment
+
+set_option backward.isDefEq.respectTransparency false in
+theorem columnInput_norm_sq_integral {V : Type*} [Fintype V] (z : ColumnL2 V) :
+    ‖z‖ ^ 2 = ∫ y, ‖z y‖ ^ 2 := by
+  apply Complex.ofReal_injective
+  calc
+    _ = inner ℂ z z := by
+      simp only [inner_self_eq_norm_sq_to_K, Complex.ofReal_pow]
+      rfl
+    _ = ∫ y, inner ℂ (z y) (z y) := MeasureTheory.L2.inner_def z z
+    _ = _ := by
+      rw [← integral_complex_ofReal]
+      apply integral_congr_ae
+      exact ae_of_all _ (fun y => by
+        simp only [inner_self_eq_norm_sq_to_K, Complex.ofReal_pow]
+        rfl)
+
+/-- The finite dyadic maximal function used in the source stopping-energy
+estimate, on the same completed tree as the moment representatives. -/
+noncomputable def columnDyadicMax {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) : ℝ → ℝ :=
+  dyadicRealMax D.grid (completedColumnTree D).cells (fun y => ‖z y‖)
+
+theorem columnDyadicMax_nonneg {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (x : ℝ) : 0 ≤ columnDyadicMax D z x :=
+  dyadicRealMax_nonneg D.grid _ _ x
+
+theorem columnDyadicMax_measurable {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) : Measurable (columnDyadicMax D z) :=
+  dyadicRealMax_measurable D.grid _ _
+
+theorem columnDyadicMax_memLp {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) : MemLp (columnDyadicMax D z) 2 volume :=
+  dyadicRealMax_memLp D.grid _ _ (fun _ => norm_nonneg _)
+    (fun c _ => columnInput_norm_integrableOn D z c) D.root (completedColumnTree D).below_root
+
+/-- The sharp dyadic maximal estimate has norm constant two, squared here. -/
+theorem columnDyadicMax_energy_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) : (∫ x, columnDyadicMax D z x ^ 2) ≤ 4 * ‖z‖ ^ 2 := by
+  rw [columnInput_norm_sq_integral]
+  exact dyadicRealMax_l2 D.grid _ D.root (completedColumnTree D).below_root
+    (fun y => ‖z y‖) (Lp.stronglyMeasurable z).norm.measurable (fun _ => norm_nonneg _)
+    (Lp.memLp z).norm
+
+theorem columnSizeRoots_square_path_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) (x : ℝ) :
+    dyadicRealPathSum D.grid (columnSizeRoots D z) (fun K => columnCellAverage D z K ^ 2) x ≤
+      (4 / 3 : ℝ) * columnDyadicMax D z x ^ 2 := by
+  apply dyadicSizeRoots_square_path_le D.grid D.root (columnCompletionDepth D)
+    (columnCellAverage D z) (fun c _ => columnCellAverage_nonneg D z c)
+    x (columnDyadicMax D z x) (columnDyadicMax_nonneg D z x)
+  intro c hc hx
+  exact dyadicCellAverage_le_max D.grid _ (fun y => ‖z y‖) (fun _ => norm_nonneg _)
+    (fun c _ => columnInput_norm_integrableOn D z c) hc hx
+
+/-- Blueprint `lem:compression`, lines 561–564: integrating the geometric
+path estimate gives the exact four-thirds maximal-energy bound. -/
+theorem columnSizeRoots_energy_le_maximal {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) :
+    (∑ K ∈ columnSizeRoots D z, columnCellAverage D z K ^ 2 * dyadicGridLength D.grid K.1) ≤
+      (4 / 3 : ℝ) * ∫ x, columnDyadicMax D z x ^ 2 := by
+  classical
+  have hpath : (∑ K ∈ columnSizeRoots D z,
+      dyadicGridLength D.grid K.1 * columnCellAverage D z K ^ 2) =
+      ∫ x, dyadicRealPathSum D.grid (columnSizeRoots D z)
+        (fun K => columnCellAverage D z K ^ 2) x := by
+    have h := dyadicPathIntegral_real D.grid (columnSizeRoots D z)
+      (fun K => columnCellAverage D z K ^ 2) Set.univ (fun _ _ => Set.subset_univ _)
+    simpa only [MeasureTheory.setIntegral_univ, dyadicRealPathSum, Finset.sum_filter,
+      Set.indicator_apply] using h
+  rw [show (∑ K ∈ columnSizeRoots D z,
+      columnCellAverage D z K ^ 2 * dyadicGridLength D.grid K.1) =
+      ∑ K ∈ columnSizeRoots D z, dyadicGridLength D.grid K.1 * columnCellAverage D z K ^ 2 by
+        apply Finset.sum_congr rfl; intro K _; ring, hpath, ← integral_const_mul]
+  apply integral_mono_of_nonneg _ ((columnDyadicMax_memLp D z).integrable_sq.const_mul _)
+    (Filter.Eventually.of_forall (columnSizeRoots_square_path_le D z))
+  exact Filter.Eventually.of_forall (fun x =>
+    Finset.sum_nonneg (fun K _ => sq_nonneg (columnCellAverage D z K)))
+
+/-- The total squared stopping-average energy is bounded independently of
+spatial depth and label count (`lem:compression`, lines 561–564). -/
+theorem columnSizeRoots_energy_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (z : ColumnL2 V) :
+    (∑ K ∈ columnSizeRoots D z, columnCellAverage D z K ^ 2 * dyadicGridLength D.grid K.1) ≤
+      (16 / 3 : ℝ) * ‖z‖ ^ 2 := by
+  have h := columnSizeRoots_energy_le_maximal D z
+  have hm := columnDyadicMax_energy_le D z
+  linarith
+
+open scoped Classical in
+/-- The finite moment family, with zero assigned to indices outside the
+stopping roots so it can be used in ordinary finite sums. -/
+noncomputable def columnMomentFamily {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) (K : ℤ × ℤ) : ColumnL2 V :=
+  if hK : K ∈ columnSizeRoots D z then columnMomentRepresentative D A z hK else 0
+
+theorem columnMomentFamily_of_mem {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    columnMomentFamily D A z K = columnMomentRepresentative D A z hK := dite_eq_left hK
+
+noncomputable def columnMomentEnergy {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) : ℝ :=
+  ∑ K ∈ columnSizeRoots D z, ‖columnMomentFamily D A z K‖ ^ 2
+
+theorem columnMomentEnergy_nonneg {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) : 0 ≤ columnMomentEnergy D A z :=
+  Finset.sum_nonneg (fun _ _ => sq_nonneg _)
+
+/-- Here `4 D^7 = (4 D^5) D²`, the source ratio `G D²`. -/
+noncomputable def columnMomentLogCount {V : Type*} [Fintype V] (D : ColumnTreeData V) : ℕ :=
+  dyadicLogSizeCount (4 * D.budget ^ 7)
+
+theorem columnMoment_ratio_one_le {V : Type*} [Fintype V] (D : ColumnTreeData V) :
+    1 ≤ 4 * D.budget ^ 7 := by
+  have hD1 : 1 ≤ D.budget := by linarith [D.two_le_budget]
+  have hD7 : 1 ≤ D.budget ^ 7 := one_le_pow₀ hD1
+  linarith
+
+/-- Blueprint `lem:compression`, line 565: the exact quadratic inequality
+for the aggregate moment energy, with the source logarithmic overlap count. -/
+theorem columnMomentEnergy_quadratic {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) :
+    columnMomentEnergy D A z ≤ 4 * D.budget⁻¹ ^ 2 * ‖z‖ ^ 2 +
+      Real.sqrt (columnMomentLogCount D : ℝ) * ‖z‖ * Real.sqrt (columnMomentEnergy D A z) := by
+  have hD : 0 < D.budget := by linarith [D.two_le_budget]
+  have he := dyadic_stopped_moment_energy D.grid D.root (columnCompletionDepth D)
+    (columnCellAverage D z) (fun c _ => columnCellAverage_nonneg D z c)
+    z (columnMomentFamily D A z) (columnDyadicMax D z) (columnDyadicMax_memLp D z)
+    (columnDyadicMax_nonneg D z) (4 * D.budget ^ 5) (4 * D.budget ^ 7)
+    (by positivity) (columnMoment_ratio_one_le D)
+    (fun x c hc hxc => dyadicCellAverage_le_max D.grid _ (fun y => ‖z y‖)
+      (fun _ => norm_nonneg _) (fun c _ => columnInput_norm_integrableOn D z c) hc hxc)
+    (fun K hK => by
+      rw [columnMomentFamily_of_mem D A z hK]
+      exact columnMomentRepresentative_ae_zero_off D A z hK)
+    (fun K hK => by
+      rw [columnMomentFamily_of_mem D A z hK]
+      exact columnMomentRepresentative_ae_bound D A z hK)
+    (fun K hK => by
+      rw [columnMomentFamily_of_mem D A z hK]
+      exact columnMomentRepresentative_norm_sq D A z hK)
+  have hc : 2 * (4 * D.budget ^ 5) / (4 * D.budget ^ 7) = 2 * D.budget⁻¹ ^ 2 := by
+    field_simp
+  change columnMomentEnergy D A z ≤
+    (2 * (4 * D.budget ^ 5) / (4 * D.budget ^ 7)) * ‖z‖ *
+      Real.sqrt (∫ x, columnDyadicMax D z x ^ 2) +
+      Real.sqrt (columnMomentLogCount D : ℝ) * ‖z‖ * Real.sqrt (columnMomentEnergy D A z) at he
+  rw [hc] at he
+  have hmax : Real.sqrt (∫ x, columnDyadicMax D z x ^ 2) ≤ 2 * ‖z‖ := by
+    have h := Real.sqrt_le_sqrt (columnDyadicMax_energy_le D z)
+    rwa [Real.sqrt_mul (by norm_num : (0 : ℝ) ≤ 4), Real.sqrt_sq (norm_nonneg z),
+      show Real.sqrt (4 : ℝ) = 2 by norm_num] at h
+  calc
+    _ ≤ _ := he
+    _ ≤ (2 * D.budget⁻¹ ^ 2) * ‖z‖ * (2 * ‖z‖) +
+        Real.sqrt (columnMomentLogCount D : ℝ) * ‖z‖ * Real.sqrt (columnMomentEnergy D A z) :=
+      add_le_add (mul_le_mul_of_nonneg_left hmax
+        (show 0 ≤ (2 * D.budget⁻¹ ^ 2) * ‖z‖ by positivity)) le_rfl
+    _ = _ := by ring
+
+theorem columnMomentEnergy_le_count {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) :
+    columnMomentEnergy D A z ≤ (8 * D.budget⁻¹ ^ 2 + (columnMomentLogCount D : ℝ)) * ‖z‖ ^ 2 := by
+  have h := columnMomentEnergy_quadratic D A z
+  have hS := Real.sq_sqrt (columnMomentEnergy_nonneg D A z)
+  have hL := Real.sq_sqrt (Nat.cast_nonneg (columnMomentLogCount D) : (0 : ℝ) ≤ _)
+  have hy := sq_nonneg (Real.sqrt (columnMomentEnergy D A z) -
+    Real.sqrt (columnMomentLogCount D : ℝ) * ‖z‖)
+  nlinarith
+
+/-- The source overlap count grows only logarithmically in the column budget. -/
+theorem columnMomentLogCount_le {V : Type*} [Fintype V] (D : ColumnTreeData V) :
+    (columnMomentLogCount D : ℝ) ≤ 5 + 7 * Real.logb 2 D.budget := by
+  have hD : 0 < D.budget := by linarith [D.two_le_budget]
+  have hlog : 0 ≤ Real.logb 2 (4 * D.budget ^ 7) :=
+    Real.logb_nonneg (by norm_num) (columnMoment_ratio_one_le D)
+  have hceil := (Nat.ceil_lt_add_one hlog).le
+  have he : Real.logb 2 (4 * D.budget ^ 7) = 2 + 7 * Real.logb 2 D.budget := by
+    rw [Real.logb_mul (by norm_num : (4 : ℝ) ≠ 0) (pow_ne_zero _ hD.ne'), Real.logb_pow]
+    have hfour : Real.logb 2 (4 : ℝ) = 2 := by
+      rw [show (4 : ℝ) = 2 ^ (2 : ℕ) by norm_num, Real.logb_pow]
+      norm_num
+    rw [hfour]
+    norm_num
+  change ((2 + Nat.ceil (Real.logb 2 (4 * D.budget ^ 7)) : ℕ) : ℝ) ≤ _
+  push_cast
+  rw [he] at hceil ⊢
+  linarith
+
+/-- Blueprint `lem:compression`, line 565: the total moment energy has an
+absolute logarithmic bound, independent of depth and total label count. -/
+theorem columnMomentEnergy_logarithmic {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (z : ColumnL2 V) :
+    columnMomentEnergy D A z ≤ (7 / Real.log 2) * Real.log (2 * D.budget) * ‖z‖ ^ 2 := by
+  have hD : 0 < D.budget := by linarith [D.two_le_budget]
+  have hi : D.budget⁻¹ ≤ (2 : ℝ)⁻¹ := (inv_le_inv₀ hD (by norm_num)).mpr D.two_le_budget
+  have hisq := (sq_le_sq₀ (inv_nonneg.mpr hD.le) (by norm_num : (0 : ℝ) ≤ (2 : ℝ)⁻¹)).mpr hi
+  norm_num at hisq
+  rw [← inv_pow] at hisq
+  have hcount := columnMomentLogCount_le D
+  have he : 7 + 7 * Real.logb 2 D.budget =
+      (7 / Real.log 2) * Real.log (2 * D.budget) := by
+    rw [Real.logb, Real.log_mul (by norm_num : (2 : ℝ) ≠ 0) hD.ne']
+    field_simp [(Real.log_pos (by norm_num : (1 : ℝ) < 2)).ne']
+  have hconst : 8 * D.budget⁻¹ ^ 2 + (columnMomentLogCount D : ℝ) ≤
+      (7 / Real.log 2) * Real.log (2 * D.budget) := by
+    rw [← he]
+    linarith
+  exact (columnMomentEnergy_le_count D A z).trans
+    (mul_le_mul_of_nonneg_right hconst (sq_nonneg ‖z‖))
+
+open scoped Classical in
+/-- Coefficients on one mask extended by zero to the common label space,
+as required for comparing different anchors (`lem:compression`, line 567). -/
+noncomputable def extendCellCoefficients {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c) :
+    EuclideanSpace ℂ V :=
+  WithLp.toLp 2 (fun v => if hv : v ∈ A.labels c then a ⟨v, hv⟩ else 0)
+
+open scoped Classical in
+theorem columnCombination_private_all {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c) (y : ℝ) (v : V) :
+    columnCombination D A c a y (some v) =
+      extendCellCoefficients D A c a v * (Real.sqrt (D.privateWeight v) : ℂ) := by
+  classical
+  by_cases hv : v ∈ A.labels c
+  · simpa [extendCellCoefficients, hv] using
+      columnCombination_private D A c a y ⟨v, hv⟩
+  · simp only [columnCombination, WithLp.ofLp_sum, Finset.sum_apply, WithLp.ofLp_smul,
+      Pi.smul_apply, privateColumnValue_private, smul_eq_mul]
+    have hne : ∀ w : {w // w ∈ A.labels c}, v ≠ w.val := by
+      intro w he
+      exact hv (he.symm ▸ w.property)
+    simp [hne, extendCellCoefficients, hv]
+
+/-- Products use the source order: layer zero acts first, and the last
+layer provides the coefficient vector used by the stopping rule. -/
+noncomputable def cellColumnProduct {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    ℕ → ColumnL2 V →L[ℂ] ColumnL2 V
+  | 0 => ContinuousLinearMap.id ℂ _
+  | m + 1 => (cellColumnProjection D (A m) hc).comp (cellColumnProduct D A hc m)
+
+/-- The last-layer coefficient vector of a nonempty product, extended to
+all labels. This definition includes changing masks at different cells. -/
+noncomputable def cellProductCoefficients {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (m : ℕ) (g : ColumnL2 V) : EuclideanSpace ℂ V :=
+  extendCellCoefficients D (A m) c
+    (cellProjectionCoefficients D (A m) hc (cellColumnProduct D A hc m g))
+
+/-- The cell product is represented by the last layer's constant coefficients. -/
+theorem cellColumnProduct_coeFn {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (m : ℕ) (g : ColumnL2 V) :
+    (cellColumnProduct D A hc (m + 1) g : ℝ → ColumnHilbert V) =ᵐ[volume]
+      (dyadicGridCell D.grid c.1 c.2).indicator
+        (columnCombination D (A m) c
+          (cellProjectionCoefficients D (A m) hc (cellColumnProduct D A hc m g))) :=
+  cellColumnProjection_coeFn D (A m) hc _
+
+/-- Private coordinates recover arbitrary coefficient differences, even
+when the two anchors have different masks (`lem:compression`, line 569). -/
+theorem privateCoordinates_lower {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (a : EuclideanSpace ℂ V) (w : ColumnHilbert V)
+    (hw : ∀ v, w (some v) = a v * (Real.sqrt (D.privateWeight v) : ℂ)) :
+    D.budget⁻¹ * ‖a‖ ≤ ‖w‖ := by
+  classical
+  have hi : 0 ≤ D.budget⁻¹ := inv_nonneg.mpr (by linarith [D.two_le_budget])
+  have hsq : (D.budget⁻¹ * ‖a‖) ^ 2 ≤ ‖w‖ ^ 2 := by
+    calc
+      _ = ∑ v : V, (D.budget⁻¹ * ‖a v‖) ^ 2 := by
+        rw [mul_pow, EuclideanSpace.norm_sq_eq, Finset.mul_sum]
+        exact Finset.sum_congr rfl (fun v _ => (mul_pow _ _ 2).symm)
+      _ ≤ ∑ v : V, ‖w (some v)‖ ^ 2 := by
+        apply Finset.sum_le_sum
+        intro v _
+        rw [hw, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+          abs_of_nonneg (Real.sqrt_nonneg _)]
+        have h := mul_le_mul_of_nonneg_right (D.private_lower v) (norm_nonneg (a v))
+        have h0 := mul_nonneg hi (norm_nonneg (a v))
+        have h1 := mul_nonneg (Real.sqrt_nonneg (D.privateWeight v)) (norm_nonneg (a v))
+        nlinarith
+      _ ≤ ∑ o : Option V, ‖w o‖ ^ 2 := by
+        rw [Fintype.sum_option]
+        exact le_add_of_nonneg_left (sq_nonneg _)
+      _ = _ := (EuclideanSpace.norm_sq_eq _).symm
+  exact (sq_le_sq₀ (mul_nonneg hi (norm_nonneg a)) (norm_nonneg w)).mp hsq
+
+/-- The source coefficient tolerance; a zero segment average causes no
+division by zero in the anchor construction. -/
+noncomputable def columnAnchorTolerance {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (a : ℝ) : ℝ := D.budget⁻¹ ^ 10 * a
+
+theorem columnAnchorTolerance_nonneg {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) {a : ℝ} (ha : 0 ≤ a) : 0 ≤ columnAnchorTolerance D a :=
+  mul_nonneg (even_two.mul_right 5 |>.pow_nonneg _) ha
+
+/-- Blueprint `lem:compression`, line 567: the number of transitions in
+one attempt for a product with `m` layers. -/
+noncomputable def columnRestartCount {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m : ℕ) : ℕ :=
+  Nat.ceil ((2 * D.budget * ((m : ℝ) + 1)) ^ (128 * (m + 1) ^ 2))
+
+theorem columnRestartCount_pos {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m : ℕ) : 0 < columnRestartCount D m := by
+  apply Nat.ceil_pos.mpr
+  have hD : 0 < D.budget := by linarith [D.two_le_budget]
+  positivity
+
+open scoped Classical in
+/-- A total coefficient field on cell indices. The zero extension outside
+the given finite tree is never used by its anchor generations. -/
+noncomputable def columnCoefficientField {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D)
+    (m : ℕ) (g : ColumnL2 V) (c : ℤ × ℤ) : EuclideanSpace ℂ V :=
+  if hc : c ∈ D.cells then cellProductCoefficients D A hc m g else 0
+
+theorem columnCoefficientField_of_mem {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D)
+    (m : ℕ) (g : ColumnL2 V) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
+    columnCoefficientField D A m g c = cellProductCoefficients D A hc m g :=
+  dite_eq_left hc
+
+/-- Anchors for an `(m+1)`-layer product, counting coefficient transitions. -/
+noncomputable def columnAnchors {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (n : ℕ) : Finset (ℤ × ℤ) :=
+  dyadicAnchorGeneration D.grid D.cells (columnCoefficientField D A m g)
+    (columnAnchorTolerance D a) R n
+
+/-- Attempts restart every source-prescribed `T` coefficient transitions,
+using exactly the same input `g` and size `a`. -/
+noncomputable def columnAttempts {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (n : ℕ) : Finset (ℤ × ℤ) :=
+  columnAnchors D A m g a R (n * columnRestartCount D (m + 1))
+
+theorem columnAttempts_succ {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (n : ℕ) :
+    columnAttempts D A m g a R (n + 1) =
+      (columnAttempts D A m g a R n).biUnion
+        (fun K => columnAnchors D A m g a K (columnRestartCount D (m + 1))) :=
+  dyadicRestartGeneration_succ D.grid D.cells _ _ R _ n
+
+theorem columnAnchors_subset {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ D.cells) (n : ℕ) :
+    columnAnchors D A m g a R n ⊆ D.cells :=
+  dyadicAnchorGeneration_subset D.grid D.cells _ _ R hR n
+
+theorem columnAnchors_pairwiseDisjoint {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (n : ℕ) :
+    (columnAnchors D A m g a R n : Set (ℤ × ℤ)).PairwiseDisjoint
+      (fun c => dyadicGridCell D.grid c.1 c.2) :=
+  dyadicAnchorGeneration_pairwiseDisjoint D.grid D.cells _ _ R n
+
+/-- Finite physical depth terminates all restart attempts, even if the
+source transition count is much larger than that depth. -/
+theorem columnAttempts_eq_empty {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a) {R : ℤ × ℤ} (hR : R ∈ D.cells)
+    (n : ℕ) (hn : columnCompletionDepth D < n) :
+    columnAttempts D A m g a R n = ∅ := by
+  apply Finset.eq_empty_iff_forall_notMem.mpr
+  intro c hc
+  have hdepth := dyadicAnchorGeneration_depth D.grid D.cells
+    (columnCoefficientField D A m g) _ (columnAnchorTolerance_nonneg D ha) R
+    (n * columnRestartCount D (m + 1)) hc
+  have hcD := columnAnchors_subset D A m g a hR _ hc
+  have hupper := columnCompletion_extra_generation D hcD
+  have hroot := dyadicGridCell_depth_le_of_subset D.grid R D.root (D.below_root R hR)
+  have hT := columnRestartCount_pos D (m + 1)
+  have hmul : n ≤ n * columnRestartCount D (m + 1) := by
+    simpa using Nat.mul_le_mul_left n hT
+  omega
+
+open scoped Classical in
+/-- Every retained row cell has a last anchor before the restart count,
+and its last-layer coefficient error is bounded by `D⁻¹⁰ a`. -/
+theorem columnAnchors_retained_assignment {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R u : ℤ × ℤ} (hR : R ∈ D.cells) (hu : u ∈ D.cells)
+    (hur : dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid R.1 R.2)
+    (hretain : ∀ K ∈ columnAnchors D A m g a R (columnRestartCount D (m + 1)),
+      ¬dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid K.1 K.2) :
+    ∃ j < columnRestartCount D (m + 1), ∃ K, ∃ hK : K ∈ columnAnchors D A m g a R j,
+      u ∈ dyadicAnchorSegment D.grid D.cells (columnCoefficientField D A m g)
+        (columnAnchorTolerance D a) K ∧
+      ‖cellProductCoefficients D A hu m g -
+        cellProductCoefficients D A (columnAnchors_subset D A m g a hR j hK) m g‖ ≤
+          columnAnchorTolerance D a := by
+  obtain ⟨j, hj, K, hK, hseg, herr⟩ := dyadicAnchorGeneration_retained_assignment
+    D.grid D.cells (columnCoefficientField D A m g) (columnAnchorTolerance D a) R
+      hu hur (columnRestartCount D (m + 1)) hretain
+  refine ⟨j, hj, K, hK, hseg, ?_⟩
+  simpa only [columnCoefficientField_of_mem D A m g hu,
+    columnCoefficientField_of_mem D A m g (columnAnchors_subset D A m g a hR j hK)] using herr
+
+/-- Refining a local cut partition enlarges the inherited column range,
+even when the partition root is a proper subcell of the original tree. -/
+theorem cutColumnRange_le_of_refines {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (B C : Finset (ℤ × ℤ)) (hB : B ⊆ D.cells) (hC : C ⊆ D.cells)
+    (hBd : (B : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2))
+    (hCd : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2))
+    (hcover : (⋃ c ∈ C, dyadicGridCell D.grid c.1 c.2) =
+      ⋃ b ∈ B, dyadicGridCell D.grid b.1 b.2)
+    (href : ∀ c ∈ C, ∃ b ∈ B, dyadicGridCell D.grid c.1 c.2 ⊆
+      dyadicGridCell D.grid b.1 b.2) :
+    cutColumnRange D A B hB ≤ cutColumnRange D A C hC := by
+  classical
+  apply iSup_le
+  intro b
+  let F := C.filter (fun c : ℤ × ℤ =>
+    dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid b.val.1 b.val.2)
+  have hFC : F ⊆ C := Finset.filter_subset _ _
+  have hFd : (F : Set (ℤ × ℤ)).PairwiseDisjoint
+      (fun c => dyadicGridCell D.grid c.1 c.2) := by
+    intro c hc d hd hne
+    exact hCd (hFC hc) (hFC hd) hne
+  have hlocal := dyadicPartition_refinement_cover D.grid B C _ hBd hcover href b.property
+    (fun x hx => Set.mem_iUnion₂.mpr ⟨b.val, b.property, hx⟩)
+  exact (cellColumnRange_le_cutColumnRange D A F (hFC.trans hC) hFd
+    (hB b.property) hlocal).trans (cutColumnRange_mono D A F C (hFC.trans hC) hC hFC)
+
+/-- Restricting a cut projection to one atom gives exactly the atom's
+original cell projection. This includes the refitted terminal atoms. -/
+theorem cutColumnProjection_restrict_atom {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells)
+    (hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2))
+    {c : ℤ × ℤ} (hc : c ∈ C) (g : ColumnL2 V) :
+    columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2) (cutColumnProjection D A C hC g) =
+        cellColumnProjection D A (hC hc) g := by
+  classical
+  rw [cutColumnProjection_eq_sum D A C hC hdis, map_sum]
+  rw [Finset.sum_eq_single (⟨c, hc⟩ : {c // c ∈ C})]
+  · exact cellColumnRange_fixed_restriction D A (hC hc) (cellColumnProjection_mem D A (hC hc) g)
+  · intro d _ hdc
+    exact cellColumnRange_restrict_disjoint D A (hC d.property)
+      (dyadicGridCell_measurable D.grid c.1 c.2)
+      (hdis hc d.property (fun he => hdc (Subtype.ext he.symm)))
+      (cellColumnProjection_mem D A (hC d.property) g)
+  · simp
+
+/-- Products of the partition projections agree on every atom with the
+corresponding products of cell projections, without inter-layer commutation. -/
+theorem cutColumnProduct_restrict_atom {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells)
+    (hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2))
+    {c : ℤ × ℤ} (hc : c ∈ C) (k : ℕ) (g : ColumnL2 V) :
+    columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2)
+      (nestedProjectionProduct (fun l _ => cutColumnProjection D (A l) C hC) k 0 g) =
+    cellColumnProduct D A (hC hc) k
+      (columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+        (dyadicGridCell_measurable D.grid c.1 c.2) g) := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    change columnL2Restriction _ _
+      (cutColumnProjection D (A k) C hC
+        (nestedProjectionProduct (fun l _ => cutColumnProjection D (A l) C hC) k 0 g)) =
+      cellColumnProjection D (A k) (hC hc) (cellColumnProduct D A (hC hc) k _)
+    rw [cutColumnProjection_restrict_atom D (A k) C hC hdis hc]
+    have hloc := congrArg (fun L : ColumnL2 V →L[ℂ] ColumnL2 V =>
+      L (nestedProjectionProduct (fun l _ => cutColumnProjection D (A l) C hC) k 0 g))
+        (cellColumnProjection_input_locality D (A k) (hC hc))
+    change cellColumnProjection D (A k) (hC hc)
+      (columnL2Restriction _ _
+        (nestedProjectionProduct (fun l _ => cutColumnProjection D (A l) C hC) k 0 g)) = _ at hloc
+    rw [← hloc, ih]
+
+/-- A nonempty cell product depends only on the input on its own cell. -/
+theorem cellColumnProduct_input_locality {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (m : ℕ)
+    (g : ColumnL2 V) :
+    cellColumnProduct D A hc (m + 1)
+      (columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+        (dyadicGridCell_measurable D.grid c.1 c.2) g) = cellColumnProduct D A hc (m + 1) g := by
+  induction m with
+  | zero =>
+    exact congrArg (fun L : ColumnL2 V →L[ℂ] ColumnL2 V => L g)
+      (cellColumnProjection_input_locality D (A 0) hc)
+  | succ m ih =>
+    change cellColumnProjection D (A (m + 1)) hc (cellColumnProduct D A hc (m + 1) _) =
+      cellColumnProjection D (A (m + 1)) hc (cellColumnProduct D A hc (m + 1) g)
+    rw [ih]
+
+/-- Each private coordinate of a cell product is its zero-extended
+last-layer coefficient times the fixed private weight. -/
+theorem cellColumnProduct_private {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (m : ℕ) (g : ColumnL2 V) :
+    ∀ᵐ y ∂volume, y ∈ dyadicGridCell D.grid c.1 c.2 → ∀ v : V,
+      cellColumnProduct D A hc (m + 1) g y (some v) =
+        cellProductCoefficients D A hc m g v * (Real.sqrt (D.privateWeight v) : ℂ) := by
+  filter_upwards [cellColumnProduct_coeFn D A hc m g] with y hy hyc v
+  rw [hy, Set.indicator_of_mem hyc]
+  exact columnCombination_private_all D (A m) c _ y v
+
+/-- The source private-coordinate recovery applies to the difference of
+products on nested anchor cells, despite their different masks. -/
+theorem cellColumnProduct_difference_lower {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) {c b : ℤ × ℤ} (hc : c ∈ D.cells) (hb : b ∈ D.cells)
+    (hcb : dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid b.1 b.2)
+    (m : ℕ) (g : ColumnL2 V) :
+    ∀ᵐ y ∂volume, y ∈ dyadicGridCell D.grid c.1 c.2 →
+      D.budget⁻¹ * ‖cellProductCoefficients D A hc m g - cellProductCoefficients D A hb m g‖ ≤
+        ‖cellColumnProduct D A hc (m + 1) g y - cellColumnProduct D A hb (m + 1) g y‖ := by
+  filter_upwards [cellColumnProduct_private D A hc m g, cellColumnProduct_private D A hb m g]
+    with y hyc hyb hy
+  apply privateCoordinates_lower D
+  intro v
+  change cellColumnProduct D A hc (m + 1) g y (some v) -
+    cellColumnProduct D A hb (m + 1) g y (some v) = _
+  rw [hyc hy, hyb (hcb hy)]
+  change _ = (cellProductCoefficients D A hc m g v -
+    cellProductCoefficients D A hb m g v) * _
+  ring
+
+/-- Remaining physical depth at an attempt root in the completed tree. -/
+noncomputable def columnAnchorCutDepth {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (R : ℤ × ℤ) : ℕ :=
+  dyadicRemainingDepth D.root (columnCompletionDepth D) R
+
+theorem columnAnchorCutDepth_bound {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells) :
+    ∀ c ∈ (completedColumnTree D).cells, c.1 ≤ R.1 + columnAnchorCutDepth D R := by
+  intro c hc
+  rw [columnAnchorCutDepth, dyadicRemainingDepth_endpoint D.grid D.root
+    (columnCompletionDepth D) hR]
+  exact ((dyadicFiniteTree_mem_iff D.grid D.root c (columnCompletionDepth D)).mp hc).2
+
+/-- Completed anchor partitions on an arbitrary attempt root of the
+completed column tree. Original masks are refitted on the terminal leaves. -/
+noncomputable def completedColumnAnchorCuts {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (n : ℕ) : Finset (ℤ × ℤ) :=
+  dyadicAnchorCuts D.grid (completedColumnTree D).cells
+    (columnCoefficientField (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g)
+    (columnAnchorTolerance D a) R (columnAnchorCutDepth D R) n
+
+theorem completedColumnAnchorCuts_subset {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells) (n : ℕ) :
+    completedColumnAnchorCuts D A m g a R n ⊆ (completedColumnTree D).cells := by
+  intro c hc
+  have hlocal := dyadicAnchorCuts_subset D.grid (completedColumnTree D).cells
+    (columnCoefficientField (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g)
+    (columnAnchorTolerance D a) R (columnAnchorCutDepth D R) hR
+    (columnAnchorCutDepth_bound D hR) n hc
+  exact ((dyadicFiniteTree_below_iff D.grid D.root (columnCompletionDepth D) hR c).mp hlocal).1
+
+theorem completedColumnAnchorCuts_disjoint {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (n : ℕ) :
+    (completedColumnAnchorCuts D A m g a R n : Set (ℤ × ℤ)).PairwiseDisjoint
+      (fun c => dyadicGridCell D.grid c.1 c.2) :=
+  dyadicAnchorCuts_pairwiseDisjoint D.grid (completedColumnTree D).cells _ _ R _ n
+
+theorem completedColumnAnchorCuts_union {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells) (n : ℕ) :
+    (⋃ c ∈ completedColumnAnchorCuts D A m g a R n, dyadicGridCell D.grid c.1 c.2) =
+      dyadicGridCell D.grid R.1 R.2 :=
+  dyadicAnchorCuts_union D.grid (completedColumnTree D).cells _ _ R _ hR
+    (columnAnchorCutDepth_bound D hR) n
+
+theorem completedColumnAnchorCuts_refines {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) {n k : ℕ} (hnk : n ≤ k)
+    {c : ℤ × ℤ} (hc : c ∈ completedColumnAnchorCuts D A m g a R k) :
+    ∃ b ∈ completedColumnAnchorCuts D A m g a R n,
+      dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid b.1 b.2 :=
+  dyadicAnchorCuts_refines D.grid (completedColumnTree D).cells _ _ R _ hnk hc
+
+/-- The layer projections on completed anchor partitions, indexed by
+coefficient transitions rather than physical depth. -/
+noncomputable def columnAnchorProjection {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (l n : ℕ) : ColumnL2 V →L[ℂ] ColumnL2 V :=
+  cutColumnProjection (completedColumnTree D) (completedColumnMask D (A l))
+    (completedColumnAnchorCuts D A m g a R n) (completedColumnAnchorCuts_subset D A m g a hR n)
+
+theorem columnAnchorProjection_isStarProjection {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (l n : ℕ) : IsStarProjection (columnAnchorProjection D A m g a hR l n) :=
+  isStarProjection_starProjection
+
+/-- Blueprint `lem:compression`, line 569: every completed layer is a
+nested orthogonal projection family, proved from inherited masks and refinement. -/
+theorem columnAnchorProjection_nested {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (l : ℕ) {n k : ℕ} (hnk : n ≤ k) :
+    (columnAnchorProjection D A m g a hR l n).comp
+      (columnAnchorProjection D A m g a hR l k) = columnAnchorProjection D A m g a hR l n := by
+  apply Submodule.starProjection_comp_starProjection_of_le
+  apply cutColumnRange_le_of_refines (completedColumnTree D) (completedColumnMask D (A l))
+    _ _ _ _ (completedColumnAnchorCuts_disjoint D A m g a R n)
+    (completedColumnAnchorCuts_disjoint D A m g a R k)
+  · change (⋃ c ∈ completedColumnAnchorCuts D A m g a R k, dyadicGridCell D.grid c.1 c.2) =
+      ⋃ b ∈ completedColumnAnchorCuts D A m g a R n, dyadicGridCell D.grid b.1 b.2
+    rw [completedColumnAnchorCuts_union D A m g a hR k,
+      completedColumnAnchorCuts_union D A m g a hR n]
+  · exact fun c hc => completedColumnAnchorCuts_refines D A m g a R hnk hc
+
+/-- The source jump theorem applies to the constructed anchor projections;
+no nestedness or Bessel condition is added as a new hypothesis. -/
+theorem columnAnchorProjection_product_jumps {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (T : ℕ) (z : ColumnL2 V) :
+    (∑ n : Fin T, ‖nestedProjectionProduct (columnAnchorProjection D A m g a hR) (m + 1)
+      (n.val + 1) z - nestedProjectionProduct (columnAnchorProjection D A m g a hR)
+        (m + 1) n.val z‖ ^ 2) ≤
+      ((m + 1 : ℕ) : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * m) * ‖z‖ ^ 2 := by
+  simpa only [Nat.add_sub_cancel] using nestedProjectionProduct_successive_jumps
+    (columnAnchorProjection D A m g a hR) T (m + 1)
+    (fun l _ n _ => columnAnchorProjection_isStarProjection D A m g a hR l n)
+    (fun l _ _ _ _ _ hnk => columnAnchorProjection_nested D A m g a hR l hnk) z
+
+/-- Restricting the input to any measurable superset of a cell leaves
+its projection unchanged. -/
+theorem cellColumnProjection_input_superset {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    {s : Set ℝ} (hs : MeasurableSet s) (hcs : dyadicGridCell D.grid c.1 c.2 ⊆ s)
+    (g : ColumnL2 V) :
+    cellColumnProjection D A hc (columnL2Restriction s hs g) = cellColumnProjection D A hc g := by
+  apply ext_inner_right ℂ
+  intro w
+  change inner ℂ ((cellColumnRange D A hc).starProjection (columnL2Restriction s hs g)) w =
+    inner ℂ ((cellColumnRange D A hc).starProjection g) w
+  rw [Submodule.inner_starProjection_left_eq_right, Submodule.inner_starProjection_left_eq_right,
+    columnL2Restriction_inner, cellColumnRange_restrict_superset D A hc hs hcs
+      (Submodule.starProjection_apply_mem _ w)]
+
+theorem cellColumnProduct_input_superset {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    {s : Set ℝ} (hs : MeasurableSet s) (hcs : dyadicGridCell D.grid c.1 c.2 ⊆ s)
+    (k : ℕ) (g : ColumnL2 V) :
+    cellColumnProduct D A hc (k + 1) (columnL2Restriction s hs g) =
+      cellColumnProduct D A hc (k + 1) g := by
+  induction k with
+  | zero => exact cellColumnProjection_input_superset D (A 0) hc hs hcs g
+  | succ k ih =>
+    change cellColumnProjection D (A (k + 1)) hc (cellColumnProduct D A hc (k + 1) _) =
+      cellColumnProjection D (A (k + 1)) hc (cellColumnProduct D A hc (k + 1) g)
+    rw [ih]
+
+/-- At an anchor atom, a nonempty partition product equals the original
+cell product after restriction to that atom. -/
+theorem columnAnchorProduct_restrict_atom {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (n : ℕ) {c : ℤ × ℤ} (hc : c ∈ completedColumnAnchorCuts D A m g a R n)
+    (k : ℕ) (z : ColumnL2 V) :
+    columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2)
+      (nestedProjectionProduct (columnAnchorProjection D A m g a hR) (k + 1) n z) =
+    cellColumnProduct (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      (completedColumnAnchorCuts_subset D A m g a hR n hc) (k + 1) z := by
+  let cMem := completedColumnAnchorCuts_subset D A m g a hR n hc
+  let Rc : ColumnL2 V →L[ℂ] ColumnL2 V := columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2)
+  have hall (j : ℕ) :
+      Rc (nestedProjectionProduct (columnAnchorProjection D A m g a hR) j n z) =
+        cellColumnProduct (completedColumnTree D) (fun l => completedColumnMask D (A l))
+          cMem j (Rc z) := by
+    induction j with
+    | zero => rfl
+    | succ j ih =>
+      change Rc (cutColumnProjection (completedColumnTree D) (completedColumnMask D (A j))
+        _ _ (nestedProjectionProduct (columnAnchorProjection D A m g a hR) j n z)) =
+        cellColumnProjection (completedColumnTree D) (completedColumnMask D (A j)) cMem
+          (cellColumnProduct (completedColumnTree D) (fun l => completedColumnMask D (A l))
+            cMem j (Rc z))
+      have hcut := cutColumnProjection_restrict_atom (completedColumnTree D)
+        (completedColumnMask D (A j)) _ (completedColumnAnchorCuts_subset D A m g a hR n)
+        (completedColumnAnchorCuts_disjoint D A m g a R n) hc
+        (nestedProjectionProduct (columnAnchorProjection D A m g a hR) j n z)
+      change Rc (cutColumnProjection (completedColumnTree D) (completedColumnMask D (A j))
+        _ _ (nestedProjectionProduct (columnAnchorProjection D A m g a hR) j n z)) = _ at hcut
+      rw [hcut]
+      have hloc := congrArg (fun L : ColumnL2 V →L[ℂ] ColumnL2 V =>
+        L (nestedProjectionProduct (columnAnchorProjection D A m g a hR) j n z))
+        (cellColumnProjection_input_locality (completedColumnTree D)
+          (completedColumnMask D (A j)) cMem)
+      change cellColumnProjection (completedColumnTree D) (completedColumnMask D (A j)) cMem
+        (Rc (nestedProjectionProduct (columnAnchorProjection D A m g a hR) j n z)) = _ at hloc
+      rw [← hloc, ih]
+  exact (hall (k + 1)).trans (cellColumnProduct_input_locality (completedColumnTree D)
+    (fun l => completedColumnMask D (A l)) cMem k z)
+
+/-- Restricting the input to the attempt root does not change any anchor
+product on an atom. This is the same-input restart requirement in the source. -/
+theorem columnAnchorProduct_ae_eq_atom {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (n : ℕ) {c : ℤ × ℤ} (hc : c ∈ completedColumnAnchorCuts D A m g a R n) (k : ℕ) :
+    ∀ᵐ y ∂volume, y ∈ dyadicGridCell D.grid c.1 c.2 →
+      nestedProjectionProduct (columnAnchorProjection D A m g a hR) (k + 1) n
+        (columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g) y =
+      cellColumnProduct (completedColumnTree D) (fun l => completedColumnMask D (A l))
+        (completedColumnAnchorCuts_subset D A m g a hR n hc) (k + 1) g y := by
+  let z := columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+    (dyadicGridCell_measurable D.grid R.1 R.2) g
+  let Z := nestedProjectionProduct (columnAnchorProjection D A m g a hR) (k + 1) n z
+  have hsub : dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid R.1 R.2 := by
+    intro y hy
+    rw [← completedColumnAnchorCuts_union D A m g a hR n]
+    exact Set.mem_iUnion₂.mpr ⟨c, hc, hy⟩
+  have he := columnAnchorProduct_restrict_atom D A m g a hR n hc k z
+  rw [cellColumnProduct_input_superset (completedColumnTree D)
+    (fun l => completedColumnMask D (A l)) _
+      (dyadicGridCell_measurable D.grid R.1 R.2) hsub k g] at he
+  filter_upwards [columnL2Indicator_coeFn (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2) Z] with y hy hyc
+  have he' := congrArg (fun w : ColumnL2 V => w y) he
+  change (columnL2Indicator (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2) Z) y = _ at he'
+  rw [hy, Set.indicator_of_mem hyc] at he'
+  exact he'
+
+theorem completedColumnAnchorCuts_anchor_mem {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (n : ℕ) {K : ℤ × ℤ}
+    (hK : K ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      m g a R n) : K ∈ completedColumnAnchorCuts D A m g a R n :=
+  dyadicAnchorCuts_anchor_mem D.grid (completedColumnTree D).cells _ _ R _ hR
+    (columnAnchorCutDepth_bound D hR) n hK
+
+/-- Blueprint `lem:compression`, line 569: on every next anchor the
+successive partition-product jump is strictly greater than `D⁻¹ τ a`
+almost everywhere. Both products use the same input restricted to the attempt root. -/
+theorem columnAnchorProduct_jump_lower {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (n : ℕ) {K c : ℤ × ℤ}
+    (hK : K ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      m g a R n)
+    (hc : c ∈ dyadicNextAnchors D.grid (completedColumnTree D).cells
+      (columnCoefficientField (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g)
+      (columnAnchorTolerance D a) K) :
+    ∀ᵐ y ∂volume, y ∈ dyadicGridCell D.grid c.1 c.2 →
+      D.budget⁻¹ * columnAnchorTolerance D a <
+        ‖nestedProjectionProduct (columnAnchorProjection D A m g a hR) (m + 1) (n + 1)
+          (columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+            (dyadicGridCell_measurable D.grid R.1 R.2) g) y -
+          nestedProjectionProduct (columnAnchorProjection D A m g a hR) (m + 1) n
+          (columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+            (dyadicGridCell_measurable D.grid R.1 R.2) g) y‖ := by
+  have hcn : c ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      m g a R (n + 1) := Finset.mem_biUnion.mpr ⟨K, hK, hc⟩
+  have hKcut := completedColumnAnchorCuts_anchor_mem D A m g a hR n hK
+  have hccut := completedColumnAnchorCuts_anchor_mem D A m g a hR (n + 1) hcn
+  have hKD := completedColumnAnchorCuts_subset D A m g a hR n hKcut
+  have hcD := completedColumnAnchorCuts_subset D A m g a hR (n + 1) hccut
+  obtain ⟨_, hsub, hjump⟩ := dyadicNextAnchors_mem D.grid (completedColumnTree D).cells
+    (columnCoefficientField (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g)
+    (columnAnchorTolerance D a) K hc
+  rw [columnCoefficientField_of_mem _ _ m g hcD,
+    columnCoefficientField_of_mem _ _ m g hKD] at hjump
+  have hi : 0 < D.budget⁻¹ := inv_pos.mpr (by linarith [D.two_le_budget])
+  have hstrict := mul_lt_mul_of_pos_left hjump hi
+  filter_upwards [columnAnchorProduct_ae_eq_atom D A m g a hR (n + 1) hccut m,
+    columnAnchorProduct_ae_eq_atom D A m g a hR n hKcut m,
+    cellColumnProduct_difference_lower (completedColumnTree D)
+      (fun l => completedColumnMask D (A l)) hcD hKD hsub m g] with y hyc hyK hlow hy
+  rw [hyc hy, hyK (hsub hy)]
+  exact hstrict.trans_le (hlow hy)
+
+/-- Blueprint `lem:compression`, lines 570–572: all `T` transitions on
+each disjoint restart root charge its length to the product-jump energy.
+The exponent here is the sharper `2(m-1)` from the jump theorem, written
+with `m+1` layers; the source's `2m` version follows below. -/
+theorem columnAnchorProduct_restart_budget_sharp {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a) {R : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) (T : ℕ) :
+    (T : ℝ) * D.budget⁻¹ ^ 2 * (D.budget⁻¹ ^ 10) ^ 2 * a ^ 2 *
+      (∑ r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+        m g a R T, dyadicGridLength D.grid r.1) ≤
+      ((m + 1 : ℕ) : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * m) *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 := by
+  classical
+  let C := columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a R T
+  let z := columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+    (dyadicGridCell_measurable D.grid R.1 R.2) g
+  let Z := fun n => nestedProjectionProduct (columnAnchorProjection D A m g a hR) (m + 1) n z
+  let u := fun n : Fin T => Z (n.val + 1) - Z n.val
+  let δ := D.budget⁻¹ * columnAnchorTolerance D a
+  have hδ : 0 ≤ δ := mul_nonneg
+    (inv_nonneg.mpr (by linarith [D.two_le_budget])) (columnAnchorTolerance_nonneg D ha)
+  have hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2) :=
+    columnAnchors_pairwiseDisjoint (completedColumnTree D)
+      (fun l => completedColumnMask D (A l)) m g a R T
+  have hpoint (n : Fin T) :
+      ∀ᵐ y ∂volume, ∀ r ∈ C, y ∈ dyadicGridCell D.grid r.1 r.2 → δ ≤ ‖u n y‖ := by
+    have hlocal (r : {r // r ∈ C}) :
+        ∀ᵐ y ∂volume, y ∈ dyadicGridCell D.grid r.val.1 r.val.2 → δ ≤ ‖u n y‖ := by
+      obtain ⟨K, hK, c, hc, hrc⟩ := dyadicAnchorGeneration_jump_ancestors D.grid
+        (completedColumnTree D).cells
+        (columnCoefficientField (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g)
+        (columnAnchorTolerance D a) R n.isLt r.property
+      filter_upwards [columnAnchorProduct_jump_lower D A m g a hR n.val hK hc,
+        Lp.coeFn_sub (Z (n.val + 1)) (Z n.val)] with y hy hsub hyr
+      change δ ≤ ‖(Z (n.val + 1) - Z n.val) y‖
+      rw [hsub]
+      exact (hy (hrc hyr)).le
+    filter_upwards [ae_all_iff.mpr hlocal] with y hy r hr hyr
+    exact hy ⟨r, hr⟩ hyr
+  have hmass := dyadic_jump_mass_le_energy D.grid C hdis T u δ hδ hpoint
+  have hupper := columnAnchorProjection_product_jumps D A m g a hR T z
+  calc
+    _ = (T : ℝ) * δ ^ 2 * (∑ r ∈ C, dyadicGridLength D.grid r.1) := by
+      dsimp [δ, columnAnchorTolerance, C]
+      ring
+    _ ≤ ∑ n, ‖u n‖ ^ 2 := hmass
+    _ ≤ _ := hupper
+
+/-- The exact printed restart-length budget, with `m+1` denoting the
+nonempty product length and with no spatial-depth factor. -/
+theorem columnAnchorProduct_restart_budget {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a) {R : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) (T : ℕ) :
+    (T : ℝ) * D.budget⁻¹ ^ 2 * (D.budget⁻¹ ^ 10) ^ 2 * a ^ 2 *
+      (∑ r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+        m g a R T, dyadicGridLength D.grid r.1) ≤
+      ((m + 1 : ℕ) : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m + 1)) *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 := by
+  refine (columnAnchorProduct_restart_budget_sharp D A m g ha hR T).trans ?_
+  gcongr
+  · exact projectionPrefixConstant_one_le T
+  · omega
+
+/-- Restriction energy is the integral over the restricting set. -/
+theorem columnL2Restriction_norm_sq {V : Type*} [Fintype V] (s : Set ℝ)
+    (hs : MeasurableSet s) (g : ColumnL2 V) :
+    ‖columnL2Restriction s hs g‖ ^ 2 = ∫ y in s, ‖g y‖ ^ 2 := by
+  classical
+  rw [columnInput_norm_sq_integral]
+  calc
+    _ = ∫ y, s.indicator (fun y => ‖g y‖ ^ 2) y := by
+      apply integral_congr_ae
+      filter_upwards [columnL2Indicator_coeFn s hs g] with y hy
+      change ‖columnL2Indicator s hs g y‖ ^ 2 = _
+      rw [hy]
+      by_cases hys : y ∈ s <;> simp [hys]
+    _ = _ := integral_indicator hs
+
+/-- The global essential bound charges each restricted energy to cell length. -/
+theorem columnL2Restriction_energy_le {V : Type*} [Fintype V] (G : RealDyadicGrid)
+    (g : ColumnL2 V) (B : ℝ) (hB : 0 ≤ B) (hg : ∀ᵐ y ∂volume, ‖g y‖ ≤ B)
+    (c : ℤ × ℤ) :
+    ‖columnL2Restriction (dyadicGridCell G c.1 c.2)
+      (dyadicGridCell_measurable G c.1 c.2) g‖ ^ 2 ≤ B ^ 2 * dyadicGridLength G c.1 := by
+  rw [columnL2Restriction_norm_sq]
+  have hfin : volume (dyadicGridCell G c.1 c.2) ≠ ⊤ := by
+    rw [dyadicGridCell_volume]
+    exact ENNReal.ofReal_ne_top
+  calc
+    _ ≤ ∫ _y in dyadicGridCell G c.1 c.2, B ^ 2 := by
+      apply integral_mono_of_nonneg (ae_of_all _ (fun _ => sq_nonneg _))
+        (integrableOn_const hfin)
+      filter_upwards [ae_restrict_of_ae hg] with y hy
+      exact (sq_le_sq₀ (norm_nonneg _) hB).mpr hy
+    _ = _ := by
+      rw [setIntegral_const, Measure.real, dyadicGridCell_volume,
+        ENNReal.toReal_ofReal (dyadicGridLength_pos G c.1).le, smul_eq_mul]
+      ring
+
+/-- The common length and energy contraction factor printed in the source. -/
+noncomputable def columnRestartFactor {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m T : ℕ) : ℝ :=
+  16 * D.budget ^ 32 * (m : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * m) / T
+
+theorem columnRestartFactor_nonneg {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m T : ℕ) : 0 ≤ columnRestartFactor D m T := by
+  unfold columnRestartFactor
+  have hL : 0 ≤ projectionPrefixConstant T := (by norm_num : (0 : ℝ) ≤ 1).trans
+    (projectionPrefixConstant_one_le T)
+  positivity
+
+/-- Exact cancellation of the source jump threshold against the bounded
+representative energy; no size or depth parameter remains in the factor. -/
+theorem columnRestartFactor_balance {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m T : ℕ) (hT : 0 < T) (a : ℝ) :
+    ((T : ℝ) * D.budget⁻¹ ^ 2 * (D.budget⁻¹ ^ 10) ^ 2 * a ^ 2) *
+        columnRestartFactor D m T =
+      (m : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * m) * (4 * D.budget ^ 5 * a) ^ 2 := by
+  have hD : D.budget ≠ 0 := ne_of_gt (by linarith [D.two_le_budget])
+  have hTr : (T : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr hT.ne'
+  unfold columnRestartFactor
+  field_simp
+  ring
+
+/-- Blueprint `lem:compression`, lines 573–578: the restart length contracts
+by the printed factor whenever the segment average is positive. -/
+theorem columnRestart_length_le_of_pos {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 < a)
+    (hg : ∀ᵐ y ∂volume, ‖g y‖ ≤ 4 * D.budget ^ 5 * a) {R : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) (T : ℕ) (hT : 0 < T) :
+    (∑ r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      m g a R T, dyadicGridLength D.grid r.1) ≤
+        columnRestartFactor D (m + 1) T * dyadicGridLength D.grid R.1 := by
+  have hD : 0 < D.budget := by linarith [D.two_le_budget]
+  let c := (T : ℝ) * D.budget⁻¹ ^ 2 * (D.budget⁻¹ ^ 10) ^ 2 * a ^ 2
+  have hc : 0 < c := by dsimp [c]; positivity
+  have henergy := columnL2Restriction_energy_le D.grid g (4 * D.budget ^ 5 * a)
+    (by positivity) hg R
+  have hbudget := columnAnchorProduct_restart_budget D A m g ha.le hR T
+  have hC : 0 ≤ ((m + 1 : ℕ) : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m + 1)) := by
+    have hL : 0 ≤ projectionPrefixConstant T := (by norm_num : (0 : ℝ) ≤ 1).trans
+      (projectionPrefixConstant_one_le T)
+    positivity
+  apply (mul_le_mul_iff_right₀ hc).mp
+  calc
+    _ ≤ ((m + 1 : ℕ) : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m + 1)) *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 := hbudget
+    _ ≤ ((m + 1 : ℕ) : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m + 1)) *
+        ((4 * D.budget ^ 5 * a) ^ 2 * dyadicGridLength D.grid R.1) :=
+      mul_le_mul_of_nonneg_left henergy hC
+    _ = _ := by
+      rw [← mul_assoc, ← columnRestartFactor_balance D (m + 1) T hT a]
+      exact mul_assoc _ _ _
+
+/-- The same factor contracts the energy on restart roots relative to the
+actual input energy on the attempt root, not merely its uniform majorant. -/
+theorem columnRestart_energy_le_of_pos {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 < a)
+    (hg : ∀ᵐ y ∂volume, ‖g y‖ ≤ 4 * D.budget ^ 5 * a) {R : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) (T : ℕ) (hT : 0 < T) :
+    (∑ r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a R T,
+      ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+        (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤
+      columnRestartFactor D (m + 1) T *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 := by
+  have hD : 0 < D.budget := by linarith [D.two_le_budget]
+  let C := columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a R T
+  let c := (T : ℝ) * D.budget⁻¹ ^ 2 * (D.budget⁻¹ ^ 10) ^ 2 * a ^ 2
+  have hc : 0 < c := by dsimp [c]; positivity
+  have hsum : (∑ r ∈ C, ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+      (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤
+        (4 * D.budget ^ 5 * a) ^ 2 * (∑ r ∈ C, dyadicGridLength D.grid r.1) := by
+    rw [Finset.mul_sum]
+    exact Finset.sum_le_sum (fun r _ =>
+      columnL2Restriction_energy_le D.grid g _ (by positivity) hg r)
+  have hbudget := columnAnchorProduct_restart_budget D A m g ha.le hR T
+  apply (mul_le_mul_iff_right₀ hc).mp
+  calc
+    _ ≤ c * ((4 * D.budget ^ 5 * a) ^ 2 * (∑ r ∈ C, dyadicGridLength D.grid r.1)) :=
+      mul_le_mul_of_nonneg_left hsum hc.le
+    _ = (4 * D.budget ^ 5 * a) ^ 2 * (c * (∑ r ∈ C, dyadicGridLength D.grid r.1)) := by ring
+    _ ≤ (4 * D.budget ^ 5 * a) ^ 2 *
+        (((m + 1 : ℕ) : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m + 1)) *
+          ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+            (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2) :=
+      mul_le_mul_of_nonneg_left hbudget (sq_nonneg _)
+    _ = _ := by
+      rw [← mul_assoc, mul_comm ((4 * D.budget ^ 5 * a) ^ 2),
+        ← columnRestartFactor_balance D (m + 1) T hT a]
+      exact mul_assoc _ _ _
+
+/-- Zero input has zero last-layer coefficients for every mask and cell. -/
+theorem columnCoefficientField_zero {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ) :
+    columnCoefficientField D A m 0 = fun _ => 0 := by
+  classical
+  funext c
+  by_cases hc : c ∈ D.cells
+  · rw [columnCoefficientField_of_mem D A m 0 hc]
+    ext v
+    simp [cellProductCoefficients, extendCellCoefficients, cellProjectionCoefficients]
+  · simp [columnCoefficientField, hc]
+
+/-- A zero-size, zero-input segment never makes even one coefficient transition. -/
+theorem columnAnchors_zero {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (R : ℤ × ℤ) (T : ℕ) (hT : 0 < T) : columnAnchors D A m 0 0 R T = ∅ := by
+  classical
+  obtain ⟨n, rfl⟩ := Nat.exists_eq_succ_of_ne_zero hT.ne'
+  simp only [columnAnchors, columnCoefficientField_zero, columnAnchorTolerance,
+    mul_zero, dyadicAnchorGeneration]
+  apply Finset.eq_empty_iff_forall_notMem.mpr
+  intro c hc
+  obtain ⟨K, _, hcK⟩ := Finset.mem_biUnion.mp hc
+  have h := (dyadicNextAnchors_mem D.grid D.cells
+    (fun _ => (0 : EuclideanSpace ℂ V)) 0 K hcK).2.2
+  simp at h
+
+/-- Blueprint `lem:compression`, lines 573–578: both restart length and
+restart energy contract by exactly the printed factor, including zero-size segments. -/
+theorem columnRestart_contraction {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a)
+    (hg : ∀ᵐ y ∂volume, ‖g y‖ ≤ 4 * D.budget ^ 5 * a) {R : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) (T : ℕ) (hT : 0 < T) :
+    (∑ r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      m g a R T, dyadicGridLength D.grid r.1) ≤
+        columnRestartFactor D (m + 1) T * dyadicGridLength D.grid R.1 ∧
+    (∑ r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a R T,
+      ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+        (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤
+      columnRestartFactor D (m + 1) T *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 := by
+  by_cases ha0 : a = 0
+  · subst a
+    have hg0 : g = 0 := by
+      apply Lp.ext
+      filter_upwards [hg,
+        Lp.coeFn_zero (E := ColumnHilbert V) (p := (2 : ℝ≥0∞)) (μ := (volume : Measure ℝ))]
+        with y hy hzero
+      have hy0 : g y = 0 := norm_eq_zero.mp
+        (le_antisymm (by simpa only [mul_zero] using hy) (norm_nonneg _))
+      simp only [hy0, hzero, Pi.zero_apply]
+    subst g
+    rw [columnAnchors_zero (completedColumnTree D) (fun l => completedColumnMask D (A l)) m R T hT]
+    constructor
+    · simp only [Finset.sum_empty]
+      exact mul_nonneg (columnRestartFactor_nonneg D (m + 1) T) (dyadicGridLength_pos D.grid R.1).le
+    · simp
+  · have ha' : 0 < a := lt_of_le_of_ne ha (Ne.symm ha0)
+    exact ⟨columnRestart_length_le_of_pos D A m g ha' hg hR T hT,
+      columnRestart_energy_le_of_pos D A m g ha' hg hR T hT⟩
+
+/-- The contraction applies to the actual bounded moment representative
+and the exact restart count chosen by the blueprint. -/
+theorem columnMoment_restart_contraction {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (z : ColumnL2 V) {K R : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z)
+    (hR : R ∈ (completedColumnTree D).cells) :
+    let g := columnMomentRepresentative D (A 0) z hK
+    let a := columnCellAverage D z K
+    let T := columnRestartCount D (m + 1)
+    let C := columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a R T
+    (∑ r ∈ C, dyadicGridLength D.grid r.1) ≤
+      columnRestartFactor D (m + 1) T * dyadicGridLength D.grid R.1 ∧
+    (∑ r ∈ C, ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+      (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤
+      columnRestartFactor D (m + 1) T *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 :=
+  columnRestart_contraction D A m _ (columnCellAverage_nonneg D z K)
+    (columnMomentRepresentative_ae_bound D (A 0) z hK) hR _ (columnRestartCount_pos D (m + 1))
+
+/-- The exact transition count in the source makes the column restart
+factor strictly smaller than one half for every nonempty product. -/
+theorem columnRestartFactor_lt_half {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) {m : ℕ} (hm : 1 ≤ m) :
+    columnRestartFactor D m (columnRestartCount D m) < 1 / 2 :=
+  projectionRestartTime_factor_lt_half D.two_le_budget hm
+
+/-- The explicit logarithmic horizon bound used by the source numerical check. -/
+theorem columnRestartCount_prefix_le {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) {m : ℕ} (hm : 1 ≤ m) :
+    projectionPrefixConstant (columnRestartCount D m) ≤
+      129 * ((m : ℝ) + 1) ^ 2 * Real.logb 2 (2 * D.budget * ((m : ℝ) + 1)) :=
+  projectionRestartTime_prefix_le D.two_le_budget hm
+
+/-- Attempt generations in the completed tree, with the original masks
+extended once and the same moment input and size at every restart. -/
+noncomputable def completedColumnAttempts {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (n : ℕ) : Finset (ℤ × ℤ) :=
+  columnAttempts (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a R n
+
+theorem completedColumnAttempts_zero {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) : completedColumnAttempts D A m g a R 0 = {R} := by
+  simp [completedColumnAttempts, columnAttempts, columnAnchors, dyadicAnchorGeneration]
+
+theorem completedColumnAttempts_subset {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells) (n : ℕ) :
+    completedColumnAttempts D A m g a R n ⊆ (completedColumnTree D).cells :=
+  columnAnchors_subset (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a hR _
+
+theorem completedColumnAttempts_succ {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (n : ℕ) :
+    completedColumnAttempts D A m g a R (n + 1) =
+      (completedColumnAttempts D A m g a R n).biUnion
+        (fun K => columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+          m g a K (columnRestartCount D (m + 1))) :=
+  columnAttempts_succ (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a R n
+
+/-- Any nonnegative root cost obeying the proved restart contraction has
+total cost at most twice its initial value. -/
+theorem completedColumnAttempts_weight_packing {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (w : ℤ × ℤ → ℝ) (hw : ∀ r, 0 ≤ w r)
+    (hchild : ∀ K ∈ (completedColumnTree D).cells,
+      (∑ r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+        m g a K (columnRestartCount D (m + 1)), w r) ≤
+        columnRestartFactor D (m + 1) (columnRestartCount D (m + 1)) * w K) :
+    Summable (fun n => ∑ r ∈ completedColumnAttempts D A m g a R n, w r) ∧
+      (∑' n, ∑ r ∈ completedColumnAttempts D A m g a R n, w r) ≤ 2 * w R := by
+  let ρ := columnRestartFactor D (m + 1) (columnRestartCount D (m + 1))
+  have hρ := columnRestartFactor_nonneg D (m + 1) (columnRestartCount D (m + 1))
+  have hhalf : ρ < 1 / 2 := columnRestartFactor_lt_half D (by omega)
+  have hpack := restart_weight_packing R (completedColumnAttempts D A m g a R)
+    (fun _ K => columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      m g a K (columnRestartCount D (m + 1))) w hw hρ (by linarith : ρ < 1)
+    (completedColumnAttempts_zero D A m g a R)
+    (fun n => (completedColumnAttempts_succ D A m g a R n).subset)
+    (fun n K hK => hchild K (completedColumnAttempts_subset D A m g a hR n hK))
+  refine ⟨hpack.1, hpack.2.trans ?_⟩
+  apply (div_le_iff₀ (by linarith : 0 < 1 - ρ)).mpr
+  have hprod := mul_nonneg (hw R) (le_of_lt (sub_pos.mpr hhalf))
+  nlinarith
+
+/-- Blueprint `lem:compression`, line 579: the sum of all attempt lengths
+and the sum of all restricted energies are each at most twice their initial value. -/
+theorem completedColumnAttempts_packing {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a)
+    (hg : ∀ᵐ y ∂volume, ‖g y‖ ≤ 4 * D.budget ^ 5 * a) {R : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) :
+    let F := completedColumnAttempts D A m g a R
+    let E := fun r : ℤ × ℤ => ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+      (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2
+    Summable (fun n => ∑ r ∈ F n, dyadicGridLength D.grid r.1) ∧
+      (∑' n, ∑ r ∈ F n, dyadicGridLength D.grid r.1) ≤ 2 * dyadicGridLength D.grid R.1 ∧
+    Summable (fun n => ∑ r ∈ F n, E r) ∧ (∑' n, ∑ r ∈ F n, E r) ≤ 2 * E R := by
+  have hL := completedColumnAttempts_weight_packing D A m g a hR
+    (fun r => dyadicGridLength D.grid r.1) (fun r => (dyadicGridLength_pos D.grid r.1).le)
+    (fun K hK => (columnRestart_contraction D A m g ha hg hK
+      (columnRestartCount D (m + 1)) (columnRestartCount_pos D (m + 1))).1)
+  have hE := completedColumnAttempts_weight_packing D A m g a hR
+    (fun r => ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+      (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) (fun _ => sq_nonneg _)
+    (fun K hK => (columnRestart_contraction D A m g ha hg hK
+      (columnRestartCount D (m + 1)) (columnRestartCount_pos D (m + 1))).2)
+  exact ⟨hL.1, hL.2, hE.1, hE.2⟩
+
+theorem columnMomentRepresentative_root_restriction {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : InheritedColumnMask D) (z : ColumnL2 V)
+    {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    columnL2Restriction (dyadicGridCell D.grid K.1 K.2)
+      (dyadicGridCell_measurable D.grid K.1 K.2) (columnMomentRepresentative D A z hK) =
+        columnMomentRepresentative D A z hK := by
+  classical
+  apply Lp.ext
+  filter_upwards [columnL2Indicator_coeFn (dyadicGridCell D.grid K.1 K.2)
+    (dyadicGridCell_measurable D.grid K.1 K.2) (columnMomentRepresentative D A z hK),
+    columnMomentRepresentative_ae_zero_off D A z hK] with y hy hzero
+  change columnL2Indicator (dyadicGridCell D.grid K.1 K.2)
+    (dyadicGridCell_measurable D.grid K.1 K.2) (columnMomentRepresentative D A z hK) y = _
+  rw [hy]
+  by_cases hyK : y ∈ dyadicGridCell D.grid K.1 K.2
+  · exact Set.indicator_of_mem hyK _
+  · rw [Set.indicator_of_notMem hyK, hzero hyK]
+
+/-- The two factor-two packing estimates for the source moment family. -/
+theorem columnMoment_attempt_packing {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    let g := columnMomentRepresentative D (A 0) z hK
+    let F := completedColumnAttempts D A m g (columnCellAverage D z K) K
+    Summable (fun n => ∑ r ∈ F n, dyadicGridLength D.grid r.1) ∧
+      (∑' n, ∑ r ∈ F n, dyadicGridLength D.grid r.1) ≤ 2 * dyadicGridLength D.grid K.1 ∧
+    Summable (fun n => ∑ r ∈ F n,
+      ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+        (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ∧
+      (∑' n, ∑ r ∈ F n, ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+        (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤ 2 * ‖g‖ ^ 2 := by
+  have h := completedColumnAttempts_packing D A m (columnMomentRepresentative D (A 0) z hK)
+    (columnCellAverage_nonneg D z K) (columnMomentRepresentative_ae_bound D (A 0) z hK)
+    (columnSizeRoots_subset D z hK)
+  simpa only [columnMomentRepresentative_root_restriction D (A 0) z hK] using h
+
+/-- The finite set of all attempt roots; generations beyond this horizon
+are empty by strict descent in the completed finite tree. -/
+noncomputable def completedColumnAttemptRoots {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) : Finset (ℤ × ℤ) :=
+  (Finset.range (columnCompletionDepth (completedColumnTree D) + 1)).biUnion
+    (completedColumnAttempts D A m g a R)
+
+theorem completedColumnAttemptRoots_subset {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) {R : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) :
+    completedColumnAttemptRoots D A m g a R ⊆ (completedColumnTree D).cells := by
+  intro r hr
+  obtain ⟨n, _, hn⟩ := Finset.mem_biUnion.mp hr
+  exact completedColumnAttempts_subset D A m g a hR n hn
+
+/-- Passing from generations to their union can only decrease a
+nonnegative cost, even before uniqueness of the attempt assignment is used. -/
+theorem completedColumnAttemptRoots_cost_le {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) (w : ℤ × ℤ → ℝ)
+    (hw : ∀ r, 0 ≤ w r)
+    (hs : Summable (fun n => ∑ r ∈ completedColumnAttempts D A m g a R n, w r)) :
+    (∑ r ∈ completedColumnAttemptRoots D A m g a R, w r) ≤
+      ∑' n, ∑ r ∈ completedColumnAttempts D A m g a R n, w r := by
+  apply (finite_union_weight_le _ _ w hw).trans
+  exact Summable.sum_le_tsum _ (fun n _ => Finset.sum_nonneg (fun r _ => hw r)) hs
+
+/-- Blueprint `lem:compression`, line 579, as finite sums over the actual
+attempt roots: both length and moment energy have packing constant two. -/
+theorem columnMoment_attemptRoots_packing {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
+    let g := columnMomentRepresentative D (A 0) z hK
+    let F := completedColumnAttemptRoots D A m g (columnCellAverage D z K) K
+    (∑ r ∈ F, dyadicGridLength D.grid r.1) ≤ 2 * dyadicGridLength D.grid K.1 ∧
+      (∑ r ∈ F, ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+        (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤ 2 * ‖g‖ ^ 2 := by
+  have h := columnMoment_attempt_packing D A m z hK
+  constructor
+  · exact (completedColumnAttemptRoots_cost_le D A m _ _ K _
+      (fun r => (dyadicGridLength_pos D.grid r.1).le) h.1).trans h.2.1
+  · exact (completedColumnAttemptRoots_cost_le D A m _ _ K _
+      (fun _ => sq_nonneg _) h.2.2.1).trans h.2.2.2
+
+theorem completedColumnAttemptRoots_mem_of_generation {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a) {R r : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) {n : ℕ}
+    (hr : r ∈ completedColumnAttempts D A m g a R n) :
+    r ∈ completedColumnAttemptRoots D A m g a R := by
+  have hn : n < columnCompletionDepth (completedColumnTree D) + 1 := by
+    by_contra hn
+    have he := columnAttempts_eq_empty (completedColumnTree D)
+      (fun l => completedColumnMask D (A l)) m g ha hR n (by omega)
+    change r ∈ columnAttempts _ _ _ _ _ _ _ at hr
+    rw [he] at hr
+    exact Finset.notMem_empty r hr
+  exact Finset.mem_biUnion.mpr ⟨n, Finset.mem_range.mpr hn, hr⟩
+
+theorem completedColumnAttemptRoots_root_mem {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) (a : ℝ) (R : ℤ × ℤ) :
+    R ∈ completedColumnAttemptRoots D A m g a R := by
+  apply Finset.mem_biUnion.mpr
+  exact ⟨0, Finset.mem_range.mpr (Nat.zero_lt_succ _),
+    by rw [completedColumnAttempts_zero]; exact Finset.mem_singleton_self _⟩
+
+theorem completedColumnAttemptRoots_restart_mem {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a) {R K r : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells)
+    (hK : K ∈ completedColumnAttemptRoots D A m g a R)
+    (hr : r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      m g a K (columnRestartCount D (m + 1))) :
+    r ∈ completedColumnAttemptRoots D A m g a R := by
+  obtain ⟨n, _, hn⟩ := Finset.mem_biUnion.mp hK
+  apply completedColumnAttemptRoots_mem_of_generation D A m g ha hR (n := n + 1)
+  rw [completedColumnAttempts_succ]
+  exact Finset.mem_biUnion.mpr ⟨K, hn, hr⟩
+
+/-- Every row cell is retained by a deepest attempt root containing it.
+Strict depth increase at a restart rules out a further containing restart. -/
+theorem completedColumnAttemptRoots_retained_assignment {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a) {R u : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells)
+    (huR : dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid R.1 R.2) :
+    ∃ K ∈ completedColumnAttemptRoots D A m g a R,
+      dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid K.1 K.2 ∧
+      ∀ r ∈ columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l))
+        m g a K (columnRestartCount D (m + 1)),
+        ¬dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid r.1 r.2 := by
+  classical
+  let S := (completedColumnAttemptRoots D A m g a R).filter
+    (fun K => dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid K.1 K.2)
+  have hS : S.Nonempty := ⟨R, Finset.mem_filter.mpr
+    ⟨completedColumnAttemptRoots_root_mem D A m g a R, huR⟩⟩
+  obtain ⟨K, hKS, hmax⟩ := Finset.exists_max_image S (fun K => K.1) hS
+  obtain ⟨hK, huK⟩ := Finset.mem_filter.mp hKS
+  refine ⟨K, hK, huK, ?_⟩
+  intro r hr hur
+  have hrS : r ∈ S := Finset.mem_filter.mpr
+    ⟨completedColumnAttemptRoots_restart_mem D A m g ha hR hK hr, hur⟩
+  have hle := hmax r hrS
+  have hdepth := dyadicAnchorGeneration_depth (completedColumnTree D).grid
+    (completedColumnTree D).cells
+    (columnCoefficientField (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g)
+    _ (columnAnchorTolerance_nonneg (completedColumnTree D) ha) K
+    (columnRestartCount D (m + 1)) hr
+  have hT := columnRestartCount_pos D (m + 1)
+  omega
+
+/-- Blueprint `lem:compression`, line 581: every decision cell below the
+initial root is assigned to an attempt and an anchor partition atom at a
+time strictly below `T`, with the stated coefficient error. -/
+theorem completedColumnAttemptRoots_anchor_assignment {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
+    (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a) {R u : ℤ × ℤ}
+    (hR : R ∈ (completedColumnTree D).cells) (hu : u ∈ (completedColumnTree D).cells)
+    (huR : dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid R.1 R.2) :
+    ∃ K ∈ completedColumnAttemptRoots D A m g a R,
+      ∃ j < columnRestartCount D (m + 1),
+      ∃ b ∈ completedColumnAnchorCuts D A m g a K j,
+        dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid b.1 b.2 ∧
+        ‖columnCoefficientField (completedColumnTree D)
+            (fun l => completedColumnMask D (A l)) m g u -
+          columnCoefficientField (completedColumnTree D)
+            (fun l => completedColumnMask D (A l)) m g b‖ ≤ columnAnchorTolerance D a := by
+  classical
+  obtain ⟨K, hK, huK, hretain⟩ :=
+    completedColumnAttemptRoots_retained_assignment D A m g ha hR huR
+  have hKD := completedColumnAttemptRoots_subset D A m g a hR hK
+  obtain ⟨j, hj, b, hb, hseg, herr⟩ := dyadicAnchorGeneration_retained_assignment D.grid
+    (completedColumnTree D).cells
+    (columnCoefficientField (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g)
+    (columnAnchorTolerance D a) K hu huK (columnRestartCount D (m + 1)) hretain
+  exact ⟨K, hK, j, hj, b, completedColumnAnchorCuts_anchor_mem D A m g a hKD j hb,
+    (Finset.mem_filter.mp hseg).2.1, herr⟩
+
+/-- Selecting rows preserves the original square-sum bound and exact
+decision-cell locality, as needed when grouping rows by attempts. -/
+noncomputable def columnRowFamilyRestrict {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (B : ColumnRowFamily D ι F) (s : Finset ι) : ColumnRowFamily D s F where
+  decision i := B.decision i
+  decision_mem i := B.decision_mem i
+  row i := B.row i
+  bound := B.bound
+  bound_nonneg := B.bound_nonneg
+  square_sum z := by
+    rw [Finset.sum_coe_sort s (fun i => ‖B.row i z‖ ^ 2)]
+    exact (Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ s)
+      (fun _ _ _ => sq_nonneg _)).trans (B.square_sum z)
+  input_locality i := B.input_locality i
+
+/-- A local row only sees the almost-everywhere values on its decision cell. -/
+theorem columnRowFamily_congr_on_cell {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (B : ColumnRowFamily D ι F) (i : ι) (z w : ColumnL2 V)
+    (h : ∀ᵐ y ∂volume, y ∈ dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 →
+      z y = w y) : B.row i z = B.row i w := by
+  let s := dyadicGridCell D.grid (B.decision i).1 (B.decision i).2
+  have hs := dyadicGridCell_measurable D.grid (B.decision i).1 (B.decision i).2
+  have he : columnL2Restriction s hs z = columnL2Restriction s hs w := by
+    apply Lp.ext
+    filter_upwards [columnL2Indicator_coeFn s hs z, columnL2Indicator_coeFn s hs w, h]
+      with y hz hw hy
+    change columnL2Indicator s hs z y = columnL2Indicator s hs w y
+    rw [hz, hw]
+    by_cases hys : y ∈ s
+    · simpa only [Set.indicator_of_mem hys] using hy hys
+    · simp only [Set.indicator_of_notMem hys]
+  have hz := congrArg (fun L : ColumnL2 V →L[ℂ] F => L z) (B.input_locality i)
+  have hw := congrArg (fun L : ColumnL2 V →L[ℂ] F => L w) (B.input_locality i)
+  change B.row i (columnL2Restriction s hs z) = B.row i z at hz
+  change B.row i (columnL2Restriction s hs w) = B.row i w at hw
+  rw [← hz, he, hw]
+
+/-- Exact equality of an anchor row with its prefix-product row; the
+decision cell may be arbitrarily far below the anchor atom. -/
+theorem columnAnchorProduct_row_eq {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (g : ColumnL2 V) (a : ℝ)
+    {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (B : ColumnRowFamily D ι F) (i : ι) (n : ℕ) {b : ℤ × ℤ}
+    (hb : b ∈ completedColumnAnchorCuts D A m g a R n)
+    (hu : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid b.1 b.2) :
+    B.row i (cellColumnProduct (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      (completedColumnAnchorCuts_subset D A m g a hR n hb) (m + 1) g) =
+      B.row i (nestedProjectionProduct (columnAnchorProjection D A m g a hR) (m + 1) n
+        (columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g)) := by
+  apply columnRowFamily_congr_on_cell D B i
+  filter_upwards [columnAnchorProduct_ae_eq_atom D A m g a hR n hb m] with y hy hyu
+  exact (hy (hu hyu)).symm
+
+/-- Blueprint `lem:compression`, line 581: the squared anchor-row sum
+on an attempt is bounded by `L_T^(2m)` times its restricted input energy,
+independently of the spatial depths of the selected row cells. -/
+theorem columnAnchorProduct_rows_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (g : ColumnL2 V) (a : ℝ)
+    {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1)
+    (n : ι → ℕ) (hn : ∀ i, n i < columnRestartCount D (m + 1))
+    (b : ι → ℤ × ℤ) (hb : ∀ i, b i ∈ completedColumnAnchorCuts D A m g a R (n i))
+    (hu : ∀ i, dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid (b i).1 (b i).2) :
+    (∑ i, ‖B.row i (cellColumnProduct (completedColumnTree D)
+      (fun l => completedColumnMask D (A l))
+      (completedColumnAnchorCuts_subset D A m g a hR (n i) (hb i)) (m + 1) g)‖ ^ 2) ≤
+      projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1)) *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 := by
+  have hnorm (z : ColumnL2 V) : ∑ i, ‖B.row i z‖ ^ 2 ≤ ‖z‖ ^ 2 := by
+    have hsq : B.bound ^ 2 ≤ 1 := by
+      simpa using (sq_le_sq₀ B.bound_nonneg zero_le_one).mpr hB
+    exact (B.square_sum z).trans (by
+      simpa using (mul_le_mul_of_nonneg_right hsq (sq_nonneg ‖z‖)))
+  have hp := nestedProjectionProduct_prefix_rows_sq (columnAnchorProjection D A m g a hR)
+    (columnRestartCount D (m + 1)) (m + 1)
+    (fun l _ j _ => columnAnchorProjection_isStarProjection D A m g a hR l j)
+    (fun l _ i _ j _ hij => columnAnchorProjection_nested D A m g a hR l hij)
+    B.row hnorm n (fun i => (hn i).le)
+    (columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+      (dyadicGridCell_measurable D.grid R.1 R.2) g)
+  convert hp using 1
+  apply Finset.sum_congr rfl
+  intro i _
+  rw [columnAnchorProduct_row_eq D A m g a hR B i (n i) (hb i) (hu i)]
+
+/-- A full column is supported on its birth cell, exactly as in the
+error term of blueprint `lem:compression`, line 582. -/
+theorem birthColumn_memLp {V : Type*} [Fintype V] (D : ColumnTreeData V) (v : V) :
+    MemLp ((dyadicGridCell D.grid (D.birth v).1 (D.birth v).2).indicator
+      (privateColumnValue D.scalar D.privateWeight v)) 2 volume := by
+  apply (memLp_indicator_iff_restrict
+    (dyadicGridCell_measurable D.grid (D.birth v).1 (D.birth v).2).nullMeasurableSet).mpr
+  let : IsFiniteMeasure (volume.restrict (dyadicGridCell D.grid (D.birth v).1 (D.birth v).2)) :=
+    isFiniteMeasure_restrict.mpr (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
+  exact MemLp.of_bound
+    (privateColumnValue_measurable D.scalar D.privateWeight v
+      (D.scalar_measurable v)).aestronglyMeasurable
+    D.budget (D.column_bound v)
+
+noncomputable def birthColumnLp {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (v : V) : ColumnL2 V := MemLp.toLp _ (birthColumn_memLp D v)
+
+theorem birthColumnLp_coeFn {V : Type*} [Fintype V] (D : ColumnTreeData V) (v : V) :
+    (birthColumnLp D v : ℝ → ColumnHilbert V) =ᵐ[volume]
+      (dyadicGridCell D.grid (D.birth v).1 (D.birth v).2).indicator
+        (privateColumnValue D.scalar D.privateWeight v) :=
+  MemLp.coeFn_toLp (birthColumn_memLp D v)
+
+/-- The original path budget bounds the squared column mass pointwise,
+without counting labels born on disjoint branches. -/
+theorem birthColumnLp_square_sum_ae {V : Type*} [Fintype V] (D : ColumnTreeData V) :
+    ∀ᵐ y ∂volume, ∑ v, ‖birthColumnLp D v y‖ ^ 2 ≤ D.budget ^ 3 := by
+  classical
+  have hb : ∀ v, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell D.grid (D.birth v).1 (D.birth v).2 →
+        ‖privateColumnValue D.scalar D.privateWeight v y‖ ≤ D.budget := fun v =>
+    (ae_restrict_iff' (dyadicGridCell_measurable D.grid (D.birth v).1 (D.birth v).2)).mp
+      (D.column_bound v)
+  filter_upwards [ae_all_iff.mpr (birthColumnLp_coeFn D), ae_all_iff.mpr hb] with y hy hbound
+  let S := Finset.univ.filter (fun v => y ∈ dyadicGridCell D.grid (D.birth v).1 (D.birth v).2)
+  have hD : 0 ≤ D.budget := by linarith [D.two_le_budget]
+  calc
+    _ = ∑ v ∈ S, ‖privateColumnValue D.scalar D.privateWeight v y‖ ^ 2 := by
+      rw [Finset.sum_filter]
+      apply Finset.sum_congr rfl
+      intro v _
+      by_cases hv : y ∈ dyadicGridCell D.grid (D.birth v).1 (D.birth v).2
+      · simp [hy v, hv]
+      · simp [hy v, hv]
+    _ ≤ ∑ _v ∈ S, D.budget ^ 2 := by
+      apply Finset.sum_le_sum
+      intro v hv
+      exact (sq_le_sq₀ (norm_nonneg _) hD).mpr (hbound v (Finset.mem_filter.mp hv).2)
+    _ = (S.card : ℝ) * D.budget ^ 2 := by simp
+    _ ≤ D.budget ^ 3 := by
+      have h := mul_le_mul_of_nonneg_right (D.path_count y) (sq_nonneg D.budget)
+      simpa only [pow_succ, mul_comm] using h
+
+/-- Blueprint `lem:compression`, lines 587–589: integrating the actual
+path budget over an attempt gives the exact `D^3 |R|` column-energy bound. -/
+theorem birthColumnLp_restricted_energy {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (R : ℤ × ℤ) :
+    (∑ v, ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+      (dyadicGridCell_measurable D.grid R.1 R.2) (birthColumnLp D v)‖ ^ 2) ≤
+        D.budget ^ 3 * dyadicGridLength D.grid R.1 := by
+  have hi (v : V) : IntegrableOn (fun y => ‖birthColumnLp D v y‖ ^ 2)
+      (dyadicGridCell D.grid R.1 R.2) volume :=
+    ((Lp.memLp (birthColumnLp D v)).integrable_norm_pow (by norm_num : 2 ≠ 0)).restrict
+  have hc : IntegrableOn (fun _ : ℝ => D.budget ^ 3) (dyadicGridCell D.grid R.1 R.2) volume :=
+    integrableOn_const (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
+  simp_rw [columnL2Restriction_norm_sq]
+  rw [← integral_finsetSum _ (fun v _ => hi v)]
+  have h := integral_mono_ae (integrable_finsetSum _ (fun v _ => hi v)) hc
+    (ae_restrict_of_ae (birthColumnLp_square_sum_ae D))
+  simpa only [integral_const, Measure.real, Measure.restrict_apply_univ, dyadicGridCell_volume,
+    ENNReal.toReal_ofReal (dyadicGridLength_pos D.grid R.1).le, smul_eq_mul, mul_comm] using h
+
+theorem cellColumnLp_eq_restrict_birth {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (v : {v // v ∈ A.labels c}) :
+    cellColumnLp D A hc v = columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2) (birthColumnLp D v) := by
+  classical
+  apply Lp.ext
+  filter_upwards [cellColumnLp_coeFn D A hc v, birthColumnLp_coeFn D v,
+    columnL2Indicator_coeFn (dyadicGridCell D.grid c.1 c.2)
+      (dyadicGridCell_measurable D.grid c.1 c.2) (birthColumnLp D v)] with y hy hb hr
+  change cellColumnLp D A hc v y = columnL2Indicator (dyadicGridCell D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid c.1 c.2) (birthColumnLp D v) y
+  rw [hy, hr]
+  by_cases hyc : y ∈ dyadicGridCell D.grid c.1 c.2
+  · rw [Set.indicator_of_mem hyc, Set.indicator_of_mem hyc, hb,
+      Set.indicator_of_mem (A.available c hc v v.property hyc)]
+  · simp only [Set.indicator_of_notMem hyc]
+
+/-- Synthesis written in the common full label space, with unavailable
+coefficients extended by zero and the original birth columns unchanged. -/
+theorem cellColumnSynthesis_birth_columns {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
+    (a : CellCoefficients D A c) :
+    cellColumnSynthesis D A hc a = ∑ v, extendCellCoefficients D A c a v •
+      columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+        (dyadicGridCell_measurable D.grid c.1 c.2) (birthColumnLp D v) := by
+  classical
+  change (∑ v : {v // v ∈ A.labels c}, a v • cellColumnLp D A hc v) = _
+  calc
+    _ = ∑ v : A.labels c, extendCellCoefficients D A c a v •
+        columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+          (dyadicGridCell_measurable D.grid c.1 c.2) (birthColumnLp D v) := by
+      apply Finset.sum_congr rfl
+      intro v _
+      rw [cellColumnLp_eq_restrict_birth]
+      simp [extendCellCoefficients, v.property]
+    _ = ∑ v ∈ A.labels c, extendCellCoefficients D A c a v •
+        columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+          (dyadicGridCell_measurable D.grid c.1 c.2) (birthColumnLp D v) :=
+      Finset.sum_coe_sort (A.labels c) (fun v => extendCellCoefficients D A c a v •
+        columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
+          (dyadicGridCell_measurable D.grid c.1 c.2) (birthColumnLp D v))
+    _ = _ := Finset.sum_subset (Finset.subset_univ _) (fun v _ hv => by
+      simp [extendCellCoefficients, hv])
+
+/-- For a local row, restrictions to any two supersets of its decision
+cell are interchangeable. -/
+theorem columnRowFamily_restriction_eq {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (B : ColumnRowFamily D ι F) (i : ι) {s t : Set ℝ}
+    (hs : MeasurableSet s) (ht : MeasurableSet t)
+    (hus : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆ s)
+    (hut : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆ t)
+    (z : ColumnL2 V) :
+    B.row i (columnL2Restriction s hs z) = B.row i (columnL2Restriction t ht z) := by
+  apply columnRowFamily_congr_on_cell D B i
+  filter_upwards [columnL2Indicator_coeFn s hs z, columnL2Indicator_coeFn t ht z]
+    with y hys hyt hyu
+  change columnL2Indicator s hs z y = columnL2Indicator t ht z y
+  rw [hys, hyt, Set.indicator_of_mem (hus hyu), Set.indicator_of_mem (hut hyu)]
+
+/-- Exact local expansion of a product row using the birth-supported
+columns restricted only to the attempt root. -/
+theorem cellColumnProduct_row_birth_formula {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (B : ColumnRowFamily D ι F) (i : ι)
+    {c R : ℤ × ℤ} (hc : c ∈ D.cells)
+    (huc : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid c.1 c.2)
+    (huR : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid R.1 R.2) (m : ℕ) (g : ColumnL2 V) :
+    B.row i (cellColumnProduct D A hc (m + 1) g) =
+      ∑ v, cellProductCoefficients D A hc m g v • B.row i
+        (columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) (birthColumnLp D v)) := by
+  change B.row i (cellColumnProjection D (A m) hc (cellColumnProduct D A hc m g)) = _
+  rw [cellColumnProjection_eq_synthesis, cellColumnSynthesis_birth_columns, map_sum]
+  apply Finset.sum_congr rfl
+  intro v _
+  rw [map_smul]
+  congr 1
+  exact columnRowFamily_restriction_eq D B i
+    (dyadicGridCell_measurable D.grid c.1 c.2)
+    (dyadicGridCell_measurable D.grid R.1 R.2) huc huR (birthColumnLp D v)
+
+/-- Blueprint `lem:compression`, lines 581–584: subtracting the anchor
+product gives exactly the coefficient-error row stated in the source. -/
+theorem cellColumnProduct_row_error_formula {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (B : ColumnRowFamily D ι F) (i : ι)
+    {c b R : ℤ × ℤ} (hc : c ∈ D.cells) (hb : b ∈ D.cells)
+    (huc : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid c.1 c.2)
+    (hub : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid b.1 b.2)
+    (huR : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid R.1 R.2) (m : ℕ) (g : ColumnL2 V) :
+    B.row i (cellColumnProduct D A hc (m + 1) g - cellColumnProduct D A hb (m + 1) g) =
+      ∑ v, (cellProductCoefficients D A hc m g - cellProductCoefficients D A hb m g) v •
+        B.row i (columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) (birthColumnLp D v)) := by
+  rw [map_sub, cellColumnProduct_row_birth_formula D A B i hc huc huR,
+    cellColumnProduct_row_birth_formula D A B i hb hub huR, ← Finset.sum_sub_distrib]
+  apply Finset.sum_congr rfl
+  intro v _
+  simp only [WithLp.ofLp_sub, Pi.sub_apply, sub_smul]
+
+/-- Blueprint `lem:compression`, lines 585–589: coefficient errors of
+Euclidean norm at most `δ` have squared row sum at most `δ² D³ |R|`.
+The estimate uses the original row inequality separately for each column. -/
+theorem columnRowFamily_coefficient_rows_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) (R : ℤ × ℤ)
+    (e : ι → EuclideanSpace ℂ V) {δ : ℝ} (hδ : 0 ≤ δ) (he : ∀ i, ‖e i‖ ≤ δ) :
+    (∑ i, ‖∑ v, e i v • B.row i
+      (columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+        (dyadicGridCell_measurable D.grid R.1 R.2) (birthColumnLp D v))‖ ^ 2) ≤
+      δ ^ 2 * D.budget ^ 3 * dyadicGridLength D.grid R.1 := by
+  let W := fun v => columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+    (dyadicGridCell_measurable D.grid R.1 R.2) (birthColumnLp D v)
+  have hnorm (z : ColumnL2 V) : ∑ i, ‖B.row i z‖ ^ 2 ≤ ‖z‖ ^ 2 := by
+    have hsq : B.bound ^ 2 ≤ 1 := by
+      simpa using (sq_le_sq₀ B.bound_nonneg zero_le_one).mpr hB
+    exact (B.square_sum z).trans (by
+      simpa using (mul_le_mul_of_nonneg_right hsq (sq_nonneg ‖z‖)))
+  have hrow (i : ι) : ‖∑ v, e i v • B.row i (W v)‖ ^ 2 ≤
+      δ ^ 2 * ∑ v, ‖B.row i (W v)‖ ^ 2 := by
+    have hn : ‖∑ v, e i v • B.row i (W v)‖ ≤ ∑ v, ‖e i v‖ * ‖B.row i (W v)‖ := by
+      simpa only [norm_smul] using (norm_sum_le Finset.univ (fun v => e i v • B.row i (W v)))
+    have hcs := Finset.sum_mul_sq_le_sq_mul_sq Finset.univ
+      (fun v => ‖e i v‖) (fun v => ‖B.row i (W v)‖)
+    rw [← EuclideanSpace.norm_sq_eq (e i)] at hcs
+    exact ((sq_le_sq₀ (norm_nonneg _) (Finset.sum_nonneg
+      (fun v _ => mul_nonneg (norm_nonneg _) (norm_nonneg _)))).mpr hn).trans
+      (hcs.trans (mul_le_mul_of_nonneg_right
+        ((sq_le_sq₀ (norm_nonneg _) hδ).mpr (he i))
+        (Finset.sum_nonneg (fun _ _ => sq_nonneg _))))
+  calc
+    _ ≤ ∑ i, δ ^ 2 * ∑ v, ‖B.row i (W v)‖ ^ 2 :=
+      Finset.sum_le_sum (fun i _ => hrow i)
+    _ = δ ^ 2 * ∑ v, ∑ i, ‖B.row i (W v)‖ ^ 2 := by
+      rw [← Finset.mul_sum, Finset.sum_comm]
+    _ ≤ δ ^ 2 * ∑ v, ‖W v‖ ^ 2 := mul_le_mul_of_nonneg_left
+      (Finset.sum_le_sum (fun v _ => hnorm (W v))) (sq_nonneg δ)
+    _ ≤ δ ^ 2 * (D.budget ^ 3 * dyadicGridLength D.grid R.1) :=
+      mul_le_mul_of_nonneg_left (birthColumnLp_restricted_energy D R) (sq_nonneg δ)
+    _ = _ := by ring
+
+/-- The error estimate applies to the actual difference between each
+decision-cell product and its assigned anchor product. -/
+theorem columnAnchorProduct_error_rows_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a)
+    {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1)
+    (n : ι → ℕ) (b : ι → ℤ × ℤ)
+    (hb : ∀ i, b i ∈ completedColumnAnchorCuts D A m g a R (n i))
+    (hu : ∀ i, dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid (b i).1 (b i).2)
+    (he : ∀ i, ‖columnCoefficientField (completedColumnTree D)
+        (fun l => completedColumnMask D (A l)) m g (B.decision i) -
+      columnCoefficientField (completedColumnTree D)
+        (fun l => completedColumnMask D (A l)) m g (b i)‖ ≤ columnAnchorTolerance D a) :
+    (∑ i, ‖B.row i
+      (cellColumnProduct (completedColumnTree D) (fun l => completedColumnMask D (A l))
+        (columnCompletion_contains D (B.decision_mem i)) (m + 1) g -
+      cellColumnProduct (completedColumnTree D) (fun l => completedColumnMask D (A l))
+        (completedColumnAnchorCuts_subset D A m g a hR (n i) (hb i)) (m + 1) g)‖ ^ 2) ≤
+      columnAnchorTolerance D a ^ 2 * D.budget ^ 3 * dyadicGridLength D.grid R.1 := by
+  let e := fun i => cellProductCoefficients (completedColumnTree D)
+    (fun l => completedColumnMask D (A l)) (columnCompletion_contains D (B.decision_mem i)) m g -
+      cellProductCoefficients (completedColumnTree D) (fun l => completedColumnMask D (A l))
+        (completedColumnAnchorCuts_subset D A m g a hR (n i) (hb i)) m g
+  have he' (i : ι) : ‖e i‖ ≤ columnAnchorTolerance D a := by
+    simpa only [columnCoefficientField_of_mem (completedColumnTree D)
+      (fun l => completedColumnMask D (A l)) m g
+      (columnCompletion_contains D (B.decision_mem i)),
+      columnCoefficientField_of_mem (completedColumnTree D)
+        (fun l => completedColumnMask D (A l)) m g
+        (completedColumnAnchorCuts_subset D A m g a hR (n i) (hb i))] using he i
+  have h := columnRowFamily_coefficient_rows_bound (completedColumnTree D)
+    (completedColumnRows D B) hB R e (columnAnchorTolerance_nonneg D ha) he'
+  convert h using 1
+  · apply Finset.sum_congr rfl
+    intro i _
+    have huR : dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+        dyadicGridCell D.grid R.1 R.2 := by
+      intro y hy
+      rw [← completedColumnAnchorCuts_union D A m g a hR (n i)]
+      exact Set.mem_iUnion₂.mpr ⟨b i, hb i, hu i hy⟩
+    exact congrArg (fun x : F => ‖x‖ ^ 2)
+      (cellColumnProduct_row_error_formula (completedColumnTree D)
+      (fun l => completedColumnMask D (A l)) (completedColumnRows D B) i
+      (columnCompletion_contains D (B.decision_mem i))
+      (completedColumnAnchorCuts_subset D A m g a hR (n i) (hb i))
+      Set.Subset.rfl (hu i) huR m g)
+  · rfl
+
+/-- Combining the proved anchor and coefficient-error estimates gives
+the squared row bound for one attempt (`lem:compression`, lines 592–595). -/
+theorem columnAttempt_rows_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a)
+    {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1)
+    (n : ι → ℕ) (hn : ∀ i, n i < columnRestartCount D (m + 1))
+    (b : ι → ℤ × ℤ) (hb : ∀ i, b i ∈ completedColumnAnchorCuts D A m g a R (n i))
+    (hu : ∀ i, dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid (b i).1 (b i).2)
+    (he : ∀ i, ‖columnCoefficientField (completedColumnTree D)
+        (fun l => completedColumnMask D (A l)) m g (B.decision i) -
+      columnCoefficientField (completedColumnTree D)
+        (fun l => completedColumnMask D (A l)) m g (b i)‖ ≤ columnAnchorTolerance D a) :
+    (∑ i, ‖B.row i (cellColumnProduct (completedColumnTree D)
+      (fun l => completedColumnMask D (A l))
+      (columnCompletion_contains D (B.decision_mem i)) (m + 1) g)‖ ^ 2) ≤
+      2 * projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1)) *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 +
+      2 * columnAnchorTolerance D a ^ 2 * D.budget ^ 3 * dyadicGridLength D.grid R.1 := by
+  let X := fun i => cellColumnProduct (completedColumnTree D)
+    (fun l => completedColumnMask D (A l))
+    (columnCompletion_contains D (B.decision_mem i)) (m + 1) g
+  let Y := fun i => cellColumnProduct (completedColumnTree D)
+    (fun l => completedColumnMask D (A l))
+    (completedColumnAnchorCuts_subset D A m g a hR (n i) (hb i)) (m + 1) g
+  have hpoint (i : ι) : ‖B.row i (X i)‖ ^ 2 ≤
+      2 * ‖B.row i (Y i)‖ ^ 2 + 2 * ‖B.row i (X i - Y i)‖ ^ 2 := by
+    have hn' : ‖B.row i (X i)‖ ≤ ‖B.row i (Y i)‖ + ‖B.row i (X i - Y i)‖ := by
+      simpa only [map_sub, add_sub_cancel] using
+        (norm_add_le (B.row i (Y i)) (B.row i (X i - Y i)))
+    have hsq := (sq_le_sq₀ (norm_nonneg _) (add_nonneg (norm_nonneg _) (norm_nonneg _))).mpr hn'
+    nlinarith [sq_nonneg (‖B.row i (Y i)‖ - ‖B.row i (X i - Y i)‖)]
+  have hsum := Finset.sum_le_sum (fun i (_ : i ∈ Finset.univ) => hpoint i)
+  rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum] at hsum
+  have hanchor := columnAnchorProduct_rows_bound D A m g a hR B hB n hn b hb hu
+  have herr := columnAnchorProduct_error_rows_bound D A m g ha hR B hB n b hb hu he
+  change (∑ i, ‖B.row i (Y i)‖ ^ 2) ≤ _ at hanchor
+  change (∑ i, ‖B.row i (X i - Y i)‖ ^ 2) ≤ _ at herr
+  change (∑ i, ‖B.row i (X i)‖ ^ 2) ≤ _
+  nlinarith
+
+/-- Summing the constructed attempts gives a depth-independent bound
+below one initial root, using both length and restricted-energy packing. -/
+theorem columnAttemptFamily_rows_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (g : ColumnL2 V) {a : ℝ} (ha : 0 ≤ a)
+    (hg : ∀ᵐ y ∂volume, ‖g y‖ ≤ 4 * D.budget ^ 5 * a)
+    {R : ℤ × ℤ} (hR : R ∈ (completedColumnTree D).cells)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1)
+    (huR : ∀ i, dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid R.1 R.2) :
+    (∑ i, ‖B.row i (cellColumnProduct (completedColumnTree D)
+      (fun l => completedColumnMask D (A l))
+      (columnCompletion_contains D (B.decision_mem i)) (m + 1) g)‖ ^ 2) ≤
+      4 * projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1)) *
+        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
+          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 +
+      4 * columnAnchorTolerance D a ^ 2 * D.budget ^ 3 * dyadicGridLength D.grid R.1 := by
+  classical
+  let roots := completedColumnAttemptRoots D A m g a R
+  let E := fun r : ℤ × ℤ => ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
+    (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2
+  let L := projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1))
+  let C := columnAnchorTolerance D a ^ 2 * D.budget ^ 3
+  let f := fun i => ‖B.row i (cellColumnProduct (completedColumnTree D)
+    (fun l => completedColumnMask D (A l))
+    (columnCompletion_contains D (B.decision_mem i)) (m + 1) g)‖ ^ 2
+  have hassign := fun i => completedColumnAttemptRoots_anchor_assignment D A m g ha hR
+    (columnCompletion_contains D (B.decision_mem i)) (huR i)
+  choose r hr n hn b hb hu he using hassign
+  have hlocal (q : ℤ × ℤ) (hq : q ∈ roots) :
+      (∑ i ∈ Finset.univ.filter (fun i => r i = q), f i) ≤
+        2 * L * E q + 2 * C * dyadicGridLength D.grid q.1 := by
+    let s := Finset.univ.filter (fun i => r i = q)
+    let Bs := columnRowFamilyRestrict D B s
+    have hqi (i : s) : r i.val = q := (Finset.mem_filter.mp i.property).2
+    have hb' (i : s) : b i.val ∈ completedColumnAnchorCuts D A m g a q (n i.val) := by
+      simpa only [hqi i] using hb i.val
+    have hqD := completedColumnAttemptRoots_subset D A m g a hR hq
+    have h := columnAttempt_rows_bound D A m g ha hqD Bs hB
+      (fun i => n i.val) (fun i => hn i.val) (fun i => b i.val) hb'
+      (fun i => hu i.val) (fun i => he i.val)
+    change (∑ i : s, f i.val) ≤
+      2 * L * E q + 2 * columnAnchorTolerance D a ^ 2 * D.budget ^ 3 *
+        dyadicGridLength D.grid q.1 at h
+    rw [Finset.sum_coe_sort s f] at h
+    dsimp only [C]
+    nlinarith only [h]
+  have hsum : (∑ i, f i) ≤ ∑ q ∈ roots,
+      (2 * L * E q + 2 * C * dyadicGridLength D.grid q.1) := by
+    rw [← Finset.sum_fiberwise_of_maps_to
+      (s := Finset.univ) (t := roots) (g := r) (fun i _ => hr i) f]
+    exact Finset.sum_le_sum (fun q hq => hlocal q hq)
+  have hp := completedColumnAttempts_packing D A m g ha hg hR
+  have hlen : (∑ q ∈ roots, dyadicGridLength D.grid q.1) ≤
+      2 * dyadicGridLength D.grid R.1 :=
+    (completedColumnAttemptRoots_cost_le D A m g a R _
+      (fun q => (dyadicGridLength_pos D.grid q.1).le) hp.1).trans hp.2.1
+  have henergy : (∑ q ∈ roots, E q) ≤ 2 * E R :=
+    (completedColumnAttemptRoots_cost_le D A m g a R E
+      (fun _ => sq_nonneg _) hp.2.2.1).trans hp.2.2.2
+  have hL : 0 ≤ L := pow_nonneg
+    (zero_le_one.trans (projectionPrefixConstant_one_le _)) _
+  have hD : 0 ≤ D.budget := by linarith [D.two_le_budget]
+  have hC : 0 ≤ C := mul_nonneg (sq_nonneg _) (pow_nonneg hD _)
+  rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum] at hsum
+  have henergy' := mul_le_mul_of_nonneg_left henergy (mul_nonneg (by norm_num : (0 : ℝ) ≤ 2) hL)
+  have hlen' := mul_le_mul_of_nonneg_left hlen (mul_nonneg (by norm_num : (0 : ℝ) ≤ 2) hC)
+  change (∑ i, f i) ≤ 4 * L * E R +
+    4 * columnAnchorTolerance D a ^ 2 * D.budget ^ 3 * dyadicGridLength D.grid R.1
+  dsimp only [C] at hsum hlen'
+  nlinarith only [hsum, henergy', hlen']
+
+/-- Blueprint `lem:compression`, lines 591–595: all attempts of one
+size segment cost at most four times its moment energy and length budget. -/
+theorem columnMoment_segment_rows_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (z : ColumnL2 V)
+    {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1)
+    (huK : ∀ i, dyadicGridCell D.grid (B.decision i).1 (B.decision i).2 ⊆
+      dyadicGridCell D.grid K.1 K.2) :
+    let g := columnMomentRepresentative D (A 0) z hK
+    (∑ i, ‖B.row i (cellColumnProduct (completedColumnTree D)
+      (fun l => completedColumnMask D (A l))
+      (columnCompletion_contains D (B.decision_mem i)) (m + 1) g)‖ ^ 2) ≤
+      4 * projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1)) * ‖g‖ ^ 2 +
+      4 * columnAnchorTolerance D (columnCellAverage D z K) ^ 2 * D.budget ^ 3 *
+        dyadicGridLength D.grid K.1 := by
+  have h := columnAttemptFamily_rows_bound D A m (columnMomentRepresentative D (A 0) z hK)
+    (columnCellAverage_nonneg D z K) (columnMomentRepresentative_ae_bound D (A 0) z hK)
+    (columnSizeRoots_subset D z hK) B hB huK
+  simpa only [columnMomentRepresentative_root_restriction D (A 0) z hK] using h
+
+/-- Completing the finite tree leaves every product at an original cell unchanged. -/
+theorem completedColumnMask_product_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (k : ℕ) :
+    cellColumnProduct (completedColumnTree D) (fun l => completedColumnMask D (A l))
+      (columnCompletion_contains D hc) k = cellColumnProduct D A hc k := by
+  induction k with
+  | zero => rfl
+  | succ k ih =>
+    simp only [cellColumnProduct, ih]
+    exact congrArg (fun P : ColumnL2 V →L[ℂ] ColumnL2 V =>
+      P.comp (cellColumnProduct D A hc k)) (completedColumnMask_projection_eq D (A k) hc)
+
+/-- Preservation of the first projection by the moment representative
+preserves the entire ordered nonempty product on its size segment. -/
+theorem columnMomentRepresentative_preserves_product {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (z : ColumnL2 V)
+    {K u : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) (hu : u ∈ D.cells)
+    (hsegment : u ∈ columnSizeSegment D z K) (m : ℕ) :
+    cellColumnProduct D A hu (m + 1) (columnMomentRepresentative D (A 0) z hK) =
+      cellColumnProduct D A hu (m + 1) z := by
+  induction m with
+  | zero => exact columnMomentRepresentative_preserves_projection D (A 0) z hK hu hsegment
+  | succ m ih =>
+    change cellColumnProjection D (A (m + 1)) hu
+      (cellColumnProduct D A hu (m + 1) _) =
+        cellColumnProjection D (A (m + 1)) hu (cellColumnProduct D A hu (m + 1) z)
+    rw [ih]
+
+/-- Blueprint `lem:compression`, lines 591–595: grouping the original
+rows by their size segments yields the moment-energy and size-energy sum. -/
+theorem columnCompression_size_sum {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) :
+    (∑ i, ‖B.row i (cellColumnProduct D A (B.decision_mem i) (m + 1) z)‖ ^ 2) ≤
+      4 * projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1)) *
+        columnMomentEnergy D (A 0) z +
+      4 * D.budget⁻¹ ^ 20 * D.budget ^ 3 *
+        ∑ K ∈ columnSizeRoots D z, columnCellAverage D z K ^ 2 * dyadicGridLength D.grid K.1 := by
+  classical
+  let L := projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1))
+  let f := fun i => ‖B.row i (cellColumnProduct D A (B.decision_mem i) (m + 1) z)‖ ^ 2
+  choose K hK hseg _hmax using (fun i => columnSizeRoot_assignment D z (B.decision_mem i))
+  have hlocal (q : ℤ × ℤ) (hq : q ∈ columnSizeRoots D z) :
+      (∑ i ∈ Finset.univ.filter (fun i => K i = q), f i) ≤
+        4 * L * ‖columnMomentFamily D (A 0) z q‖ ^ 2 +
+          4 * columnAnchorTolerance D (columnCellAverage D z q) ^ 2 * D.budget ^ 3 *
+            dyadicGridLength D.grid q.1 := by
+    let s := Finset.univ.filter (fun i => K i = q)
+    let Bs := columnRowFamilyRestrict D B s
+    have hsegment (i : s) : B.decision i.val ∈ columnSizeSegment D z q := by
+      have hi := (Finset.mem_filter.mp i.property).2
+      simpa only [hi] using hseg i.val
+    have hbelow (i : s) : dyadicGridCell D.grid (Bs.decision i).1 (Bs.decision i).2 ⊆
+        dyadicGridCell D.grid q.1 q.2 := (Finset.mem_filter.mp (hsegment i)).2.1
+    have h := columnMoment_segment_rows_bound D A m z hq Bs hB hbelow
+    rw [← Finset.sum_coe_sort s f, columnMomentFamily_of_mem D (A 0) z hq]
+    convert h using 1
+    apply Finset.sum_congr rfl
+    intro i _
+    have hprod := (congrArg
+      (fun P : ColumnL2 V →L[ℂ] ColumnL2 V => P (columnMomentRepresentative D (A 0) z hq))
+      (completedColumnMask_product_eq D A (B.decision_mem i.val) (m + 1))).trans
+        (columnMomentRepresentative_preserves_product D A z hq
+          (B.decision_mem i.val) (hsegment i) m)
+    exact congrArg (fun w : ColumnL2 V => ‖B.row i.val w‖ ^ 2) hprod.symm
+  have hsum : (∑ i, f i) ≤ ∑ q ∈ columnSizeRoots D z,
+      (4 * L * ‖columnMomentFamily D (A 0) z q‖ ^ 2 +
+        4 * columnAnchorTolerance D (columnCellAverage D z q) ^ 2 * D.budget ^ 3 *
+          dyadicGridLength D.grid q.1) := by
+    rw [← Finset.sum_fiberwise_of_maps_to
+      (s := Finset.univ) (t := columnSizeRoots D z) (g := K) (fun i _ => hK i) f]
+    exact Finset.sum_le_sum (fun q hq => hlocal q hq)
+  refine hsum.trans_eq ?_
+  rw [Finset.sum_add_distrib, ← Finset.mul_sum]
+  change 4 * L * columnMomentEnergy D (A 0) z + _ = _
+  congr 1
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro q _
+  dsimp only [columnAnchorTolerance]
+  ring
+
+/-- The logarithmic moment-energy bound and geometric size-energy bound
+give the depth-independent squared estimate in `lem:compression`, line 595. -/
+theorem columnCompression_logarithmic_square_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) :
+    (∑ i, ‖B.row i (cellColumnProduct D A (B.decision_mem i) (m + 1) z)‖ ^ 2) ≤
+      (4 * projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1)) *
+        ((7 / Real.log 2) * Real.log (2 * D.budget)) +
+        (64 / 3 : ℝ) * D.budget⁻¹ ^ 20 * D.budget ^ 3) * ‖z‖ ^ 2 := by
+  have h := columnCompression_size_sum D A m z B hB
+  have hL : 0 ≤ projectionPrefixConstant (columnRestartCount D (m + 1)) :=
+    zero_le_one.trans (projectionPrefixConstant_one_le _)
+  have hD : 0 ≤ D.budget := by linarith [D.two_le_budget]
+  have hm := mul_le_mul_of_nonneg_left (columnMomentEnergy_logarithmic D (A 0) z)
+    (mul_nonneg (by norm_num : (0 : ℝ) ≤ 4) (pow_nonneg hL (2 * (m + 1))))
+  have hs := mul_le_mul_of_nonneg_left (columnSizeRoots_energy_le D z)
+    (show 0 ≤ 4 * D.budget⁻¹ ^ 20 * D.budget ^ 3 by positivity)
+  nlinarith only [h, hm, hs]
+
+theorem columnBudget_log_one_le {V : Type*} [Fintype V] (D : ColumnTreeData V) :
+    1 ≤ Real.log (2 * D.budget) := by
+  have hl2 : (1 / 2 : ℝ) ≤ Real.log 2 := by
+    have h := Real.one_sub_inv_le_log_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at h ⊢
+    linarith
+  have hl4 : 1 ≤ Real.log 4 := by
+    have he : Real.log (4 : ℝ) = 2 * Real.log 2 := by
+      rw [show (4 : ℝ) = 2 ^ (2 : ℕ) by norm_num, Real.log_pow]
+      norm_num
+    rw [he]
+    linarith
+  exact hl4.trans (Real.log_le_log (by norm_num : (0 : ℝ) < 4)
+    (by linarith [D.two_le_budget]))
+
+/-- A uniform numerical form of the global squared compression bound. -/
+theorem columnCompression_clean_square_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) :
+    (∑ i, ‖B.row i (cellColumnProduct D A (B.decision_mem i) (m + 1) z)‖ ^ 2) ≤
+      128 * projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1)) *
+        Real.log (2 * D.budget) * ‖z‖ ^ 2 := by
+  have h := columnCompression_logarithmic_square_bound D A m z B hB
+  let P := projectionPrefixConstant (columnRestartCount D (m + 1)) ^ (2 * (m + 1))
+  have hP : 1 ≤ P := one_le_pow₀ (projectionPrefixConstant_one_le _)
+  have hlog := columnBudget_log_one_le D
+  have hD : 1 ≤ D.budget := by linarith [D.two_le_budget]
+  have hD0 : 0 < D.budget := by linarith
+  have herr : D.budget⁻¹ ^ 20 * D.budget ^ 3 ≤ 1 := by
+    have hp : D.budget ^ 3 ≤ D.budget ^ 20 := pow_le_pow_right₀ hD (by norm_num)
+    have hd := (div_le_one (pow_pos hD0 20)).mpr hp
+    simpa only [div_eq_mul_inv, inv_pow, mul_comm] using hd
+  have hl2 : (1 / 2 : ℝ) ≤ Real.log 2 := by
+    have hh := Real.one_sub_inv_le_log_of_pos (by norm_num : (0 : ℝ) < 2)
+    norm_num at hh ⊢
+    linarith
+  have hdiv : 7 / Real.log 2 ≤ 14 :=
+    (div_le_iff₀ (by linarith : 0 < Real.log 2)).mpr (by linarith)
+  have hmul := mul_le_mul_of_nonneg_left hdiv
+    (show 0 ≤ 4 * P * Real.log (2 * D.budget) by positivity)
+  have herror := mul_le_mul_of_nonneg_left herr (by norm_num : (0 : ℝ) ≤ 64 / 3)
+  have hdom : 1 ≤ P * Real.log (2 * D.budget) :=
+    hP.trans (le_mul_of_one_le_right (zero_le_one.trans hP) hlog)
+  have hc : 4 * P * ((7 / Real.log 2) * Real.log (2 * D.budget)) +
+      (64 / 3 : ℝ) * D.budget⁻¹ ^ 20 * D.budget ^ 3 ≤
+        128 * P * Real.log (2 * D.budget) := by
+    nlinarith only [hmul, herror, hdom]
+  exact h.trans (mul_le_mul_of_nonneg_right hc (sq_nonneg ‖z‖))
+
+/-- An explicit polynomial-logarithmic bound for nonempty products,
+stronger than the unspecified universal-constant form in the source. -/
+theorem columnCompression_nonempty_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) :
+    finiteRowNorm (fun i => B.row i (cellColumnProduct D A (B.decision_mem i) (m + 1) z)) ≤
+      (512 * ((m : ℝ) + 2) ^ 3 * Real.log (2 * D.budget)) ^ (m + 2) * ‖z‖ := by
+  let s := (m : ℝ) + 2
+  let x := 512 * s ^ 3 * Real.log (2 * D.budget)
+  let L := projectionPrefixConstant (columnRestartCount D (m + 1))
+  have hs : 1 ≤ s := by dsimp [s]; have := Nat.cast_nonneg (α := ℝ) m; linarith
+  have hlog := columnBudget_log_one_le D
+  have hs3 : 1 ≤ s ^ 3 := one_le_pow₀ hs
+  have hxlog : 512 * Real.log (2 * D.budget) ≤ x := by
+    have h := mul_le_mul_of_nonneg_right hs3 (show 0 ≤ 512 * Real.log (2 * D.budget) by positivity)
+    dsimp only [x]
+    nlinarith only [h]
+  have hx : 1 ≤ x := by nlinarith only [hxlog, hlog]
+  have hx0 : 0 ≤ x := zero_le_one.trans hx
+  have hL0 : 0 ≤ L := zero_le_one.trans (projectionPrefixConstant_one_le _)
+  have hLx : L ≤ x := by
+    have h := projectionRestartTime_prefix_polynomial D.two_le_budget (m := m + 1) (by omega)
+    change L ≤ 258 * ((m + 1 : ℕ) + 1 : ℝ) ^ 3 * Real.log (2 * D.budget) at h
+    norm_num only [Nat.cast_add, Nat.cast_one] at h
+    have hs0 : 0 ≤ s ^ 3 * Real.log (2 * D.budget) := by positivity
+    have he : (m : ℝ) + 1 + 1 = s := by dsimp [s]; ring
+    rw [he] at h
+    dsimp only [x]
+    nlinarith only [h, hs0]
+  have hlogx : 128 * Real.log (2 * D.budget) ≤ x ^ 2 := by
+    nlinarith only [hxlog, hx, hlog, sq_nonneg (x - 1)]
+  have hpow := pow_le_pow_left₀ hL0 hLx (2 * (m + 1))
+  have hc := mul_le_mul hpow hlogx
+    (show 0 ≤ 128 * Real.log (2 * D.budget) by positivity) (pow_nonneg hx0 _)
+  have hexp : x ^ (2 * (m + 1)) * x ^ 2 = (x ^ (m + 2)) ^ 2 := by
+    rw [← pow_add, ← pow_mul]
+    congr 1
+    omega
+  rw [hexp] at hc
+  have h := columnCompression_clean_square_bound D A m z B hB
+  have hfinal := h.trans (mul_le_mul_of_nonneg_right
+    (show 128 * L ^ (2 * (m + 1)) * Real.log (2 * D.budget) ≤ (x ^ (m + 2)) ^ 2 by
+      nlinarith only [hc]) (sq_nonneg ‖z‖))
+  apply finiteRowNorm_le_of_sq_le _ (mul_nonneg (pow_nonneg hx0 _) (norm_nonneg z))
+  simpa only [mul_pow] using hfinal
+
+/-- Blueprint `eq:compression`, lines 545–548 and 597: spatial compression
+for every number of inherited projection factors, including the empty
+product. The universal constant can be taken to be `512`; the bound is
+independent of tree depth and the total number of labels. -/
+theorem columnSpatialCompression {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) :
+    finiteRowNorm (fun i => B.row i (cellColumnProduct D A (B.decision_mem i) m z)) ≤
+      (512 * ((m : ℝ) + 1) ^ 512 * Real.log (2 * D.budget)) ^ (512 * (m + 1)) * ‖z‖ := by
+  have hlog := columnBudget_log_one_le D
+  cases m with
+  | zero =>
+    have hsq : ∑ i, ‖B.row i z‖ ^ 2 ≤ ‖z‖ ^ 2 := by
+      have hb : B.bound ^ 2 ≤ 1 := by
+        simpa using (sq_le_sq₀ B.bound_nonneg zero_le_one).mpr hB
+      exact (B.square_sum z).trans (by
+        simpa using (mul_le_mul_of_nonneg_right hb (sq_nonneg ‖z‖)))
+    have h := (finiteRowNorm_le_of_sq_le (fun i => B.row i z) (norm_nonneg z) hsq).trans
+      (le_mul_of_one_le_left (norm_nonneg z)
+        (one_le_pow₀ (show 1 ≤ 512 * Real.log (2 * D.budget) by nlinarith) (n := 512)))
+    simpa only [Nat.cast_zero, zero_add, one_pow, mul_one, cellColumnProduct,
+      ContinuousLinearMap.id_apply] using h
+  | succ n =>
+    let s := (n : ℝ) + 2
+    let x := 512 * s ^ 3 * Real.log (2 * D.budget)
+    let y := 512 * s ^ 512 * Real.log (2 * D.budget)
+    have hs : 1 ≤ s := by dsimp [s]; have := Nat.cast_nonneg (α := ℝ) n; linarith
+    have hx0 : 0 ≤ x := by dsimp [x]; positivity
+    have hxy : x ≤ y := by
+      dsimp only [x, y]
+      exact mul_le_mul_of_nonneg_right
+        (mul_le_mul_of_nonneg_left (pow_le_pow_right₀ hs (by norm_num : 3 ≤ 512))
+          (by norm_num : (0 : ℝ) ≤ 512)) (by linarith)
+    have hy1 : 1 ≤ y := by
+      have hp : 1 ≤ s ^ 512 := one_le_pow₀ hs
+      have hh : 1 ≤ s ^ 512 * Real.log (2 * D.budget) :=
+        hp.trans (le_mul_of_one_le_right (zero_le_one.trans hp) hlog)
+      dsimp only [y]
+      calc
+        _ ≤ s ^ 512 * Real.log (2 * D.budget) := hh
+        _ ≤ 512 * (s ^ 512 * Real.log (2 * D.budget)) :=
+          le_mul_of_one_le_left (zero_le_one.trans hh) (by norm_num)
+        _ = _ := (mul_assoc _ _ _).symm
+    have hpow : x ^ (n + 2) ≤ y ^ (512 * (n + 1 + 1)) :=
+      (pow_le_pow_left₀ hx0 hxy (n + 2)).trans (pow_le_pow_right₀ hy1 (by omega))
+    have h := (columnCompression_nonempty_bound D A n z B hB).trans
+      (mul_le_mul_of_nonneg_right hpow (norm_nonneg z))
+    have he : ((n + 1 : ℕ) : ℝ) + 1 = s := by
+      dsimp only [s]
+      push_cast
+      ring
+    simpa only [he] using h
+
+noncomputable def columnCompressionBase {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m : ℕ) : ℝ :=
+  512 * ((m : ℝ) + 1) ^ 512 * Real.log (2 * D.budget)
+
+noncomputable def columnCompressionBound {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m : ℕ) : ℝ := columnCompressionBase D m ^ (512 * (m + 1))
+
+theorem columnCompressionBase_one_le {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m : ℕ) : 1 ≤ columnCompressionBase D m := by
+  have hs : 1 ≤ ((m : ℝ) + 1) ^ 512 :=
+    one_le_pow₀ (le_add_of_nonneg_left (Nat.cast_nonneg m))
+  have hprod : 1 ≤ ((m : ℝ) + 1) ^ 512 * Real.log (2 * D.budget) :=
+    hs.trans (le_mul_of_one_le_right (zero_le_one.trans hs) (columnBudget_log_one_le D))
+  calc
+    _ ≤ ((m : ℝ) + 1) ^ 512 * Real.log (2 * D.budget) := hprod
+    _ ≤ 512 * (((m : ℝ) + 1) ^ 512 * Real.log (2 * D.budget)) :=
+      le_mul_of_one_le_left (zero_le_one.trans hprod) (by norm_num)
+    _ = _ := (mul_assoc _ _ _).symm
+
+theorem columnCompressionBound_one_le {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (m : ℕ) : 1 ≤ columnCompressionBound D m :=
+  one_le_pow₀ (columnCompressionBase_one_le D m)
+
+theorem columnCompressionBound_mono {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) {m n : ℕ} (hmn : m ≤ n) :
+    columnCompressionBound D m ≤ columnCompressionBound D n := by
+  have hmn' : (m : ℝ) + 1 ≤ (n : ℝ) + 1 := by exact_mod_cast Nat.add_le_add_right hmn 1
+  have hb : columnCompressionBase D m ≤ columnCompressionBase D n :=
+    mul_le_mul_of_nonneg_right
+      (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (by positivity) hmn' 512)
+        (by norm_num : (0 : ℝ) ≤ 512)) (zero_le_one.trans (columnBudget_log_one_le D))
+  exact (pow_le_pow_left₀ (zero_le_one.trans (columnCompressionBase_one_le D m)) hb _).trans
+    (pow_le_pow_right₀ (columnCompressionBase_one_le D n) (by omega))
+
+theorem cellColumnProduct_congr {V : Type*} [Fintype V] (D : ColumnTreeData V)
+    {A C : ℕ → InheritedColumnMask D} {c : ℤ × ℤ} (hc : c ∈ D.cells) (n : ℕ)
+    (h : ∀ j < n, A j = C j) : cellColumnProduct D A hc n = cellColumnProduct D C hc n := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    simp only [cellColumnProduct]
+    rw [h n (by omega), ih (fun j hj => h j (by omega))]
+
+/-- Every ordered selection of column factors is a shorter product of
+the same inherited masks, uniformly on every original decision cell. -/
+theorem columnSubproduct_eq_shorter_product {V : Type*} [Fintype V]
+    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (σ : ℕ → Bool) (m : ℕ) :
+    ∃ k ≤ m, ∃ C : ℕ → InheritedColumnMask D, ∀ c (hc : c ∈ D.cells),
+      operatorSubproduct (fun l => cellColumnProjection D (A l) hc) σ m =
+        cellColumnProduct D C hc k := by
+  induction m with
+  | zero => exact ⟨0, le_rfl, A, fun _ _ => rfl⟩
+  | succ m ih =>
+    obtain ⟨k, hk, C, hC⟩ := ih
+    cases hσ : σ m with
+    | false =>
+      refine ⟨k, by omega, C, ?_⟩
+      intro c hc
+      simpa only [operatorSubproduct, hσ, Bool.false_eq_true, ↓reduceIte] using hC c hc
+    | true =>
+      let C' := Function.update C k (A m)
+      refine ⟨k + 1, by omega, C', ?_⟩
+      intro c hc
+      have hpre : cellColumnProduct D C' hc k = cellColumnProduct D C hc k := by
+        apply cellColumnProduct_congr
+        intro j hj
+        simp [C', ne_of_lt hj]
+      simp only [operatorSubproduct, hσ, ↓reduceIte, hC c hc, cellColumnProduct]
+      rw [hpre]
+      simp only [C', Function.update_self]
+
+/-- The spatial-compression constant for length `m` bounds every ordered
+subproduct, including the empty selection. -/
+theorem columnSubproduct_rows_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (σ : ℕ → Bool) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) :
+    finiteRowNorm (fun i => B.row i
+      (operatorSubproduct (fun l => cellColumnProjection D (A l) (B.decision_mem i)) σ m z)) ≤
+        columnCompressionBound D m * ‖z‖ := by
+  obtain ⟨k, hk, C, hC⟩ := columnSubproduct_eq_shorter_product D A σ m
+  have he : (fun i => B.row i
+      (operatorSubproduct (fun l => cellColumnProjection D (A l) (B.decision_mem i)) σ m z)) =
+      (fun i => B.row i (cellColumnProduct D C (B.decision_mem i) k z)) := by
+    funext i
+    exact congrArg (fun P : ColumnL2 V →L[ℂ] ColumnL2 V => B.row i (P z))
+      (hC (B.decision i) (B.decision_mem i))
+  rw [he]
+  exact (columnSpatialCompression D C k z B hB).trans
+    (mul_le_mul_of_nonneg_right (columnCompressionBound_mono D hk) (norm_nonneg z))
+
+/-- The explicit factor `2^m` in the source's complement expansion,
+applied to the actual inherited column products. -/
+theorem columnComplementProduct_rows_bound {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (θ : ℕ → Bool) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) :
+    finiteRowNorm (fun i => B.row i
+      (operatorComplementProduct
+        (fun l => cellColumnProjection D (A l) (B.decision_mem i)) θ m z)) ≤
+        (2 : ℝ) ^ m * (columnCompressionBound D m * ‖z‖) :=
+  operatorComplementProduct_rows_bound
+    (fun i l => cellColumnProjection D (A l) (B.decision_mem i)) θ m z B.row
+    (mul_nonneg (zero_le_one.trans (columnCompressionBound_one_le D m)) (norm_nonneg z))
+    (fun σ => columnSubproduct_rows_bound D A σ m z B hB)
+
+/-- Blueprint `lem:compression`, lines 548–550 and 597: any factors may
+be replaced by complements, with the same type of depth-independent bound.
+The universal constant `1024` absorbs the exact binary expansion cost. -/
+theorem columnSpatialCompression_complements {V ι F : Type*} [Fintype V] [Fintype ι]
+    [NormedAddCommGroup F] [NormedSpace ℂ F] (D : ColumnTreeData V)
+    (A : ℕ → InheritedColumnMask D) (θ : ℕ → Bool) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1) :
+    finiteRowNorm (fun i => B.row i (operatorComplementProduct
+      (fun l => cellColumnProjection D (A l) (B.decision_mem i)) θ m z)) ≤
+        (1024 * ((m : ℝ) + 1) ^ 1024 * Real.log (2 * D.budget)) ^ (1024 * (m + 1)) * ‖z‖ := by
+  let s := (m : ℝ) + 1
+  let Y := 1024 * s ^ 1024 * Real.log (2 * D.budget)
+  let N := 512 * (m + 1)
+  have hs : 1 ≤ s := le_add_of_nonneg_left (Nat.cast_nonneg m)
+  have hlog := columnBudget_log_one_le D
+  have hY : 2 ≤ Y := by
+    have hp : 1 ≤ s ^ 1024 := one_le_pow₀ hs
+    have hh : 1 ≤ s ^ 1024 * Real.log (2 * D.budget) :=
+      hp.trans (le_mul_of_one_le_right (zero_le_one.trans hp) hlog)
+    calc
+      _ ≤ (1024 : ℝ) := by norm_num
+      _ ≤ 1024 * (s ^ 1024 * Real.log (2 * D.budget)) :=
+        le_mul_of_one_le_right (by norm_num) hh
+      _ = _ := (mul_assoc _ _ _).symm
+  have hY1 : 1 ≤ Y := le_trans (by norm_num) hY
+  have hY0 : 0 ≤ Y := zero_le_one.trans hY1
+  have hbase : columnCompressionBase D m ≤ Y := by
+    change 512 * s ^ 512 * Real.log (2 * D.budget) ≤ _
+    exact mul_le_mul_of_nonneg_right
+      (mul_le_mul (by norm_num : (512 : ℝ) ≤ 1024)
+        (pow_le_pow_right₀ hs (by norm_num : 512 ≤ 1024))
+        (pow_nonneg (zero_le_one.trans hs) _) (by norm_num)) (zero_le_one.trans hlog)
+  have hfirst : (2 : ℝ) ^ m ≤ Y ^ N :=
+    (pow_le_pow_left₀ (by norm_num) hY m).trans
+      (pow_le_pow_right₀ hY1 (by dsimp [N]; omega))
+  have hsecond : columnCompressionBound D m ≤ Y ^ N :=
+    pow_le_pow_left₀ (zero_le_one.trans (columnCompressionBase_one_le D m)) hbase N
+  have hproduct : (2 : ℝ) ^ m * columnCompressionBound D m ≤ Y ^ (1024 * (m + 1)) := by
+    calc
+      _ ≤ Y ^ N * Y ^ N := mul_le_mul hfirst hsecond
+        (zero_le_one.trans (columnCompressionBound_one_le D m)) (pow_nonneg hY0 _)
+      _ = _ := by
+        rw [← pow_add]
+        exact congrArg (fun k : ℕ => Y ^ k) (by dsimp only [N]; omega)
+  calc
+    _ ≤ (2 : ℝ) ^ m * (columnCompressionBound D m * ‖z‖) :=
+      columnComplementProduct_rows_bound D A θ m z B hB
+    _ = ((2 : ℝ) ^ m * columnCompressionBound D m) * ‖z‖ := (mul_assoc _ _ _).symm
+    _ ≤ _ := mul_le_mul_of_nonneg_right hproduct (norm_nonneg z)
+
+/-- Blueprint `lem:compression`, lines 548–550 and 597: fixed averages
+of inherited projection/complement compositions cost exactly the total
+variation of the averaging measure. The measure may be complex; only
+measurability is required, since contraction proves integrability. -/
+theorem columnSpatialCompression_averages {Ω V ι F : Type*} [MeasurableSpace Ω]
+    [Fintype V] [Fintype ι] [NormedAddCommGroup F] [NormedSpace ℝ F] [NormedSpace ℂ F]
+    [IsScalarTower ℝ ℂ F] [CompleteSpace F]
+    (D : ColumnTreeData V) (μ : VectorMeasure Ω ℂ) [IsFiniteMeasure μ.variation]
+    (A : Ω → ℕ → InheritedColumnMask D) (θ : Ω → ℕ → Bool) (m : ℕ) (z : ColumnL2 V)
+    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1)
+    (hmeas : ∀ i, AEStronglyMeasurable (fun ω => operatorComplementProduct
+      (fun l => cellColumnProjection D (A ω l) (B.decision_mem i)) (θ ω) m z) μ.variation) :
+    finiteRowNorm (fun i => B.row i (complexMeasureIntegral μ (fun ω =>
+      operatorComplementProduct
+        (fun l => cellColumnProjection D (A ω l) (B.decision_mem i)) (θ ω) m z))) ≤
+      ((1024 * ((m : ℝ) + 1) ^ 1024 * Real.log (2 * D.budget)) ^ (1024 * (m + 1)) * ‖z‖) *
+        μ.variation.real Set.univ := by
+  let Q := fun ω i => operatorComplementProduct
+    (fun l => cellColumnProjection D (A ω l) (B.decision_mem i)) (θ ω) m z
+  have hQ (i : ι) : Integrable (fun ω => Q ω i) μ.variation := by
+    apply memLp_one_iff_integrable.mp
+    apply MemLp.of_bound (hmeas i) ‖z‖
+    apply ae_of_all
+    intro ω
+    exact operatorComplementProduct_norm_apply_le _ (θ ω) m
+      (fun _ _ => isStarProjection_starProjection) z
+  have hrow (i : ι) : Integrable (fun ω => B.row i (Q ω i)) μ.variation :=
+    (B.row i).integrable_comp (hQ i)
+  have hlog : 0 ≤ Real.log (2 * D.budget) := zero_le_one.trans (columnBudget_log_one_le D)
+  have h := finiteRowNorm_complexMeasureIntegral_le μ (fun ω i => B.row i (Q ω i)) hrow
+    (show 0 ≤ (1024 * ((m : ℝ) + 1) ^ 1024 * Real.log (2 * D.budget)) ^
+      (1024 * (m + 1)) * ‖z‖ by positivity)
+    (ae_of_all _ (fun ω => columnSpatialCompression_complements D (A ω) (θ ω) m z B hB))
+  have he : (fun i => B.row i (complexMeasureIntegral μ (fun ω => Q ω i))) =
+      (fun i => complexMeasureIntegral μ (fun ω => B.row i (Q ω i))) := by
+    funext i
+    exact complexMeasureIntegral_map μ (B.row i) (hQ i)
+  change finiteRowNorm (fun i => B.row i (complexMeasureIntegral μ (fun ω => Q ω i))) ≤ _
+  rw [he]
+  exact h
+
+/-! ### Quadratic chart definitions
+
+Blueprint `def:chart`, lines 625-637. The horizontal frequencies and the
+ordinary real quadratic and linear phases are unrestricted. Complexity is
+charged only to dimension, rational matrix height, support and cutoff derivatives.
+-/
+
+/-- A coordinate mixed derivative, indexed by its ordered coordinate word.
+For smooth functions this is the usual multi-index derivative of total order `m`. -/
+noncomputable def coordinateWordDerivative {d : ℕ} (m : ℕ)
+    (χ : (Fin d → ℝ) → ℂ) (word : Fin m → Fin d) (z : Fin d → ℝ) : ℂ :=
+  iteratedFDeriv ℝ m χ z (fun i => Pi.single (word i) 1)
+
+theorem coordinateWordDerivative_zero {d : ℕ} (χ : (Fin d → ℝ) → ℂ)
+    (word : Fin 0 → Fin d) (z : Fin d → ℝ) :
+    coordinateWordDerivative 0 χ word z = χ z := rfl
+
+/-- The data in the source quadratic chart formula. Smoothness means
+`C-infinity`, and imposes no analyticity assumption on the compact cutoff. -/
+structure QuadraticChartData (d : ℕ) where
+  horizontal : Fin d → ℝ
+  quadratic : ℝ
+  linear : ℝ
+  matrix : Matrix (Fin d) (Fin d) ℚ
+  amplitude : (Fin d → ℝ) → ℂ
+  smooth : ContDiff ℝ (⊤ : ℕ∞) amplitude
+  compact : HasCompactSupport amplitude
+
+/-- The bilinear phase `z^T C w` in a quadratic chart. -/
+noncomputable def chartMatrixPhase {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (z w : Fin d → ℝ) : ℝ := ∑ i, ∑ j, z i * (C i j : ℝ) * w j
+
+noncomputable def chartHorizontalPosition {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
+    Fin d → ℝ := fun i => A.horizontal i * y
+
+noncomputable def chartLatticeRemainder {d : ℕ} (A : QuadraticChartData d)
+    (y : ℝ) (n : Fin d → ℤ) : Fin d → ℝ :=
+  fun i => A.horizontal i * y - (n i : ℝ)
+
+noncomputable def quadraticChartLatticeSummand {d : ℕ} (A : QuadraticChartData d)
+    (y : ℝ) (n : Fin d → ℤ) : ℂ :=
+  A.amplitude (chartLatticeRemainder A y n) *
+    (Real.fourierChar (chartMatrixPhase A.matrix (chartHorizontalPosition A y)
+      (chartLatticeRemainder A y n)) : ℂ)
+
+/-- Blueprint `def:chart`, formula (atom): the actual quadratic chart function. -/
+noncomputable def quadraticChartAtom {d : ℕ} (A : QuadraticChartData d) (y : ℝ) : ℂ :=
+  (Real.fourierChar (A.quadratic * y ^ 2 + A.linear * y) : ℂ) *
+    ∑' n : Fin d → ℤ, quadraticChartLatticeSummand A y n
+
+/-- The source complexity convention at one fixed Gevrey order `c₀`.
+Coordinate words encode mixed partial derivatives and their length is total order.
+The real phase and horizontal parameters deliberately carry no size restrictions. -/
+structure QuadraticChartComplexity {d : ℕ} (c₀ : ℕ) (H : ℝ)
+    (A : QuadraticChartData d) : Prop where
+  lower : Real.exp 2 ≤ H
+  dimension : (d : ℝ) ≤ Real.log H
+  height : ∀ i j, (rationalHeight (A.matrix i j) : ℝ) ≤ H
+  support : ∀ z, A.amplitude z ≠ 0 → ∀ i, |z i| ≤ H
+  derivative : ∀ (m : ℕ) (word : Fin m → Fin d) (z : Fin d → ℝ),
+    ‖coordinateWordDerivative m A.amplitude word z‖ ≤
+      H ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1))
+
+/-- A bounded atom has pointwise supremum norm at most one. -/
+def IsBoundedQuadraticChart {d : ℕ} (A : QuadraticChartData d) : Prop :=
+  ∀ y : ℝ, ‖quadraticChartAtom A y‖ ≤ 1
+
+theorem quadraticChartComplexity_parameter_pos {d c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) : 0 < H :=
+  (Real.exp_pos 2).trans_le hA.lower
+
+theorem quadraticChartComplexity_amplitude_bound {d c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (z : Fin d → ℝ) :
+    ‖A.amplitude z‖ ≤ H ^ c₀ := by
+  simpa only [coordinateWordDerivative_zero, Nat.zero_add, mul_one, Nat.cast_zero,
+    zero_add, one_pow] using hA.derivative 0 Fin.elim0 z
+
+theorem norm_quadraticChartLatticeSummand {d : ℕ} (A : QuadraticChartData d)
+    (y : ℝ) (n : Fin d → ℤ) :
+    ‖quadraticChartLatticeSummand A y n‖ = ‖A.amplitude (chartLatticeRemainder A y n)‖ := by
+  rw [quadraticChartLatticeSummand, norm_mul, Circle.norm_coe, mul_one]
+
+theorem norm_quadraticChartAtom {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
+    ‖quadraticChartAtom A y‖ = ‖∑' n : Fin d → ℤ, quadraticChartLatticeSummand A y n‖ := by
+  rw [quadraticChartAtom, norm_mul, Circle.norm_coe, one_mul]
+
+/-! ### Quadratic chart lattice sums -/
+
+/-- A finite integer box containing every lattice translate that can
+meet a cutoff supported in `[-H,H]^d` at horizontal position `z`. -/
+noncomputable def chartLatticeBox {d : ℕ} (H : ℝ) (z : Fin d → ℝ) :
+    Finset (Fin d → ℤ) :=
+  Fintype.piFinset (fun i => Finset.Icc ⌊z i - H⌋ ⌊z i + H⌋)
+
+theorem mem_chartLatticeBox_of_bound {d : ℕ} {H : ℝ} {z : Fin d → ℝ}
+    {n : Fin d → ℤ} (hn : ∀ i, |z i - (n i : ℝ)| ≤ H) :
+    n ∈ chartLatticeBox H z := by
+  apply Fintype.mem_piFinset.mpr
+  intro i
+  obtain ⟨hlo, hhi⟩ := abs_le.mp (hn i)
+  have hl : z i - H ≤ (n i : ℝ) := by linarith
+  have hu : (n i : ℝ) ≤ z i + H := by linarith
+  refine Finset.mem_Icc.mpr ⟨?_, Int.le_floor.mpr hu⟩
+  simpa using Int.floor_mono hl
+
+theorem chartLatticeBox_card_le {d : ℕ} {H : ℝ} (hH : 0 ≤ H) (z : Fin d → ℝ) :
+    ((chartLatticeBox H z).card : ℝ) ≤ (2 * H + 3) ^ d := by
+  rw [chartLatticeBox, Fintype.card_piFinset, Nat.cast_prod]
+  calc
+    _ ≤ ∏ _i : Fin d, (2 * H + 3) := by
+      apply Finset.prod_le_prod₀
+      · intro i _
+        positivity
+      · intro i _
+        have hh := integer_floor_interval_card_le (show z i - H ≤ z i + H by linarith)
+        linarith
+    _ = _ := by simp
+
+theorem quadraticChartSummand_eq_zero_off_box {d : ℕ} (A : QuadraticChartData d)
+    {H : ℝ} (hχ : ∀ z, A.amplitude z ≠ 0 → ∀ i, |z i| ≤ H)
+    (y : ℝ) {n : Fin d → ℤ} (hn : n ∉ chartLatticeBox H (chartHorizontalPosition A y)) :
+    quadraticChartLatticeSummand A y n = 0 := by
+  have hz : A.amplitude (chartLatticeRemainder A y n) = 0 := by
+    by_contra hh
+    apply hn
+    exact mem_chartLatticeBox_of_bound (hχ _ hh)
+  simp only [quadraticChartLatticeSummand, hz, zero_mul]
+
+theorem quadraticChartData_support_bound {d : ℕ} (A : QuadraticChartData d) :
+    ∃ H : ℝ, 0 < H ∧ ∀ z, A.amplitude z ≠ 0 → ∀ i, |z i| ≤ H := by
+  obtain ⟨H, hH, hbound⟩ := A.compact.isBounded.exists_pos_norm_le
+  refine ⟨H, hH, ?_⟩
+  intro z hz i
+  have hznorm : ‖z‖ ≤ H := hbound z (subset_tsupport A.amplitude hz)
+  exact (show |z i| ≤ ‖z‖ by simpa only [Real.norm_eq_abs] using norm_le_pi_norm z i).trans hznorm
+
+/-- Compact support makes the chart's lattice series a genuine finite sum. -/
+theorem quadraticChartLatticeSummand_finite_support {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
+    (Function.support (quadraticChartLatticeSummand A y)).Finite := by
+  obtain ⟨H, _, hχ⟩ := quadraticChartData_support_bound A
+  apply (chartLatticeBox H (chartHorizontalPosition A y)).finite_toSet.subset
+  intro n hn
+  by_contra hh
+  exact hn (quadraticChartSummand_eq_zero_off_box A hχ y hh)
+
+theorem quadraticChartLatticeSummand_summable {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
+    Summable (quadraticChartLatticeSummand A y) :=
+  summable_of_hasFiniteSupport (quadraticChartLatticeSummand_finite_support A y)
+
+theorem quadraticChartAtom_eq_sum {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
+    (hA : QuadraticChartComplexity c₀ H A) (y : ℝ) :
+    quadraticChartAtom A y = (Real.fourierChar (A.quadratic * y ^ 2 + A.linear * y) : ℂ) *
+      ∑ n ∈ chartLatticeBox H (chartHorizontalPosition A y),
+        quadraticChartLatticeSummand A y n := by
+  rw [quadraticChartAtom, tsum_eq_sum (s := chartLatticeBox H (chartHorizontalPosition A y))
+    (fun n hn => quadraticChartSummand_eq_zero_off_box A hA.support y hn)]
+
+/-- Blueprint `def:chart`, lines 635-637: at most `(2H+3)^d` nonzero
+lattice summands contribute at a point. -/
+theorem quadraticChart_nonzero_summands_card_le {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
+    (hA : QuadraticChartComplexity c₀ H A) (y : ℝ) :
+    ((quadraticChartLatticeSummand_finite_support A y).toFinset.card : ℝ) ≤ (2 * H + 3) ^ d := by
+  apply le_trans _ (chartLatticeBox_card_le (quadraticChartComplexity_parameter_pos hA).le
+    (chartHorizontalPosition A y))
+  apply Nat.cast_le.mpr
+  apply Finset.card_le_card
+  intro n hn
+  have hne := (Set.Finite.mem_toFinset _).mp hn
+  by_contra hh
+  exact hne (quadraticChartSummand_eq_zero_off_box A hA.support y hh)
+
+theorem quadraticChartAtom_norm_le {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
+    (hA : QuadraticChartComplexity c₀ H A) (y : ℝ) :
+    ‖quadraticChartAtom A y‖ ≤ (2 * H + 3) ^ d * H ^ c₀ := by
+  rw [quadraticChartAtom_eq_sum hA y, norm_mul, Circle.norm_coe, one_mul]
+  calc
+    _ ≤ ∑ n ∈ chartLatticeBox H (chartHorizontalPosition A y),
+        ‖quadraticChartLatticeSummand A y n‖ :=
+      norm_sum_le _ _
+    _ ≤ ∑ _n ∈ chartLatticeBox H (chartHorizontalPosition A y), H ^ c₀ := by
+      apply Finset.sum_le_sum
+      intro n _
+      rw [norm_quadraticChartLatticeSummand]
+      exact quadraticChartComplexity_amplitude_bound hA _
+    _ = ((chartLatticeBox H (chartHorizontalPosition A y)).card : ℝ) * H ^ c₀ := by simp
+    _ ≤ _ := mul_le_mul_of_nonneg_right
+      (chartLatticeBox_card_le (quadraticChartComplexity_parameter_pos hA).le
+        (chartHorizontalPosition A y)) (pow_nonneg (quadraticChartComplexity_parameter_pos hA).le _)
+
+/-! ### Quadratic chart normalization -/
+
+/-- Ordinary quadratic phases are zero-dimensional chart atoms. -/
+noncomputable def ordinaryQuadraticChart (lam β : ℝ) : QuadraticChartData 0 where
+  horizontal := Fin.elim0
+  quadratic := lam
+  linear := β
+  matrix := fun i => Fin.elim0 i
+  amplitude := fun _ => 1
+  smooth := contDiff_const
+  compact := (Set.toFinite _).isCompact
+
+theorem ordinaryQuadraticChart_atom (lam β y : ℝ) :
+    quadraticChartAtom (ordinaryQuadraticChart lam β) y =
+      (Real.fourierChar (lam * y ^ 2 + β * y) : ℂ) := by
+  simp [quadraticChartAtom, quadraticChartLatticeSummand, ordinaryQuadraticChart, chartMatrixPhase]
+
+theorem ordinaryQuadraticChart_complexity (c₀ : ℕ) {H : ℝ} (hH : Real.exp 2 ≤ H)
+    (lam β : ℝ) : QuadraticChartComplexity c₀ H (ordinaryQuadraticChart lam β) := by
+  have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
+  refine ⟨hH, ?_, ?_, ?_, ?_⟩
+  · simpa only [Nat.cast_zero] using Real.log_nonneg hH1
+  · intro i
+    exact Fin.elim0 i
+  · intro z _ i
+    exact Fin.elim0 i
+  · intro m word z
+    cases m with
+    | zero =>
+      simpa [coordinateWordDerivative_zero, ordinaryQuadraticChart] using one_le_pow₀ hH1 (n := c₀)
+    | succ m => exact Fin.elim0 (word 0)
+
+theorem ordinaryQuadraticChart_bounded (lam β : ℝ) :
+    IsBoundedQuadraticChart (ordinaryQuadraticChart lam β) := by
+  intro y
+  rw [ordinaryQuadraticChart_atom, Circle.norm_coe]
+
+/-- Scalar sizes are external coefficients; multiplying the cutoff
+by a scalar of modulus at most one does not increase complexity. -/
+noncomputable def scaleQuadraticChartAmplitude {d : ℕ} (a : ℂ) (A : QuadraticChartData d) :
+    QuadraticChartData d where
+  horizontal := A.horizontal
+  quadratic := A.quadratic
+  linear := A.linear
+  matrix := A.matrix
+  amplitude := fun z => a * A.amplitude z
+  smooth := contDiff_const.mul A.smooth
+  compact := A.compact.mul_left
+
+theorem coordinateWordDerivative_scaleChart {d : ℕ} (a : ℂ) (A : QuadraticChartData d)
+    (m : ℕ) (word : Fin m → Fin d) (z : Fin d → ℝ) :
+    coordinateWordDerivative m (scaleQuadraticChartAmplitude a A).amplitude word z =
+      a * coordinateWordDerivative m A.amplitude word z := by
+  have hf : ContDiffAt ℝ m A.amplitude z := A.smooth.contDiffAt.of_le (by simp)
+  unfold coordinateWordDerivative
+  change iteratedFDeriv ℝ m (a • A.amplitude) z _ = _
+  rw [iteratedFDeriv_const_smul_apply hf]
+  rfl
+
+theorem scaleQuadraticChartAmplitude_atom {d : ℕ} (a : ℂ) (A : QuadraticChartData d) (y : ℝ) :
+    quadraticChartAtom (scaleQuadraticChartAmplitude a A) y = a * quadraticChartAtom A y := by
+  have he : ∀ n, quadraticChartLatticeSummand (scaleQuadraticChartAmplitude a A) y n =
+      a * quadraticChartLatticeSummand A y n := by
+    intro n
+    have hh : chartHorizontalPosition (scaleQuadraticChartAmplitude a A) y =
+        chartHorizontalPosition A y := rfl
+    have hr : chartLatticeRemainder (scaleQuadraticChartAmplitude a A) y n =
+        chartLatticeRemainder A y n := rfl
+    change (a * A.amplitude (chartLatticeRemainder (scaleQuadraticChartAmplitude a A) y n)) *
+        (Real.fourierChar (chartMatrixPhase A.matrix
+          (chartHorizontalPosition (scaleQuadraticChartAmplitude a A) y)
+          (chartLatticeRemainder (scaleQuadraticChartAmplitude a A) y n)) : ℂ) =
+      a * (A.amplitude (chartLatticeRemainder A y n) *
+        (Real.fourierChar (chartMatrixPhase A.matrix (chartHorizontalPosition A y)
+          (chartLatticeRemainder A y n)) : ℂ))
+    rw [hh, hr, mul_assoc]
+  change (Real.fourierChar (A.quadratic * y ^ 2 + A.linear * y) : ℂ) *
+      (∑' n, quadraticChartLatticeSummand (scaleQuadraticChartAmplitude a A) y n) =
+    a * ((Real.fourierChar (A.quadratic * y ^ 2 + A.linear * y) : ℂ) *
+      ∑' n, quadraticChartLatticeSummand A y n)
+  rw [tsum_congr he, tsum_mul_left]
+  ring
+
+theorem scaleQuadraticChartAmplitude_complexity {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
+    (hA : QuadraticChartComplexity c₀ H A) {a : ℂ} (ha : ‖a‖ ≤ 1) :
+    QuadraticChartComplexity c₀ H (scaleQuadraticChartAmplitude a A) := by
+  refine ⟨hA.lower, hA.dimension, hA.height, ?_, ?_⟩
+  · intro z hz
+    apply hA.support z
+    intro hh
+    exact hz (by simp [scaleQuadraticChartAmplitude, hh])
+  · intro m word z
+    rw [coordinateWordDerivative_scaleChart, norm_mul]
+    exact (mul_le_of_le_one_left (norm_nonneg _) ha).trans (hA.derivative m word z)
+
+noncomputable def chartNormalizationFactor (d c₀ : ℕ) (H : ℝ) : ℝ :=
+  (2 * H + 3) ^ d * H ^ c₀
+
+noncomputable def chartNormalizationBudget (c₀ : ℕ) (H : ℝ) : ℝ :=
+  Real.exp ((c₀ + 10 : ℝ) * logarithmicSize H ^ 2)
+
+theorem chartNormalizationBudget_quasipolynomial (c₀ : ℕ) :
+    QuasipolynomialBound (chartNormalizationBudget c₀) := by
+  refine ⟨(c₀ + 10 : ℝ), ?_, 2, by norm_num, ?_⟩
+  · have hh := Nat.cast_nonneg (α := ℝ) c₀
+    linarith
+  · intro H _
+    exact ⟨(Real.exp_pos _).le, le_rfl⟩
+
+theorem chartNormalizationFactor_one_le (d c₀ : ℕ) {H : ℝ} (hH : 1 ≤ H) :
+    1 ≤ chartNormalizationFactor d c₀ H := by
+  have hbase : 1 ≤ 2 * H + 3 := by linarith
+  have hleft : 1 ≤ (2 * H + 3) ^ d := one_le_pow₀ hbase
+  have hright : 1 ≤ H ^ c₀ := one_le_pow₀ hH
+  unfold chartNormalizationFactor
+  nlinarith
+
+theorem chartNormalizationFactor_le_budget {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
+    (hA : QuadraticChartComplexity c₀ H A) :
+    chartNormalizationFactor d c₀ H ≤ chartNormalizationBudget c₀ H := by
+  have hH2 : 2 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hHp : 0 < H := by linarith
+  have hlogH : 2 ≤ Real.log H := by
+    have hh := Real.log_le_log (Real.exp_pos 2) hA.lower
+    rwa [Real.log_exp] at hh
+  have hbasep : 0 < 2 * H + 3 := by linarith
+  have hlogbase : Real.log (2 * H + 3) ≤ 3 * Real.log H := by
+    have hh := Real.log_le_log hbasep (show 2 * H + 3 ≤ 4 * H by linarith)
+    rw [Real.log_mul (by norm_num : (4 : ℝ) ≠ 0) hHp.ne'] at hh
+    have h4 := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 4)
+    norm_num at h4
+    linarith
+  have hN : 0 < chartNormalizationFactor d c₀ H :=
+    mul_pos (pow_pos hbasep _) (pow_pos hHp _)
+  have hlogN : Real.log (chartNormalizationFactor d c₀ H) =
+      (d : ℝ) * Real.log (2 * H + 3) + (c₀ : ℝ) * Real.log H := by
+    rw [chartNormalizationFactor, Real.log_mul (pow_pos hbasep _).ne' (pow_pos hHp _).ne',
+      Real.log_pow, Real.log_pow]
+  unfold chartNormalizationBudget
+  rw [← Real.exp_log hN]
+  apply Real.exp_le_exp.mpr
+  rw [hlogN]
+  unfold logarithmicSize
+  have hprod := mul_le_mul hA.dimension hlogbase
+    (Real.log_nonneg (show 1 ≤ 2 * H + 3 by linarith)) (show 0 ≤ Real.log H by linarith)
+  nlinarith [Nat.cast_nonneg (α := ℝ) c₀,
+    mul_nonneg (Nat.cast_nonneg (α := ℝ) c₀) (sq_nonneg (Real.log H)),
+    mul_nonneg (Nat.cast_nonneg (α := ℝ) c₀) (show 0 ≤ Real.log H by linarith)]
+
+/-- Blueprint `def:chart`, lines 635-637: normalize to an actual bounded
+chart of the same complexity, paying only a quasipolynomial external scalar. -/
+theorem quadraticChart_normalize {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
+    (hA : QuadraticChartComplexity c₀ H A) :
+    ∃ (N : ℝ) (A' : QuadraticChartData d), 1 ≤ N ∧ N ≤ chartNormalizationBudget c₀ H ∧
+      QuadraticChartComplexity c₀ H A' ∧ IsBoundedQuadraticChart A' ∧
+      ∀ y, quadraticChartAtom A y = (N : ℂ) * quadraticChartAtom A' y := by
+  let N := chartNormalizationFactor d c₀ H
+  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hN1 : 1 ≤ N := chartNormalizationFactor_one_le d c₀ hH1
+  have hNp : 0 < N := by linarith
+  have hNC : (N : ℂ) ≠ 0 := by exact_mod_cast hNp.ne'
+  have ha : ‖(N : ℂ)⁻¹‖ ≤ 1 := by
+    rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hNp]
+    simpa only [one_div] using (div_le_one hNp).mpr hN1
+  refine ⟨N, scaleQuadraticChartAmplitude (N : ℂ)⁻¹ A, hN1,
+    chartNormalizationFactor_le_budget hA, scaleQuadraticChartAmplitude_complexity hA ha, ?_, ?_⟩
+  · intro y
+    rw [scaleQuadraticChartAmplitude_atom, norm_mul, norm_inv, Complex.norm_real,
+      Real.norm_eq_abs, abs_of_pos hNp]
+    calc
+      _ ≤ N⁻¹ * N := mul_le_mul_of_nonneg_left (quadraticChartAtom_norm_le hA y)
+        (inv_nonneg.mpr hNp.le)
+      _ = 1 := inv_mul_cancel₀ hNp.ne'
+  · intro y
+    rw [scaleQuadraticChartAmplitude_atom]
+    simp [hNC]
+
+/-! ### Quadratic chart conjugation -/
+
+/-- Blueprint `lem:chart-operations`: conjugate the cutoff and negate both
+ordinary phases and the rational matrix. -/
+noncomputable def conjugateQuadraticChart {d : ℕ} (A : QuadraticChartData d) :
+    QuadraticChartData d where
+  horizontal := A.horizontal
+  quadratic := -A.quadratic
+  linear := -A.linear
+  matrix := -A.matrix
+  amplitude := fun z => star (A.amplitude z)
+  smooth := Complex.conjCLE.contDiff.comp A.smooth
+  compact := A.compact.comp_left (map_zero Complex.conjCLE)
+
+theorem chartMatrixPhase_neg {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (z w : Fin d → ℝ) : chartMatrixPhase (-C) z w = -chartMatrixPhase C z w := by
+  simp [chartMatrixPhase, Finset.sum_neg_distrib]
+
+theorem coordinateWordDerivative_conjugateChart {d : ℕ} (A : QuadraticChartData d)
+    (m : ℕ) (word : Fin m → Fin d) (z : Fin d → ℝ) :
+    coordinateWordDerivative m (conjugateQuadraticChart A).amplitude word z =
+      star (coordinateWordDerivative m A.amplitude word z) := by
+  change (iteratedFDeriv ℝ m (Complex.conjCLE ∘ A.amplitude) z) _ = _
+  rw [Complex.conjCLE.iteratedFDeriv_comp_left]
+  rfl
+
+/-- Conjugation gives exactly the pointwise complex conjugate of the atom. -/
+theorem conjugateQuadraticChart_atom {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
+    quadraticChartAtom (conjugateQuadraticChart A) y = star (quadraticChartAtom A y) := by
+  have he : ∀ n, quadraticChartLatticeSummand (conjugateQuadraticChart A) y n =
+      star (quadraticChartLatticeSummand A y n) := by
+    intro n
+    have hh : chartHorizontalPosition (conjugateQuadraticChart A) y =
+        chartHorizontalPosition A y := rfl
+    have hr : chartLatticeRemainder (conjugateQuadraticChart A) y n =
+        chartLatticeRemainder A y n := rfl
+    change star (A.amplitude _) * (Real.fourierChar (chartMatrixPhase (-A.matrix) _ _) : ℂ)
+      = star (A.amplitude _ * (Real.fourierChar _ : ℂ))
+    rw [hh, hr, chartMatrixPhase_neg, AddChar.map_neg_eq_inv, Circle.coe_inv_eq_conj]
+    exact (map_mul (starRingEnd ℂ) _ _).symm
+  unfold quadraticChartAtom
+  rw [tsum_congr he]
+  have ht : (∑' n : Fin d → ℤ, star (quadraticChartLatticeSummand A y n)) =
+      star (∑' n : Fin d → ℤ, quadraticChartLatticeSummand A y n) :=
+    Complex.conjCLE.map_tsum.symm
+  rw [ht]
+  have hp : (conjugateQuadraticChart A).quadratic * y ^ 2 +
+      (conjugateQuadraticChart A).linear * y = -(A.quadratic * y ^ 2 + A.linear * y) := by
+    dsimp [conjugateQuadraticChart]
+    ring
+  rw [hp, AddChar.map_neg_eq_inv, Circle.coe_inv_eq_conj]
+  exact (map_mul (starRingEnd ℂ) _ _).symm
+
+/-- Blueprint `lem:chart-operations`: conjugation preserves the exact
+original dimension, height, support and fixed-order Gevrey budget. -/
+theorem conjugateQuadraticChart_complexity {d c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) :
+    QuadraticChartComplexity c₀ H (conjugateQuadraticChart A) where
+  lower := hA.lower
+  dimension := hA.dimension
+  height := by simpa [conjugateQuadraticChart, rationalHeight_neg] using hA.height
+  support := by
+    intro z hz
+    apply hA.support z
+    simpa [conjugateQuadraticChart] using hz
+  derivative := by
+    intro m word z
+    rw [coordinateWordDerivative_conjugateChart, norm_star]
+    exact hA.derivative m word z
+
+/-- Blueprint `lem:chart-operations`: a bounded chart stays bounded under conjugation. -/
+theorem conjugateQuadraticChart_bounded {d : ℕ} {A : QuadraticChartData d}
+    (hA : IsBoundedQuadraticChart A) : IsBoundedQuadraticChart (conjugateQuadraticChart A) := by
+  intro y
+  rw [conjugateQuadraticChart_atom, norm_star]
+  exact hA y
+
+/-! ### Quadratic chart dilation -/
+
+/-- Blueprint `lem:chart-operations`: a real dilation changes only the
+unrestricted horizontal, quadratic and linear frequencies. -/
+noncomputable def dilateQuadraticChart {d : ℕ} (a : ℝ) (A : QuadraticChartData d) :
+    QuadraticChartData d :=
+  { A with horizontal := fun i => A.horizontal i * a
+           quadratic := A.quadratic * a ^ 2
+           linear := A.linear * a }
+
+/-- The dilated chart is the exact dilated atom, including dilation by zero. -/
+theorem dilateQuadraticChart_atom {d : ℕ} (a : ℝ) (A : QuadraticChartData d) (y : ℝ) :
+    quadraticChartAtom (dilateQuadraticChart a A) y = quadraticChartAtom A (a * y) := by
+  have hh : chartHorizontalPosition (dilateQuadraticChart a A) y =
+      chartHorizontalPosition A (a * y) := by
+    funext i
+    dsimp [chartHorizontalPosition, dilateQuadraticChart]
+    ring
+  have hr : ∀ n, chartLatticeRemainder (dilateQuadraticChart a A) y n =
+      chartLatticeRemainder A (a * y) n := by
+    intro n
+    funext i
+    dsimp [chartLatticeRemainder, dilateQuadraticChart]
+    ring
+  have hp : (dilateQuadraticChart a A).quadratic * y ^ 2 +
+      (dilateQuadraticChart a A).linear * y = A.quadratic * (a * y) ^ 2 +
+        A.linear * (a * y) := by
+    dsimp [dilateQuadraticChart]
+    ring
+  unfold quadraticChartAtom
+  rw [hp]
+  congr 1
+  apply tsum_congr
+  intro n
+  change A.amplitude _ * (Real.fourierChar (chartMatrixPhase A.matrix _ _) : ℂ) =
+    A.amplitude _ * (Real.fourierChar (chartMatrixPhase A.matrix _ _) : ℂ)
+  rw [hh, hr]
+
+/-- Blueprint `lem:chart-operations`: dilation has no complexity cost,
+uniformly over every real dilation parameter. -/
+theorem dilateQuadraticChart_complexity {d c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (a : ℝ) :
+    QuadraticChartComplexity c₀ H (dilateQuadraticChart a A) where
+  lower := hA.lower
+  dimension := hA.dimension
+  height := hA.height
+  support := hA.support
+  derivative := hA.derivative
+
+/-- Blueprint `lem:chart-operations`: dilation preserves pointwise boundedness. -/
+theorem dilateQuadraticChart_bounded {d : ℕ} {A : QuadraticChartData d}
+    (hA : IsBoundedQuadraticChart A) (a : ℝ) :
+    IsBoundedQuadraticChart (dilateQuadraticChart a A) := by
+  intro y
+  rw [dilateQuadraticChart_atom]
+  exact hA (a * y)
+
+/-! ### Quadratic chart products -/
+
+/-- Block-diagonal rational matrix on concatenated finite coordinates. -/
+def chartBlockMatrix {d e : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (D : Matrix (Fin e) (Fin e) ℚ) : Matrix (Fin (d + e)) (Fin (d + e)) ℚ :=
+  fun i j => Fin.addCases (fun i => Fin.addCases (C i) (fun _ => 0) j)
+    (fun i => Fin.addCases (fun _ => 0) (D i) j) i
+
+theorem chartMatrixPhase_block {d e : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (D : Matrix (Fin e) (Fin e) ℚ) (z w : Fin (d + e) → ℝ) :
+    chartMatrixPhase (chartBlockMatrix C D) z w =
+      chartMatrixPhase C (fun i => z (Fin.castAdd e i)) (fun i => w (Fin.castAdd e i)) +
+      chartMatrixPhase D (fun i => z (Fin.natAdd d i)) (fun i => w (Fin.natAdd d i)) := by
+  simp [chartMatrixPhase, chartBlockMatrix, Fin.sum_univ_add]
+
+/-- Product of the two cutoffs in their disjoint coordinate blocks. -/
+noncomputable def productChartAmplitude {d e : ℕ} (A : QuadraticChartData d)
+    (B : QuadraticChartData e) (z : Fin (d + e) → ℝ) : ℂ :=
+  A.amplitude (fun i => z (Fin.castAdd e i)) *
+    B.amplitude (fun i => z (Fin.natAdd d i))
+
+theorem productChartAmplitude_smooth {d e : ℕ} (A : QuadraticChartData d)
+    (B : QuadraticChartData e) : ContDiff ℝ (⊤ : ℕ∞) (productChartAmplitude A B) := by
+  exact (A.smooth.comp (contDiff_pi.mpr fun i => contDiff_apply ℝ ℝ (Fin.castAdd e i))).mul
+    (B.smooth.comp (contDiff_pi.mpr fun i => contDiff_apply ℝ ℝ (Fin.natAdd d i)))
+
+theorem productChartAmplitude_compact {d e : ℕ} (A : QuadraticChartData d)
+    (B : QuadraticChartData e) : HasCompactSupport (productChartAmplitude A B) := by
+  obtain ⟨H, hH, hA⟩ := quadraticChartData_support_bound A
+  obtain ⟨K, hK, hB⟩ := quadraticChartData_support_bound B
+  apply HasCompactSupport.of_support_subset_isCompact (isCompact_closedBall 0 (max H K))
+  intro z hz
+  have hn : A.amplitude (fun i => z (Fin.castAdd e i)) ≠ 0 ∧
+      B.amplitude (fun i => z (Fin.natAdd d i)) ≠ 0 := mul_ne_zero_iff.mp hz
+  rw [Metric.mem_closedBall, dist_zero_right]
+  apply (pi_norm_le_iff_of_nonneg (le_max_of_le_left hH.le)).mpr
+  intro i
+  refine Fin.addCases (fun j => ?_) (fun j => ?_) i
+  · exact (hA _ hn.1 j).trans (le_max_left H K)
+  · exact (hB _ hn.2 j).trans (le_max_right H K)
+
+/-- Blueprint `lem:chart-operations`: concatenate horizontal coordinates,
+add ordinary phases, and take a block-diagonal rational matrix. -/
+noncomputable def productQuadraticChart {d e : ℕ} (A : QuadraticChartData d)
+    (B : QuadraticChartData e) : QuadraticChartData (d + e) where
+  horizontal := Fin.append A.horizontal B.horizontal
+  quadratic := A.quadratic + B.quadratic
+  linear := A.linear + B.linear
+  matrix := chartBlockMatrix A.matrix B.matrix
+  amplitude := productChartAmplitude A B
+  smooth := productChartAmplitude_smooth A B
+  compact := productChartAmplitude_compact A B
+
+theorem productQuadraticChart_summand {d e : ℕ} (A : QuadraticChartData d)
+    (B : QuadraticChartData e) (y : ℝ) (n : Fin d → ℤ) (m : Fin e → ℤ) :
+    quadraticChartLatticeSummand (productQuadraticChart A B) y (Fin.append n m) =
+      quadraticChartLatticeSummand A y n * quadraticChartLatticeSummand B y m := by
+  have hl : (fun i => chartLatticeRemainder (productQuadraticChart A B) y
+      (Fin.append n m) (Fin.castAdd e i)) = chartLatticeRemainder A y n := by
+    funext i
+    simp [chartLatticeRemainder, productQuadraticChart]
+  have hr : (fun i => chartLatticeRemainder (productQuadraticChart A B) y
+      (Fin.append n m) (Fin.natAdd d i)) = chartLatticeRemainder B y m := by
+    funext i
+    simp [chartLatticeRemainder, productQuadraticChart]
+  have hzl : (fun i => chartHorizontalPosition (productQuadraticChart A B) y
+      (Fin.castAdd e i)) = chartHorizontalPosition A y := by
+    funext i
+    simp [chartHorizontalPosition, productQuadraticChart]
+  have hzr : (fun i => chartHorizontalPosition (productQuadraticChart A B) y
+      (Fin.natAdd d i)) = chartHorizontalPosition B y := by
+    funext i
+    simp [chartHorizontalPosition, productQuadraticChart]
+  change (A.amplitude _ * B.amplitude _) *
+    (Real.fourierChar (chartMatrixPhase (chartBlockMatrix A.matrix B.matrix) _ _) : ℂ) = _
+  rw [chartMatrixPhase_block, hl, hr, hzl, hzr, AddChar.map_add_eq_mul, Circle.coe_mul]
+  simp only [quadraticChartLatticeSummand]
+  ring
+
+/-- Blueprint `lem:chart-operations`: the block construction is exactly
+pointwise multiplication, with all lattice sums factored legitimately. -/
+theorem productQuadraticChart_atom {d e : ℕ} (A : QuadraticChartData d)
+    (B : QuadraticChartData e) (y : ℝ) :
+    quadraticChartAtom (productQuadraticChart A B) y =
+      quadraticChartAtom A y * quadraticChartAtom B y := by
+  have hs : (∑' k, quadraticChartLatticeSummand (productQuadraticChart A B) y k) =
+      (∑' n, quadraticChartLatticeSummand A y n) *
+        ∑' m, quadraticChartLatticeSummand B y m := by
+    calc
+      _ = ∑' p : (Fin d → ℤ) × (Fin e → ℤ),
+          quadraticChartLatticeSummand (productQuadraticChart A B) y
+            (Fin.append p.1 p.2) := ((Fin.appendEquiv d e).tsum_eq _).symm
+      _ = ∑' p : (Fin d → ℤ) × (Fin e → ℤ),
+          quadraticChartLatticeSummand A y p.1 * quadraticChartLatticeSummand B y p.2 :=
+        tsum_congr (fun p => productQuadraticChart_summand A B y p.1 p.2)
+      _ = _ := (tsum_mul_tsum_of_summable_norm
+        (summable_of_hasFiniteSupport (by
+          simpa only [Function.HasFiniteSupport, Function.support, norm_ne_zero_iff] using
+            quadraticChartLatticeSummand_finite_support A y))
+        (summable_of_hasFiniteSupport (by
+          simpa only [Function.HasFiniteSupport, Function.support, norm_ne_zero_iff] using
+            quadraticChartLatticeSummand_finite_support B y))).symm
+  have hp : (productQuadraticChart A B).quadratic * y ^ 2 +
+      (productQuadraticChart A B).linear * y =
+      (A.quadratic * y ^ 2 + A.linear * y) + (B.quadratic * y ^ 2 + B.linear * y) := by
+    dsimp [productQuadraticChart]
+    ring
+  unfold quadraticChartAtom
+  rw [hs, hp, AddChar.map_add_eq_mul, Circle.coe_mul]
+  ring
+
+/-! ### Quadratic chart product complexity -/
+
+/-- Coordinate bounds control the multilinear operator norm with the
+finite-dimensional cost `d^m`. This includes order and dimension zero. -/
+theorem chart_multilinear_norm_le_coordinates {d m : ℕ}
+    (T : ContinuousMultilinearMap ℝ (fun _ : Fin m => Fin d → ℝ) ℂ)
+    {M : ℝ} (hM : 0 ≤ M)
+    (hT : ∀ word : Fin m → Fin d, ‖T (fun i => Pi.single (word i) 1)‖ ≤ M) :
+    ‖T‖ ≤ (d : ℝ) ^ m * M := by
+  apply ContinuousMultilinearMap.opNorm_le_bound (mul_nonneg (by positivity) hM)
+  intro v
+  have hv : v = fun i => ∑ j : Fin d, (v i j) • Pi.single j (1 : ℝ) := by
+    funext i j
+    simp [Pi.smul_apply, Pi.single_apply]
+  calc
+    ‖T v‖ = ‖∑ word : Fin m → Fin d,
+        T (fun i => (v i (word i)) • Pi.single (word i) (1 : ℝ))‖ := by
+      conv_lhs => rw [hv]
+      rw [T.map_sum]
+    _ ≤ ∑ _word : Fin m → Fin d, M * ∏ i, ‖v i‖ := by
+      apply (norm_sum_le _ _).trans
+      apply Finset.sum_le_sum
+      intro word _
+      rw [T.map_smul_univ, norm_smul, norm_prod]
+      calc
+        _ ≤ (∏ i, ‖v i‖) * M := mul_le_mul
+          (Finset.prod_le_prod₀ (fun _ _ => norm_nonneg _)
+            (fun i _ => norm_le_pi_norm (v i) (word i))) (hT word)
+          (norm_nonneg _) (by positivity)
+        _ = _ := mul_comm _ _
+    _ = ((d : ℝ) ^ m * M) * ∏ i, ‖v i‖ := by
+      simp [mul_assoc]
+
+/-- From the source coordinate Gevrey bounds to an operator-norm bound.
+The fixed Gevrey order is positive; no increase in that order is needed. -/
+theorem chart_cutoff_iteratedFDeriv_bound {d c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A)
+    (hc : 1 ≤ c₀) (m : ℕ) (z : Fin d → ℝ) :
+    ‖iteratedFDeriv ℝ m A.amplitude z‖ ≤
+      H ^ (2 * c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
+  have hH : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hd : (d : ℝ) ≤ H := hA.dimension.trans (Real.log_le_self (by linarith))
+  have h := chart_multilinear_norm_le_coordinates (iteratedFDeriv ℝ m A.amplitude z)
+    (M := H ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)))
+    (mul_nonneg (pow_nonneg (by linarith) _) (by positivity))
+    (hA.derivative m · z)
+  refine h.trans ?_
+  calc
+    _ ≤ H ^ m * (H ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1))) :=
+      mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (Nat.cast_nonneg d) hd m)
+        (mul_nonneg (pow_nonneg (by linarith) _) (by positivity))
+    _ = H ^ (m + c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
+      rw [pow_add, mul_assoc]
+    _ ≤ _ := mul_le_mul_of_nonneg_right (pow_le_pow_right₀ hH (by nlinarith))
+      (by positivity)
+
+/-- Restriction to a chosen coordinate list, allowing repeated coordinates. -/
+noncomputable def chartCoordinateRestriction {d D : ℕ} (s : Fin d → Fin D) :
+    (Fin D → ℝ) →L[ℝ] (Fin d → ℝ) :=
+  ContinuousLinearMap.pi (fun i => ContinuousLinearMap.proj (s i))
+
+theorem chartCoordinateRestriction_norm_le {d D : ℕ} (s : Fin d → Fin D) :
+    ‖chartCoordinateRestriction s‖ ≤ 1 := by
+  apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
+  intro z
+  simp only [one_mul]
+  exact (pi_norm_le_iff_of_nonneg (norm_nonneg z)).mpr
+    (fun i => norm_le_pi_norm z (s i))
+
+theorem chart_cutoff_restriction_bound {d D c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A)
+    (hc : 1 ≤ c₀) (s : Fin d → Fin D) (m : ℕ) (z : Fin D → ℝ) :
+    ‖iteratedFDeriv ℝ m (fun x => A.amplitude (fun i => x (s i))) z‖ ≤
+      H ^ (2 * c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
+  change ‖iteratedFDeriv ℝ m (A.amplitude ∘ chartCoordinateRestriction s) z‖ ≤ _
+  rw [(chartCoordinateRestriction s).iteratedFDeriv_comp_right A.smooth z (by simp)]
+  apply le_trans (ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _)
+  have hp : (∏ _i : Fin m, ‖chartCoordinateRestriction s‖) ≤ 1 := by
+    simpa using (Finset.prod_le_prod₀ (s := Finset.univ) (fun _ _ => norm_nonneg _)
+      (fun (_i : Fin m) _ => chartCoordinateRestriction_norm_le s))
+  calc
+    _ ≤ ‖iteratedFDeriv ℝ m A.amplitude (chartCoordinateRestriction s z)‖ * 1 :=
+      mul_le_mul_of_nonneg_left hp (norm_nonneg _)
+    _ ≤ _ := by simpa only [mul_one] using chart_cutoff_iteratedFDeriv_bound hA hc m _
+
+/-- Leibniz's rule in operator norm, with a geometric derivative majorant. -/
+theorem chart_product_derivative_geometric {D m : ℕ}
+    {f g : (Fin D → ℝ) → ℂ} (hf : ContDiff ℝ (⊤ : ℕ∞) f)
+    (hg : ContDiff ℝ (⊤ : ℕ∞) g) (z : Fin D → ℝ) {R : ℝ} (hR : 0 ≤ R)
+    (hfi : ∀ i ≤ m, ‖iteratedFDeriv ℝ i f z‖ ≤ R ^ (i + 1))
+    (hgi : ∀ i ≤ m, ‖iteratedFDeriv ℝ i g z‖ ≤ R ^ (i + 1)) :
+    ‖iteratedFDeriv ℝ m (fun x => f x * g x) z‖ ≤ 2 ^ m * R ^ (m + 2) := by
+  apply (norm_iteratedFDeriv_mul_le hf hg z (by simp)).trans
+  calc
+    _ ≤ ∑ i ∈ Finset.range (m + 1), (m.choose i : ℝ) * R ^ (m + 2) := by
+      apply Finset.sum_le_sum
+      intro i hi
+      have hi' : i ≤ m := by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hi
+      calc
+        _ ≤ (m.choose i : ℝ) * R ^ (i + 1) * R ^ (m - i + 1) := by
+          gcongr
+          · exact hfi i hi'
+          · exact hgi (m - i) (Nat.sub_le _ _)
+        _ = _ := by
+          rw [mul_assoc, ← pow_add]
+          congr 2
+          omega
+    _ = _ := by
+      rw [← Finset.sum_mul]
+      congr 1
+      exact_mod_cast Nat.sum_range_choose m
+
+theorem chart_cutoff_restriction_geometric {d D c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A)
+    (hc : 1 ≤ c₀) (s : Fin d → Fin D) (m i : ℕ) (hi : i ≤ m) (z : Fin D → ℝ) :
+    ‖iteratedFDeriv ℝ i (fun x => A.amplitude (fun j => x (s j))) z‖ ≤
+      (H ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀) ^ (i + 1) := by
+  apply (chart_cutoff_restriction_bound hA hc s i z).trans
+  rw [mul_pow, ← pow_mul, ← pow_mul]
+  apply mul_le_mul_of_nonneg_left _
+    (pow_nonneg (quadraticChartComplexity_parameter_pos hA).le _)
+  apply pow_le_pow_left₀ (by positivity)
+  exact_mod_cast Nat.add_le_add_right hi 1
+
+/-- The elementary scalar estimate preserving the fixed Gevrey order in
+the product rule. A sixth power of the old height absorbs all extra factors. -/
+theorem chart_product_geometric_budget {H : ℝ} (hH : 2 ≤ H)
+    {c₀ : ℕ} (hc : 1 ≤ c₀) (m : ℕ) :
+    2 ^ m * (H ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀) ^ (m + 2) ≤
+      (H ^ 6) ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
+  have hH1 : 1 ≤ H := by linarith
+  have htwo : (2 : ℝ) ^ m ≤ H ^ (c₀ * (m + 1)) :=
+    (pow_le_pow_left₀ (by norm_num) hH m).trans
+      (pow_le_pow_right₀ hH1 (by nlinarith))
+  have hm : (m + 1 : ℝ) ≤ H ^ (m + 1) := by
+    have hn : (m + 1 : ℝ) ≤ (2 : ℝ) ^ m := by
+      exact_mod_cast (m.lt_two_pow_self).succ_le
+    exact hn.trans ((pow_le_pow_left₀ (by norm_num) hH m).trans
+      (pow_le_pow_right₀ hH1 (by omega)))
+  have hm' : (m + 1 : ℝ) ^ c₀ ≤ H ^ (c₀ * (m + 1)) := by
+    simpa only [← pow_mul, Nat.mul_comm] using pow_le_pow_left₀ (by positivity) hm c₀
+  have hbase : H ^ (2 * c₀ * (m + 2)) ≤ H ^ (4 * (c₀ * (m + 1))) :=
+    pow_le_pow_right₀ hH1 (by nlinarith)
+  rw [mul_pow, ← pow_mul, ← pow_mul]
+  have he : c₀ * (m + 2) = c₀ * (m + 1) + c₀ := by ring
+  rw [he, pow_add]
+  calc
+    _ ≤ H ^ (c₀ * (m + 1)) *
+        (H ^ (4 * (c₀ * (m + 1))) *
+          ((m + 1 : ℝ) ^ (c₀ * (m + 1)) * H ^ (c₀ * (m + 1)))) := by
+      gcongr
+    _ = (H ^ 6) ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
+      calc
+        _ = (H ^ (c₀ * (m + 1)) * H ^ (4 * (c₀ * (m + 1))) *
+            H ^ (c₀ * (m + 1))) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by ring
+        _ = _ := by
+          rw [← pow_add, ← pow_add, ← pow_mul]
+          congr 2
+          omega
+
+/-- The product cutoff retains the same Gevrey order, with height budget `H^6`. -/
+theorem productChartAmplitude_derivative_bound {d e c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} {B : QuadraticChartData e}
+    (hA : QuadraticChartComplexity c₀ H A) (hB : QuadraticChartComplexity c₀ H B)
+    (hc : 1 ≤ c₀) (m : ℕ) (word : Fin m → Fin (d + e)) (z : Fin (d + e) → ℝ) :
+    ‖coordinateWordDerivative m (productChartAmplitude A B) word z‖ ≤
+      (H ^ 6) ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
+  have hH : 2 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hf : ContDiff ℝ (⊤ : ℕ∞)
+      (fun x : Fin (d + e) → ℝ => A.amplitude (fun i => x (Fin.castAdd e i))) :=
+    A.smooth.comp (chartCoordinateRestriction (Fin.castAdd e)).contDiff
+  have hg : ContDiff ℝ (⊤ : ℕ∞)
+      (fun x : Fin (d + e) → ℝ => B.amplitude (fun i => x (Fin.natAdd d i))) :=
+    B.smooth.comp (chartCoordinateRestriction (Fin.natAdd d)).contDiff
+  have h := chart_product_derivative_geometric hf hg z
+    (R := H ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀)
+    (mul_nonneg (pow_nonneg (by linarith) _) (by positivity))
+    (fun i hi => chart_cutoff_restriction_geometric hA hc _ m i hi z)
+    (fun i hi => chart_cutoff_restriction_geometric hB hc _ m i hi z)
+  change ‖iteratedFDeriv ℝ m (productChartAmplitude A B) z‖ ≤ _ at h
+  apply le_trans _ (h.trans (chart_product_geometric_budget hH hc m))
+  simpa [coordinateWordDerivative, Pi.norm_single] using
+    (iteratedFDeriv ℝ m (productChartAmplitude A B) z).le_opNorm
+      (fun i => Pi.single (word i) 1)
+
+/-- Blueprint `lem:chart-operations`: the product of two complexity-`H`
+charts has complexity at most `H^6`, uniformly in every real frequency. -/
+theorem productQuadraticChart_complexity {d e c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} {B : QuadraticChartData e}
+    (hA : QuadraticChartComplexity c₀ H A) (hB : QuadraticChartComplexity c₀ H B)
+    (hc : 1 ≤ c₀) : QuadraticChartComplexity c₀ (H ^ 6) (productQuadraticChart A B) := by
+  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hHH : H ≤ H ^ 6 := le_self_pow₀ hH1 (by norm_num)
+  have hz : (rationalHeight (0 : ℚ) : ℝ) ≤ H ^ 6 := by
+    simpa [rationalHeight] using hH1.trans hHH
+  constructor
+  · exact hA.lower.trans hHH
+  · rw [Nat.cast_add, Real.log_pow]
+    norm_num only [Nat.cast_ofNat]
+    have hlog : 0 ≤ Real.log H := Real.log_nonneg hH1
+    nlinarith [hA.dimension, hB.dimension]
+  · intro i j
+    refine Fin.addCases (fun i => ?_) (fun i => ?_) i
+    · refine Fin.addCases (fun j => ?_) (fun j => ?_) j
+      · simpa [productQuadraticChart, chartBlockMatrix] using (hA.height i j).trans hHH
+      · simpa [productQuadraticChart, chartBlockMatrix] using hz
+    · refine Fin.addCases (fun j => ?_) (fun j => ?_) j
+      · simpa [productQuadraticChart, chartBlockMatrix] using hz
+      · simpa [productQuadraticChart, chartBlockMatrix] using (hB.height i j).trans hHH
+  · intro z hz i
+    have hn : A.amplitude (fun i => z (Fin.castAdd e i)) ≠ 0 ∧
+        B.amplitude (fun i => z (Fin.natAdd d i)) ≠ 0 := mul_ne_zero_iff.mp hz
+    refine Fin.addCases (fun j => ?_) (fun j => ?_) i
+    · exact (hA.support _ hn.1 j).trans hHH
+    · exact (hB.support _ hn.2 j).trans hHH
+  · exact productChartAmplitude_derivative_bound hA hB hc
+
+/-! ### Fixed finite chart products -/
+
+theorem quadraticChartComplexity_mono {d c₀ : ℕ} {H K : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hHK : H ≤ K) :
+    QuadraticChartComplexity c₀ K A where
+  lower := hA.lower.trans hHK
+  dimension := hA.dimension.trans
+    (Real.log_le_log (quadraticChartComplexity_parameter_pos hA) hHK)
+  height := fun i j => (hA.height i j).trans hHK
+  support := fun z hz i => (hA.support z hz i).trans hHK
+  derivative := by
+    intro m word z
+    exact (hA.derivative m word z).trans (mul_le_mul_of_nonneg_right
+      (pow_le_pow_left₀ (quadraticChartComplexity_parameter_pos hA).le hHK _)
+      (by positivity))
+
+theorem productQuadraticChart_bounded {d e : ℕ} {A : QuadraticChartData d}
+    {B : QuadraticChartData e} (hA : IsBoundedQuadraticChart A)
+    (hB : IsBoundedQuadraticChart B) : IsBoundedQuadraticChart (productQuadraticChart A B) := by
+  intro y
+  rw [productQuadraticChart_atom, norm_mul]
+  simpa only [one_mul] using mul_le_mul (hA y) (hB y) (norm_nonneg _) zero_le_one
+
+/-- A finite product of charts of arbitrary, possibly different dimensions.
+The empty list is represented by the ordinary constant phase one. -/
+noncomputable def finiteQuadraticChartProduct :
+    (L : List (Σ d : ℕ, QuadraticChartData d)) → QuadraticChartData ((L.map Sigma.fst).sum)
+  | [] => ordinaryQuadraticChart 0 0
+  | A :: L => productQuadraticChart A.2 (finiteQuadraticChartProduct L)
+
+/-- Blueprint `lem:chart-operations`: exact multiplication of any finite list of atoms. -/
+theorem finiteQuadraticChartProduct_atom (L : List (Σ d : ℕ, QuadraticChartData d)) (y : ℝ) :
+    quadraticChartAtom (finiteQuadraticChartProduct L) y =
+      (L.map (fun A => quadraticChartAtom A.2 y)).prod := by
+  induction L with
+  | nil =>
+    change quadraticChartAtom (ordinaryQuadraticChart 0 0) y = 1
+    rw [ordinaryQuadraticChart_atom]
+    simp
+  | cons A L ih =>
+    change quadraticChartAtom (productQuadraticChart A.2 (finiteQuadraticChartProduct L)) y =
+      quadraticChartAtom A.2 y * (L.map (fun B => quadraticChartAtom B.2 y)).prod
+    rw [productQuadraticChart_atom, ih]
+
+/-- Blueprint `lem:chart-operations`: bounded atoms have bounded finite products. -/
+theorem finiteQuadraticChartProduct_bounded (L : List (Σ d : ℕ, QuadraticChartData d))
+    (hL : ∀ A ∈ L, IsBoundedQuadraticChart A.2) :
+    IsBoundedQuadraticChart (finiteQuadraticChartProduct L) := by
+  induction L with
+  | nil => exact ordinaryQuadraticChart_bounded 0 0
+  | cons A L ih =>
+    exact productQuadraticChart_bounded (hL A (List.mem_cons_self ..))
+      (ih (fun B hB => hL B (List.mem_cons_of_mem _ hB)))
+
+/-- Blueprint `lem:chart-operations`: a fixed finite product has a polynomial
+height budget, with exponent depending only on the number of factors. -/
+theorem finiteQuadraticChartProduct_complexity {c₀ : ℕ} {H : ℝ}
+    (hH : Real.exp 2 ≤ H) (hc : 1 ≤ c₀)
+    (L : List (Σ d : ℕ, QuadraticChartData d))
+    (hL : ∀ A ∈ L, QuadraticChartComplexity c₀ H A.2) :
+    QuadraticChartComplexity c₀ (H ^ (6 ^ L.length)) (finiteQuadraticChartProduct L) := by
+  have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
+  induction L with
+  | nil =>
+    simp only [List.length_nil, pow_zero, pow_one]
+    change QuadraticChartComplexity c₀ H (ordinaryQuadraticChart 0 0)
+    exact ordinaryQuadraticChart_complexity c₀ hH 0 0
+  | cons A L ih =>
+    have ht := ih (fun B hB => hL B (List.mem_cons_of_mem _ hB))
+    have ha := quadraticChartComplexity_mono (hL A (List.mem_cons_self ..))
+      (le_self_pow₀ hH1 (pow_ne_zero L.length (by decide : (6 : ℕ) ≠ 0)))
+    have h := productQuadraticChart_complexity ha ht hc
+    change QuadraticChartComplexity c₀ (H ^ (6 ^ (L.length + 1)))
+      (productQuadraticChart A.2 (finiteQuadraticChartProduct L))
+    rw [pow_succ, pow_mul]
+    exact h
+
+/-- The finite-product height budget is quasipolynomial for each fixed list length. -/
+theorem finiteChartProductBudget_quasipolynomial (q : ℕ) :
+    QuasipolynomialBound (fun H : ℝ => H ^ (6 ^ q)) := by
+  refine ⟨(6 ^ q : ℕ) + 1, le_add_of_nonneg_left (Nat.cast_nonneg _), 1, le_rfl, ?_⟩
+  intro H hH
+  refine ⟨pow_nonneg (by linarith) _, ?_⟩
+  have hHp : 0 < H := by linarith
+  have hlog : 0 ≤ Real.log H := Real.log_nonneg (by linarith)
+  calc
+    _ = Real.exp (((6 ^ q : ℕ) : ℝ) * Real.log H) := by
+      rw [Real.exp_nat_mul, Real.exp_log hHp]
+    _ ≤ _ := by
+      apply Real.exp_le_exp.mpr
+      simp only [logarithmicSize, pow_one]
+      nlinarith [Nat.cast_nonneg (α := ℝ) (6 ^ q)]
+
+/-! ### Chart translation offset reduction -/
+
+/-- Blueprint `lem:chart-operations`, line 646: clear the rational matrix
+with a positive common denominator bounded by `H^(d^2)`, for real height budgets. -/
+theorem chart_matrix_clear_denominators {d : ℕ} {H : ℝ} (hH : 0 ≤ H)
+    (C : Matrix (Fin d) (Fin d) ℚ) (hC : ∀ i j, (rationalHeight (C i j) : ℝ) ≤ H) :
+    ∃ (P : ℕ) (Z : Matrix (Fin d) (Fin d) ℤ), 0 < P ∧ (P : ℝ) ≤ H ^ (d ^ 2) ∧
+      ∀ i j, (Z i j : ℝ) = (P : ℝ) * (C i j : ℝ) := by
+  obtain ⟨P, Z, hP, hPB, hZ, _, _⟩ :=
+    rationalMatrix_clear_denominators C (fun i j => Nat.le_floor (hC i j))
+  refine ⟨P, Z, hP, ?_, fun i j => by exact_mod_cast hZ i j⟩
+  have hPB' : (P : ℝ) ≤ (⌊H⌋₊ : ℝ) ^ (d ^ 2) := by exact_mod_cast hPB
+  exact hPB'.trans (pow_le_pow_left₀ (Nat.cast_nonneg _) (Nat.floor_le hH) _)
+
+/-- Blueprint `lem:chart-operations`: every real offset is an integer
+multiple of the cleared denominator plus a remainder of coordinate size at most
+that denominator. The integer part pairs integrally with the rational matrix. -/
+theorem chart_translation_offset_reduction {d : ℕ} {H : ℝ} (hH : 0 ≤ H)
+    (C : Matrix (Fin d) (Fin d) ℚ) (hC : ∀ i j, (rationalHeight (C i j) : ℝ) ≤ H)
+    (v : Fin d → ℝ) :
+    ∃ (P : ℕ) (m : Fin d → ℤ) (a : Fin d → ℝ),
+      0 < P ∧ (P : ℝ) ≤ H ^ (d ^ 2) ∧
+      (∀ i, v i = (m i : ℝ) + a i) ∧ (∀ i, |a i| ≤ P) ∧
+      ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (C i j : ℝ) := by
+  obtain ⟨P, Z, hP, hPH, hZ⟩ := chart_matrix_clear_denominators hH C hC
+  have hPr : (0 : ℝ) < P := by exact_mod_cast hP
+  let k : Fin d → ℤ := fun i => ⌊v i / P⌋
+  let m : Fin d → ℤ := fun i => (P : ℤ) * k i
+  let a : Fin d → ℝ := fun i => v i - (m i : ℝ)
+  refine ⟨P, m, a, hP, hPH, ?_, ?_, ?_⟩
+  · intro i
+    dsimp [a]
+    ring
+  · intro i
+    have hlo : (k i : ℝ) * P ≤ v i :=
+      (le_div_iff₀ hPr).mp (Int.floor_le (v i / P))
+    have hhi : v i < ((k i : ℝ) + 1) * P :=
+      (div_lt_iff₀ hPr).mp (Int.lt_floor_add_one (v i / P))
+    dsimp [a, m]
+    push_cast
+    apply abs_le.mpr
+    constructor <;> nlinarith
+  · intro i j
+    refine ⟨k i * Z i j, ?_⟩
+    simp only [Int.cast_mul, hZ]
+    dsimp [m]
+    push_cast
+    ring
+
+/-- The omitted term in the source translation expansion is an integer phase. -/
+theorem chartMatrixPhase_integer_of_coefficients {d : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℚ) (m n : Fin d → ℤ)
+    (h : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (C i j : ℝ)) :
+    ∃ z : ℤ, (z : ℝ) = chartMatrixPhase C (fun i => (m i : ℝ)) (fun i => (n i : ℝ)) := by
+  choose Z hZ using h
+  refine ⟨∑ i, ∑ j, Z i j * n j, ?_⟩
+  simp only [Int.cast_sum, Int.cast_mul, hZ, chartMatrixPhase]
+
+/-- Integer errors do not change the real Fourier character. -/
+theorem chart_fourierChar_int (n : ℤ) : (Real.fourierChar (n : ℝ) : ℂ) = 1 := by
+  rw [Real.fourierChar_apply]
+  have he : ((2 * Real.pi * (n : ℝ) : ℝ) : ℂ) * Complex.I =
+      (n : ℂ) * (2 * Real.pi * Complex.I) := by
+    push_cast
+    ring
+  rw [he, Complex.exp_int_mul_two_pi_mul_I]
+
+theorem chart_fourierChar_add_int (x : ℝ) (n : ℤ) :
+    (Real.fourierChar (x + n) : ℂ) = Real.fourierChar x := by
+  rw [AddChar.map_add_eq_mul, Circle.coe_mul, chart_fourierChar_int, mul_one]
+
+/-! ### Exact chart translation -/
+
+theorem chartMatrixPhase_add_left {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (z z' w : Fin d → ℝ) :
+    chartMatrixPhase C (z + z') w = chartMatrixPhase C z w + chartMatrixPhase C z' w := by
+  simp [chartMatrixPhase, add_mul, Finset.sum_add_distrib]
+
+theorem chartMatrixPhase_add_right {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (z w w' : Fin d → ℝ) :
+    chartMatrixPhase C z (w + w') = chartMatrixPhase C z w + chartMatrixPhase C z w' := by
+  simp [chartMatrixPhase, mul_add, Finset.sum_add_distrib]
+
+theorem chartMatrixPhase_sub_right {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (z w w' : Fin d → ℝ) :
+    chartMatrixPhase C z (w - w') = chartMatrixPhase C z w - chartMatrixPhase C z w' := by
+  simp [chartMatrixPhase, mul_sub, Finset.sum_sub_distrib]
+
+theorem chartMatrixPhase_smul_left {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (r : ℝ) (z w : Fin d → ℝ) :
+    chartMatrixPhase C (r • z) w = r * chartMatrixPhase C z w := by
+  simp [chartMatrixPhase, Finset.mul_sum, mul_assoc]
+
+theorem chartMatrixPhase_smul_right {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (r : ℝ) (z w : Fin d → ℝ) :
+    chartMatrixPhase C z (r • w) = r * chartMatrixPhase C z w := by
+  simp [chartMatrixPhase, Finset.mul_sum, mul_assoc, mul_left_comm]
+
+/-- The source translation expansion as an exact equality before discarding
+the final integral bilinear term. -/
+theorem chartMatrixPhase_translation_identity {d : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℚ) (z a m n : Fin d → ℝ) :
+    chartMatrixPhase C (z + m + a) (z - n + a) =
+      chartMatrixPhase C z (z - n) + chartMatrixPhase C z a + chartMatrixPhase C m z +
+        chartMatrixPhase C a (z - n + a) + chartMatrixPhase C m a - chartMatrixPhase C m n := by
+  simp only [chartMatrixPhase_add_left, chartMatrixPhase_add_right,
+    chartMatrixPhase_sub_right]
+  ring
+
+theorem chart_fourierChar_smooth : ContDiff ℝ (⊤ : ℕ∞) (fun x : ℝ =>
+    (Real.fourierChar x : ℂ)) := by
+  simp only [Real.fourierChar_apply]
+  exact ((Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)).mul
+    contDiff_const).cexp
+
+/-- The translated, phase-modulated cutoff in the source proof. -/
+noncomputable def translatedChartAmplitude {d : ℕ} (A : QuadraticChartData d)
+    (a z : Fin d → ℝ) : ℂ :=
+  A.amplitude (z + a) * (Real.fourierChar (chartMatrixPhase A.matrix a (z + a)) : ℂ)
+
+theorem translatedChartAmplitude_smooth {d : ℕ} (A : QuadraticChartData d)
+    (a : Fin d → ℝ) : ContDiff ℝ (⊤ : ℕ∞) (translatedChartAmplitude A a) := by
+  apply (A.smooth.comp (contDiff_id.add contDiff_const)).mul
+  apply chart_fourierChar_smooth.comp
+  unfold chartMatrixPhase
+  fun_prop
+
+theorem translatedChartAmplitude_compact {d : ℕ} (A : QuadraticChartData d)
+    (a : Fin d → ℝ) : HasCompactSupport (translatedChartAmplitude A a) :=
+  (A.compact.comp_homeomorph (Homeomorph.addRight a)).mul_right
+
+/-- The ordinary constant phase created by translation is unrestricted. -/
+noncomputable def chartTranslationConstant {d : ℕ} (A : QuadraticChartData d)
+    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : ℝ :=
+  A.quadratic * t ^ 2 + A.linear * t + chartMatrixPhase A.matrix (fun i => (m i : ℝ)) a
+
+noncomputable def chartTranslationLinear {d : ℕ} (A : QuadraticChartData d)
+    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : ℝ :=
+  A.linear + 2 * A.quadratic * t + chartMatrixPhase A.matrix A.horizontal a +
+    chartMatrixPhase A.matrix (fun i => (m i : ℝ)) A.horizontal
+
+/-- The translated chart before multiplying by its constant unit phase. -/
+noncomputable def shiftedQuadraticChart {d : ℕ} (A : QuadraticChartData d)
+    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : QuadraticChartData d where
+  horizontal := A.horizontal
+  quadratic := A.quadratic
+  linear := chartTranslationLinear A t m a
+  matrix := A.matrix
+  amplitude := translatedChartAmplitude A a
+  smooth := translatedChartAmplitude_smooth A a
+  compact := translatedChartAmplitude_compact A a
+
+/-- Blueprint `lem:chart-operations`: the translated cutoff and the
+unrestricted ordinary phases, with the unit constant absorbed into the cutoff. -/
+noncomputable def translateQuadraticChart {d : ℕ} (A : QuadraticChartData d)
+    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : QuadraticChartData d :=
+  scaleQuadraticChartAmplitude (Real.fourierChar (chartTranslationConstant A t m a))
+    (shiftedQuadraticChart A t m a)
+
+theorem chart_translation_phase_identity {d : ℕ} (A : QuadraticChartData d)
+    (t y : ℝ) (m n : Fin d → ℤ) (a : Fin d → ℝ) :
+    A.quadratic * (y + t) ^ 2 + A.linear * (y + t) +
+      chartMatrixPhase A.matrix (y • A.horizontal + (fun i => (m i : ℝ)) + a)
+        (y • A.horizontal - (fun i => (n i : ℝ)) + a) +
+      chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (fun i => (n i : ℝ)) =
+    chartTranslationConstant A t m a +
+      (A.quadratic * y ^ 2 + chartTranslationLinear A t m a * y) +
+      chartMatrixPhase A.matrix a (y • A.horizontal - (fun i => (n i : ℝ)) + a) +
+      chartMatrixPhase A.matrix (y • A.horizontal) (y • A.horizontal - (fun i => (n i : ℝ))) := by
+  rw [chartMatrixPhase_translation_identity]
+  simp only [chartMatrixPhase_smul_left, chartMatrixPhase_smul_right,
+    chartTranslationConstant, chartTranslationLinear]
+  ring
+
+/-- Equality of the individual translated lattice terms after multiplication
+by the ordinary phase factors. The only discarded phase is proved integral. -/
+theorem translatedChart_phased_summand {d : ℕ} (A : QuadraticChartData d)
+    (t y : ℝ) (m n : Fin d → ℤ) (a : Fin d → ℝ)
+    (hoff : ∀ i, A.horizontal i * t = (m i : ℝ) + a i)
+    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) :
+    (Real.fourierChar (chartTranslationConstant A t m a) : ℂ) *
+      ((Real.fourierChar (A.quadratic * y ^ 2 + chartTranslationLinear A t m a * y) : ℂ) *
+        quadraticChartLatticeSummand (shiftedQuadraticChart A t m a) y n) =
+    (Real.fourierChar (A.quadratic * (y + t) ^ 2 + A.linear * (y + t)) : ℂ) *
+      quadraticChartLatticeSummand A (y + t) (n + m) := by
+  let z : Fin d → ℝ := y • A.horizontal
+  let w : Fin d → ℝ := z - (fun i => (n i : ℝ))
+  have hz : chartHorizontalPosition A (y + t) = z + (fun i => (m i : ℝ)) + a := by
+    funext i
+    dsimp [chartHorizontalPosition, z]
+    nlinarith [hoff i]
+  have hw : chartLatticeRemainder A (y + t) (n + m) = w + a := by
+    funext i
+    dsimp [chartLatticeRemainder, w, z]
+    push_cast
+    nlinarith [hoff i]
+  have hz' : chartHorizontalPosition (shiftedQuadraticChart A t m a) y = z := by
+    funext i
+    dsimp [chartHorizontalPosition, shiftedQuadraticChart, z]
+    ring
+  have hw' : chartLatticeRemainder (shiftedQuadraticChart A t m a) y n = w := by
+    funext i
+    dsimp [chartLatticeRemainder, shiftedQuadraticChart, w, z]
+    ring
+  obtain ⟨k, hk⟩ := chartMatrixPhase_integer_of_coefficients A.matrix m n hint
+  have hp := chart_translation_phase_identity A t y m n a
+  change A.quadratic * (y + t) ^ 2 + A.linear * (y + t) +
+      chartMatrixPhase A.matrix (z + (fun i => (m i : ℝ)) + a) (w + a) +
+      chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (fun i => (n i : ℝ)) =
+    chartTranslationConstant A t m a +
+      (A.quadratic * y ^ 2 + chartTranslationLinear A t m a * y) +
+      chartMatrixPhase A.matrix a (w + a) + chartMatrixPhase A.matrix z w at hp
+  have he : (Real.fourierChar (chartTranslationConstant A t m a +
+      (A.quadratic * y ^ 2 + chartTranslationLinear A t m a * y) +
+      chartMatrixPhase A.matrix a (w + a) + chartMatrixPhase A.matrix z w) : ℂ) =
+    Real.fourierChar (A.quadratic * (y + t) ^ 2 + A.linear * (y + t) +
+      chartMatrixPhase A.matrix (z + (fun i => (m i : ℝ)) + a) (w + a)) := by
+    rw [← hp, ← hk, chart_fourierChar_add_int]
+  unfold quadraticChartLatticeSummand
+  rw [hz, hw, hz', hw']
+  change (Real.fourierChar _ : ℂ) * ((Real.fourierChar _ : ℂ) *
+      ((A.amplitude (w + a) * (Real.fourierChar (chartMatrixPhase A.matrix a (w + a)) : ℂ)) *
+        (Real.fourierChar (chartMatrixPhase A.matrix z w) : ℂ))) = _
+  simp only [AddChar.map_add_eq_mul, Circle.coe_mul] at he ⊢
+  linear_combination A.amplitude (w + a) * he
+
+/-- Blueprint `lem:chart-operations`: the constructed chart is exactly
+the translated atom. Translation size is unrestricted. -/
+theorem translateQuadraticChart_atom {d : ℕ} (A : QuadraticChartData d)
+    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ)
+    (hoff : ∀ i, A.horizontal i * t = (m i : ℝ) + a i)
+    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) (y : ℝ) :
+    quadraticChartAtom (translateQuadraticChart A t m a) y = quadraticChartAtom A (y + t) := by
+  rw [translateQuadraticChart, scaleQuadraticChartAmplitude_atom]
+  unfold quadraticChartAtom
+  have hs : (∑' n, quadraticChartLatticeSummand A (y + t) n) =
+      ∑' n, quadraticChartLatticeSummand A (y + t) (n + m) :=
+    ((Equiv.addRight m).tsum_eq _).symm
+  rw [hs, ← tsum_mul_left, ← tsum_mul_left, ← tsum_mul_left]
+  apply tsum_congr
+  intro n
+  exact translatedChart_phased_summand A t y m n a hoff hint
+
+/-- Translation preserves the pointwise bound independently of its size. -/
+theorem translateQuadraticChart_bounded {d : ℕ} {A : QuadraticChartData d}
+    (hA : IsBoundedQuadraticChart A) (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ)
+    (hoff : ∀ i, A.horizontal i * t = (m i : ℝ) + a i)
+    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) :
+    IsBoundedQuadraticChart (translateQuadraticChart A t m a) := by
+  intro y
+  rw [translateQuadraticChart_atom A t m a hoff hint]
+  exact hA (y + t)
+
+/-! ### Translated chart cutoff derivatives -/
+
+theorem chart_fourierChar_iteratedDeriv (m : ℕ) (x : ℝ) :
+    iteratedDeriv m (fun t : ℝ => (Real.fourierChar t : ℂ)) x =
+      (2 * Real.pi * Complex.I) ^ m * (Real.fourierChar x : ℂ) := by
+  induction m generalizing x with
+  | zero => simp
+  | succ m ih =>
+    rw [iteratedDeriv_succ, show iteratedDeriv m (fun t : ℝ => (Real.fourierChar t : ℂ)) =
+      (fun t => (2 * Real.pi * Complex.I) ^ m * (Real.fourierChar t : ℂ)) from funext ih]
+    rw [((Real.hasDerivAt_fourierChar x).const_mul ((2 * Real.pi * Complex.I) ^ m)).deriv]
+    rw [pow_succ]
+    ring
+
+theorem chart_fourierChar_derivative_norm (m : ℕ) (x : ℝ) :
+    ‖iteratedFDeriv ℝ m (fun t : ℝ => (Real.fourierChar t : ℂ)) x‖ =
+      (2 * Real.pi) ^ m := by
+  rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, chart_fourierChar_iteratedDeriv,
+    norm_mul, norm_pow, Circle.norm_coe, mul_one]
+  congr 1
+  simp [Real.norm_eq_abs]
+
+/-- A real linear phase on the cutoff coordinates. -/
+noncomputable def chartMatrixLeftLinear {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (a : Fin d → ℝ) : (Fin d → ℝ) →L[ℝ] ℝ :=
+  ∑ i, ∑ j, (a i * (C i j : ℝ)) • ContinuousLinearMap.proj j
+
+theorem chartMatrixLeftLinear_apply {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
+    (a z : Fin d → ℝ) : chartMatrixLeftLinear C a z = chartMatrixPhase C a z := by
+  simp [chartMatrixLeftLinear, chartMatrixPhase]
+
+/-- Every derivative of a shifted linear Fourier phase has a geometric
+operator-norm bound, independent of the shift. -/
+theorem chart_linear_phase_derivative_bound {d : ℕ} (L : (Fin d → ℝ) →L[ℝ] ℝ)
+    (a z : Fin d → ℝ) (m : ℕ) :
+    ‖iteratedFDeriv ℝ m (fun x => (Real.fourierChar (L (x + a)) : ℂ)) z‖ ≤
+      (2 * Real.pi * ‖L‖) ^ m := by
+  rw [iteratedFDeriv_comp_add_right (f := fun u => (Real.fourierChar (L u) : ℂ)) m a z]
+  change ‖iteratedFDeriv ℝ m ((fun t : ℝ => (Real.fourierChar t : ℂ)) ∘ L) (z + a)‖ ≤ _
+  rw [L.iteratedFDeriv_comp_right chart_fourierChar_smooth (z + a) (by simp)]
+  apply (ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _).trans
+  rw [chart_fourierChar_derivative_norm]
+  simp [mul_pow]
+
+/-- The translated and phase-modulated cutoff obeys the same-order Gevrey
+bound at budget `T^6`, once `T` controls the old height and phase frequency. -/
+theorem translatedChartAmplitude_derivative_bound {d c₀ : ℕ} {H T : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
+    (hHT : H ≤ T) (a : Fin d → ℝ)
+    (hphase : 2 * Real.pi * ‖chartMatrixLeftLinear A.matrix a‖ ≤ T)
+    (m : ℕ) (word : Fin m → Fin d) (z : Fin d → ℝ) :
+    ‖coordinateWordDerivative m (translatedChartAmplitude A a) word z‖ ≤
+      (T ^ 6) ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
+  have hAT := quadraticChartComplexity_mono hA hHT
+  have hT : 2 ≤ T := by linarith [hAT.lower, Real.add_one_le_exp (2 : ℝ)]
+  let L := chartMatrixLeftLinear A.matrix a
+  let R := T ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀
+  have hR : T ≤ R := by
+    calc
+      T ≤ T ^ (2 * c₀) := le_self_pow₀ (by linarith) (by omega)
+      _ ≤ T ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀ :=
+        le_mul_of_one_le_right (pow_nonneg (by linarith) _)
+          (one_le_pow₀ (by exact_mod_cast Nat.succ_pos m))
+  have hfi : ∀ i ≤ m, ‖iteratedFDeriv ℝ i (fun x => A.amplitude (x + a)) z‖ ≤
+      R ^ (i + 1) := by
+    intro i hi
+    rw [iteratedFDeriv_comp_add_right]
+    exact chart_cutoff_restriction_geometric hAT hc id m i hi (z + a)
+  have hgi : ∀ i ≤ m, ‖iteratedFDeriv ℝ i (fun x => (Real.fourierChar (L (x + a)) : ℂ)) z‖ ≤
+      R ^ (i + 1) := by
+    intro i _
+    apply (chart_linear_phase_derivative_bound L a z i).trans
+    calc
+      _ ≤ R ^ i := pow_le_pow_left₀ (mul_nonneg (by positivity) (norm_nonneg _))
+        (hphase.trans hR) i
+      _ ≤ _ := pow_le_pow_right₀ (by linarith) (by omega)
+  have hf : ContDiff ℝ (⊤ : ℕ∞) (fun x => A.amplitude (x + a)) :=
+    A.smooth.comp (contDiff_id.add contDiff_const)
+  have hg : ContDiff ℝ (⊤ : ℕ∞) (fun x => (Real.fourierChar (L (x + a)) : ℂ)) :=
+    chart_fourierChar_smooth.comp (L.contDiff.comp (contDiff_id.add contDiff_const))
+  have h := chart_product_derivative_geometric hf hg z (by linarith : 0 ≤ R) hfi hgi
+  have he : (fun x => A.amplitude (x + a) * (Real.fourierChar (L (x + a)) : ℂ)) =
+      translatedChartAmplitude A a := by
+    funext x
+    rw [chartMatrixLeftLinear_apply]
+    rfl
+  rw [he] at h
+  apply le_trans _ (h.trans (chart_product_geometric_budget hT hc m))
+  simpa [coordinateWordDerivative, Pi.norm_single] using
+    (iteratedFDeriv ℝ m (translatedChartAmplitude A a) z).le_opNorm
+      (fun i => Pi.single (word i) 1)
+
+/-! ### Uniform chart translation complexity -/
+
+theorem chartMatrixLeftLinear_norm_le {d : ℕ} {H P : ℝ}
+    (C : Matrix (Fin d) (Fin d) ℚ) (a : Fin d → ℝ) (hH : 0 ≤ H) (hP : 0 ≤ P)
+    (hC : ∀ i j, |(C i j : ℝ)| ≤ H) (ha : ∀ i, |a i| ≤ P) :
+    ‖chartMatrixLeftLinear C a‖ ≤ (d : ℝ) ^ 2 * P * H := by
+  apply ContinuousLinearMap.opNorm_le_bound _ (by positivity)
+  intro z
+  rw [chartMatrixLeftLinear_apply, Real.norm_eq_abs]
+  calc
+    _ ≤ ∑ i, ∑ j, |a i| * |(C i j : ℝ)| * |z j| := by
+      apply (Finset.abs_sum_le_sum_abs _ _).trans
+      apply Finset.sum_le_sum
+      intro i _
+      simpa only [abs_mul] using Finset.abs_sum_le_sum_abs
+        (fun j => a i * (C i j : ℝ) * z j) Finset.univ
+    _ ≤ ∑ _i : Fin d, ∑ _j : Fin d, P * H * ‖z‖ := by
+      gcongr with i _ j _
+      · exact ha i
+      · exact hC i j
+      · exact norm_le_pi_norm z j
+    _ = ((d : ℝ) ^ 2 * P * H) * ‖z‖ := by simp; ring
+
+/-- An intermediate height controlling support and residual phase frequency. -/
+noncomputable def chartTranslationBase (d : ℕ) (H : ℝ) : ℝ := H ^ (d ^ 2 + 6)
+
+theorem chart_translation_base_controls {d c₀ : ℕ} {H P : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A)
+    (hP : 0 ≤ P) (hPH : P ≤ H ^ (d ^ 2)) (a : Fin d → ℝ) (ha : ∀ i, |a i| ≤ P) :
+    H ≤ chartTranslationBase d H ∧ H + P ≤ chartTranslationBase d H ∧
+      2 * Real.pi * ‖chartMatrixLeftLinear A.matrix a‖ ≤ chartTranslationBase d H := by
+  have hH3 : 3 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hH1 : 1 ≤ H := by linarith
+  have hH0 : 0 ≤ H := by linarith
+  have hd : (d : ℝ) ≤ H := hA.dimension.trans (Real.log_le_self hH0)
+  have hC : ∀ i j, |(A.matrix i j : ℝ)| ≤ H := by
+    intro i j
+    have h : |(A.matrix i j : ℝ)| ≤ (rationalHeight (A.matrix i j) : ℝ) := by
+      exact_mod_cast rational_abs_le_height (A.matrix i j)
+    exact h.trans (hA.height i j)
+  refine ⟨le_self_pow₀ hH1 (by omega), ?_, ?_⟩
+  · have h1 : H ≤ H ^ (d ^ 2 + 1) := le_self_pow₀ hH1 (by omega)
+    have h2 : P ≤ H ^ (d ^ 2 + 1) :=
+      hPH.trans (pow_le_pow_right₀ hH1 (by omega))
+    calc
+      H + P ≤ 2 * H ^ (d ^ 2 + 1) := by linarith
+      _ ≤ H * H ^ (d ^ 2 + 1) :=
+        mul_le_mul_of_nonneg_right (by linarith) (pow_nonneg hH0 _)
+      _ = H ^ (d ^ 2 + 2) := by rw [pow_succ]; ring
+      _ ≤ _ := pow_le_pow_right₀ hH1 (by omega)
+  · have hpi : 2 * Real.pi ≤ H ^ 2 := by nlinarith [Real.pi_lt_four]
+    have hn := chartMatrixLeftLinear_norm_le A.matrix a hH0 hP hC ha
+    calc
+      _ ≤ H ^ 2 * ((d : ℝ) ^ 2 * P * H) :=
+        mul_le_mul hpi hn (norm_nonneg _) (sq_nonneg _)
+      _ ≤ H ^ 2 * (H ^ 2 * H ^ (d ^ 2) * H) := by
+        gcongr
+      _ = H ^ (d ^ 2 + 5) := by rw [pow_add]; ring
+      _ ≤ _ := pow_le_pow_right₀ hH1 (by omega)
+
+/-- Translation complexity before replacing the dimension by its logarithmic bound. -/
+theorem translateQuadraticChart_complexity {d c₀ : ℕ} {H P : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
+    (hP : 0 ≤ P) (hPH : P ≤ H ^ (d ^ 2)) (t : ℝ) (m : Fin d → ℤ)
+    (a : Fin d → ℝ) (ha : ∀ i, |a i| ≤ P) :
+    QuadraticChartComplexity c₀ ((chartTranslationBase d H) ^ 6)
+      (translateQuadraticChart A t m a) := by
+  obtain ⟨hHT, hs, hp⟩ := chart_translation_base_controls hA hP hPH a ha
+  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hTT : chartTranslationBase d H ≤ (chartTranslationBase d H) ^ 6 :=
+    le_self_pow₀ (hH1.trans hHT) (by norm_num)
+  have hHT6 := hHT.trans hTT
+  apply scaleQuadraticChartAmplitude_complexity (A := shiftedQuadraticChart A t m a)
+    (a := (Real.fourierChar (chartTranslationConstant A t m a) : ℂ)) ?_ (by simp)
+  constructor
+  · exact hA.lower.trans hHT6
+  · exact hA.dimension.trans
+      (Real.log_le_log (quadraticChartComplexity_parameter_pos hA) hHT6)
+  · exact fun i j => (hA.height i j).trans hHT6
+  · intro z hz i
+    have hn : A.amplitude (z + a) ≠ 0 := (mul_ne_zero_iff.mp hz).1
+    have hb := hA.support (z + a) hn i
+    have hai := ha i
+    have hzi : |z i| ≤ H + P := by
+      simp only [Pi.add_apply] at hb
+      rcases abs_le.mp hb with ⟨hlo, hhi⟩
+      rcases abs_le.mp hai with ⟨alo, ahi⟩
+      exact abs_le.mpr ⟨by linarith, by linarith⟩
+    exact hzi.trans (hs.trans hTT)
+  · exact translatedChartAmplitude_derivative_bound hA hc hHT a hp
+
+/-- A uniform quasipolynomial budget for every real translation. -/
+noncomputable def chartTranslationBudget (H : ℝ) : ℝ :=
+  Real.exp (100 * logarithmicSize H ^ 3)
+
+theorem chartTranslationBudget_quasipolynomial : QuasipolynomialBound chartTranslationBudget := by
+  refine ⟨100, by norm_num, 3, by norm_num, ?_⟩
+  intro H _
+  exact ⟨(Real.exp_pos _).le, le_rfl⟩
+
+theorem chartTranslationBase_le_budget {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
+    (hA : QuadraticChartComplexity c₀ H A) :
+    (chartTranslationBase d H) ^ 6 ≤ chartTranslationBudget H := by
+  have hHp := quadraticChartComplexity_parameter_pos hA
+  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hlog : 0 ≤ Real.log H := Real.log_nonneg hH1
+  have hd2 : (d : ℝ) ^ 2 ≤ Real.log H ^ 2 :=
+    pow_le_pow_left₀ (Nat.cast_nonneg _) hA.dimension 2
+  have hprod := mul_le_mul_of_nonneg_right hd2 hlog
+  unfold chartTranslationBase chartTranslationBudget
+  rw [← pow_mul]
+  calc
+    _ = Real.exp (((d ^ 2 + 6) * 6 : ℕ) * Real.log H) := by
+      rw [Real.exp_nat_mul, Real.exp_log hHp]
+    _ ≤ _ := by
+      apply Real.exp_le_exp.mpr
+      simp only [logarithmicSize]
+      push_cast
+      nlinarith [sq_nonneg (Real.log H), pow_nonneg hlog 3]
+
+/-- Blueprint `lem:chart-operations`: every real translation is represented
+by a chart with a quasipolynomial complexity bound independent of the translation.
+The Gevrey order is unchanged and boundedness is preserved. -/
+theorem quadraticChart_translation_closure {d c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀) (t : ℝ) :
+    ∃ A' : QuadraticChartData d, QuadraticChartComplexity c₀ (chartTranslationBudget H) A' ∧
+      (IsBoundedQuadraticChart A → IsBoundedQuadraticChart A') ∧
+      ∀ y, quadraticChartAtom A' y = quadraticChartAtom A (y + t) := by
+  obtain ⟨P, m, a, hP, hPH, hoff, ha, hint⟩ := chart_translation_offset_reduction
+    (quadraticChartComplexity_parameter_pos hA).le A.matrix hA.height
+    (fun i => A.horizontal i * t)
+  refine ⟨translateQuadraticChart A t m a, ?_, ?_, ?_⟩
+  · exact quadraticChartComplexity_mono
+      (translateQuadraticChart_complexity hA hc (Nat.cast_nonneg P) hPH t m a ha)
+      (chartTranslationBase_le_budget hA)
+  · exact fun h => translateQuadraticChart_bounded h t m a hoff hint
+  · exact translateQuadraticChart_atom A t m a hoff hint
+
+/-! ### Affine chart closure -/
+
+/-- Blueprint `lem:chart-operations`: any real affine substitution preserves
+quadratic charts with one quasipolynomial bound independent of both real
+parameters. This includes zero and negative dilation and preserves boundedness. -/
+theorem quadraticChart_affine_closure {d c₀ : ℕ} {H : ℝ}
+    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
+    (s t : ℝ) :
+    ∃ A' : QuadraticChartData d, QuadraticChartComplexity c₀ (chartTranslationBudget H) A' ∧
+      (IsBoundedQuadraticChart A → IsBoundedQuadraticChart A') ∧
+      ∀ y, quadraticChartAtom A' y = quadraticChartAtom A (s * y + t) := by
+  obtain ⟨B, hB, hb, he⟩ := quadraticChart_translation_closure hA hc t
+  refine ⟨dilateQuadraticChart s B, dilateQuadraticChart_complexity hB s,
+    fun h => dilateQuadraticChart_bounded (hb h) s, ?_⟩
+  intro y
+  rw [dilateQuadraticChart_atom, he]
+
+/-! ### Several-variable chart formula -/
+
+/-- The several-variable source chart data, lines 656-660. The source uses
+one, two or three real variables; the same formula is meaningful in every
+finite dimension. Real horizontal and ordinary phase matrices are unrestricted. -/
+structure MultivariableQuadraticChartData (k d : ℕ) where
+  horizontal : Matrix (Fin d) (Fin k) ℝ
+  quadratic : Matrix (Fin k) (Fin k) ℝ
+  symmetric : quadratic.IsSymm
+  linear : Fin k → ℝ
+  matrix : Matrix (Fin d) (Fin d) ℚ
+  amplitude : (Fin d → ℝ) → ℂ
+  smooth : ContDiff ℝ (⊤ : ℕ∞) amplitude
+  compact : HasCompactSupport amplitude
+
+/-- The actual several-variable quadratic atom in the source display. -/
+noncomputable def multivariableQuadraticChartAtom {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) (z : Fin k → ℝ) : ℂ :=
+  (Real.fourierChar ((∑ i, ∑ j, z i * A.quadratic i j * z j) +
+    ∑ i, A.linear i * z i) : ℂ) *
+    ∑' n : Fin d → ℤ, A.amplitude (A.horizontal.mulVec z - (fun i => (n i : ℝ))) *
+      (Real.fourierChar (chartMatrixPhase A.matrix (A.horizontal.mulVec z)
+        (A.horizontal.mulVec z - (fun i => (n i : ℝ)))) : ℂ)
+
+/-- Restricting a several-variable chart to a real line changes only the
+unrestricted horizontal and ordinary phase parameters. -/
+noncomputable def multivariableChartAlongLine {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) (v : Fin k → ℝ) : QuadraticChartData d where
+  horizontal := A.horizontal.mulVec v
+  quadratic := ∑ i, ∑ j, v i * A.quadratic i j * v j
+  linear := ∑ i, A.linear i * v i
+  matrix := A.matrix
+  amplitude := A.amplitude
+  smooth := A.smooth
+  compact := A.compact
+
+/-- The same dimension, rational height and cutoff bounds as the one-variable
+definition. Evaluation on the zero line retains precisely this charged data. -/
+def MultivariableQuadraticChartComplexity {k d : ℕ} (c₀ : ℕ) (H : ℝ)
+    (A : MultivariableQuadraticChartData k d) : Prop :=
+  QuadraticChartComplexity c₀ H (multivariableChartAlongLine A 0)
+
+def IsBoundedMultivariableQuadraticChart {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) : Prop :=
+  ∀ z, ‖multivariableQuadraticChartAtom A z‖ ≤ 1
+
+theorem multivariableChartAlongLine_complexity {k d c₀ : ℕ} {H : ℝ}
+    {A : MultivariableQuadraticChartData k d} (hA : MultivariableQuadraticChartComplexity c₀ H A)
+    (v : Fin k → ℝ) : QuadraticChartComplexity c₀ H (multivariableChartAlongLine A v) where
+  lower := hA.lower
+  dimension := hA.dimension
+  height := hA.height
+  support := hA.support
+  derivative := hA.derivative
+
+/-- Exact line restriction of the source several-variable formula. -/
+theorem multivariableChartAlongLine_atom {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) (v : Fin k → ℝ) (y : ℝ) :
+    quadraticChartAtom (multivariableChartAlongLine A v) y =
+      multivariableQuadraticChartAtom A (y • v) := by
+  have hp : (multivariableChartAlongLine A v).quadratic * y ^ 2 +
+      (multivariableChartAlongLine A v).linear * y =
+      (∑ i, ∑ j, (y • v) i * A.quadratic i j * (y • v) j) +
+        ∑ i, A.linear i * (y • v) i := by
+    dsimp [multivariableChartAlongLine]
+    simp only [Finset.sum_mul]
+    congr 1
+    · apply Finset.sum_congr rfl
+      intro i _
+      apply Finset.sum_congr rfl
+      intro j _
+      ring
+    · apply Finset.sum_congr rfl
+      intro i _
+      ring
+  have hh : chartHorizontalPosition (multivariableChartAlongLine A v) y =
+      A.horizontal.mulVec (y • v) := by
+    rw [Matrix.mulVec_smul]
+    funext i
+    dsimp [chartHorizontalPosition, multivariableChartAlongLine]
+    ring
+  have hr : ∀ n, chartLatticeRemainder (multivariableChartAlongLine A v) y n =
+      A.horizontal.mulVec (y • v) - (fun i => (n i : ℝ)) := by
+    intro n
+    rw [Matrix.mulVec_smul]
+    funext i
+    dsimp [chartLatticeRemainder, multivariableChartAlongLine]
+    ring
+  unfold quadraticChartAtom multivariableQuadraticChartAtom
+  rw [hp]
+  congr 1
+  apply tsum_congr
+  intro n
+  change A.amplitude _ * (Real.fourierChar (chartMatrixPhase A.matrix _ _) : ℂ) = _
+  rw [hh, hr]
+
+theorem multivariableChartAlongLine_bounded {k d : ℕ}
+    {A : MultivariableQuadraticChartData k d} (hA : IsBoundedMultivariableQuadraticChart A)
+    (v : Fin k → ℝ) : IsBoundedQuadraticChart (multivariableChartAlongLine A v) := by
+  intro y
+  rw [multivariableChartAlongLine_atom]
+  exact hA (y • v)
+
+/-- Symmetric part of the rational chart matrix, as in source line 660. -/
+def chartSymmetricPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
+    Matrix (Fin d) (Fin d) ℚ := (1 / 2 : ℚ) • (C + C.transpose)
+
+/-- Skew-symmetric part of the rational chart matrix. -/
+def chartSkewPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
+    Matrix (Fin d) (Fin d) ℚ := (1 / 2 : ℚ) • (C - C.transpose)
+
+/-- The source alternating matrix `A = C - C^T`. -/
+def chartAlternatingMatrix {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
+    Matrix (Fin d) (Fin d) ℚ := C - C.transpose
+
+theorem chartSymmetricPart_isSymm {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
+    (chartSymmetricPart C).IsSymm := by
+  apply Matrix.IsSymm.ext
+  intro i j
+  simp [chartSymmetricPart, add_comm]
+
+theorem chartSkewPart_transpose {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
+    (chartSkewPart C).transpose = -chartSkewPart C := by
+  ext i j
+  simp [chartSkewPart]
+  ring
+
+theorem chartSymmetricPart_add_skew {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
+    chartSymmetricPart C + chartSkewPart C = C := by
+  ext i j
+  simp [chartSymmetricPart, chartSkewPart]
+  ring
+
+theorem chartAlternatingMatrix_eq_twice_skew {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
+    chartAlternatingMatrix C = (2 : ℚ) • chartSkewPart C := by
+  ext i j
+  simp [chartAlternatingMatrix, chartSkewPart]
+
+/-! ### Several-variable lattice finiteness -/
+
+/-- Compact support makes the several-variable lattice sum pointwise finite,
+just as in the original one-variable atom formula. -/
+theorem multivariableChartLatticeSummand_finite_support {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) (z : Fin k → ℝ) :
+    (Function.support (fun n : Fin d → ℤ =>
+      A.amplitude (A.horizontal.mulVec z - (fun i => (n i : ℝ))) *
+        (Real.fourierChar (chartMatrixPhase A.matrix (A.horizontal.mulVec z)
+          (A.horizontal.mulVec z - (fun i => (n i : ℝ)))) : ℂ))).Finite := by
+  simpa +unfoldPartialApp only [quadraticChartLatticeSummand, multivariableChartAlongLine,
+    chartHorizontalPosition, chartLatticeRemainder, mul_one, Pi.sub_def] using
+    quadraticChartLatticeSummand_finite_support (multivariableChartAlongLine A z) 1
+
+/-! ### Difference-set growth from minimal growth -/
+
+open scoped Pointwise
+
+/-- Blueprint `lem:sumset-growth`, lines 701-728: Ruzsa's triangle inequality
+in the source orientation. Mathlib supplies the injection-counting proof. -/
+theorem finite_difference_triangle {G : Type*} [AddCommGroup G] [DecidableEq G]
+    (B X C : Finset G) : (B - C).card * X.card ≤ (B - X).card * (X - C).card := by
+  have h := Finset.ruzsa_triangle_inequality_sub_sub_sub B X C
+  have he : (C - X).card = (X - C).card := by
+    rw [← Finset.card_neg (C - X), neg_sub]
+  simpa only [he] using h
+
+/-- Blueprint `lem:sumset-growth`, lines 701-728: the exact `K^(m+n)|A|`
+bound for all iterated sumset differences, including zero-fold sumsets.
+This specializes Mathlib's Plünnecke-Ruzsa theorem, whose proof uses a
+minimal-growth subset and the Petridis iteration from the source. -/
+theorem finite_difference_growth {G : Type*} [AddCommGroup G] [DecidableEq G]
+    (A : Finset G) (hA : A.Nonempty) {K : ℝ} (_hK : 1 ≤ K)
+    (hsmall : ((A - A).card : ℝ) ≤ K * A.card) (m n : ℕ) :
+    ((m • A - n • A).card : ℝ) ≤ K ^ (m + n) * A.card := by
+  have h := Finset.pluennecke_ruzsa_inequality_nsmul_sub_nsmul_sub hA A m n
+  have hr : ((m • A - n • A).card : ℝ) ≤
+      (((A - A).card : ℝ) / A.card) ^ (m + n) * A.card := by
+    simpa only [NNRat.cast_natCast, NNRat.cast_mul, NNRat.cast_pow, NNRat.cast_div] using
+      (NNRat.cast_le (K := ℝ)).mpr h
+  have hn : (0 : ℝ) < A.card := by exact_mod_cast hA.card_pos
+  have hratio : ((A - A).card : ℝ) / A.card ≤ K := (div_le_iff₀ hn).mpr hsmall
+  apply hr.trans
+  gcongr
+
+/-! ### Chang's theorem with the source Fourier normalization -/
+
+/-- The Fourier transform of `mu_X = 1_X/(|X|/q)` is the average of the
+negative-exponent character on `X`, including the empty-set convention. -/
+theorem finiteFourier_setDensity_eq_characterMean {q : ℕ} [NeZero q]
+    (X : Finset (ZMod q)) (ξ : ZMod q) :
+    finiteFourier (finiteSetDensity X) ξ = characterMean X (cyclicFrequencyEquiv q ξ) := by
+  rw [finiteFourier_eq_average, characterMean, Finset.expect_eq_sum_div_card]
+  simp only [finiteAverage, finiteSetDensity, ZMod.card, ite_mul, zero_mul,
+    cyclicFrequencyEquiv_apply]
+  rw [Finset.sum_ite_mem, ← Finset.mul_sum]
+  simp only [Finset.univ_inter]
+  have hq : (q : ℂ) ≠ 0 := by exact_mod_cast (NeZero.ne q)
+  field_simp
+
+/-- The exact large spectrum of the probability-normalized measure in the blueprint. -/
+noncomputable def finiteLargeSpectrum {q : ℕ} [NeZero q]
+    (X : Finset (ZMod q)) (η : ℝ) : Finset (ZMod q) := by
+  classical
+  exact Finset.univ.filter (fun ξ => η ≤ ‖finiteFourier (finiteSetDensity X) ξ‖)
+
+theorem mem_finiteLargeSpectrum {q : ℕ} [NeZero q]
+    (X : Finset (ZMod q)) (η : ℝ) (ξ : ZMod q) :
+    ξ ∈ finiteLargeSpectrum X η ↔ η ≤ ‖finiteFourier (finiteSetDensity X) ξ‖ := by
+  classical
+  simp [finiteLargeSpectrum]
+
+theorem finiteLargeSpectrum_character_iff {q : ℕ} [NeZero q]
+    (X : Finset (ZMod q)) (η : ℝ) (ξ : ZMod q) :
+    ξ ∈ finiteLargeSpectrum X η ↔ cyclicFrequencyEquiv q ξ ∈ largeCharacterSpectrum X η := by
+  rw [mem_finiteLargeSpectrum, mem_largeCharacterSpectrum,
+    finiteFourier_setDensity_eq_characterMean]
+
+/-- Blueprint `lem:Chang`, lines 739-764: the large Fourier spectrum of
+`mu_X` is contained in a signed span with at most
+`4 eta^(-2) log(q/|X|)` generators, with coefficients in `{-1,0,1}`. -/
+theorem cyclic_spectrum_generators {q : ℕ} [NeZero q]
+    (X : Finset (ZMod q)) (hX : X.Nonempty) {η : ℝ} (hη : 0 < η) (hη1 : η ≤ 1) :
+    ∃ Λ : Finset (ZMod q), Λ ⊆ finiteLargeSpectrum X η ∧
+      (Λ.card : ℝ) ≤ 4 / η ^ 2 * Real.log ((q : ℝ) / X.card) ∧
+      finiteLargeSpectrum X η ⊆ Λ.addSpan := by
+  classical
+  obtain ⟨Λ, hΛ, hcard, hspan⟩ := characterSpectrum_generators X hX hη hη1
+  let e := cyclicFrequencyEquiv q
+  refine ⟨Λ.image e.symm, ?_, ?_, ?_⟩
+  · intro ξ hξ
+    rcases Finset.mem_image.mp hξ with ⟨ψ, hψ, rfl⟩
+    apply (finiteLargeSpectrum_character_iff X η (e.symm ψ)).mpr
+    simpa only [e, AddEquiv.apply_symm_apply] using hΛ hψ
+  · simpa only [Finset.card_image_of_injective _ e.symm.injective, ZMod.card] using hcard
+  · intro ξ hξ
+    rw [addSpan_image_equiv]
+    exact Finset.mem_image.mpr ⟨e ξ,
+      hspan ((finiteLargeSpectrum_character_iff X η ξ).mp hξ), e.symm_apply_apply ξ⟩
+
+/-- At full density the source spectrum consists exactly of zero. -/
+theorem finiteLargeSpectrum_univ {q : ℕ} [NeZero q] {η : ℝ}
+    (hη : 0 < η) (hη1 : η ≤ 1) :
+    finiteLargeSpectrum (Finset.univ : Finset (ZMod q)) η = {0} := by
+  classical
+  ext ξ
+  rw [finiteLargeSpectrum_character_iff, largeCharacterSpectrum_univ hη hη1]
+  simp only [Finset.mem_singleton, EmbeddingLike.map_eq_zero_iff]
+
+/-- The empty set of generators suffices when the source density is one. -/
+theorem cyclic_spectrum_density_one {q : ℕ} [NeZero q]
+    (X : Finset (ZMod q)) (hβ : (X.card : ℝ) / q = 1)
+    {η : ℝ} (hη : 0 < η) (hη1 : η ≤ 1) :
+    finiteLargeSpectrum X η = {0} ∧
+      finiteLargeSpectrum X η ⊆ (∅ : Finset (ZMod q)).addSpan := by
+  have hq : (q : ℝ) ≠ 0 := by exact_mod_cast NeZero.ne q
+  have hc : X.card = q := by
+    have h := (div_eq_iff hq).mp hβ
+    exact_mod_cast (by simpa using h : (X.card : ℝ) = q)
+  have hX : X = Finset.univ := Finset.eq_of_subset_of_card_le (Finset.subset_univ X)
+    (by simp [hc])
+  rw [hX, finiteLargeSpectrum_univ hη hη1]
+  refine ⟨rfl, ?_⟩
+  intro ξ hξ
+  have hξ0 := Finset.mem_singleton.mp hξ
+  subst ξ
+  exact Finset.mem_addSpan.mpr ⟨fun _ => 0, fun _ => Or.inr (Or.inl rfl), by simp⟩
+
+/-! ### Derivative graph frequency selection -/
+
+/-- A bounded function with large mean has a dense upper level set. -/
+theorem uniformMean_upper_level_density {G : Type*} [Fintype G] [Nonempty G]
+    (u : G → ℝ) {a : ℝ} (ha : 0 ≤ a) (hu : ∀ x, u x ≤ 1)
+    (hm : a ≤ uniformMean u) :
+    a / 2 ≤ ((Finset.univ.filter (fun x => a / 2 ≤ u x)).card : ℝ) / Fintype.card G := by
+  classical
+  have hb (x : G) : u x ≤ (if a / 2 ≤ u x then (1 : ℝ) else 0) + a / 2 := by
+    split_ifs <;> linarith [hu x]
+  have h := uniformMean_mono hb
+  rw [uniformMean_add, uniformMean_const] at h
+  have he : uniformMean (fun x => if a / 2 ≤ u x then (1 : ℝ) else 0) =
+      ((Finset.univ.filter (fun x => a / 2 ≤ u x)).card : ℝ) / Fintype.card G := by
+    simp only [uniformMean, smul_eq_mul, Finset.sum_boole, div_eq_mul_inv, mul_comm]
+  rw [he] at h
+  linarith
+
+theorem finiteFourier_norm_le_one {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (hf : ∀ x, ‖f x‖ ≤ 1) (ξ : ZMod q) :
+    ‖finiteFourier f ξ‖ ≤ 1 := by
+  have he : finiteFourier f ξ = bogolyubovFourier f ξ :=
+    (bogolyubovFourier_eq_dft f ξ).symm
+  rw [he]
+  exact bogolyubovFourier_norm_le_one f hf ξ
+
+/-- Blueprint `lem:derivative-graph`, lines 829-835: a large `U³` norm supplies a dense set
+of derivatives with a selected Fourier coefficient of size at least `delta^4/sqrt(2)`. -/
+theorem derivative_frequency_selection {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (hf : ∀ x, ‖f x‖ ≤ 1) {δ : ℝ} (hδ : 0 < δ)
+    (hU : δ ≤ gowersNorm (finiteHaar (ZMod q)) 3 f) :
+    ∃ (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q),
+      δ ^ 8 / 2 ≤ (H.card : ℝ) / q ∧
+      ∀ h ∈ H, δ ^ 4 / Real.sqrt 2 ≤
+        ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖ := by
+  classical
+  let D : ZMod q → ZMod q → ℂ := fun h x => f (x + h) * conj (f x)
+  have hD (h x : ZMod q) : ‖D h x‖ ≤ 1 := by
+    dsimp [D]
+    rw [norm_mul, Complex.norm_conj]
+    exact (mul_le_mul (hf _) (hf _) (norm_nonneg _) zero_le_one).trans_eq (one_mul 1)
+  have hmax (h : ZMod q) : ∃ ξ : ZMod q, ∀ η,
+      ‖finiteFourier (D h) η‖ ^ 2 ≤ ‖finiteFourier (D h) ξ‖ ^ 2 := by
+    obtain ⟨ξ, _, hξ⟩ := Finset.exists_max_image Finset.univ
+      (fun ξ => ‖finiteFourier (D h) ξ‖ ^ 2) Finset.univ_nonempty
+    exact ⟨ξ, fun η => hξ η (Finset.mem_univ _)⟩
+  choose ξ hξ using hmax
+  let m : ZMod q → ℝ := fun h => ‖finiteFourier (D h) (ξ h)‖ ^ 2
+  have hm1 (h : ZMod q) : m h ≤ 1 :=
+    pow_le_one₀ (norm_nonneg _) (finiteFourier_norm_le_one (D h) (hD h) (ξ h))
+  have hfourth (h : ZMod q) : (∑ η, ‖finiteFourier (D h) η‖ ^ 4) ≤ m h := by
+    have htwo : (∑ η, ‖finiteFourier (D h) η‖ ^ 2) ≤ 1 := by
+      rw [← finiteFourier_parseval]
+      calc
+        _ ≤ uniformMean (fun _ : ZMod q => (1 : ℝ)) :=
+          uniformMean_mono (fun x => pow_le_one₀ (norm_nonneg _) (hD h x))
+        _ = 1 := uniformMean_const _
+    calc
+      _ = ∑ η, ‖finiteFourier (D h) η‖ ^ 2 * ‖finiteFourier (D h) η‖ ^ 2 := by
+        apply Finset.sum_congr rfl
+        intro η _
+        ring
+      _ ≤ ∑ η, m h * ‖finiteFourier (D h) η‖ ^ 2 := by
+        apply Finset.sum_le_sum
+        intro η _
+        exact mul_le_mul_of_nonneg_right (hξ h η) (sq_nonneg _)
+      _ = m h * (∑ η, ‖finiteFourier (D h) η‖ ^ 2) := (Finset.mul_sum ..).symm
+      _ ≤ m h * 1 := mul_le_mul_of_nonneg_left htwo (sq_nonneg _)
+      _ = m h := mul_one _
+  have hmean : δ ^ 8 ≤ uniformMean m := by
+    calc
+      _ ≤ gowersNorm (finiteHaar (ZMod q)) 3 f ^ 8 := pow_le_pow_left₀ hδ.le hU _
+      _ = uniformMean (fun h => ∑ η, ‖finiteFourier (D h) η‖ ^ 4) := by
+        rw [finite_gowers_three_recursion]
+        simp only [finiteFourier_gowers_two, D]
+      _ ≤ uniformMean m := uniformMean_mono hfourth
+  let H : Finset (ZMod q) := Finset.univ.filter (fun h => δ ^ 8 / 2 ≤ m h)
+  refine ⟨H, ξ, ?_, ?_⟩
+  · simpa only [ZMod.card] using
+      uniformMean_upper_level_density m (pow_nonneg hδ.le _) hm1 hmean
+  · intro h hh
+    have hh' : δ ^ 8 / 2 ≤ m h := (Finset.mem_filter.mp hh).2
+    have hsqrt : Real.sqrt 2 ^ 2 = 2 := Real.sq_sqrt (by norm_num)
+    have hsqrt0 : 0 < Real.sqrt 2 := Real.sqrt_pos.mpr (by norm_num)
+    apply (div_le_iff₀ hsqrt0).mpr
+    change δ ^ 4 ≤ ‖finiteFourier (D h) (ξ h)‖ * Real.sqrt 2
+    dsimp [m] at hh'
+    apply (sq_le_sq₀ (by positivity) (by positivity)).mp
+    rw [mul_pow, hsqrt]
+    nlinarith
+
+/-! ### Squared derivative correlation -/
+
+/-- Fourier correlation squared, expressed by a translated autocorrelation average. -/
+theorem finiteFourier_correlation_square {q : ℕ} [NeZero q]
+    (g : ZMod q → ℂ) (ξ : ZMod q) :
+    finiteAverage (fun x => finiteAverage (fun k =>
+      g x * conj (g (x + k)) * ZMod.stdAddChar (ξ * k))) =
+        (‖finiteFourier g ξ‖ ^ 2 : ℝ) := by
+  have hi (x : ZMod q) : finiteAverage (fun k =>
+      g x * conj (g (x + k)) * ZMod.stdAddChar (ξ * k)) =
+      (g x * ZMod.stdAddChar (-(ξ * x))) * conj (finiteFourier g ξ) := by
+    rw [finiteFourier_eq_average, ← finiteAverage_conj, ← finiteAverage_const_mul]
+    rw [← finiteAverage_equiv (Equiv.addLeft x)
+      (fun y => (g x * ZMod.stdAddChar (-(ξ * x))) *
+        conj (g y * ZMod.stdAddChar (-(ξ * y))))]
+    apply congrArg finiteAverage
+    funext k
+    simp only [Equiv.coe_addLeft, map_mul, stdAddChar_conj, neg_neg]
+    have hc : ZMod.stdAddChar (-(ξ * x)) * ZMod.stdAddChar (ξ * (x + k)) =
+        ZMod.stdAddChar (ξ * k) := by
+      rw [← AddChar.map_add_eq_mul]
+      congr 1
+      ring
+    calc
+      _ = (g x * conj (g (x + k))) * ZMod.stdAddChar (ξ * k) := rfl
+      _ = (g x * conj (g (x + k))) *
+          (ZMod.stdAddChar (-(ξ * x)) * ZMod.stdAddChar (ξ * (x + k))) := by rw [hc]
+      _ = _ := by ring
+  simp only [hi, finiteAverage_mul_const, ← finiteFourier_eq_average,
+    Complex.mul_conj, Complex.normSq_eq_norm_sq]
+
+/-- The two derivative factors in the source give the square of a derivative Fourier coefficient. -/
+theorem derivative_correlation_square {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (h ξ : ZMod q) :
+    finiteAverage (fun x => finiteAverage (fun k =>
+      (f (x + k) * conj (f x)) * conj (f (x + h + k) * conj (f (x + h))) *
+        ZMod.stdAddChar (ξ * k))) =
+      (‖finiteFourier (fun x => f (x + h) * conj (f x)) ξ‖ ^ 2 : ℝ) := by
+  rw [← finiteFourier_correlation_square]
+  apply congrArg finiteAverage
+  funext x
+  apply congrArg finiteAverage
+  funext k
+  simp only [map_mul, starRingEnd_self_apply]
+  have he : x + k + h = x + h + k := by abel
+  rw [he]
+  ring
+
+/-- The bounded two-variable derivative kernel in the derivative-graph argument. -/
+noncomputable def derivativeGraphKernel {q : ℕ} (f : ZMod q → ℂ) (x k : ZMod q) : ℂ :=
+  f (x + k) * conj (f x)
+
+/-- The selected character, extended by zero outside the selected derivative set. -/
+noncomputable def derivativeGraphCharacter {q : ℕ} [NeZero q]
+    (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) (h k : ZMod q) : ℂ :=
+  if h ∈ H then ZMod.stdAddChar (ξ h * k) else 0
+
+/-- The source's positive trilinear correlation quantity. -/
+noncomputable def derivativeGraphCorrelation {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) : ℂ :=
+  finiteAverage (fun h => finiteAverage (fun x => finiteAverage (fun k =>
+    derivativeGraphKernel f x k * conj (derivativeGraphKernel f (x + h) k) *
+      derivativeGraphCharacter H ξ h k)))
+
+/-- Blueprint `lem:derivative-graph`, lines 836-841: the trilinear correlation is a
+nonnegative real average of squared derivative Fourier coefficients. -/
+theorem derivativeGraphCorrelation_eq {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) :
+    derivativeGraphCorrelation f H ξ = (uniformMean (fun h => if h ∈ H then
+      ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖ ^ 2 else 0) : ℝ) := by
+  have hi (h : ZMod q) : finiteAverage (fun x => finiteAverage (fun k =>
+      derivativeGraphKernel f x k * conj (derivativeGraphKernel f (x + h) k) *
+        derivativeGraphCharacter H ξ h k)) =
+      ((if h ∈ H then ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖ ^ 2
+        else 0 : ℝ) : ℂ) := by
+    by_cases hh : h ∈ H
+    · simpa only [derivativeGraphCharacter, derivativeGraphKernel, hh, ite_true] using
+        derivative_correlation_square f h (ξ h)
+    · simp [derivativeGraphCharacter, hh, finiteAverage]
+  simp only [derivativeGraphCorrelation, hi]
+  rw [← uniformMean_complex_eq]
+  simp only [uniformMean, Complex.real_smul, Complex.ofReal_mul, Complex.ofReal_inv,
+    Complex.ofReal_natCast, Complex.ofReal_sum, smul_eq_mul]
+
+theorem derivativeGraphCorrelation_re_nonneg {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) :
+    0 ≤ (derivativeGraphCorrelation f H ξ).re := by
+  rw [derivativeGraphCorrelation_eq, Complex.ofReal_re]
+  apply uniformMean_nonneg
+  intro h
+  split_ifs <;> positivity
+
+/-- The source density and derivative correlation bounds give `T >= delta^16/4`. -/
+theorem derivativeGraphCorrelation_lower {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q)
+    {δ : ℝ} (hδ : 0 < δ) (hH : δ ^ 8 / 2 ≤ (H.card : ℝ) / q)
+    (hc : ∀ h ∈ H, δ ^ 4 / Real.sqrt 2 ≤
+      ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖) :
+    δ ^ 16 / 4 ≤ (derivativeGraphCorrelation f H ξ).re := by
+  rw [derivativeGraphCorrelation_eq, Complex.ofReal_re]
+  have hp (h : ZMod q) (hh : h ∈ H) : δ ^ 8 / 2 ≤
+      ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖ ^ 2 := by
+    have hs := (sq_le_sq₀ (by positivity) (norm_nonneg _)).mpr (hc h hh)
+    rw [div_pow, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)] at hs
+    nlinarith
+  have hm := uniformMean_mono (fun h => show
+    (if h ∈ H then δ ^ 8 / 2 else 0) ≤
+      (if h ∈ H then ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖ ^ 2
+        else 0) from by
+      split_ifs with hh
+      · exact hp h hh
+      · rfl)
+  have he : uniformMean (fun h : ZMod q => if h ∈ H then δ ^ 8 / 2 else 0) =
+      (H.card : ℝ) / q * (δ ^ 8 / 2) := by
+    simp only [uniformMean, smul_eq_mul, ZMod.card, Finset.sum_ite_mem,
+      Finset.univ_inter, Finset.sum_const, nsmul_eq_mul]
+    ring
+  rw [he] at hm
+  have hd := mul_le_mul_of_nonneg_right hH (by positivity : 0 ≤ δ ^ 8 / 2)
+  nlinarith
+
+theorem derivativeGraphCorrelation_norm_eq_re {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) :
+    ‖derivativeGraphCorrelation f H ξ‖ = (derivativeGraphCorrelation f H ξ).re := by
+  have h := derivativeGraphCorrelation_re_nonneg f H ξ
+  rw [derivativeGraphCorrelation_eq, Complex.ofReal_re] at h
+  rw [derivativeGraphCorrelation_eq, Complex.norm_real, Real.norm_of_nonneg h,
+    Complex.ofReal_re]
+
+/-! ### First derivative-graph Cauchy-Schwarz step -/
+
+open scoped BigOperators
+
+theorem derivativeGraphKernel_norm_le {q : ℕ} (f : ZMod q → ℂ)
+    (hf : ∀ x, ‖f x‖ ≤ 1) (x k : ZMod q) : ‖derivativeGraphKernel f x k‖ ≤ 1 := by
+  rw [derivativeGraphKernel, norm_mul, Complex.norm_conj]
+  exact (mul_le_mul (hf _) (hf _) (norm_nonneg _) zero_le_one).trans_eq (one_mul 1)
+
+theorem derivativeGraphCorrelation_eq_shift {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) :
+    derivativeGraphCorrelation f H ξ =
+      finiteShiftCorrelation (derivativeGraphKernel f) (derivativeGraphCharacter H ξ) := by
+  have he (g : ZMod q → ℂ) : finiteAverage g = 𝔼 x, g x := by
+    simp only [finiteAverage, Fintype.expect_eq_sum_div_card, div_eq_mul_inv, mul_comm]
+  simp only [derivativeGraphCorrelation, he]
+  rw [finite_expect_reverse_three]
+  simp only [finiteShiftCorrelation, Finset.mul_expect, mul_assoc]
+
+/-- Blueprint `lem:derivative-graph`, lines 842-848: first Cauchy-Schwarz and the exact
+translated square expansion, now specialized to the derivative kernel. -/
+theorem derivativeGraphCorrelation_first_cs {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (hf : ∀ x, ‖f x‖ ≤ 1)
+    (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) :
+    ‖derivativeGraphCorrelation f H ξ‖ ^ 2 ≤
+      finiteShiftCorrelationSquare (derivativeGraphKernel f) (derivativeGraphCharacter H ξ) := by
+  rw [derivativeGraphCorrelation_eq_shift]
+  exact finiteShiftCorrelation_first_cs _ _ (derivativeGraphKernel_norm_le f hf)
+
+/-- Blueprint `lem:derivative-graph`, lines 849-855: two Cauchy-Schwarz steps leave only
+the squared averages of differenced selected characters. -/
+theorem derivativeGraphCorrelation_fourth_le {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (hf : ∀ x, ‖f x‖ ≤ 1)
+    (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) :
+    ‖derivativeGraphCorrelation f H ξ‖ ^ 4 ≤ finiteShiftEnergy (derivativeGraphCharacter H ξ) := by
+  rw [derivativeGraphCorrelation_eq_shift]
+  exact finiteShiftCorrelation_fourth_le _ _ (derivativeGraphKernel_norm_le f hf)
+
+/-- Blueprint `lem:derivative-graph`, lines 856-861: the character average is exactly
+the additive energy of the selected graph, divided by the cube of the ambient group size. -/
+theorem derivativeGraphCharacter_energy {q : ℕ} [NeZero q]
+    (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) :
+    finiteShiftEnergy (derivativeGraphCharacter H ξ) =
+      (Finset.addEnergy (H.image (fun h => (h, ξ h))) (H.image (fun h => (h, ξ h))) : ℝ) /
+        (q : ℝ) ^ 3 := by
+  simpa only [finiteShiftEnergy, derivativeGraphCharacter, graphPhase, finiteFunctionGraph] using
+    graphPhase_energy H ξ
+
+/-- Blueprint `lem:derivative-graph`, lines 822-863: a bounded function with `U³ >= delta`
+has a dense derivative-frequency graph retaining correlations `delta^4/sqrt(2)` and additive
+energy at least `delta^64 |G|^3 / 256`. All frequencies and graph points are actual cyclic
+group elements, and energy is Mathlib's unnormalized additive-energy count. -/
+theorem derivative_graph_energy {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (hf : ∀ x, ‖f x‖ ≤ 1) {δ : ℝ} (hδ : 0 < δ)
+    (hU : δ ≤ gowersNorm (finiteHaar (ZMod q)) 3 f) :
+    ∃ (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q),
+      δ ^ 8 / 2 ≤ (H.card : ℝ) / q ∧
+      (∀ h ∈ H, δ ^ 4 / Real.sqrt 2 ≤
+        ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖) ∧
+      δ ^ 64 / 256 * (q : ℝ) ^ 3 ≤
+        (Finset.addEnergy (H.image (fun h => (h, ξ h))) (H.image (fun h => (h, ξ h))) : ℝ) := by
+  obtain ⟨H, ξ, hH, hc⟩ := derivative_frequency_selection f hf hδ hU
+  refine ⟨H, ξ, hH, hc, ?_⟩
+  have hT := derivativeGraphCorrelation_lower f H ξ hδ hH hc
+  rw [← derivativeGraphCorrelation_norm_eq_re] at hT
+  have hp := pow_le_pow_left₀ (by positivity : 0 ≤ δ ^ 16 / 4) hT 4
+  have hp' : δ ^ 64 / 256 ≤ ‖derivativeGraphCorrelation f H ξ‖ ^ 4 := by
+    convert hp using 1; ring
+  have he := derivativeGraphCorrelation_fourth_le f hf H ξ
+  rw [derivativeGraphCharacter_energy] at he
+  have hq : (0 : ℝ) < q := Nat.cast_pos.mpr (NeZero.pos q)
+  exact (le_div_iff₀ (by positivity : (0 : ℝ) < (q : ℝ) ^ 3)).mp (hp'.trans he)
+
+/-! ### Small-difference derivative subgraph -/
+
+/-- Blueprint `lem:local-frequency`, line 881: BSG retains derivative correlations on a
+polynomial-density subgraph with a polynomial difference-set constant. -/
+theorem derivative_graph_small_difference {q : ℕ} [NeZero q]
+    (f : ZMod q → ℂ) (hf : ∀ x, ‖f x‖ ≤ 1) {δ : ℝ} (hδ : 0 < δ)
+    (hU : δ ≤ gowersNorm (finiteHaar (ZMod q)) 3 f) :
+    ∃ (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q),
+      δ ^ 72 / 10 ^ 14 ≤ (H.card : ℝ) / q ∧
+      (∀ h ∈ H, δ ^ 4 / Real.sqrt 2 ≤
+        ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖) ∧
+      ((finiteFunctionGraph H ξ - finiteFunctionGraph H ξ).card : ℝ) ≤
+        (10 ^ 50 / δ ^ 640) * H.card := by
+  have hδ1 : δ ≤ 1 := hU.trans (gowersNorm_le_one (finiteHaar (ZMod q))
+    (by norm_num) f (measurable_of_countable f) hf)
+  have hq : (0 : ℝ) < q := Nat.cast_pos.mpr (NeZero.pos q)
+  obtain ⟨H, ξ, hd, hc, he⟩ := derivative_graph_energy f hf hδ hU
+  have hH : H.Nonempty := by
+    by_contra hn
+    rw [Finset.not_nonempty_iff_eq_empty.mp hn, Finset.card_empty, Nat.cast_zero, zero_div] at hd
+    have hp : 0 < δ ^ 8 / 2 := by positivity
+    exact (not_lt_of_ge hd) hp
+  let K : ℝ := 256 / δ ^ 64
+  have hK : 1 ≤ K := by
+    apply (one_le_div (by positivity : 0 < δ ^ 64)).mpr
+    have hp := pow_le_one₀ hδ.le hδ1 (n := 64)
+    linarith
+  have henergy : (H.card : ℝ) ^ 3 / K ≤
+      Finset.addEnergy (finiteFunctionGraph H ξ) (finiteFunctionGraph H ξ) := by
+    calc
+      _ ≤ (q : ℝ) ^ 3 / K := by
+        gcongr
+        exact_mod_cast (show H.card ≤ q by
+          simpa only [ZMod.card] using Finset.card_le_univ H)
+      _ = δ ^ 64 / 256 * (q : ℝ) ^ 3 := by dsimp [K]; field_simp
+      _ ≤ _ := he
+  obtain ⟨H', hsub, hsize, hdiff⟩ := graph_balog_szemeredi_gowers H hH ξ hK henergy
+  refine ⟨H', ξ, ?_, (fun h hh => hc h (hsub hh)), ?_⟩
+  · have hd' := (le_div_iff₀ hq).mp hd
+    have hs : (H.card : ℝ) * δ ^ 64 / 20480000000000 ≤ H'.card := by
+      convert hsize using 1
+      dsimp [K]
+      field_simp
+      norm_num
+    have hb : δ ^ 72 * q / 40960000000000 ≤ (H'.card : ℝ) := by
+      calc
+        _ = (δ ^ 8 / 2 * q) * δ ^ 64 / 20480000000000 := by ring
+        _ ≤ (H.card : ℝ) * δ ^ 64 / 20480000000000 := by gcongr
+        _ ≤ _ := hs
+    apply (le_div_iff₀ hq).mpr
+    nlinarith [mul_nonneg (pow_nonneg hδ.le 72) hq.le]
+  · apply hdiff.trans
+    apply mul_le_mul_of_nonneg_right _ (Nat.cast_nonneg _)
+    dsimp [K]
+    rw [div_pow, ← pow_mul, ← mul_div_assoc]
+    apply div_le_div_of_nonneg_right _ (by positivity)
+    norm_num
+
+/-! ### Quantitative locally additive derivative frequency -/
+
+noncomputable def localFrequencyDensityCost : ℝ := 10 ^ 14 * 65536 * (10 ^ 50) ^ 136
+
+/-- Blueprint `lem:local-frequency`, lines 865-893, with explicit universal constants. -/
+theorem locally_additive_derivative_frequency {q : ℕ} [NeZero q] (hq : Odd q)
+    (f : ZMod q → ℂ) (hf : ∀ x, ‖f x‖ ≤ 1) {δ : ℝ} (hδ : 0 < δ)
+    (hU : δ ≤ gowersNorm (finiteHaar (ZMod q)) 3 f) :
+    ∃ (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) (S : Finset (ZMod q))
+      (ρ : ℝ) (M : ZMod q → ZMod q),
+      δ ^ 87112 / localFrequencyDensityCost ≤ (H.card : ℝ) / q ∧
+      (∀ h ∈ H, δ ^ 4 / Real.sqrt 2 ≤
+        ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖) ∧
+      1 ∈ S ∧ 0 < ρ ∧ ρ < 1 / 100 ∧
+      (S.card : ℝ) + Real.log (1 / ρ) ≤ 10 ^ 50 * (1 + Real.log (1 / δ)) ^ 4 ∧
+      M 0 = 0 ∧
+      (∀ a ∈ graphBohrSet S ρ, ∀ b ∈ graphBohrSet S ρ,
+        ∀ c ∈ graphBohrSet S ρ, ∀ d ∈ graphBohrSet S ρ,
+        a + b = c + d → 2 * M a + 2 * M b = 2 * M c + 2 * M d) ∧
+      (∀ u ∈ graphBohrSet S ρ, ∀ v ∈ graphBohrSet S ρ,
+        u + v ∈ graphBohrSet S ρ → M (u + v) = M u + M v) ∧
+      ∀ h ∈ H, ∀ h' ∈ H, h - h' ∈ graphBohrSet S ρ →
+        ξ h - ξ h' = 2 * M (h - h') := by
+  have hδ1 : δ ≤ 1 := hU.trans (gowersNorm_le_one (finiteHaar (ZMod q))
+    (by norm_num) f (measurable_of_countable f) hf)
+  have hqpos : (0 : ℝ) < q := Nat.cast_pos.mpr (NeZero.pos q)
+  obtain ⟨H, ξ, hd, hc, hsmall⟩ := derivative_graph_small_difference f hf hδ hU
+  have hH : H.Nonempty := by
+    have hh : 0 < (H.card : ℝ) / q := (by positivity : 0 < δ ^ 72 / 10 ^ 14).trans_le hd
+    have hp : 0 < (H.card : ℝ) := by
+      simpa only [div_mul_cancel₀ _ hqpos.ne'] using mul_pos hh hqpos
+    exact Finset.card_pos.mp (by exact_mod_cast hp)
+  have hK : 1 ≤ 10 ^ 50 / δ ^ 640 := by
+    apply (one_le_div (by positivity : 0 < δ ^ 640)).mpr
+    have hp := pow_le_one₀ hδ.le hδ1 (n := 640)
+    linarith
+  obtain ⟨H', hsub, hne, hloss, hgraph⟩ :=
+    cyclic_graph_refinement_polynomial H hH ξ hK hsmall
+  have hden := polynomial_density_after_loss hδ (by positivity : (0 : ℝ) < 10 ^ 14)
+    (by norm_num : (0 : ℝ) < 65536) (by positivity : (0 : ℝ) < 10 ^ 50) 72 640 136 hd hloss
+  change δ ^ 87112 / localFrequencyDensityCost ≤ (H'.card : ℝ) / q at hden
+  obtain ⟨S, ρ, hS, hρ, hρsmall, hcomplex, hcontain⟩ := cyclic_small_bohr_domain H' hne
+  obtain ⟨M, hMzero, hMfreiman, hMadd, hMdiff⟩ := cyclic_local_frequency_map hq H' hne ξ
+    (graphBohrSet S ρ) (zero_mem_graphBohrSet S hρ) hcontain hgraph
+  refine ⟨H', ξ, S, ρ, M, hden, (fun h hh => hc h (hsub hh)), hS, hρ, hρsmall,
+    ?_, hMzero, hMfreiman, hMadd, hMdiff⟩
+  have hβ : 0 < (H'.card : ℝ) / q := by
+    have hh : (0 : ℝ) < H'.card := by exact_mod_cast hne.card_pos
+    exact div_pos hh hqpos
+  have hβ1 : (H'.card : ℝ) / q ≤ 1 := by
+    apply (div_le_one hqpos).mpr
+    exact_mod_cast (show H'.card ≤ q by simpa only [ZMod.card] using Finset.card_le_univ H')
+  have hcost : 0 < localFrequencyDensityCost := by unfold localFrequencyDensityCost; positivity
+  have hlog := log_inverse_le_of_power_density hβ hδ hcost 87112 hden
+  have hlogcost : Real.log localFrequencyDensityCost ≤ 200000 := by
+    unfold localFrequencyDensityCost
+    rw [Real.log_mul (by positivity) (by positivity),
+      Real.log_mul (by positivity) (by positivity), Real.log_pow, Real.log_pow, Real.log_pow]
+    have h10 : Real.log 10 ≤ 10 := Real.log_le_self (by norm_num)
+    have h65536 : Real.log 65536 ≤ 65536 := Real.log_le_self (by norm_num)
+    norm_num only [Nat.cast_ofNat] at *
+    linarith
+  have hlogδ : 0 ≤ Real.log (1 / δ) := Real.log_nonneg ((one_le_div hδ).mpr hδ1)
+  have hbase : 0 ≤ 1 + Real.log (1 / ((H'.card : ℝ) / q)) :=
+    add_nonneg zero_le_one (Real.log_nonneg ((one_le_div hβ).mpr hβ1))
+  have hL : 1 + Real.log (1 / ((H'.card : ℝ) / q)) ≤
+      10 ^ 6 * (1 + Real.log (1 / δ)) := by
+    norm_num only [Nat.cast_ofNat] at hlog
+    nlinarith
+  apply hcomplex.trans
+  calc
+    _ ≤ 10 ^ 20 * (10 ^ 6 * (1 + Real.log (1 / δ))) ^ 4 := by gcongr
+    _ ≤ 10 ^ 50 * (1 + Real.log (1 / δ)) ^ 4 := by
+      rw [mul_pow]
+      nlinarith [pow_nonneg (by linarith : 0 ≤ 1 + Real.log (1 / δ)) 4]
 
 end Auto

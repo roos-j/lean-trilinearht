@@ -53,3 +53,14 @@ Source-fidelity audit for line 67 and lem:vector-maximal: the source explicitly 
 ## 2026-10-09T03:52:31.5611636-04:00
 
 Equivalent treatment of zero and infinite norms in lem:absolute, line 392: positive interpolation is performed directly in the extended nonnegative reals. Single-slot endpoint bounds imply null-set preservation, allowing essential-supremum bounds to be pulled back. This replaces the printed truncation argument without restricting the exponent range or assuming finite nonzero norms. Auto.positivePairwise_eLpNorm_bound passes the full build and standard-axiom audit; the final three geometric specializations and complex local-form bound passed the full build and standard-axiom audits at 2026-10-09T03:55:09.8722956-04:00.
+## 2026-10-09T07:59:32.7934472-04:00
+
+Equivalent proof organization for lem:prefix, lines 529–534: product differences are telescoped in the finite row Hilbert norm. The triangle inequality after each Bessel/prefix estimate gives the stronger sum-of-powers bound, then the source's exact m-squared L_T^(2(m-1)) constant. This reorganizes the printed pointwise Cauchy–Schwarz step without a commutation assumption or statement change. nestedProjectionProduct_successive_jumps passes the full build and standard-axiom audit.
+
+## 2026-10-09T13:37:25.5127427-04:00
+
+Equivalent derivative representation for def:chart, lines 632-635: coordinateWordDerivative indexes mixed derivatives by ordered coordinate words rather than exponent multi-indices. For the required C-infinity cutoff, mixed partials commute, and word length equals total derivative order; quantifying over all words therefore expresses the same source bound. The zeroth-order identity and exact complexity fields are checked. No analyticity or real-phase size restriction is imposed.
+
+## 2026-10-09T17:33:29.322435-04:00
+
+Equivalent proof organization for lem:local-frequency, line 887: instead of counting representatives of each finite cyclic image, choose a multiple of a nonzero circle element with norm at least one quarter. The strict one-eighth test set is disjoint from its translate by this multiple, so its cardinality is at most half the ambient group. The exact source statement is unchanged, and the full build and standard-axiom audit pass. The subsequent independent-test existence argument will be expressed by repeated finite-counting halving.
