@@ -6,6 +6,7 @@ Authors: Codex
 module
 
 public import Mathlib
+public import TrilinearHT.Auto.RationalLinearAlgebra
 
 /-!
 # Lattice transference via reduced bases
@@ -2517,5 +2518,944 @@ theorem successiveMinimaProduct {E : Type*} [NormedAddCommGroup E]
   ⟨successiveMinimum_product_lower_fullLattice hK L hj hjn,
     successiveMinimum_product_upper_fullLattice hK L hj hjn,
     transference_constant_bound (hj.trans_le hjn)⟩
+
+/-! ### Cyclic rational lattices -/
+
+/-- A triangular coordinate change whose distinguished basis vector has denominator `q`.
+ It provides the full lattice used in blueprint `lem:local-chart`, lines 1035-1039. -/
+noncomputable def cyclicCoordinateEquiv {ι : Type*} [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) : (ι → ℝ) ≃ₗ[ℝ] (ι → ℝ) where
+  toFun x j := if j = i₀ then x i₀ / q else x j + (a j : ℝ) * x i₀ / q
+  invFun y j := if j = i₀ then q * y i₀ else y j - (a j : ℝ) * y i₀
+  left_inv x := by
+    have hq : (q : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne q)
+    funext j
+    by_cases hj : j = i₀
+    · subst j
+      simp
+      field_simp
+    · simp [hj]
+      field_simp
+      ring
+  right_inv y := by
+    have hq : (q : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne q)
+    funext j
+    by_cases hj : j = i₀
+    · subst j
+      simp [hq]
+    · simp [hj]
+      field_simp
+      ring
+  map_add' x y := by
+    funext j
+    by_cases hj : j = i₀ <;> simp [hj] <;> ring
+  map_smul' c x := by
+    funext j
+    by_cases hj : j = i₀ <;> simp [hj] <;> ring
+
+/-- A Euclidean full basis for the cyclic lift lattice. -/
+noncomputable def cyclicLiftBasis {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) :
+    Module.Basis ι ℝ (EuclideanSpace ℝ ι) :=
+  (Pi.basisFun ℝ ι).map
+    ((cyclicCoordinateEquiv q a i₀).trans (WithLp.linearEquiv 2 ℝ (ι → ℝ)).symm)
+
+/-- The integer span of the rational cyclic basis, automatically a full discrete lattice. -/
+noncomputable abbrev cyclicLiftLattice {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) : Submodule ℤ (EuclideanSpace ℝ ι) :=
+  Submodule.span ℤ (Set.range (cyclicLiftBasis q a i₀))
+
+instance cyclicLiftLattice_discrete {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) : DiscreteTopology (cyclicLiftLattice q a i₀) := by
+  unfold cyclicLiftLattice
+  infer_instance
+
+instance cyclicLiftLattice_full {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) : IsZLattice ℝ (cyclicLiftLattice q a i₀) := by
+  unfold cyclicLiftLattice
+  infer_instance
+
+/-- Real coordinates in the cyclic basis have a triangular explicit formula. -/
+theorem cyclicLiftBasis_repr {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (x : EuclideanSpace ℝ ι) (i : ι) :
+    (cyclicLiftBasis q a i₀).repr x i =
+      if i = i₀ then (q : ℝ) * x i₀ else x i - (a i : ℝ) * x i₀ := by
+  rfl
+
+/-- The integer coordinates of a lattice point agree with its real basis coordinates. -/
+theorem cyclicLiftLattice_integer_coordinates {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (x : cyclicLiftLattice q a i₀) (i : ι) :
+    (((cyclicLiftBasis q a i₀).restrictScalars ℤ).repr x i : ℝ) =
+      if i = i₀ then (q : ℝ) * (x : EuclideanSpace ℝ ι) i₀
+      else (x : EuclideanSpace ℝ ι) i - (a i : ℝ) * (x : EuclideanSpace ℝ ι) i₀ := by
+  exact (cyclicLiftBasis q a i₀).restrictScalars_repr_apply ℤ x i
+
+/-- Every integer vector belongs to the cyclic lift lattice. -/
+theorem integerVector_mem_cyclicLiftLattice {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (z : ι → ℤ) :
+    WithLp.toLp 2 (fun i => (z i : ℝ)) ∈ cyclicLiftLattice q a i₀ := by
+  apply ((cyclicLiftBasis q a i₀).mem_span_iff_repr_mem ℤ _).mpr
+  intro i
+  rw [cyclicLiftBasis_repr]
+  by_cases hi : i = i₀
+  · refine ⟨(q : ℤ) * z i₀, ?_⟩
+    simp [hi]
+  · refine ⟨z i - a i * z i₀, ?_⟩
+    simp [hi]
+
+/-- The cyclic quotient is the distinguished integer basis coefficient modulo `q`. -/
+noncomputable def cyclicLiftProjection {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) : cyclicLiftLattice q a i₀ →+ ZMod q where
+  toFun x := (((cyclicLiftBasis q a i₀).restrictScalars ℤ).repr x i₀ : ZMod q)
+  map_zero' := by simp only [map_zero, Finsupp.zero_apply, Int.cast_zero]
+  map_add' x y := by simp only [map_add, Finsupp.add_apply, Int.cast_add]
+
+theorem cyclicLiftProjection_basis {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ i : ι) :
+    cyclicLiftProjection q a i₀ ((cyclicLiftBasis q a i₀).restrictScalars ℤ i) =
+      if i = i₀ then 1 else 0 := by
+  change ((((cyclicLiftBasis q a i₀).restrictScalars ℤ).repr
+    ((cyclicLiftBasis q a i₀).restrictScalars ℤ i)) i₀ : ZMod q) = _
+  rw [Module.Basis.repr_self]
+  by_cases hi : i = i₀ <;> simp [hi]
+
+theorem cyclicLiftProjection_surjective {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) :
+    Function.Surjective (cyclicLiftProjection q a i₀) := by
+  intro z
+  refine ⟨z.val • (cyclicLiftBasis q a i₀).restrictScalars ℤ i₀, ?_⟩
+  rw [map_nsmul, cyclicLiftProjection_basis]
+  simp
+
+/-- The kernel consists exactly of the vectors with integer coordinates. -/
+theorem cyclicLiftProjection_eq_zero_iff {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (x : cyclicLiftLattice q a i₀) :
+    cyclicLiftProjection q a i₀ x = 0 ↔
+      ∀ i, ∃ z : ℤ, (x : EuclideanSpace ℝ ι) i = z := by
+  let n := ((cyclicLiftBasis q a i₀).restrictScalars ℤ).repr x i₀
+  have hn : (n : ℝ) = (q : ℝ) * (x : EuclideanSpace ℝ ι) i₀ := by
+    simpa only [ite_true] using cyclicLiftLattice_integer_coordinates q a i₀ x i₀
+  have hq : (q : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne q)
+  change (n : ZMod q) = 0 ↔ _
+  rw [ZMod.intCast_zmod_eq_zero_iff_dvd]
+  constructor
+  · rintro ⟨k, hk⟩ i
+    have hx0 : (x : EuclideanSpace ℝ ι) i₀ = (k : ℝ) := by
+      have hkR : (n : ℝ) = (q : ℝ) * k := by exact_mod_cast hk
+      exact mul_left_cancel₀ hq (hn.symm.trans hkR)
+    by_cases hi : i = i₀
+    · exact ⟨k, by simpa only [hi] using hx0⟩
+    · refine ⟨((cyclicLiftBasis q a i₀).restrictScalars ℤ).repr x i + a i * k, ?_⟩
+      have h := cyclicLiftLattice_integer_coordinates q a i₀ x i
+      rw [ite_eq_right hi, hx0] at h
+      push_cast
+      linarith
+  · intro hx
+    obtain ⟨k, hk⟩ := hx i₀
+    refine ⟨k, ?_⟩
+    have h : (n : ℝ) = (q : ℝ) * k := by rw [hn, hk]
+    exact_mod_cast h
+
+/-- The frequency associated to each cyclic lift coordinate, with distinguished frequency one. -/
+def cyclicLiftFrequency {ι : Type*} [DecidableEq ι] (q : ℕ)
+    (a : ι → ℤ) (i₀ i : ι) : ZMod q := if i = i₀ then 1 else a i
+
+/-- Reduction modulo the integer lattice recovers every specified cyclic character. -/
+theorem cyclicLiftProjection_character {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (x : cyclicLiftLattice q a i₀) (i : ι) :
+    ((x : EuclideanSpace ℝ ι) i : UnitAddCircle) =
+      ZMod.toAddCircle (cyclicLiftFrequency q a i₀ i * cyclicLiftProjection q a i₀ x) := by
+  let z := ((cyclicLiftBasis q a i₀).restrictScalars ℤ).repr x
+  have hq : (q : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne q)
+  have h0 : (x : EuclideanSpace ℝ ι) i₀ = (z i₀ : ℝ) / q := by
+    have h := cyclicLiftLattice_integer_coordinates q a i₀ x i₀
+    simp only [ite_true] at h
+    apply (eq_div_iff hq).mpr
+    nlinarith only [h]
+  by_cases hi : i = i₀
+  · subst i
+    simp only [cyclicLiftFrequency, ite_true, one_mul]
+    change ((x : EuclideanSpace ℝ ι) i₀ : UnitAddCircle) = ZMod.toAddCircle (z i₀ : ZMod q)
+    rw [ZMod.toAddCircle_intCast, h0]
+  · have hx : (x : EuclideanSpace ℝ ι) i =
+        (z i : ℝ) + ((a i * z i₀ : ℤ) : ℝ) / q := by
+      have h := cyclicLiftLattice_integer_coordinates q a i₀ x i
+      rw [ite_eq_right hi, h0] at h
+      rw [← mul_div_assoc] at h
+      push_cast
+      dsimp only [z] at *
+      linarith only [h]
+    simp only [cyclicLiftFrequency, ite_eq_right hi]
+    change ((x : EuclideanSpace ℝ ι) i : UnitAddCircle) =
+      ZMod.toAddCircle ((a i : ZMod q) * (z i₀ : ZMod q))
+    rw [← Int.cast_mul, ZMod.toAddCircle_intCast, hx, AddCircle.coe_add]
+    simp
+
+/-- Containment of the integer lattice makes every vector in the dual lattice integral. -/
+theorem cyclicLiftDual_integer {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (u : EuclideanSpace ℝ ι)
+    (hu : u ∈ euclideanDualLattice (cyclicLiftLattice q a i₀)) (i : ι) :
+    ∃ z : ℤ, u i = z := by
+  have he : EuclideanSpace.single i (1 : ℝ) ∈ cyclicLiftLattice q a i₀ := by
+    convert integerVector_mem_cyclicLiftLattice q a i₀ (Pi.single i 1) using 1
+    ext j
+    simp [Pi.single_apply]
+  obtain ⟨z, hz⟩ := (mem_euclideanDualLattice _ _).mp hu _ he
+  refine ⟨z, ?_⟩
+  simpa only [EuclideanSpace.inner_single_right, one_mul, conj_trivial] using hz.symm
+
+/-- Two cyclic lifts less than one apart cannot have the same projection unless equal. -/
+theorem cyclicLiftProjection_injective_near {ι : Type*} [Fintype ι] [DecidableEq ι]
+    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (x y : cyclicLiftLattice q a i₀)
+    (hsmall : ‖(x : EuclideanSpace ℝ ι) - (y : EuclideanSpace ℝ ι)‖ < 1)
+    (heq : cyclicLiftProjection q a i₀ x = cyclicLiftProjection q a i₀ y) : x = y := by
+  have hz : cyclicLiftProjection q a i₀ (x - y) = 0 := by rw [map_sub, heq, sub_self]
+  have hint := (cyclicLiftProjection_eq_zero_iff q a i₀ (x - y)).mp hz
+  apply Subtype.ext
+  apply sub_eq_zero.mp
+  ext i
+  obtain ⟨z, hz⟩ := hint i
+  have hcoord := PiLp.norm_apply_le ((x : EuclideanSpace ℝ ι) - (y : EuclideanSpace ℝ ι)) i
+  have hreal : |(z : ℝ)| < 1 := by
+    rw [← hz]
+    exact hcoord.trans_lt hsmall
+  have hint : |z| < (1 : ℤ) := by exact_mod_cast hreal
+  have hz0 : z = 0 := by have := abs_lt.mp hint; omega
+  change (x : EuclideanSpace ℝ ι) i - (y : EuclideanSpace ℝ ι) i = 0
+  change (x : EuclideanSpace ℝ ι) i - (y : EuclideanSpace ℝ ι) i = (z : ℝ) at hz
+  simpa only [hz0, Int.cast_zero] using hz
+
+/-- A full lattice containing the integer lattice has integral dual coordinates. For a
+ lattice vector `θ`, its basis-coordinate forms on `n θ - k` have integer coefficients;
+ blueprint `lem:local-chart`, lines 1054-1057. -/
+theorem integer_lattice_dual_coordinates {ι : Type*} [Fintype ι] {n : ℕ}
+    (L : Submodule ℤ (EuclideanSpace ℝ ι))
+    (hZ : ∀ z : ι → ℤ, WithLp.toLp 2 (fun j => (z j : ℝ)) ∈ L)
+    (b : Module.Basis (Fin n) ℝ (EuclideanSpace ℝ ι))
+    (hb : Submodule.span ℤ (Set.range b) = L) (θ : EuclideanSpace ℝ ι) (hθ : θ ∈ L) :
+    ∃ (U : Fin n → ι → ℤ) (t : Fin n → ℤ),
+      (∀ i j, euclideanDualBasis b i j = (U i j : ℝ)) ∧
+      (∀ i, inner ℝ (euclideanDualBasis b i) θ = (t i : ℝ)) ∧
+      (∀ (x : EuclideanSpace ℝ ι) i, b.repr x i = ∑ j, (U i j : ℝ) * x j) ∧
+      ∀ (m : ℤ) (k : ι → ℤ) i,
+        b.repr (m • θ - WithLp.toLp 2 (fun j => (k j : ℝ))) i =
+          ((t i * m - ∑ j, U i j * k j : ℤ) : ℝ) := by
+  classical
+  have hdual (i : Fin n) : euclideanDualBasis b i ∈ euclideanDualLattice L := by
+    rw [← hb, euclideanDualLattice_span]
+    exact Submodule.subset_span (Set.mem_range_self i)
+  have hcoord (i : Fin n) (j : ι) : ∃ z : ℤ, euclideanDualBasis b i j = (z : ℝ) := by
+    have hj : EuclideanSpace.single j (1 : ℝ) ∈ L := by
+      convert hZ (Pi.single j 1) using 1
+      ext k
+      simp [Pi.single_apply]
+    obtain ⟨z, hz⟩ := (mem_euclideanDualLattice L _).mp (hdual i) _ hj
+    exact ⟨z, by
+      simpa only [EuclideanSpace.inner_single_right, one_mul, conj_trivial] using hz.symm⟩
+  choose U hU using hcoord
+  have htheta (i : Fin n) : ∃ z : ℤ, inner ℝ (euclideanDualBasis b i) θ = (z : ℝ) := by
+    obtain ⟨z, hz⟩ := (mem_euclideanDualLattice L _).mp (hdual i) θ hθ
+    exact ⟨z, hz.symm⟩
+  choose t ht using htheta
+  have hrepr (x : EuclideanSpace ℝ ι) (i : Fin n) :
+      b.repr x i = ∑ j, (U i j : ℝ) * x j := by
+    rw [← euclideanDualBasis_inner, EuclideanSpace.inner_eq_star_dotProduct]
+    simp [dotProduct, hU, mul_comm]
+  refine ⟨U, t, hU, ht, hrepr, ?_⟩
+  intro m k i
+  have hsumθ : (∑ j, (U i j : ℝ) * θ j) = (t i : ℝ) := by
+    rw [← hrepr, ← euclideanDualBasis_inner]
+    exact ht i
+  rw [hrepr, ← Int.cast_smul_eq_zsmul ℝ]
+  change (∑ j, (U i j : ℝ) * ((m : ℝ) * θ j - (k j : ℝ))) = _
+  calc
+    _ = (m : ℝ) * (∑ j, (U i j : ℝ) * θ j) - ∑ j, (U i j : ℝ) * (k j : ℝ) := by
+      simp only [mul_sub, Finset.sum_sub_distrib, Finset.mul_sum]
+      congr 1
+      apply Finset.sum_congr rfl
+      intro j _
+      ring
+    _ = _ := by rw [hsumθ]; push_cast; ring
+
+def euclideanCoordinateCube (d : ℕ) : Set (EuclideanSpace ℝ (Fin d)) :=
+  WithLp.toLp 2 '' Set.Icc (fun _ : Fin d => (-1 : ℝ)) (fun _ => 1)
+
+theorem mem_euclideanCoordinateCube {d : ℕ} (x : EuclideanSpace ℝ (Fin d)) :
+    x ∈ euclideanCoordinateCube d ↔ ∀ i, |x i| ≤ 1 := by
+  constructor
+  · rintro ⟨v, hv, rfl⟩ i
+    exact abs_le.mpr ⟨hv.1 i, hv.2 i⟩
+  · intro hx
+    exact ⟨x.ofLp, ⟨fun i => (abs_le.mp (hx i)).1, fun i => (abs_le.mp (hx i)).2⟩, rfl⟩
+
+theorem euclideanCoordinateCube_compact (d : ℕ) :
+    IsCompact (euclideanCoordinateCube d) :=
+  isCompact_Icc.image (PiLp.continuous_toLp 2 (fun _ : Fin d => ℝ))
+
+theorem euclideanCoordinateCube_convex (d : ℕ) :
+    Convex ℝ (euclideanCoordinateCube d) :=
+  (convex_Icc (fun _ : Fin d => (-1 : ℝ)) (fun _ => 1)).linear_image
+    (WithLp.linearEquiv 2 ℝ (Fin d → ℝ)).symm.toLinearMap
+
+theorem euclideanCoordinateCube_zero (d : ℕ) : 0 ∈ euclideanCoordinateCube d := by
+  rw [mem_euclideanCoordinateCube]
+  simp
+
+theorem euclideanCoordinateCube_neg {d : ℕ} {x : EuclideanSpace ℝ (Fin d)}
+    (hx : x ∈ euclideanCoordinateCube d) : -x ∈ euclideanCoordinateCube d := by
+  rw [mem_euclideanCoordinateCube] at hx ⊢
+  simpa only [PiLp.neg_apply, abs_neg] using hx
+
+theorem euclideanCoordinateCube_zero_interior (d : ℕ) :
+    (0 : EuclideanSpace ℝ (Fin d)) ∈ interior (euclideanCoordinateCube d) := by
+  have hs : Metric.ball (0 : EuclideanSpace ℝ (Fin d)) 1 ⊆ euclideanCoordinateCube d := by
+    intro x hx
+    rw [mem_euclideanCoordinateCube]
+    intro i
+    have hxi := PiLp.norm_apply_le x i
+    have hn : ‖x‖ < 1 := by simpa only [Metric.mem_ball, dist_zero_right] using hx
+    simpa only [Real.norm_eq_abs] using hxi.trans hn.le
+  exact mem_interior_iff_mem_nhds.mpr
+    (Filter.mem_of_superset (Metric.ball_mem_nhds 0 (by norm_num : (0 : ℝ) < 1)) hs)
+noncomputable def shortReturnBody {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d)) (P : ℝ) :
+    Set (EuclideanSpace ℝ (Fin d)) :=
+  ((P⁻¹ • V) '' euclideanCoordinateCube k) + euclideanCoordinateCube d
+
+theorem shortReturnBody_cube_subset {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d)) (P : ℝ) :
+    euclideanCoordinateCube d ⊆ shortReturnBody V P := by
+  intro w hw
+  exact ⟨0, ⟨0, euclideanCoordinateCube_zero k, map_zero _⟩, w, hw, zero_add _⟩
+
+/-- Blueprint lem:return-splitting, lines 1271-1275: the sum of the image
+of the coordinate cube and the ambient coordinate cube is a symmetric
+compact convex body with the origin in its interior. -/
+theorem shortReturnBody_symmetricConvexBody {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d)) (P : ℝ) :
+    IsSymmetricConvexBody (shortReturnBody V P) where
+  compact := ((euclideanCoordinateCube_compact k).image (P⁻¹ • V).continuous).add
+    (euclideanCoordinateCube_compact d)
+  convex := ((euclideanCoordinateCube_convex k).linear_image
+    (P⁻¹ • V).toLinearMap).add (euclideanCoordinateCube_convex d)
+  neg_mem := by
+    rintro z ⟨x, ⟨h, hh, rfl⟩, w, hw, rfl⟩
+    refine ⟨(P⁻¹ • V) (-h), ⟨-h, euclideanCoordinateCube_neg hh, rfl⟩,
+      -w, euclideanCoordinateCube_neg hw, ?_⟩
+    simp [add_comm]
+  interior_nonempty := ⟨0, interior_mono (shortReturnBody_cube_subset V P)
+    (euclideanCoordinateCube_zero_interior d)⟩
+
+theorem mem_shortReturnBody {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d)) (P : ℝ)
+    (x : EuclideanSpace ℝ (Fin d)) :
+    x ∈ shortReturnBody V P ↔
+      ∃ (h : EuclideanSpace ℝ (Fin k)) (w : EuclideanSpace ℝ (Fin d)),
+        (∀ j, |h j| ≤ 1) ∧ (∀ i, |w i| ≤ 1) ∧ P⁻¹ • V h + w = x := by
+  constructor
+  · rintro ⟨z, ⟨h, hh, rfl⟩, w, hw, he⟩
+    exact ⟨h, w, (mem_euclideanCoordinateCube h).mp hh,
+      (mem_euclideanCoordinateCube w).mp hw, he⟩
+  · rintro ⟨h, w, hh, hw, he⟩
+    exact ⟨(P⁻¹ • V) h, ⟨h, (mem_euclideanCoordinateCube h).mpr hh, rfl⟩,
+      w, (mem_euclideanCoordinateCube w).mpr hw, he⟩
+
+theorem finite_list_interval_gap {d : ℕ} (x : Fin d → ℝ) (b : ℕ → ℝ)
+    (hb : Antitone b) :
+    ∃ j : Fin (d + 1), ∀ i, x i ∉ Set.Ioc (b (j.val + 1)) (b j.val) := by
+  classical
+  by_contra hn
+  push Not at hn
+  choose f hf using hn
+  have hcard : Fintype.card (Fin d) < Fintype.card (Fin (d + 1)) := by simp
+  obtain ⟨j, j', hne, he⟩ := Fintype.exists_ne_map_eq_of_card_lt f hcard
+  have hsep (u v : Fin (d + 1)) (huv : u < v) (heq : f u = f v) : False := by
+    have hv := (hf v).2
+    have hu := (hf u).1
+    have hle := hb (show u.val + 1 ≤ v.val by omega)
+    rw [← heq] at hv
+    linarith only [hv, hu, hle]
+  rcases lt_or_gt_of_ne hne with hlt | hgt
+  · exact hsep j j' hlt he
+  · exact hsep j' j hgt he.symm
+
+theorem geometric_interval_gap {d : ℕ} (x : Fin d → ℝ) {B L : ℝ}
+    (hB : 0 < B) (hL : 1 < L) :
+    ∃ b : ℝ, 0 < b ∧ b ≤ B ∧ b⁻¹ ≤ B⁻¹ * L ^ (d + 1) ∧
+      ∀ i, x i ≤ b ∨ L * b < x i := by
+  have hLp : 0 < L := lt_trans zero_lt_one hL
+  have hanti : Antitone (fun j : ℕ => B / L ^ j) := by
+    intro i j hij
+    exact div_le_div_of_nonneg_left hB.le (pow_pos hLp i)
+      (pow_le_pow_right₀ hL.le hij)
+  obtain ⟨j, hj⟩ := finite_list_interval_gap x (fun j => B / L ^ j) hanti
+  refine ⟨B / L ^ (j.val + 1), div_pos hB (pow_pos hLp _), ?_, ?_, ?_⟩
+  · exact (div_le_self hB.le (one_le_pow₀ hL.le)).trans le_rfl
+  · rw [inv_div]
+    have hp : L ^ (j.val + 1) ≤ L ^ (d + 1) :=
+      pow_le_pow_right₀ hL.le (by omega)
+    have hh := mul_le_mul_of_nonneg_left hp (inv_nonneg.mpr hB.le)
+    simpa only [div_eq_mul_inv, mul_comm] using hh
+  · intro i
+    have he : L * (B / L ^ (j.val + 1)) = B / L ^ j.val := by
+      rw [pow_succ]
+      field_simp
+    have hn := hj i
+    rw [Set.mem_Ioc, not_and_or, not_lt, not_le] at hn
+    simpa only [he] using hn
+
+/-- Blueprint lem:return-splitting, lines 1275-1279: one geometric interval
+avoids all successive minima up to index d, with a controlled reciprocal scale. -/
+theorem successiveMinimum_geometric_gap {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] (K : Set E) (Λ : Submodule ℤ E) (d : ℕ)
+    {B L : ℝ} (hB : 0 < B) (hL : 1 < L) :
+    ∃ b : ℝ, 0 < b ∧ b ≤ B ∧ b⁻¹ ≤ B⁻¹ * L ^ (d + 1) ∧
+      ∀ j : ℕ, 0 < j → j ≤ d →
+        successiveMinimum K Λ j ≤ b ∨ L * b < successiveMinimum K Λ j := by
+  obtain ⟨b, hb, hbB, hrecip, hgap⟩ :=
+    geometric_interval_gap (fun i : Fin d => successiveMinimum K Λ (i.val + 1)) hB hL
+  refine ⟨b, hb, hbB, hrecip, ?_⟩
+  intro j hj hjd
+  have hh := hgap ⟨j - 1, by omega⟩
+  simpa only [show j - 1 + 1 = j by omega] using hh
+
+theorem mem_smul_shortReturnBody_representation {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    (P : ℝ) {s : ℝ} (hs : 0 ≤ s) {x : EuclideanSpace ℝ (Fin d)}
+    (hx : x ∈ s • shortReturnBody V P) :
+    ∃ (h : EuclideanSpace ℝ (Fin k)) (w : EuclideanSpace ℝ (Fin d)),
+      (∀ j, |h j| ≤ s) ∧ (∀ i, |w i| ≤ s) ∧ P⁻¹ • V h + w = x := by
+  obtain ⟨y, hy, rfl⟩ := Set.mem_smul_set.mp hx
+  obtain ⟨h, w, hh, hw, rfl⟩ := (mem_shortReturnBody V P y).mp hy
+  refine ⟨s • h, s • w, ?_, ?_, ?_⟩
+  · intro j
+    simp only [PiLp.smul_apply, smul_eq_mul, abs_mul, abs_of_nonneg hs]
+    exact mul_le_of_le_one_right hs (hh j)
+  · intro i
+    simp only [PiLp.smul_apply, smul_eq_mul, abs_mul, abs_of_nonneg hs]
+    exact mul_le_of_le_one_right hs (hw i)
+  · rw [map_smul, smul_add, smul_comm P⁻¹ s]
+
+theorem euclidean_norm_le_coordinate_bound {d : ℕ} (x : EuclideanSpace ℝ (Fin d))
+    {s : ℝ} (hx : ∀ i, |x i| ≤ s) : ‖x‖ ≤ (d : ℝ) * s := by
+  calc
+    ‖x‖ ≤ ∑ i, ‖x i‖ := euclidean_norm_le_sum_coordinates x
+    _ ≤ ∑ _i : Fin d, s := Finset.sum_le_sum fun i _ => by simpa only [Real.norm_eq_abs] using hx i
+    _ = _ := by simp
+
+theorem scaled_shortReturnBody_gives_return {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    {P s : ℝ} (hP : 0 < P) (hs : 0 ≤ s) {x : EuclideanSpace ℝ (Fin d)}
+    (hx : x ∈ s • shortReturnBody V P) :
+    ∃ h : EuclideanSpace ℝ (Fin k),
+      ‖h‖ + ‖V h - P • x‖ ≤ ((k : ℝ) + P * d) * s := by
+  obtain ⟨h, w, hh, hw, he⟩ := mem_smul_shortReturnBody_representation V P hs hx
+  have hd : V h - P • x = -(P • w) := by
+    rw [← he, smul_add, smul_smul, mul_inv_cancel₀ hP.ne', one_smul]
+    abel
+  have hhn := euclidean_norm_le_coordinate_bound h hh
+  have hwn := euclidean_norm_le_coordinate_bound w hw
+  refine ⟨h, ?_⟩
+  rw [hd, norm_neg, norm_smul, Real.norm_eq_abs, abs_of_pos hP]
+  have hm := mul_le_mul_of_nonneg_left hwn hP.le
+  nlinarith only [hhn, hm]
+noncomputable def coordinateIntegerLattice (d : ℕ) : Submodule ℤ (EuclideanSpace ℝ (Fin d)) :=
+  Submodule.span ℤ (Set.range (EuclideanSpace.basisFun (Fin d) ℝ).toBasis)
+
+instance coordinateIntegerLattice_discrete (d : ℕ) :
+    DiscreteTopology (coordinateIntegerLattice d) := by
+  unfold coordinateIntegerLattice
+  infer_instance
+
+instance coordinateIntegerLattice_full (d : ℕ) :
+    IsZLattice ℝ (coordinateIntegerLattice d) := by
+  unfold coordinateIntegerLattice
+  infer_instance
+
+theorem mem_coordinateIntegerLattice {d : ℕ} (x : EuclideanSpace ℝ (Fin d)) :
+    x ∈ coordinateIntegerLattice d ↔ ∀ i, ∃ n : ℤ, (n : ℝ) = x i := by
+  simpa [coordinateIntegerLattice, OrthonormalBasis.coe_toBasis_repr_apply,
+    EuclideanSpace.basisFun_repr, Set.mem_range] using
+      (EuclideanSpace.basisFun (Fin d) ℝ).toBasis.mem_span_iff_repr_mem ℤ x
+
+theorem coordinateIntegerLattice_coordinates {d : ℕ} {x : EuclideanSpace ℝ (Fin d)}
+    (hx : x ∈ coordinateIntegerLattice d) :
+    ∃ n : Fin d → ℤ, x = WithLp.toLp 2 (fun i => (n i : ℝ)) := by
+  classical
+  choose n hn using (mem_coordinateIntegerLattice x).mp hx
+  refine ⟨n, ?_⟩
+  ext i
+  exact (hn i).symm
+
+theorem bilinear_vanishes_on_span {E : Type*} [AddCommGroup E] [Module ℝ E]
+    (B : E →ₗ[ℝ] E →ₗ[ℝ] ℝ) (S : Set E)
+    (hB : ∀ x ∈ S, ∀ y ∈ S, B x y = 0) :
+    ∀ x ∈ Submodule.span ℝ S, ∀ y ∈ Submodule.span ℝ S, B x y = 0 := by
+  have hl (y : E) (hy : y ∈ S) : Submodule.span ℝ S ≤ LinearMap.ker (B.flip y) :=
+    Submodule.span_le.mpr (fun x hx => hB x hx y hy)
+  intro x hx
+  have hr : Submodule.span ℝ S ≤ LinearMap.ker (B x) :=
+    Submodule.span_le.mpr (fun y hy => hl y hy hx)
+  exact fun y hy => hr hy
+
+noncomputable def shortReturnLatticeSpan {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d)) (P s : ℝ) :
+    Submodule ℝ (EuclideanSpace ℝ (Fin d)) :=
+  Submodule.span ℝ ((coordinateIntegerLattice d : Set (EuclideanSpace ℝ (Fin d))) ∩
+    s • shortReturnBody V P)
+
+theorem shortReturnLatticeSpan_isotropic_of_returns {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    (B : EuclideanSpace ℝ (Fin d) →ₗ[ℝ] EuclideanSpace ℝ (Fin d) →ₗ[ℝ] ℝ)
+    {P s r : ℝ} (hP : 0 < P) (hs : 0 ≤ s)
+    (hscale : ((k : ℝ) + P * d) * s ≤ r)
+    (hiso : ∀ (h h' : EuclideanSpace ℝ (Fin k)) (n n' : Fin d → ℤ),
+      ‖h‖ + ‖V h - P • WithLp.toLp 2 (fun i => (n i : ℝ))‖ ≤ r →
+      ‖h'‖ + ‖V h' - P • WithLp.toLp 2 (fun i => (n' i : ℝ))‖ ≤ r →
+      B (P • WithLp.toLp 2 (fun i => (n i : ℝ)))
+        (P • WithLp.toLp 2 (fun i => (n' i : ℝ))) = 0) :
+    ∀ x ∈ shortReturnLatticeSpan V P s, ∀ y ∈ shortReturnLatticeSpan V P s,
+      B x y = 0 := by
+  apply bilinear_vanishes_on_span
+  intro x hx y hy
+  obtain ⟨h, hh⟩ := scaled_shortReturnBody_gives_return V hP hs hx.2
+  obtain ⟨h', hh'⟩ := scaled_shortReturnBody_gives_return V hP hs hy.2
+  obtain ⟨n, rfl⟩ := coordinateIntegerLattice_coordinates hx.1
+  obtain ⟨n', rfl⟩ := coordinateIntegerLattice_coordinates hy.1
+  have hb := hiso h h' n n' (hh.trans hscale) (hh'.trans hscale)
+  simpa only [map_smul, LinearMap.smul_apply, smul_eq_mul, mul_eq_zero,
+    hP.ne', false_or] using hb
+
+theorem shortReturn_scale_bound (d k : ℕ) {P s r : ℝ} (hP : 1 ≤ P) (hs : 0 ≤ s)
+    (hb : s ≤ r / (100 * P * (d + k + 1))) :
+    ((k : ℝ) + P * d) * s ≤ r := by
+  have hden : 0 < 100 * P * (d + k + 1 : ℝ) := by positivity
+  have hm := (le_div_iff₀ hden).mp hb
+  have hcoef : (k : ℝ) + P * d ≤ 100 * P * (d + k + 1) := by
+    have hk := mul_nonneg (sub_nonneg.mpr hP) (Nat.cast_nonneg k)
+    have hd := mul_nonneg (show 0 ≤ P by linarith) (Nat.cast_nonneg d)
+    nlinarith only [hk, hd, hP]
+  exact (mul_le_mul_of_nonneg_right hcoef hs).trans (by simpa only [mul_comm] using hm)
+
+/-- Blueprint lem:return-splitting, lines 1279-1281: the real span of the
+integer points in the chosen return body is isotropic for C-C^T. -/
+theorem shortReturnLatticeSpan_isotropic {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (V : Matrix (Fin d) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (hΛ : Λ.IsSymm)
+    (P : ℤ) (hP : 1 ≤ P) (hC : ∀ i j, ∃ z : ℤ, (P : ℝ) * C i j = z)
+    {a M s : ℝ} (ha : 0 < a) (hM : 0 ≤ M) (hs : 0 ≤ s)
+    (hΩ : ∀ (h : Fin k → ℝ) (n : Fin d → ℤ),
+      ‖WithLp.toLp 2 h‖ +
+        ‖WithLp.toLp 2 (V.mulVec h - fun i => (P : ℝ) * n i)‖ ≤ a →
+      ‖WithLp.toLp 2 ((2 • Λ + V.transpose * C * V).mulVec h -
+        (V.transpose * (C - C.transpose)).mulVec (fun i => (P : ℝ) * n i))‖ ≤ M) :
+    let r := min a
+      (100 * (M + ‖(Matrix.toEuclideanLin (C - C.transpose)).toContinuousLinearMap‖ + 1))⁻¹
+    s ≤ r / (100 * (P : ℝ) * (d + k + 1)) →
+    ∀ x ∈ shortReturnLatticeSpan (Matrix.toEuclideanLin V).toContinuousLinearMap P s,
+      ∀ y ∈ shortReturnLatticeSpan (Matrix.toEuclideanLin V).toContinuousLinearMap P s,
+        dotProduct y.ofLp ((C - C.transpose).mulVec x.ofLp) = 0 := by
+  intro r hsmall
+  let W := (Matrix.toEuclideanLin V).toContinuousLinearMap
+  let B := (innerₗ (EuclideanSpace ℝ (Fin d))).comp (Matrix.toEuclideanLin (C - C.transpose))
+  have hPr : (1 : ℝ) ≤ P := by exact_mod_cast hP
+  have hPpos : (0 : ℝ) < P := by linarith only [hPr]
+  have hret := quadratic_short_returns_isotropic C V Λ hΛ P hC ha hM hΩ
+  have hiso : ∀ x ∈ shortReturnLatticeSpan W P s,
+      ∀ y ∈ shortReturnLatticeSpan W P s, B x y = 0 := by
+    apply shortReturnLatticeSpan_isotropic_of_returns W B hPpos hs
+      (shortReturn_scale_bound d k hPr hs hsmall)
+    intro h h' n n' hh hh'
+    have ht := hret h.ofLp h'.ofLp n n' hh hh'
+    simp only [B, LinearMap.comp_apply, innerₗ_apply_apply,
+      EuclideanSpace.inner_eq_star_dotProduct, star_trivial] at ⊢
+    exact ht
+  intro x hx y hy
+  have ht := hiso x hx y hy
+  simp only [B, LinearMap.comp_apply, innerₗ_apply_apply,
+    EuclideanSpace.inner_eq_star_dotProduct, star_trivial] at ht
+  exact ht
+
+noncomputable def latticeBodySpan {E : Type*} [AddCommGroup E] [Module ℝ E]
+    (K : Set E) (L : Submodule ℤ E) (b : ℝ) : Submodule ℝ E :=
+  Submodule.span ℝ ((L : Set E) ∩ b • K)
+
+theorem latticeBodySpan_successiveMinimum_gt {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] [FiniteDimensional ℝ E] {K : Set E}
+    (hK : IsSymmetricConvexBody K) (L : Submodule ℤ E) [DiscreteTopology L]
+    [IsZLattice ℝ L] {b : ℝ} (hb : 0 < b)
+    (hr : Module.finrank ℝ (latticeBodySpan K L b) < Module.finrank ℝ E) :
+    b < successiveMinimum K L (Module.finrank ℝ (latticeBodySpan K L b) + 1) := by
+  let U := latticeBodySpan K L b
+  obtain ⟨hp, v, hv, hvmem⟩ := successiveMinimum_attained_fullLattice hK L
+    (Nat.succ_pos (Module.finrank ℝ U)) (by dsimp [U]; omega)
+  by_contra hn
+  have hle := le_of_not_gt hn
+  have hsub : Submodule.span ℝ (Set.range v) ≤ U := by
+    apply Submodule.span_le.mpr
+    rintro _ ⟨i, rfl⟩
+    apply Submodule.subset_span
+    refine ⟨hv.2 i, ?_⟩
+    exact (symmetricConvexBody_gauge_le hK (v i) hb).mp
+      (((symmetricConvexBody_gauge_le hK (v i) hp).mpr (hvmem i)).trans hle)
+  have hd := Submodule.finrank_mono hsub
+  have he : Module.finrank ℝ (Submodule.span ℝ (Set.range v)) =
+      Module.finrank ℝ U + 1 := by
+    simpa only [Fintype.card_fin] using finrank_span_eq_card hv.1
+  omega
+
+theorem latticeBodySpan_rank_gap {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] [FiniteDimensional ℝ E] {K : Set E}
+    (hK : IsSymmetricConvexBody K) (L : Submodule ℤ E) [DiscreteTopology L]
+    [IsZLattice ℝ L] {b A : ℝ} (hb : 0 < b)
+    (hgap : ∀ j : ℕ, 0 < j → j ≤ Module.finrank ℝ E →
+      successiveMinimum K L j ≤ b ∨ A * b < successiveMinimum K L j)
+    (hr : Module.finrank ℝ (latticeBodySpan K L b) < Module.finrank ℝ E) :
+    A * b < successiveMinimum K L (Module.finrank ℝ (latticeBodySpan K L b) + 1) := by
+  have hgt := latticeBodySpan_successiveMinimum_gt hK L hb hr
+  exact (hgap _ (by omega) (by omega)).resolve_left (not_le_of_gt hgt)
+
+theorem short_dual_vector_mem_orthogonal {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] (K : Set E) (L : Submodule ℤ E) {b t : ℝ}
+    (hb : 0 ≤ b) (ht : 0 ≤ t) (hbt : b * t < 1) {q : E}
+    (hq : q ∈ euclideanDualLattice L) (hqt : q ∈ t • euclideanPolar K) :
+    q ∈ (latticeBodySpan K L b)ᗮ := by
+  apply ((latticeBodySpan K L b).mem_orthogonal' q).mpr
+  have hker : latticeBodySpan K L b ≤ (innerₗ E q).ker := by
+    apply Submodule.span_le.mpr
+    rintro x ⟨hxL, hxb⟩
+    obtain ⟨z, hz⟩ := (mem_euclideanDualLattice L q).mp hq x hxL
+    have hbound := (inner_le_of_mem_dilate_polar hb ht hxb hqt).trans_lt hbt
+    rw [real_inner_comm, ← hz] at hbound
+    have hz0 : z = 0 := by
+      have hh := abs_lt.mp hbound
+      have hlo : (-1 : ℤ) < z := by exact_mod_cast hh.1
+      have hhi : z < (1 : ℤ) := by exact_mod_cast hh.2
+      omega
+    change inner ℝ q x = 0
+    rw [← hz, hz0, Int.cast_zero]
+  exact fun x hx => hker hx
+
+/-- A gap in the primal minima produces a short dual basis for the orthogonal
+complement of the span of the small primal lattice points. -/
+theorem latticeBodySpan_small_dual_basis {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] {K : Set E}
+    (hK : IsSymmetricConvexBody K) {n : ℕ} (v : Module.Basis (Fin n) ℝ E)
+    {b C A : ℝ} (hb : 0 < b)
+    (hC : (n : ℝ) * (16 : ℝ) ^ n ≤ C) (hCA : C < A)
+    (hgap : ∀ j : ℕ, 0 < j → j ≤ n →
+      successiveMinimum K (Submodule.span ℤ (Set.range v)) j ≤ b ∨
+        A * b < successiveMinimum K (Submodule.span ℤ (Set.range v)) j)
+    (hr : Module.finrank ℝ (latticeBodySpan K (Submodule.span ℤ (Set.range v)) b) < n) :
+    let U := latticeBodySpan K (Submodule.span ℤ (Set.range v)) b
+    ∃ q : Fin (n - Module.finrank ℝ U) → E,
+      LinearIndependent ℝ q ∧
+      (∀ i, q i ∈ euclideanDualLattice (Submodule.span ℤ (Set.range v))) ∧
+      (∀ i, q i ∈ (C / (A * b)) • euclideanPolar K) ∧
+      Submodule.span ℝ (Set.range q) = Uᗮ := by
+  intro U
+  let L := Submodule.span ℤ (Set.range v)
+  let r := Module.finrank ℝ U
+  have hdim : Module.finrank ℝ E = n := by
+    simpa only [Fintype.card_fin] using Module.finrank_eq_card_basis v
+  have hn : 0 < n := by omega
+  have hCp : 0 < C := lt_of_lt_of_le (by positivity) hC
+  have hAp : 0 < A := hCp.trans hCA
+  have hAb : 0 < A * b := mul_pos hAp hb
+  have hgt : A * b < successiveMinimum K L (r + 1) := by
+    apply latticeBodySpan_rank_gap hK L hb
+    · simpa only [hdim] using hgap
+    · simpa only [hdim] using hr
+  obtain ⟨hp, q, hq, hqm⟩ := successiveMinimum_attained_fullLattice
+    (symmetricConvexBody_polar hK) (euclideanDualLattice L)
+    (show 0 < n - r by dsimp [r, U]; omega) (by rw [hdim]; omega)
+  have hprod := (successiveMinimum_product_upper hK v
+    (show 0 < r + 1 by omega) (show r + 1 ≤ n by dsimp [r, U]; omega)).trans hC
+  have he : n + 1 - (r + 1) = n - r := by omega
+  rw [he] at hprod
+  have hscale : successiveMinimum (euclideanPolar K) (euclideanDualLattice L) (n-r) ≤
+      C / (A * b) := by
+    apply (le_div_iff₀ hAb).mpr
+    have hm := (mul_le_mul_of_nonneg_right hgt.le hp.le).trans hprod
+    simpa only [mul_comm] using hm
+  have ht : 0 < C / (A * b) := div_pos hCp hAb
+  have hqt : ∀ i, q i ∈ (C / (A * b)) • euclideanPolar K := by
+    intro i
+    exact (symmetricConvexBody_gauge_le (symmetricConvexBody_polar hK) (q i) ht).mp
+      (((symmetricConvexBody_gauge_le (symmetricConvexBody_polar hK) (q i) hp).mpr
+        (hqm i)).trans hscale)
+  have hbt : b * (C / (A * b)) < 1 := by
+    have heq : b * (C / (A * b)) = C / A := by field_simp
+    rw [heq]
+    exact (div_lt_one hAp).mpr hCA
+  have hsub : Submodule.span ℝ (Set.range q) ≤ Uᗮ := by
+    apply Submodule.span_le.mpr
+    rintro _ ⟨i, rfl⟩
+    exact short_dual_vector_mem_orthogonal K L hb.le ht.le hbt (hq.2 i) (hqt i)
+  refine ⟨q, hq.1, hq.2, hqt, Submodule.eq_of_le_of_finrank_eq hsub ?_⟩
+  have hqdim : Module.finrank ℝ (Submodule.span ℝ (Set.range q)) = n - r := by
+    simpa only [Fintype.card_fin] using finrank_span_eq_card hq.1
+  have hu := U.finrank_add_finrank_orthogonal
+  rw [hdim] at hu
+  dsimp [r] at hqdim
+  omega
+
+theorem coordinateIntegerLattice_dual (d : ℕ) :
+    euclideanDualLattice (coordinateIntegerLattice d) = coordinateIntegerLattice d := by
+  apply le_antisymm
+  · intro x hx
+    apply (mem_coordinateIntegerLattice x).mpr
+    intro i
+    have hi : (EuclideanSpace.basisFun (Fin d) ℝ) i ∈ coordinateIntegerLattice d :=
+      Submodule.subset_span ⟨i, rfl⟩
+    obtain ⟨z, hz⟩ := (mem_euclideanDualLattice _ x).mp hx _ hi
+    exact ⟨z, by simpa only [EuclideanSpace.inner_basisFun_real] using hz⟩
+  · intro x hx
+    apply (mem_euclideanDualLattice _ x).mpr
+    intro y hy
+    obtain ⟨n, rfl⟩ := coordinateIntegerLattice_coordinates hx
+    obtain ⟨m, rfl⟩ := coordinateIntegerLattice_coordinates hy
+    refine ⟨∑ i, m i * n i, ?_⟩
+    simp [EuclideanSpace.inner_eq_star_dotProduct, dotProduct]
+
+/-- The short dual vectors in the return-splitting proof span precisely the
+orthogonal complement of the short-return subspace. -/
+theorem shortReturnLatticeSpan_dual_basis {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    (P : ℝ) {b : ℝ} (hb : 0 < b)
+    (hgap : ∀ j : ℕ, 0 < j → j ≤ d →
+      successiveMinimum (shortReturnBody V P) (coordinateIntegerLattice d) j ≤ b ∨
+        (16 * (100 * (d : ℝ)) ^ (10 * d)) * b <
+          successiveMinimum (shortReturnBody V P) (coordinateIntegerLattice d) j)
+    (hr : Module.finrank ℝ (shortReturnLatticeSpan V P b) < d) :
+    ∃ q : Fin (d - Module.finrank ℝ (shortReturnLatticeSpan V P b)) →
+        EuclideanSpace ℝ (Fin d),
+      LinearIndependent ℝ q ∧
+      (∀ i, q i ∈ coordinateIntegerLattice d) ∧
+      (∀ i, q i ∈ ((100 * (d : ℝ)) ^ (10 * d) /
+        ((16 * (100 * (d : ℝ)) ^ (10 * d)) * b)) • euclideanPolar (shortReturnBody V P)) ∧
+      Submodule.span ℝ (Set.range q) = (shortReturnLatticeSpan V P b)ᗮ := by
+  have hd : 0 < d := by omega
+  have hC : 0 < (100 * (d : ℝ)) ^ (10 * d) := by positivity
+  have hh := latticeBodySpan_small_dual_basis (shortReturnBody_symmetricConvexBody V P)
+    (EuclideanSpace.basisFun (Fin d) ℝ).toBasis hb (transference_constant_bound hd)
+    (show (100 * (d : ℝ)) ^ (10 * d) < 16 * (100 * (d : ℝ)) ^ (10 * d) by linarith only [hC])
+    hgap hr
+  obtain ⟨q, hq, hqL, hqt, hspan⟩ := hh
+  refine ⟨q, hq, ?_, hqt, hspan⟩
+  intro i
+  have hi : q i ∈ euclideanDualLattice (coordinateIntegerLattice d) := hqL i
+  rwa [coordinateIntegerLattice_dual] at hi
+
+theorem euclideanCoordinateCube_basis_mem {d : ℕ} (i : Fin d) :
+    EuclideanSpace.basisFun (Fin d) ℝ i ∈ euclideanCoordinateCube d := by
+  apply (mem_euclideanCoordinateCube _).mpr
+  intro j
+  simp [EuclideanSpace.basisFun_apply]
+  split_ifs <;> norm_num
+
+theorem shortReturnBody_scaled_image_mem {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    (P : ℝ) {h : EuclideanSpace ℝ (Fin k)} (hh : h ∈ euclideanCoordinateCube k) :
+    P⁻¹ • V h ∈ shortReturnBody V P := by
+  exact ⟨P⁻¹ • V h, ⟨h, hh, rfl⟩, 0, euclideanCoordinateCube_zero d, add_zero _⟩
+
+theorem shortReturnBody_polar_coordinates {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    {P t : ℝ} (hP : 0 < P) (ht : 0 ≤ t) {q : EuclideanSpace ℝ (Fin d)}
+    (hq : q ∈ t • euclideanPolar (shortReturnBody V P)) :
+    (∀ i, |q i| ≤ t) ∧
+    (∀ j, |inner ℝ q (V (EuclideanSpace.basisFun (Fin k) ℝ j))| ≤ P * t) := by
+  constructor
+  · intro i
+    have hx := shortReturnBody_cube_subset V P (euclideanCoordinateCube_basis_mem i)
+    have hh := inner_le_of_mem_dilate_polar (show (0 : ℝ) ≤ 1 by norm_num) ht
+      (show EuclideanSpace.basisFun (Fin d) ℝ i ∈ (1 : ℝ) • shortReturnBody V P by
+        simpa using hx) hq
+    simpa only [one_mul, EuclideanSpace.basisFun_inner] using hh
+  · intro j
+    have hx := shortReturnBody_scaled_image_mem V P (euclideanCoordinateCube_basis_mem j)
+    have hh := inner_le_of_mem_dilate_polar (show (0 : ℝ) ≤ 1 by norm_num) ht
+      (show P⁻¹ • V (EuclideanSpace.basisFun (Fin k) ℝ j) ∈
+        (1 : ℝ) • shortReturnBody V P by simpa using hx) hq
+    rw [one_mul, real_inner_smul_left, abs_mul, abs_of_pos (inv_pos.mpr hP),
+      real_inner_comm] at hh
+    have hm := mul_le_mul_of_nonneg_left hh hP.le
+    simpa only [← mul_assoc, mul_inv_cancel₀ hP.ne', one_mul] using hm
+
+/-- Finite torus pigeonholing with an explicit cubical grid. -/
+theorem finite_torus_close_pair {d N : ℕ} (hN : 0 < N)
+    (x : Fin (N ^ d + 1) → Fin d → ℝ) :
+    ∃ i j : Fin (N ^ d + 1), i < j ∧
+      ∀ l, |Int.fract (x j l) - Int.fract (x i l)| ≤ 1 / (N : ℝ) := by
+  classical
+  have hNr : (0 : ℝ) < N := by exact_mod_cast hN
+  let box : Fin (N ^ d + 1) → Fin d → Fin N := fun i l =>
+    ⟨⌊(N : ℝ) * Int.fract (x i l)⌋₊, (Nat.floor_lt (by positivity)).mpr
+      (by nlinarith only [Int.fract_lt_one (x i l), hNr])⟩
+  have hcard : Fintype.card (Fin d → Fin N) < Fintype.card (Fin (N ^ d + 1)) := by
+    simp
+  obtain ⟨i, j, hij, hbox⟩ := Fintype.exists_ne_map_eq_of_card_lt box hcard
+  have hclose (u v : Fin (N ^ d + 1)) (he : box u = box v) (l : Fin d) :
+      |Int.fract (x v l) - Int.fract (x u l)| ≤ 1 / (N : ℝ) := by
+    have heq := congrArg Fin.val (congrFun he l)
+    change ⌊(N : ℝ) * Int.fract (x u l)⌋₊ = ⌊(N : ℝ) * Int.fract (x v l)⌋₊ at heq
+    have hul := Nat.floor_le (show 0 ≤ (N : ℝ) * Int.fract (x u l) by positivity)
+    have huv := Nat.lt_floor_add_one ((N : ℝ) * Int.fract (x u l))
+    have hvl := Nat.floor_le (show 0 ≤ (N : ℝ) * Int.fract (x v l) by positivity)
+    have hvv := Nat.lt_floor_add_one ((N : ℝ) * Int.fract (x v l))
+    rw [heq] at hul huv
+    apply abs_le.mpr
+    constructor
+    · have hh : (Int.fract (x v l) - Int.fract (x u l)) * N ≥ -1 := by
+        nlinarith only [huv, hvl]
+      have hd := (le_div_iff₀ hNr).mpr (show
+        (-(Int.fract (x v l) - Int.fract (x u l))) * N ≤ 1 by linarith only [hh])
+      linarith only [hd]
+    · apply (le_div_iff₀ hNr).mpr
+      nlinarith only [hvv, hul]
+  rcases lt_or_gt_of_ne hij with hlt | hgt
+  · exact ⟨i, j, hlt, hclose i j hbox⟩
+  · exact ⟨j, i, hgt, hclose j i hbox.symm⟩
+
+theorem finite_grid_line_return {d N : ℕ} (hN : 0 < N)
+    (v : Fin d → ℝ) {b : ℝ} (hb : 0 < b) :
+    ∃ (t : ℝ) (n : Fin d → ℤ),
+      b / (N : ℝ) ^ d ≤ t ∧ t ≤ b ∧
+      ∀ l, |t * v l - (n l : ℝ)| ≤ 1 / (N : ℝ) := by
+  let x : Fin (N ^ d + 1) → Fin d → ℝ :=
+    fun i l => (b / (N : ℝ) ^ d) * (i.val : ℝ) * v l
+  obtain ⟨i, j, hij, hclose⟩ := finite_torus_close_pair hN x
+  let t := (b / (N : ℝ) ^ d) * ((j.val : ℝ) - i.val)
+  let n : Fin d → ℤ := fun l => ⌊x j l⌋ - ⌊x i l⌋
+  have hNr : (0 : ℝ) < N := by exact_mod_cast hN
+  have hpow : 0 < (N : ℝ) ^ d := pow_pos hNr d
+  have hstep : 0 < b / (N : ℝ) ^ d := div_pos hb hpow
+  have hlo : (1 : ℝ) ≤ (j.val : ℝ) - i.val := by
+    have hh : (i.val : ℝ) + 1 ≤ j.val := by exact_mod_cast hij
+    linarith only [hh]
+  have hhi : (j.val : ℝ) - i.val ≤ (N : ℝ) ^ d := by
+    have hj : (j.val : ℝ) ≤ (N : ℝ) ^ d := by
+      exact_mod_cast (show j.val ≤ N ^ d by omega)
+    linarith only [hj, Nat.cast_nonneg (α := ℝ) i.val]
+  refine ⟨t, n, ?_, ?_, ?_⟩
+  · exact le_mul_of_one_le_right hstep.le hlo
+  · calc
+      t ≤ (b / (N : ℝ) ^ d) * (N : ℝ) ^ d :=
+        mul_le_mul_of_nonneg_left hhi hstep.le
+      _ = b := div_mul_cancel₀ b hpow.ne'
+  · intro l
+    have he : t * v l - (n l : ℝ) = Int.fract (x j l) - Int.fract (x i l) := by
+      simp only [Int.fract, n, Int.cast_sub, t, x]
+      ring
+    rw [he]
+    exact hclose l
+
+theorem small_line_lattice_return {d : ℕ} (v : Fin d → ℝ) {b : ℝ} (hb : 0 < b) :
+    ∃ (M : ℕ) (t : ℝ) (n : Fin d → ℤ), 0 < M ∧
+      (M : ℝ) ≤ (1 + 4 / b) ^ d ∧ b / M ≤ t ∧ t ≤ b ∧
+      ∀ l, |t * v l - (n l : ℝ)| ≤ b / 4 := by
+  let N := ⌈4 / b⌉₊
+  have hfrac : 0 < 4 / b := div_pos (by norm_num) hb
+  have hN : 0 < N := Nat.one_le_ceil_iff.mpr hfrac
+  have hNr : (0 : ℝ) < N := by exact_mod_cast hN
+  obtain ⟨t, n, htlo, hthi, hn⟩ := finite_grid_line_return hN v hb
+  refine ⟨N ^ d, t, n, pow_pos hN d, ?_, ?_, hthi, ?_⟩
+  · have hceil : (N : ℝ) ≤ 1 + 4 / b := by
+      simpa only [add_comm] using (Nat.ceil_lt_add_one hfrac.le).le
+    simpa only [Nat.cast_pow] using pow_le_pow_left₀ hNr.le hceil d
+  · simpa only [Nat.cast_pow] using htlo
+  · intro l
+    apply (hn l).trans
+    have hceil : 4 / b ≤ (N : ℝ) := Nat.le_ceil _
+    have hm : 4 ≤ (N : ℝ) * b := (div_le_iff₀ hb).mp hceil
+    apply (div_le_iff₀ hNr).mpr
+    nlinarith only [hm]
+
+theorem mem_smul_shortReturnBody_of_representation {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    (P : ℝ) {b : ℝ} (hb : 0 < b) {x : EuclideanSpace ℝ (Fin d)}
+    (h : EuclideanSpace ℝ (Fin k)) (w : EuclideanSpace ℝ (Fin d))
+    (hh : ∀ j, |h j| ≤ b) (hw : ∀ i, |w i| ≤ b)
+    (he : P⁻¹ • V h + w = x) :
+    x ∈ b • shortReturnBody V P := by
+  apply Set.mem_smul_set.mpr
+  refine ⟨b⁻¹ • x, ?_, ?_⟩
+  · apply (mem_shortReturnBody V P _).mpr
+    refine ⟨b⁻¹ • h, b⁻¹ • w, ?_, ?_, ?_⟩
+    · intro j
+      have hm := mul_le_mul_of_nonneg_left (hh j) (inv_nonneg.mpr hb.le)
+      simpa only [PiLp.smul_apply, smul_eq_mul, abs_mul, abs_of_pos (inv_pos.mpr hb),
+        inv_mul_cancel₀ hb.ne'] using hm
+    · intro i
+      have hm := mul_le_mul_of_nonneg_left (hw i) (inv_nonneg.mpr hb.le)
+      simpa only [PiLp.smul_apply, smul_eq_mul, abs_mul, abs_of_pos (inv_pos.mpr hb),
+        inv_mul_cancel₀ hb.ne'] using hm
+    · rw [map_smul, smul_comm P⁻¹ b⁻¹, ← smul_add, he]
+  · rw [smul_smul, mul_inv_cancel₀ hb.ne', one_smul]
+
+/-- Quantitative returns along every coordinate axis, with the returning
+integer vector in the short-return span. -/
+theorem shortReturnBody_coordinate_return {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    {P b : ℝ} (hP : 0 < P) (hb : 0 < b) (j : Fin k) :
+    ∃ (M : ℕ) (t : ℝ) (n : Fin d → ℤ),
+      0 < M ∧ (M : ℝ) ≤ (1 + 4 / b) ^ d ∧ b / M ≤ t ∧ t ≤ b ∧
+      WithLp.toLp 2 (fun i => (n i : ℝ)) ∈ b • shortReturnBody V P ∧
+      P • WithLp.toLp 2 (fun i => (n i : ℝ)) ∈ shortReturnLatticeSpan V P b ∧
+      (∀ i, |(V (t • EuclideanSpace.basisFun (Fin k) ℝ j) -
+        P • WithLp.toLp 2 (fun i => (n i : ℝ))) i| ≤ P * b / 4) ∧
+      ‖t • EuclideanSpace.basisFun (Fin k) ℝ j‖ +
+        ‖V (t • EuclideanSpace.basisFun (Fin k) ℝ j) -
+          P • WithLp.toLp 2 (fun i => (n i : ℝ))‖ ≤ (1 + P * d) * b := by
+  let e := EuclideanSpace.basisFun (Fin k) ℝ j
+  let v := P⁻¹ • V e
+  obtain ⟨M, t, n, hM, hMb, htlo, hthi, hn⟩ := small_line_lattice_return v.ofLp hb
+  have hMr : (0 : ℝ) < M := by exact_mod_cast hM
+  have ht : 0 < t := (div_pos hb hMr).trans_le htlo
+  let h := t • e
+  let z : EuclideanSpace ℝ (Fin d) := WithLp.toLp 2 (fun i => (n i : ℝ))
+  let w := z - P⁻¹ • V h
+  have hw (i : Fin d) : |w i| ≤ b / 4 := by
+    have he : w i = -(t * v i - (n i : ℝ)) := by
+      simp only [w, z, h, v, map_smul, PiLp.sub_apply, PiLp.smul_apply,
+        smul_eq_mul]
+      ring
+    rw [he, abs_neg]
+    exact hn i
+  have hcoord : ∀ l, |h l| ≤ b := by
+    intro l
+    have he := (mem_euclideanCoordinateCube e).mp (euclideanCoordinateCube_basis_mem j) l
+    calc
+      |h l| = t * |e l| := by simp only [h, PiLp.smul_apply, smul_eq_mul, abs_mul,
+        abs_of_pos ht]
+      _ ≤ t := mul_le_of_le_one_right ht.le he
+      _ ≤ b := hthi
+  have hz : z ∈ b • shortReturnBody V P := by
+    apply mem_smul_shortReturnBody_of_representation V P hb h w hcoord
+      (fun i => (hw i).trans (by linarith only [hb]))
+    dsimp [w]
+    abel
+  have hzL : z ∈ coordinateIntegerLattice d :=
+    (mem_coordinateIntegerLattice z).mpr (fun i => ⟨n i, rfl⟩)
+  have hzU : P • z ∈ shortReturnLatticeSpan V P b :=
+    Submodule.smul_mem _ P (Submodule.subset_span ⟨hzL, hz⟩)
+  have hd : V h - P • z = -(P • w) := by
+    simp only [w, smul_sub, smul_smul, mul_inv_cancel₀ hP.ne', one_smul]
+    abel
+  have hdef (i : Fin d) : |(V h - P • z) i| ≤ P * b / 4 := by
+    rw [hd]
+    simp only [PiLp.neg_apply, PiLp.smul_apply, smul_eq_mul, abs_neg, abs_mul,
+      abs_of_pos hP]
+    have hh := mul_le_mul_of_nonneg_left (hw i) hP.le
+    simpa only [mul_div_assoc] using hh
+  refine ⟨M, t, n, hM, hMb, htlo, hthi, hz, hzU, hdef, ?_⟩
+  have hhn : ‖h‖ = t := by
+    simp [h, e, norm_smul, abs_of_pos ht, EuclideanSpace.basisFun_apply]
+  have hdn := euclidean_norm_le_coordinate_bound (V h - P • z) hdef
+  change ‖h‖ + ‖V h - P • z‖ ≤ _
+  rw [hhn]
+  have hnonneg : 0 ≤ P * (d : ℝ) * b := by positivity
+  nlinarith only [hdn, hthi, hnonneg]
 
 end Auto

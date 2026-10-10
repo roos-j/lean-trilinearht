@@ -822,4 +822,67 @@ theorem gevreyPartition_locallyFinite :
   · have : (k : ℝ) ≤ (⌊x⌋ : ℝ) + 3 := by linarith [hyx.2]
     exact_mod_cast this
 
+theorem gevrey_endpoint_cutoff_uniform_derivative {B ε : ℝ}
+    (hB : 8 ≤ B) (hM : max 1 gevreyBumpIntegral⁻¹ ≤ B)
+    (hε : 0 < ε) (hε1 : ε ≤ 1) (n : ℕ) (x : ℝ) :
+    |iteratedDeriv n (gevreyIntervalCutoff 0 ε (1 - ε) 1) x| ≤
+      (B / ε) ^ (20 * (n + 1)) * (n + 1 : ℝ) ^ (20 * (n + 1)) := by
+  let T := B / ε
+  have hB0 : 0 ≤ B := by linarith
+  have hBT : B ≤ T := (le_div_iff₀ hε).mpr (mul_le_of_le_one_right hB0 hε1)
+  have hT1 : 1 ≤ T := by linarith
+  have hT0 : 0 ≤ T := by linarith
+  have hm : (1 : ℝ) ≤ n + 1 := by have := Nat.cast_nonneg (α := ℝ) n; linarith
+  have hs : 2 * max |2 / (ε - 0)| |(-2) / (1 - (1 - ε))| = 4 / ε := by
+    rw [sub_zero, show (1 : ℝ) - (1 - ε) = ε by ring]
+    simp only [abs_div, abs_of_pos hε]
+    norm_num
+    ring
+  apply (iteratedDeriv_gevreyIntervalCutoff_bound n 0 ε (1 - ε) 1 x).trans
+  rw [hs]
+  calc
+    _ ≤ T ^ 2 * (T * (n + 1 : ℝ)) ^ (16 * (n + 1)) * T ^ n := by
+      apply mul_le_mul
+      · apply mul_le_mul
+        · exact pow_le_pow_left₀ (by positivity) (hM.trans hBT) 2
+        · exact pow_le_pow_left₀ (by positivity)
+            (mul_le_mul_of_nonneg_right (hB.trans hBT) (by positivity)) _
+        · positivity
+        · positivity
+      · exact pow_le_pow_left₀ (by positivity)
+          ((div_le_div_iff_of_pos_right hε).mpr (by linarith)) n
+      · positivity
+      · positivity
+    _ = T ^ (2 + 16 * (n + 1) + n) * (n + 1 : ℝ) ^ (16 * (n + 1)) := by
+      rw [mul_pow, ← mul_assoc, mul_right_comm (T ^ 2 * T ^ (16 * (n + 1))), ← pow_add,
+        ← pow_add]
+    _ ≤ _ := by
+      apply mul_le_mul
+      · exact pow_le_pow_right₀ hT1 (by omega)
+      · exact pow_le_pow_right₀ hm (by omega)
+      · positivity
+      · positivity
+
+theorem exists_uniform_gevrey_endpoint_cutoffs :
+    ∃ B : ℝ, 8 ≤ B ∧ ∀ ε : ℝ, 0 < ε → ε ≤ 1 / 2 →
+      ∃ η : ℝ → ℝ, ContDiff ℝ (⊤ : ℕ∞) η ∧
+        (∀ x, η x ∈ Set.Icc (0 : ℝ) 1) ∧
+        HasCompactSupport η ∧ tsupport η ⊆ Set.Ioo (0 : ℝ) 1 ∧
+        (∀ x ∈ Set.Icc ε (1 - ε), η x = 1) ∧
+        ∀ n x, |iteratedDeriv n η x| ≤
+          (B / ε) ^ (20 * (n + 1)) * (n + 1 : ℝ) ^ (20 * (n + 1)) := by
+  let B := 8 + max 1 gevreyBumpIntegral⁻¹
+  have hM0 : 0 ≤ max 1 gevreyBumpIntegral⁻¹ := by positivity
+  have hB : 8 ≤ B := by dsimp [B]; linarith only [hM0]
+  refine ⟨B, hB, fun ε hε hεh => ?_⟩
+  have hc : 1 - ε < 1 := by linarith only [hε]
+  refine ⟨gevreyIntervalCutoff 0 ε (1 - ε) 1,
+    contDiff_infty.mpr (fun n => gevreyIntervalCutoff_contDiff n _ _ _ _),
+    gevreyIntervalCutoff_mem_Icc _ _ _ _,
+    gevreyIntervalCutoff_hasCompactSupport hε hc,
+    gevreyIntervalCutoff_tsupport_subset_open hε hc,
+    (fun x hx => gevreyIntervalCutoff_eq_one hε hc hx), ?_⟩
+  exact fun n x => gevrey_endpoint_cutoff_uniform_derivative hB (by dsimp [B]; linarith)
+    hε (by linarith only [hεh]) n x
+
 end Auto

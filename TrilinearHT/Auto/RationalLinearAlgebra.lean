@@ -2802,4 +2802,728 @@ theorem coordinate_log_allowance_mono {k h : ℕ} (hkh : k ≤ h) :
       positivity
     · exact mul_le_mul_of_nonneg_left (by exact_mod_cast hkh) (by norm_num)
 
+open Matrix
+open scoped Matrix
+
+noncomputable def quadraticReturnFrequency {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (V : Matrix (Fin d) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (h : Fin k → ℝ) (m : Fin d → ℝ) : Fin k → ℝ :=
+  (2 • Λ + V.transpose * C * V).mulVec h -
+    (V.transpose * (C - C.transpose)).mulVec m
+
+theorem quadraticReturnFrequency_pairing {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (V : Matrix (Fin d) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (hΛ : Λ.IsSymm)
+    (h h' : Fin k → ℝ) (m m' : Fin d → ℝ) :
+    dotProduct h' (quadraticReturnFrequency C V Λ h m) -
+      dotProduct h (quadraticReturnFrequency C V Λ h' m') =
+      dotProduct (V.mulVec h' - m') ((C - C.transpose).mulVec (V.mulVec h - m)) -
+        dotProduct m' ((C - C.transpose).mulVec m) := by
+  have hs : dotProduct h' (Λ.mulVec h) = dotProduct h (Λ.mulVec h') :=
+    hΛ.dotProduct_mulVec_comm
+  have ht (x y : Fin d → ℝ) :
+      dotProduct x (C.transpose.mulVec y) = dotProduct y (C.mulVec x) :=
+    Matrix.dotProduct_transpose_mulVec C x y
+  have hv (x : Fin k → ℝ) (y : Fin d → ℝ) :
+      dotProduct x (V.transpose.mulVec y) = dotProduct (V.mulVec x) y := by
+    rw [Matrix.dotProduct_transpose_mulVec, dotProduct_comm]
+  simp only [quadraticReturnFrequency, Matrix.add_mulVec, Matrix.smul_mulVec,
+    ← Matrix.mulVec_mulVec, dotProduct_sub, dotProduct_add, dotProduct_smul,
+    sub_dotProduct, Matrix.sub_mulVec, Matrix.mulVec_sub, hv, ht]
+  rw [hs]
+  ring
+theorem scaled_integer_skew_pairing {d : ℕ} (C : Matrix (Fin d) (Fin d) ℝ)
+    (P : ℤ) (hC : ∀ i j, ∃ z : ℤ, (P : ℝ) * C i j = z)
+    (n n' : Fin d → ℤ) :
+    ∃ z : ℤ, dotProduct (fun i => (P : ℝ) * n' i)
+      ((C - C.transpose).mulVec (fun i => (P : ℝ) * n i)) = z := by
+  classical
+  choose Z hZ using hC
+  refine ⟨P * ∑ i, ∑ j, n' i * (Z i j - Z j i) * n j, ?_⟩
+  simp only [dotProduct, Matrix.mulVec, Matrix.sub_apply, Matrix.transpose_apply]
+  push_cast
+  simp only [Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro i _
+  apply Finset.sum_congr rfl
+  intro j _
+  rw [← hZ i j, ← hZ j i]
+  ring
+
+theorem abs_dotProduct_euclidean_le {d : ℕ} (x y : Fin d → ℝ) :
+    |dotProduct x y| ≤ ‖WithLp.toLp 2 x‖ * ‖WithLp.toLp 2 y‖ := by
+  simpa only [EuclideanSpace.inner_toLp_toLp, star_trivial, dotProduct_comm] using
+    abs_real_inner_le_norm (WithLp.toLp 2 x : EuclideanSpace ℝ (Fin d))
+      (WithLp.toLp 2 y)
+
+theorem quadraticReturnFrequency_pairing_bound {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (V : Matrix (Fin d) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (hΛ : Λ.IsSymm)
+    (h h' : Fin k → ℝ) (m m' : Fin d → ℝ) {a M : ℝ} (ha : 0 ≤ a)
+    (hh : ‖WithLp.toLp 2 h‖ ≤ a) (hh' : ‖WithLp.toLp 2 h'‖ ≤ a)
+    (hd : ‖WithLp.toLp 2 (V.mulVec h - m)‖ ≤ a)
+    (hd' : ‖WithLp.toLp 2 (V.mulVec h' - m')‖ ≤ a)
+    (hO : ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h m)‖ ≤ M)
+    (hO' : ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h' m')‖ ≤ M) :
+    |dotProduct m' ((C - C.transpose).mulVec m)| ≤
+      a ^ 2 * ‖realMatrixOperator (C - C.transpose)‖ + 2 * a * M := by
+  have h₁ : |dotProduct h' (quadraticReturnFrequency C V Λ h m)| ≤ a * M :=
+    (abs_dotProduct_euclidean_le _ _).trans
+      (mul_le_mul hh' hO (norm_nonneg _) ha)
+  have h₂ : |dotProduct h (quadraticReturnFrequency C V Λ h' m')| ≤ a * M :=
+    (abs_dotProduct_euclidean_le _ _).trans
+      (mul_le_mul hh hO' (norm_nonneg _) ha)
+  have h₃ : |dotProduct (V.mulVec h' - m')
+      ((C - C.transpose).mulVec (V.mulVec h - m))| ≤
+      a ^ 2 * ‖realMatrixOperator (C - C.transpose)‖ := by
+    have hop := (realMatrixOperator (C - C.transpose)).le_opNorm
+      (WithLp.toLp 2 (V.mulVec h - m))
+    have ho : ‖WithLp.toLp 2 ((C - C.transpose).mulVec (V.mulVec h - m))‖ ≤
+        ‖realMatrixOperator (C - C.transpose)‖ * a :=
+      hop.trans (mul_le_mul_of_nonneg_left hd (norm_nonneg _))
+    have hb := (abs_dotProduct_euclidean_le (V.mulVec h' - m')
+      ((C - C.transpose).mulVec (V.mulVec h - m))).trans
+        (mul_le_mul hd' ho (norm_nonneg _) ha)
+    convert hb using 1
+    ring
+  have he := quadraticReturnFrequency_pairing C V Λ hΛ h h' m m'
+  have he' : dotProduct m' ((C - C.transpose).mulVec m) =
+      dotProduct (V.mulVec h' - m') ((C - C.transpose).mulVec (V.mulVec h - m)) -
+        dotProduct h' (quadraticReturnFrequency C V Λ h m) +
+        dotProduct h (quadraticReturnFrequency C V Λ h' m') := by linarith only [he]
+  rw [he']
+  have htri (x y : ℝ) : |x - y| ≤ |x| + |y| := by
+    simpa only [sub_zero, zero_sub, abs_neg] using abs_sub_le x 0 y
+  apply (abs_add_le _ _).trans
+  apply (add_le_add (htri _ _) le_rfl).trans
+  linarith only [h₁, h₂, h₃]
+
+theorem shortReturnRadius_bound {a M N : ℝ} (ha : 0 < a) (hM : 0 ≤ M) (hN : 0 ≤ N) :
+    let r := min a (100 * (M + N + 1))⁻¹
+    0 < r ∧ r ≤ a ∧ r ^ 2 * N + 2 * r * M < 1 := by
+  let r := min a (100 * (M + N + 1))⁻¹
+  have hden : 0 < 100 * (M + N + 1) := by positivity
+  have hr : 0 < r := lt_min ha (inv_pos.mpr hden)
+  have hb : r ≤ (100 * (M + N + 1))⁻¹ := min_le_right _ _
+  have hp : r * (100 * (M + N + 1)) ≤ 1 := by
+    exact (le_div_iff₀ hden).mp (by simpa only [one_div] using hb)
+  have hnr := mul_nonneg hr.le hN
+  have hmr := mul_nonneg hr.le hM
+  have hr1 : r ≤ 1 := by nlinarith only [hp, hnr, hmr]
+  have hs : r ^ 2 * N ≤ r * N := by
+    have ht := mul_nonneg (sub_nonneg.mpr hr1) hnr
+    nlinarith only [ht]
+  refine ⟨hr, min_le_left _ _, ?_⟩
+  nlinarith only [hp, hs, hnr, hmr, hr]
+
+/-- Blueprint lem:return-splitting, lines 1265-1269: after the specified radius
+reduction, all scaled integer short returns pair to zero under the skew form. -/
+theorem quadratic_short_returns_isotropic {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (V : Matrix (Fin d) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (hΛ : Λ.IsSymm)
+    (P : ℤ) (hC : ∀ i j, ∃ z : ℤ, (P : ℝ) * C i j = z)
+    {a M : ℝ} (ha : 0 < a) (hM : 0 ≤ M)
+    (hΩ : ∀ (h : Fin k → ℝ) (n : Fin d → ℤ),
+      ‖WithLp.toLp 2 h‖ +
+        ‖WithLp.toLp 2 (V.mulVec h - fun i => (P : ℝ) * n i)‖ ≤ a →
+      ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h (fun i => (P : ℝ) * n i))‖ ≤ M) :
+    let r := min a (100 * (M + ‖realMatrixOperator (C - C.transpose)‖ + 1))⁻¹
+    ∀ (h h' : Fin k → ℝ) (n n' : Fin d → ℤ),
+      ‖WithLp.toLp 2 h‖ +
+        ‖WithLp.toLp 2 (V.mulVec h - fun i => (P : ℝ) * n i)‖ ≤ r →
+      ‖WithLp.toLp 2 h'‖ +
+        ‖WithLp.toLp 2 (V.mulVec h' - fun i => (P : ℝ) * n' i)‖ ≤ r →
+      dotProduct (fun i => (P : ℝ) * n' i)
+        ((C - C.transpose).mulVec (fun i => (P : ℝ) * n i)) = 0 := by
+  intro r h h' n n' hh hh'
+  have hr := shortReturnRadius_bound ha hM (norm_nonneg (realMatrixOperator (C - C.transpose)))
+  change 0 < r ∧ r ≤ a ∧ r ^ 2 * ‖realMatrixOperator (C - C.transpose)‖ + 2 * r * M < 1 at hr
+  have hn := norm_nonneg (WithLp.toLp 2 (V.mulVec h - fun i => (P : ℝ) * n i))
+  have hn' := norm_nonneg (WithLp.toLp 2 (V.mulVec h' - fun i => (P : ℝ) * n' i))
+  have hb := quadraticReturnFrequency_pairing_bound C V Λ hΛ h h'
+    (fun i => (P : ℝ) * n i) (fun i => (P : ℝ) * n' i) hr.1.le
+    (by linarith only [hh, hn]) (by linarith only [hh', hn'])
+    (by linarith only [hh, norm_nonneg (WithLp.toLp 2 h)])
+    (by linarith only [hh', norm_nonneg (WithLp.toLp 2 h')])
+    (hΩ h n (hh.trans hr.2.1)) (hΩ h' n' (hh'.trans hr.2.1))
+  have hlt := hb.trans_lt hr.2.2
+  obtain ⟨z, hz⟩ := scaled_integer_skew_pairing C P hC n n'
+  rw [hz] at hlt ⊢
+  have hi : |z| < 1 := by exact_mod_cast hlt
+  have he : z = 0 := by
+    have hz' := abs_lt.mp hi
+    omega
+  exact_mod_cast he
+
+theorem quadraticReturnFrequency_zero_dim {k : ℕ}
+    (C : Matrix (Fin 0) (Fin 0) ℝ) (V : Matrix (Fin 0) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (h : Fin k → ℝ) (m : Fin 0 → ℝ) :
+    quadraticReturnFrequency C V Λ h m = (2 • Λ).mulVec h := by
+  ext i
+  simp [quadraticReturnFrequency, Matrix.mulVec, dotProduct, two_smul]
+
+theorem zero_dimensional_short_return_bound {k : ℕ}
+    (C : Matrix (Fin 0) (Fin 0) ℝ) (V : Matrix (Fin 0) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) {a M : ℝ} (ha : 0 < a) (hM : 0 ≤ M)
+    (hΩ : ∀ h : Fin k → ℝ, ‖WithLp.toLp 2 h‖ ≤ a →
+      ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h 0)‖ ≤ M) :
+    (∀ i j, |Λ i j| ≤ M / a) ∧
+      ‖realMatrixOperator Λ‖ ≤ (k : ℝ) ^ 2 * (M / a) := by
+  have hentry (i j : Fin k) : |Λ i j| ≤ M / a := by
+    let h : Fin k → ℝ := Pi.single j (a / 2)
+    have hh : ‖WithLp.toLp 2 h‖ ≤ a := by
+      change ‖EuclideanSpace.single j (a / 2)‖ ≤ a
+      rw [PiLp.norm_single, Real.norm_eq_abs, abs_of_pos (div_pos ha (by norm_num))]
+      linarith only [ha]
+    have hb := hΩ h hh
+    rw [quadraticReturnFrequency_zero_dim] at hb
+    have hc := (PiLp.norm_apply_le (WithLp.toLp 2 ((2 • Λ).mulVec h)) i).trans hb
+    have he : ((2 • Λ).mulVec h) i = a * Λ i j := by
+      simp [Matrix.mulVec, dotProduct, h, Pi.single_apply, two_smul]
+      ring
+    change ‖((2 • Λ).mulVec h) i‖ ≤ M at hc
+    rw [he, norm_mul, Real.norm_eq_abs, abs_of_pos ha, Real.norm_eq_abs] at hc
+    exact (le_div_iff₀ ha).mpr (by nlinarith only [hc])
+  refine ⟨hentry, ?_⟩
+  have hb := realMatrixOperator_norm_le Λ (div_nonneg hM ha.le) hentry
+  simpa only [pow_two, mul_assoc] using hb
+
+/-- Blueprint lem:return-splitting, line 1271: in dimension zero, testing each
+coordinate direction bounds all quadratic coefficients and the operator norm. -/
+theorem zero_dimensional_short_return_bound_full {k : ℕ}
+    (C : Matrix (Fin 0) (Fin 0) ℝ) (V : Matrix (Fin 0) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (P : ℤ) {a M : ℝ} (ha : 0 < a) (hM : 0 ≤ M)
+    (hΩ : ∀ (h : Fin k → ℝ) (n : Fin 0 → ℤ),
+      ‖WithLp.toLp 2 h‖ +
+        ‖WithLp.toLp 2 (V.mulVec h - fun i => (P : ℝ) * n i)‖ ≤ a →
+      ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h (fun i => (P : ℝ) * n i))‖ ≤ M) :
+    (∀ i j, |Λ i j| ≤ M / a) ∧
+      ‖realMatrixOperator Λ‖ ≤ (k : ℝ) ^ 2 * (M / a) := by
+  apply zero_dimensional_short_return_bound C V Λ ha hM
+  intro h hh
+  have hd : V.mulVec h = 0 := Subsingleton.elim _ _
+  have hm : (fun i : Fin 0 => (P : ℝ) * ((0 : Fin 0 → ℤ) i : ℝ)) = 0 := by
+    ext i
+    simp
+  have hs := hΩ h (0 : Fin 0 → ℤ)
+  rw [hm] at hs
+  apply hs
+  rw [hd, sub_self, WithLp.toLp_zero, norm_zero, add_zero]
+  exact hh
+theorem realMatrixOperator_range {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) :
+    (realMatrixOperator A).range =
+      Submodule.span ℝ (Set.range (fun j => WithLp.toLp 2 (A.col j))) := by
+  have h := congrArg (Submodule.map (realMatrixOperator A).toLinearMap)
+    (EuclideanSpace.basisFun (Fin n) ℝ).toBasis.span_eq
+  rw [Submodule.map_span, Submodule.map_top, ← Set.range_comp] at h
+  have he : (fun i => (realMatrixOperator A).toLinearMap
+      ((EuclideanSpace.basisFun (Fin n) ℝ).toBasis i)) =
+      (fun j => WithLp.toLp 2 (A.col j)) := by
+    funext i
+    ext j
+    simp [realMatrixOperator, Matrix.toEuclideanLin, EuclideanSpace.basisFun_apply,
+      Matrix.mulVec, dotProduct, Pi.single_apply]
+  simp only [Function.comp_def] at h
+  rw [he] at h
+  exact h.symm
+
+theorem rationalRealRowSpace_eq_span {m n : ℕ} (S : Matrix (Fin m) (Fin n) ℚ) :
+    rationalRealRowSpace S =
+      Submodule.span ℝ (Set.range (fun i => WithLp.toLp 2 (fun j => (S i j : ℝ)))) := by
+  exact realMatrixOperator_range (S.transpose.map (fun q => (q : ℝ)))
+
+theorem rationalHeight_intCast_bound (z : ℤ) {B : ℝ} (hB : 1 ≤ B)
+    (hz : |(z : ℝ)| ≤ B) : (rationalHeight (z : ℚ) : ℝ) ≤ B := by
+  simpa only [rationalHeight, Rat.num_intCast, Rat.den_intCast, Nat.cast_max,
+    Nat.cast_one, Nat.cast_natAbs, Int.cast_abs] using max_le hz hB
+
+/-- A subspace generated by bounded integer vectors has rational orthogonal
+projections with a uniform height bound, independent of the list length. -/
+theorem integer_span_projection_bounds {m n : ℕ}
+    (Z : Matrix (Fin m) (Fin n) ℤ) {B : ℝ} (hB : 2 ≤ B)
+    (hZ : ∀ i j, |(Z i j : ℝ)| ≤ B) :
+    let U := Submodule.span ℝ
+      (Set.range (fun i => WithLp.toLp 2 (fun j => (Z i j : ℝ))))
+    ∃ P : Matrix (Fin n) (Fin n) ℚ,
+      realMatrixOperator (P.map (fun q => (q : ℝ))) = U.starProjection ∧
+      realMatrixOperator ((1 - P).map (fun q => (q : ℝ))) = Uᗮ.starProjection ∧
+      (∀ i j, (rationalHeight (P i j) : ℝ) ≤
+        Real.exp (8 * (n + 1 : ℝ) ^ 4 * Real.log (2 * B))) ∧
+      (∀ i j, (rationalHeight ((1 - P) i j) : ℝ) ≤
+        Real.exp (8 * (n + 1 : ℝ) ^ 4 * Real.log (2 * B))) ∧
+      ‖realMatrixOperator (P.map (fun q => (q : ℝ)))‖ ≤ 1 ∧
+      ‖realMatrixOperator ((1 - P).map (fun q => (q : ℝ)))‖ ≤ 1 := by
+  intro U
+  let S : Matrix (Fin m) (Fin n) ℚ := Z.map (fun z => (z : ℚ))
+  have hs : ∀ i j, (rationalHeight (S i j) : ℝ) ≤ B :=
+    fun i j => rationalHeight_intCast_bound (Z i j) (by linarith only [hB]) (hZ i j)
+  have hh := rationalMatrix_projection_bounds (le_refl n) hB S hs
+  have he : rationalRealRowSpace S = U := by
+    rw [rationalRealRowSpace_eq_span]
+    simp only [S, Matrix.map_apply, Rat.cast_intCast]
+    rfl
+  rwa [he] at hh
+
+theorem integer_generators_projection_bounds {m n : ℕ}
+    (q : Fin m → EuclideanSpace ℝ (Fin n)) {B : ℝ} (hB : 2 ≤ B)
+    (hq : ∀ i j, ∃ z : ℤ, (z : ℝ) = q i j)
+    (hbound : ∀ i j, |q i j| ≤ B) :
+    let U := Submodule.span ℝ (Set.range q)
+    ∃ P : Matrix (Fin n) (Fin n) ℚ,
+      realMatrixOperator (P.map (fun x => (x : ℝ))) = U.starProjection ∧
+      realMatrixOperator ((1 - P).map (fun x => (x : ℝ))) = Uᗮ.starProjection ∧
+      (∀ i j, (rationalHeight (P i j) : ℝ) ≤
+        Real.exp (8 * (n + 1 : ℝ) ^ 4 * Real.log (2 * B))) ∧
+      (∀ i j, (rationalHeight ((1 - P) i j) : ℝ) ≤
+        Real.exp (8 * (n + 1 : ℝ) ^ 4 * Real.log (2 * B))) ∧
+      ‖realMatrixOperator (P.map (fun x => (x : ℝ)))‖ ≤ 1 ∧
+      ‖realMatrixOperator ((1 - P).map (fun x => (x : ℝ)))‖ ≤ 1 := by
+  classical
+  intro U
+  choose Z hZ using hq
+  have he : (fun i => WithLp.toLp 2 (fun j => (Z i j : ℝ))) = q := by
+    funext i
+    ext j
+    exact hZ i j
+  have hz : ∀ i j, |(Z i j : ℝ)| ≤ B := by
+    intro i j
+    rw [hZ i j]
+    exact hbound i j
+  have hh := integer_span_projection_bounds Z hB hz
+  dsimp only at hh
+  rw [he] at hh
+  exact hh
+
+theorem rational_rows_independent_of_real {r n : ℕ} (S : Matrix (Fin r) (Fin n) ℚ)
+    (hS : LinearIndependent ℝ (fun i => WithLp.toLp 2 (fun j => (S i j : ℝ)))) :
+    LinearIndependent ℚ S.row := by
+  let f : (Fin n → ℚ) →ₗ[ℚ] EuclideanSpace ℝ (Fin n) :=
+    { toFun := fun x => WithLp.toLp 2 (fun j => (x j : ℝ))
+      map_add' := by intro x y; ext j; simp
+      map_smul' := by intro a x; ext j; simp [Rat.smul_def] }
+  exact LinearIndependent.of_comp f (hS.restrict_scalars' ℚ)
+
+theorem realMatrixOperator_mul_norm_le {l m n : ℕ}
+    (A : Matrix (Fin l) (Fin m) ℝ) (B : Matrix (Fin m) (Fin n) ℝ) :
+    ‖realMatrixOperator (A * B)‖ ≤ ‖realMatrixOperator A‖ * ‖realMatrixOperator B‖ := by
+  have he : realMatrixOperator (A * B) =
+      (realMatrixOperator A).comp (realMatrixOperator B) := by
+    apply ContinuousLinearMap.ext
+    intro x
+    exact realMatrixOperator_mul_apply A B x
+  rw [he]
+  exact ContinuousLinearMap.opNorm_comp_le _ _
+
+theorem real_matrix_mul_entry_bound {l m n : ℕ}
+    (A : Matrix (Fin l) (Fin m) ℝ) (B : Matrix (Fin m) (Fin n) ℝ)
+    {R S : ℝ} (hR : 0 ≤ R)
+    (hA : ∀ i j, |A i j| ≤ R) (hB : ∀ i j, |B i j| ≤ S) (i j) :
+    |(A * B) i j| ≤ (m : ℝ) * R * S := by
+  calc
+    _ ≤ ∑ k, |A i k * B k j| := Finset.abs_sum_le_sum_abs _ _
+    _ ≤ ∑ _k : Fin m, R * S := Finset.sum_le_sum fun k _ => by
+      rw [abs_mul]
+      exact mul_le_mul (hA i k) (hB k j) (abs_nonneg _) hR
+    _ = _ := by simp; ring
+
+theorem rationalRowProjection_mul_norm_le {r n k : ℕ}
+    (S : Matrix (Fin r) (Fin n) ℚ) (V : Matrix (Fin n) (Fin k) ℝ)
+    (hlin : LinearIndependent ℚ S.row) {B G W : ℝ}
+    (hB : 0 ≤ B) (hG : 2 ≤ G) (hW : 0 ≤ W)
+    (hS : ∀ i j, |(S i j : ℝ)| ≤ B)
+    (hGram : ∀ i j, (rationalHeight ((S * S.transpose) i j) : ℝ) ≤ G)
+    (hSV : ∀ i j, |(S.map (fun q => (q : ℝ)) * V) i j| ≤ W) :
+    ‖realMatrixOperator ((rationalRowProjection S).map (fun q => (q : ℝ)) * V)‖ ≤
+      ((n : ℝ) * r * B) *
+        (((r : ℝ) * r * Real.exp (2 * (r + 1 : ℝ) ^ 4 * Real.log (2 * G))) *
+          ((r : ℝ) * k * W)) := by
+  let E := Real.exp (2 * (r + 1 : ℝ) ^ 4 * Real.log (2 * G))
+  have hE : 0 ≤ E := (Real.exp_pos _).le
+  have hgin := (rationalMatrix_inverse_bounds (le_refl r) hG (S * S.transpose)
+    hGram (rational_gram_det_ne_zero S hlin)).1
+  have hi : ‖realMatrixOperator (((S * S.transpose)⁻¹).map (fun q => (q : ℝ)))‖ ≤
+      (r : ℝ) * r * E := by
+    apply realMatrixOperator_norm_le _ hE
+    intro i j
+    have hh : |((S * S.transpose)⁻¹ i j : ℝ)| ≤
+        (rationalHeight ((S * S.transpose)⁻¹ i j) : ℝ) := by
+      exact_mod_cast rational_abs_le_height ((S * S.transpose)⁻¹ i j)
+    exact hh.trans (hgin i j)
+  have hs := realMatrixOperator_norm_le (S.transpose.map (fun q => (q : ℝ))) hB
+    (fun i j => hS j i)
+  have hsv := realMatrixOperator_norm_le _ hW hSV
+  have he : (rationalRowProjection S).map (fun q => (q : ℝ)) * V =
+      S.transpose.map (fun q => (q : ℝ)) *
+        (((S * S.transpose)⁻¹).map (fun q => (q : ℝ)) *
+          (S.map (fun q => (q : ℝ)) * V)) := by
+    unfold rationalRowProjection
+    let f := Rat.castHom ℝ
+    change (S.transpose * (S * S.transpose)⁻¹ * S).map f * V =
+      S.transpose.map f * (((S * S.transpose)⁻¹).map f * (S.map f * V))
+    rw [Matrix.map_mul, Matrix.map_mul]
+    simp only [Matrix.mul_assoc]
+  rw [he]
+  apply (realMatrixOperator_mul_norm_le _ _).trans
+  apply mul_le_mul hs _ (norm_nonneg _) (by positivity)
+  exact (realMatrixOperator_mul_norm_le _ _).trans
+    (mul_le_mul hi hsv (norm_nonneg _) (by positivity))
+
+theorem integer_gram_height_bound {r n : ℕ} (Z : Matrix (Fin r) (Fin n) ℤ)
+    {B : ℝ} (hB : 0 ≤ B) (hZ : ∀ i j, |(Z i j : ℝ)| ≤ B) (i j) :
+    (rationalHeight (((Z.map (fun z => (z : ℚ))) *
+      (Z.map (fun z => (z : ℚ))).transpose) i j) : ℝ) ≤ max 2 ((n : ℝ) * B ^ 2) := by
+  let R : Matrix (Fin r) (Fin n) ℝ := Z.map (fun z => (z : ℝ))
+  have he : ((Z.map (fun z => (z : ℚ))) *
+      (Z.map (fun z => (z : ℚ))).transpose) i j = ((Z * Z.transpose) i j : ℚ) := by
+    simp [Matrix.mul_apply]
+  rw [he]
+  apply rationalHeight_intCast_bound _ (le_trans (by norm_num) (le_max_left _ _))
+  have hz : ((Z * Z.transpose) i j : ℝ) = (R * R.transpose) i j := by
+    simp [R, Matrix.mul_apply]
+  rw [hz]
+  have hh := real_matrix_mul_entry_bound R R.transpose hB hZ (fun i j => hZ j i) i j
+  have hb : |(R * R.transpose) i j| ≤ (n : ℝ) * B ^ 2 := by
+    simpa only [pow_two, mul_assoc] using hh
+  exact hb.trans (le_max_right _ _)
+
+theorem integerRowProjection_mul_norm_le {r n k : ℕ}
+    (Z : Matrix (Fin r) (Fin n) ℤ) (V : Matrix (Fin n) (Fin k) ℝ)
+    (hlin : LinearIndependent ℝ (fun i => WithLp.toLp 2 (fun j => (Z i j : ℝ))))
+    {B W : ℝ} (hB : 0 ≤ B) (hW : 0 ≤ W)
+    (hZ : ∀ i j, |(Z i j : ℝ)| ≤ B)
+    (hZV : ∀ i j, |(Z.map (fun z => (z : ℝ)) * V) i j| ≤ W) :
+    ‖realMatrixOperator
+      ((rationalRowProjection (Z.map (fun z => (z : ℚ)))).map (fun q => (q : ℝ)) * V)‖ ≤
+      ((n : ℝ) * r * B) *
+        (((r : ℝ) * r *
+          Real.exp (2 * (r + 1 : ℝ) ^ 4 * Real.log (2 * max 2 ((n : ℝ) * B ^ 2)))) *
+          ((r : ℝ) * k * W)) := by
+  let S := Z.map (fun z => (z : ℚ))
+  have hs : LinearIndependent ℚ S.row := rational_rows_independent_of_real S
+    (by simpa only [S, Matrix.map_apply, Rat.cast_intCast] using hlin)
+  have hsb : ∀ i j, |(S i j : ℝ)| ≤ B := by
+    simpa only [S, Matrix.map_apply, Rat.cast_intCast] using hZ
+  have hsv : ∀ i j, |(S.map (fun q => (q : ℝ)) * V) i j| ≤ W := by
+    simpa only [S, Matrix.map_map, Function.comp_def, Rat.cast_intCast] using hZV
+  exact rationalRowProjection_mul_norm_le S V hs hB (le_max_left _ _) hW hsb
+    (integer_gram_height_bound Z hB hZ) hsv
+
+/-- The same rational orthogonal projection has controlled height and
+controlled composition with a matrix whose products with its integer rows
+are bounded. No bound on the input matrix itself is assumed. -/
+theorem integer_span_projection_velocity_bounds {r n k : ℕ}
+    (Z : Matrix (Fin r) (Fin n) ℤ) (V : Matrix (Fin n) (Fin k) ℝ)
+    (hlin : LinearIndependent ℝ (fun i => WithLp.toLp 2 (fun j => (Z i j : ℝ))))
+    {B W : ℝ} (hB : 2 ≤ B) (hW : 0 ≤ W)
+    (hZ : ∀ i j, |(Z i j : ℝ)| ≤ B)
+    (hZV : ∀ i j, |(Z.map (fun z => (z : ℝ)) * V) i j| ≤ W) :
+    let U := Submodule.span ℝ
+      (Set.range (fun i => WithLp.toLp 2 (fun j => (Z i j : ℝ))))
+    ∃ P : Matrix (Fin n) (Fin n) ℚ,
+      realMatrixOperator (P.map (fun q => (q : ℝ))) = U.starProjection ∧
+      realMatrixOperator ((1 - P).map (fun q => (q : ℝ))) = Uᗮ.starProjection ∧
+      (∀ i j, (rationalHeight (P i j) : ℝ) ≤
+        Real.exp (8 * (n + 1 : ℝ) ^ 4 * Real.log (2 * B))) ∧
+      (∀ i j, (rationalHeight ((1 - P) i j) : ℝ) ≤
+        Real.exp (8 * (n + 1 : ℝ) ^ 4 * Real.log (2 * B))) ∧
+      ‖realMatrixOperator (P.map (fun q => (q : ℝ)))‖ ≤ 1 ∧
+      ‖realMatrixOperator ((1 - P).map (fun q => (q : ℝ)))‖ ≤ 1 ∧
+      ‖realMatrixOperator (P.map (fun q => (q : ℝ)) * V)‖ ≤
+        ((n : ℝ) * r * B) *
+          (((r : ℝ) * r *
+            Real.exp (2 * (r + 1 : ℝ) ^ 4 * Real.log (2 * max 2 ((n : ℝ) * B ^ 2)))) *
+            ((r : ℝ) * k * W)) := by
+  intro U
+  obtain ⟨P, hp, hpc, hh, hhc, hn, hnc⟩ := integer_span_projection_bounds Z hB hZ
+  refine ⟨P, hp, hpc, hh, hhc, hn, hnc, ?_⟩
+  let S := Z.map (fun z => (z : ℚ))
+  have hs : LinearIndependent ℚ S.row := rational_rows_independent_of_real S
+    (by simpa only [S, Matrix.map_apply, Rat.cast_intCast] using hlin)
+  have hc := rationalRowProjection_eq_starProjection S hs
+  change realMatrixOperator ((rationalRowProjection S).map (fun q => (q : ℝ))) =
+    (rationalRealRowSpace S).starProjection at hc
+  have heU : rationalRealRowSpace S = U := by
+    rw [rationalRealRowSpace_eq_span]
+    simp only [S, Matrix.map_apply, Rat.cast_intCast]
+    rfl
+  rw [heU] at hc
+  have he : realMatrixOperator (P.map (fun q => (q : ℝ)) * V) =
+      realMatrixOperator ((rationalRowProjection S).map (fun q => (q : ℝ)) * V) := by
+    apply ContinuousLinearMap.ext
+    intro x
+    rw [realMatrixOperator_mul_apply, realMatrixOperator_mul_apply, hp, hc]
+  rw [he]
+  exact integerRowProjection_mul_norm_le Z V hlin (by linarith only [hB]) hW hZ hZV
+
+theorem real_matrix_mul_entry_eq_row_inner {r n k : ℕ}
+    (S : Matrix (Fin r) (Fin n) ℝ) (V : Matrix (Fin n) (Fin k) ℝ) (i j) :
+    (S * V) i j = inner ℝ (WithLp.toLp 2 (S.row i))
+      (realMatrixOperator V (EuclideanSpace.basisFun (Fin k) ℝ j)) := by
+  simp [EuclideanSpace.inner_eq_star_dotProduct, realMatrixOperator,
+    Matrix.toEuclideanLin, EuclideanSpace.basisFun_apply, Matrix.mulVec,
+    dotProduct, Matrix.mul_apply, Pi.single_apply, mul_comm]
+
+noncomputable def realSymmetricPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℝ) :
+    Matrix (Fin d) (Fin d) ℝ := (1 / 2 : ℝ) • (C + C.transpose)
+
+noncomputable def realSkewPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℝ) :
+    Matrix (Fin d) (Fin d) ℝ := (1 / 2 : ℝ) • (C - C.transpose)
+
+noncomputable def effectiveReturnQuadratic {d k : ℕ} (C : Matrix (Fin d) (Fin d) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (V F S : Matrix (Fin d) (Fin k) ℝ) :
+    Matrix (Fin k) (Fin k) ℝ :=
+  Λ + (1 / 2 : ℝ) • (V.transpose * realSymmetricPart C * V) +
+    realSymmetricPart (F.transpose * realSkewPart C * S)
+
+/-- The exact quadratic identity in blueprint lem:return-splitting. -/
+theorem effectiveReturnQuadratic_identity {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (Λ : Matrix (Fin k) (Fin k) ℝ)
+    (V F S : Matrix (Fin d) (Fin k) ℝ) (hV : V = F + S)
+    (hiso : F.transpose * (C - C.transpose) * F = 0) :
+    2 • Λ + V.transpose * C * V - V.transpose * (C - C.transpose) * F =
+      2 • effectiveReturnQuadratic C Λ V F S +
+        (1 / 2 : ℝ) • (S.transpose * (C - C.transpose) * S) := by
+  have hf : F.transpose * (C * F) = F.transpose * (C.transpose * F) := by
+    simpa only [Matrix.mul_sub, Matrix.sub_mul, Matrix.mul_assoc, sub_eq_zero] using hiso
+  simp only [effectiveReturnQuadratic, realSymmetricPart, realSkewPart, hV,
+    Matrix.transpose_add, Matrix.transpose_mul, Matrix.transpose_sub,
+    Matrix.transpose_smul, Matrix.transpose_transpose, Matrix.add_mul, Matrix.mul_add,
+    Matrix.sub_mul, Matrix.mul_sub, Matrix.smul_mul, Matrix.mul_smul,
+    Matrix.mul_assoc]
+  rw [hf]
+  module
+
+theorem realMatrixOperator_basis_apply {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ)
+    (j : Fin n) :
+    realMatrixOperator A (EuclideanSpace.basisFun (Fin n) ℝ j) =
+      WithLp.toLp 2 (A.col j) := by
+  ext i
+  simp [realMatrixOperator, Matrix.toEuclideanLin, EuclideanSpace.basisFun_apply,
+    Matrix.mulVec, dotProduct, Pi.single_apply]
+
+theorem realMatrix_abs_entry_le_norm {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) (i j) :
+    |A i j| ≤ ‖realMatrixOperator A‖ := by
+  have he := realMatrixOperator_basis_apply A j
+  have hh := PiLp.norm_apply_le (realMatrixOperator A (EuclideanSpace.basisFun (Fin n) ℝ j)) i
+  rw [he] at hh
+  have hn := (realMatrixOperator A).le_opNorm (EuclideanSpace.basisFun (Fin n) ℝ j)
+  simp only [he] at hn
+  have hb : ‖EuclideanSpace.basisFun (Fin n) ℝ j‖ = 1 := by
+    simp [EuclideanSpace.basisFun_apply]
+  rw [hb, mul_one] at hn
+  exact hh.trans hn
+
+theorem realMatrix_transpose_norm_le {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℝ) :
+    ‖realMatrixOperator A.transpose‖ ≤ (n : ℝ) * m * ‖realMatrixOperator A‖ := by
+  exact realMatrixOperator_norm_le _ (norm_nonneg _) (fun i j => realMatrix_abs_entry_le_norm A j i)
+
+theorem realMatrix_norm_le_from_scaled_columns {k : ℕ}
+    (A : Matrix (Fin k) (Fin k) ℝ) {s R : ℝ} (hs : 0 < s) (hR : 0 ≤ R)
+    (hcol : ∀ j, ∃ t : ℝ, s ≤ t ∧
+      ‖realMatrixOperator A (t • EuclideanSpace.basisFun (Fin k) ℝ j)‖ ≤ R) :
+    ‖realMatrixOperator A‖ ≤ (k : ℝ) * k * (R / s) := by
+  apply realMatrixOperator_norm_le _ (div_nonneg hR hs.le)
+  intro i j
+  obtain ⟨t, hst, ht⟩ := hcol j
+  have htp : 0 < t := hs.trans_le hst
+  have hc := PiLp.norm_apply_le
+    (realMatrixOperator A (t • EuclideanSpace.basisFun (Fin k) ℝ j)) i
+  have he : (realMatrixOperator A (t • EuclideanSpace.basisFun (Fin k) ℝ j)) i =
+      t * A i j := by
+    rw [map_smul, realMatrixOperator_basis_apply]
+    rfl
+  rw [he, Real.norm_eq_abs, abs_mul, abs_of_pos htp] at hc
+  apply (le_div_iff₀ hs).mpr
+  have hm := mul_le_mul_of_nonneg_right hst (abs_nonneg (A i j))
+  nlinarith only [hm, hc, ht]
+
+theorem effectiveReturnQuadratic_frequency {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (Λ : Matrix (Fin k) (Fin k) ℝ)
+    (V F S : Matrix (Fin d) (Fin k) ℝ) (hV : V = F + S)
+    (hiso : F.transpose * (C - C.transpose) * F = 0)
+    (h : Fin k → ℝ) (m : Fin d → ℝ)
+    (hdelta : (F.transpose * (C - C.transpose)).mulVec (m - F.mulVec h) = 0) :
+    quadraticReturnFrequency C V Λ h m =
+      2 • (effectiveReturnQuadratic C Λ V F S).mulVec h +
+        (1 / 2 : ℝ) • (S.transpose * (C - C.transpose) * S).mulVec h -
+        (S.transpose * (C - C.transpose)).mulVec (m - F.mulVec h) := by
+  have he : quadraticReturnFrequency C V Λ h m =
+      (2 • Λ + V.transpose * C * V - V.transpose * (C - C.transpose) * F).mulVec h -
+        (V.transpose * (C - C.transpose)).mulVec (m - F.mulVec h) := by
+    simp only [quadraticReturnFrequency, Matrix.sub_mulVec, Matrix.mulVec_sub,
+      ← Matrix.mulVec_mulVec]
+    abel
+  have hc : (V.transpose * (C - C.transpose)).mulVec (m - F.mulVec h) =
+      (S.transpose * (C - C.transpose)).mulVec (m - F.mulVec h) := by
+    rw [hV, Matrix.transpose_add, Matrix.add_mul, Matrix.add_mulVec, hdelta, zero_add]
+  rw [he, effectiveReturnQuadratic_identity C Λ V F S hV hiso, hc]
+  simp [Matrix.add_mulVec, Matrix.smul_mulVec, two_smul]
+
+theorem isotropic_subspace_transpose_kills {d k : ℕ}
+    (A : Matrix (Fin d) (Fin d) ℝ) (F : Matrix (Fin d) (Fin k) ℝ)
+    (U : Submodule ℝ (EuclideanSpace ℝ (Fin d)))
+    (hF : ∀ x, realMatrixOperator F x ∈ U)
+    (hiso : ∀ x ∈ U, ∀ y ∈ U, inner ℝ y (realMatrixOperator A x) = 0)
+    {z : EuclideanSpace ℝ (Fin d)} (hz : z ∈ U) :
+    realMatrixOperator (F.transpose * A) z = 0 := by
+  ext j
+  have hh := hiso z hz (realMatrixOperator F (EuclideanSpace.basisFun (Fin k) ℝ j))
+    (hF _)
+  rw [realMatrixOperator_transpose_inner, EuclideanSpace.basisFun_inner] at hh
+  rw [realMatrixOperator_mul_apply]
+  exact hh
+
+theorem isotropic_subspace_matrix_zero {d k : ℕ}
+    (A : Matrix (Fin d) (Fin d) ℝ) (F : Matrix (Fin d) (Fin k) ℝ)
+    (U : Submodule ℝ (EuclideanSpace ℝ (Fin d)))
+    (hF : ∀ x, realMatrixOperator F x ∈ U)
+    (hiso : ∀ x ∈ U, ∀ y ∈ U, inner ℝ y (realMatrixOperator A x) = 0) :
+    F.transpose * A * F = 0 := by
+  ext i j
+  have hh := isotropic_subspace_transpose_kills A F U hF hiso
+    (hF (EuclideanSpace.basisFun (Fin k) ℝ j))
+  rw [← realMatrixOperator_mul_apply, realMatrixOperator_basis_apply] at hh
+  exact congrArg (fun x : EuclideanSpace ℝ (Fin k) => x i) hh
+
+theorem effectiveReturnQuadratic_frequency_euclidean {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (Λ : Matrix (Fin k) (Fin k) ℝ)
+    (V F S : Matrix (Fin d) (Fin k) ℝ) (hV : V = F + S)
+    (hiso : F.transpose * (C - C.transpose) * F = 0)
+    (h : Fin k → ℝ) (m : Fin d → ℝ)
+    (hdelta : (F.transpose * (C - C.transpose)).mulVec (m - F.mulVec h) = 0) :
+    WithLp.toLp 2 (quadraticReturnFrequency C V Λ h m) =
+      (2 : ℝ) • realMatrixOperator (effectiveReturnQuadratic C Λ V F S) (WithLp.toLp 2 h) +
+        (1 / 2 : ℝ) • realMatrixOperator S.transpose
+          (realMatrixOperator (C - C.transpose) (realMatrixOperator S (WithLp.toLp 2 h))) -
+        realMatrixOperator S.transpose
+          (realMatrixOperator (C - C.transpose) (WithLp.toLp 2 (m - F.mulVec h))) := by
+  apply WithLp.ofLp_injective
+  have hh := effectiveReturnQuadratic_frequency C Λ V F S hV hiso h m hdelta
+  simp only [two_smul, WithLp.ofLp_add, WithLp.ofLp_sub, WithLp.ofLp_smul,
+    realMatrixOperator_apply]
+  simpa only [two_smul, ← Matrix.mulVec_mulVec] using hh
+
+theorem effectiveReturnQuadratic_apply_bound {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (Λ : Matrix (Fin k) (Fin k) ℝ)
+    (V F S : Matrix (Fin d) (Fin k) ℝ) (hV : V = F + S)
+    (hiso : F.transpose * (C - C.transpose) * F = 0)
+    (h : Fin k → ℝ) (m : Fin d → ℝ)
+    (hdelta : (F.transpose * (C - C.transpose)).mulVec (m - F.mulVec h) = 0)
+    {a B N M : ℝ} (hS : ‖realMatrixOperator S‖ ≤ B)
+    (hA : ‖realMatrixOperator (C - C.transpose)‖ ≤ N)
+    (hh : ‖WithLp.toLp 2 h‖ ≤ a)
+    (hd : ‖WithLp.toLp 2 (m - F.mulVec h)‖ ≤ a)
+    (hΩ : ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h m)‖ ≤ M) :
+    ‖realMatrixOperator (effectiveReturnQuadratic C Λ V F S) (WithLp.toLp 2 h)‖ ≤
+      M + ((k : ℝ) * d * B) * (N * (B * a)) + ((k : ℝ) * d * B) * (N * a) := by
+  let z := realMatrixOperator (effectiveReturnQuadratic C Λ V F S) (WithLp.toLp 2 h)
+  let u := realMatrixOperator S.transpose
+    (realMatrixOperator (C - C.transpose) (realMatrixOperator S (WithLp.toLp 2 h)))
+  let w := realMatrixOperator S.transpose
+    (realMatrixOperator (C - C.transpose) (WithLp.toLp 2 (m - F.mulVec h)))
+  have ht : ‖realMatrixOperator S.transpose‖ ≤ (k : ℝ) * d * B :=
+    (realMatrix_transpose_norm_le S).trans
+      (mul_le_mul_of_nonneg_left hS (by positivity))
+  have hu : ‖u‖ ≤ ((k : ℝ) * d * B) * (N * (B * a)) :=
+    (realMatrixOperator S.transpose).le_of_opNorm_le_of_le ht
+      ((realMatrixOperator (C - C.transpose)).le_of_opNorm_le_of_le hA
+        ((realMatrixOperator S).le_of_opNorm_le_of_le hS hh))
+  have hw : ‖w‖ ≤ ((k : ℝ) * d * B) * (N * a) :=
+    (realMatrixOperator S.transpose).le_of_opNorm_le_of_le ht
+      ((realMatrixOperator (C - C.transpose)).le_of_opNorm_le_of_le hA hd)
+  have he : (2 : ℝ) • z =
+      WithLp.toLp 2 (quadraticReturnFrequency C V Λ h m) - (1 / 2 : ℝ) • u + w := by
+    rw [effectiveReturnQuadratic_frequency_euclidean C Λ V F S hV hiso h m hdelta]
+    dsimp [z, u, w]
+    abel
+  have hhalf : ‖(1 / 2 : ℝ) • u‖ ≤ ‖u‖ := by
+    rw [norm_smul]
+    exact mul_le_of_le_one_left (norm_nonneg _) (by norm_num)
+  calc
+    ‖z‖ ≤ ‖(2 : ℝ) • z‖ := by
+      rw [norm_smul]
+      norm_num
+      linarith only [norm_nonneg z]
+    _ = ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h m) - (1 / 2 : ℝ) • u + w‖ :=
+      congrArg norm he
+    _ ≤ ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h m)‖ +
+        ‖(1 / 2 : ℝ) • u‖ + ‖w‖ :=
+      (norm_add_le _ _).trans (add_le_add (norm_sub_le _ _) le_rfl)
+    _ ≤ _ := add_le_add (add_le_add hΩ (hhalf.trans hu)) hw
+
+/-- The effective quadratic form is bounded from coordinate returns in an
+isotropic subspace, using only the slow velocity and the return errors. -/
+theorem effectiveReturnQuadratic_norm_of_coordinate_returns {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (Λ : Matrix (Fin k) (Fin k) ℝ)
+    (V F S : Matrix (Fin d) (Fin k) ℝ) (hV : V = F + S)
+    (U : Submodule ℝ (EuclideanSpace ℝ (Fin d)))
+    (hproj : ∀ x, realMatrixOperator F x = U.starProjection (realMatrixOperator V x))
+    (hiso : ∀ x ∈ U, ∀ y ∈ U,
+      inner ℝ y (realMatrixOperator (C - C.transpose) x) = 0)
+    {a B N M s : ℝ} (ha : 0 ≤ a) (hM : 0 ≤ M) (hs : 0 < s)
+    (hS : ‖realMatrixOperator S‖ ≤ B)
+    (hA : ‖realMatrixOperator (C - C.transpose)‖ ≤ N)
+    (hreturn : ∀ j : Fin k, ∃ (t : ℝ) (m : EuclideanSpace ℝ (Fin d)),
+      s ≤ t ∧ m ∈ U ∧
+      ‖t • EuclideanSpace.basisFun (Fin k) ℝ j‖ +
+        ‖realMatrixOperator V (t • EuclideanSpace.basisFun (Fin k) ℝ j) - m‖ ≤ a ∧
+      ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ
+        (t • EuclideanSpace.basisFun (Fin k) ℝ j).ofLp m.ofLp)‖ ≤ M) :
+    ‖realMatrixOperator (effectiveReturnQuadratic C Λ V F S)‖ ≤
+      (k : ℝ) * k *
+        ((M + ((k : ℝ) * d * B) * (N * (B * a)) +
+          ((k : ℝ) * d * B) * (N * a)) / s) := by
+  have hF : ∀ x, realMatrixOperator F x ∈ U := by
+    intro x
+    rw [hproj]
+    exact U.starProjection_apply_mem _
+  have hmat := isotropic_subspace_matrix_zero (C - C.transpose) F U hF hiso
+  have hB : 0 ≤ B := (norm_nonneg _).trans hS
+  have hN : 0 ≤ N := (norm_nonneg _).trans hA
+  apply realMatrix_norm_le_from_scaled_columns _ hs (by positivity)
+  intro j
+  obtain ⟨t, m, hst, hm, hsize, hΩ⟩ := hreturn j
+  let h := t • EuclideanSpace.basisFun (Fin k) ℝ j
+  have hh : ‖h‖ ≤ a := by
+    have hn := norm_nonneg (realMatrixOperator V h - m)
+    linarith only [hsize, hn]
+  have hd : ‖realMatrixOperator V h - m‖ ≤ a := by
+    linarith only [hsize, norm_nonneg h]
+  have hdm : m - realMatrixOperator F h ∈ U := U.sub_mem hm (hF h)
+  have hz := isotropic_subspace_transpose_kills (C - C.transpose) F U hF hiso hdm
+  have hdelta : (F.transpose * (C - C.transpose)).mulVec
+      (m.ofLp - F.mulVec h.ofLp) = 0 :=
+    congrArg WithLp.ofLp hz
+  have he : m - realMatrixOperator F h =
+      -U.starProjection (realMatrixOperator V h - m) := by
+    rw [map_sub, hproj, U.starProjection_eq_self_iff.mpr hm]
+    abel
+  have hdn : ‖WithLp.toLp 2 (m.ofLp - F.mulVec h.ofLp)‖ ≤ a := by
+    change ‖m - realMatrixOperator F h‖ ≤ a
+    rw [he, norm_neg]
+    exact (U.norm_starProjection_apply_le _).trans hd
+  refine ⟨t, hst, ?_⟩
+  exact effectiveReturnQuadratic_apply_bound C Λ V F S hV hmat h.ofLp m.ofLp
+    hdelta hS hA hh hdn hΩ
+
+theorem realSymmetricPart_isSymm {d : ℕ} (C : Matrix (Fin d) (Fin d) ℝ) :
+    (realSymmetricPart C).IsSymm := by
+  apply Matrix.IsSymm.ext
+  intro i j
+  simp [realSymmetricPart, add_comm]
+
+theorem effectiveReturnQuadratic_isSymm {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (Λ : Matrix (Fin k) (Fin k) ℝ)
+    (V F S : Matrix (Fin d) (Fin k) ℝ) (hΛ : Λ.IsSymm) :
+    (effectiveReturnQuadratic C Λ V F S).IsSymm := by
+  change Λ.transpose = Λ at hΛ
+  have hC := realSymmetricPart_isSymm C
+  have hT := realSymmetricPart_isSymm (F.transpose * realSkewPart C * S)
+  change (realSymmetricPart C).transpose = realSymmetricPart C at hC
+  change (realSymmetricPart (F.transpose * realSkewPart C * S)).transpose = _ at hT
+  simp only [Matrix.mul_assoc] at hT
+  change (effectiveReturnQuadratic C Λ V F S).transpose = _
+  simp only [effectiveReturnQuadratic, Matrix.transpose_add, Matrix.transpose_smul,
+    Matrix.transpose_mul, Matrix.transpose_transpose, hΛ, hC, hT, Matrix.mul_assoc]
+
 end Auto

@@ -6,6 +6,7 @@ Authors: Codex
 module
 
 public import Mathlib.Analysis.SpecialFunctions.Pow.Asymptotics
+public import TrilinearHT.Auto.HilbertAtomicDecomposition
 public import Mathlib.Analysis.SpecialFunctions.SmoothTransition
 public import Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas
 public import Mathlib.Analysis.Calculus.Deriv.MeanValue
@@ -24,6 +25,7 @@ public import Mathlib.Tactic
 public import TrilinearHT.Auto.FeffermanStein
 public import TrilinearHT.Auto.LatticeTransference
 public import TrilinearHT.Auto.RationalLinearAlgebra
+public import TrilinearHT.Auto.QuadraticCharts
 public import TrilinearHT.Auto.DyadicStopping
 public import TrilinearHT.Auto.GowersCauchySchwarz
 public import TrilinearHT.Auto.GevreyCutoffs
@@ -53,170 +55,6 @@ namespace Auto
 
 open Filter
 open scoped Topology
-
-/-- The logarithmic size parameter in blueprint Lemma `lem:budget-rules`. -/
-noncomputable def logarithmicSize (t : ℝ) : ℝ := 1 + Real.log t
-
-theorem one_le_logarithmicSize {t : ℝ} (ht : 2 ≤ t) : 1 ≤ logarithmicSize t := by
-  have := Real.log_nonneg (show 1 ≤ t by linarith)
-  dsimp [logarithmicSize]
-  linarith
-
-/-- Blueprint Lemma `lem:budget-rules`: an explicit quasipolynomial majorant.
-The coefficient and degree are chosen before the universally quantified parameter. -/
-def QuasipolynomialBound (f : ℝ → ℝ) : Prop :=
-  ∃ C : ℝ, 1 ≤ C ∧ ∃ d : ℕ, 1 ≤ d ∧
-    ∀ t : ℝ, 2 ≤ t → 0 ≤ f t ∧ f t ≤ Real.exp (C * logarithmicSize t ^ d)
-
-/-- Increasing the degree of a logarithmic majorant on the source domain. -/
-theorem logarithmicSize_pow_mono {t : ℝ} (ht : 2 ≤ t) {d e : ℕ} (hde : d ≤ e) :
-    logarithmicSize t ^ d ≤ logarithmicSize t ^ e :=
-  pow_le_pow_right₀ (one_le_logarithmicSize ht) hde
-
-/-- Blueprint Lemma `lem:budget-rules`, closure under products. -/
-theorem quasipolynomialBound_mul {f g : ℝ → ℝ}
-    (hf : QuasipolynomialBound f) (hg : QuasipolynomialBound g) :
-    QuasipolynomialBound (fun t => f t * g t) := by
-  obtain ⟨C, hC, d, hd, hf⟩ := hf
-  obtain ⟨D, hD, e, he, hg⟩ := hg
-  refine ⟨C + D, by linarith, d + e, by omega, ?_⟩
-  intro t ht
-  obtain ⟨hf0, hf1⟩ := hf t ht
-  obtain ⟨hg0, hg1⟩ := hg t ht
-  refine ⟨mul_nonneg hf0 hg0, ?_⟩
-  calc
-    f t * g t ≤ Real.exp (C * logarithmicSize t ^ d) *
-        Real.exp (D * logarithmicSize t ^ e) := mul_le_mul hf1 hg1 hg0 (by positivity)
-    _ = Real.exp (C * logarithmicSize t ^ d + D * logarithmicSize t ^ e) :=
-      (Real.exp_add _ _).symm
-    _ ≤ Real.exp ((C + D) * logarithmicSize t ^ (d + e)) := by
-      apply Real.exp_le_exp.mpr
-      have h₁ := mul_le_mul_of_nonneg_left
-        (logarithmicSize_pow_mono ht (Nat.le_add_right d e)) (show 0 ≤ C by linarith)
-      have h₂ := mul_le_mul_of_nonneg_left
-        (logarithmicSize_pow_mono ht (Nat.le_add_left e d)) (show 0 ≤ D by linarith)
-      nlinarith
-
-/-- Blueprint Lemma `lem:budget-rules`, closure under sums. -/
-theorem quasipolynomialBound_add {f g : ℝ → ℝ}
-    (hf : QuasipolynomialBound f) (hg : QuasipolynomialBound g) :
-    QuasipolynomialBound (fun t => f t + g t) := by
-  obtain ⟨C, hC, d, hd, hf⟩ := hf
-  obtain ⟨D, hD, e, he, hg⟩ := hg
-  refine ⟨C + D + 1, by linarith, d + e, by omega, ?_⟩
-  intro t ht
-  obtain ⟨hf0, hf1⟩ := hf t ht
-  obtain ⟨hg0, hg1⟩ := hg t ht
-  have hu : 1 ≤ logarithmicSize t ^ (d + e) :=
-    one_le_pow₀ (one_le_logarithmicSize ht)
-  have hC0 : 0 ≤ C := by linarith
-  have hD0 : 0 ≤ D := by linarith
-  have h₁ : C * logarithmicSize t ^ d ≤ (C + D) * logarithmicSize t ^ (d + e) := by
-    calc
-      _ ≤ C * logarithmicSize t ^ (d + e) :=
-        mul_le_mul_of_nonneg_left (logarithmicSize_pow_mono ht (Nat.le_add_right d e)) hC0
-      _ ≤ _ := mul_le_mul_of_nonneg_right (by linarith) (by linarith)
-  have h₂ : D * logarithmicSize t ^ e ≤ (C + D) * logarithmicSize t ^ (d + e) := by
-    calc
-      _ ≤ D * logarithmicSize t ^ (d + e) :=
-        mul_le_mul_of_nonneg_left (logarithmicSize_pow_mono ht (Nat.le_add_left e d)) hD0
-      _ ≤ _ := mul_le_mul_of_nonneg_right (by linarith) (by linarith)
-  have htwo : 2 ≤ Real.exp (logarithmicSize t ^ (d + e)) := by
-    have := Real.add_one_le_exp (logarithmicSize t ^ (d + e))
-    linarith
-  refine ⟨add_nonneg hf0 hg0, ?_⟩
-  calc
-    f t + g t ≤ 2 * Real.exp ((C + D) * logarithmicSize t ^ (d + e)) := by
-      have := Real.exp_le_exp.mpr h₁
-      have := Real.exp_le_exp.mpr h₂
-      linarith
-    _ ≤ Real.exp (logarithmicSize t ^ (d + e)) *
-        Real.exp ((C + D) * logarithmicSize t ^ (d + e)) := by gcongr
-    _ = Real.exp ((C + D + 1) * logarithmicSize t ^ (d + e)) := by
-      rw [← Real.exp_add]
-      congr 1
-      ring
-
-/-- A nonnegative constant has a quasipolynomial bound (including the empty-sum case). -/
-theorem quasipolynomialBound_const {c : ℝ} (hc : 0 ≤ c) :
-    QuasipolynomialBound (fun _ => c) := by
-  refine ⟨c + 1, by linarith, 1, le_rfl, ?_⟩
-  intro t ht
-  refine ⟨hc, ?_⟩
-  have hu := one_le_logarithmicSize ht
-  have hx : c ≤ (c + 1) * logarithmicSize t := by nlinarith
-  simpa using (show c ≤ Real.exp ((c + 1) * logarithmicSize t) from
-    (by linarith [Real.add_one_le_exp c] : c ≤ Real.exp c).trans (Real.exp_le_exp.mpr hx))
-
-/-- Blueprint Lemma `lem:budget-rules`: any fixed finite sum preserves the bound. -/
-theorem quasipolynomialBound_sum {ι : Type*} (s : Finset ι) (f : ι → ℝ → ℝ)
-    (hf : ∀ i ∈ s, QuasipolynomialBound (f i)) :
-    QuasipolynomialBound (fun t => ∑ i ∈ s, f i t) := by
-  classical
-  induction s using Finset.induction_on with
-  | empty => simpa using (quasipolynomialBound_const (c := 0) le_rfl)
-  | @insert a s ha ih =>
-    simpa [Finset.sum_insert, ha] using
-      quasipolynomialBound_add (hf a (by simp)) (ih (fun i hi => hf i (by simp [hi])))
-
-/-- Blueprint Lemma `lem:budget-rules`: any fixed finite product preserves the bound. -/
-theorem quasipolynomialBound_prod {ι : Type*} (s : Finset ι) (f : ι → ℝ → ℝ)
-    (hf : ∀ i ∈ s, QuasipolynomialBound (f i)) :
-    QuasipolynomialBound (fun t => ∏ i ∈ s, f i t) := by
-  classical
-  induction s using Finset.induction_on with
-  | empty => simpa using (quasipolynomialBound_const (c := 1) zero_le_one)
-  | @insert a s ha ih =>
-    simpa [Finset.prod_insert, ha] using
-      quasipolynomialBound_mul (hf a (by simp)) (ih (fun i hi => hf i (by simp [hi])))
-
-/-- Blueprint Lemma `lem:budget-rules`, closure under nonnegative fixed real powers. -/
-theorem quasipolynomialBound_rpow {f : ℝ → ℝ} (hf : QuasipolynomialBound f)
-    {p : ℝ} (hp : 0 ≤ p) : QuasipolynomialBound (fun t => f t ^ p) := by
-  obtain ⟨C, hC, d, hd, hf⟩ := hf
-  refine ⟨C * (p + 1), by nlinarith, d, hd, ?_⟩
-  intro t ht
-  obtain ⟨hf0, hf1⟩ := hf t ht
-  refine ⟨Real.rpow_nonneg hf0 p, ?_⟩
-  calc
-    f t ^ p ≤ Real.exp (C * logarithmicSize t ^ d) ^ p :=
-      Real.rpow_le_rpow hf0 hf1 hp
-    _ = Real.exp (C * logarithmicSize t ^ d * p) := (Real.exp_mul _ _).symm
-    _ ≤ Real.exp (C * (p + 1) * logarithmicSize t ^ d) := by
-      apply Real.exp_le_exp.mpr
-      have hu : 0 ≤ logarithmicSize t ^ d :=
-        pow_nonneg (by linarith [one_le_logarithmicSize ht]) _
-      nlinarith
-
-/-- Blueprint Lemma `lem:budget-rules`, closure under composition on its stated domain.
-The inner function takes values at least two, so the outer bound is applicable. -/
-theorem quasipolynomialBound_comp {f g : ℝ → ℝ}
-    (hf : QuasipolynomialBound f) (hg : QuasipolynomialBound g)
-    (hg2 : ∀ t, 2 ≤ t → 2 ≤ g t) :
-    QuasipolynomialBound (fun t => f (g t)) := by
-  obtain ⟨C, hC, d, hd, hf⟩ := hf
-  obtain ⟨D, hD, e, he, hg⟩ := hg
-  refine ⟨C * (1 + D) ^ d, ?_, e * d, by nlinarith, ?_⟩
-  · have := one_le_pow₀ (show 1 ≤ 1 + D by linarith) (n := d)
-    nlinarith
-  intro t ht
-  obtain ⟨hf0, hf1⟩ := hf (g t) (hg2 t ht)
-  have hgpos : 0 < g t := by linarith [hg2 t ht]
-  have hlog : Real.log (g t) ≤ D * logarithmicSize t ^ e := by
-    have := Real.log_le_log hgpos (hg t ht).2
-    simpa only [Real.log_exp] using this
-  have hu : 1 ≤ logarithmicSize t ^ e := one_le_pow₀ (one_le_logarithmicSize ht)
-  have hsize : logarithmicSize (g t) ≤ (1 + D) * logarithmicSize t ^ e := by
-    dsimp [logarithmicSize] at hlog hu ⊢
-    nlinarith
-  refine ⟨hf0, hf1.trans (Real.exp_le_exp.mpr ?_)⟩
-  calc
-    C * logarithmicSize (g t) ^ d ≤ C * ((1 + D) * logarithmicSize t ^ e) ^ d := by
-      gcongr
-      linarith [one_le_logarithmicSize (hg2 t ht)]
-    _ = C * (1 + D) ^ d * logarithmicSize t ^ (e * d) := by
-      rw [mul_pow, ← pow_mul]
-      ring
 
 /-- Blueprint Lemma `lem:budget-rules`: every fixed power of a logarithm is
 eventually dominated by any positive power, with any prescribed positive coefficient. -/
@@ -1161,143 +999,11 @@ theorem quadratic_oscillatory_integral_bound (α β γ : ℝ) {a b A : ℝ}
 
 open scoped ENNReal
 
-/-- Normalized counting measure, the Haar probability measure on a finite group. -/
-noncomputable def finiteHaar (G : Type*) [Fintype G] [MeasurableSpace G] : Measure G :=
-  ((Fintype.card G : ℝ≥0∞)⁻¹) • Measure.count
-
-instance finiteHaar_isProbabilityMeasure (G : Type*) [Fintype G] [Nonempty G]
-    [MeasurableSpace G] : IsProbabilityMeasure (finiteHaar G) := by
-  constructor
-  suffices (Fintype.card G : ℝ≥0∞)⁻¹ * Fintype.card G = 1 by
-    simpa [finiteHaar] using this
-  exact ENNReal.inv_mul_cancel (by positivity) (by simp)
-
-instance finiteHaar_isAddLeftInvariant (G : Type*) [AddGroup G] [Fintype G]
-    [MeasurableSpace G] [MeasurableSingletonClass G] [MeasurableAdd G] :
-    (finiteHaar G).IsAddLeftInvariant := by
-  unfold finiteHaar
-  infer_instance
-
 theorem integral_finiteHaar {G : Type*} [Fintype G] [MeasurableSpace G]
     [MeasurableSingletonClass G] (f : G → ℂ) :
     (∫ x, f x ∂finiteHaar G) = finiteAverage f := by
   rw [finiteHaar, integral_smul_measure, integral_count]
   simp [finiteAverage, ENNReal.toReal_inv, Complex.real_smul]
-
-/-! Probability-normalized Fourier analysis on finite cyclic groups. -/
-
-noncomputable def finiteFourier {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (ξ : ZMod q) : ℂ :=
-  (q : ℂ)⁻¹ * ZMod.dft f ξ
-
-theorem finiteFourier_eq_average {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (ξ : ZMod q) :
-    finiteFourier f ξ = finiteAverage (fun x => f x * ZMod.stdAddChar (-(ξ * x))) := by
-  simp only [finiteFourier, ZMod.dft_apply, smul_eq_mul, finiteAverage, ZMod.card]
-  congr 1
-  apply Finset.sum_congr rfl
-  intro x _
-  rw [mul_comm x ξ, mul_comm]
-
-theorem finiteFourier_inversion {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (x : ZMod q) :
-    f x = ∑ ξ, finiteFourier f ξ * ZMod.stdAddChar (ξ * x) := by
-  have h := congrFun (ZMod.dft.symm_apply_apply f) x
-  rw [ZMod.invDFT_def] at h
-  rw [← h]
-  simp only [smul_eq_mul, finiteFourier, Finset.mul_sum]
-  apply Finset.sum_congr rfl
-  intro ξ _
-  ring
-
-theorem finite_character_orthogonality {q : ℕ} [NeZero q] (ξ : ZMod q) :
-    finiteAverage (fun x => ZMod.stdAddChar (ξ * x)) = if ξ = 0 then 1 else 0 := by
-  unfold finiteAverage
-  by_cases hξ : ξ = 0
-  · simp [hξ, ZMod.card, NeZero.ne (q : ℂ)]
-  · have hs : ∑ x, ZMod.stdAddChar (ξ * x) = 0 := by
-      simpa only [AddChar.mulShift_apply] using
-        AddChar.sum_eq_zero_of_ne_one (ZMod.isPrimitive_stdAddChar q hξ)
-    simp [hs, hξ]
-
-theorem stdAddChar_conj {q : ℕ} [NeZero q] (x : ZMod q) :
-    conj (ZMod.stdAddChar x) = ZMod.stdAddChar (-x) := by
-  simp only [ZMod.stdAddChar_apply, AddChar.map_neg_eq_inv, ← Circle.coe_inv_eq_conj,
-    Circle.coe_inv]
-
-theorem finiteAverage_sum {G I : Type*} [Fintype G] (s : Finset I) (f : I → G → ℂ) :
-    finiteAverage (fun x => ∑ i ∈ s, f i x) = ∑ i ∈ s, finiteAverage (f i) := by
-  simp only [← uniformMean_complex_eq, uniformMean_sum]
-
-theorem finiteAverage_mul_const {G : Type*} [Fintype G] (f : G → ℂ) (c : ℂ) :
-    finiteAverage (fun x => f x * c) = finiteAverage f * c := by
-  simp only [finiteAverage, ← Finset.sum_mul, mul_assoc]
-
-theorem finiteAverage_const_mul {G : Type*} [Fintype G] (c : ℂ) (f : G → ℂ) :
-    finiteAverage (fun x => c * f x) = c * finiteAverage f := by
-  simp only [finiteAverage, ← Finset.mul_sum]
-  ring
-
-theorem finiteAverage_re {G : Type*} [Fintype G] (f : G → ℂ) :
-    (finiteAverage f).re = uniformMean (fun x => (f x).re) := by
-  rw [← uniformMean_complex_eq]
-  simp [uniformMean, Complex.re_sum]
-
-theorem finiteFourier_pairing {q : ℕ} [NeZero q] (f g : ZMod q → ℂ) :
-    finiteAverage (fun x => f x * conj (g x)) =
-      ∑ ξ, finiteFourier f ξ * conj (finiteFourier g ξ) := by
-  have hg (x : ZMod q) : f x * conj (g x) =
-      ∑ ξ, (f x * ZMod.stdAddChar (-(ξ * x))) * conj (finiteFourier g ξ) := by
-    conv_lhs => rw [finiteFourier_inversion g x]
-    simp only [map_sum, map_mul, stdAddChar_conj, Finset.mul_sum]
-    apply Finset.sum_congr rfl
-    intro ξ _
-    ring
-  simp only [hg, finiteAverage_sum, finiteAverage_mul_const, ← finiteFourier_eq_average]
-
-theorem finiteFourier_parseval {q : ℕ} [NeZero q] (f : ZMod q → ℂ) :
-    uniformMean (fun x => ‖f x‖ ^ 2) = ∑ ξ, ‖finiteFourier f ξ‖ ^ 2 := by
-  have h := congrArg Complex.re (finiteFourier_pairing f f)
-  simpa only [finiteAverage_re, Complex.mul_conj, Complex.normSq_eq_norm_sq,
-    Complex.ofReal_re, Complex.re_sum] using h
-
-theorem finiteAverage_comm {A B : Type*} [Fintype A] [Fintype B] (f : A → B → ℂ) :
-    finiteAverage (fun a => finiteAverage (f a)) =
-      finiteAverage (fun b => finiteAverage (fun a => f a b)) := by
-  simp only [← uniformMean_complex_eq]
-  exact uniformMean_comm f
-
-theorem finiteAverage_equiv {A B : Type*} [Fintype A] [Fintype B]
-    (e : A ≃ B) (f : B → ℂ) : finiteAverage (fun a => f (e a)) = finiteAverage f := by
-  simpa only [← uniformMean_complex_eq] using uniformMean_equiv e f
-
-theorem finiteFourier_translate {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (a ξ : ZMod q) :
-    finiteFourier (fun x => f (x - a)) ξ =
-      ZMod.stdAddChar (-(ξ * a)) * finiteFourier f ξ := by
-  rw [finiteFourier_eq_average]
-  rw [← finiteAverage_equiv (Equiv.addRight a)
-    (fun x => f (x - a) * ZMod.stdAddChar (-(ξ * x)))]
-  simp only [Equiv.coe_addRight, add_sub_cancel_right, mul_add, neg_add,
-    AddChar.map_add_eq_mul]
-  simp_rw [← mul_assoc]
-  rw [finiteAverage_mul_const, ← finiteFourier_eq_average, mul_comm]
-
-theorem finiteFourier_convolution {q : ℕ} [NeZero q] (f g : ZMod q → ℂ) (ξ : ZMod q) :
-    finiteFourier (finiteConvolution f g) ξ = finiteFourier f ξ * finiteFourier g ξ := by
-  rw [finiteFourier_eq_average]
-  simp only [finiteConvolution, ← finiteAverage_mul_const]
-  rw [finiteAverage_comm]
-  have hi (y : ZMod q) :
-      finiteAverage (fun x => f y * g (x - y) * ZMod.stdAddChar (-(ξ * x))) =
-        (f y * ZMod.stdAddChar (-(ξ * y))) * finiteFourier g ξ := by
-    simp_rw [mul_assoc]
-    rw [finiteAverage_const_mul, ← finiteFourier_eq_average, finiteFourier_translate]
-  simp only [hi, finiteAverage_mul_const, ← finiteFourier_eq_average]
-
-theorem finiteHaar_pi {I G : Type*} [Fintype I] [DecidableEq I] [Fintype G] [Nonempty G]
-    [MeasurableSpace G] [MeasurableSingletonClass G] :
-    Measure.pi (fun _ : I => finiteHaar G) = finiteHaar (I → G) := by
-  apply Measure.ext_of_singleton
-  intro f
-  rw [Measure.pi_singleton]
-  simp [finiteHaar, ← ENNReal.inv_pow]
 
 theorem integral_finiteHaar_uniform {G E : Type*} [Fintype G] [MeasurableSpace G]
     [MeasurableSingletonClass G] [NormedAddCommGroup E] [NormedSpace ℝ E]
@@ -7800,1579 +7506,6 @@ theorem columnSpatialCompression_averages {Ω V ι F : Type*} [MeasurableSpace �
   rw [he]
   exact h
 
-/-! ### Quadratic chart definitions
-
-Blueprint `def:chart`, lines 625-637. The horizontal frequencies and the
-ordinary real quadratic and linear phases are unrestricted. Complexity is
-charged only to dimension, rational matrix height, support and cutoff derivatives.
--/
-
-/-- A coordinate mixed derivative, indexed by its ordered coordinate word.
-For smooth functions this is the usual multi-index derivative of total order `m`. -/
-noncomputable def coordinateWordDerivative {d : ℕ} (m : ℕ)
-    (χ : (Fin d → ℝ) → ℂ) (word : Fin m → Fin d) (z : Fin d → ℝ) : ℂ :=
-  iteratedFDeriv ℝ m χ z (fun i => Pi.single (word i) 1)
-
-theorem coordinateWordDerivative_zero {d : ℕ} (χ : (Fin d → ℝ) → ℂ)
-    (word : Fin 0 → Fin d) (z : Fin d → ℝ) :
-    coordinateWordDerivative 0 χ word z = χ z := rfl
-
-/-- The data in the source quadratic chart formula. Smoothness means
-`C-infinity`, and imposes no analyticity assumption on the compact cutoff. -/
-structure QuadraticChartData (d : ℕ) where
-  horizontal : Fin d → ℝ
-  quadratic : ℝ
-  linear : ℝ
-  matrix : Matrix (Fin d) (Fin d) ℚ
-  amplitude : (Fin d → ℝ) → ℂ
-  smooth : ContDiff ℝ (⊤ : ℕ∞) amplitude
-  compact : HasCompactSupport amplitude
-
-/-- The bilinear phase `z^T C w` in a quadratic chart. -/
-noncomputable def chartMatrixPhase {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (z w : Fin d → ℝ) : ℝ := ∑ i, ∑ j, z i * (C i j : ℝ) * w j
-
-noncomputable def chartHorizontalPosition {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
-    Fin d → ℝ := fun i => A.horizontal i * y
-
-noncomputable def chartLatticeRemainder {d : ℕ} (A : QuadraticChartData d)
-    (y : ℝ) (n : Fin d → ℤ) : Fin d → ℝ :=
-  fun i => A.horizontal i * y - (n i : ℝ)
-
-noncomputable def quadraticChartLatticeSummand {d : ℕ} (A : QuadraticChartData d)
-    (y : ℝ) (n : Fin d → ℤ) : ℂ :=
-  A.amplitude (chartLatticeRemainder A y n) *
-    (Real.fourierChar (chartMatrixPhase A.matrix (chartHorizontalPosition A y)
-      (chartLatticeRemainder A y n)) : ℂ)
-
-/-- Blueprint `def:chart`, formula (atom): the actual quadratic chart function. -/
-noncomputable def quadraticChartAtom {d : ℕ} (A : QuadraticChartData d) (y : ℝ) : ℂ :=
-  (Real.fourierChar (A.quadratic * y ^ 2 + A.linear * y) : ℂ) *
-    ∑' n : Fin d → ℤ, quadraticChartLatticeSummand A y n
-
-/-- The source complexity convention at one fixed Gevrey order `c₀`.
-Coordinate words encode mixed partial derivatives and their length is total order.
-The real phase and horizontal parameters deliberately carry no size restrictions. -/
-structure QuadraticChartComplexity {d : ℕ} (c₀ : ℕ) (H : ℝ)
-    (A : QuadraticChartData d) : Prop where
-  lower : Real.exp 2 ≤ H
-  dimension : (d : ℝ) ≤ Real.log H
-  height : ∀ i j, (rationalHeight (A.matrix i j) : ℝ) ≤ H
-  support : ∀ z, A.amplitude z ≠ 0 → ∀ i, |z i| ≤ H
-  derivative : ∀ (m : ℕ) (word : Fin m → Fin d) (z : Fin d → ℝ),
-    ‖coordinateWordDerivative m A.amplitude word z‖ ≤
-      H ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1))
-
-/-- A bounded atom has pointwise supremum norm at most one. -/
-def IsBoundedQuadraticChart {d : ℕ} (A : QuadraticChartData d) : Prop :=
-  ∀ y : ℝ, ‖quadraticChartAtom A y‖ ≤ 1
-
-theorem quadraticChartComplexity_parameter_pos {d c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) : 0 < H :=
-  (Real.exp_pos 2).trans_le hA.lower
-
-theorem quadraticChartComplexity_amplitude_bound {d c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (z : Fin d → ℝ) :
-    ‖A.amplitude z‖ ≤ H ^ c₀ := by
-  simpa only [coordinateWordDerivative_zero, Nat.zero_add, mul_one, Nat.cast_zero,
-    zero_add, one_pow] using hA.derivative 0 Fin.elim0 z
-
-theorem norm_quadraticChartLatticeSummand {d : ℕ} (A : QuadraticChartData d)
-    (y : ℝ) (n : Fin d → ℤ) :
-    ‖quadraticChartLatticeSummand A y n‖ = ‖A.amplitude (chartLatticeRemainder A y n)‖ := by
-  rw [quadraticChartLatticeSummand, norm_mul, Circle.norm_coe, mul_one]
-
-theorem norm_quadraticChartAtom {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
-    ‖quadraticChartAtom A y‖ = ‖∑' n : Fin d → ℤ, quadraticChartLatticeSummand A y n‖ := by
-  rw [quadraticChartAtom, norm_mul, Circle.norm_coe, one_mul]
-
-/-! ### Quadratic chart lattice sums -/
-
-/-- A finite integer box containing every lattice translate that can
-meet a cutoff supported in `[-H,H]^d` at horizontal position `z`. -/
-noncomputable def chartLatticeBox {d : ℕ} (H : ℝ) (z : Fin d → ℝ) :
-    Finset (Fin d → ℤ) :=
-  Fintype.piFinset (fun i => Finset.Icc ⌊z i - H⌋ ⌊z i + H⌋)
-
-theorem mem_chartLatticeBox_of_bound {d : ℕ} {H : ℝ} {z : Fin d → ℝ}
-    {n : Fin d → ℤ} (hn : ∀ i, |z i - (n i : ℝ)| ≤ H) :
-    n ∈ chartLatticeBox H z := by
-  apply Fintype.mem_piFinset.mpr
-  intro i
-  obtain ⟨hlo, hhi⟩ := abs_le.mp (hn i)
-  have hl : z i - H ≤ (n i : ℝ) := by linarith
-  have hu : (n i : ℝ) ≤ z i + H := by linarith
-  refine Finset.mem_Icc.mpr ⟨?_, Int.le_floor.mpr hu⟩
-  simpa using Int.floor_mono hl
-
-theorem chartLatticeBox_card_le {d : ℕ} {H : ℝ} (hH : 0 ≤ H) (z : Fin d → ℝ) :
-    ((chartLatticeBox H z).card : ℝ) ≤ (2 * H + 3) ^ d := by
-  rw [chartLatticeBox, Fintype.card_piFinset, Nat.cast_prod]
-  calc
-    _ ≤ ∏ _i : Fin d, (2 * H + 3) := by
-      apply Finset.prod_le_prod₀
-      · intro i _
-        positivity
-      · intro i _
-        have hh := integer_floor_interval_card_le (show z i - H ≤ z i + H by linarith)
-        linarith
-    _ = _ := by simp
-
-theorem quadraticChartSummand_eq_zero_off_box {d : ℕ} (A : QuadraticChartData d)
-    {H : ℝ} (hχ : ∀ z, A.amplitude z ≠ 0 → ∀ i, |z i| ≤ H)
-    (y : ℝ) {n : Fin d → ℤ} (hn : n ∉ chartLatticeBox H (chartHorizontalPosition A y)) :
-    quadraticChartLatticeSummand A y n = 0 := by
-  have hz : A.amplitude (chartLatticeRemainder A y n) = 0 := by
-    by_contra hh
-    apply hn
-    exact mem_chartLatticeBox_of_bound (hχ _ hh)
-  simp only [quadraticChartLatticeSummand, hz, zero_mul]
-
-theorem quadraticChartData_support_bound {d : ℕ} (A : QuadraticChartData d) :
-    ∃ H : ℝ, 0 < H ∧ ∀ z, A.amplitude z ≠ 0 → ∀ i, |z i| ≤ H := by
-  obtain ⟨H, hH, hbound⟩ := A.compact.isBounded.exists_pos_norm_le
-  refine ⟨H, hH, ?_⟩
-  intro z hz i
-  have hznorm : ‖z‖ ≤ H := hbound z (subset_tsupport A.amplitude hz)
-  exact (show |z i| ≤ ‖z‖ by simpa only [Real.norm_eq_abs] using norm_le_pi_norm z i).trans hznorm
-
-/-- Compact support makes the chart's lattice series a genuine finite sum. -/
-theorem quadraticChartLatticeSummand_finite_support {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
-    (Function.support (quadraticChartLatticeSummand A y)).Finite := by
-  obtain ⟨H, _, hχ⟩ := quadraticChartData_support_bound A
-  apply (chartLatticeBox H (chartHorizontalPosition A y)).finite_toSet.subset
-  intro n hn
-  by_contra hh
-  exact hn (quadraticChartSummand_eq_zero_off_box A hχ y hh)
-
-theorem quadraticChartLatticeSummand_summable {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
-    Summable (quadraticChartLatticeSummand A y) :=
-  summable_of_hasFiniteSupport (quadraticChartLatticeSummand_finite_support A y)
-
-theorem quadraticChartAtom_eq_sum {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) (y : ℝ) :
-    quadraticChartAtom A y = (Real.fourierChar (A.quadratic * y ^ 2 + A.linear * y) : ℂ) *
-      ∑ n ∈ chartLatticeBox H (chartHorizontalPosition A y),
-        quadraticChartLatticeSummand A y n := by
-  rw [quadraticChartAtom, tsum_eq_sum (s := chartLatticeBox H (chartHorizontalPosition A y))
-    (fun n hn => quadraticChartSummand_eq_zero_off_box A hA.support y hn)]
-
-/-- Blueprint `def:chart`, lines 635-637: at most `(2H+3)^d` nonzero
-lattice summands contribute at a point. -/
-theorem quadraticChart_nonzero_summands_card_le {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) (y : ℝ) :
-    ((quadraticChartLatticeSummand_finite_support A y).toFinset.card : ℝ) ≤ (2 * H + 3) ^ d := by
-  apply le_trans _ (chartLatticeBox_card_le (quadraticChartComplexity_parameter_pos hA).le
-    (chartHorizontalPosition A y))
-  apply Nat.cast_le.mpr
-  apply Finset.card_le_card
-  intro n hn
-  have hne := (Set.Finite.mem_toFinset _).mp hn
-  by_contra hh
-  exact hne (quadraticChartSummand_eq_zero_off_box A hA.support y hh)
-
-theorem quadraticChartAtom_norm_le {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) (y : ℝ) :
-    ‖quadraticChartAtom A y‖ ≤ (2 * H + 3) ^ d * H ^ c₀ := by
-  rw [quadraticChartAtom_eq_sum hA y, norm_mul, Circle.norm_coe, one_mul]
-  calc
-    _ ≤ ∑ n ∈ chartLatticeBox H (chartHorizontalPosition A y),
-        ‖quadraticChartLatticeSummand A y n‖ :=
-      norm_sum_le _ _
-    _ ≤ ∑ _n ∈ chartLatticeBox H (chartHorizontalPosition A y), H ^ c₀ := by
-      apply Finset.sum_le_sum
-      intro n _
-      rw [norm_quadraticChartLatticeSummand]
-      exact quadraticChartComplexity_amplitude_bound hA _
-    _ = ((chartLatticeBox H (chartHorizontalPosition A y)).card : ℝ) * H ^ c₀ := by simp
-    _ ≤ _ := mul_le_mul_of_nonneg_right
-      (chartLatticeBox_card_le (quadraticChartComplexity_parameter_pos hA).le
-        (chartHorizontalPosition A y)) (pow_nonneg (quadraticChartComplexity_parameter_pos hA).le _)
-
-/-! ### Quadratic chart normalization -/
-
-/-- Ordinary quadratic phases are zero-dimensional chart atoms. -/
-noncomputable def ordinaryQuadraticChart (lam β : ℝ) : QuadraticChartData 0 where
-  horizontal := Fin.elim0
-  quadratic := lam
-  linear := β
-  matrix := fun i => Fin.elim0 i
-  amplitude := fun _ => 1
-  smooth := contDiff_const
-  compact := (Set.toFinite _).isCompact
-
-theorem ordinaryQuadraticChart_atom (lam β y : ℝ) :
-    quadraticChartAtom (ordinaryQuadraticChart lam β) y =
-      (Real.fourierChar (lam * y ^ 2 + β * y) : ℂ) := by
-  simp [quadraticChartAtom, quadraticChartLatticeSummand, ordinaryQuadraticChart, chartMatrixPhase]
-
-theorem ordinaryQuadraticChart_complexity (c₀ : ℕ) {H : ℝ} (hH : Real.exp 2 ≤ H)
-    (lam β : ℝ) : QuadraticChartComplexity c₀ H (ordinaryQuadraticChart lam β) := by
-  have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
-  refine ⟨hH, ?_, ?_, ?_, ?_⟩
-  · simpa only [Nat.cast_zero] using Real.log_nonneg hH1
-  · intro i
-    exact Fin.elim0 i
-  · intro z _ i
-    exact Fin.elim0 i
-  · intro m word z
-    cases m with
-    | zero =>
-      simpa [coordinateWordDerivative_zero, ordinaryQuadraticChart] using one_le_pow₀ hH1 (n := c₀)
-    | succ m => exact Fin.elim0 (word 0)
-
-theorem ordinaryQuadraticChart_bounded (lam β : ℝ) :
-    IsBoundedQuadraticChart (ordinaryQuadraticChart lam β) := by
-  intro y
-  rw [ordinaryQuadraticChart_atom, Circle.norm_coe]
-
-/-- Scalar sizes are external coefficients; multiplying the cutoff
-by a scalar of modulus at most one does not increase complexity. -/
-noncomputable def scaleQuadraticChartAmplitude {d : ℕ} (a : ℂ) (A : QuadraticChartData d) :
-    QuadraticChartData d where
-  horizontal := A.horizontal
-  quadratic := A.quadratic
-  linear := A.linear
-  matrix := A.matrix
-  amplitude := fun z => a * A.amplitude z
-  smooth := contDiff_const.mul A.smooth
-  compact := A.compact.mul_left
-
-theorem coordinateWordDerivative_scaleChart {d : ℕ} (a : ℂ) (A : QuadraticChartData d)
-    (m : ℕ) (word : Fin m → Fin d) (z : Fin d → ℝ) :
-    coordinateWordDerivative m (scaleQuadraticChartAmplitude a A).amplitude word z =
-      a * coordinateWordDerivative m A.amplitude word z := by
-  have hf : ContDiffAt ℝ m A.amplitude z := A.smooth.contDiffAt.of_le (by simp)
-  unfold coordinateWordDerivative
-  change iteratedFDeriv ℝ m (a • A.amplitude) z _ = _
-  rw [iteratedFDeriv_const_smul_apply hf]
-  rfl
-
-theorem scaleQuadraticChartAmplitude_atom {d : ℕ} (a : ℂ) (A : QuadraticChartData d) (y : ℝ) :
-    quadraticChartAtom (scaleQuadraticChartAmplitude a A) y = a * quadraticChartAtom A y := by
-  have he : ∀ n, quadraticChartLatticeSummand (scaleQuadraticChartAmplitude a A) y n =
-      a * quadraticChartLatticeSummand A y n := by
-    intro n
-    have hh : chartHorizontalPosition (scaleQuadraticChartAmplitude a A) y =
-        chartHorizontalPosition A y := rfl
-    have hr : chartLatticeRemainder (scaleQuadraticChartAmplitude a A) y n =
-        chartLatticeRemainder A y n := rfl
-    change (a * A.amplitude (chartLatticeRemainder (scaleQuadraticChartAmplitude a A) y n)) *
-        (Real.fourierChar (chartMatrixPhase A.matrix
-          (chartHorizontalPosition (scaleQuadraticChartAmplitude a A) y)
-          (chartLatticeRemainder (scaleQuadraticChartAmplitude a A) y n)) : ℂ) =
-      a * (A.amplitude (chartLatticeRemainder A y n) *
-        (Real.fourierChar (chartMatrixPhase A.matrix (chartHorizontalPosition A y)
-          (chartLatticeRemainder A y n)) : ℂ))
-    rw [hh, hr, mul_assoc]
-  change (Real.fourierChar (A.quadratic * y ^ 2 + A.linear * y) : ℂ) *
-      (∑' n, quadraticChartLatticeSummand (scaleQuadraticChartAmplitude a A) y n) =
-    a * ((Real.fourierChar (A.quadratic * y ^ 2 + A.linear * y) : ℂ) *
-      ∑' n, quadraticChartLatticeSummand A y n)
-  rw [tsum_congr he, tsum_mul_left]
-  ring
-
-theorem scaleQuadraticChartAmplitude_complexity {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) {a : ℂ} (ha : ‖a‖ ≤ 1) :
-    QuadraticChartComplexity c₀ H (scaleQuadraticChartAmplitude a A) := by
-  refine ⟨hA.lower, hA.dimension, hA.height, ?_, ?_⟩
-  · intro z hz
-    apply hA.support z
-    intro hh
-    exact hz (by simp [scaleQuadraticChartAmplitude, hh])
-  · intro m word z
-    rw [coordinateWordDerivative_scaleChart, norm_mul]
-    exact (mul_le_of_le_one_left (norm_nonneg _) ha).trans (hA.derivative m word z)
-
-noncomputable def chartNormalizationFactor (d c₀ : ℕ) (H : ℝ) : ℝ :=
-  (2 * H + 3) ^ d * H ^ c₀
-
-noncomputable def chartNormalizationBudget (c₀ : ℕ) (H : ℝ) : ℝ :=
-  Real.exp ((c₀ + 10 : ℝ) * logarithmicSize H ^ 2)
-
-theorem chartNormalizationBudget_quasipolynomial (c₀ : ℕ) :
-    QuasipolynomialBound (chartNormalizationBudget c₀) := by
-  refine ⟨(c₀ + 10 : ℝ), ?_, 2, by norm_num, ?_⟩
-  · have hh := Nat.cast_nonneg (α := ℝ) c₀
-    linarith
-  · intro H _
-    exact ⟨(Real.exp_pos _).le, le_rfl⟩
-
-theorem chartNormalizationFactor_one_le (d c₀ : ℕ) {H : ℝ} (hH : 1 ≤ H) :
-    1 ≤ chartNormalizationFactor d c₀ H := by
-  have hbase : 1 ≤ 2 * H + 3 := by linarith
-  have hleft : 1 ≤ (2 * H + 3) ^ d := one_le_pow₀ hbase
-  have hright : 1 ≤ H ^ c₀ := one_le_pow₀ hH
-  unfold chartNormalizationFactor
-  nlinarith
-
-theorem chartNormalizationFactor_le_budget {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) :
-    chartNormalizationFactor d c₀ H ≤ chartNormalizationBudget c₀ H := by
-  have hH2 : 2 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hHp : 0 < H := by linarith
-  have hlogH : 2 ≤ Real.log H := by
-    have hh := Real.log_le_log (Real.exp_pos 2) hA.lower
-    rwa [Real.log_exp] at hh
-  have hbasep : 0 < 2 * H + 3 := by linarith
-  have hlogbase : Real.log (2 * H + 3) ≤ 3 * Real.log H := by
-    have hh := Real.log_le_log hbasep (show 2 * H + 3 ≤ 4 * H by linarith)
-    rw [Real.log_mul (by norm_num : (4 : ℝ) ≠ 0) hHp.ne'] at hh
-    have h4 := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 4)
-    norm_num at h4
-    linarith
-  have hN : 0 < chartNormalizationFactor d c₀ H :=
-    mul_pos (pow_pos hbasep _) (pow_pos hHp _)
-  have hlogN : Real.log (chartNormalizationFactor d c₀ H) =
-      (d : ℝ) * Real.log (2 * H + 3) + (c₀ : ℝ) * Real.log H := by
-    rw [chartNormalizationFactor, Real.log_mul (pow_pos hbasep _).ne' (pow_pos hHp _).ne',
-      Real.log_pow, Real.log_pow]
-  unfold chartNormalizationBudget
-  rw [← Real.exp_log hN]
-  apply Real.exp_le_exp.mpr
-  rw [hlogN]
-  unfold logarithmicSize
-  have hprod := mul_le_mul hA.dimension hlogbase
-    (Real.log_nonneg (show 1 ≤ 2 * H + 3 by linarith)) (show 0 ≤ Real.log H by linarith)
-  nlinarith [Nat.cast_nonneg (α := ℝ) c₀,
-    mul_nonneg (Nat.cast_nonneg (α := ℝ) c₀) (sq_nonneg (Real.log H)),
-    mul_nonneg (Nat.cast_nonneg (α := ℝ) c₀) (show 0 ≤ Real.log H by linarith)]
-
-/-- Blueprint `def:chart`, lines 635-637: normalize to an actual bounded
-chart of the same complexity, paying only a quasipolynomial external scalar. -/
-theorem quadraticChart_normalize {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) :
-    ∃ (N : ℝ) (A' : QuadraticChartData d), 1 ≤ N ∧ N ≤ chartNormalizationBudget c₀ H ∧
-      QuadraticChartComplexity c₀ H A' ∧ IsBoundedQuadraticChart A' ∧
-      ∀ y, quadraticChartAtom A y = (N : ℂ) * quadraticChartAtom A' y := by
-  let N := chartNormalizationFactor d c₀ H
-  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hN1 : 1 ≤ N := chartNormalizationFactor_one_le d c₀ hH1
-  have hNp : 0 < N := by linarith
-  have hNC : (N : ℂ) ≠ 0 := by exact_mod_cast hNp.ne'
-  have ha : ‖(N : ℂ)⁻¹‖ ≤ 1 := by
-    rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hNp]
-    simpa only [one_div] using (div_le_one hNp).mpr hN1
-  refine ⟨N, scaleQuadraticChartAmplitude (N : ℂ)⁻¹ A, hN1,
-    chartNormalizationFactor_le_budget hA, scaleQuadraticChartAmplitude_complexity hA ha, ?_, ?_⟩
-  · intro y
-    rw [scaleQuadraticChartAmplitude_atom, norm_mul, norm_inv, Complex.norm_real,
-      Real.norm_eq_abs, abs_of_pos hNp]
-    calc
-      _ ≤ N⁻¹ * N := mul_le_mul_of_nonneg_left (quadraticChartAtom_norm_le hA y)
-        (inv_nonneg.mpr hNp.le)
-      _ = 1 := inv_mul_cancel₀ hNp.ne'
-  · intro y
-    rw [scaleQuadraticChartAmplitude_atom]
-    simp [hNC]
-
-/-! ### Quadratic chart conjugation -/
-
-/-- Blueprint `lem:chart-operations`: conjugate the cutoff and negate both
-ordinary phases and the rational matrix. -/
-noncomputable def conjugateQuadraticChart {d : ℕ} (A : QuadraticChartData d) :
-    QuadraticChartData d where
-  horizontal := A.horizontal
-  quadratic := -A.quadratic
-  linear := -A.linear
-  matrix := -A.matrix
-  amplitude := fun z => star (A.amplitude z)
-  smooth := Complex.conjCLE.contDiff.comp A.smooth
-  compact := A.compact.comp_left (map_zero Complex.conjCLE)
-
-theorem chartMatrixPhase_neg {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (z w : Fin d → ℝ) : chartMatrixPhase (-C) z w = -chartMatrixPhase C z w := by
-  simp [chartMatrixPhase, Finset.sum_neg_distrib]
-
-theorem coordinateWordDerivative_conjugateChart {d : ℕ} (A : QuadraticChartData d)
-    (m : ℕ) (word : Fin m → Fin d) (z : Fin d → ℝ) :
-    coordinateWordDerivative m (conjugateQuadraticChart A).amplitude word z =
-      star (coordinateWordDerivative m A.amplitude word z) := by
-  change (iteratedFDeriv ℝ m (Complex.conjCLE ∘ A.amplitude) z) _ = _
-  rw [Complex.conjCLE.iteratedFDeriv_comp_left]
-  rfl
-
-/-- Conjugation gives exactly the pointwise complex conjugate of the atom. -/
-theorem conjugateQuadraticChart_atom {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
-    quadraticChartAtom (conjugateQuadraticChart A) y = star (quadraticChartAtom A y) := by
-  have he : ∀ n, quadraticChartLatticeSummand (conjugateQuadraticChart A) y n =
-      star (quadraticChartLatticeSummand A y n) := by
-    intro n
-    have hh : chartHorizontalPosition (conjugateQuadraticChart A) y =
-        chartHorizontalPosition A y := rfl
-    have hr : chartLatticeRemainder (conjugateQuadraticChart A) y n =
-        chartLatticeRemainder A y n := rfl
-    change star (A.amplitude _) * (Real.fourierChar (chartMatrixPhase (-A.matrix) _ _) : ℂ)
-      = star (A.amplitude _ * (Real.fourierChar _ : ℂ))
-    rw [hh, hr, chartMatrixPhase_neg, AddChar.map_neg_eq_inv, Circle.coe_inv_eq_conj]
-    exact (map_mul (starRingEnd ℂ) _ _).symm
-  unfold quadraticChartAtom
-  rw [tsum_congr he]
-  have ht : (∑' n : Fin d → ℤ, star (quadraticChartLatticeSummand A y n)) =
-      star (∑' n : Fin d → ℤ, quadraticChartLatticeSummand A y n) :=
-    Complex.conjCLE.map_tsum.symm
-  rw [ht]
-  have hp : (conjugateQuadraticChart A).quadratic * y ^ 2 +
-      (conjugateQuadraticChart A).linear * y = -(A.quadratic * y ^ 2 + A.linear * y) := by
-    dsimp [conjugateQuadraticChart]
-    ring
-  rw [hp, AddChar.map_neg_eq_inv, Circle.coe_inv_eq_conj]
-  exact (map_mul (starRingEnd ℂ) _ _).symm
-
-/-- Blueprint `lem:chart-operations`: conjugation preserves the exact
-original dimension, height, support and fixed-order Gevrey budget. -/
-theorem conjugateQuadraticChart_complexity {d c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) :
-    QuadraticChartComplexity c₀ H (conjugateQuadraticChart A) where
-  lower := hA.lower
-  dimension := hA.dimension
-  height := by simpa [conjugateQuadraticChart, rationalHeight_neg] using hA.height
-  support := by
-    intro z hz
-    apply hA.support z
-    simpa [conjugateQuadraticChart] using hz
-  derivative := by
-    intro m word z
-    rw [coordinateWordDerivative_conjugateChart, norm_star]
-    exact hA.derivative m word z
-
-/-- Blueprint `lem:chart-operations`: a bounded chart stays bounded under conjugation. -/
-theorem conjugateQuadraticChart_bounded {d : ℕ} {A : QuadraticChartData d}
-    (hA : IsBoundedQuadraticChart A) : IsBoundedQuadraticChart (conjugateQuadraticChart A) := by
-  intro y
-  rw [conjugateQuadraticChart_atom, norm_star]
-  exact hA y
-
-/-! ### Quadratic chart dilation -/
-
-/-- Blueprint `lem:chart-operations`: a real dilation changes only the
-unrestricted horizontal, quadratic and linear frequencies. -/
-noncomputable def dilateQuadraticChart {d : ℕ} (a : ℝ) (A : QuadraticChartData d) :
-    QuadraticChartData d :=
-  { A with horizontal := fun i => A.horizontal i * a
-           quadratic := A.quadratic * a ^ 2
-           linear := A.linear * a }
-
-/-- The dilated chart is the exact dilated atom, including dilation by zero. -/
-theorem dilateQuadraticChart_atom {d : ℕ} (a : ℝ) (A : QuadraticChartData d) (y : ℝ) :
-    quadraticChartAtom (dilateQuadraticChart a A) y = quadraticChartAtom A (a * y) := by
-  have hh : chartHorizontalPosition (dilateQuadraticChart a A) y =
-      chartHorizontalPosition A (a * y) := by
-    funext i
-    dsimp [chartHorizontalPosition, dilateQuadraticChart]
-    ring
-  have hr : ∀ n, chartLatticeRemainder (dilateQuadraticChart a A) y n =
-      chartLatticeRemainder A (a * y) n := by
-    intro n
-    funext i
-    dsimp [chartLatticeRemainder, dilateQuadraticChart]
-    ring
-  have hp : (dilateQuadraticChart a A).quadratic * y ^ 2 +
-      (dilateQuadraticChart a A).linear * y = A.quadratic * (a * y) ^ 2 +
-        A.linear * (a * y) := by
-    dsimp [dilateQuadraticChart]
-    ring
-  unfold quadraticChartAtom
-  rw [hp]
-  congr 1
-  apply tsum_congr
-  intro n
-  change A.amplitude _ * (Real.fourierChar (chartMatrixPhase A.matrix _ _) : ℂ) =
-    A.amplitude _ * (Real.fourierChar (chartMatrixPhase A.matrix _ _) : ℂ)
-  rw [hh, hr]
-
-/-- Blueprint `lem:chart-operations`: dilation has no complexity cost,
-uniformly over every real dilation parameter. -/
-theorem dilateQuadraticChart_complexity {d c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (a : ℝ) :
-    QuadraticChartComplexity c₀ H (dilateQuadraticChart a A) where
-  lower := hA.lower
-  dimension := hA.dimension
-  height := hA.height
-  support := hA.support
-  derivative := hA.derivative
-
-/-- Blueprint `lem:chart-operations`: dilation preserves pointwise boundedness. -/
-theorem dilateQuadraticChart_bounded {d : ℕ} {A : QuadraticChartData d}
-    (hA : IsBoundedQuadraticChart A) (a : ℝ) :
-    IsBoundedQuadraticChart (dilateQuadraticChart a A) := by
-  intro y
-  rw [dilateQuadraticChart_atom]
-  exact hA (a * y)
-
-/-! ### Quadratic chart products -/
-
-/-- Block-diagonal rational matrix on concatenated finite coordinates. -/
-def chartBlockMatrix {d e : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (D : Matrix (Fin e) (Fin e) ℚ) : Matrix (Fin (d + e)) (Fin (d + e)) ℚ :=
-  fun i j => Fin.addCases (fun i => Fin.addCases (C i) (fun _ => 0) j)
-    (fun i => Fin.addCases (fun _ => 0) (D i) j) i
-
-theorem chartMatrixPhase_block {d e : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (D : Matrix (Fin e) (Fin e) ℚ) (z w : Fin (d + e) → ℝ) :
-    chartMatrixPhase (chartBlockMatrix C D) z w =
-      chartMatrixPhase C (fun i => z (Fin.castAdd e i)) (fun i => w (Fin.castAdd e i)) +
-      chartMatrixPhase D (fun i => z (Fin.natAdd d i)) (fun i => w (Fin.natAdd d i)) := by
-  simp [chartMatrixPhase, chartBlockMatrix, Fin.sum_univ_add]
-
-/-- Product of the two cutoffs in their disjoint coordinate blocks. -/
-noncomputable def productChartAmplitude {d e : ℕ} (A : QuadraticChartData d)
-    (B : QuadraticChartData e) (z : Fin (d + e) → ℝ) : ℂ :=
-  A.amplitude (fun i => z (Fin.castAdd e i)) *
-    B.amplitude (fun i => z (Fin.natAdd d i))
-
-theorem productChartAmplitude_smooth {d e : ℕ} (A : QuadraticChartData d)
-    (B : QuadraticChartData e) : ContDiff ℝ (⊤ : ℕ∞) (productChartAmplitude A B) := by
-  exact (A.smooth.comp (contDiff_pi.mpr fun i => contDiff_apply ℝ ℝ (Fin.castAdd e i))).mul
-    (B.smooth.comp (contDiff_pi.mpr fun i => contDiff_apply ℝ ℝ (Fin.natAdd d i)))
-
-theorem productChartAmplitude_compact {d e : ℕ} (A : QuadraticChartData d)
-    (B : QuadraticChartData e) : HasCompactSupport (productChartAmplitude A B) := by
-  obtain ⟨H, hH, hA⟩ := quadraticChartData_support_bound A
-  obtain ⟨K, hK, hB⟩ := quadraticChartData_support_bound B
-  apply HasCompactSupport.of_support_subset_isCompact (isCompact_closedBall 0 (max H K))
-  intro z hz
-  have hn : A.amplitude (fun i => z (Fin.castAdd e i)) ≠ 0 ∧
-      B.amplitude (fun i => z (Fin.natAdd d i)) ≠ 0 := mul_ne_zero_iff.mp hz
-  rw [Metric.mem_closedBall, dist_zero_right]
-  apply (pi_norm_le_iff_of_nonneg (le_max_of_le_left hH.le)).mpr
-  intro i
-  refine Fin.addCases (fun j => ?_) (fun j => ?_) i
-  · exact (hA _ hn.1 j).trans (le_max_left H K)
-  · exact (hB _ hn.2 j).trans (le_max_right H K)
-
-/-- Blueprint `lem:chart-operations`: concatenate horizontal coordinates,
-add ordinary phases, and take a block-diagonal rational matrix. -/
-noncomputable def productQuadraticChart {d e : ℕ} (A : QuadraticChartData d)
-    (B : QuadraticChartData e) : QuadraticChartData (d + e) where
-  horizontal := Fin.append A.horizontal B.horizontal
-  quadratic := A.quadratic + B.quadratic
-  linear := A.linear + B.linear
-  matrix := chartBlockMatrix A.matrix B.matrix
-  amplitude := productChartAmplitude A B
-  smooth := productChartAmplitude_smooth A B
-  compact := productChartAmplitude_compact A B
-
-theorem productQuadraticChart_summand {d e : ℕ} (A : QuadraticChartData d)
-    (B : QuadraticChartData e) (y : ℝ) (n : Fin d → ℤ) (m : Fin e → ℤ) :
-    quadraticChartLatticeSummand (productQuadraticChart A B) y (Fin.append n m) =
-      quadraticChartLatticeSummand A y n * quadraticChartLatticeSummand B y m := by
-  have hl : (fun i => chartLatticeRemainder (productQuadraticChart A B) y
-      (Fin.append n m) (Fin.castAdd e i)) = chartLatticeRemainder A y n := by
-    funext i
-    simp [chartLatticeRemainder, productQuadraticChart]
-  have hr : (fun i => chartLatticeRemainder (productQuadraticChart A B) y
-      (Fin.append n m) (Fin.natAdd d i)) = chartLatticeRemainder B y m := by
-    funext i
-    simp [chartLatticeRemainder, productQuadraticChart]
-  have hzl : (fun i => chartHorizontalPosition (productQuadraticChart A B) y
-      (Fin.castAdd e i)) = chartHorizontalPosition A y := by
-    funext i
-    simp [chartHorizontalPosition, productQuadraticChart]
-  have hzr : (fun i => chartHorizontalPosition (productQuadraticChart A B) y
-      (Fin.natAdd d i)) = chartHorizontalPosition B y := by
-    funext i
-    simp [chartHorizontalPosition, productQuadraticChart]
-  change (A.amplitude _ * B.amplitude _) *
-    (Real.fourierChar (chartMatrixPhase (chartBlockMatrix A.matrix B.matrix) _ _) : ℂ) = _
-  rw [chartMatrixPhase_block, hl, hr, hzl, hzr, AddChar.map_add_eq_mul, Circle.coe_mul]
-  simp only [quadraticChartLatticeSummand]
-  ring
-
-/-- Blueprint `lem:chart-operations`: the block construction is exactly
-pointwise multiplication, with all lattice sums factored legitimately. -/
-theorem productQuadraticChart_atom {d e : ℕ} (A : QuadraticChartData d)
-    (B : QuadraticChartData e) (y : ℝ) :
-    quadraticChartAtom (productQuadraticChart A B) y =
-      quadraticChartAtom A y * quadraticChartAtom B y := by
-  have hs : (∑' k, quadraticChartLatticeSummand (productQuadraticChart A B) y k) =
-      (∑' n, quadraticChartLatticeSummand A y n) *
-        ∑' m, quadraticChartLatticeSummand B y m := by
-    calc
-      _ = ∑' p : (Fin d → ℤ) × (Fin e → ℤ),
-          quadraticChartLatticeSummand (productQuadraticChart A B) y
-            (Fin.append p.1 p.2) := ((Fin.appendEquiv d e).tsum_eq _).symm
-      _ = ∑' p : (Fin d → ℤ) × (Fin e → ℤ),
-          quadraticChartLatticeSummand A y p.1 * quadraticChartLatticeSummand B y p.2 :=
-        tsum_congr (fun p => productQuadraticChart_summand A B y p.1 p.2)
-      _ = _ := (tsum_mul_tsum_of_summable_norm
-        (summable_of_hasFiniteSupport (by
-          simpa only [Function.HasFiniteSupport, Function.support, norm_ne_zero_iff] using
-            quadraticChartLatticeSummand_finite_support A y))
-        (summable_of_hasFiniteSupport (by
-          simpa only [Function.HasFiniteSupport, Function.support, norm_ne_zero_iff] using
-            quadraticChartLatticeSummand_finite_support B y))).symm
-  have hp : (productQuadraticChart A B).quadratic * y ^ 2 +
-      (productQuadraticChart A B).linear * y =
-      (A.quadratic * y ^ 2 + A.linear * y) + (B.quadratic * y ^ 2 + B.linear * y) := by
-    dsimp [productQuadraticChart]
-    ring
-  unfold quadraticChartAtom
-  rw [hs, hp, AddChar.map_add_eq_mul, Circle.coe_mul]
-  ring
-
-/-! ### Quadratic chart product complexity -/
-
-/-- Coordinate bounds control the multilinear operator norm with the
-finite-dimensional cost `d^m`. This includes order and dimension zero. -/
-theorem chart_multilinear_norm_le_coordinates {d m : ℕ}
-    (T : ContinuousMultilinearMap ℝ (fun _ : Fin m => Fin d → ℝ) ℂ)
-    {M : ℝ} (hM : 0 ≤ M)
-    (hT : ∀ word : Fin m → Fin d, ‖T (fun i => Pi.single (word i) 1)‖ ≤ M) :
-    ‖T‖ ≤ (d : ℝ) ^ m * M := by
-  apply ContinuousMultilinearMap.opNorm_le_bound (mul_nonneg (by positivity) hM)
-  intro v
-  have hv : v = fun i => ∑ j : Fin d, (v i j) • Pi.single j (1 : ℝ) := by
-    funext i j
-    simp [Pi.smul_apply, Pi.single_apply]
-  calc
-    ‖T v‖ = ‖∑ word : Fin m → Fin d,
-        T (fun i => (v i (word i)) • Pi.single (word i) (1 : ℝ))‖ := by
-      conv_lhs => rw [hv]
-      rw [T.map_sum]
-    _ ≤ ∑ _word : Fin m → Fin d, M * ∏ i, ‖v i‖ := by
-      apply (norm_sum_le _ _).trans
-      apply Finset.sum_le_sum
-      intro word _
-      rw [T.map_smul_univ, norm_smul, norm_prod]
-      calc
-        _ ≤ (∏ i, ‖v i‖) * M := mul_le_mul
-          (Finset.prod_le_prod₀ (fun _ _ => norm_nonneg _)
-            (fun i _ => norm_le_pi_norm (v i) (word i))) (hT word)
-          (norm_nonneg _) (by positivity)
-        _ = _ := mul_comm _ _
-    _ = ((d : ℝ) ^ m * M) * ∏ i, ‖v i‖ := by
-      simp [mul_assoc]
-
-/-- From the source coordinate Gevrey bounds to an operator-norm bound.
-The fixed Gevrey order is positive; no increase in that order is needed. -/
-theorem chart_cutoff_iteratedFDeriv_bound {d c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A)
-    (hc : 1 ≤ c₀) (m : ℕ) (z : Fin d → ℝ) :
-    ‖iteratedFDeriv ℝ m A.amplitude z‖ ≤
-      H ^ (2 * c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
-  have hH : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hd : (d : ℝ) ≤ H := hA.dimension.trans (Real.log_le_self (by linarith))
-  have h := chart_multilinear_norm_le_coordinates (iteratedFDeriv ℝ m A.amplitude z)
-    (M := H ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)))
-    (mul_nonneg (pow_nonneg (by linarith) _) (by positivity))
-    (hA.derivative m · z)
-  refine h.trans ?_
-  calc
-    _ ≤ H ^ m * (H ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1))) :=
-      mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (Nat.cast_nonneg d) hd m)
-        (mul_nonneg (pow_nonneg (by linarith) _) (by positivity))
-    _ = H ^ (m + c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
-      rw [pow_add, mul_assoc]
-    _ ≤ _ := mul_le_mul_of_nonneg_right (pow_le_pow_right₀ hH (by nlinarith))
-      (by positivity)
-
-/-- Restriction to a chosen coordinate list, allowing repeated coordinates. -/
-noncomputable def chartCoordinateRestriction {d D : ℕ} (s : Fin d → Fin D) :
-    (Fin D → ℝ) →L[ℝ] (Fin d → ℝ) :=
-  ContinuousLinearMap.pi (fun i => ContinuousLinearMap.proj (s i))
-
-theorem chartCoordinateRestriction_norm_le {d D : ℕ} (s : Fin d → Fin D) :
-    ‖chartCoordinateRestriction s‖ ≤ 1 := by
-  apply ContinuousLinearMap.opNorm_le_bound _ zero_le_one
-  intro z
-  simp only [one_mul]
-  exact (pi_norm_le_iff_of_nonneg (norm_nonneg z)).mpr
-    (fun i => norm_le_pi_norm z (s i))
-
-theorem chart_cutoff_restriction_bound {d D c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A)
-    (hc : 1 ≤ c₀) (s : Fin d → Fin D) (m : ℕ) (z : Fin D → ℝ) :
-    ‖iteratedFDeriv ℝ m (fun x => A.amplitude (fun i => x (s i))) z‖ ≤
-      H ^ (2 * c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
-  change ‖iteratedFDeriv ℝ m (A.amplitude ∘ chartCoordinateRestriction s) z‖ ≤ _
-  rw [(chartCoordinateRestriction s).iteratedFDeriv_comp_right A.smooth z (by simp)]
-  apply le_trans (ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _)
-  have hp : (∏ _i : Fin m, ‖chartCoordinateRestriction s‖) ≤ 1 := by
-    simpa using (Finset.prod_le_prod₀ (s := Finset.univ) (fun _ _ => norm_nonneg _)
-      (fun (_i : Fin m) _ => chartCoordinateRestriction_norm_le s))
-  calc
-    _ ≤ ‖iteratedFDeriv ℝ m A.amplitude (chartCoordinateRestriction s z)‖ * 1 :=
-      mul_le_mul_of_nonneg_left hp (norm_nonneg _)
-    _ ≤ _ := by simpa only [mul_one] using chart_cutoff_iteratedFDeriv_bound hA hc m _
-
-/-- Leibniz's rule in operator norm, with a geometric derivative majorant. -/
-theorem chart_product_derivative_geometric {D m : ℕ}
-    {f g : (Fin D → ℝ) → ℂ} (hf : ContDiff ℝ (⊤ : ℕ∞) f)
-    (hg : ContDiff ℝ (⊤ : ℕ∞) g) (z : Fin D → ℝ) {R : ℝ} (hR : 0 ≤ R)
-    (hfi : ∀ i ≤ m, ‖iteratedFDeriv ℝ i f z‖ ≤ R ^ (i + 1))
-    (hgi : ∀ i ≤ m, ‖iteratedFDeriv ℝ i g z‖ ≤ R ^ (i + 1)) :
-    ‖iteratedFDeriv ℝ m (fun x => f x * g x) z‖ ≤ 2 ^ m * R ^ (m + 2) := by
-  apply (norm_iteratedFDeriv_mul_le hf hg z (by simp)).trans
-  calc
-    _ ≤ ∑ i ∈ Finset.range (m + 1), (m.choose i : ℝ) * R ^ (m + 2) := by
-      apply Finset.sum_le_sum
-      intro i hi
-      have hi' : i ≤ m := by simpa only [Finset.mem_range, Nat.lt_succ_iff] using hi
-      calc
-        _ ≤ (m.choose i : ℝ) * R ^ (i + 1) * R ^ (m - i + 1) := by
-          gcongr
-          · exact hfi i hi'
-          · exact hgi (m - i) (Nat.sub_le _ _)
-        _ = _ := by
-          rw [mul_assoc, ← pow_add]
-          congr 2
-          omega
-    _ = _ := by
-      rw [← Finset.sum_mul]
-      congr 1
-      exact_mod_cast Nat.sum_range_choose m
-
-theorem chart_cutoff_restriction_geometric {d D c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A)
-    (hc : 1 ≤ c₀) (s : Fin d → Fin D) (m i : ℕ) (hi : i ≤ m) (z : Fin D → ℝ) :
-    ‖iteratedFDeriv ℝ i (fun x => A.amplitude (fun j => x (s j))) z‖ ≤
-      (H ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀) ^ (i + 1) := by
-  apply (chart_cutoff_restriction_bound hA hc s i z).trans
-  rw [mul_pow, ← pow_mul, ← pow_mul]
-  apply mul_le_mul_of_nonneg_left _
-    (pow_nonneg (quadraticChartComplexity_parameter_pos hA).le _)
-  apply pow_le_pow_left₀ (by positivity)
-  exact_mod_cast Nat.add_le_add_right hi 1
-
-/-- The elementary scalar estimate preserving the fixed Gevrey order in
-the product rule. A sixth power of the old height absorbs all extra factors. -/
-theorem chart_product_geometric_budget {H : ℝ} (hH : 2 ≤ H)
-    {c₀ : ℕ} (hc : 1 ≤ c₀) (m : ℕ) :
-    2 ^ m * (H ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀) ^ (m + 2) ≤
-      (H ^ 6) ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
-  have hH1 : 1 ≤ H := by linarith
-  have htwo : (2 : ℝ) ^ m ≤ H ^ (c₀ * (m + 1)) :=
-    (pow_le_pow_left₀ (by norm_num) hH m).trans
-      (pow_le_pow_right₀ hH1 (by nlinarith))
-  have hm : (m + 1 : ℝ) ≤ H ^ (m + 1) := by
-    have hn : (m + 1 : ℝ) ≤ (2 : ℝ) ^ m := by
-      exact_mod_cast (m.lt_two_pow_self).succ_le
-    exact hn.trans ((pow_le_pow_left₀ (by norm_num) hH m).trans
-      (pow_le_pow_right₀ hH1 (by omega)))
-  have hm' : (m + 1 : ℝ) ^ c₀ ≤ H ^ (c₀ * (m + 1)) := by
-    simpa only [← pow_mul, Nat.mul_comm] using pow_le_pow_left₀ (by positivity) hm c₀
-  have hbase : H ^ (2 * c₀ * (m + 2)) ≤ H ^ (4 * (c₀ * (m + 1))) :=
-    pow_le_pow_right₀ hH1 (by nlinarith)
-  rw [mul_pow, ← pow_mul, ← pow_mul]
-  have he : c₀ * (m + 2) = c₀ * (m + 1) + c₀ := by ring
-  rw [he, pow_add]
-  calc
-    _ ≤ H ^ (c₀ * (m + 1)) *
-        (H ^ (4 * (c₀ * (m + 1))) *
-          ((m + 1 : ℝ) ^ (c₀ * (m + 1)) * H ^ (c₀ * (m + 1)))) := by
-      gcongr
-    _ = (H ^ 6) ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
-      calc
-        _ = (H ^ (c₀ * (m + 1)) * H ^ (4 * (c₀ * (m + 1))) *
-            H ^ (c₀ * (m + 1))) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by ring
-        _ = _ := by
-          rw [← pow_add, ← pow_add, ← pow_mul]
-          congr 2
-          omega
-
-/-- The product cutoff retains the same Gevrey order, with height budget `H^6`. -/
-theorem productChartAmplitude_derivative_bound {d e c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} {B : QuadraticChartData e}
-    (hA : QuadraticChartComplexity c₀ H A) (hB : QuadraticChartComplexity c₀ H B)
-    (hc : 1 ≤ c₀) (m : ℕ) (word : Fin m → Fin (d + e)) (z : Fin (d + e) → ℝ) :
-    ‖coordinateWordDerivative m (productChartAmplitude A B) word z‖ ≤
-      (H ^ 6) ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
-  have hH : 2 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hf : ContDiff ℝ (⊤ : ℕ∞)
-      (fun x : Fin (d + e) → ℝ => A.amplitude (fun i => x (Fin.castAdd e i))) :=
-    A.smooth.comp (chartCoordinateRestriction (Fin.castAdd e)).contDiff
-  have hg : ContDiff ℝ (⊤ : ℕ∞)
-      (fun x : Fin (d + e) → ℝ => B.amplitude (fun i => x (Fin.natAdd d i))) :=
-    B.smooth.comp (chartCoordinateRestriction (Fin.natAdd d)).contDiff
-  have h := chart_product_derivative_geometric hf hg z
-    (R := H ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀)
-    (mul_nonneg (pow_nonneg (by linarith) _) (by positivity))
-    (fun i hi => chart_cutoff_restriction_geometric hA hc _ m i hi z)
-    (fun i hi => chart_cutoff_restriction_geometric hB hc _ m i hi z)
-  change ‖iteratedFDeriv ℝ m (productChartAmplitude A B) z‖ ≤ _ at h
-  apply le_trans _ (h.trans (chart_product_geometric_budget hH hc m))
-  simpa [coordinateWordDerivative, Pi.norm_single] using
-    (iteratedFDeriv ℝ m (productChartAmplitude A B) z).le_opNorm
-      (fun i => Pi.single (word i) 1)
-
-/-- Blueprint `lem:chart-operations`: the product of two complexity-`H`
-charts has complexity at most `H^6`, uniformly in every real frequency. -/
-theorem productQuadraticChart_complexity {d e c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} {B : QuadraticChartData e}
-    (hA : QuadraticChartComplexity c₀ H A) (hB : QuadraticChartComplexity c₀ H B)
-    (hc : 1 ≤ c₀) : QuadraticChartComplexity c₀ (H ^ 6) (productQuadraticChart A B) := by
-  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hHH : H ≤ H ^ 6 := le_self_pow₀ hH1 (by norm_num)
-  have hz : (rationalHeight (0 : ℚ) : ℝ) ≤ H ^ 6 := by
-    simpa [rationalHeight] using hH1.trans hHH
-  constructor
-  · exact hA.lower.trans hHH
-  · rw [Nat.cast_add, Real.log_pow]
-    norm_num only [Nat.cast_ofNat]
-    have hlog : 0 ≤ Real.log H := Real.log_nonneg hH1
-    nlinarith [hA.dimension, hB.dimension]
-  · intro i j
-    refine Fin.addCases (fun i => ?_) (fun i => ?_) i
-    · refine Fin.addCases (fun j => ?_) (fun j => ?_) j
-      · simpa [productQuadraticChart, chartBlockMatrix] using (hA.height i j).trans hHH
-      · simpa [productQuadraticChart, chartBlockMatrix] using hz
-    · refine Fin.addCases (fun j => ?_) (fun j => ?_) j
-      · simpa [productQuadraticChart, chartBlockMatrix] using hz
-      · simpa [productQuadraticChart, chartBlockMatrix] using (hB.height i j).trans hHH
-  · intro z hz i
-    have hn : A.amplitude (fun i => z (Fin.castAdd e i)) ≠ 0 ∧
-        B.amplitude (fun i => z (Fin.natAdd d i)) ≠ 0 := mul_ne_zero_iff.mp hz
-    refine Fin.addCases (fun j => ?_) (fun j => ?_) i
-    · exact (hA.support _ hn.1 j).trans hHH
-    · exact (hB.support _ hn.2 j).trans hHH
-  · exact productChartAmplitude_derivative_bound hA hB hc
-
-/-! ### Fixed finite chart products -/
-
-theorem quadraticChartComplexity_mono {d c₀ : ℕ} {H K : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hHK : H ≤ K) :
-    QuadraticChartComplexity c₀ K A where
-  lower := hA.lower.trans hHK
-  dimension := hA.dimension.trans
-    (Real.log_le_log (quadraticChartComplexity_parameter_pos hA) hHK)
-  height := fun i j => (hA.height i j).trans hHK
-  support := fun z hz i => (hA.support z hz i).trans hHK
-  derivative := by
-    intro m word z
-    exact (hA.derivative m word z).trans (mul_le_mul_of_nonneg_right
-      (pow_le_pow_left₀ (quadraticChartComplexity_parameter_pos hA).le hHK _)
-      (by positivity))
-
-theorem productQuadraticChart_bounded {d e : ℕ} {A : QuadraticChartData d}
-    {B : QuadraticChartData e} (hA : IsBoundedQuadraticChart A)
-    (hB : IsBoundedQuadraticChart B) : IsBoundedQuadraticChart (productQuadraticChart A B) := by
-  intro y
-  rw [productQuadraticChart_atom, norm_mul]
-  simpa only [one_mul] using mul_le_mul (hA y) (hB y) (norm_nonneg _) zero_le_one
-
-/-- A finite product of charts of arbitrary, possibly different dimensions.
-The empty list is represented by the ordinary constant phase one. -/
-noncomputable def finiteQuadraticChartProduct :
-    (L : List (Σ d : ℕ, QuadraticChartData d)) → QuadraticChartData ((L.map Sigma.fst).sum)
-  | [] => ordinaryQuadraticChart 0 0
-  | A :: L => productQuadraticChart A.2 (finiteQuadraticChartProduct L)
-
-/-- Blueprint `lem:chart-operations`: exact multiplication of any finite list of atoms. -/
-theorem finiteQuadraticChartProduct_atom (L : List (Σ d : ℕ, QuadraticChartData d)) (y : ℝ) :
-    quadraticChartAtom (finiteQuadraticChartProduct L) y =
-      (L.map (fun A => quadraticChartAtom A.2 y)).prod := by
-  induction L with
-  | nil =>
-    change quadraticChartAtom (ordinaryQuadraticChart 0 0) y = 1
-    rw [ordinaryQuadraticChart_atom]
-    simp
-  | cons A L ih =>
-    change quadraticChartAtom (productQuadraticChart A.2 (finiteQuadraticChartProduct L)) y =
-      quadraticChartAtom A.2 y * (L.map (fun B => quadraticChartAtom B.2 y)).prod
-    rw [productQuadraticChart_atom, ih]
-
-/-- Blueprint `lem:chart-operations`: bounded atoms have bounded finite products. -/
-theorem finiteQuadraticChartProduct_bounded (L : List (Σ d : ℕ, QuadraticChartData d))
-    (hL : ∀ A ∈ L, IsBoundedQuadraticChart A.2) :
-    IsBoundedQuadraticChart (finiteQuadraticChartProduct L) := by
-  induction L with
-  | nil => exact ordinaryQuadraticChart_bounded 0 0
-  | cons A L ih =>
-    exact productQuadraticChart_bounded (hL A (List.mem_cons_self ..))
-      (ih (fun B hB => hL B (List.mem_cons_of_mem _ hB)))
-
-/-- Blueprint `lem:chart-operations`: a fixed finite product has a polynomial
-height budget, with exponent depending only on the number of factors. -/
-theorem finiteQuadraticChartProduct_complexity {c₀ : ℕ} {H : ℝ}
-    (hH : Real.exp 2 ≤ H) (hc : 1 ≤ c₀)
-    (L : List (Σ d : ℕ, QuadraticChartData d))
-    (hL : ∀ A ∈ L, QuadraticChartComplexity c₀ H A.2) :
-    QuadraticChartComplexity c₀ (H ^ (6 ^ L.length)) (finiteQuadraticChartProduct L) := by
-  have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
-  induction L with
-  | nil =>
-    simp only [List.length_nil, pow_zero, pow_one]
-    change QuadraticChartComplexity c₀ H (ordinaryQuadraticChart 0 0)
-    exact ordinaryQuadraticChart_complexity c₀ hH 0 0
-  | cons A L ih =>
-    have ht := ih (fun B hB => hL B (List.mem_cons_of_mem _ hB))
-    have ha := quadraticChartComplexity_mono (hL A (List.mem_cons_self ..))
-      (le_self_pow₀ hH1 (pow_ne_zero L.length (by decide : (6 : ℕ) ≠ 0)))
-    have h := productQuadraticChart_complexity ha ht hc
-    change QuadraticChartComplexity c₀ (H ^ (6 ^ (L.length + 1)))
-      (productQuadraticChart A.2 (finiteQuadraticChartProduct L))
-    rw [pow_succ, pow_mul]
-    exact h
-
-/-- The finite-product height budget is quasipolynomial for each fixed list length. -/
-theorem finiteChartProductBudget_quasipolynomial (q : ℕ) :
-    QuasipolynomialBound (fun H : ℝ => H ^ (6 ^ q)) := by
-  refine ⟨(6 ^ q : ℕ) + 1, le_add_of_nonneg_left (Nat.cast_nonneg _), 1, le_rfl, ?_⟩
-  intro H hH
-  refine ⟨pow_nonneg (by linarith) _, ?_⟩
-  have hHp : 0 < H := by linarith
-  have hlog : 0 ≤ Real.log H := Real.log_nonneg (by linarith)
-  calc
-    _ = Real.exp (((6 ^ q : ℕ) : ℝ) * Real.log H) := by
-      rw [Real.exp_nat_mul, Real.exp_log hHp]
-    _ ≤ _ := by
-      apply Real.exp_le_exp.mpr
-      simp only [logarithmicSize, pow_one]
-      nlinarith [Nat.cast_nonneg (α := ℝ) (6 ^ q)]
-
-/-! ### Chart translation offset reduction -/
-
-/-- Blueprint `lem:chart-operations`, line 646: clear the rational matrix
-with a positive common denominator bounded by `H^(d^2)`, for real height budgets. -/
-theorem chart_matrix_clear_denominators {d : ℕ} {H : ℝ} (hH : 0 ≤ H)
-    (C : Matrix (Fin d) (Fin d) ℚ) (hC : ∀ i j, (rationalHeight (C i j) : ℝ) ≤ H) :
-    ∃ (P : ℕ) (Z : Matrix (Fin d) (Fin d) ℤ), 0 < P ∧ (P : ℝ) ≤ H ^ (d ^ 2) ∧
-      ∀ i j, (Z i j : ℝ) = (P : ℝ) * (C i j : ℝ) := by
-  obtain ⟨P, Z, hP, hPB, hZ, _, _⟩ :=
-    rationalMatrix_clear_denominators C (fun i j => Nat.le_floor (hC i j))
-  refine ⟨P, Z, hP, ?_, fun i j => by exact_mod_cast hZ i j⟩
-  have hPB' : (P : ℝ) ≤ (⌊H⌋₊ : ℝ) ^ (d ^ 2) := by exact_mod_cast hPB
-  exact hPB'.trans (pow_le_pow_left₀ (Nat.cast_nonneg _) (Nat.floor_le hH) _)
-
-/-- Blueprint `lem:chart-operations`: every real offset is an integer
-multiple of the cleared denominator plus a remainder of coordinate size at most
-that denominator. The integer part pairs integrally with the rational matrix. -/
-theorem chart_translation_offset_reduction {d : ℕ} {H : ℝ} (hH : 0 ≤ H)
-    (C : Matrix (Fin d) (Fin d) ℚ) (hC : ∀ i j, (rationalHeight (C i j) : ℝ) ≤ H)
-    (v : Fin d → ℝ) :
-    ∃ (P : ℕ) (m : Fin d → ℤ) (a : Fin d → ℝ),
-      0 < P ∧ (P : ℝ) ≤ H ^ (d ^ 2) ∧
-      (∀ i, v i = (m i : ℝ) + a i) ∧ (∀ i, |a i| ≤ P) ∧
-      ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (C i j : ℝ) := by
-  obtain ⟨P, Z, hP, hPH, hZ⟩ := chart_matrix_clear_denominators hH C hC
-  have hPr : (0 : ℝ) < P := by exact_mod_cast hP
-  let k : Fin d → ℤ := fun i => ⌊v i / P⌋
-  let m : Fin d → ℤ := fun i => (P : ℤ) * k i
-  let a : Fin d → ℝ := fun i => v i - (m i : ℝ)
-  refine ⟨P, m, a, hP, hPH, ?_, ?_, ?_⟩
-  · intro i
-    dsimp [a]
-    ring
-  · intro i
-    have hlo : (k i : ℝ) * P ≤ v i :=
-      (le_div_iff₀ hPr).mp (Int.floor_le (v i / P))
-    have hhi : v i < ((k i : ℝ) + 1) * P :=
-      (div_lt_iff₀ hPr).mp (Int.lt_floor_add_one (v i / P))
-    dsimp [a, m]
-    push_cast
-    apply abs_le.mpr
-    constructor <;> nlinarith
-  · intro i j
-    refine ⟨k i * Z i j, ?_⟩
-    simp only [Int.cast_mul, hZ]
-    dsimp [m]
-    push_cast
-    ring
-
-/-- The omitted term in the source translation expansion is an integer phase. -/
-theorem chartMatrixPhase_integer_of_coefficients {d : ℕ}
-    (C : Matrix (Fin d) (Fin d) ℚ) (m n : Fin d → ℤ)
-    (h : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (C i j : ℝ)) :
-    ∃ z : ℤ, (z : ℝ) = chartMatrixPhase C (fun i => (m i : ℝ)) (fun i => (n i : ℝ)) := by
-  choose Z hZ using h
-  refine ⟨∑ i, ∑ j, Z i j * n j, ?_⟩
-  simp only [Int.cast_sum, Int.cast_mul, hZ, chartMatrixPhase]
-
-/-- Integer errors do not change the real Fourier character. -/
-theorem chart_fourierChar_int (n : ℤ) : (Real.fourierChar (n : ℝ) : ℂ) = 1 := by
-  rw [Real.fourierChar_apply]
-  have he : ((2 * Real.pi * (n : ℝ) : ℝ) : ℂ) * Complex.I =
-      (n : ℂ) * (2 * Real.pi * Complex.I) := by
-    push_cast
-    ring
-  rw [he, Complex.exp_int_mul_two_pi_mul_I]
-
-theorem chart_fourierChar_add_int (x : ℝ) (n : ℤ) :
-    (Real.fourierChar (x + n) : ℂ) = Real.fourierChar x := by
-  rw [AddChar.map_add_eq_mul, Circle.coe_mul, chart_fourierChar_int, mul_one]
-
-/-! ### Exact chart translation -/
-
-theorem chartMatrixPhase_add_left {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (z z' w : Fin d → ℝ) :
-    chartMatrixPhase C (z + z') w = chartMatrixPhase C z w + chartMatrixPhase C z' w := by
-  simp [chartMatrixPhase, add_mul, Finset.sum_add_distrib]
-
-theorem chartMatrixPhase_add_right {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (z w w' : Fin d → ℝ) :
-    chartMatrixPhase C z (w + w') = chartMatrixPhase C z w + chartMatrixPhase C z w' := by
-  simp [chartMatrixPhase, mul_add, Finset.sum_add_distrib]
-
-theorem chartMatrixPhase_sub_right {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (z w w' : Fin d → ℝ) :
-    chartMatrixPhase C z (w - w') = chartMatrixPhase C z w - chartMatrixPhase C z w' := by
-  simp [chartMatrixPhase, mul_sub, Finset.sum_sub_distrib]
-
-theorem chartMatrixPhase_smul_left {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (r : ℝ) (z w : Fin d → ℝ) :
-    chartMatrixPhase C (r • z) w = r * chartMatrixPhase C z w := by
-  simp [chartMatrixPhase, Finset.mul_sum, mul_assoc]
-
-theorem chartMatrixPhase_smul_right {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (r : ℝ) (z w : Fin d → ℝ) :
-    chartMatrixPhase C z (r • w) = r * chartMatrixPhase C z w := by
-  simp [chartMatrixPhase, Finset.mul_sum, mul_assoc, mul_left_comm]
-
-/-- The source translation expansion as an exact equality before discarding
-the final integral bilinear term. -/
-theorem chartMatrixPhase_translation_identity {d : ℕ}
-    (C : Matrix (Fin d) (Fin d) ℚ) (z a m n : Fin d → ℝ) :
-    chartMatrixPhase C (z + m + a) (z - n + a) =
-      chartMatrixPhase C z (z - n) + chartMatrixPhase C z a + chartMatrixPhase C m z +
-        chartMatrixPhase C a (z - n + a) + chartMatrixPhase C m a - chartMatrixPhase C m n := by
-  simp only [chartMatrixPhase_add_left, chartMatrixPhase_add_right,
-    chartMatrixPhase_sub_right]
-  ring
-
-theorem chart_fourierChar_smooth : ContDiff ℝ (⊤ : ℕ∞) (fun x : ℝ =>
-    (Real.fourierChar x : ℂ)) := by
-  simp only [Real.fourierChar_apply]
-  exact ((Complex.ofRealCLM.contDiff.comp (contDiff_const.mul contDiff_id)).mul
-    contDiff_const).cexp
-
-/-- The translated, phase-modulated cutoff in the source proof. -/
-noncomputable def translatedChartAmplitude {d : ℕ} (A : QuadraticChartData d)
-    (a z : Fin d → ℝ) : ℂ :=
-  A.amplitude (z + a) * (Real.fourierChar (chartMatrixPhase A.matrix a (z + a)) : ℂ)
-
-theorem translatedChartAmplitude_smooth {d : ℕ} (A : QuadraticChartData d)
-    (a : Fin d → ℝ) : ContDiff ℝ (⊤ : ℕ∞) (translatedChartAmplitude A a) := by
-  apply (A.smooth.comp (contDiff_id.add contDiff_const)).mul
-  apply chart_fourierChar_smooth.comp
-  unfold chartMatrixPhase
-  fun_prop
-
-theorem translatedChartAmplitude_compact {d : ℕ} (A : QuadraticChartData d)
-    (a : Fin d → ℝ) : HasCompactSupport (translatedChartAmplitude A a) :=
-  (A.compact.comp_homeomorph (Homeomorph.addRight a)).mul_right
-
-/-- The ordinary constant phase created by translation is unrestricted. -/
-noncomputable def chartTranslationConstant {d : ℕ} (A : QuadraticChartData d)
-    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : ℝ :=
-  A.quadratic * t ^ 2 + A.linear * t + chartMatrixPhase A.matrix (fun i => (m i : ℝ)) a
-
-noncomputable def chartTranslationLinear {d : ℕ} (A : QuadraticChartData d)
-    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : ℝ :=
-  A.linear + 2 * A.quadratic * t + chartMatrixPhase A.matrix A.horizontal a +
-    chartMatrixPhase A.matrix (fun i => (m i : ℝ)) A.horizontal
-
-/-- The translated chart before multiplying by its constant unit phase. -/
-noncomputable def shiftedQuadraticChart {d : ℕ} (A : QuadraticChartData d)
-    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : QuadraticChartData d where
-  horizontal := A.horizontal
-  quadratic := A.quadratic
-  linear := chartTranslationLinear A t m a
-  matrix := A.matrix
-  amplitude := translatedChartAmplitude A a
-  smooth := translatedChartAmplitude_smooth A a
-  compact := translatedChartAmplitude_compact A a
-
-/-- Blueprint `lem:chart-operations`: the translated cutoff and the
-unrestricted ordinary phases, with the unit constant absorbed into the cutoff. -/
-noncomputable def translateQuadraticChart {d : ℕ} (A : QuadraticChartData d)
-    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : QuadraticChartData d :=
-  scaleQuadraticChartAmplitude (Real.fourierChar (chartTranslationConstant A t m a))
-    (shiftedQuadraticChart A t m a)
-
-theorem chart_translation_phase_identity {d : ℕ} (A : QuadraticChartData d)
-    (t y : ℝ) (m n : Fin d → ℤ) (a : Fin d → ℝ) :
-    A.quadratic * (y + t) ^ 2 + A.linear * (y + t) +
-      chartMatrixPhase A.matrix (y • A.horizontal + (fun i => (m i : ℝ)) + a)
-        (y • A.horizontal - (fun i => (n i : ℝ)) + a) +
-      chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (fun i => (n i : ℝ)) =
-    chartTranslationConstant A t m a +
-      (A.quadratic * y ^ 2 + chartTranslationLinear A t m a * y) +
-      chartMatrixPhase A.matrix a (y • A.horizontal - (fun i => (n i : ℝ)) + a) +
-      chartMatrixPhase A.matrix (y • A.horizontal) (y • A.horizontal - (fun i => (n i : ℝ))) := by
-  rw [chartMatrixPhase_translation_identity]
-  simp only [chartMatrixPhase_smul_left, chartMatrixPhase_smul_right,
-    chartTranslationConstant, chartTranslationLinear]
-  ring
-
-/-- Equality of the individual translated lattice terms after multiplication
-by the ordinary phase factors. The only discarded phase is proved integral. -/
-theorem translatedChart_phased_summand {d : ℕ} (A : QuadraticChartData d)
-    (t y : ℝ) (m n : Fin d → ℤ) (a : Fin d → ℝ)
-    (hoff : ∀ i, A.horizontal i * t = (m i : ℝ) + a i)
-    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) :
-    (Real.fourierChar (chartTranslationConstant A t m a) : ℂ) *
-      ((Real.fourierChar (A.quadratic * y ^ 2 + chartTranslationLinear A t m a * y) : ℂ) *
-        quadraticChartLatticeSummand (shiftedQuadraticChart A t m a) y n) =
-    (Real.fourierChar (A.quadratic * (y + t) ^ 2 + A.linear * (y + t)) : ℂ) *
-      quadraticChartLatticeSummand A (y + t) (n + m) := by
-  let z : Fin d → ℝ := y • A.horizontal
-  let w : Fin d → ℝ := z - (fun i => (n i : ℝ))
-  have hz : chartHorizontalPosition A (y + t) = z + (fun i => (m i : ℝ)) + a := by
-    funext i
-    dsimp [chartHorizontalPosition, z]
-    nlinarith [hoff i]
-  have hw : chartLatticeRemainder A (y + t) (n + m) = w + a := by
-    funext i
-    dsimp [chartLatticeRemainder, w, z]
-    push_cast
-    nlinarith [hoff i]
-  have hz' : chartHorizontalPosition (shiftedQuadraticChart A t m a) y = z := by
-    funext i
-    dsimp [chartHorizontalPosition, shiftedQuadraticChart, z]
-    ring
-  have hw' : chartLatticeRemainder (shiftedQuadraticChart A t m a) y n = w := by
-    funext i
-    dsimp [chartLatticeRemainder, shiftedQuadraticChart, w, z]
-    ring
-  obtain ⟨k, hk⟩ := chartMatrixPhase_integer_of_coefficients A.matrix m n hint
-  have hp := chart_translation_phase_identity A t y m n a
-  change A.quadratic * (y + t) ^ 2 + A.linear * (y + t) +
-      chartMatrixPhase A.matrix (z + (fun i => (m i : ℝ)) + a) (w + a) +
-      chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (fun i => (n i : ℝ)) =
-    chartTranslationConstant A t m a +
-      (A.quadratic * y ^ 2 + chartTranslationLinear A t m a * y) +
-      chartMatrixPhase A.matrix a (w + a) + chartMatrixPhase A.matrix z w at hp
-  have he : (Real.fourierChar (chartTranslationConstant A t m a +
-      (A.quadratic * y ^ 2 + chartTranslationLinear A t m a * y) +
-      chartMatrixPhase A.matrix a (w + a) + chartMatrixPhase A.matrix z w) : ℂ) =
-    Real.fourierChar (A.quadratic * (y + t) ^ 2 + A.linear * (y + t) +
-      chartMatrixPhase A.matrix (z + (fun i => (m i : ℝ)) + a) (w + a)) := by
-    rw [← hp, ← hk, chart_fourierChar_add_int]
-  unfold quadraticChartLatticeSummand
-  rw [hz, hw, hz', hw']
-  change (Real.fourierChar _ : ℂ) * ((Real.fourierChar _ : ℂ) *
-      ((A.amplitude (w + a) * (Real.fourierChar (chartMatrixPhase A.matrix a (w + a)) : ℂ)) *
-        (Real.fourierChar (chartMatrixPhase A.matrix z w) : ℂ))) = _
-  simp only [AddChar.map_add_eq_mul, Circle.coe_mul] at he ⊢
-  linear_combination A.amplitude (w + a) * he
-
-/-- Blueprint `lem:chart-operations`: the constructed chart is exactly
-the translated atom. Translation size is unrestricted. -/
-theorem translateQuadraticChart_atom {d : ℕ} (A : QuadraticChartData d)
-    (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ)
-    (hoff : ∀ i, A.horizontal i * t = (m i : ℝ) + a i)
-    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) (y : ℝ) :
-    quadraticChartAtom (translateQuadraticChart A t m a) y = quadraticChartAtom A (y + t) := by
-  rw [translateQuadraticChart, scaleQuadraticChartAmplitude_atom]
-  unfold quadraticChartAtom
-  have hs : (∑' n, quadraticChartLatticeSummand A (y + t) n) =
-      ∑' n, quadraticChartLatticeSummand A (y + t) (n + m) :=
-    ((Equiv.addRight m).tsum_eq _).symm
-  rw [hs, ← tsum_mul_left, ← tsum_mul_left, ← tsum_mul_left]
-  apply tsum_congr
-  intro n
-  exact translatedChart_phased_summand A t y m n a hoff hint
-
-/-- Translation preserves the pointwise bound independently of its size. -/
-theorem translateQuadraticChart_bounded {d : ℕ} {A : QuadraticChartData d}
-    (hA : IsBoundedQuadraticChart A) (t : ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ)
-    (hoff : ∀ i, A.horizontal i * t = (m i : ℝ) + a i)
-    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) :
-    IsBoundedQuadraticChart (translateQuadraticChart A t m a) := by
-  intro y
-  rw [translateQuadraticChart_atom A t m a hoff hint]
-  exact hA (y + t)
-
-/-! ### Translated chart cutoff derivatives -/
-
-theorem chart_fourierChar_iteratedDeriv (m : ℕ) (x : ℝ) :
-    iteratedDeriv m (fun t : ℝ => (Real.fourierChar t : ℂ)) x =
-      (2 * Real.pi * Complex.I) ^ m * (Real.fourierChar x : ℂ) := by
-  induction m generalizing x with
-  | zero => simp
-  | succ m ih =>
-    rw [iteratedDeriv_succ, show iteratedDeriv m (fun t : ℝ => (Real.fourierChar t : ℂ)) =
-      (fun t => (2 * Real.pi * Complex.I) ^ m * (Real.fourierChar t : ℂ)) from funext ih]
-    rw [((Real.hasDerivAt_fourierChar x).const_mul ((2 * Real.pi * Complex.I) ^ m)).deriv]
-    rw [pow_succ]
-    ring
-
-theorem chart_fourierChar_derivative_norm (m : ℕ) (x : ℝ) :
-    ‖iteratedFDeriv ℝ m (fun t : ℝ => (Real.fourierChar t : ℂ)) x‖ =
-      (2 * Real.pi) ^ m := by
-  rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv, chart_fourierChar_iteratedDeriv,
-    norm_mul, norm_pow, Circle.norm_coe, mul_one]
-  congr 1
-  simp [Real.norm_eq_abs]
-
-/-- A real linear phase on the cutoff coordinates. -/
-noncomputable def chartMatrixLeftLinear {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (a : Fin d → ℝ) : (Fin d → ℝ) →L[ℝ] ℝ :=
-  ∑ i, ∑ j, (a i * (C i j : ℝ)) • ContinuousLinearMap.proj j
-
-theorem chartMatrixLeftLinear_apply {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
-    (a z : Fin d → ℝ) : chartMatrixLeftLinear C a z = chartMatrixPhase C a z := by
-  simp [chartMatrixLeftLinear, chartMatrixPhase]
-
-/-- Every derivative of a shifted linear Fourier phase has a geometric
-operator-norm bound, independent of the shift. -/
-theorem chart_linear_phase_derivative_bound {d : ℕ} (L : (Fin d → ℝ) →L[ℝ] ℝ)
-    (a z : Fin d → ℝ) (m : ℕ) :
-    ‖iteratedFDeriv ℝ m (fun x => (Real.fourierChar (L (x + a)) : ℂ)) z‖ ≤
-      (2 * Real.pi * ‖L‖) ^ m := by
-  rw [iteratedFDeriv_comp_add_right (f := fun u => (Real.fourierChar (L u) : ℂ)) m a z]
-  change ‖iteratedFDeriv ℝ m ((fun t : ℝ => (Real.fourierChar t : ℂ)) ∘ L) (z + a)‖ ≤ _
-  rw [L.iteratedFDeriv_comp_right chart_fourierChar_smooth (z + a) (by simp)]
-  apply (ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _).trans
-  rw [chart_fourierChar_derivative_norm]
-  simp [mul_pow]
-
-/-- The translated and phase-modulated cutoff obeys the same-order Gevrey
-bound at budget `T^6`, once `T` controls the old height and phase frequency. -/
-theorem translatedChartAmplitude_derivative_bound {d c₀ : ℕ} {H T : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
-    (hHT : H ≤ T) (a : Fin d → ℝ)
-    (hphase : 2 * Real.pi * ‖chartMatrixLeftLinear A.matrix a‖ ≤ T)
-    (m : ℕ) (word : Fin m → Fin d) (z : Fin d → ℝ) :
-    ‖coordinateWordDerivative m (translatedChartAmplitude A a) word z‖ ≤
-      (T ^ 6) ^ (c₀ * (m + 1)) * (m + 1 : ℝ) ^ (c₀ * (m + 1)) := by
-  have hAT := quadraticChartComplexity_mono hA hHT
-  have hT : 2 ≤ T := by linarith [hAT.lower, Real.add_one_le_exp (2 : ℝ)]
-  let L := chartMatrixLeftLinear A.matrix a
-  let R := T ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀
-  have hR : T ≤ R := by
-    calc
-      T ≤ T ^ (2 * c₀) := le_self_pow₀ (by linarith) (by omega)
-      _ ≤ T ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀ :=
-        le_mul_of_one_le_right (pow_nonneg (by linarith) _)
-          (one_le_pow₀ (by exact_mod_cast Nat.succ_pos m))
-  have hfi : ∀ i ≤ m, ‖iteratedFDeriv ℝ i (fun x => A.amplitude (x + a)) z‖ ≤
-      R ^ (i + 1) := by
-    intro i hi
-    rw [iteratedFDeriv_comp_add_right]
-    exact chart_cutoff_restriction_geometric hAT hc id m i hi (z + a)
-  have hgi : ∀ i ≤ m, ‖iteratedFDeriv ℝ i (fun x => (Real.fourierChar (L (x + a)) : ℂ)) z‖ ≤
-      R ^ (i + 1) := by
-    intro i _
-    apply (chart_linear_phase_derivative_bound L a z i).trans
-    calc
-      _ ≤ R ^ i := pow_le_pow_left₀ (mul_nonneg (by positivity) (norm_nonneg _))
-        (hphase.trans hR) i
-      _ ≤ _ := pow_le_pow_right₀ (by linarith) (by omega)
-  have hf : ContDiff ℝ (⊤ : ℕ∞) (fun x => A.amplitude (x + a)) :=
-    A.smooth.comp (contDiff_id.add contDiff_const)
-  have hg : ContDiff ℝ (⊤ : ℕ∞) (fun x => (Real.fourierChar (L (x + a)) : ℂ)) :=
-    chart_fourierChar_smooth.comp (L.contDiff.comp (contDiff_id.add contDiff_const))
-  have h := chart_product_derivative_geometric hf hg z (by linarith : 0 ≤ R) hfi hgi
-  have he : (fun x => A.amplitude (x + a) * (Real.fourierChar (L (x + a)) : ℂ)) =
-      translatedChartAmplitude A a := by
-    funext x
-    rw [chartMatrixLeftLinear_apply]
-    rfl
-  rw [he] at h
-  apply le_trans _ (h.trans (chart_product_geometric_budget hT hc m))
-  simpa [coordinateWordDerivative, Pi.norm_single] using
-    (iteratedFDeriv ℝ m (translatedChartAmplitude A a) z).le_opNorm
-      (fun i => Pi.single (word i) 1)
-
-/-! ### Uniform chart translation complexity -/
-
-theorem chartMatrixLeftLinear_norm_le {d : ℕ} {H P : ℝ}
-    (C : Matrix (Fin d) (Fin d) ℚ) (a : Fin d → ℝ) (hH : 0 ≤ H) (hP : 0 ≤ P)
-    (hC : ∀ i j, |(C i j : ℝ)| ≤ H) (ha : ∀ i, |a i| ≤ P) :
-    ‖chartMatrixLeftLinear C a‖ ≤ (d : ℝ) ^ 2 * P * H := by
-  apply ContinuousLinearMap.opNorm_le_bound _ (by positivity)
-  intro z
-  rw [chartMatrixLeftLinear_apply, Real.norm_eq_abs]
-  calc
-    _ ≤ ∑ i, ∑ j, |a i| * |(C i j : ℝ)| * |z j| := by
-      apply (Finset.abs_sum_le_sum_abs _ _).trans
-      apply Finset.sum_le_sum
-      intro i _
-      simpa only [abs_mul] using Finset.abs_sum_le_sum_abs
-        (fun j => a i * (C i j : ℝ) * z j) Finset.univ
-    _ ≤ ∑ _i : Fin d, ∑ _j : Fin d, P * H * ‖z‖ := by
-      gcongr with i _ j _
-      · exact ha i
-      · exact hC i j
-      · exact norm_le_pi_norm z j
-    _ = ((d : ℝ) ^ 2 * P * H) * ‖z‖ := by simp; ring
-
-/-- An intermediate height controlling support and residual phase frequency. -/
-noncomputable def chartTranslationBase (d : ℕ) (H : ℝ) : ℝ := H ^ (d ^ 2 + 6)
-
-theorem chart_translation_base_controls {d c₀ : ℕ} {H P : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A)
-    (hP : 0 ≤ P) (hPH : P ≤ H ^ (d ^ 2)) (a : Fin d → ℝ) (ha : ∀ i, |a i| ≤ P) :
-    H ≤ chartTranslationBase d H ∧ H + P ≤ chartTranslationBase d H ∧
-      2 * Real.pi * ‖chartMatrixLeftLinear A.matrix a‖ ≤ chartTranslationBase d H := by
-  have hH3 : 3 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hH1 : 1 ≤ H := by linarith
-  have hH0 : 0 ≤ H := by linarith
-  have hd : (d : ℝ) ≤ H := hA.dimension.trans (Real.log_le_self hH0)
-  have hC : ∀ i j, |(A.matrix i j : ℝ)| ≤ H := by
-    intro i j
-    have h : |(A.matrix i j : ℝ)| ≤ (rationalHeight (A.matrix i j) : ℝ) := by
-      exact_mod_cast rational_abs_le_height (A.matrix i j)
-    exact h.trans (hA.height i j)
-  refine ⟨le_self_pow₀ hH1 (by omega), ?_, ?_⟩
-  · have h1 : H ≤ H ^ (d ^ 2 + 1) := le_self_pow₀ hH1 (by omega)
-    have h2 : P ≤ H ^ (d ^ 2 + 1) :=
-      hPH.trans (pow_le_pow_right₀ hH1 (by omega))
-    calc
-      H + P ≤ 2 * H ^ (d ^ 2 + 1) := by linarith
-      _ ≤ H * H ^ (d ^ 2 + 1) :=
-        mul_le_mul_of_nonneg_right (by linarith) (pow_nonneg hH0 _)
-      _ = H ^ (d ^ 2 + 2) := by rw [pow_succ]; ring
-      _ ≤ _ := pow_le_pow_right₀ hH1 (by omega)
-  · have hpi : 2 * Real.pi ≤ H ^ 2 := by nlinarith [Real.pi_lt_four]
-    have hn := chartMatrixLeftLinear_norm_le A.matrix a hH0 hP hC ha
-    calc
-      _ ≤ H ^ 2 * ((d : ℝ) ^ 2 * P * H) :=
-        mul_le_mul hpi hn (norm_nonneg _) (sq_nonneg _)
-      _ ≤ H ^ 2 * (H ^ 2 * H ^ (d ^ 2) * H) := by
-        gcongr
-      _ = H ^ (d ^ 2 + 5) := by rw [pow_add]; ring
-      _ ≤ _ := pow_le_pow_right₀ hH1 (by omega)
-
-/-- Translation complexity before replacing the dimension by its logarithmic bound. -/
-theorem translateQuadraticChart_complexity {d c₀ : ℕ} {H P : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
-    (hP : 0 ≤ P) (hPH : P ≤ H ^ (d ^ 2)) (t : ℝ) (m : Fin d → ℤ)
-    (a : Fin d → ℝ) (ha : ∀ i, |a i| ≤ P) :
-    QuadraticChartComplexity c₀ ((chartTranslationBase d H) ^ 6)
-      (translateQuadraticChart A t m a) := by
-  obtain ⟨hHT, hs, hp⟩ := chart_translation_base_controls hA hP hPH a ha
-  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hTT : chartTranslationBase d H ≤ (chartTranslationBase d H) ^ 6 :=
-    le_self_pow₀ (hH1.trans hHT) (by norm_num)
-  have hHT6 := hHT.trans hTT
-  apply scaleQuadraticChartAmplitude_complexity (A := shiftedQuadraticChart A t m a)
-    (a := (Real.fourierChar (chartTranslationConstant A t m a) : ℂ)) ?_ (by simp)
-  constructor
-  · exact hA.lower.trans hHT6
-  · exact hA.dimension.trans
-      (Real.log_le_log (quadraticChartComplexity_parameter_pos hA) hHT6)
-  · exact fun i j => (hA.height i j).trans hHT6
-  · intro z hz i
-    have hn : A.amplitude (z + a) ≠ 0 := (mul_ne_zero_iff.mp hz).1
-    have hb := hA.support (z + a) hn i
-    have hai := ha i
-    have hzi : |z i| ≤ H + P := by
-      simp only [Pi.add_apply] at hb
-      rcases abs_le.mp hb with ⟨hlo, hhi⟩
-      rcases abs_le.mp hai with ⟨alo, ahi⟩
-      exact abs_le.mpr ⟨by linarith, by linarith⟩
-    exact hzi.trans (hs.trans hTT)
-  · exact translatedChartAmplitude_derivative_bound hA hc hHT a hp
-
-/-- A uniform quasipolynomial budget for every real translation. -/
-noncomputable def chartTranslationBudget (H : ℝ) : ℝ :=
-  Real.exp (100 * logarithmicSize H ^ 3)
-
-theorem chartTranslationBudget_quasipolynomial : QuasipolynomialBound chartTranslationBudget := by
-  refine ⟨100, by norm_num, 3, by norm_num, ?_⟩
-  intro H _
-  exact ⟨(Real.exp_pos _).le, le_rfl⟩
-
-theorem chartTranslationBase_le_budget {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) :
-    (chartTranslationBase d H) ^ 6 ≤ chartTranslationBudget H := by
-  have hHp := quadraticChartComplexity_parameter_pos hA
-  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hlog : 0 ≤ Real.log H := Real.log_nonneg hH1
-  have hd2 : (d : ℝ) ^ 2 ≤ Real.log H ^ 2 :=
-    pow_le_pow_left₀ (Nat.cast_nonneg _) hA.dimension 2
-  have hprod := mul_le_mul_of_nonneg_right hd2 hlog
-  unfold chartTranslationBase chartTranslationBudget
-  rw [← pow_mul]
-  calc
-    _ = Real.exp (((d ^ 2 + 6) * 6 : ℕ) * Real.log H) := by
-      rw [Real.exp_nat_mul, Real.exp_log hHp]
-    _ ≤ _ := by
-      apply Real.exp_le_exp.mpr
-      simp only [logarithmicSize]
-      push_cast
-      nlinarith [sq_nonneg (Real.log H), pow_nonneg hlog 3]
-
-/-- Blueprint `lem:chart-operations`: every real translation is represented
-by a chart with a quasipolynomial complexity bound independent of the translation.
-The Gevrey order is unchanged and boundedness is preserved. -/
-theorem quadraticChart_translation_closure {d c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀) (t : ℝ) :
-    ∃ A' : QuadraticChartData d, QuadraticChartComplexity c₀ (chartTranslationBudget H) A' ∧
-      (IsBoundedQuadraticChart A → IsBoundedQuadraticChart A') ∧
-      ∀ y, quadraticChartAtom A' y = quadraticChartAtom A (y + t) := by
-  obtain ⟨P, m, a, hP, hPH, hoff, ha, hint⟩ := chart_translation_offset_reduction
-    (quadraticChartComplexity_parameter_pos hA).le A.matrix hA.height
-    (fun i => A.horizontal i * t)
-  refine ⟨translateQuadraticChart A t m a, ?_, ?_, ?_⟩
-  · exact quadraticChartComplexity_mono
-      (translateQuadraticChart_complexity hA hc (Nat.cast_nonneg P) hPH t m a ha)
-      (chartTranslationBase_le_budget hA)
-  · exact fun h => translateQuadraticChart_bounded h t m a hoff hint
-  · exact translateQuadraticChart_atom A t m a hoff hint
-
-/-! ### Affine chart closure -/
-
-/-- Blueprint `lem:chart-operations`: any real affine substitution preserves
-quadratic charts with one quasipolynomial bound independent of both real
-parameters. This includes zero and negative dilation and preserves boundedness. -/
-theorem quadraticChart_affine_closure {d c₀ : ℕ} {H : ℝ}
-    {A : QuadraticChartData d} (hA : QuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
-    (s t : ℝ) :
-    ∃ A' : QuadraticChartData d, QuadraticChartComplexity c₀ (chartTranslationBudget H) A' ∧
-      (IsBoundedQuadraticChart A → IsBoundedQuadraticChart A') ∧
-      ∀ y, quadraticChartAtom A' y = quadraticChartAtom A (s * y + t) := by
-  obtain ⟨B, hB, hb, he⟩ := quadraticChart_translation_closure hA hc t
-  refine ⟨dilateQuadraticChart s B, dilateQuadraticChart_complexity hB s,
-    fun h => dilateQuadraticChart_bounded (hb h) s, ?_⟩
-  intro y
-  rw [dilateQuadraticChart_atom, he]
-
-/-! ### Several-variable chart formula -/
-
-/-- The several-variable source chart data, lines 656-660. The source uses
-one, two or three real variables; the same formula is meaningful in every
-finite dimension. Real horizontal and ordinary phase matrices are unrestricted. -/
-structure MultivariableQuadraticChartData (k d : ℕ) where
-  horizontal : Matrix (Fin d) (Fin k) ℝ
-  quadratic : Matrix (Fin k) (Fin k) ℝ
-  symmetric : quadratic.IsSymm
-  linear : Fin k → ℝ
-  matrix : Matrix (Fin d) (Fin d) ℚ
-  amplitude : (Fin d → ℝ) → ℂ
-  smooth : ContDiff ℝ (⊤ : ℕ∞) amplitude
-  compact : HasCompactSupport amplitude
-
-/-- The actual several-variable quadratic atom in the source display. -/
-noncomputable def multivariableQuadraticChartAtom {k d : ℕ}
-    (A : MultivariableQuadraticChartData k d) (z : Fin k → ℝ) : ℂ :=
-  (Real.fourierChar ((∑ i, ∑ j, z i * A.quadratic i j * z j) +
-    ∑ i, A.linear i * z i) : ℂ) *
-    ∑' n : Fin d → ℤ, A.amplitude (A.horizontal.mulVec z - (fun i => (n i : ℝ))) *
-      (Real.fourierChar (chartMatrixPhase A.matrix (A.horizontal.mulVec z)
-        (A.horizontal.mulVec z - (fun i => (n i : ℝ)))) : ℂ)
-
-/-- Restricting a several-variable chart to a real line changes only the
-unrestricted horizontal and ordinary phase parameters. -/
-noncomputable def multivariableChartAlongLine {k d : ℕ}
-    (A : MultivariableQuadraticChartData k d) (v : Fin k → ℝ) : QuadraticChartData d where
-  horizontal := A.horizontal.mulVec v
-  quadratic := ∑ i, ∑ j, v i * A.quadratic i j * v j
-  linear := ∑ i, A.linear i * v i
-  matrix := A.matrix
-  amplitude := A.amplitude
-  smooth := A.smooth
-  compact := A.compact
-
-/-- The same dimension, rational height and cutoff bounds as the one-variable
-definition. Evaluation on the zero line retains precisely this charged data. -/
-def MultivariableQuadraticChartComplexity {k d : ℕ} (c₀ : ℕ) (H : ℝ)
-    (A : MultivariableQuadraticChartData k d) : Prop :=
-  QuadraticChartComplexity c₀ H (multivariableChartAlongLine A 0)
-
-def IsBoundedMultivariableQuadraticChart {k d : ℕ}
-    (A : MultivariableQuadraticChartData k d) : Prop :=
-  ∀ z, ‖multivariableQuadraticChartAtom A z‖ ≤ 1
-
-theorem multivariableChartAlongLine_complexity {k d c₀ : ℕ} {H : ℝ}
-    {A : MultivariableQuadraticChartData k d} (hA : MultivariableQuadraticChartComplexity c₀ H A)
-    (v : Fin k → ℝ) : QuadraticChartComplexity c₀ H (multivariableChartAlongLine A v) where
-  lower := hA.lower
-  dimension := hA.dimension
-  height := hA.height
-  support := hA.support
-  derivative := hA.derivative
-
-/-- Exact line restriction of the source several-variable formula. -/
-theorem multivariableChartAlongLine_atom {k d : ℕ}
-    (A : MultivariableQuadraticChartData k d) (v : Fin k → ℝ) (y : ℝ) :
-    quadraticChartAtom (multivariableChartAlongLine A v) y =
-      multivariableQuadraticChartAtom A (y • v) := by
-  have hp : (multivariableChartAlongLine A v).quadratic * y ^ 2 +
-      (multivariableChartAlongLine A v).linear * y =
-      (∑ i, ∑ j, (y • v) i * A.quadratic i j * (y • v) j) +
-        ∑ i, A.linear i * (y • v) i := by
-    dsimp [multivariableChartAlongLine]
-    simp only [Finset.sum_mul]
-    congr 1
-    · apply Finset.sum_congr rfl
-      intro i _
-      apply Finset.sum_congr rfl
-      intro j _
-      ring
-    · apply Finset.sum_congr rfl
-      intro i _
-      ring
-  have hh : chartHorizontalPosition (multivariableChartAlongLine A v) y =
-      A.horizontal.mulVec (y • v) := by
-    rw [Matrix.mulVec_smul]
-    funext i
-    dsimp [chartHorizontalPosition, multivariableChartAlongLine]
-    ring
-  have hr : ∀ n, chartLatticeRemainder (multivariableChartAlongLine A v) y n =
-      A.horizontal.mulVec (y • v) - (fun i => (n i : ℝ)) := by
-    intro n
-    rw [Matrix.mulVec_smul]
-    funext i
-    dsimp [chartLatticeRemainder, multivariableChartAlongLine]
-    ring
-  unfold quadraticChartAtom multivariableQuadraticChartAtom
-  rw [hp]
-  congr 1
-  apply tsum_congr
-  intro n
-  change A.amplitude _ * (Real.fourierChar (chartMatrixPhase A.matrix _ _) : ℂ) = _
-  rw [hh, hr]
-
-theorem multivariableChartAlongLine_bounded {k d : ℕ}
-    {A : MultivariableQuadraticChartData k d} (hA : IsBoundedMultivariableQuadraticChart A)
-    (v : Fin k → ℝ) : IsBoundedQuadraticChart (multivariableChartAlongLine A v) := by
-  intro y
-  rw [multivariableChartAlongLine_atom]
-  exact hA (y • v)
-
-/-- Symmetric part of the rational chart matrix, as in source line 660. -/
-def chartSymmetricPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    Matrix (Fin d) (Fin d) ℚ := (1 / 2 : ℚ) • (C + C.transpose)
-
-/-- Skew-symmetric part of the rational chart matrix. -/
-def chartSkewPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    Matrix (Fin d) (Fin d) ℚ := (1 / 2 : ℚ) • (C - C.transpose)
-
-/-- The source alternating matrix `A = C - C^T`. -/
-def chartAlternatingMatrix {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    Matrix (Fin d) (Fin d) ℚ := C - C.transpose
-
-theorem chartSymmetricPart_isSymm {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    (chartSymmetricPart C).IsSymm := by
-  apply Matrix.IsSymm.ext
-  intro i j
-  simp [chartSymmetricPart, add_comm]
-
-theorem chartSkewPart_transpose {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    (chartSkewPart C).transpose = -chartSkewPart C := by
-  ext i j
-  simp [chartSkewPart]
-  ring
-
-theorem chartSymmetricPart_add_skew {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    chartSymmetricPart C + chartSkewPart C = C := by
-  ext i j
-  simp [chartSymmetricPart, chartSkewPart]
-  ring
-
-theorem chartAlternatingMatrix_eq_twice_skew {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    chartAlternatingMatrix C = (2 : ℚ) • chartSkewPart C := by
-  ext i j
-  simp [chartAlternatingMatrix, chartSkewPart]
-
-/-! ### Several-variable lattice finiteness -/
-
-/-- Compact support makes the several-variable lattice sum pointwise finite,
-just as in the original one-variable atom formula. -/
-theorem multivariableChartLatticeSummand_finite_support {k d : ℕ}
-    (A : MultivariableQuadraticChartData k d) (z : Fin k → ℝ) :
-    (Function.support (fun n : Fin d → ℤ =>
-      A.amplitude (A.horizontal.mulVec z - (fun i => (n i : ℝ))) *
-        (Real.fourierChar (chartMatrixPhase A.matrix (A.horizontal.mulVec z)
-          (A.horizontal.mulVec z - (fun i => (n i : ℝ)))) : ℂ))).Finite := by
-  simpa +unfoldPartialApp only [quadraticChartLatticeSummand, multivariableChartAlongLine,
-    chartHorizontalPosition, chartLatticeRemainder, mul_one, Pi.sub_def] using
-    quadraticChartLatticeSummand_finite_support (multivariableChartAlongLine A z) 1
-
 /-! ### Difference-set growth from minimal growth -/
 
 open scoped Pointwise
@@ -9913,5 +8046,1797 @@ theorem locally_additive_derivative_frequency {q : ℕ} [NeZero q] (hq : Odd q)
     _ ≤ 10 ^ 50 * (1 + Real.log (1 / δ)) ^ 4 := by
       rw [mul_pow]
       nlinarith [pow_nonneg (by linarith : 0 ≤ 1 + Real.log (1 / δ)) 4]
+
+/-! ### The lattice model for a locally quadratic chart -/
+
+/-- The full lift lattice of a Bohr frequency set. The frequency `1` is its
+ distinguished coordinate; indexing by the set avoids an arbitrary ordering. -/
+noncomputable abbrev bohrLiftLattice {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) : Submodule ℤ (EuclideanSpace ℝ S) :=
+  cyclicLiftLattice q (fun s : S => (s.val.val : ℤ)) ⟨1, hS⟩
+
+noncomputable def bohrLiftProjection {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) : bohrLiftLattice S hS →+ ZMod q :=
+  cyclicLiftProjection q (fun s : S => (s.val.val : ℤ)) ⟨1, hS⟩
+
+/-- Every lift coordinate modulo one is the corresponding Bohr character. -/
+theorem bohrLiftProjection_character {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (x : bohrLiftLattice S hS) (s : S) :
+    ((x : EuclideanSpace ℝ S) s : UnitAddCircle) =
+      ZMod.toAddCircle (s.val * bohrLiftProjection S hS x) := by
+  have hfreq : cyclicLiftFrequency q (fun s : S => (s.val.val : ℤ)) ⟨1, hS⟩ s = s.val := by
+    unfold cyclicLiftFrequency
+    split_ifs with h
+    · subst s
+      rfl
+    · simp
+  have h := cyclicLiftProjection_character q (fun s : S => (s.val.val : ℤ)) ⟨1, hS⟩ x s
+  rw [hfreq] at h
+  exact h
+
+/-- Blueprint `lem:local-chart`, lines 1035-1039: a full discrete lattice containing
+ the integer lattice, with cyclic quotient, exact character coordinates and integral dual. -/
+theorem bohr_lattice_model {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) :
+    DiscreteTopology (bohrLiftLattice S hS) ∧ IsZLattice ℝ (bohrLiftLattice S hS) ∧
+      Function.Surjective (bohrLiftProjection S hS) ∧
+      (∀ z : S → ℤ, WithLp.toLp 2 (fun s => (z s : ℝ)) ∈ bohrLiftLattice S hS) ∧
+      (∀ x : bohrLiftLattice S hS, bohrLiftProjection S hS x = 0 ↔
+        ∀ s, ∃ z : ℤ, (x : EuclideanSpace ℝ S) s = z) ∧
+      (∀ (x : bohrLiftLattice S hS) (s : S),
+        ((x : EuclideanSpace ℝ S) s : UnitAddCircle) =
+          ZMod.toAddCircle (s.val * bohrLiftProjection S hS x)) ∧
+      ∀ u ∈ euclideanDualLattice (bohrLiftLattice S hS), ∀ s : S, ∃ z : ℤ, u s = z := by
+  refine ⟨inferInstance, inferInstance,
+    cyclicLiftProjection_surjective q _ _, integerVector_mem_cyclicLiftLattice q _ _,
+    cyclicLiftProjection_eq_zero_iff q _ _, bohrLiftProjection_character S hS, ?_⟩
+  exact cyclicLiftDual_integer q _ _
+
+/-- Coefficient boxes commute with linear changes of basis. -/
+theorem integerCoefficientBox_map {E F : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    [NormedAddCommGroup F] [NormedSpace ℝ F] {n : ℕ}
+    (e : E ≃ₗ[ℝ] F) (b : Module.Basis (Fin n) ℝ E) (I : Finset (Fin n))
+    (a : Fin n → ℤ) (x : E) :
+    e x ∈ integerCoefficientBox (b.map e) I a ↔ x ∈ integerCoefficientBox b I a := by
+  constructor
+  · rintro ⟨z, hz, hbound, he⟩
+    refine ⟨z, hz, hbound, e.injective ?_⟩
+    simpa only [map_sum, map_zsmul, Module.Basis.map_apply] using he
+  · rintro ⟨z, hz, hbound, he⟩
+    refine ⟨z, hz, hbound, ?_⟩
+    simpa only [map_sum, map_zsmul, Module.Basis.map_apply] using congrArg e he
+
+/-- Rescaling the coefficient-box theorem preserves its integer coordinates and every
+ partial-sum bound; blueprint `lem:local-chart`, line 1041. -/
+theorem scaledSmallBallCoefficientBox {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] {n : ℕ} (hn : 0 < n)
+    (b : Module.Basis (Fin n) ℝ E) {ρ : ℝ} (hρ : 0 < ρ) :
+    ∃ (c : Module.Basis (Fin n) ℝ E) (I : Finset (Fin n)) (a : Fin n → ℤ),
+      Submodule.span ℤ (Set.range c) = Submodule.span ℤ (Set.range b) ∧
+      (∀ i ∈ I, 1 ≤ a i) ∧
+      (Metric.closedBall (0 : E) (latticeBoxRadius n * ρ) ∩
+        (Submodule.span ℤ (Set.range b) : Set E) ⊆ integerCoefficientBox c I a) ∧
+      (integerCoefficientBox c I a ⊆ Metric.closedBall 0 (ρ / 4)) ∧
+      ∀ z : Fin n → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ a i) →
+        ∀ J : Finset (Fin n), ‖∑ i ∈ J, z i • c i‖ ≤ ρ / 4 := by
+  let e := LinearEquiv.smulOfNeZero ℝ E ρ hρ.ne'
+  have he (x : E) : e x = ρ • x := rfl
+  have hei (x : E) : e.symm x = ρ⁻¹ • x := rfl
+  obtain ⟨c, I, a, hc, ha, hinner, houter, hpartial⟩ :=
+    smallBallCoefficientBox hn (b.map e.symm)
+  have hbback : (b.map e.symm).map e = b := by
+    ext i
+    simp only [Module.Basis.map_apply, LinearEquiv.apply_symm_apply]
+  have hspan : Submodule.span ℤ (Set.range (c.map e)) = Submodule.span ℤ (Set.range b) := by
+    rw [← ZSpan.map c e, hc, ZSpan.map, hbback]
+  have hpart (z : Fin n → ℤ) (hz : ∀ i ∉ I, z i = 0) (hza : ∀ i ∈ I, |z i| ≤ a i)
+      (J : Finset (Fin n)) : ‖∑ i ∈ J, z i • (c.map e) i‖ ≤ ρ / 4 := by
+    have hsum : (∑ i ∈ J, z i • (c.map e) i) = e (∑ i ∈ J, z i • c i) := by
+      simp only [map_sum, map_zsmul, Module.Basis.map_apply]
+    rw [hsum, he, norm_smul, Real.norm_of_nonneg hρ.le]
+    have h := mul_le_mul_of_nonneg_left (hpartial z hz hza J) hρ.le
+    linarith
+  refine ⟨c.map e, I, a, hspan, ha, ?_, ?_, hpart⟩
+  · intro x hx
+    have hxnorm : ‖x‖ ≤ latticeBoxRadius n * ρ := by
+      simpa only [Metric.mem_closedBall, dist_zero_right] using hx.1
+    have hynorm : ‖e.symm x‖ ≤ latticeBoxRadius n := by
+      rw [hei, norm_smul, Real.norm_of_nonneg (inv_nonneg.mpr hρ.le), inv_mul_eq_div]
+      exact (div_le_iff₀ hρ).mpr hxnorm
+    have hyL : e.symm x ∈ Submodule.span ℤ (Set.range (b.map e.symm)) := by
+      rw [← ZSpan.map]
+      exact Submodule.mem_map.mpr ⟨x, hx.2, rfl⟩
+    have hy := hinner ⟨by simpa only [Metric.mem_closedBall, dist_zero_right] using hynorm, hyL⟩
+    have h := (integerCoefficientBox_map e c I a (e.symm x)).mpr hy
+    simpa only [LinearEquiv.apply_symm_apply] using h
+  · rintro x ⟨z, hz, hza, rfl⟩
+    simpa only [Metric.mem_closedBall, dist_zero_right] using hpart z hz hza Finset.univ
+
+/-- A short lift projects into the Bohr domain, coordinate by coordinate. -/
+theorem bohrLiftProjection_mem {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) {ρ : ℝ} (x : bohrLiftLattice S hS)
+    (hx : ‖(x : EuclideanSpace ℝ S)‖ < ρ) :
+    bohrLiftProjection S hS x ∈ graphBohrSet S ρ := by
+  rw [mem_graphBohrSet]
+  intro s hs
+  rw [← bohrLiftProjection_character S hS x ⟨s, hs⟩]
+  exact QuotientAddGroup.norm_mk_le_norm.trans_lt
+    ((PiLp.norm_apply_le (x : EuclideanSpace ℝ S) ⟨s, hs⟩).trans_lt hx)
+
+/-- The coefficient box consists of points of the integer span of its basis. -/
+theorem integerCoefficientBox_subset_span {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (I : Finset (Fin n)) (a : Fin n → ℤ) :
+    integerCoefficientBox b I a ⊆ Submodule.span ℤ (Set.range b) := by
+  rintro x ⟨z, _, _, rfl⟩
+  exact Submodule.sum_mem _ (fun i _ => Submodule.smul_mem _ _
+    (Submodule.subset_span (Set.mem_range_self i)))
+
+/-- Blueprint `lem:local-chart`, line 1041: the rescaled full-basis coefficient box,
+ including every partial-sum bound, Bohr projection, and injectivity of that projection. -/
+theorem bohr_coefficient_box {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) {ρ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ < 1) :
+    ∃ (b : Module.Basis (Fin S.card) ℝ (EuclideanSpace ℝ S))
+      (I : Finset (Fin S.card)) (a : Fin S.card → ℤ),
+      Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS ∧ (∀ i ∈ I, 1 ≤ a i) ∧
+      (Metric.closedBall (0 : EuclideanSpace ℝ S) (latticeBoxRadius S.card * ρ) ∩
+        (bohrLiftLattice S hS : Set (EuclideanSpace ℝ S)) ⊆ integerCoefficientBox b I a) ∧
+      (integerCoefficientBox b I a ⊆ Metric.closedBall 0 (ρ / 4)) ∧
+      (∀ z : Fin S.card → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ a i) →
+        ∀ J : Finset (Fin S.card), ‖∑ i ∈ J, z i • b i‖ ≤ ρ / 4) ∧
+      (∀ x : bohrLiftLattice S hS, ‖(x : EuclideanSpace ℝ S)‖ ≤ ρ / 4 →
+        bohrLiftProjection S hS x ∈ graphBohrSet S ρ) ∧
+      ∀ x y : bohrLiftLattice S hS,
+        (x : EuclideanSpace ℝ S) ∈ integerCoefficientBox b I a →
+        (y : EuclideanSpace ℝ S) ∈ integerCoefficientBox b I a →
+        bohrLiftProjection S hS x = bohrLiftProjection S hS y → x = y := by
+  classical
+  let e : S ≃ Fin S.card := Fintype.equivFinOfCardEq (by simp)
+  let b := (cyclicLiftBasis q (fun s : S => (s.val.val : ℤ)) ⟨1, hS⟩).reindex e
+  have hb : Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS := by
+    dsimp only [b]
+    rw [Module.Basis.range_reindex]
+  obtain ⟨c, I, a, hc, ha, hinner, houter, hpartial⟩ :=
+    scaledSmallBallCoefficientBox (Finset.card_pos.mpr ⟨1, hS⟩) b hρ
+  rw [hb] at hc hinner
+  refine ⟨c, I, a, hc, ha, hinner, houter, hpartial, ?_, ?_⟩
+  · intro x hx
+    exact bohrLiftProjection_mem S hS x (lt_of_le_of_lt hx (by linarith))
+  · intro x y hx hy heq
+    have hxnorm : ‖(x : EuclideanSpace ℝ S)‖ ≤ ρ / 4 := by
+      simpa only [Metric.mem_closedBall, dist_zero_right] using houter hx
+    have hynorm : ‖(y : EuclideanSpace ℝ S)‖ ≤ ρ / 4 := by
+      simpa only [Metric.mem_closedBall, dist_zero_right] using houter hy
+    apply cyclicLiftProjection_injective_near q (fun s : S => (s.val.val : ℤ)) ⟨1, hS⟩ x y _ heq
+    have h := norm_sub_le (x : EuclideanSpace ℝ S) (y : EuclideanSpace ℝ S)
+    linarith
+
+/-- A real basis vector, viewed as an element of its specified Bohr lift lattice. -/
+noncomputable def bohrBasisVector {q n : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (b : Module.Basis (Fin n) ℝ (EuclideanSpace ℝ S))
+    (hb : Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS) (i : Fin n) :
+    bohrLiftLattice S hS := ⟨b i, by rw [← hb]; exact Submodule.subset_span (Set.mem_range_self i)⟩
+
+/-- The projected cyclic generators of a coefficient box. -/
+noncomputable def bohrBasisFrequency {q n : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (b : Module.Basis (Fin n) ℝ (EuclideanSpace ℝ S))
+    (hb : Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS) (i : Fin n) : ZMod q :=
+  bohrLiftProjection S hS (bohrBasisVector S hS b hb i)
+
+/-- Local additivity becomes the exact integer-coordinate linear formula on the source box. -/
+theorem bohr_box_local_additive {q n : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) {ρ : ℝ} (hρ : 0 < ρ)
+    (b : Module.Basis (Fin n) ℝ (EuclideanSpace ℝ S))
+    (hb : Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS)
+    (I : Finset (Fin n)) (a : Fin n → ℤ) (ha : ∀ i ∈ I, 1 ≤ a i)
+    (hbound : ∀ w : Fin n → ℤ, (∀ i ∉ I, w i = 0) → (∀ i ∈ I, |w i| ≤ a i) →
+      ‖∑ i, w i • b i‖ ≤ ρ / 4)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y)
+    (z : Fin n → ℤ) (hz0 : ∀ i ∉ I, z i = 0) (hza : ∀ i ∈ I, |z i| ≤ a i) :
+    M (∑ i, z i • bohrBasisFrequency S hS b hb i) =
+      ∑ i, z i • M (bohrBasisFrequency S hS b hb i) := by
+  classical
+  let A : Fin n → ℤ := fun i => if i ∈ I then a i else 0
+  have hA (i : Fin n) : 0 ≤ A i := by
+    dsimp [A]
+    split_ifs with hi
+    · linarith [ha i hi]
+    · exact le_rfl
+  have hbox (w : Fin n → ℤ) (hw : ∀ i, |w i| ≤ A i) :
+      (∑ i, w i • bohrBasisFrequency S hS b hb i) ∈ graphBohrSet S ρ := by
+    have hw0 (i : Fin n) (hi : i ∉ I) : w i = 0 := by
+      have h := hw i
+      simp only [A, ite_eq_right hi] at h
+      exact abs_nonpos_iff.mp h
+    have hwa (i : Fin n) (hi : i ∈ I) : |w i| ≤ a i := by
+      simpa only [A, ite_eq_left hi] using hw i
+    let x : bohrLiftLattice S hS := ∑ i, w i • bohrBasisVector S hS b hb i
+    have hx : (x : EuclideanSpace ℝ S) = ∑ i, w i • b i := by
+      simp only [x, Submodule.coe_sum, Submodule.coe_smul_of_tower, bohrBasisVector]
+    have hxnorm : ‖(x : EuclideanSpace ℝ S)‖ < ρ := by
+      rw [hx]
+      exact (hbound w hw0 hwa).trans_lt (by linarith)
+    have hp : bohrLiftProjection S hS x = ∑ i, w i • bohrBasisFrequency S hS b hb i := by
+      simp only [x, map_sum, map_zsmul, bohrBasisFrequency]
+    rw [← hp]
+    exact bohrLiftProjection_mem S hS x hxnorm
+  apply locally_additive_integer_box (graphBohrSet S ρ : Set (ZMod q)) M hadd
+    (bohrBasisFrequency S hS b hb) A hA hbox z
+  intro i
+  by_cases hi : i ∈ I
+  · simpa only [A, ite_eq_left hi] using hza i hi
+  · simp only [A, ite_eq_right hi, hz0 i hi, abs_zero, le_refl]
+
+/-- Blueprint `lem:local-chart`, lines 1043-1052: on the entire coefficient box the
+phase is the displayed ordinary quadratic polynomial, with the standard integer representatives. -/
+theorem bohr_box_quadratic_phase {q n : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) {ρ : ℝ} (hρ : 0 < ρ)
+    (b : Module.Basis (Fin n) ℝ (EuclideanSpace ℝ S))
+    (hb : Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS)
+    (I : Finset (Fin n)) (a : Fin n → ℤ) (ha : ∀ i ∈ I, 1 ≤ a i)
+    (hbound : ∀ w : Fin n → ℤ, (∀ i ∉ I, w i = 0) → (∀ i ∈ I, |w i| ≤ a i) →
+      ‖∑ i, w i • b i‖ ≤ ρ / 4)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y)
+    (z : Fin n → ℤ) (hz0 : ∀ i ∉ I, z i = 0) (hza : ∀ i ∈ I, |z i| ≤ a i) :
+    let v := bohrBasisFrequency S hS b hb
+    ZMod.toAddCircle (M (∑ i, z i • v i) * (∑ i, z i • v i)) =
+      (((∑ i, (z i : ℝ) * ((M (v i)).val : ℝ)) *
+        (∑ i, (z i : ℝ) * ((v i).val : ℝ)) / q : ℝ) : UnitAddCircle) := by
+  dsimp only
+  rw [bohr_box_local_additive S hS hρ b hb I a ha hbound M hadd z hz0 hza]
+  exact cyclic_linear_quadratic_phase _ _ _
+
+/-- The distinguished rational direction generating the cyclic quotient. -/
+noncomputable def bohrLiftDirection {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) : bohrLiftLattice S hS :=
+  (cyclicLiftBasis q (fun s : S => (s.val.val : ℤ)) ⟨1, hS⟩).restrictScalars ℤ ⟨1, hS⟩
+
+theorem bohrLiftDirection_projection {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) :
+    bohrLiftProjection S hS (bohrLiftDirection S hS) = 1 := by
+  simpa only [bohrLiftProjection, bohrLiftDirection, ite_true] using
+    cyclicLiftProjection_basis q (fun s : S => (s.val.val : ℤ)) ⟨1, hS⟩ ⟨1, hS⟩
+
+/-- The source integer dual-coordinate forms for the distinguished Bohr lift direction. -/
+theorem bohr_integer_dual_coordinates {q n : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (b : Module.Basis (Fin n) ℝ (EuclideanSpace ℝ S))
+    (hb : Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS) :
+    ∃ (U : Fin n → S → ℤ) (t : Fin n → ℤ),
+      (∀ i s, euclideanDualBasis b i s = (U i s : ℝ)) ∧
+      (∀ i, inner ℝ (euclideanDualBasis b i) (bohrLiftDirection S hS : EuclideanSpace ℝ S) = t i) ∧
+      (∀ (x : EuclideanSpace ℝ S) i, b.repr x i = ∑ s, (U i s : ℝ) * x s) ∧
+      ∀ (m : ℤ) (k : S → ℤ) i,
+        b.repr (m • (bohrLiftDirection S hS : EuclideanSpace ℝ S) -
+          WithLp.toLp 2 (fun s => (k s : ℝ))) i = ((t i * m - ∑ s, U i s * k s : ℤ) : ℝ) := by
+  exact integer_lattice_dual_coordinates (bohrLiftLattice S hS)
+    (integerVector_mem_cyclicLiftLattice q _ _) b hb _ (bohrLiftDirection S hS).property
+
+/-- The centered real representatives of all characters at an integer point. -/
+noncomputable def bohrCenteredLift {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (n : ℤ) : EuclideanSpace ℝ S :=
+  WithLp.toLp 2 (fun s => unitCircleCentered (ZMod.toAddCircle (s.val * (n : ZMod q))))
+
+theorem bohrCenteredLift_coord {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (n : ℤ) {r : ℝ} (hn : (n : ZMod q) ∈ graphBohrSet S r)
+    (s : S) : |bohrCenteredLift S n s| < r := by
+  change |unitCircleCentered (ZMod.toAddCircle (s.val * (n : ZMod q)))| < r
+  rw [unitCircleCentered_abs]
+  exact (mem_graphBohrSet S r _).mp hn s.val s.property
+
+theorem bohrCenteredLift_norm {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (n : ℤ) {r : ℝ} (hr : 0 ≤ r)
+    (hn : (n : ZMod q) ∈ graphBohrSet S r) :
+    ‖bohrCenteredLift S n‖ ≤ Real.sqrt S.card * r := by
+  have hsq : ‖bohrCenteredLift S n‖ ^ 2 ≤ (S.card : ℝ) * r ^ 2 := by
+    rw [EuclideanSpace.real_norm_sq_eq]
+    calc
+      _ ≤ ∑ _s : S, r ^ 2 := Finset.sum_le_sum fun s _ => by
+        have h := (bohrCenteredLift_coord S n hn s).le
+        exact (sq_abs (bohrCenteredLift S n s)) ▸
+          (sq_le_sq₀ (abs_nonneg _) hr).mpr h
+      _ = _ := by simp
+  have hroot := Real.sq_sqrt (Nat.cast_nonneg S.card : (0 : ℝ) ≤ S.card)
+  have hprod : (Real.sqrt S.card * r) ^ 2 = (S.card : ℝ) * r ^ 2 := by
+    rw [mul_pow, hroot]
+  have hnonneg : 0 ≤ Real.sqrt S.card * r := mul_nonneg (Real.sqrt_nonneg _) hr
+  nlinarith [norm_nonneg (bohrCenteredLift S n)]
+
+/-- The centered lift differs from the rational direction by an integer vector. -/
+theorem bohrCenteredLift_integer_difference {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (n : ℤ) :
+    ∃ k : S → ℤ, bohrCenteredLift S n =
+      n • (bohrLiftDirection S hS : EuclideanSpace ℝ S) -
+        WithLp.toLp 2 (fun s => (k s : ℝ)) := by
+  classical
+  let x : bohrLiftLattice S hS := n • bohrLiftDirection S hS
+  have hp : bohrLiftProjection S hS x = (n : ZMod q) := by
+    simp only [x, map_zsmul, bohrLiftDirection_projection, zsmul_eq_mul, mul_one]
+  have hk (s : S) : ∃ k : ℤ,
+      (x : EuclideanSpace ℝ S) s - bohrCenteredLift S n s = (k : ℝ) := by
+    have hc : (((x : EuclideanSpace ℝ S) s - bohrCenteredLift S n s : ℝ) :
+        UnitAddCircle) = 0 := by
+      rw [AddCircle.coe_sub, bohrLiftProjection_character, hp]
+      change ZMod.toAddCircle (s.val * (n : ZMod q)) -
+        (unitCircleCentered (ZMod.toAddCircle (s.val * (n : ZMod q))) : UnitAddCircle) = 0
+      rw [unitCircleCentered_coe, sub_self]
+    obtain ⟨k, hk⟩ := (AddCircle.coe_eq_zero_iff (1 : ℝ)).mp hc
+    exact ⟨k, by simpa only [zsmul_eq_mul, mul_one] using hk.symm⟩
+  choose k hk using hk
+  refine ⟨k, ?_⟩
+  ext s
+  have h := hk s
+  change (n • (bohrLiftDirection S hS : EuclideanSpace ℝ S)) s -
+    bohrCenteredLift S n s = (k s : ℝ) at h
+  change bohrCenteredLift S n s =
+    (n • (bohrLiftDirection S hS : EuclideanSpace ℝ S)) s - (k s : ℝ)
+  linarith
+
+theorem bohrCenteredLift_mem {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (n : ℤ) :
+    bohrCenteredLift S n ∈ bohrLiftLattice S hS := by
+  obtain ⟨k, hk⟩ := bohrCenteredLift_integer_difference S hS n
+  rw [hk]
+  exact (bohrLiftLattice S hS).sub_mem
+    ((bohrLiftLattice S hS).smul_mem n (bohrLiftDirection S hS).property)
+    (integerVector_mem_cyclicLiftLattice q _ _ k)
+
+theorem bohrCenteredLift_projection {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (n : ℤ) :
+    bohrLiftProjection S hS ⟨bohrCenteredLift S n, bohrCenteredLift_mem S hS n⟩ =
+      (n : ZMod q) := by
+  have h := bohrLiftProjection_character S hS
+    ⟨bohrCenteredLift S n, bohrCenteredLift_mem S hS n⟩ ⟨1, hS⟩
+  change (unitCircleCentered (ZMod.toAddCircle (1 * (n : ZMod q))) : UnitAddCircle) =
+    ZMod.toAddCircle (1 * bohrLiftProjection S hS
+      ⟨bohrCenteredLift S n, bohrCenteredLift_mem S hS n⟩) at h
+  rw [unitCircleCentered_coe, one_mul, one_mul] at h
+  exact (ZMod.toAddCircle_injective q) h.symm
+
+/-- The supporting Bohr lift lies in the small lattice ball and hence in the source box. -/
+theorem bohr_supported_lift_in_box {q d : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (cutoff : ℝ → ℝ)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0)
+    {r ρ : ℝ} (hr : 0 < r) (hρ : 0 < ρ)
+    (hsmall : r ≤ latticeBoxRadius S.card * ρ / (2 * Real.sqrt S.card))
+    (b : Module.Basis (Fin d) ℝ (EuclideanSpace ℝ S))
+    (I : Finset (Fin d)) (a : Fin d → ℤ)
+    (hbox : Metric.closedBall (0 : EuclideanSpace ℝ S) (latticeBoxRadius S.card * ρ) ∩
+      (bohrLiftLattice S hS : Set (EuclideanSpace ℝ S)) ⊆ integerCoefficientBox b I a)
+    (n : ℤ) (hn : graphBohrWeight cutoff S r (n : ZMod q) ≠ 0) :
+    (∀ s : S, |bohrCenteredLift S n s| < r) ∧
+      ‖bohrCenteredLift S n‖ ≤ latticeBoxRadius S.card * ρ / 2 ∧
+      bohrCenteredLift S n ∈ integerCoefficientBox b I a := by
+  have hnB : (n : ZMod q) ∈ graphBohrSet S r := by
+    by_contra h
+    exact hn (graphBohrWeight_eq_zero_of_notMem cutoff hsupp S hr _ h)
+  have hD : 0 < S.card := Finset.card_pos.mpr ⟨1, hS⟩
+  have hroot : 0 < Real.sqrt (S.card : ℝ) := Real.sqrt_pos.mpr (by exact_mod_cast hD)
+  have hmul := (le_div_iff₀ (mul_pos (by norm_num : (0 : ℝ) < 2) hroot)).mp hsmall
+  have hnorm : ‖bohrCenteredLift S n‖ ≤ latticeBoxRadius S.card * ρ / 2 := by
+    have h := bohrCenteredLift_norm S n hr.le hnB
+    nlinarith
+  refine ⟨bohrCenteredLift_coord S n hnB, hnorm, hbox ⟨?_, bohrCenteredLift_mem S hS n⟩⟩
+  rw [Metric.mem_closedBall, dist_zero_right]
+  have hpos := mul_pos (latticeBoxRadius_pos hD) hρ
+  linarith
+
+/-- At radius below one half there is exactly one integer shift with all coordinates
+ in the supporting interval, as used in blueprint `lem:local-chart`, line 1054. -/
+theorem bohr_supported_integer_shift {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (n : ℤ) {r : ℝ} (hr : r < 1 / 2)
+    (hn : (n : ZMod q) ∈ graphBohrSet S r) :
+    ∃! k : S → ℤ, ∀ s : S,
+      |(n • (bohrLiftDirection S hS : EuclideanSpace ℝ S) -
+        WithLp.toLp 2 (fun j => (k j : ℝ))) s| < r := by
+  obtain ⟨k, hk⟩ := bohrCenteredLift_integer_difference S hS n
+  have hkc (s : S) :
+      |(n • (bohrLiftDirection S hS : EuclideanSpace ℝ S) -
+        WithLp.toLp 2 (fun j => (k j : ℝ))) s| < r := by
+    rw [← hk]
+    exact bohrCenteredLift_coord S n hn s
+  refine ⟨k, hkc, ?_⟩
+  intro l hl
+  funext s
+  let x := (n • (bohrLiftDirection S hS : EuclideanSpace ℝ S)) s
+  have hk' : |x - (k s : ℝ)| < r := hkc s
+  have hl' : |x - (l s : ℝ)| < r := hl s
+  have heq : ((l s : ℝ) - (k s : ℝ)) = (x - (k s : ℝ)) - (x - (l s : ℝ)) := by ring
+  have hreal : |((l s - k s : ℤ) : ℝ)| < 1 := by
+    rw [Int.cast_sub, heq]
+    have h := abs_sub (x - (k s : ℝ)) (x - (l s : ℝ))
+    linarith
+  have hint : |l s - k s| < (1 : ℤ) := by exact_mod_cast hreal
+  have h := abs_lt.mp hint
+  omega
+
+/-- Integer monomials do not distinguish a coefficient from its fractional part. -/
+theorem unitCircle_fract_mul_int (a : ℝ) (z : ℤ) :
+    ((Int.fract a * (z : ℝ) : ℝ) : UnitAddCircle) =
+      ((a * (z : ℝ) : ℝ) : UnitAddCircle) := by
+  rw [mul_comm (Int.fract a), mul_comm a,
+    ← zsmul_eq_mul, ← zsmul_eq_mul, AddCircle.coe_zsmul, AddCircle.coe_zsmul,
+    AddCircle.coe_fract]
+
+/-- Reducing mixed and lattice-quadratic coefficients modulo one preserves the phase
+ at every integer input; blueprint `lem:local-chart`, lines 1058-1062. -/
+theorem quadratic_integer_coefficient_reduction {ι : Type*} [Fintype ι]
+    (ell : ℝ) (b : ι → ℝ) (C : ι → ι → ℝ) :
+    ∃ (b' : ι → ℝ) (C' : ι → ι → ℝ),
+      (∀ i, |b' i| ≤ 1) ∧ (∀ i j, |C' i j| ≤ 1) ∧
+      ∀ (n : ℤ) (k : ι → ℤ),
+        ((ell * (n : ℝ) ^ 2 + (n : ℝ) * (∑ i, b' i * (k i : ℝ)) +
+          ∑ i, ∑ j, C' i j * (k i : ℝ) * (k j : ℝ) : ℝ) : UnitAddCircle) =
+        ((ell * (n : ℝ) ^ 2 + (n : ℝ) * (∑ i, b i * (k i : ℝ)) +
+          ∑ i, ∑ j, C i j * (k i : ℝ) * (k j : ℝ) : ℝ) : UnitAddCircle) := by
+  classical
+  refine ⟨fun i => Int.fract (b i), fun i j => Int.fract (C i j), ?_, ?_, ?_⟩
+  · intro i
+    rw [Int.abs_fract]
+    exact (Int.fract_lt_one _).le
+  · intro i j
+    rw [Int.abs_fract]
+    exact (Int.fract_lt_one _).le
+  · intro n k
+    have hsum (f : ι → ℝ) :
+        ((∑ i, f i : ℝ) : UnitAddCircle) = ∑ i, (f i : UnitAddCircle) :=
+      map_sum (QuotientAddGroup.mk' _) _ _
+    have hb (i : ι) :
+        (((n : ℝ) * (Int.fract (b i) * (k i : ℝ)) : ℝ) : UnitAddCircle) =
+        (((n : ℝ) * (b i * (k i : ℝ)) : ℝ) : UnitAddCircle) := by
+      convert unitCircle_fract_mul_int (b i) (n * k i) using 1 <;>
+        congr 1 <;> push_cast <;> ring
+    have hC (i j : ι) :
+        ((Int.fract (C i j) * (k i : ℝ) * (k j : ℝ) : ℝ) : UnitAddCircle) =
+        ((C i j * (k i : ℝ) * (k j : ℝ) : ℝ) : UnitAddCircle) := by
+      convert unitCircle_fract_mul_int (C i j) (k i * k j) using 1 <;>
+        congr 1 <;> push_cast <;> ring
+    simp only [Finset.mul_sum, AddCircle.coe_add, hsum, hb, hC]
+
+/-- Algebraic expansion of a product of linear forms into the source quadratic shape. -/
+theorem linear_product_quadratic_expansion {ι : Type*} [Fintype ι]
+    (a d c n : ℝ) (u v k : ι → ℝ) :
+    (a * n + ∑ i, u i * k i) * (d * n + ∑ i, v i * k i) * c =
+      (a * d * c) * n ^ 2 + n * (∑ i, ((a * v i + d * u i) * c) * k i) +
+        ∑ i, ∑ j, (u i * v j * c) * k i * k j := by
+  have hb : (∑ i, ((a * v i + d * u i) * c) * k i) =
+      c * a * (∑ i, v i * k i) + c * d * (∑ i, u i * k i) := by
+    simp_rw [show ∀ i, ((a * v i + d * u i) * c) * k i =
+      c * a * (v i * k i) + c * d * (u i * k i) by intro i; ring]
+    rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
+  have hC : (∑ i, ∑ j, (u i * v j * c) * k i * k j) =
+      c * (∑ i, u i * k i) * (∑ j, v j * k j) := by
+    simp only [Finset.sum_mul, Finset.mul_sum]
+    rw [Finset.sum_comm]
+    apply Finset.sum_congr rfl
+    intro i _
+    apply Finset.sum_congr rfl
+    intro j _
+    ring
+  rw [hb, hC]
+  ring
+
+/-- Substituting an integer linear vector into a real linear form. -/
+theorem integer_linear_form_substitution {ι κ : Type*} [Fintype ι] [Fintype κ]
+    (t : ι → ℤ) (U : ι → κ → ℤ) (m : ι → ℝ) (n : ℤ) (k : κ → ℤ) :
+    (∑ i, ((t i * n - ∑ j, U i j * k j : ℤ) : ℝ) * m i) =
+      (∑ i, (t i : ℝ) * m i) * (n : ℝ) +
+        ∑ j, (-(∑ i, (U i j : ℝ) * m i)) * (k j : ℝ) := by
+  push_cast
+  simp only [sub_mul, Finset.sum_sub_distrib, Finset.sum_mul, neg_mul, Finset.sum_neg_distrib]
+  rw [Finset.sum_comm]
+  congr 1
+  · apply Finset.sum_congr rfl
+    intro i _
+    ring
+  · apply Finset.sum_congr rfl
+    intro j _
+    apply Finset.sum_congr rfl
+    intro i _
+    ring
+
+/-- The real substitution used for the enlarged chart: all possibly large
+ coefficients enter only the outside phase or the horizontal vector. -/
+theorem quadratic_horizontal_substitution {ι : Type*} [Fintype ι]
+    (ell : ℝ) (b : ι → ℝ) (C : ι → ι → ℝ) (θ : ι → ℝ) :
+    ∃ (ell' : ℝ) (v : ι → ℝ),
+      (∀ i, v i = -b i - ∑ j, (C i j + C j i) * θ j) ∧
+      ∀ (n : ℝ) (w : ι → ℝ),
+        ell * n ^ 2 + n * (∑ i, b i * (θ i * n - w i)) +
+          (∑ i, ∑ j, C i j * (θ i * n - w i) * (θ j * n - w j)) =
+        ell' * n ^ 2 + n * (∑ i, v i * w i) +
+          ∑ i, ∑ j, C i j * w i * w j := by
+  classical
+  let ell' := ell + (∑ i, b i * θ i) + ∑ i, ∑ j, C i j * θ i * θ j
+  let v : ι → ℝ := fun i => -b i - ∑ j, (C i j + C j i) * θ j
+  refine ⟨ell', v, fun _ => rfl, ?_⟩
+  intro n w
+  have hlin : (∑ i, b i * (θ i * n - w i)) =
+      n * (∑ i, b i * θ i) - ∑ i, b i * w i := by
+    simp_rw [show ∀ i, b i * (θ i * n - w i) =
+      n * (b i * θ i) - b i * w i by intro i; ring]
+    rw [Finset.sum_sub_distrib, ← Finset.mul_sum]
+  have hquad : (∑ i, ∑ j, C i j * (θ i * n - w i) * (θ j * n - w j)) =
+      n ^ 2 * (∑ i, ∑ j, C i j * θ i * θ j) -
+      n * (∑ i, ∑ j, C i j * θ i * w j) -
+      n * (∑ i, ∑ j, C i j * w i * θ j) +
+      ∑ i, ∑ j, C i j * w i * w j := by
+    simp_rw [show ∀ i j, C i j * (θ i * n - w i) * (θ j * n - w j) =
+      n ^ 2 * (C i j * θ i * θ j) - n * (C i j * θ i * w j) -
+        n * (C i j * w i * θ j) + C i j * w i * w j by intro i j; ring]
+    simp only [Finset.sum_add_distrib, Finset.sum_sub_distrib, ← Finset.mul_sum]
+  have hv : (∑ i, v i * w i) =
+      -(∑ i, b i * w i) - (∑ i, ∑ j, C i j * θ i * w j) -
+        ∑ i, ∑ j, C i j * w i * θ j := by
+    have hswap : (∑ i, ∑ j, C i j * θ i * w j) =
+        ∑ i, ∑ j, C j i * θ j * w i := Finset.sum_comm
+    rw [hswap]
+    simp only [v, sub_mul, neg_mul, Finset.sum_sub_distrib, Finset.sum_neg_distrib,
+      Finset.sum_mul, add_mul, Finset.sum_add_distrib]
+    have hcomm : (∑ i, ∑ j, C i j * θ j * w i) =
+        ∑ i, ∑ j, C i j * w i * θ j := by
+      apply Finset.sum_congr rfl
+      intro i _
+      apply Finset.sum_congr rfl
+      intro j _
+      ring
+    rw [hcomm]
+    ring
+  rw [hlin, hquad, hv]
+  dsimp [ell']
+  ring
+
+/-- Substituting the integral dual forms and reducing coefficients gives a bounded
+ matrix, uniformly in all original coefficients; blueprint `lem:local-chart`, lines 1058-1062. -/
+theorem integer_linear_quadratic_reduction {ι κ : Type*} [Fintype ι] [Fintype κ]
+    (t : ι → ℤ) (U : ι → κ → ℤ) (m v : ι → ℝ) (Q : ℝ) :
+    ∃ (ell : ℝ) (b : κ → ℝ) (C : κ → κ → ℝ),
+      (∀ j, |b j| ≤ 1) ∧ (∀ i j, |C i j| ≤ 1) ∧
+      ∀ (n : ℤ) (k : κ → ℤ),
+        ((((∑ i, ((t i * n - ∑ j, U i j * k j : ℤ) : ℝ) * m i) *
+          (∑ i, ((t i * n - ∑ j, U i j * k j : ℤ) : ℝ) * v i) / Q) : ℝ) :
+            UnitAddCircle) =
+        ((ell * (n : ℝ) ^ 2 + (n : ℝ) * (∑ i, b i * (k i : ℝ)) +
+          ∑ i, ∑ j, C i j * (k i : ℝ) * (k j : ℝ) : ℝ) : UnitAddCircle) := by
+  classical
+  let a := ∑ i, (t i : ℝ) * m i
+  let d := ∑ i, (t i : ℝ) * v i
+  let u : κ → ℝ := fun j => -(∑ i, (U i j : ℝ) * m i)
+  let z : κ → ℝ := fun j => -(∑ i, (U i j : ℝ) * v i)
+  let ell := a * d * Q⁻¹
+  let b : κ → ℝ := fun j => (a * z j + d * u j) * Q⁻¹
+  let C : κ → κ → ℝ := fun i j => u i * z j * Q⁻¹
+  obtain ⟨b', C', hb', hC', hred⟩ := quadratic_integer_coefficient_reduction ell b C
+  refine ⟨ell, b', C', hb', hC', ?_⟩
+  intro n k
+  rw [integer_linear_form_substitution t U m n k,
+    integer_linear_form_substitution t U v n k, div_eq_mul_inv]
+  change (((a * (n : ℝ) + ∑ i, u i * (k i : ℝ)) *
+    (d * (n : ℝ) + ∑ i, z i * (k i : ℝ)) * Q⁻¹ : ℝ) : UnitAddCircle) = _
+  rw [linear_product_quadratic_expansion]
+  exact (hred n k).symm
+
+/-- The integral dual-coordinate quadratic becomes a real horizontal phase with a
+ coefficientwise bounded amplitude matrix; blueprint `lem:local-chart`, lines 1058-1067. -/
+theorem integer_linear_quadratic_horizontal {ι κ : Type*} [Fintype ι] [Fintype κ]
+    (t : ι → ℤ) (U : ι → κ → ℤ) (m v : ι → ℝ) (Q : ℝ) (θ : κ → ℝ) :
+    ∃ (ell : ℝ) (h : κ → ℝ) (C : κ → κ → ℝ),
+      (∀ i j, |C i j| ≤ 1) ∧ ∀ (n : ℤ) (k : κ → ℤ),
+        ((((∑ i, ((t i * n - ∑ j, U i j * k j : ℤ) : ℝ) * m i) *
+          (∑ i, ((t i * n - ∑ j, U i j * k j : ℤ) : ℝ) * v i) / Q) : ℝ) :
+            UnitAddCircle) =
+        ((ell * (n : ℝ) ^ 2 +
+          (n : ℝ) * (∑ i, h i * (θ i * (n : ℝ) - (k i : ℝ))) +
+          ∑ i, ∑ j, C i j * (θ i * (n : ℝ) - (k i : ℝ)) *
+            (θ j * (n : ℝ) - (k j : ℝ)) : ℝ) : UnitAddCircle) := by
+  obtain ⟨ell, b, C, _, hC, hred⟩ := integer_linear_quadratic_reduction t U m v Q
+  obtain ⟨ell', h, _, hsub⟩ := quadratic_horizontal_substitution ell b C θ
+  refine ⟨ell', h, C, hC, ?_⟩
+  intro n k
+  rw [hred]
+  have hh := hsub (n : ℝ) (fun i => θ i * (n : ℝ) - (k i : ℝ))
+  simp only [sub_sub_cancel] at hh
+  exact congrArg (fun x : ℝ => (x : UnitAddCircle)) hh
+
+/-- The local quadratic phase in the actual real basis coordinates of a box point. -/
+theorem bohr_box_phase_coordinates {q d : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) {ρ : ℝ} (hρ : 0 < ρ)
+    (b : Module.Basis (Fin d) ℝ (EuclideanSpace ℝ S))
+    (hb : Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS)
+    (I : Finset (Fin d)) (a : Fin d → ℤ) (ha : ∀ i ∈ I, 1 ≤ a i)
+    (hbound : ∀ z : Fin d → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ a i) →
+      ‖∑ i, z i • b i‖ ≤ ρ / 4)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y)
+    (x : bohrLiftLattice S hS) (hx : (x : EuclideanSpace ℝ S) ∈ integerCoefficientBox b I a) :
+    ZMod.toAddCircle (M (bohrLiftProjection S hS x) * bohrLiftProjection S hS x) =
+      (((∑ i, b.repr (x : EuclideanSpace ℝ S) i *
+          ((M (bohrBasisFrequency S hS b hb i)).val : ℝ)) *
+        (∑ i, b.repr (x : EuclideanSpace ℝ S) i *
+          ((bohrBasisFrequency S hS b hb i).val : ℝ)) / q : ℝ) : UnitAddCircle) := by
+  classical
+  obtain ⟨z, hz0, hza, hz⟩ := hx
+  have hrepr (i : Fin d) : b.repr (x : EuclideanSpace ℝ S) i = (z i : ℝ) := by
+    rw [← hz]
+    simp [← Int.cast_smul_eq_zsmul ℝ, Finsupp.single_apply]
+  have hsum : (∑ i, z i • bohrBasisVector S hS b hb i) = x := by
+    apply Subtype.ext
+    simpa only [Submodule.coe_sum, Submodule.coe_smul_of_tower, bohrBasisVector] using hz
+  have hp : (∑ i, z i • bohrBasisFrequency S hS b hb i) = bohrLiftProjection S hS x := by
+    have h := congrArg (bohrLiftProjection S hS) hsum
+    simpa only [map_sum, map_zsmul, bohrBasisFrequency] using h
+  simp only [hrepr]
+  rw [← hp]
+  exact bohr_box_quadratic_phase S hS hρ b hb I a ha hbound M hadd z hz0 hza
+
+/-- Blueprint `lem:local-chart`, lines 1054-1067: on every centered lift in the
+ coefficient box, the original locally quadratic phase has the bounded-matrix
+ horizontal form. The bounds are independent of the lattice basis and the modulus. -/
+theorem bohr_local_quadratic_horizontal {q d : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) {ρ : ℝ} (hρ : 0 < ρ)
+    (b : Module.Basis (Fin d) ℝ (EuclideanSpace ℝ S))
+    (hb : Submodule.span ℤ (Set.range b) = bohrLiftLattice S hS)
+    (I : Finset (Fin d)) (a : Fin d → ℤ) (ha : ∀ i ∈ I, 1 ≤ a i)
+    (hbound : ∀ z : Fin d → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ a i) →
+      ‖∑ i, z i • b i‖ ≤ ρ / 4)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y) :
+    ∃ (ell : ℝ) (h : S → ℝ) (C : S → S → ℝ),
+      (∀ i j, |C i j| ≤ 1) ∧ ∀ n : ℤ,
+        bohrCenteredLift S n ∈ integerCoefficientBox b I a →
+        ZMod.toAddCircle (M (n : ZMod q) * (n : ZMod q)) =
+          ((ell * (n : ℝ) ^ 2 + (n : ℝ) * (∑ i, h i * bohrCenteredLift S n i) +
+            ∑ i, ∑ j, C i j * bohrCenteredLift S n i * bohrCenteredLift S n j : ℝ) :
+              UnitAddCircle) := by
+  classical
+  obtain ⟨U, t, _, _, _, hcoord⟩ := bohr_integer_dual_coordinates S hS b hb
+  obtain ⟨ell, h, C, hC, hpoly⟩ := integer_linear_quadratic_horizontal t U
+    (fun i => ((M (bohrBasisFrequency S hS b hb i)).val : ℝ))
+    (fun i => ((bohrBasisFrequency S hS b hb i).val : ℝ)) (q : ℝ)
+    (fun s => (bohrLiftDirection S hS : EuclideanSpace ℝ S) s)
+  refine ⟨ell, h, C, hC, ?_⟩
+  intro n hn
+  obtain ⟨k, hk⟩ := bohrCenteredLift_integer_difference S hS n
+  have hrepr (i : Fin d) :
+      b.repr (bohrCenteredLift S n) i = ((t i * n - ∑ s, U i s * k s : ℤ) : ℝ) := by
+    rw [hk]
+    exact hcoord n k i
+  have hphase := bohr_box_phase_coordinates S hS hρ b hb I a ha hbound M hadd
+    ⟨bohrCenteredLift S n, bohrCenteredLift_mem S hS n⟩ hn
+  simp only [bohrCenteredLift_projection, hrepr] at hphase
+  rw [hphase]
+  have hc (s : S) : (bohrLiftDirection S hS : EuclideanSpace ℝ S) s * (n : ℝ) -
+      (k s : ℝ) = bohrCenteredLift S n s := by
+    rw [hk, ← Int.cast_smul_eq_zsmul ℝ]
+    change (bohrLiftDirection S hS : EuclideanSpace ℝ S) s * (n : ℝ) - (k s : ℝ) =
+      (n : ℝ) * (bohrLiftDirection S hS : EuclideanSpace ℝ S) s - (k s : ℝ)
+    ring
+  simpa only [hc] using hpoly n k
+
+
+
+/-- A finite enumeration used only to present Bohr coordinates in the chart convention. -/
+noncomputable def bohrFrequencyEquiv {q : ℕ} (S : Finset (ZMod q)) : Fin S.card ≃ S :=
+  (Fintype.equivFinOfCardEq (by simp)).symm
+
+/-- The actual rational chart built from the local phase coefficients and the fixed
+ Gevrey partition; blueprint `lem:local-chart`, lines 1069-1076. -/
+noncomputable def bohrLocalQuadraticChart {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (ell : ℝ) (v : S → ℝ) (C : S → S → ℝ)
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) {r : ℝ} (hr : 0 < r) :
+    QuadraticChartData (S.card + S.card) :=
+  localizedQuadraticChart
+    (fun i => (bohrLiftDirection S hS : EuclideanSpace ℝ S) (bohrFrequencyEquiv S i))
+    (fun i => v (bohrFrequencyEquiv S i)) ell
+    (fun i j => C (bohrFrequencyEquiv S i) (bohrFrequencyEquiv S j))
+    (fun x => cutoff (x / r)) gevreyPartition
+    (hf.comp (contDiff_id.div_const r)) (contDiff_infty.mpr gevreyPartition_contDiff)
+    (scaled_unit_cutoff_compact cutoff hsupp hr) gevreyPartition_hasCompactSupport
+
+theorem bohrLocalQuadraticChart_matrix_height {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (ell : ℝ) (v : S → ℝ) (C : S → S → ℝ)
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) {r : ℝ} (hr : 0 < r)
+    (i j : Fin (S.card + S.card)) :
+    chartRationalHeight
+      ((bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr).matrix i j) = 1 :=
+  localizedQuadraticChart_height _ _ _ _ _ _ _ _ _ _ i j
+
+/-- The constructed Bohr chart has exactly the partition-canceled source lattice formula. -/
+theorem bohrLocalQuadraticChart_atom {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (ell : ℝ) (v : S → ℝ) (C : S → S → ℝ)
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) {r : ℝ} (hr : 0 < r) (y : ℝ) :
+    let θ : Fin S.card → ℝ := fun i =>
+      (bohrLiftDirection S hS : EuclideanSpace ℝ S) (bohrFrequencyEquiv S i)
+    quadraticChartAtom (bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr) y =
+      (Real.fourierChar (ell * y ^ 2) : ℂ) *
+        ∑' k : Fin S.card → ℤ,
+          (∏ i, (cutoff ((θ i * y - (k i : ℝ)) / r) : ℂ)) *
+            (Real.fourierChar
+              ((∑ i, ∑ j, C (bohrFrequencyEquiv S i) (bohrFrequencyEquiv S j) *
+                (θ i * y - (k i : ℝ)) * (θ j * y - (k j : ℝ))) +
+                y * ∑ i, v (bohrFrequencyEquiv S i) * (θ i * y - (k i : ℝ))) : ℂ) := by
+  exact localizedQuadraticChart_atom _ _ _ _ _ _ _ _ _ _ gevreyPartition_tsum y
+
+
+
+theorem bohrCenteredLift_weight {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (cutoff : ℝ → ℝ) (r : ℝ) (n : ℤ) :
+    (∏ i : Fin S.card, (cutoff (bohrCenteredLift S n (bohrFrequencyEquiv S i) / r) : ℂ)) =
+      (graphBohrWeight cutoff S r (n : ZMod q) : ℂ) := by
+  rw [← Complex.ofReal_prod]
+  congr 1
+  calc
+    _ = ∏ s : S, cutoff (bohrCenteredLift S n s / r) :=
+      (bohrFrequencyEquiv S).prod_comp (fun s : S => cutoff (bohrCenteredLift S n s / r))
+    _ = _ := by
+      change (∏ s : S, cutoff ((AddCircle.equivIco (1 : ℝ) (-(1 / 2))
+        (ZMod.toAddCircle (s.val * (n : ZMod q))) : ℝ) / r)) =
+        ∏ s ∈ S, cutoff ((AddCircle.equivIco (1 : ℝ) (-(1 / 2))
+          (ZMod.toAddCircle (s * (n : ZMod q))) : ℝ) / r)
+      exact Finset.prod_coe_sort S (fun s : ZMod q =>
+        cutoff ((AddCircle.equivIco (1 : ℝ) (-(1 / 2))
+          (ZMod.toAddCircle (s * (n : ZMod q))) : ℝ) / r))
+
+theorem bohrLocalQuadraticChart_bounded {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (ell : ℝ) (v : S → ℝ) (C : S → S → ℝ)
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) (hunit : ∀ x, |cutoff x| ≤ 1)
+    {r : ℝ} (hr : 0 < r) (hrsmall : r < 1 / 2) :
+    IsBoundedQuadraticChart (bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr) := by
+  apply localizedQuadraticChart_bounded _ _ _ _ _ _ _ _ _ _ gevreyPartition_tsum hrsmall
+  · intro x hx
+    apply hsupp
+    rw [abs_div, abs_of_pos hr]
+    exact (le_div_iff₀ hr).mpr (by simpa using hx)
+  · intro x
+    exact hunit _
+
+/-- Exact integer formula for the constructed chart, including its zero-weight values. -/
+theorem bohrLocalQuadraticChart_integer_formula {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (ell : ℝ) (v : S → ℝ) (C : S → S → ℝ)
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) {r : ℝ} (hr : 0 < r) (hrsmall : r < 1 / 2)
+    (n : ℤ) :
+    quadraticChartAtom (bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr) (n : ℝ) =
+      (graphBohrWeight cutoff S r (n : ZMod q) : ℂ) *
+        (Real.fourierChar (ell * (n : ℝ) ^ 2 +
+          (n : ℝ) * (∑ s, v s * bohrCenteredLift S n s) +
+          ∑ s, ∑ t, C s t * bohrCenteredLift S n s * bohrCenteredLift S n t) : ℂ) := by
+  classical
+  obtain ⟨k, hk⟩ := bohrCenteredLift_integer_difference S hS n
+  let θ : Fin S.card → ℝ := fun i =>
+    (bohrLiftDirection S hS : EuclideanSpace ℝ S) (bohrFrequencyEquiv S i)
+  let K : Fin S.card → ℤ := fun i => k (bohrFrequencyEquiv S i)
+  have hc (i : Fin S.card) : θ i * (n : ℝ) - (K i : ℝ) =
+      bohrCenteredLift S n (bohrFrequencyEquiv S i) := by
+    rw [hk, ← Int.cast_smul_eq_zsmul ℝ]
+    change θ i * (n : ℝ) - (K i : ℝ) = (n : ℝ) * θ i - (K i : ℝ)
+    ring
+  have hcenter (i : Fin S.card) : |θ i * (n : ℝ) - (K i : ℝ)| ≤ 1 / 2 := by
+    rw [hc]
+    have h := unitCircleCentered_mem
+      (ZMod.toAddCircle ((bohrFrequencyEquiv S i).val * (n : ZMod q)))
+    exact abs_le.mpr ⟨h.1, h.2.le⟩
+  have hscaled (x : ℝ) (hx : r ≤ |x|) : cutoff (x / r) = 0 := by
+    apply hsupp
+    rw [abs_div, abs_of_pos hr]
+    exact (le_div_iff₀ hr).mpr (by simpa using hx)
+  have hval := localizedQuadraticChart_at_center θ
+    (fun i => v (bohrFrequencyEquiv S i)) ell
+    (fun i j => C (bohrFrequencyEquiv S i) (bohrFrequencyEquiv S j))
+    (fun x => cutoff (x / r)) gevreyPartition
+    (hf.comp (contDiff_id.div_const r)) (contDiff_infty.mpr gevreyPartition_contDiff)
+    (scaled_unit_cutoff_compact cutoff hsupp hr) gevreyPartition_hasCompactSupport
+    gevreyPartition_tsum hrsmall hscaled (n : ℝ) K hcenter
+  change quadraticChartAtom (bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr)
+    (n : ℝ) = _ at hval
+  simp only [hc, chartCoordinateProduct] at hval
+  rw [bohrCenteredLift_weight] at hval
+  have hlinear : (∑ i, v (bohrFrequencyEquiv S i) *
+      bohrCenteredLift S n (bohrFrequencyEquiv S i)) = ∑ s, v s * bohrCenteredLift S n s :=
+    (bohrFrequencyEquiv S).sum_comp (fun s : S => v s * bohrCenteredLift S n s)
+  have hquad : (∑ i, ∑ j, C (bohrFrequencyEquiv S i) (bohrFrequencyEquiv S j) *
+      bohrCenteredLift S n (bohrFrequencyEquiv S i) *
+      bohrCenteredLift S n (bohrFrequencyEquiv S j)) =
+      ∑ s, ∑ t, C s t * bohrCenteredLift S n s * bohrCenteredLift S n t := by
+    calc
+      _ = ∑ i, ∑ t, C (bohrFrequencyEquiv S i) t *
+          bohrCenteredLift S n (bohrFrequencyEquiv S i) * bohrCenteredLift S n t := by
+        apply Finset.sum_congr rfl
+        intro i _
+        exact (bohrFrequencyEquiv S).sum_comp (fun t : S =>
+          C (bohrFrequencyEquiv S i) t * bohrCenteredLift S n (bohrFrequencyEquiv S i) *
+            bohrCenteredLift S n t)
+      _ = _ := (bohrFrequencyEquiv S).sum_comp (fun s : S =>
+        ∑ t, C s t * bohrCenteredLift S n s * bohrCenteredLift S n t)
+  rw [hlinear, hquad] at hval
+  rw [hval]
+  simp only [AddChar.map_add_eq_mul, Circle.coe_mul]
+  ring
+
+theorem cyclic_character_of_real_phase {q : ℕ} [NeZero q] (x : ZMod q) (t : ℝ)
+    (h : ZMod.toAddCircle x = (t : UnitAddCircle)) :
+    ZMod.stdAddChar x = (Real.fourierChar t : ℂ) := by
+  have hc := congrArg (fun z : UnitAddCircle => (AddCircle.toCircle z : ℂ)) h
+  change ZMod.stdAddChar x = (AddCircle.toCircle (t : UnitAddCircle) : ℂ) at hc
+  simpa only [AddCircle.toCircle_apply_mk, div_one, Real.fourierChar_apply'] using hc
+
+theorem local_chart_radius_lt_half {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) {r ρ : ℝ} (hr : 0 < r) (hρ : 0 < ρ)
+    (hρ1 : ρ < 1) (hsmall : r ≤ latticeBoxRadius S.card * ρ / (2 * Real.sqrt S.card)) :
+    r < 1 / 2 := by
+  have hD : (1 : ℝ) ≤ S.card := by exact_mod_cast (Finset.card_pos.mpr ⟨1, hS⟩)
+  have hsqrt : 1 ≤ Real.sqrt (S.card : ℝ) := Real.one_le_sqrt.mpr hD
+  have heps : latticeBoxRadius S.card ≤ 1 := by
+    apply inv_le_one_of_one_le₀
+    exact one_le_pow₀ (by linarith : (1 : ℝ) ≤ 100 * S.card)
+  have hm := (le_div_iff₀ (by positivity : 0 < 2 * Real.sqrt (S.card : ℝ))).mp hsmall
+  have he := mul_le_mul_of_nonneg_right heps hρ.le
+  nlinarith
+
+/-- Blueprint `lem:local-chart`, line 1078: the constructed chart is globally bounded
+ and realizes the original weighted local phase at every integer, including zero weights.
+ Quantitative derivative complexity is established separately. -/
+theorem bohr_local_chart_bounded_values {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) {r ρ : ℝ} (hr : 0 < r) (hρ : 0 < ρ)
+    (hρ1 : ρ < 1) (hsmall : r ≤ latticeBoxRadius S.card * ρ / (2 * Real.sqrt S.card))
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y)
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) (hunit : ∀ x, |cutoff x| ≤ 1) :
+    ∃ (ell : ℝ) (v : S → ℝ) (C : S → S → ℝ),
+      (∀ i j, |C i j| ≤ 1) ∧
+      IsBoundedQuadraticChart (bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr) ∧
+      ∀ n : ℤ,
+        quadraticChartAtom (bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr) (n : ℝ) =
+          (graphBohrWeight cutoff S r (n : ZMod q) : ℂ) *
+            ZMod.stdAddChar (M (n : ZMod q) * (n : ZMod q)) := by
+  obtain ⟨b, I, a, hb, ha, hbox, _, hpartial, _, _⟩ := bohr_coefficient_box S hS hρ hρ1
+  have hbound (z : Fin S.card → ℤ) (hz0 : ∀ i ∉ I, z i = 0)
+      (hza : ∀ i ∈ I, |z i| ≤ a i) : ‖∑ i, z i • b i‖ ≤ ρ / 4 := by
+    exact hpartial z hz0 hza Finset.univ
+  obtain ⟨ell, v, C, hC, hphase⟩ := bohr_local_quadratic_horizontal
+    S hS hρ b hb I a ha hbound M hadd
+  have hrsmall := local_chart_radius_lt_half S hS hr hρ hρ1 hsmall
+  refine ⟨ell, v, C, hC,
+    bohrLocalQuadraticChart_bounded S hS ell v C cutoff hf hsupp hunit hr hrsmall, ?_⟩
+  intro n
+  rw [bohrLocalQuadraticChart_integer_formula S hS ell v C cutoff hf hsupp hr hrsmall]
+  by_cases hn : graphBohrWeight cutoff S r (n : ZMod q) = 0
+  · simp only [hn, Complex.ofReal_zero, zero_mul]
+  · have hx := (bohr_supported_lift_in_box S hS cutoff hsupp hr hρ hsmall b I a hbox n hn).2.2
+    rw [cyclic_character_of_real_phase _ _ (hphase n hx)]
+
+
+
+/-- One fixed Gevrey order controls all Bohr charts built from the given source cutoff.
+ The order is chosen before the modulus, frequency set, radius and local phase. -/
+theorem bohrLocalQuadraticChart_uniform_gevrey_bound
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) (hunit : ∀ x, |cutoff x| ≤ 1)
+    (K : ℕ) (hK : 1 ≤ K)
+    (hderiv : ∀ i x, |iteratedDeriv i cutoff x| ≤
+      ((K : ℝ) * (i + 1 : ℝ)) ^ (K * (i + 1))) :
+    ∃ L : ℕ, 1 ≤ L ∧ ∀ (q : ℕ) [NeZero q]
+      (S : Finset (ZMod q)) (hS : 1 ∈ S) (ell : ℝ) (v : S → ℝ) (C : S → S → ℝ),
+      (∀ i j, |C i j| ≤ 1) → ∀ (r : ℝ) (hr : 0 < r), r ≤ 1 →
+      ∀ (m : ℕ) (word : Fin m → Fin (S.card + S.card)) (z : Fin (S.card + S.card) → ℝ),
+        ‖coordinateWordDerivative m
+          (bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr).amplitude word z‖ ≤
+        (100 * (L + 1 : ℝ) * (S.card + 1 : ℝ) / r) ^ ((2 * L + 2) * (m + 1)) *
+          (m + 1 : ℝ) ^ ((2 * L + 2) * (m + 1)) := by
+  obtain ⟨P, hP, hpart⟩ := gevreyPartition_exists_derivative_bound
+  let L := max K P
+  have hL : 1 ≤ L := hK.trans (le_max_left _ _)
+  have hfL := gevrey_derivative_bound_mono cutoff hK (le_max_left K P) hderiv
+  have hgL := gevrey_derivative_bound_mono gevreyPartition hP (le_max_right K P) hpart
+  refine ⟨L, hL, ?_⟩
+  intro q hq S hS ell v C hC r hr hr1 m word z
+  have hgs (x : ℝ) (hx : 1 ≤ |x|) : gevreyPartition x = 0 := by
+    by_contra h
+    have ht := gevreyPartition_tsupport_subset_open (subset_tsupport gevreyPartition h)
+    have ha : |x| < 1 := abs_lt.mpr ht
+    linarith
+  have hgu (x : ℝ) : |gevreyPartition x| ≤ 1 := by
+    rw [abs_of_nonneg (gevreyPartition_nonneg x)]
+    exact gevreyPartition_le_one x
+  exact localizedQuadraticChart_gevrey_bound _ _ _ _ cutoff gevreyPartition hf
+    (contDiff_infty.mpr gevreyPartition_contDiff) gevreyPartition_hasCompactSupport
+    hsupp hgs (fun i j => hC _ _) L hL hunit hgu hfL hgL hr hr1 m word z
+
+
+/-- An explicit source-format complexity parameter controls dimension, support and derivatives. -/
+theorem local_chart_complexity_parameter (L d C : ℕ) (hL : 1 ≤ L)
+    (hCbound : 1000 * (L + 1) ≤ C)
+    {r : ℝ} (hr : 0 < r) (hr1 : r ≤ 1) :
+    let H : ℝ := Real.exp ((C : ℝ) * ((d : ℝ) + Real.log (1 / r) + 1) ^ C)
+    Real.exp 2 ≤ H ∧ (d + d : ℕ) ≤ Real.log H ∧
+      100 * (L + 1 : ℝ) * (d + 1 : ℝ) / r ≤ H := by
+  let B : ℝ := (d : ℝ) + Real.log (1 / r) + 1
+  let a : ℝ := 100 * (L + 1 : ℝ)
+  have hLr : (1 : ℝ) ≤ L := by exact_mod_cast hL
+  have hd : (0 : ℝ) ≤ d := Nat.cast_nonneg _
+  have hlog : 0 ≤ Real.log (1 / r) := Real.log_nonneg ((le_div_iff₀ hr).mpr (by simpa using hr1))
+  have hB : 1 ≤ B := by dsimp [B]; linarith
+  have hD : (d : ℝ) + 1 ≤ B := by dsimp [B]; linarith
+  have hC : 1000 * (L + 1 : ℝ) ≤ (C : ℝ) := by exact_mod_cast hCbound
+  have ha : 0 ≤ a := by dsimp [a]; positivity
+  have hC3 : a ≤ (C : ℝ) - 3 := by dsimp [a]; linarith
+  have hCB : a + 3 * B ≤ (C : ℝ) * B := by
+    have h := mul_le_mul_of_nonneg_left hB (show 0 ≤ (C : ℝ) - 3 by linarith)
+    nlinarith
+  have hpow : B ≤ B ^ C := le_self_pow₀ hB (by omega)
+  have hE : a + 3 * B ≤ (C : ℝ) * B ^ C :=
+    hCB.trans (mul_le_mul_of_nonneg_left hpow (Nat.cast_nonneg _))
+  change Real.exp 2 ≤ Real.exp ((C : ℝ) * B ^ C) ∧
+    ((d + d : ℕ) : ℝ) ≤ Real.log (Real.exp ((C : ℝ) * B ^ C)) ∧
+    a * (d + 1 : ℝ) / r ≤ Real.exp ((C : ℝ) * B ^ C)
+  refine ⟨Real.exp_le_exp.mpr (by linarith), ?_, ?_⟩
+  · rw [Real.log_exp]
+    push_cast
+    linarith
+  · have haexp : a ≤ Real.exp a := by linarith [Real.add_one_le_exp a]
+    have hdexp : (d + 1 : ℝ) ≤ Real.exp (d + 1 : ℝ) := by
+      linarith [Real.add_one_le_exp (d + 1 : ℝ)]
+    calc
+      _ = a * (d + 1 : ℝ) * (1 / r) := by ring
+      _ ≤ Real.exp a * Real.exp (d + 1 : ℝ) * Real.exp (Real.log (1 / r)) := by
+        rw [Real.exp_log (by positivity : 0 < (1 : ℝ) / r)]
+        gcongr
+      _ = Real.exp (a + B) := by
+        rw [← Real.exp_add, ← Real.exp_add]
+        congr 1
+        dsimp [B]
+        ring
+      _ ≤ _ := Real.exp_le_exp.mpr (by linarith)
+
+theorem bohrLocalQuadraticChart_amplitude_support {q : ℕ} [NeZero q]
+    (S : Finset (ZMod q)) (hS : 1 ∈ S) (ell : ℝ) (v : S → ℝ) (Q : S → S → ℝ)
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) {r : ℝ} (hr : 0 < r) (hr1 : r ≤ 1) :
+    tsupport (bohrLocalQuadraticChart S hS ell v Q cutoff hf hsupp hr).amplitude ⊆
+      Metric.closedBall 0 1 := by
+  apply localizedQuadraticChart_amplitude_support
+  · intro x hx
+    apply hsupp
+    rw [abs_div, abs_of_pos hr]
+    exact (le_div_iff₀ hr).mpr (by linarith)
+  · intro x hx
+    by_contra h
+    have ht := gevreyPartition_tsupport_subset_open (subset_tsupport gevreyPartition h)
+    have ha : |x| < 1 := abs_lt.mpr ht
+    linarith
+
+/-- Blueprint `lem:local-chart`, lines 1019-1084: every locally quadratic phase on
+ the source Bohr domain is represented by a globally bounded real chart on the smaller
+ weighted domain. The matrix has height one, and a fixed Gevrey order and one
+ quasipolynomial budget work uniformly in the modulus, frequency set and local phase. -/
+theorem locally_quadratic_chart
+    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) (hunit : ∀ x, |cutoff x| ≤ 1)
+    (K : ℕ) (hK : 1 ≤ K)
+    (hderiv : ∀ i x, |iteratedDeriv i cutoff x| ≤
+      ((K : ℝ) * (i + 1 : ℝ)) ^ (K * (i + 1))) :
+    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧ ∀ (q : ℕ) [NeZero q]
+      (S : Finset (ZMod q)) (_hS : 1 ∈ S) (r ρ : ℝ),
+      0 < r → 0 < ρ → ρ < 1 / 100 →
+      r ≤ latticeBoxRadius S.card * ρ / (2 * Real.sqrt S.card) →
+      ∀ M : ZMod q → ZMod q,
+      (∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+        x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y) →
+      ∃ A : QuadraticChartData (S.card + S.card),
+        (∀ i j, chartRationalHeight (A.matrix i j) = 1) ∧
+        QuadraticChartComplexity c₀
+          (Real.exp ((C : ℝ) * ((S.card : ℝ) + Real.log (1 / r) + 1) ^ C)) A ∧
+        IsBoundedQuadraticChart A ∧
+        ∀ n : ℤ, quadraticChartAtom A (n : ℝ) =
+          (graphBohrWeight cutoff S r (n : ZMod q) : ℂ) *
+            ZMod.stdAddChar (M (n : ZMod q) * (n : ZMod q)) := by
+  obtain ⟨L, hL, hU⟩ := bohrLocalQuadraticChart_uniform_gevrey_bound
+    cutoff hf hsupp hunit K hK hderiv
+  obtain ⟨C, hC⟩ : ∃ C : ℕ, 1000 * (L + 1) ≤ C := ⟨1000 * (L + 1), le_rfl⟩
+  refine ⟨2 * L + 2, C, by omega, by omega, ?_⟩
+  intro q hq S hS r ρ hr hρ hρsmall hsmall M hadd
+  have hρ1 : ρ < 1 := by linarith
+  have hr1 : r ≤ 1 := (local_chart_radius_lt_half S hS hr hρ hρ1 hsmall).le.trans (by norm_num)
+  obtain ⟨ell, v, Q, hQ, hbounded, hvalues⟩ := bohr_local_chart_bounded_values
+    S hS hr hρ hρ1 hsmall M hadd cutoff hf hsupp hunit
+  let A := bohrLocalQuadraticChart S hS ell v Q cutoff hf hsupp hr
+  let H := Real.exp ((C : ℝ) * ((S.card : ℝ) + Real.log (1 / r) + 1) ^ C)
+  have hbudget := local_chart_complexity_parameter L S.card C hL hC hr hr1
+  change Real.exp 2 ≤ H ∧ ((S.card + S.card : ℕ) : ℝ) ≤ Real.log H ∧
+    100 * (L + 1 : ℝ) * (S.card + 1 : ℝ) / r ≤ H at hbudget
+  have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ), hbudget.1]
+  refine ⟨A, bohrLocalQuadraticChart_matrix_height S hS ell v Q cutoff hf hsupp hr, ?_,
+    hbounded, hvalues⟩
+  refine {
+    lower := hbudget.1
+    dimension := hbudget.2.1
+    height := ?_
+    support := ?_
+    derivative := ?_
+  }
+  · intro i j
+    change (chartRationalHeight
+      ((bohrLocalQuadraticChart S hS ell v Q cutoff hf hsupp hr).matrix i j) : ℝ) ≤ H
+    rw [bohrLocalQuadraticChart_matrix_height, Nat.cast_one]
+    exact hH1
+  · intro z hz i
+    have hs := bohrLocalQuadraticChart_amplitude_support
+      S hS ell v Q cutoff hf hsupp hr hr1 (subset_tsupport A.amplitude hz)
+    have hn : ‖z‖ ≤ 1 := by simpa only [Metric.mem_closedBall, dist_zero_right] using hs
+    exact (norm_le_pi_norm z i).trans (hn.trans hH1)
+  · intro m word z
+    apply (hU q S hS ell v Q hQ r hr hr1 m word z).trans
+    gcongr
+    exact hbudget.2.2
+
+
+theorem bohr_initial_derivative_correlation {q : ℕ} [NeZero q]
+    (cutoff : ℝ → ℝ) (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0)
+    (H S : Finset (ZMod q)) (ξ M : ZMod q → ZMod q) (f : ZMod q → ℂ)
+    {ρ δ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ < 1 / 100) (hδ : 0 < δ)
+    (hH : 0 < (H.card : ℝ) / q)
+    (hadd : ∀ u ∈ graphBohrSet S ρ, ∀ v ∈ graphBohrSet S ρ,
+      u + v ∈ graphBohrSet S ρ → M (u + v) = M u + M v)
+    (hdiff : ∀ u ∈ H, ∀ v ∈ H, u - v ∈ graphBohrSet S ρ →
+      ξ u - ξ v = 2 * M (u - v))
+    (hcor : ∀ h ∈ H, δ ^ 4 / Real.sqrt 2 ≤
+      ‖finiteFourier (fun x => f (x + h) * conj (f x)) (ξ h)‖) :
+    let ζ := δ ^ 4 * ((H.card : ℝ) / q) *
+      graphBohrMass cutoff S (ρ / 100) / Real.sqrt 2
+    0 < ζ ∧ ∃ (x₀ ξ₀ : ZMod q) (c : ZMod q → ℂ),
+      (∀ h, ‖c h‖ ≤ 1) ∧
+      ζ ≤ ‖graphLocalCorrelation (graphBohrWeight cutoff S (ρ / 100)) M
+        (fun x => f (x + x₀))
+        (fun x => conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))) c‖ := by
+  dsimp only
+  have hr : 0 < ρ / 100 := by positivity
+  have hmass := (graphBohrMass_bounds cutoff hb0 hb1 hbone S hr
+    (by linarith : ρ / 100 < 1 / 8)).1
+  have hmasspos : 0 < graphBohrMass cutoff S (ρ / 100) :=
+    (pow_pos (div_pos hr (by norm_num)) S.card).trans_le hmass
+  have hdens : (H.dens : ℝ) = (H.card : ℝ) / q := by
+    simp [Finset.dens, ZMod.card]
+  constructor
+  · positivity
+  have hsupport (h) (hh : graphBohrWeight cutoff S (ρ / 100) h ≠ 0) :
+      h ∈ graphBohrSet S (ρ / 100) := by
+    by_contra hn
+    exact hh (graphBohrWeight_eq_zero_of_notMem cutoff hsupp S hr h hn)
+  have hcorr (h) (hh : h ∈ H) : δ ^ 4 / Real.sqrt 2 ≤
+      ‖𝔼 x, f (x + h) * conj (f x) * ZMod.stdAddChar (-(ξ h * x))‖ := by
+    have he (g : ZMod q → ℂ) : finiteAverage g = 𝔼 x, g x := by
+      simp only [finiteAverage, Fintype.expect_eq_sum_div_card, div_eq_mul_inv, mul_comm]
+    simpa only [finiteFourier_eq_average, he] using hcor h hh
+  obtain ⟨x₀, ξ₀, c, hc, hcl⟩ := graph_initial_correlation_from_derivatives H S ξ M
+    (graphBohrWeight cutoff S (ρ / 100)) f hr.le (by linarith) (by positivity)
+    (fun h => (graphBohrWeight_bounds cutoff hb0 hb1 S (ρ / 100) h).1)
+    hsupport (by rw [hdens]; exact mul_pos hH hmasspos) hadd hdiff hcorr
+  refine ⟨x₀, ξ₀, c, hc, ?_⟩
+  rw [hdens] at hcl
+  convert hcl using 1
+  dsimp [graphBohrMass]
+  ring
+theorem bohr_initial_correlation_log {q : ℕ} [NeZero q]
+    (cutoff : ℝ → ℝ) (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1) (H S : Finset (ZMod q))
+    {ρ δ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ < 1 / 100)
+    (hδ : 0 < δ) (hδ1 : δ ≤ 1)
+    (hH : δ ^ 87112 / localFrequencyDensityCost ≤ (H.card : ℝ) / q)
+    (hrank : (S.card : ℝ) + Real.log (1 / ρ) ≤
+      10 ^ 50 * (1 + Real.log (1 / δ)) ^ 4) :
+    Real.log (1 / (δ ^ 4 * ((H.card : ℝ) / q) *
+      graphBohrMass cutoff S (ρ / 100) / Real.sqrt 2)) ≤
+      (localFrequencyDensityCost + 10 ^ 102) * (1 + Real.log (1 / δ)) ^ 8 := by
+  have hβ := (graphBohrMass_bounds cutoff hb0 hb1 hbone S
+    (by positivity : 0 < ρ / 100) (by linarith : ρ / 100 < 1 / 8)).1
+  have he : ρ / 100 / 6 = ρ / 600 := by ring
+  rw [he] at hβ
+  have hB : 1 ≤ 1 + Real.log (1 / δ) := by
+    have := Real.log_nonneg ((one_le_div hδ).mpr hδ1)
+    linarith
+  have h := graph_initial_correlation_log_budget S.card 87112 hδ hρ
+    (by linarith : ρ ≤ 1) (by unfold localFrequencyDensityCost; positivity) hH hβ
+    (by norm_num : (1 : ℝ) ≤ 10 ^ 50) hB (by linarith) hrank
+  apply h.trans
+  apply mul_le_mul_of_nonneg_right _ (by positivity)
+  norm_num only [Nat.cast_ofNat]
+  linarith
+
+theorem finite_inverse_radius (D d : ℕ) (hd : 0 < d) (hdD : d ≤ D)
+    {ρ t ζ C : ℝ} (hρ : 0 < ρ) (hρ1 : ρ ≤ 1) (ht : 0 < t) (ht1 : t ≤ 1)
+    (hζ : 0 < ζ) (hζ1 : ζ ≤ 1) (hC : 1 ≤ C) :
+    ∃ r : ℝ, 0 < r ∧ r ≤ t / 100 ∧
+      r ≤ latticeBoxRadius D * (ρ / 10) / (2 * Real.sqrt D) ∧
+      r ≤ ζ * (ρ / 100) / (100 * C * d) ∧
+      Real.log (1 / r) ≤ Real.log (1 / t) + Real.log (1 / ζ) +
+        2 * Real.log (1 / ρ) + Real.log C + 20000 * ((D : ℝ) + 1) ^ 2 := by
+  have hD : 0 < D := hd.trans_le hdD
+  have hd1 : (1 : ℝ) ≤ d := by exact_mod_cast hd
+  have hD1 : (1 : ℝ) ≤ D := by exact_mod_cast hD
+  have hdD' : (d : ℝ) ≤ D := by exact_mod_cast hdD
+  have hCpos : 0 < C := by linarith
+  have hspos : 0 < Real.sqrt (D : ℝ) := Real.sqrt_pos.mpr (by positivity)
+  have hs1 : 1 ≤ Real.sqrt (D : ℝ) := by
+    exact (Real.le_sqrt (by norm_num) (by positivity)).mpr (by nlinarith)
+  have hsD : Real.sqrt (D : ℝ) ≤ (D : ℝ) + 1 :=
+    (Real.sqrt_le_iff).mpr ⟨by positivity, by nlinarith⟩
+  have hepos := latticeBoxRadius_pos hD
+  have he1 : latticeBoxRadius D ≤ 1 := by
+    unfold latticeBoxRadius
+    exact inv_le_one_of_one_le₀ (one_le_pow₀ (by linarith : (1 : ℝ) ≤ 100 * D))
+  let a := t / 100
+  let b := latticeBoxRadius D * (ρ / 10) / (2 * Real.sqrt D)
+  let c := ζ * (ρ / 100) / (100 * C * d)
+  have ha : 0 < a := by dsimp [a]; positivity
+  have hb : 0 < b := by dsimp [b]; positivity
+  have hc : 0 < c := by dsimp [c]; positivity
+  have ha1 : a ≤ 1 := by dsimp [a]; linarith
+  have hb1 : b ≤ 1 := by
+    apply (div_le_one (by positivity : 0 < 2 * Real.sqrt D)).mpr
+    have heρ := mul_le_mul he1 (show ρ / 10 ≤ 1 by linarith) (by positivity) zero_le_one
+    linarith
+  have hc1 : c ≤ 1 := by
+    apply (div_le_one (by positivity : 0 < 100 * C * d)).mpr
+    have hζρ := mul_le_mul hζ1 (show ρ / 100 ≤ 1 by linarith) (by positivity) zero_le_one
+    have hCd := mul_le_mul hC hd1 (by norm_num : (0 : ℝ) ≤ 1) (by positivity : 0 ≤ C)
+    nlinarith
+  refine ⟨a * b * c, by positivity, ?_, ?_, ?_, ?_⟩
+  · exact (mul_le_mul_of_nonneg_left hc1 (mul_nonneg ha.le hb.le)).trans
+      (by simpa using mul_le_mul_of_nonneg_left hb1 ha.le)
+  · calc
+      a * b * c ≤ 1 * b * 1 := mul_le_mul (mul_le_mul_of_nonneg_right ha1 hb.le)
+        hc1 hc.le (by positivity)
+      _ = b := by ring
+  · exact (mul_le_mul_of_nonneg_right
+      (show a * b ≤ 1 by simpa using mul_le_mul ha1 hb1 hb.le zero_le_one) hc.le).trans_eq
+        (one_mul c)
+  · have heLog : Real.log (1 / latticeBoxRadius D) ≤ 1000 * (D : ℝ) ^ 2 := by
+      simp only [latticeBoxRadius, one_div, inv_inv, Real.log_pow]
+      have hl := Real.log_le_self (by positivity : (0 : ℝ) ≤ 100 * D)
+      have hm := mul_le_mul_of_nonneg_left hl (by positivity : (0 : ℝ) ≤ 10 * D)
+      norm_num only [Nat.cast_mul, Nat.cast_ofNat] at *
+      nlinarith
+    have hlogs : Real.log (Real.sqrt (D : ℝ)) ≤ (D : ℝ) + 1 :=
+      (Real.log_le_self hspos.le).trans hsD
+    have hlogd : Real.log (d : ℝ) ≤ D := (Real.log_le_self (by positivity)).trans hdD'
+    have h100 := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 100)
+    have h10 := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 10)
+    have h2 := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 2)
+    dsimp [a, b, c]
+    simp only [one_div, Real.log_inv] at heLog ⊢
+    rw [Real.log_mul (mul_ne_zero ha.ne' hb.ne') hc.ne',
+      Real.log_mul ha.ne' hb.ne']
+    dsimp [a, b, c]
+    rw [Real.log_div ht.ne' (by norm_num : (100 : ℝ) ≠ 0),
+      Real.log_div (by positivity : latticeBoxRadius D * (ρ / 10) ≠ 0)
+        (by positivity : 2 * Real.sqrt D ≠ 0),
+      Real.log_mul hepos.ne' (by positivity : ρ / 10 ≠ 0),
+      Real.log_div hρ.ne' (by norm_num : (10 : ℝ) ≠ 0),
+      Real.log_mul (by norm_num : (2 : ℝ) ≠ 0) hspos.ne',
+      Real.log_div (by positivity : ζ * (ρ / 100) ≠ 0)
+        (by positivity : 100 * C * d ≠ 0),
+      Real.log_mul hζ.ne' (by positivity : ρ / 100 ≠ 0),
+      Real.log_div hρ.ne' (by norm_num : (100 : ℝ) ≠ 0),
+      Real.log_mul (by positivity : 100 * C ≠ 0) (by positivity : (d : ℝ) ≠ 0),
+      Real.log_mul (by norm_num : (100 : ℝ) ≠ 0) hCpos.ne']
+    nlinarith
+theorem bohr_symmetry_refinement (cutoff : ℝ → ℝ) (hcont : ContDiff ℝ 1 cutoff)
+    (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (q : ℕ) [NeZero q], Odd q →
+      ∀ (S : Finset (ZMod q)), 1 ∈ S → ∀ (ρ ζ C : ℝ),
+      0 < ρ → ρ < 1 / 100 → 0 < ζ → ζ ≤ 1 → 1 ≤ C →
+      ∀ (M : ZMod q → ZMod q),
+      (∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+        x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y) →
+      ∀ (a b c : ZMod q → ℂ), (∀ x, ‖a x‖ ≤ 1) → (∀ x, ‖b x‖ ≤ 1) →
+      (∀ x, ‖c x‖ ≤ 1) →
+      ζ ≤ ‖graphLocalCorrelation (graphBohrWeight cutoff S (ρ / 100)) M a b c‖ →
+      ∃ (T : Finset (ZMod q)) (t r : ℝ), S ⊆ T ∧ 1 ∈ T ∧ 0 < t ∧ t < ρ / 100 ∧
+        (T.card : ℝ) + Real.log (1 / t) ≤ K * graphSymmetryBudget S.card (ρ / 100) ζ ^ 8 ∧
+        0 < r ∧ r ≤ t / 100 ∧
+        r ≤ latticeBoxRadius T.card * (ρ / 10) / (2 * Real.sqrt T.card) ∧
+        r ≤ ζ * (ρ / 100) / (100 * C * S.card) ∧
+        (∀ x ∈ graphBohrSet T r, ∀ y ∈ graphBohrSet T r,
+          ‖graphAlternatingPhase M x y‖ ≤ ζ / 1000) ∧
+        (∀ x ∈ graphBohrSet T (ρ / 10), ∀ y ∈ graphBohrSet T (ρ / 10),
+          x + y ∈ graphBohrSet T (ρ / 10) → M (x + y) = M x + M y) ∧
+        Real.log (1 / r) ≤ Real.log (1 / t) + Real.log (1 / ζ) +
+          2 * Real.log (1 / ρ) + Real.log C + 20000 * ((T.card : ℝ) + 1) ^ 2 := by
+  obtain ⟨K, hK, hsym⟩ := local_symmetry cutoff hcont hb0 hb1 hbone hsupp
+  refine ⟨K, hK, ?_⟩
+  intro q hq hodd S hS ρ ζ C hρ hρ1 hζ hζ1 hC M hadd a b c ha hb hc hcorr
+  obtain ⟨T, t, hST, ht, htr, hskew, hcost⟩ :=
+    hsym q hodd S (ρ / 100) ρ ζ (by positivity) le_rfl (by linarith)
+      hζ M hadd a b c ha hb hc hcorr
+  obtain ⟨r, hr, hrt, hrbox, hrtrans, hrlog⟩ := finite_inverse_radius T.card S.card
+    (Finset.card_pos.mpr ⟨1, hS⟩) (Finset.card_le_card hST)
+    hρ (by linarith) ht (by linarith) hζ hζ1 hC
+  refine ⟨T, t, r, hST, hST hS, ht, htr, hcost, hr, hrt, hrbox, hrtrans, ?_, ?_, hrlog⟩
+  · intro x hx y hy
+    exact hskew x (graphBohrSet_mono (Finset.Subset.refl T) (by linarith : r ≤ t) hx)
+      y (graphBohrSet_mono (Finset.Subset.refl T) (by linarith : r ≤ t) hy)
+  · intro x hx y hy hxy
+    exact hadd x (graphBohrSet_mono hST (by linarith : ρ / 10 ≤ ρ) hx)
+      y (graphBohrSet_mono hST (by linarith : ρ / 10 ≤ ρ) hy)
+      (graphBohrSet_mono hST (by linarith : ρ / 10 ≤ ρ) hxy)
+
+theorem cyclic_linear_phase_real {q : ℕ} [NeZero q] (ℓ : ZMod q) :
+    ∃ b : ℝ, ∀ n : ℤ,
+      ZMod.stdAddChar (-ℓ * (n : ZMod q)) = (Real.fourierChar (b * n) : ℂ) := by
+  let b := unitCircleCentered (ZMod.toAddCircle (-ℓ))
+  have hb : ZMod.stdAddChar (-ℓ) = (Real.fourierChar b : ℂ) :=
+    cyclic_character_of_real_phase (-ℓ) b (unitCircleCentered_coe _).symm
+  refine ⟨b, ?_⟩
+  intro n
+  calc
+    _ = ZMod.stdAddChar (n • (-ℓ)) := by congr 1; simp only [zsmul_eq_mul, mul_comm]
+    _ = ZMod.stdAddChar (-ℓ) ^ n := AddChar.map_zsmul_eq_zpow _ _ _
+    _ = (Real.fourierChar (b * n) : ℂ) := by
+      rw [hb]
+      rw [mul_comm b (n : ℝ), ← zsmul_eq_mul, AddChar.map_zsmul_eq_zpow, Circle.coe_zpow]
+theorem quadratic_chart_of_weighted_phase {q : ℕ} [NeZero q] {d c₀ : ℕ} {H η : ℝ}
+    (hc : 1 ≤ c₀) (w : ZMod q → ℝ) (M : ZMod q → ZMod q) (f : ZMod q → ℂ)
+    (y ℓ : ZMod q) (A : QuadraticChartData d) (hA : QuadraticChartComplexity c₀ H A)
+    (hbounded : IsBoundedQuadraticChart A)
+    (hvalues : ∀ n : ℤ, quadraticChartAtom A n =
+      (w (n : ZMod q) : ℂ) * ZMod.stdAddChar (M (n : ZMod q) * (n : ZMod q)))
+    (hcorr : η ≤ ‖𝔼 u, (w u : ℂ) * f (u + y) *
+      ZMod.stdAddChar (-(M u * u) + ℓ * u)‖) :
+    ∃ B : QuadraticChartData d, QuadraticChartComplexity c₀ (chartTranslationBudget H) B ∧
+      IsBoundedQuadraticChart B ∧
+      η ≤ ‖𝔼 n : ZMod q, f n * conj (quadraticChartAtom B (n.val : ℝ))‖ := by
+  obtain ⟨b, hb⟩ := cyclic_linear_phase_real ℓ
+  obtain ⟨B, hB, hBb, he⟩ := quadraticChart_translation_closure
+    (modulateQuadraticChart_complexity hA b) hc (-(y.val : ℝ))
+  have hval (n : ℤ) : quadraticChartAtom B n =
+      (w ((n : ZMod q) - y) : ℂ) *
+        ZMod.stdAddChar (M ((n : ZMod q) - y) * ((n : ZMod q) - y) -
+          ℓ * ((n : ZMod q) - y)) := by
+    rw [he, show (n : ℝ) + -(y.val : ℝ) = ((n - (y.val : ℤ) : ℤ) : ℝ) by push_cast; ring,
+      modulateQuadraticChart_atom, hvalues, ← hb]
+    simp only [Int.cast_sub, Int.cast_natCast, ZMod.natCast_zmod_val]
+    simp only [sub_eq_add_neg, AddChar.map_add_eq_mul, neg_mul]
+    ring
+  refine ⟨B, hB, hBb (modulateQuadraticChart_bounded hbounded b), ?_⟩
+  have hmean : (𝔼 n : ZMod q, f n * conj (quadraticChartAtom B (n.val : ℝ))) =
+      𝔼 u, (w u : ℂ) * f (u + y) * ZMod.stdAddChar (-(M u * u) + ℓ * u) := by
+    have hshift : (𝔼 u, f (u + y) * conj (quadraticChartAtom B ((u + y).val : ℝ))) =
+        𝔼 n : ZMod q, f n * conj (quadraticChartAtom B (n.val : ℝ)) :=
+      Fintype.expect_equiv (Equiv.addRight y) _ _ (fun _ => rfl)
+    rw [← hshift]
+    apply Finset.expect_congr rfl
+    intro u _
+    have hv : quadraticChartAtom B ((u + y).val : ℝ) =
+        (w u : ℂ) * ZMod.stdAddChar (M u * u - ℓ * u) := by
+      simpa only [Int.cast_natCast, ZMod.natCast_zmod_val, add_sub_cancel_right]
+        using hval ((u + y).val : ℤ)
+    rw [hv]
+    simp only [map_mul, Complex.conj_ofReal, graph_stdChar_conj,
+      sub_eq_add_neg, neg_add_rev, neg_neg,
+      add_comm (ℓ * u) (-(M u * u))]
+    ring
+  rw [hmean]
+  exact hcorr
+
+theorem finite_inverse_with_cutoff
+    (cutoff : ℝ → ℝ) (hcut : ContDiff ℝ (⊤ : ℕ∞) cutoff)
+    (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0)
+    (k : ℕ) (hk : 1 ≤ k)
+    (hderiv : ∀ i x, |iteratedDeriv i cutoff x| ≤
+      ((k : ℝ) * (i + 1 : ℝ)) ^ (k * (i + 1))) :
+    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧ ∀ (q : ℕ) [NeZero q], Odd q →
+      ∀ (δ : ℝ), 0 < δ → δ < 1 / 2 → ∀ (f : ZMod q → ℂ), (∀ x, ‖f x‖ ≤ 1) →
+      δ ≤ gowersNorm (finiteHaar (ZMod q)) 3 f →
+      ∃ (d : ℕ) (A : QuadraticChartData d),
+        QuadraticChartComplexity c₀ (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C)) A ∧
+        IsBoundedQuadraticChart A ∧
+        (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C))⁻¹ ≤
+          ‖𝔼 x : ZMod q, f x * conj (quadraticChartAtom A (x.val : ℝ))‖ := by
+  have hunit (x) : |cutoff x| ≤ 1 := by rw [abs_of_nonneg (hb0 x)]; exact hb1 x
+  have hcut1 : ContDiff ℝ 1 cutoff := hcut.of_le (by simp)
+  obtain ⟨L, hLip⟩ := ContDiff.lipschitzWith_of_hasCompactSupport
+    (unit_cutoff_hasCompactSupport cutoff hsupp) hcut1 (by norm_num)
+  obtain ⟨c₀, n, hc₀, hn, hchart⟩ := locally_quadratic_chart cutoff hcut hsupp hunit k hk hderiv
+  obtain ⟨K, hK, hrefine⟩ := bohr_symmetry_refinement cutoff hcut1 hb0 hb1 hbone hsupp
+  let T₀ := max (L : ℝ) 1
+  have hT₀ : 1 ≤ T₀ := le_max_right _ _
+  have hcost : 0 < localFrequencyDensityCost := by unfold localFrequencyDensityCost; positivity
+  let R := 100000 + localFrequencyDensityCost + 10 ^ 102 + K + T₀ + (n : ℝ)
+  have hR : 100000 ≤ R := by dsimp [R]; linarith [Nat.cast_nonneg n (α := ℝ)]
+  have hnR : (n : ℝ) ≤ R := by dsimp [R]; linarith
+  have hKR : K ≤ R := by dsimp [R]; linarith [Nat.cast_nonneg n (α := ℝ)]
+  have hTR : T₀ ≤ R := by dsimp [R]; linarith [Nat.cast_nonneg n (α := ℝ)]
+  have hZR : localFrequencyDensityCost + 10 ^ 102 ≤ R := by
+    dsimp [R]; linarith [Nat.cast_nonneg n (α := ℝ)]
+  have hAR : (10 : ℝ) ^ 50 ≤ R := by
+    have hh : (10 : ℝ) ^ 50 ≤ 10 ^ 102 := by norm_num
+    linarith
+  obtain ⟨C, hC, hbudget⟩ := uniform_translated_chart_budget n R hR hnR
+  refine ⟨c₀, C, hc₀, hC, ?_⟩
+  intro q hq hodd δ hδ hδsmall f hf hU
+  have hδ1 : δ ≤ 1 := by linarith only [hδsmall]
+  let B := 1 + Real.log (1 / δ)
+  have hB : 1 ≤ B := by
+    have hh := Real.log_nonneg ((one_le_div hδ).mpr hδ1)
+    dsimp [B]; linarith only [hh]
+  let P := R * B ^ 8
+  have hRP : R ≤ P := by
+    dsimp [P]
+    simpa only [mul_one] using mul_le_mul_of_nonneg_left (one_le_pow₀ hB (n := 8))
+      (by linarith : 0 ≤ R)
+  have hP : 100000 ≤ P := hR.trans hRP
+  obtain ⟨H, ξ, S, ρ, M, hH, hder, hS, hρ, hρsmall, hrank, _, _, hadd, hdiff⟩ :=
+    locally_additive_derivative_frequency hodd f hf hδ hU
+  have hHpos : 0 < (H.card : ℝ) / q :=
+    (div_pos (pow_pos hδ 87112) hcost).trans_le hH
+  have hH1 : (H.card : ℝ) / q ≤ 1 := by
+    apply (div_le_one (Nat.cast_pos.mpr (NeZero.pos q) : (0 : ℝ) < q)).mpr
+    have hh := H.card_le_univ
+    rw [ZMod.card] at hh
+    exact_mod_cast hh
+  have hr₁ : 0 < ρ / 100 := by positivity
+  have hβ₁ := graphBohrMass_bounds cutoff hb0 hb1 hbone S hr₁
+    (by linarith only [hρsmall] : ρ / 100 < 1 / 8)
+  have hβ₁pos := graphBohrMass_pos cutoff hb0 hb1 hbone S hr₁
+    (by linarith : ρ / 100 < 1 / 8)
+  let ζ := δ ^ 4 * ((H.card : ℝ) / q) *
+    graphBohrMass cutoff S (ρ / 100) / Real.sqrt 2
+  obtain ⟨hζ, x₀, ξ₀, c, hc, hcorr⟩ := bohr_initial_derivative_correlation cutoff
+    hb0 hb1 hbone hsupp H S ξ M f hρ hρsmall hδ hHpos hadd hdiff hder
+  change 0 < ζ at hζ
+  have hζ1 : ζ ≤ 1 := by
+    have hδ4 := pow_le_one₀ hδ.le hδ1 (n := 4)
+    have hp := mul_le_mul hδ4 hH1 hHpos.le zero_le_one
+    have hp' := mul_le_mul hp hβ₁.2 hβ₁pos.le (by norm_num : (0 : ℝ) ≤ 1 * 1)
+    have hs : 1 ≤ Real.sqrt (2 : ℝ) :=
+      (Real.le_sqrt (by norm_num) (by norm_num)).mpr (by norm_num)
+    apply (div_le_one (by positivity : 0 < Real.sqrt (2 : ℝ))).mpr
+    norm_num only [mul_one] at hp'
+    exact hp'.trans hs
+  have hb (x) : ‖conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))‖ ≤ 1 := by
+    simpa only [norm_mul, Complex.norm_conj, ZMod.stdAddChar_apply,
+      Circle.norm_coe, mul_one] using hf x
+  obtain ⟨T, t, r, hST, hT, ht, htρ, hDT, hr, hrt, hrbox, hrerr, hskew, hlocal, hrlog⟩ :=
+    hrefine q hodd S hS ρ ζ T₀ hρ hρsmall hζ hζ1 hT₀ M hadd
+      (fun x => f (x + x₀)) (fun x => conj (f x) * ZMod.stdAddChar (-(ξ₀ * x)))
+      c (fun x => hf _) hb hc hcorr
+  have hrr : r ≤ ρ / 100 := by linarith only [hrt, htρ, ht]
+  have hrsmall : r < 1 / 8 := by linarith only [hrr, hρsmall]
+  have herror : max (L : ℝ) 1 * S.card * r / (ρ / 100) ≤ ζ / 100 := by
+    have hd : (0 : ℝ) < S.card := by exact_mod_cast (Finset.card_pos.mpr ⟨1, hS⟩)
+    have hden : 0 < 100 * T₀ * S.card := by positivity
+    have hm := (le_div_iff₀ hden).mp hrerr
+    apply (div_le_iff₀ hr₁).mpr
+    change T₀ * S.card * r ≤ ζ / 100 * (ρ / 100)
+    nlinarith only [hm]
+  obtain ⟨y, ℓ, hweighted⟩ := graph_bohr_local_quadratic_correlation cutoff hLip
+    hb0 hb1 hbone hsupp S T hST hr₁ (by linarith only [hρsmall]) hr hrr
+    (by linarith only [hrr, hρ]) hζ
+    herror M hadd hskew (fun x => f (x + x₀)) f c (fun x => hf _) hf hc ξ₀ hcorr
+  obtain ⟨A, _, hA, hAb, hAv⟩ := hchart q T hT r (ρ / 10) hr (by positivity)
+    (by linarith only [hρsmall]) hrbox M hlocal
+  obtain ⟨A', hA', hA'b, hcorr'⟩ := quadratic_chart_of_weighted_phase hc₀
+    (graphBohrWeight cutoff T r) M f y ℓ A hA hAb hAv hweighted
+  let β := graphBohrMass cutoff T r
+  let γ := ζ * β * Real.sqrt β / 4
+  have hβpos : 0 < β := graphBohrMass_pos cutoff hb0 hb1 hbone T hr hrsmall
+  have hγpos : 0 < γ := by dsimp [γ]; positivity
+  have hdP : (S.card : ℝ) + Real.log (1 / ρ) ≤ P := by
+    apply hrank.trans
+    change (10 : ℝ) ^ 50 * B ^ 4 ≤ R * B ^ 8
+    exact mul_le_mul hAR (pow_le_pow_right₀ hB (by norm_num : 4 ≤ 8))
+      (by positivity) (by linarith)
+  have hζP : Real.log (1 / ζ) ≤ P := by
+    apply (bohr_initial_correlation_log cutoff hb0 hb1 hbone H S hρ hρsmall hδ hδ1 hH hrank).trans
+    change (localFrequencyDensityCost + 10 ^ 102) * B ^ 8 ≤ R * B ^ 8
+    exact mul_le_mul_of_nonneg_right hZR (by positivity)
+  have hTP : Real.log T₀ ≤ P :=
+    (Real.log_le_self (by linarith : 0 ≤ T₀)).trans (hTR.trans hRP)
+  have hnum := graph_local_inverse_log_budget S.card T.card hP hρ (by linarith only [hρsmall])
+    ht (by linarith only [htρ, hρsmall]) hr (by linarith only [hrsmall]) hζ hζ1
+    (hKR.trans hRP) hdP hζP hTP hDT hrlog
+    (graphBohrMass_bounds cutoff hb0 hb1 hbone T hr hrsmall).1
+  have hX0 : 0 ≤ (T.card : ℝ) + Real.log (1 / r) + 1 := by
+    have hh := Real.log_nonneg ((one_le_div hr).mpr (by linarith only [hrsmall] : r ≤ 1))
+    positivity
+  obtain ⟨hcomplex, hγbudget⟩ := hbudget B hB
+    ((T.card : ℝ) + Real.log (1 / r) + 1) hX0 hnum.1
+  have hγlog : Real.log (1 / γ) ≤ (C : ℝ) * B ^ C := hnum.2.trans hγbudget
+  have hγbound : (Real.exp ((C : ℝ) * B ^ C))⁻¹ ≤ γ := by
+    have hh := (Real.log_le_iff_le_exp (by positivity : 0 < 1 / γ)).mp hγlog
+    apply (inv_le_iff_one_le_mul₀' (Real.exp_pos _)).mpr
+    exact (div_le_iff₀ hγpos).mp hh
+  refine ⟨T.card + T.card, A', quadraticChartComplexity_mono hA' hcomplex, hA'b, ?_⟩
+  exact hγbound.trans hcorr'
+/-- Blueprint `thm:finite-inverse`, lines 1088-1159. One fixed Gevrey order and
+ one quasipolynomial budget work for every positive odd modulus and every bounded
+ input with the stated U3 lower bound. In particular this covers all odd q at least three. -/
+theorem finite_inverse :
+    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧ ∀ (q : ℕ) [NeZero q], Odd q →
+      ∀ (δ : ℝ), 0 < δ → δ < 1 / 2 → ∀ (f : ZMod q → ℂ), (∀ x, ‖f x‖ ≤ 1) →
+      δ ≤ gowersNorm (finiteHaar (ZMod q)) 3 f →
+      ∃ (d : ℕ) (A : QuadraticChartData d),
+        QuadraticChartComplexity c₀ (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C)) A ∧
+        IsBoundedQuadraticChart A ∧
+        (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C))⁻¹ ≤
+          ‖𝔼 x : ZMod q, f x * conj (quadraticChartAtom A (x.val : ℝ))‖ := by
+  obtain ⟨cutoff, hcont, hunit, _, hsupp, hplateau, k, hk, hderiv⟩ :=
+    existsGevreyIntervalCutoff (a := (-1 : ℝ)) (b := -(1 / 2 : ℝ))
+      (c := (1 / 2 : ℝ)) (d := (1 : ℝ)) (by norm_num) (by norm_num) (by norm_num)
+  have houtside (x : ℝ) (hx : 1 ≤ |x|) : cutoff x = 0 := by
+    by_contra hn
+    have hm : x ∈ Set.Ioo (-1 : ℝ) 1 := hsupp (subset_tsupport cutoff hn)
+    have hh : |x| < 1 := abs_lt.mpr hm
+    linarith
+  exact finite_inverse_with_cutoff cutoff (contDiff_infty.mpr hcont)
+    (fun x => (hunit x).1) (fun x => (hunit x).2)
+    (fun x hx => hplateau x (abs_le.mp hx)) houtside k hk hderiv
+
+local instance : Fact (0 < (16 : ℝ)) := ⟨by norm_num⟩
+/-- Blueprint `lem:inverse`, lines 1191–1195: after choosing a sufficiently fine
+cyclic discretization, a globally bounded quadratic chart correlates with the
+original input's cell integrals, with a uniform quasipolynomial budget. -/
+theorem continuous_inverse_sample_witness :
+    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧
+      ∀ (δ : ℝ), 0 < δ → δ < 1 / 2 → ∀ (g : ℝ → ℂ),
+      Measurable g → (∀ x, ‖g x‖ ≤ 1) →
+      (∀ x, g x ≠ 0 → x ∈ Set.Icc (0 : ℝ) 1) →
+      δ ≤ gowersNorm (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+        (AddCircle.liftIoc (16 : ℝ) (-8) g) →
+      ∃ (L d : ℕ) (A : QuadraticChartData d), 0 < L ∧
+        QuadraticChartComplexity c₀ (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C)) A ∧
+        IsBoundedQuadraticChart A ∧
+        (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C))⁻¹ ≤
+          ‖∑ k ∈ Finset.range L,
+            (∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, g x) *
+              conj (quadraticChartAtom A (k : ℝ))‖ := by
+  obtain ⟨c₀, C₀, hc₀, _, hfinite⟩ := finite_inverse
+  obtain ⟨C, hC, hbudget⟩ := inverse_half_parameter_budget C₀
+  refine ⟨c₀, C, hc₀, hC, ?_⟩
+  intro δ hδ hδ2 g hg hunit hsupp hnorm
+  obtain ⟨L, hL, hLn⟩ := exists_cyclic_cell_large_gowersNorm g hg hunit hsupp hδ hnorm
+  have hodd : Odd (16 * L + 1) := ⟨8 * L, by omega⟩
+  obtain ⟨d, A, hA, hAb, hcorr⟩ := hfinite (16 * L + 1) hodd (δ / 2)
+    (by positivity) (by linarith only [hδ2]) (cyclicCellAverage L g)
+    (cyclicCellAverage_norm_le_one hL g hunit) hLn
+  simp only [one_div_div] at hA hcorr
+  have hH := hbudget δ hδ (by linarith only [hδ2])
+  refine ⟨L, d, A, hL, quadraticChartComplexity_mono hA hH, hAb, ?_⟩
+  have hi := one_div_le_one_div_of_le (Real.exp_pos _) hH
+  have hi' : (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C))⁻¹ ≤
+      (Real.exp ((C₀ : ℝ) * (1 + Real.log (2 / δ)) ^ C₀))⁻¹ := by
+    simpa only [one_div] using hi
+  exact hi'.trans (hcorr.trans
+    (cyclicCellAverage_correlation_le_cell_sum L g (fun k => conj (quadraticChartAtom A (k : ℝ)))))
+
+theorem continuous_inverse_affine_coordinates :
+    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧
+      ∀ (δ : ℝ), 0 < δ → δ < 1 / 2 → ∀ (g : ℝ → ℂ),
+      Measurable g → (∀ x, ‖g x‖ ≤ 1) →
+      (∀ x, g x ≠ 0 → x ∈ Set.Icc (0 : ℝ) 1) →
+      δ ≤ gowersNorm (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+        (AddCircle.liftIoc (16 : ℝ) (-8) g) →
+      ∀ (s t : ℝ), s ≠ 0 → ∃ (d : ℕ) (A : QuadraticChartData d),
+        QuadraticChartComplexity c₀ (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C)) A ∧
+        IsBoundedQuadraticChart A ∧
+        (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C))⁻¹ ≤
+          ‖∫ x in (0 : ℝ)..1, g x * conj (quadraticChartAtom A (s * x + t))‖ := by
+  obtain ⟨c₀, C, hc₀, hC, hsample⟩ := continuous_inverse_sample_witness
+  obtain ⟨c₁, B, hc₁, hB, hinterp⟩ := quadraticChart_uniform_floor_interpolation c₀ hc₀
+  obtain ⟨D, hD, hbudget⟩ := uniform_floor_inverse_budget C hC B hB
+  refine ⟨c₁, D, hc₁, hD, ?_⟩
+  intro δ hδ hδ2 g hg hgb hsupp hU s t hs
+  obtain ⟨L, d, A, hL, hA, hAb, hcorr⟩ := hsample δ hδ hδ2 g hg hgb hsupp hU
+  let logBase := 1 + Real.log (1 / δ)
+  let H := Real.exp ((C : ℝ) * logBase ^ C)
+  let ε := H⁻¹ / 8
+  have hX : 1 ≤ logBase := by
+    have hr : 1 ≤ 1 / δ := (le_div_iff₀ hδ).mpr (by linarith only [hδ2])
+    have hl := Real.log_nonneg hr
+    dsimp [logBase]
+    linarith only [hl]
+  have hHp : 0 < H := Real.exp_pos _
+  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hεp : 0 < ε := by dsimp [ε]; positivity
+  have hεh : ε ≤ 1 / 2 := by
+    have hinv : H⁻¹ ≤ 1 := inv_le_one_of_one_le₀ hH1
+    dsimp [ε]
+    linarith only [hinv]
+  obtain ⟨P, Ar, hP, hPH, hAr, hlam, hβ, hθ, _, _, heq⟩ :=
+    quadraticChart_reduce_integer_parameters hA
+  have hArb (n : ℤ) : ‖quadraticChartAtom Ar (n : ℝ)‖ ≤ 1 := by rw [heq]; exact hAb _
+  have hhor : ∃ P' : ℝ, 0 ≤ P' ∧ P' ≤ H ^ (d ^ 2) ∧
+      ∀ i, |Ar.horizontal i| ≤ P' := by
+    refine ⟨P, by positivity, hPH, fun i => ?_⟩
+    rw [abs_of_nonneg (hθ i).1]
+    exact (hθ i).2.le
+  obtain ⟨η, Ai, hηsm, hηunit, _, hηone, hAi, hAib, hAiVal⟩ :=
+    hinterp d H ε Ar hAr hhor
+      (by rw [abs_of_nonneg hlam.1]; exact hlam.2.le)
+      (by rw [abs_of_nonneg hβ.1]; exact hβ.2.le) hArb hεp hεh
+  have hscale : B / ε = 8 * B * H := by dsimp [ε]; field_simp
+  rw [hscale] at hAi
+  have hbgt := hbudget logBase hX
+  obtain ⟨Af, hAf, hAfb, hAfVal⟩ :=
+    quadraticChart_affine_closure hAi hc₁ ((L : ℝ) / s) (-((L : ℝ) * t) / s)
+  refine ⟨d + 2, Af, quadraticChartComplexity_mono hAf hbgt.2.1, hAfb hAib, ?_⟩
+  let b := fun n : ℤ => conj (quadraticChartAtom Ar (n : ℝ))
+  have hbb (n : ℤ) : ‖b n‖ ≤ 1 := by simpa only [b, Complex.norm_conj] using hArb n
+  let old := ∫ x in (0 : ℝ)..1, g x * b ⌊(L : ℝ) * x⌋
+  let new := ∫ x in (0 : ℝ)..1, (η (Int.fract ((L : ℝ) * x)) : ℂ) *
+    (g x * b ⌊(L : ℝ) * x⌋)
+  have hold : H⁻¹ ≤ ‖old‖ := by
+    dsimp only [old]
+    rw [← cell_sum_eq_floor_integral hL g hg hgb b hbb]
+    have hv (k : ℕ) : b (k : ℤ) = conj (quadraticChartAtom A (k : ℝ)) := by
+      dsimp only [b]
+      rw [heq]
+      simp only [Int.cast_natCast]
+    simpa only [hv] using hcorr
+  have herr : ‖old - new‖ ≤ 2 * ε :=
+    floor_cutoff_correlation_error hL g hg hgb b hbb η hηsm.continuous hηunit hεp.le hεh hηone
+  have hnew : new = ∫ x in (0 : ℝ)..1, g x * conj (quadraticChartAtom Af (s * x + t)) := by
+    apply intervalIntegral.integral_congr
+    intro x _
+    dsimp only
+    rw [hAfVal, show (L : ℝ) / s * (s * x + t) + -((L : ℝ) * t) / s =
+      (L : ℝ) * x by field_simp; ring, hAiVal]
+    simp only [map_mul, Complex.conj_ofReal]
+    dsimp only [b]
+    ring
+  have hnewlower : H⁻¹ / 2 ≤ ‖new‖ := by
+    have ht := norm_le_norm_sub_add old new
+    dsimp [ε] at herr
+    linarith only [hold, herr, ht, inv_pos.mpr hHp]
+  have hrecip : (Real.exp ((D : ℝ) * logBase ^ D))⁻¹ ≤ H⁻¹ / 2 := by
+    have hi := one_div_le_one_div_of_le (by positivity : 0 < 2 * H) hbgt.2.2
+    simpa only [one_div, mul_inv_rev, invOf_eq_inv, div_eq_mul_inv, mul_comm, one_mul] using hi
+  exact hrecip.trans (by simpa only [hnew] using hnewlower)
+
+/-- Blueprint lem:inverse, continuous inverse statement on every nondegenerate
+interval, with uniform Gevrey order and quasipolynomial complexity/correlation. -/
+theorem continuous_inverse :
+    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧
+      ∀ (a b : ℝ), a < b → ∀ (δ : ℝ), 0 < δ → δ < 1 / 2 →
+      ∀ (f : ℝ → ℂ), Measurable f → (∀ x ∈ Set.Ico a b, ‖f x‖ ≤ 1) →
+      δ ≤ intervalGowersNorm a b f →
+      ∃ (d : ℕ) (A : QuadraticChartData d),
+        QuadraticChartComplexity c₀ (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C)) A ∧
+        IsBoundedQuadraticChart A ∧
+        (Real.exp ((C : ℝ) * (1 + Real.log (1 / δ)) ^ C))⁻¹ ≤
+          (b - a)⁻¹ * ‖∫ x in a..b, f x * conj (quadraticChartAtom A x)‖ := by
+  obtain ⟨c₀, C, hc₀, hC, hinverse⟩ := continuous_inverse_affine_coordinates
+  refine ⟨c₀, C, hc₀, hC, ?_⟩
+  intro a b hab δ hδ hδ2 f hf hunit hU
+  let g := normalizeIntervalFunction a b f
+  have hg := normalizeIntervalFunction_measurable a b f hf
+  have hgb := normalizeIntervalFunction_norm_le_one hab f hunit
+  have hsupp (x : ℝ) (hx : g x ≠ 0) : x ∈ Set.Icc (0 : ℝ) 1 :=
+    Set.Ico_subset_Icc_self (normalizeIntervalFunction_support a b f x hx)
+  obtain ⟨d, A, hA, hAb, hcorr⟩ :=
+    hinverse δ hδ hδ2 g hg hgb hsupp hU (b - a) a (sub_pos.mpr hab).ne'
+  refine ⟨d, A, hA, hAb, ?_⟩
+  have he : (∫ x in (0 : ℝ)..1, g x * conj (quadraticChartAtom A ((b - a) * x + a))) =
+      (b - a)⁻¹ • ∫ x in a..b, f x * conj (quadraticChartAtom A x) := by
+    simpa only [add_comm a] using normalizeIntervalFunction_correlation hab f (quadraticChartAtom A)
+  rw [he, norm_smul, Real.norm_eq_abs, abs_inv, abs_of_pos (sub_pos.mpr hab)] at hcorr
+  exact hcorr
+
+/-- Blueprint `lem:inverse`, line 1239: the finite L2 decomposition on the
+probability unit interval, with explicit quasipolynomial chart and coefficient budgets. -/
+theorem continuous_decomposition_unit_interval :
+    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧
+      ∀ τ : ℝ, 0 < τ → τ < 1 / 2 →
+      ∀ f : Lp ℂ 2 unitIntervalMeasure, (∀ᵐ x ∂unitIntervalMeasure, ‖f x‖ ≤ 1) →
+      ∃ (ι : Type) (s : Finset ι) (c : ι → ℂ) (a : ι → Lp ℂ 2 unitIntervalMeasure)
+        (u v : Lp ℂ 2 unitIntervalMeasure),
+        (∀ i ∈ s, ∃ (d : ℕ) (A : QuadraticChartData d),
+          QuadraticChartComplexity c₀
+            (Real.exp 2 + Real.exp ((C : ℝ) * (1 + Real.log (1 / (τ / 2) ^ 2)) ^ C)) A ∧
+          IsBoundedQuadraticChart A ∧
+          (a i : ℝ → ℂ) =ᵐ[unitIntervalMeasure] quadraticChartAtom A) ∧
+        (∑ i ∈ s, ‖c i‖) ≤
+          2 * (Real.exp 2 + Real.exp ((C : ℝ) * (1 + Real.log (1 / (τ / 2) ^ 2)) ^ C)) ∧
+        unitIntervalGowersSeminorm u ≤ τ ∧ probabilityL2L1Norm unitIntervalMeasure v ≤ τ ∧
+        f = (∑ i ∈ s, c i • a i) + u + v := by
+  obtain ⟨c₀, C, hc₀, hC, hinv⟩ := continuous_inverse
+  refine ⟨c₀, C, hc₀, hC, ?_⟩
+  intro τ hτ hτ2 f hf
+  let σ := τ / 2
+  let H0 := Real.exp ((C : ℝ) * (1 + Real.log (1 / σ ^ 2)) ^ C)
+  let H := Real.exp 2 + H0
+  have hσ : 0 < σ := by dsimp [σ]; positivity
+  have hσ2 : σ ^ 2 < 1 / 2 := by dsimp [σ]; nlinarith only [hτ, hτ2]
+  have hH0 : 0 < H0 := Real.exp_pos _
+  have hH : 0 < H := add_pos (Real.exp_pos _) hH0
+  let atoms : Set (Lp ℂ 2 unitIntervalMeasure) := {a | ∃ (d : ℕ) (A : QuadraticChartData d),
+    QuadraticChartComplexity c₀ H A ∧ IsBoundedQuadraticChart A ∧
+      (a : ℝ → ℂ) =ᵐ[unitIntervalMeasure] quadraticChartAtom A}
+  have atomLp (d : ℕ) (A : QuadraticChartData d) (hb : IsBoundedQuadraticChart A) :
+      MemLp (quadraticChartAtom A) 2 unitIntervalMeasure :=
+    MemLp.of_bound (quadraticChartAtom_measurable A).aestronglyMeasurable 1
+      (Filter.Eventually.of_forall hb)
+  have hane : atoms.Nonempty := by
+    let A := ordinaryQuadraticChart 0 0
+    have hb := ordinaryQuadraticChart_bounded 0 0
+    have hl := atomLp 0 A hb
+    refine ⟨hl.toLp (quadraticChartAtom A), 0, A, ?_, hb, MemLp.coeFn_toLp hl⟩
+    exact ordinaryQuadraticChart_complexity c₀ (le_add_of_nonneg_right hH0.le) 0 0
+  have hInv : ∀ g : Lp ℂ 2 unitIntervalMeasure,
+      (∀ᵐ x ∂unitIntervalMeasure, ‖g x‖ ≤ 1) →
+      σ ^ 2 ≤ unitIntervalGowersSeminorm g →
+      ∃ a ∈ atoms, H⁻¹ ≤ ‖inner ℂ g a‖ := by
+    intro g hg hgU
+    obtain ⟨G, hGm, hGb, hGe⟩ := l2_bounded_measurable_representative unitIntervalMeasure g hg
+    have hGl : MemLp G 2 unitIntervalMeasure := (memLp_congr_ae hGe).mpr (Lp.memLp g)
+    have hGg : hGl.toLp G = g := by
+      apply Lp.ext
+      exact (MemLp.coeFn_toLp hGl).trans hGe
+    have hGU : σ ^ 2 ≤ intervalGowersNorm 0 1 G := by
+      rw [← unitIntervalGowersSeminorm_toLp hGm hGl, hGg]
+      exact hgU
+    obtain ⟨d, A, hA, hAb, hcorr⟩ :=
+      hinv 0 1 (by norm_num) (σ ^ 2) (sq_pos_of_pos hσ) hσ2 G hGm (fun x _ => hGb x) hGU
+    have hAl := atomLp d A hAb
+    refine ⟨hAl.toLp (quadraticChartAtom A),
+      ⟨d, A, quadraticChartComplexity_mono hA (le_add_of_nonneg_left (Real.exp_pos _).le),
+        hAb, MemLp.coeFn_toLp hAl⟩, ?_⟩
+    rw [← hGg, unitIntervalL2_inner_correlation]
+    have hc : H0⁻¹ ≤ ‖∫ x in (0 : ℝ)..1, G x * conj (quadraticChartAtom A x)‖ := by
+      simpa only [sub_zero, inv_one, one_mul] using hcorr
+    have hi : H⁻¹ ≤ H0⁻¹ := by
+      simpa only [one_div] using one_div_le_one_div_of_le hH0
+        (le_add_of_nonneg_left (Real.exp_pos (2 : ℝ)).le)
+    exact hi.trans hc
+  have hfn : ‖f‖ ≤ 1 := by
+    simpa [measureUnivNNReal] using Lp.norm_le_of_ae_bound (by norm_num : (0 : ℝ) ≤ 1) hf
+  have hcost : σ < (2 * H) * H⁻¹ := by
+    rw [mul_assoc, mul_inv_cancel₀ hH.ne', mul_one]
+    dsimp [σ]
+    linarith only [hτ2]
+  obtain ⟨ι, s, c, a, u, v, ha, hc, hu, hv, he⟩ :=
+    probabilityL2_atomic_decomposition unitIntervalMeasure (by positivity : 0 ≤ 2 * H)
+      hσ hσ hcost atoms hane unitIntervalGowersSeminorm hInv hfn
+  refine ⟨ι, s, c, a, u, v, ha, hc, hu.trans ?_, ?_, he⟩
+  · dsimp [σ]
+    linarith only [hτ]
+  · simpa only [σ, add_halves] using hv
+/-- Blueprint `lem:inverse`: the finite decomposition on every nondegenerate
+interval with probability normalization and uniform explicit quantitative bounds. -/
+theorem continuous_decomposition_interval :
+    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧
+      ∀ (left right : ℝ), left < right → ∀ τ : ℝ, 0 < τ → τ < 1 / 2 →
+      ∀ f : Lp ℂ 2 (intervalProbabilityMeasure left right),
+        (∀ᵐ x ∂(intervalProbabilityMeasure left right), ‖f x‖ ≤ 1) →
+      ∃ (ι : Type) (s : Finset ι) (c : ι → ℂ)
+        (a : ι → Lp ℂ 2 (intervalProbabilityMeasure left right))
+        (u v : Lp ℂ 2 (intervalProbabilityMeasure left right)),
+        (∀ i ∈ s, ∃ (d : ℕ) (A : QuadraticChartData d),
+          QuadraticChartComplexity c₀
+            (Real.exp 2 + Real.exp ((C : ℝ) * (1 + Real.log (1 / (τ / 2) ^ 2)) ^ C)) A ∧
+          IsBoundedQuadraticChart A ∧
+          (a i : ℝ → ℂ) =ᵐ[(intervalProbabilityMeasure left right)] quadraticChartAtom A) ∧
+        (∑ i ∈ s, ‖c i‖) ≤
+          2 * (Real.exp 2 + Real.exp ((C : ℝ) * (1 + Real.log (1 / (τ / 2) ^ 2)) ^ C)) ∧
+        intervalL2GowersSeminorm left right u ≤ τ ∧
+        probabilityL2L1Norm (intervalProbabilityMeasure left right) v ≤ τ ∧
+        f = (∑ i ∈ s, c i • a i) + u + v := by
+  obtain ⟨c₀, C, hc₀, hC, hinv⟩ := continuous_inverse
+  refine ⟨c₀, C, hc₀, hC, ?_⟩
+  intro left right hab τ hτ hτ2 f hf
+  let σ := τ / 2
+  let H0 := Real.exp ((C : ℝ) * (1 + Real.log (1 / σ ^ 2)) ^ C)
+  let H := Real.exp 2 + H0
+  have hσ : 0 < σ := by dsimp [σ]; positivity
+  have hσ2 : σ ^ 2 < 1 / 2 := by dsimp [σ]; nlinarith only [hτ, hτ2]
+  have hH0 : 0 < H0 := Real.exp_pos _
+  have hH : 0 < H := add_pos (Real.exp_pos _) hH0
+  let atoms : Set (Lp ℂ 2 (intervalProbabilityMeasure left right)) :=
+    {a | ∃ (d : ℕ) (A : QuadraticChartData d),
+    QuadraticChartComplexity c₀ H A ∧ IsBoundedQuadraticChart A ∧
+      (a : ℝ → ℂ) =ᵐ[(intervalProbabilityMeasure left right)] quadraticChartAtom A}
+  have atomLp (d : ℕ) (A : QuadraticChartData d) (hb : IsBoundedQuadraticChart A) :
+      MemLp (quadraticChartAtom A) 2 (intervalProbabilityMeasure left right) :=
+    MemLp.of_bound (quadraticChartAtom_measurable A).aestronglyMeasurable 1
+      (Filter.Eventually.of_forall hb)
+  have hane : atoms.Nonempty := by
+    let A := ordinaryQuadraticChart 0 0
+    have hb := ordinaryQuadraticChart_bounded 0 0
+    have hl := atomLp 0 A hb
+    refine ⟨hl.toLp (quadraticChartAtom A), 0, A, ?_, hb, MemLp.coeFn_toLp hl⟩
+    exact ordinaryQuadraticChart_complexity c₀ (le_add_of_nonneg_right hH0.le) 0 0
+  have hInv : ∀ g : Lp ℂ 2 (intervalProbabilityMeasure left right),
+      (∀ᵐ x ∂(intervalProbabilityMeasure left right), ‖g x‖ ≤ 1) →
+      σ ^ 2 ≤ intervalL2GowersSeminorm left right g →
+      ∃ a ∈ atoms, H⁻¹ ≤ ‖inner ℂ g a‖ := by
+    intro g hg hgU
+    obtain ⟨G, hGm, hGb, hGe⟩ :=
+      l2_bounded_measurable_representative (intervalProbabilityMeasure left right) g hg
+    have hGl : MemLp G 2 (intervalProbabilityMeasure left right) :=
+      (memLp_congr_ae hGe).mpr (Lp.memLp g)
+    have hGg : hGl.toLp G = g := by
+      apply Lp.ext
+      exact (MemLp.coeFn_toLp hGl).trans hGe
+    have hGU : σ ^ 2 ≤ intervalGowersNorm left right G := by
+      rw [← intervalL2GowersSeminorm_toLp left right hGm hGl, hGg]
+      exact hgU
+    obtain ⟨d, A, hA, hAb, hcorr⟩ :=
+      hinv left right hab (σ ^ 2) (sq_pos_of_pos hσ) hσ2 G hGm (fun x _ => hGb x) hGU
+    have hAl := atomLp d A hAb
+    refine ⟨hAl.toLp (quadraticChartAtom A),
+      ⟨d, A, quadraticChartComplexity_mono hA (le_add_of_nonneg_left (Real.exp_pos _).le),
+        hAb, MemLp.coeFn_toLp hAl⟩, ?_⟩
+    rw [← hGg, intervalL2_inner_correlation hab]
+    have hc : H0⁻¹ ≤ (right - left)⁻¹ *
+        ‖∫ x in left..right, G x * conj (quadraticChartAtom A x)‖ := hcorr
+    have hi : H⁻¹ ≤ H0⁻¹ := by
+      simpa only [one_div] using one_div_le_one_div_of_le hH0
+        (le_add_of_nonneg_left (Real.exp_pos (2 : ℝ)).le)
+    exact hi.trans hc
+  have hfn : ‖f‖ ≤ 1 := by
+    simpa [measureUnivNNReal] using Lp.norm_le_of_ae_bound (by norm_num : (0 : ℝ) ≤ 1) hf
+  have hcost : σ < (2 * H) * H⁻¹ := by
+    rw [mul_assoc, mul_inv_cancel₀ hH.ne', mul_one]
+    dsimp [σ]
+    linarith only [hτ2]
+  obtain ⟨ι, s, c, a, u, v, ha, hc, hu, hv, he⟩ :=
+    probabilityL2_atomic_decomposition (intervalProbabilityMeasure left right)
+      (by positivity : 0 ≤ 2 * H)
+      hσ hσ hcost atoms hane (intervalL2GowersSeminorm left right) hInv hfn
+  refine ⟨ι, s, c, a, u, v, ha, hc, hu.trans ?_, ?_, he⟩
+  · dsimp [σ]
+    linarith only [hτ]
+  · simpa only [σ, add_halves] using hv
+
+/-- Blueprint lem:inverse, decomposition assertion: every unit-bounded L2 input
+on a nondegenerate interval is a finite sum of bounded quadratic chart atoms,
+a U3 error and an L1 error. One quasipolynomial budget controls both chart
+complexity and the sum of coefficient magnitudes, uniformly in the interval. -/
+theorem continuous_decomposition :
+    ∃ (c₀ : ℕ) (D : ℝ → ℝ), 1 ≤ c₀ ∧ QuasipolynomialBound D ∧
+      ∀ (left right : ℝ), left < right → ∀ τ : ℝ, 0 < τ → τ < 1 / 2 →
+      ∀ f : Lp ℂ 2 (intervalProbabilityMeasure left right),
+        (∀ᵐ x ∂intervalProbabilityMeasure left right, ‖f x‖ ≤ 1) →
+      ∃ (ι : Type) (s : Finset ι) (c : ι → ℂ)
+        (a : ι → Lp ℂ 2 (intervalProbabilityMeasure left right))
+        (u v : Lp ℂ 2 (intervalProbabilityMeasure left right)),
+        (∀ i ∈ s, ∃ (d : ℕ) (A : QuadraticChartData d),
+          QuadraticChartComplexity c₀ (D (1 / τ)) A ∧ IsBoundedQuadraticChart A ∧
+          (a i : ℝ → ℂ) =ᵐ[intervalProbabilityMeasure left right] quadraticChartAtom A) ∧
+        (∑ i ∈ s, ‖c i‖) ≤ D (1 / τ) ∧
+        intervalL2GowersSeminorm left right u ≤ τ ∧
+        probabilityL2L1Norm (intervalProbabilityMeasure left right) v ≤ τ ∧
+        f = (∑ i ∈ s, c i • a i) + u + v := by
+  obtain ⟨c₀, C, hc₀, hC, hdecomp⟩ := continuous_decomposition_interval
+  refine ⟨c₀, inverseDecompositionBudget C, hc₀,
+    inverseDecompositionBudget_quasipolynomial hC, ?_⟩
+  intro left right hab τ hτ hτ2 f hf
+  obtain ⟨ι, s, c, a, u, v, ha, hc, hu, hv, he⟩ :=
+    hdecomp left right hab τ hτ hτ2 f hf
+  refine ⟨ι, s, c, a, u, v, ?_, ?_, hu, hv, he⟩
+  · intro i hi
+    obtain ⟨d, A, hA, hAb, hAe⟩ := ha i hi
+    refine ⟨d, A, quadraticChartComplexity_mono hA ?_, hAb, hAe⟩
+    rw [inverseDecompositionBudget_at_reciprocal]
+    have hp := add_pos (Real.exp_pos (2 : ℝ))
+      (Real.exp_pos ((C : ℝ) * (1 + Real.log (1 / (τ / 2) ^ 2)) ^ C))
+    linarith only [hp]
+  · simpa only [inverseDecompositionBudget_at_reciprocal] using hc
 
 end Auto

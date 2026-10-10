@@ -21,6 +21,8 @@ expected pth power of the normalized Lp sampling error is at most
 All statements and supporting definitions use only Mathlib and this module.
 The sampling theorem is extended to the Croot-Sisask almost-period argument
 using Markov's inequality, diagonal tuple fibers and translation invariance.
+Probability-normalized Fourier inversion and Parseval give the general
+trilinear correlation extraction estimate used by the finite inverse theorem.
 
 Verified source: blueprint/formalization_blueprint.tex, lem:finite-fourier,
 lines 177-209. The proof uses independent-copy symmetrization, the Khintchine
@@ -1218,5 +1220,233 @@ theorem sampling_almost_periods_iterated {G : Type*} [AddCommGroup G] [Fintype G
     (finiteConvolution f (finiteSetDensity A)) X (2 * ε * finiteLpNorm p f)
     (fun t ht t' ht' => by simpa only [add_sub_assoc] using hpair t ht t' ht') k u hu
   convert h using 1; ring
+
+/-! Probability-normalized Fourier analysis on finite cyclic groups. -/
+
+noncomputable def finiteFourier {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (ξ : ZMod q) : ℂ :=
+  (q : ℂ)⁻¹ * ZMod.dft f ξ
+
+theorem finiteFourier_eq_average {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (ξ : ZMod q) :
+    finiteFourier f ξ = finiteAverage (fun x => f x * ZMod.stdAddChar (-(ξ * x))) := by
+  simp only [finiteFourier, ZMod.dft_apply, smul_eq_mul, finiteAverage, ZMod.card]
+  congr 1
+  apply Finset.sum_congr rfl
+  intro x _
+  rw [mul_comm x ξ, mul_comm]
+
+theorem finiteFourier_inversion {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (x : ZMod q) :
+    f x = ∑ ξ, finiteFourier f ξ * ZMod.stdAddChar (ξ * x) := by
+  have h := congrFun (ZMod.dft.symm_apply_apply f) x
+  rw [ZMod.invDFT_def] at h
+  rw [← h]
+  simp only [smul_eq_mul, finiteFourier, Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro ξ _
+  ring
+
+theorem finite_character_orthogonality {q : ℕ} [NeZero q] (ξ : ZMod q) :
+    finiteAverage (fun x => ZMod.stdAddChar (ξ * x)) = if ξ = 0 then 1 else 0 := by
+  unfold finiteAverage
+  by_cases hξ : ξ = 0
+  · simp [hξ, ZMod.card, NeZero.ne (q : ℂ)]
+  · have hs : ∑ x, ZMod.stdAddChar (ξ * x) = 0 := by
+      simpa only [AddChar.mulShift_apply] using
+        AddChar.sum_eq_zero_of_ne_one (ZMod.isPrimitive_stdAddChar q hξ)
+    simp [hs, hξ]
+
+theorem stdAddChar_conj {q : ℕ} [NeZero q] (x : ZMod q) :
+    conj (ZMod.stdAddChar x) = ZMod.stdAddChar (-x) := by
+  simp only [ZMod.stdAddChar_apply, AddChar.map_neg_eq_inv, ← Circle.coe_inv_eq_conj,
+    Circle.coe_inv]
+
+theorem finiteAverage_sum {G I : Type*} [Fintype G] (s : Finset I) (f : I → G → ℂ) :
+    finiteAverage (fun x => ∑ i ∈ s, f i x) = ∑ i ∈ s, finiteAverage (f i) := by
+  simp only [← uniformMean_complex_eq, uniformMean_sum]
+
+theorem finiteAverage_mul_const {G : Type*} [Fintype G] (f : G → ℂ) (c : ℂ) :
+    finiteAverage (fun x => f x * c) = finiteAverage f * c := by
+  simp only [finiteAverage, ← Finset.sum_mul, mul_assoc]
+
+theorem finiteAverage_const_mul {G : Type*} [Fintype G] (c : ℂ) (f : G → ℂ) :
+    finiteAverage (fun x => c * f x) = c * finiteAverage f := by
+  simp only [finiteAverage, ← Finset.mul_sum]
+  ring
+
+theorem finiteAverage_re {G : Type*} [Fintype G] (f : G → ℂ) :
+    (finiteAverage f).re = uniformMean (fun x => (f x).re) := by
+  rw [← uniformMean_complex_eq]
+  simp [uniformMean, Complex.re_sum]
+
+theorem finiteFourier_pairing {q : ℕ} [NeZero q] (f g : ZMod q → ℂ) :
+    finiteAverage (fun x => f x * conj (g x)) =
+      ∑ ξ, finiteFourier f ξ * conj (finiteFourier g ξ) := by
+  have hg (x : ZMod q) : f x * conj (g x) =
+      ∑ ξ, (f x * ZMod.stdAddChar (-(ξ * x))) * conj (finiteFourier g ξ) := by
+    conv_lhs => rw [finiteFourier_inversion g x]
+    simp only [map_sum, map_mul, stdAddChar_conj, Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro ξ _
+    ring
+  simp only [hg, finiteAverage_sum, finiteAverage_mul_const, ← finiteFourier_eq_average]
+
+theorem finiteFourier_parseval {q : ℕ} [NeZero q] (f : ZMod q → ℂ) :
+    uniformMean (fun x => ‖f x‖ ^ 2) = ∑ ξ, ‖finiteFourier f ξ‖ ^ 2 := by
+  have h := congrArg Complex.re (finiteFourier_pairing f f)
+  simpa only [finiteAverage_re, Complex.mul_conj, Complex.normSq_eq_norm_sq,
+    Complex.ofReal_re, Complex.re_sum] using h
+
+theorem finiteAverage_comm {A B : Type*} [Fintype A] [Fintype B] (f : A → B → ℂ) :
+    finiteAverage (fun a => finiteAverage (f a)) =
+      finiteAverage (fun b => finiteAverage (fun a => f a b)) := by
+  simp only [← uniformMean_complex_eq]
+  exact uniformMean_comm f
+
+theorem finiteAverage_equiv {A B : Type*} [Fintype A] [Fintype B]
+    (e : A ≃ B) (f : B → ℂ) : finiteAverage (fun a => f (e a)) = finiteAverage f := by
+  simpa only [← uniformMean_complex_eq] using uniformMean_equiv e f
+
+theorem finiteFourier_translate {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (a ξ : ZMod q) :
+    finiteFourier (fun x => f (x - a)) ξ =
+      ZMod.stdAddChar (-(ξ * a)) * finiteFourier f ξ := by
+  rw [finiteFourier_eq_average]
+  rw [← finiteAverage_equiv (Equiv.addRight a)
+    (fun x => f (x - a) * ZMod.stdAddChar (-(ξ * x)))]
+  simp only [Equiv.coe_addRight, add_sub_cancel_right, mul_add, neg_add,
+    AddChar.map_add_eq_mul]
+  simp_rw [← mul_assoc]
+  rw [finiteAverage_mul_const, ← finiteFourier_eq_average, mul_comm]
+
+theorem finiteFourier_convolution {q : ℕ} [NeZero q] (f g : ZMod q → ℂ) (ξ : ZMod q) :
+    finiteFourier (finiteConvolution f g) ξ = finiteFourier f ξ * finiteFourier g ξ := by
+  rw [finiteFourier_eq_average]
+  simp only [finiteConvolution, ← finiteAverage_mul_const]
+  rw [finiteAverage_comm]
+  have hi (y : ZMod q) :
+      finiteAverage (fun x => f y * g (x - y) * ZMod.stdAddChar (-(ξ * x))) =
+        (f y * ZMod.stdAddChar (-(ξ * y))) * finiteFourier g ξ := by
+    simp_rw [mul_assoc]
+    rw [finiteAverage_const_mul, ← finiteFourier_eq_average, finiteFourier_translate]
+  simp only [hi, finiteAverage_mul_const, ← finiteFourier_eq_average]
+
+theorem finiteFourier_trilinear_identity {q : ℕ} [NeZero q]
+    (F B A : ZMod q → ℂ) :
+    finiteAverage (fun u => finiteAverage (fun t => F u * B t * A (u + t))) =
+      ∑ ξ, finiteFourier F (-ξ) * finiteFourier B (-ξ) * finiteFourier A ξ := by
+  have he (u t) : F u * B t * A (u + t) =
+      ∑ ξ, (F u * ZMod.stdAddChar (ξ * u)) *
+        ((B t * ZMod.stdAddChar (ξ * t)) * finiteFourier A ξ) := by
+    rw [finiteFourier_inversion A (u + t), Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro ξ _
+    rw [mul_add, AddChar.map_add_eq_mul]
+    ring
+  simp only [he, finiteAverage_sum, finiteAverage_const_mul, finiteAverage_mul_const]
+  have hf (f : ZMod q → ℂ) (ξ : ZMod q) :
+      finiteAverage (fun x => f x * ZMod.stdAddChar (ξ * x)) = finiteFourier f (-ξ) := by
+    rw [finiteFourier_eq_average]
+    simp only [neg_mul, neg_neg]
+  simp only [hf, mul_assoc]
+theorem finiteFourier_trilinear_select {q : ℕ} [NeZero q]
+    (F B A : ZMod q → ℂ) :
+    ∃ ξ : ZMod q,
+      ‖finiteAverage (fun u => finiteAverage (fun t => F u * B t * A (u + t)))‖ ≤
+        ‖finiteFourier F ξ‖ *
+          Real.sqrt (uniformMean (fun t => ‖B t‖ ^ 2)) *
+          Real.sqrt (uniformMean (fun u => ‖A u‖ ^ 2)) := by
+  obtain ⟨ξ, _, hmax⟩ := Finset.exists_max_image Finset.univ
+    (fun ξ : ZMod q => ‖finiteFourier F ξ‖) Finset.univ_nonempty
+  refine ⟨ξ, ?_⟩
+  rw [finiteFourier_trilinear_identity]
+  have hB : (∑ k : ZMod q, ‖finiteFourier B (-k)‖ ^ 2) =
+      uniformMean (fun t => ‖B t‖ ^ 2) := by
+    rw [finiteFourier_parseval]
+    exact Fintype.sum_equiv (Equiv.neg (ZMod q)) _ _ (fun _ => rfl)
+  calc
+    _ ≤ ∑ k : ZMod q, ‖finiteFourier F (-k) * finiteFourier B (-k) * finiteFourier A k‖ :=
+      norm_sum_le _ _
+    _ ≤ ∑ k : ZMod q, ‖finiteFourier F ξ‖ *
+        (‖finiteFourier B (-k)‖ * ‖finiteFourier A k‖) := by
+      apply Finset.sum_le_sum
+      intro k _
+      simp only [norm_mul, mul_assoc]
+      exact mul_le_mul_of_nonneg_right (hmax (-k) (Finset.mem_univ _)) (by positivity)
+    _ = ‖finiteFourier F ξ‖ * ∑ k : ZMod q,
+        ‖finiteFourier B (-k)‖ * ‖finiteFourier A k‖ := (Finset.mul_sum _ _ _).symm
+    _ ≤ ‖finiteFourier F ξ‖ *
+        (Real.sqrt (∑ k : ZMod q, ‖finiteFourier B (-k)‖ ^ 2) *
+          Real.sqrt (∑ k : ZMod q, ‖finiteFourier A k‖ ^ 2)) :=
+      mul_le_mul_of_nonneg_left (Real.sum_mul_le_sqrt_mul_sqrt _ _ _) (norm_nonneg _)
+    _ = _ := by rw [hB, ← finiteFourier_parseval]; ring
+
+theorem finite_weighted_trilinear_extract {q : ℕ} [NeZero q]
+    (w : ZMod q → ℝ) (hw0 : ∀ u, 0 ≤ w u) (hw1 : ∀ u, w u ≤ 1)
+    {β η : ℝ} (hβ : 0 < β) (hmass : (𝔼 u, w u) = β)
+    (b c A : ZMod q → ℂ) (hc : ∀ u, ‖c u‖ ≤ 1) (hA : ∀ u, ‖A u‖ ≤ 1)
+    (hcorr : η ≤ ‖𝔼 u, 𝔼 t,
+      ((w u / β : ℝ) : ℂ) * b u * (((w t / β : ℝ) : ℂ) * c t) * A (u + t)‖) :
+    ∃ ξ : ZMod q, η * β * Real.sqrt β ≤
+      ‖𝔼 u, (w u : ℂ) * b u * ZMod.stdAddChar (-(ξ * u))‖ := by
+  let F := fun u => ((w u / β : ℝ) : ℂ) * b u
+  let B := fun u => ((w u / β : ℝ) : ℂ) * c u
+  have heC (f : ZMod q → ℂ) : finiteAverage f = 𝔼 u, f u := by
+    simp only [finiteAverage, Fintype.expect_eq_sum_div_card, div_eq_mul_inv, mul_comm]
+  have heR (f : ZMod q → ℝ) : uniformMean f = 𝔼 u, f u := by
+    simp only [uniformMean, Fintype.expect_eq_sum_div_card, smul_eq_mul, div_eq_mul_inv, mul_comm]
+  have hB : uniformMean (fun t => ‖B t‖ ^ 2) ≤ 1 / β := by
+    rw [heR]
+    calc
+      _ ≤ 𝔼 t, w t / β ^ 2 := by
+        apply Finset.expect_le_expect
+        intro t _
+        have hnorm : ‖B t‖ ≤ w t / β := by
+          dsimp [B]
+          rw [norm_mul, Complex.norm_real, Real.norm_of_nonneg (div_nonneg (hw0 t) hβ.le)]
+          simpa only [mul_one] using mul_le_mul_of_nonneg_left (hc t) (div_nonneg (hw0 t) hβ.le)
+        calc
+          _ ≤ (w t / β) ^ 2 := pow_le_pow_left₀ (norm_nonneg _) hnorm 2
+          _ = (w t) ^ 2 / β ^ 2 := div_pow _ _ _
+          _ ≤ _ := div_le_div_of_nonneg_right
+            (by nlinarith [hw0 t, hw1 t] : (w t) ^ 2 ≤ w t) (sq_nonneg β)
+      _ = β / β ^ 2 := by rw [← Finset.expect_div, hmass]
+      _ = 1 / β := by field_simp
+  have hAA : uniformMean (fun u => ‖A u‖ ^ 2) ≤ 1 := by
+    rw [heR]
+    apply Finset.expect_le Finset.univ_nonempty
+    intro u _
+    exact pow_le_one₀ (norm_nonneg _) (hA u)
+  obtain ⟨ξ, hξ⟩ := finiteFourier_trilinear_select F B A
+  have hη : η ≤ ‖finiteFourier F ξ‖ * (Real.sqrt β)⁻¹ := by
+    apply hcorr.trans
+    have he : (𝔼 u, 𝔼 t,
+        ((w u / β : ℝ) : ℂ) * b u * (((w t / β : ℝ) : ℂ) * c t) * A (u + t)) =
+        finiteAverage (fun u => finiteAverage (fun t => F u * B t * A (u + t))) := by
+      simp only [heC, F, B]
+    rw [he]
+    apply hξ.trans
+    have hsB : Real.sqrt (uniformMean (fun t => ‖B t‖ ^ 2)) ≤ (Real.sqrt β)⁻¹ := by
+      simpa only [one_div, Real.sqrt_inv] using Real.sqrt_le_sqrt hB
+    have hsA : Real.sqrt (uniformMean (fun u => ‖A u‖ ^ 2)) ≤ 1 := by
+      simpa only [Real.sqrt_one] using Real.sqrt_le_sqrt hAA
+    calc
+      _ ≤ ‖finiteFourier F ξ‖ * (Real.sqrt β)⁻¹ * 1 :=
+        mul_le_mul (mul_le_mul_of_nonneg_left hsB (norm_nonneg _)) hsA
+          (Real.sqrt_nonneg _) (by positivity)
+      _ = _ := mul_one _
+  have hspos : 0 < Real.sqrt β := Real.sqrt_pos.mpr hβ
+  have hη' : η * Real.sqrt β ≤ ‖finiteFourier F ξ‖ := by
+    have h := mul_le_mul_of_nonneg_right hη hspos.le
+    simpa only [mul_assoc, inv_mul_cancel₀ hspos.ne', mul_one] using h
+  have hval : (β : ℂ) * finiteFourier F ξ =
+      𝔼 u, (w u : ℂ) * b u * ZMod.stdAddChar (-(ξ * u)) := by
+    rw [finiteFourier_eq_average, heC, Finset.mul_expect]
+    apply Finset.expect_congr rfl
+    intro u _
+    dsimp [F]
+    push_cast
+    have hn : (β : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr hβ.ne'
+    field_simp
+  refine ⟨ξ, ?_⟩
+  rw [← hval, norm_mul, Complex.norm_real, Real.norm_of_nonneg hβ.le]
+  nlinarith [mul_le_mul_of_nonneg_left hη' hβ.le]
 
 end Auto

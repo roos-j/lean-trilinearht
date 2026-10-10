@@ -2735,4 +2735,1281 @@ theorem graph_symmetry_from_spectrum {q : ℕ} [NeZero q] (hq : Odd q)
   · have hc : (S'.card : ℝ) ≤ S.card + T.card := by exact_mod_cast hcard
     linarith
 
+/-- A graph correlation of four unit-bounded factors has modulus at most one. -/
+lemma graphLocalCorrelation_norm_le {q : ℕ} [NeZero q]
+    (w : ZMod q → ℝ) (hw : ∀ h, |w h| ≤ 1) (M : ZMod q → ZMod q)
+    (a b c : ZMod q → ℂ) (ha : ∀ x, ‖a x‖ ≤ 1) (hb : ∀ x, ‖b x‖ ≤ 1)
+    (hc : ∀ x, ‖c x‖ ≤ 1) : ‖graphLocalCorrelation w M a b c‖ ≤ 1 := by
+  unfold graphLocalCorrelation
+  apply (RCLike.norm_expect_le (K := ℂ)).trans
+  apply Finset.expect_le Finset.univ_nonempty
+  intro h _
+  apply (RCLike.norm_expect_le (K := ℂ)).trans
+  apply Finset.expect_le Finset.univ_nonempty
+  intro x _
+  simp only [norm_mul, Complex.norm_real, Real.norm_eq_abs, ZMod.stdAddChar_apply,
+    Circle.norm_coe, mul_one]
+  calc
+    |w h| * ‖c h‖ * (‖a (x + h)‖ * ‖b x‖) ≤ 1 * 1 * (1 * 1) := by
+      gcongr
+      · exact hw h
+      · exact hc h
+      · exact ha (x + h)
+      · exact hb x
+    _ = 1 := by norm_num
+
+/-- The coefficient in the local alternating Fourier decay estimate. -/
+noncomputable def graphSymmetryDecayConstant (C : ℝ) (d : ℕ) (s β ζ : ℝ) : ℝ :=
+  C * d / (s * β * (ζ ^ 4 / 8))
+
+/-- Assemble local symmetry at any inner radius satisfying the source's domain and
+ translation tolerances, retaining an explicit complexity cost for the final budget. -/
+theorem graph_local_symmetry_at_radius {q : ℕ} [NeZero q] (hq : Odd q)
+    (cutoff : ℝ → ℝ) {L : ℝ≥0} (hLip : LipschitzWith L cutoff)
+    (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) (S : Finset (ZMod q))
+    {r s ρ ζ : ℝ} (hr : 0 < r) (hrsmall : r < 1 / 8)
+    (hs : 0 < s) (hsr : s ≤ r) (hρ : r + 2 * s ≤ ρ) (h4s : 4 * s ≤ ρ)
+    (hζ : 0 < ζ) (htol : 2 * max (L : ℝ) 1 * S.card * s / r ≤ ζ ^ 2 / 2)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y)
+    (a b c : ZMod q → ℂ) (ha : ∀ x, ‖a x‖ ≤ 1) (hb : ∀ x, ‖b x‖ ≤ 1)
+    (hc : ∀ x, ‖c x‖ ≤ 1)
+    (hcorr : ζ ≤ ‖graphLocalCorrelation (graphBohrWeight cutoff S r) M a b c‖) :
+    ∃ S' : Finset (ZMod q), ∃ t : ℝ, S ⊆ S' ∧ 0 < t ∧ t < s ∧
+      (∀ x ∈ graphBohrSet S' t, ∀ y ∈ graphBohrSet S' t,
+        ‖graphAlternatingPhase M x y‖ ≤ ζ / 1000) ∧
+      (S'.card : ℝ) + Real.log (1 / t) ≤ 2 * S.card +
+        10 ^ 20 * (1 + Real.log (1 / (graphBohrMass cutoff S s * (ζ ^ 4 / 8)))) ^ 4 +
+        Real.log (1 / s) + Real.log (1 / ζ) + Real.log 1000000 +
+        Real.log (graphSymmetryDecayConstant (max (L : ℝ) 1) S.card s
+          (graphBohrMass cutoff S s) ζ + 1) := by
+  let w := graphBohrWeight cutoff S r
+  let μ := graphBohrMeasure cutoff S s
+  let β := graphBohrMass cutoff S s
+  let D := graphSymmetryDecayConstant (max (L : ℝ) 1) S.card s β ζ
+  have hssmall : s < 1 / 8 := hsr.trans_lt hrsmall
+  have hβ : 0 < β := graphBohrMass_pos cutoff hb0 hb1 hbone S hs hssmall
+  have hμ : ∀ u, 0 ≤ μ u := graphBohrMeasure_nonneg cutoff hb0 S s hβ
+  have hμmass : (𝔼 u, μ u) = 1 := graphBohrMeasure_mean_one cutoff S s hβ
+  have hμsupp (u : ZMod q) (hu : μ u ≠ 0) : u ∈ graphBohrSet S s := by
+    by_contra hn
+    exact hu (graphBohrMeasure_eq_zero_of_notMem cutoff hsupp S hs u hn)
+  have hw (u : ZMod q) : 0 ≤ w u := (graphBohrWeight_bounds cutoff hb0 hb1 S r u).1
+  have hw1 (u : ZMod q) : |w u| ≤ 1 := by
+    rw [abs_of_nonneg (hw u)]
+    exact (graphBohrWeight_bounds cutoff hb0 hb1 S r u).2
+  have hζ1 : ζ ≤ 1 := hcorr.trans (graphLocalCorrelation_norm_le w hw1 M a b c ha hb hc)
+  obtain ⟨a', b', c', ha', hb', hc', hloc⟩ :=
+    graph_correlation_localization w μ hμmass M a b c ha hb hc hcorr
+  have hsq := graph_localized_cauchy_schwarz w μ hw
+    (graphBohrMass_bounds cutoff hb0 hb1 hbone S hr hrsmall).2 M a' b' c' hc' hζ.le hloc
+  obtain ⟨z, _, _, hz⟩ := graph_bohr_symmetry_select cutoff hLip hb0 hb1 hbone hsupp S
+    hr hrsmall hs hssmall hρ hζ htol M a' b' ha' hb' hadd hsq
+  have hsecond := graph_symmetry_second_cauchy_schwarz S μ hμ hμmass M hs.le
+    (by linarith : 2 * s ≤ ρ) hμsupp hadd a' b' ha' hb' z hz
+  have hcap (u : ZMod q) : μ u ≤ 1 / β :=
+    div_le_div_of_nonneg_right (graphBohrWeight_bounds cutoff hb0 hb1 S s u).2 hβ.le
+  obtain ⟨v', A, hv', hA, _, hAdensity, hAcorr⟩ :=
+    graph_local_spectrum_set μ hμ hμmass hβ hcap hζ M hsecond
+  have hAB : A ⊆ graphBohrSet S s := fun u hu => hμsupp u (hAcorr u hu).1
+  have hD : 0 ≤ D := by dsimp [D, graphSymmetryDecayConstant]; positivity
+  have hphase (u : ZMod q) (hu : u ∈ graphBohrSet S s)
+      (v : ZMod q) (hv : v ∈ (2 : ℕ) • A - (2 : ℕ) • A) :
+      ‖(2 : ℕ) • graphAlternatingPhase M u v‖ ≤ 4 * D * graphBohrNorm S u :=
+    graph_spectrum_difference_decay cutoff hLip hb0 hb1 hbone hsupp S A hs hssmall h4s M
+      hadd hAB v' (hμsupp v' hv') (by positivity) (fun u hu => (hAcorr u hu).2) u hu v hv
+  obtain ⟨S', t, hSS', ht, hts, hsym, hcost⟩ := graph_symmetry_from_spectrum hq S A hA
+    hs (by linarith) (by linarith) hζ hζ1 hD M hadd hphase
+  refine ⟨S', t, hSS', ht, hts, hsym, hcost.trans ?_⟩
+  have hq : (0 : ℝ) < q := Nat.cast_pos.mpr (NeZero.pos q)
+  have hα : 0 < (A.card : ℝ) / q := div_pos (Nat.cast_pos.mpr hA.card_pos) hq
+  have hα1 : (A.card : ℝ) / q ≤ 1 := by
+    apply (div_le_one hq).mpr
+    exact_mod_cast (show A.card ≤ q by simpa only [ZMod.card] using Finset.card_le_univ A)
+  have hlog : Real.log (1 / ((A.card : ℝ) / q)) ≤ Real.log (1 / (β * (ζ ^ 4 / 8))) :=
+    Real.log_le_log (by positivity) (one_div_le_one_div_of_le (by positivity) hAdensity)
+  have hn : 0 ≤ 1 + Real.log (1 / ((A.card : ℝ) / q)) := by
+    have := Real.log_nonneg ((one_le_div hα).mpr hα1)
+    linarith
+  have hp := pow_le_pow_left₀ hn
+    (show 1 + Real.log (1 / ((A.card : ℝ) / q)) ≤
+      1 + Real.log (1 / (β * (ζ ^ 4 / 8))) by linarith) 4
+  change 2 * (S.card : ℝ) + 10 ^ 20 * _ + _ + _ + _ + Real.log (D + 1) ≤ _
+  dsimp only [D, β] at *
+  nlinarith
+
+/-- The source polynomial budget for local symmetry. -/
+noncomputable def graphSymmetryBudget (d : ℕ) (r ζ : ℝ) : ℝ :=
+  d + Real.log (1 / r) + Real.log (1 / ζ) + 1
+
+lemma graphSymmetryBudget_bounds (d : ℕ) {r ζ : ℝ}
+    (hr : 0 < r) (hr1 : r ≤ 1) (hζ : 0 < ζ) (hζ1 : ζ ≤ 1) :
+    1 ≤ graphSymmetryBudget d r ζ ∧ (d : ℝ) ≤ graphSymmetryBudget d r ζ ∧
+      Real.log (1 / r) ≤ graphSymmetryBudget d r ζ ∧
+      Real.log (1 / ζ) ≤ graphSymmetryBudget d r ζ := by
+  have hR := Real.log_nonneg ((one_le_div hr).mpr hr1)
+  have hZ := Real.log_nonneg ((one_le_div hζ).mpr hζ1)
+  have hd : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+  dsimp [graphSymmetryBudget]
+  constructor
+  · linarith
+  constructor
+  · linarith
+  constructor <;> linarith
+
+/-- Exact logarithmic expansion of the inner radius when the correlation is at most one. -/
+lemma localSymmetryInnerRadius_log (d : ℕ) {C r ζ : ℝ}
+    (hC : 0 ≤ C) (hr : 0 < r) (hζ : 0 < ζ) (hζ1 : ζ ≤ 1) :
+    Real.log (1 / localSymmetryInnerRadius C d r ζ) =
+      Real.log (1 / r) + 2 * Real.log (1 / ζ) + Real.log 1000 +
+        Real.log (C + 1) + Real.log ((d : ℝ) + 1) := by
+  have hsq : ζ ^ 2 ≤ 1 := by nlinarith
+  have hC' : C + 1 ≠ 0 := by positivity
+  have hd' : (d : ℝ) + 1 ≠ 0 := by positivity
+  have h1000 : (1000 : ℝ) ≠ 0 := by norm_num
+  simp only [localSymmetryInnerRadius, min_eq_right hsq, one_div, Real.log_inv,
+    Real.log_div (mul_ne_zero hr.ne' (pow_ne_zero 2 hζ.ne'))
+      (mul_ne_zero (mul_ne_zero h1000 hC') hd'),
+    Real.log_mul hr.ne' (pow_ne_zero 2 hζ.ne'), Real.log_pow,
+    Real.log_mul (mul_ne_zero h1000 hC') hd', Real.log_mul h1000 hC']
+  ring
+
+/-- The logarithmic inner-radius loss is linear in the source budget. -/
+lemma localSymmetryInnerRadius_log_bound (d : ℕ) {C r ζ : ℝ}
+    (hC : 0 ≤ C) (hr : 0 < r) (hr1 : r ≤ 1) (hζ : 0 < ζ) (hζ1 : ζ ≤ 1) :
+    Real.log (1 / localSymmetryInnerRadius C d r ζ) ≤
+      (C + 1010) * graphSymmetryBudget d r ζ := by
+  obtain ⟨hP, hd, hR, hZ⟩ := graphSymmetryBudget_bounds d hr hr1 hζ hζ1
+  have hR0 := Real.log_nonneg ((one_le_div hr).mpr hr1)
+  have hCmul : C + 1002 ≤ (C + 1002) * graphSymmetryBudget d r ζ :=
+    le_mul_of_one_le_right (by linarith) hP
+  rw [localSymmetryInnerRadius_log d hC hr hζ hζ1]
+  have h1000 := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 1000)
+  have hClog := Real.log_le_self (show 0 ≤ C + 1 by linarith)
+  have hdlog := Real.log_le_self (show (0 : ℝ) ≤ (d : ℝ) + 1 by positivity)
+  dsimp [graphSymmetryBudget] at *
+  nlinarith [Nat.cast_nonneg d (α := ℝ)]
+
+/-- A polynomial Bohr mass lower bound becomes the exact logarithmic mass estimate. -/
+lemma graph_mass_log_bound (d : ℕ) {s β : ℝ} (hs : 0 < s)
+    (hbound : (s / 6) ^ d ≤ β) : Real.log (1 / β) ≤ d * Real.log (6 / s) := by
+  have h := Real.log_le_log (pow_pos (div_pos hs (by norm_num)) d) hbound
+  rw [Real.log_pow, Real.log_div hs.ne' (by norm_num : (6 : ℝ) ≠ 0)] at h
+  rw [one_div, Real.log_inv, Real.log_div (by norm_num : (6 : ℝ) ≠ 0) hs.ne']
+  nlinarith
+
+/-- Exact logarithmic cost of the fourth-power spectrum threshold. -/
+lemma graph_symmetry_threshold_log {ζ : ℝ} (hζ : 0 < ζ) :
+    Real.log (1 / (ζ ^ 4 / 8)) = 4 * Real.log (1 / ζ) + Real.log 8 := by
+  rw [one_div, Real.log_inv, Real.log_div (pow_ne_zero 4 hζ.ne') (by norm_num),
+    Real.log_pow, one_div, Real.log_inv]
+  norm_num only [Nat.cast_ofNat]
+  ring
+
+/-- The logarithm of the decay constant loses only logarithms of the mass and radius. -/
+lemma graphSymmetryDecayConstant_log (d : ℕ) {C s β ζ : ℝ}
+    (hC : 0 ≤ C) (hs : 0 < s) (hs1 : s ≤ 1) (hβ : 0 < β) (hβ1 : β ≤ 1)
+    (hζ : 0 < ζ) (hζ1 : ζ ≤ 1) :
+    Real.log (graphSymmetryDecayConstant C d s β ζ + 1) ≤
+      Real.log (C + 1) + Real.log ((d : ℝ) + 1) + Real.log (1 / s) +
+        Real.log (1 / β) + 4 * Real.log (1 / ζ) + Real.log 8 := by
+  have hτ : 0 < ζ ^ 4 / 8 := by positivity
+  have hτ1 : ζ ^ 4 / 8 ≤ 1 := by
+    have : ζ ^ 4 ≤ 1 := pow_le_one₀ hζ.le hζ1
+    linarith
+  have hsβ : s * β ≤ 1 := (mul_le_of_le_one_left hβ.le hs1).trans hβ1
+  have hden : 0 < s * β * (ζ ^ 4 / 8) := by positivity
+  have hden1 : s * β * (ζ ^ 4 / 8) ≤ 1 :=
+    (mul_le_of_le_one_left hτ.le hsβ).trans hτ1
+  have hC1 : 0 < C + 1 := by positivity
+  have hd1 : 0 < (d : ℝ) + 1 := by positivity
+  have hD : 0 ≤ graphSymmetryDecayConstant C d s β ζ := by
+    unfold graphSymmetryDecayConstant
+    positivity
+  have hle : graphSymmetryDecayConstant C d s β ζ + 1 ≤
+      ((C + 1) * ((d : ℝ) + 1)) / (s * β * (ζ ^ 4 / 8)) := by
+    unfold graphSymmetryDecayConstant
+    rw [div_add_one hden.ne']
+    apply div_le_div_of_nonneg_right _ hden.le
+    nlinarith [Nat.cast_nonneg d (α := ℝ)]
+  have hlog := Real.log_le_log (show 0 < graphSymmetryDecayConstant C d s β ζ + 1 by linarith) hle
+  rw [Real.log_div (mul_ne_zero hC1.ne' hd1.ne') hden.ne',
+    Real.log_mul hC1.ne' hd1.ne',
+    Real.log_mul (mul_ne_zero hs.ne' hβ.ne') hτ.ne', Real.log_mul hs.ne' hβ.ne'] at hlog
+  have hτlog := graph_symmetry_threshold_log hζ
+  simp only [one_div, Real.log_inv] at hτlog ⊢
+  linarith
+
+/-- All logarithmic parameters in local symmetry have polynomial source-budget bounds;
+ blueprint `lem:local-symmetry`, lines 1015-1016. -/
+theorem graph_symmetry_parameter_bounds (d : ℕ) {C r ζ β : ℝ}
+    (hC : 0 ≤ C) (hr : 0 < r) (hr1 : r ≤ 1) (hζ : 0 < ζ) (hζ1 : ζ ≤ 1)
+    (hβ : 0 < β) (hβ1 : β ≤ 1)
+    (hβlower : (localSymmetryInnerRadius C d r ζ / 6) ^ d ≤ β) :
+    let s := localSymmetryInnerRadius C d r ζ
+    let K := C + 10000
+    let P := graphSymmetryBudget d r ζ
+    Real.log (1 / s) ≤ K * P ∧ Real.log (1 / β) ≤ 2 * K * P ^ 2 ∧
+      1 + Real.log (1 / (β * (ζ ^ 4 / 8))) ≤ 4 * K * P ^ 2 ∧
+      Real.log (graphSymmetryDecayConstant C d s β ζ + 1) ≤ 6 * K * P ^ 2 := by
+  let s := localSymmetryInnerRadius C d r ζ
+  let K := C + 10000
+  let P := graphSymmetryBudget d r ζ
+  change Real.log (1 / s) ≤ K * P ∧ Real.log (1 / β) ≤ 2 * K * P ^ 2 ∧
+    1 + Real.log (1 / (β * (ζ ^ 4 / 8))) ≤ 4 * K * P ^ 2 ∧
+    Real.log (graphSymmetryDecayConstant C d s β ζ + 1) ≤ 6 * K * P ^ 2
+  obtain ⟨hP, hd, hR, hZ⟩ := graphSymmetryBudget_bounds d hr hr1 hζ hζ1
+  change 1 ≤ P at hP
+  change (d : ℝ) ≤ P at hd
+  change Real.log (1 / ζ) ≤ P at hZ
+  have hK : 10000 ≤ K := by dsimp [K]; linarith
+  have hP0 : 0 ≤ P := by linarith
+  have hK0 : 0 ≤ K := by linarith
+  have hPP2 : P ≤ P ^ 2 := le_self_pow₀ hP (by decide)
+  have hP2 : 1 ≤ P ^ 2 := one_le_pow₀ hP
+  have hKP : K ≤ K * P := le_mul_of_one_le_right hK0 hP
+  have hKP2 : K ≤ K * P ^ 2 := le_mul_of_one_le_right hK0 hP2
+  obtain ⟨hs, hsr, _⟩ := localSymmetryInnerRadius_bounds hC hr hζ d
+  change 0 < s at hs
+  change s ≤ r / 100 at hsr
+  have hs1 : s ≤ 1 := by linarith
+  have hR2 : Real.log (1 / s) ≤ K * P := by
+    apply (localSymmetryInnerRadius_log_bound d hC hr hr1 hζ hζ1).trans
+    exact mul_le_mul_of_nonneg_right (by dsimp [K]; linarith) hP0
+  have h6 : 6 ≤ K * P := by linarith
+  have hlog6 : Real.log (6 / s) ≤ 6 + K * P := by
+    rw [Real.log_div (by norm_num : (6 : ℝ) ≠ 0) hs.ne']
+    have h := hR2
+    rw [one_div, Real.log_inv] at h
+    linarith [Real.log_le_self (by norm_num : (0 : ℝ) ≤ 6)]
+  have hB : Real.log (1 / β) ≤ 2 * K * P ^ 2 := by
+    calc
+      _ ≤ (d : ℝ) * Real.log (6 / s) := graph_mass_log_bound d hs hβlower
+      _ ≤ (d : ℝ) * (6 + K * P) := mul_le_mul_of_nonneg_left hlog6 (Nat.cast_nonneg d)
+      _ ≤ P * (6 + K * P) := mul_le_mul_of_nonneg_right hd (by positivity)
+      _ ≤ 2 * K * P ^ 2 := by nlinarith [mul_le_mul_of_nonneg_left h6 hP0]
+  have hT : Real.log (1 / (ζ ^ 4 / 8)) ≤ 12 * P := by
+    rw [graph_symmetry_threshold_log hζ]
+    linarith [Real.log_le_self (by norm_num : (0 : ℝ) ≤ 8)]
+  have hBT : Real.log (1 / (β * (ζ ^ 4 / 8))) =
+      Real.log (1 / β) + Real.log (1 / (ζ ^ 4 / 8)) := by
+    simp only [one_div, Real.log_inv, Real.log_mul hβ.ne' (by positivity : ζ ^ 4 / 8 ≠ 0)]
+    ring
+  have hKP2P : 10000 * P ≤ K * P ^ 2 := by
+    calc
+      _ ≤ K * P := mul_le_mul_of_nonneg_right hK hP0
+      _ ≤ K * P ^ 2 := mul_le_mul_of_nonneg_left hPP2 hK0
+  have hDensity : 1 + Real.log (1 / (β * (ζ ^ 4 / 8))) ≤ 4 * K * P ^ 2 := by
+    rw [hBT]
+    nlinarith
+  refine ⟨hR2, hB, hDensity, ?_⟩
+  have hD := graphSymmetryDecayConstant_log d hC hs hs1 hβ hβ1 hζ hζ1
+  have hClog := Real.log_le_self (show 0 ≤ C + 1 by linarith)
+  have hdlog := Real.log_le_self (show (0 : ℝ) ≤ (d : ℝ) + 1 by positivity)
+  have h8 := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 8)
+  have hKP_P2 := mul_le_mul_of_nonneg_left hPP2 hK0
+  have hCbound : C + 1 ≤ K := by dsimp [K]; linarith
+  nlinarith
+
+/-- The explicit local-symmetry construction has degree-eight polynomial complexity. -/
+theorem graph_symmetry_complexity_bound (d : ℕ) {C r ζ β : ℝ}
+    (hC : 0 ≤ C) (hr : 0 < r) (hr1 : r ≤ 1) (hζ : 0 < ζ) (hζ1 : ζ ≤ 1)
+    (hβ : 0 < β) (hβ1 : β ≤ 1)
+    (hβlower : (localSymmetryInnerRadius C d r ζ / 6) ^ d ≤ β) :
+    2 * (d : ℝ) + 10 ^ 20 * (1 + Real.log (1 / (β * (ζ ^ 4 / 8)))) ^ 4 +
+      Real.log (1 / localSymmetryInnerRadius C d r ζ) + Real.log (1 / ζ) +
+      Real.log 1000000 +
+      Real.log (graphSymmetryDecayConstant C d (localSymmetryInnerRadius C d r ζ) β ζ + 1) ≤
+      10 ^ 30 * (C + 10000) ^ 4 * graphSymmetryBudget d r ζ ^ 8 := by
+  let K := C + 10000
+  let P := graphSymmetryBudget d r ζ
+  let B := K ^ 4 * P ^ 8
+  obtain ⟨hR, _, hDensity, hD⟩ := graph_symmetry_parameter_bounds d hC hr hr1 hζ hζ1 hβ hβ1 hβlower
+  obtain ⟨hP, hd, _, hZ⟩ := graphSymmetryBudget_bounds d hr hr1 hζ hζ1
+  change 1 ≤ P at hP
+  change (d : ℝ) ≤ P at hd
+  change Real.log (1 / ζ) ≤ P at hZ
+  change Real.log (1 / localSymmetryInnerRadius C d r ζ) ≤ K * P at hR
+  change 1 + Real.log (1 / (β * (ζ ^ 4 / 8))) ≤ 4 * K * P ^ 2 at hDensity
+  change Real.log (graphSymmetryDecayConstant C d (localSymmetryInnerRadius C d r ζ) β ζ + 1) ≤
+    6 * K * P ^ 2 at hD
+  have hK : 1 ≤ K := by dsimp [K]; linarith
+  have hK0 : 0 ≤ K := by linarith
+  have hP0 : 0 ≤ P := by linarith
+  have hKP2 : K * P ^ 2 ≤ B :=
+    mul_le_mul (le_self_pow₀ hK (by decide : 4 ≠ 0))
+      (pow_le_pow_right₀ hP (by decide : 2 ≤ 8)) (sq_nonneg P) (pow_nonneg hK0 4)
+  have hPB : P ≤ B := by
+    apply (le_self_pow₀ hP (by decide : 2 ≠ 0)).trans
+    exact (le_mul_of_one_le_left (sq_nonneg P) hK).trans hKP2
+  have hKPB : K * P ≤ B :=
+    (mul_le_mul_of_nonneg_left (le_self_pow₀ hP (by decide : 2 ≠ 0)) hK0).trans hKP2
+  have hB : 1 ≤ B := hP.trans hPB
+  have hτ1 : ζ ^ 4 / 8 ≤ 1 := by
+    have : ζ ^ 4 ≤ 1 := pow_le_one₀ hζ.le hζ1
+    linarith
+  have hβτ : β * (ζ ^ 4 / 8) ≤ 1 :=
+    (mul_le_of_le_one_left (by positivity) hβ1).trans hτ1
+  have hL : 0 ≤ 1 + Real.log (1 / (β * (ζ ^ 4 / 8))) := by
+    have := Real.log_nonneg ((one_le_div (by positivity : 0 < β * (ζ ^ 4 / 8))).mpr hβτ)
+    linarith
+  have hp := pow_le_pow_left₀ hL hDensity 4
+  have hm : 10 ^ 20 * (1 + Real.log (1 / (β * (ζ ^ 4 / 8)))) ^ 4 ≤
+      (256 * 10 ^ 20) * B := by
+    have h := mul_le_mul_of_nonneg_left hp (by positivity : (0 : ℝ) ≤ 10 ^ 20)
+    convert h using 1; dsimp [B]; ring
+  have hMillion : Real.log 1000000 ≤ 1000000 * B := by
+    have := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 1000000)
+    linarith
+  change _ ≤ 10 ^ 30 * K ^ 4 * P ^ 8
+  rw [mul_assoc]
+  change _ ≤ 10 ^ 30 * B
+  nlinarith only [hm, hMillion, hd, hZ, hPB, hR, hKPB, hD, hKP2, hB]
+
+/-- Quantitative local symmetry, with an explicit uniform degree-eight bound.
+ This is blueprint `lem:local-symmetry`, including its original correlation hypothesis. -/
+theorem graph_local_symmetry {q : ℕ} [NeZero q] (hq : Odd q)
+    (cutoff : ℝ → ℝ) {L : ℝ≥0} (hLip : LipschitzWith L cutoff)
+    (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) (S : Finset (ZMod q))
+    {r ρ ζ : ℝ} (hr : 0 < r) (hrρ : r ≤ ρ / 100) (hρ1 : ρ < 1) (hζ : 0 < ζ)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y)
+    (a b c : ZMod q → ℂ) (ha : ∀ x, ‖a x‖ ≤ 1) (hb : ∀ x, ‖b x‖ ≤ 1)
+    (hc : ∀ x, ‖c x‖ ≤ 1)
+    (hcorr : ζ ≤ ‖graphLocalCorrelation (graphBohrWeight cutoff S r) M a b c‖) :
+    ∃ S' : Finset (ZMod q), ∃ t : ℝ, S ⊆ S' ∧ 0 < t ∧ t < r ∧
+      (∀ x ∈ graphBohrSet S' t, ∀ y ∈ graphBohrSet S' t,
+        ‖graphAlternatingPhase M x y‖ ≤ ζ / 1000) ∧
+      (S'.card : ℝ) + Real.log (1 / t) ≤
+        (10 ^ 30 * (max (L : ℝ) 1 + 10000) ^ 4) * graphSymmetryBudget S.card r ζ ^ 8 := by
+  let C := max (L : ℝ) 1
+  have hC : 0 ≤ C := le_trans zero_le_one (le_max_right _ _)
+  let s := localSymmetryInnerRadius C S.card r ζ
+  have hrsmall : r < 1 / 8 := by linarith
+  have hr1 : r ≤ 1 := by linarith
+  have hw (u : ZMod q) : |graphBohrWeight cutoff S r u| ≤ 1 := by
+    rw [abs_of_nonneg (graphBohrWeight_bounds cutoff hb0 hb1 S r u).1]
+    exact (graphBohrWeight_bounds cutoff hb0 hb1 S r u).2
+  have hζ1 := hcorr.trans
+    (graphLocalCorrelation_norm_le (graphBohrWeight cutoff S r) hw M a b c ha hb hc)
+  obtain ⟨hs, hsr, htol⟩ := localSymmetryInnerRadius_bounds hC hr hζ S.card
+  obtain ⟨hdom, h8s, _⟩ := localSymmetryInnerRadius_domain hC hr hζ S.card hrρ
+  change 0 < s at hs
+  change s ≤ r / 100 at hsr
+  change r + 2 * s < ρ at hdom
+  change 8 * s < ρ at h8s
+  obtain ⟨S', t, hSS', ht, hts, hsym, hcost⟩ := graph_local_symmetry_at_radius hq
+    cutoff hLip hb0 hb1 hbone hsupp S hr hrsmall hs (by linarith) hdom.le
+    (by linarith) hζ htol M hadd a b c ha hb hc hcorr
+  have hssmall : s < 1 / 8 := by linarith
+  have hβ := graphBohrMass_pos cutoff hb0 hb1 hbone S hs hssmall
+  obtain ⟨hβlower, hβ1⟩ := graphBohrMass_bounds cutoff hb0 hb1 hbone S hs hssmall
+  refine ⟨S', t, hSS', ht, by linarith, hsym, ?_⟩
+  exact hcost.trans (graph_symmetry_complexity_bound S.card hC hr hr1 hζ hζ1 hβ hβ1 hβlower)
+
+/-- Blueprint `lem:local-symmetry`: a fixed smooth cutoff admits a uniform polynomial
+ local-symmetry theorem. The exponent eight and the constant are independent of the modulus,
+ frequencies, radius and correlation. Only additivity in the stated Bohr domain is used. -/
+theorem local_symmetry (cutoff : ℝ → ℝ) (hcont : ContDiff ℝ 1 cutoff)
+    (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q], Odd q →
+      ∀ (S : Finset (ZMod q)) (r ρ ζ : ℝ), 0 < r → r ≤ ρ / 100 → ρ < 1 → 0 < ζ →
+      ∀ M : ZMod q → ZMod q,
+        (∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+          x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y) →
+      ∀ a b c : ZMod q → ℂ, (∀ x, ‖a x‖ ≤ 1) → (∀ x, ‖b x‖ ≤ 1) → (∀ x, ‖c x‖ ≤ 1) →
+        ζ ≤ ‖graphLocalCorrelation (graphBohrWeight cutoff S r) M a b c‖ →
+      ∃ S' : Finset (ZMod q), ∃ t : ℝ, S ⊆ S' ∧ 0 < t ∧ t < r ∧
+        (∀ x ∈ graphBohrSet S' t, ∀ y ∈ graphBohrSet S' t,
+          ‖graphAlternatingPhase M x y‖ ≤ ζ / 1000) ∧
+        (S'.card : ℝ) + Real.log (1 / t) ≤ C * graphSymmetryBudget S.card r ζ ^ 8 := by
+  obtain ⟨L, hLip⟩ := ContDiff.lipschitzWith_of_hasCompactSupport
+    (unit_cutoff_hasCompactSupport cutoff hsupp) hcont (by norm_num)
+  refine ⟨10 ^ 30 * (max (L : ℝ) 1 + 10000) ^ 4, by positivity, ?_⟩
+  intro q hq hodd S r ρ ζ hr hrρ hρ1 hζ M hadd a b c ha hb hc hcorr
+  exact graph_local_symmetry hodd cutoff hLip hb0 hb1 hbone hsupp S
+    hr hrρ hρ1 hζ M hadd a b c ha hb hc hcorr
+
+/-- Local additivity along a bounded positive and negative integer path gives the
+ expected scalar identity without assuming global additivity. -/
+theorem locally_additive_zsmul {G H : Type*} [AddCommGroup G] [AddCommGroup H]
+    (U : Set G) (M : G → H) (hM0 : M 0 = 0)
+    (hadd : ∀ x ∈ U, ∀ y ∈ U, x + y ∈ U → M (x + y) = M x + M y)
+    (v : G) {A : ℤ} (hA : 1 ≤ A)
+    (hpath : ∀ k : ℤ, |k| ≤ A → k • v ∈ U) (z : ℤ) (hz : |z| ≤ A) :
+    M (z • v) = z • M v := by
+  have h0 : (0 : G) ∈ U := by simpa using hpath 0 (by simpa using (show (0 : ℤ) ≤ A by omega))
+  have hv : v ∈ U := by simpa using hpath 1 (by simpa using hA)
+  have hnatU (n : ℕ) (hn : (n : ℤ) ≤ A) : n • v ∈ U := by
+    simpa using hpath n (by simpa using hn)
+  have hnat : ∀ n : ℕ, (n : ℤ) ≤ A → M (n • v) = n • M v := by
+    intro n
+    induction n with
+    | zero => intro _; simpa using hM0
+    | succ n ih =>
+      intro hn
+      have hn' : (n : ℤ) ≤ A := by omega
+      have hsum : n • v + v ∈ U := by
+        simpa only [succ_nsmul] using hnatU (n + 1) hn
+      rw [succ_nsmul, hadd _ (hnatU n hn') _ hv hsum, ih hn', succ_nsmul]
+  obtain ⟨n, rfl | rfl⟩ := z.eq_nat_or_neg
+  · simpa using hnat n (by simpa using hz)
+  · have hn : (n : ℤ) ≤ A := by simpa using hz
+    have hneg : -(n • v) ∈ U := by simpa using hpath (-(n : ℤ)) hz
+    have h := hadd (n • v) (hnatU n hn) (-(n • v)) hneg (by simpa using h0)
+    rw [add_neg_cancel, hM0] at h
+    have he : M (-(n • v)) = -M (n • v) := by
+      apply eq_neg_iff_add_eq_zero.mpr
+      simpa only [add_comm] using h.symm
+    simpa using (he.trans (congrArg Neg.neg (hnat n hn)))
+
+/-- A locally additive map agrees with its linear coordinate formula throughout an
+ integer box contained in its domain; blueprint `lem:local-chart`, lines 1043-1047. -/
+theorem locally_additive_integer_box {ι G H : Type*} [Fintype ι]
+    [AddCommGroup G] [AddCommGroup H] (U : Set G) (M : G → H)
+    (hadd : ∀ x ∈ U, ∀ y ∈ U, x + y ∈ U → M (x + y) = M x + M y)
+    (v : ι → G) (A : ι → ℤ) (hA : ∀ i, 0 ≤ A i)
+    (hbox : ∀ z : ι → ℤ, (∀ i, |z i| ≤ A i) → (∑ i, z i • v i) ∈ U)
+    (z : ι → ℤ) (hz : ∀ i, |z i| ≤ A i) :
+    M (∑ i, z i • v i) = ∑ i, z i • M (v i) := by
+  classical
+  have h0 : (0 : G) ∈ U := by
+    have h := hbox 0 (fun i => by simpa using (show (0 : ℤ) ≤ A i by linarith [hA i]))
+    simpa using h
+  have hM0 : M 0 = 0 := by
+    have h := hadd 0 h0 0 h0 (by simpa using h0)
+    simp only [zero_add] at h
+    have he : M 0 + M 0 = M 0 + 0 := by simpa using h.symm
+    exact add_left_cancel he
+  have hsingle (i : ι) (k : ℤ) (hk : |k| ≤ A i) : k • v i ∈ U := by
+    have h := hbox (Pi.single i k) (fun j => ?_)
+    · simpa [Pi.single_apply, ite_smul] using h
+    · by_cases hj : j = i
+      · subst j
+        simpa using hk
+      · simp [hj]
+        linarith [hA j]
+  have hpart (J : Finset ι) : (∑ i ∈ J, z i • v i) ∈ U := by
+    have h := hbox (fun i => if i ∈ J then z i else 0) (fun i => ?_)
+    · simpa only [ite_smul, zero_smul, Finset.sum_ite_mem, Finset.univ_inter] using h
+    · split_ifs
+      · exact hz i
+      · simpa using (show (0 : ℤ) ≤ A i by linarith [hA i])
+  have hsum (J : Finset ι) : M (∑ i ∈ J, z i • v i) = ∑ i ∈ J, z i • M (v i) := by
+    induction J using Finset.induction_on with
+    | empty => simpa using hM0
+    | @insert i J hi ih =>
+      have htotal : z i • v i + ∑ j ∈ J, z j • v j ∈ U := by
+        simpa only [Finset.sum_insert hi] using hpart (insert i J)
+      have hscalar : M (z i • v i) = z i • M (v i) := by
+        by_cases hzi : z i = 0
+        · simp [hzi, hM0]
+        · have hAi : 1 ≤ A i := by
+            have hp : 0 < |z i| := abs_pos.mpr hzi
+            have := hz i
+            omega
+          exact locally_additive_zsmul U M hM0 hadd (v i) hAi (hsingle i) (z i) (hz i)
+      rw [Finset.sum_insert hi, Finset.sum_insert hi,
+        hadd _ (hsingle i (z i) (hz i)) _ (hpart J) htotal, ih, hscalar]
+  exact hsum Finset.univ
+
+/-- The product of two integer linear forms in a cyclic group is the reduction modulo
+ one of the corresponding ordinary real quadratic polynomial. -/
+theorem cyclic_linear_quadratic_phase {ι : Type*} [Fintype ι] {q : ℕ} [NeZero q]
+    (m v : ι → ZMod q) (z : ι → ℤ) :
+    ZMod.toAddCircle ((∑ i, z i • m i) * (∑ i, z i • v i)) =
+      (((∑ i, (z i : ℝ) * ((m i).val : ℝ)) *
+        (∑ i, (z i : ℝ) * ((v i).val : ℝ)) / q : ℝ) : UnitAddCircle) := by
+  have hcast (f : ι → ZMod q) : ((∑ i, z i * ((f i).val : ℤ) : ℤ) : ZMod q) =
+      ∑ i, z i • f i := by simp [zsmul_eq_mul]
+  rw [← hcast m, ← hcast v, ← Int.cast_mul, ZMod.toAddCircle_intCast]
+  congr 1
+  simp
+
+theorem finite_weighted_set_average {G : Type*} [Fintype G] [AddCommGroup G]
+    (H : Finset G) (w : G → ℝ) :
+    (𝔼 x, 𝔼 h, w h * (Set.indicator (H : Set G) 1 (x + h) : ℝ)) =
+      (H.dens : ℝ) * (𝔼 h, w h) := by
+  classical
+  have hs (h : G) :
+      (𝔼 x, (Set.indicator (H : Set G) 1 (x + h) : ℝ)) = (H.dens : ℝ) := by
+    exact (Fintype.expect_equiv (Equiv.addRight h) _ _ (fun _ => rfl)).trans
+      (Finset.expect_indicator_one H)
+  rw [Finset.expect_comm]
+  simp only [← Finset.mul_expect, hs, ← Finset.expect_mul]
+  exact mul_comm _ _
+theorem finite_weighted_set_translate {G : Type*} [Fintype G] [AddCommGroup G]
+    (H : Finset G) (w : G → ℝ)
+    (hpos : 0 < (H.dens : ℝ) * (𝔼 h, w h)) :
+    ∃ x h₀, (H.dens : ℝ) * (𝔼 h, w h) ≤
+      (𝔼 h, w h * (Set.indicator (H : Set G) 1 (x + h) : ℝ)) ∧
+      0 < w h₀ ∧ x + h₀ ∈ H := by
+  classical
+  obtain ⟨x, _, hx⟩ := Finset.exists_le_of_le_expect Finset.univ_nonempty
+    (finite_weighted_set_average H w).ge
+  obtain ⟨h, _, hh⟩ := Finset.exists_lt_of_lt_expect Finset.univ_nonempty (hpos.trans_le hx)
+  have hmem : x + h ∈ H := by
+    by_contra hn
+    simp [Set.indicator_of_notMem hn] at hh
+  refine ⟨x, h, hx, ?_, hmem⟩
+  simpa [Set.indicator_of_mem hmem] using hh
+
+theorem graph_frequency_affine_on_translate {q : ℕ} [NeZero q]
+    (H S : Finset (ZMod q)) (ξ M : ZMod q → ZMod q) {r ρ : ℝ}
+    (hr : 0 ≤ r) (hρ : 2 * r ≤ ρ)
+    (hadd : ∀ u ∈ graphBohrSet S ρ, ∀ v ∈ graphBohrSet S ρ,
+      u + v ∈ graphBohrSet S ρ → M (u + v) = M u + M v)
+    (hdiff : ∀ u ∈ H, ∀ v ∈ H, u - v ∈ graphBohrSet S ρ →
+      ξ u - ξ v = 2 * M (u - v))
+    {x h₀ h : ZMod q} (h₀H : x + h₀ ∈ H) (hhH : x + h ∈ H)
+    (h₀B : h₀ ∈ graphBohrSet S r) (hhB : h ∈ graphBohrSet S r) :
+    ξ (x + h) = (ξ (x + h₀) - 2 * M h₀) + 2 * M h := by
+  have hb : h - h₀ ∈ graphBohrSet S ρ :=
+    graphBohrSet_mono (Finset.Subset.refl S) (by linarith : r + r ≤ ρ)
+      (graphBohrSet_sub S hhB h₀B)
+  have he := hdiff (x + h) hhH (x + h₀) h₀H (by simpa only [add_sub_add_left_eq_sub] using hb)
+  rw [add_sub_add_left_eq_sub, graph_local_additive_sub S M hr hρ hadd hhB h₀B] at he
+  linear_combination he
+
+theorem complex_phase_alignment (z : ℂ) :
+    ∃ c : ℂ, ‖c‖ = 1 ∧ c * z = (‖z‖ : ℂ) := by
+  by_cases hz : z = 0
+  · exact ⟨1, by simp, by simp [hz]⟩
+  have hn : ‖z‖ ≠ 0 := norm_ne_zero_iff.mpr hz
+  refine ⟨conj z / (‖z‖ : ℂ), ?_, ?_⟩
+  · simp [hn]
+  · rw [div_mul_eq_mul_div, Complex.conj_mul']
+    field_simp
+theorem finite_supported_phase_alignment {G : Type*}
+    (P : G → Prop) [DecidablePred P] (z : G → ℂ) :
+    ∃ c : G → ℂ, (∀ h, ‖c h‖ ≤ 1) ∧
+      (∀ h, P h → ‖c h‖ = 1) ∧ (∀ h, ¬ P h → c h = 0) ∧
+      ∀ h, c h * z h = (if P h then (‖z h‖ : ℂ) else 0) := by
+  classical
+  choose a ha he using fun h => complex_phase_alignment (z h)
+  refine ⟨fun h => if P h then a h else 0, ?_, ?_, ?_, ?_⟩
+  · intro h
+    dsimp only
+    split_ifs <;> simp [ha]
+  · intro h hh
+    simp [hh, ha]
+  · intro h hh
+    simp [hh]
+  · intro h
+    dsimp only
+    split_ifs <;> simp [he]
+theorem finite_weighted_phase_lower_bound {G : Type*} [Fintype G]
+    (P : G → Prop) [DecidablePred P] (w : G → ℝ) (z c : G → ℂ)
+    (hw : ∀ h, 0 ≤ w h)
+    (hc : ∀ h, c h * z h = if P h then (‖z h‖ : ℂ) else 0)
+    {a : ℝ} (hz : ∀ h, P h → a ≤ ‖z h‖) :
+    a * (𝔼 h, w h * (if P h then 1 else 0)) ≤
+      ‖𝔼 h, (w h : ℂ) * (c h * z h)‖ := by
+  have he : (𝔼 h, (w h : ℂ) * (c h * z h)) =
+      ((𝔼 h, w h * (if P h then ‖z h‖ else 0)) : ℝ) := by
+    rw [finite_expect_ofReal]
+    apply Finset.expect_congr rfl
+    intro h _
+    rw [hc]
+    split_ifs <;> simp
+  rw [he, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg]
+  · rw [Finset.mul_expect]
+    apply Finset.expect_le_expect
+    intro h _
+    split_ifs with hh
+    · simpa [mul_comm a] using mul_le_mul_of_nonneg_left (hz h hh) (hw h)
+    · simp
+  · apply Finset.expect_nonneg
+    intro h _
+    exact mul_nonneg (hw h) (by split_ifs <;> positivity)
+theorem graph_initial_phase_correlation {q : ℕ} [NeZero q]
+    (P : ZMod q → Prop) [DecidablePred P] (w : ZMod q → ℝ)
+    (hw : ∀ h, 0 ≤ w h) (f : ZMod q → ℂ)
+    (M : ZMod q → ZMod q) (x₀ ξ₀ : ZMod q) {a : ℝ}
+    (hcor : ∀ h, P h → a ≤ ‖𝔼 x,
+      f (x + h + x₀) * conj (f x) *
+        ZMod.stdAddChar (-((ξ₀ + 2 * M h) * x))‖) :
+    ∃ c : ZMod q → ℂ, (∀ h, ‖c h‖ ≤ 1) ∧
+      (∀ h, ¬ P h → c h = 0) ∧
+      a * (𝔼 h, w h * (if P h then 1 else 0)) ≤
+        ‖graphLocalCorrelation w M (fun x => f (x + x₀))
+          (fun x => conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))) c‖ := by
+  let z := fun h => 𝔼 x, f (x + h + x₀) * conj (f x) *
+    ZMod.stdAddChar (-((ξ₀ + 2 * M h) * x))
+  obtain ⟨c, hc, _, hc0, hcz⟩ := finite_supported_phase_alignment P z
+  refine ⟨c, hc, hc0, ?_⟩
+  have he : graphLocalCorrelation w M (fun x => f (x + x₀))
+      (fun x => conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))) c =
+      𝔼 h, (w h : ℂ) * (c h * z h) := by
+    unfold graphLocalCorrelation
+    apply Finset.expect_congr rfl
+    intro h _
+    dsimp [z]
+    rw [Finset.mul_expect, Finset.mul_expect]
+    apply Finset.expect_congr rfl
+    intro x _
+    have hch : ZMod.stdAddChar (-((ξ₀ + 2 * M h) * x)) =
+        ZMod.stdAddChar (-(ξ₀ * x)) * ZMod.stdAddChar (-(2 * M h * x)) := by
+      rw [show -((ξ₀ + 2 * M h) * x) = -(ξ₀ * x) + -(2 * M h * x) by ring,
+        AddChar.map_add_eq_mul]
+    rw [hch]
+    ring
+  rw [he]
+  exact finite_weighted_phase_lower_bound P w z c hw hcz hcor
+
+theorem graph_initial_correlation_from_derivatives {q : ℕ} [NeZero q]
+    (H S : Finset (ZMod q)) (ξ M : ZMod q → ZMod q)
+    (w : ZMod q → ℝ) (f : ZMod q → ℂ) {r ρ a : ℝ}
+    (hr : 0 ≤ r) (hρ : 2 * r ≤ ρ) (ha : 0 ≤ a)
+    (hw : ∀ h, 0 ≤ w h)
+    (hsupp : ∀ h, w h ≠ 0 → h ∈ graphBohrSet S r)
+    (hpos : 0 < (H.dens : ℝ) * (𝔼 h, w h))
+    (hadd : ∀ u ∈ graphBohrSet S ρ, ∀ v ∈ graphBohrSet S ρ,
+      u + v ∈ graphBohrSet S ρ → M (u + v) = M u + M v)
+    (hdiff : ∀ u ∈ H, ∀ v ∈ H, u - v ∈ graphBohrSet S ρ →
+      ξ u - ξ v = 2 * M (u - v))
+    (hcor : ∀ h ∈ H, a ≤ ‖𝔼 x,
+      f (x + h) * conj (f x) * ZMod.stdAddChar (-(ξ h * x))‖) :
+    ∃ (x₀ ξ₀ : ZMod q) (c : ZMod q → ℂ),
+      (∀ h, ‖c h‖ ≤ 1) ∧
+      a * ((H.dens : ℝ) * (𝔼 h, w h)) ≤
+        ‖graphLocalCorrelation w M (fun x => f (x + x₀))
+          (fun x => conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))) c‖ := by
+  classical
+  obtain ⟨x₀, h₀, hx₀, hw₀, hH₀⟩ := finite_weighted_set_translate H w hpos
+  let ξ₀ := ξ (x₀ + h₀) - 2 * M h₀
+  let P := fun h => 0 < w h ∧ x₀ + h ∈ H
+  have haf (h) (hh : P h) : ξ (x₀ + h) = ξ₀ + 2 * M h :=
+    graph_frequency_affine_on_translate H S ξ M hr hρ hadd hdiff hH₀ hh.2
+      (hsupp h₀ hw₀.ne') (hsupp h hh.1.ne')
+  have hder (h) (hh : P h) : a ≤ ‖𝔼 x,
+      f (x + h + x₀) * conj (f x) *
+        ZMod.stdAddChar (-((ξ₀ + 2 * M h) * x))‖ := by
+    have he := hcor (x₀ + h) hh.2
+    rw [haf h hh] at he
+    simpa only [add_comm x₀ h, add_assoc] using he
+  obtain ⟨c, hc, _, hcl⟩ := graph_initial_phase_correlation P w hw f M x₀ ξ₀ hder
+  refine ⟨x₀, ξ₀, c, hc, (mul_le_mul_of_nonneg_left ?_ ha).trans hcl⟩
+  convert hx₀ using 1
+  apply Finset.expect_congr rfl
+  intro h _
+  by_cases hz : w h = 0
+  · simp [hz]
+  · have hp : 0 < w h := lt_of_le_of_ne (hw h) (Ne.symm hz)
+    by_cases hh : x₀ + h ∈ H <;> simp [P, hp, hh]
+theorem graph_initial_correlation_log (d N : ℕ) {δ ρ α β K : ℝ}
+    (hδ : 0 < δ) (hρ : 0 < ρ) (hK : 0 < K)
+    (hα : δ ^ N / K ≤ α) (hβ : (ρ / 600) ^ d ≤ β) :
+    Real.log (1 / (δ ^ 4 * α * β / Real.sqrt 2)) ≤
+      (N + 4 : ℝ) * Real.log (1 / δ) + Real.log K + Real.log (Real.sqrt 2) +
+        d * (Real.log 600 + Real.log (1 / ρ)) := by
+  have hαpos : 0 < α := (div_pos (pow_pos hδ N) hK).trans_le hα
+  have hβpos : 0 < β := (pow_pos (div_pos hρ (by norm_num)) d).trans_le hβ
+  have hla := Real.log_le_log (div_pos (pow_pos hδ N) hK) hα
+  have hlb := Real.log_le_log (pow_pos (div_pos hρ (by norm_num)) d) hβ
+  rw [Real.log_div (pow_ne_zero N hδ.ne') hK.ne', Real.log_pow] at hla
+  rw [Real.log_pow, Real.log_div hρ.ne' (by norm_num : (600 : ℝ) ≠ 0)] at hlb
+  rw [one_div, Real.log_inv,
+    Real.log_div (by positivity : δ ^ 4 * α * β ≠ 0) (by positivity : Real.sqrt 2 ≠ 0),
+    Real.log_mul (by positivity : δ ^ 4 * α ≠ 0) hβpos.ne',
+    Real.log_mul (pow_ne_zero 4 hδ.ne') hαpos.ne', Real.log_pow]
+  simp only [one_div, Real.log_inv, Nat.cast_ofNat]
+  nlinarith
+theorem graph_initial_correlation_log_budget (d N : ℕ) {δ ρ α β K A B : ℝ}
+    (hδ : 0 < δ) (hρ : 0 < ρ) (hρ1 : ρ ≤ 1) (hK : 0 < K)
+    (hα : δ ^ N / K ≤ α) (hβ : (ρ / 600) ^ d ≤ β)
+    (hA : 1 ≤ A) (hB : 1 ≤ B) (hδB : Real.log (1 / δ) ≤ B)
+    (hd : (d : ℝ) + Real.log (1 / ρ) ≤ A * B ^ 4) :
+    Real.log (1 / (δ ^ 4 * α * β / Real.sqrt 2)) ≤
+      ((N : ℝ) + 4 + K + 2 + 600 * A + A ^ 2) * B ^ 8 := by
+  have hlog := graph_initial_correlation_log d N hδ hρ hK hα hβ
+  have hL : 0 ≤ Real.log (1 / ρ) :=
+    Real.log_nonneg ((one_le_div hρ).mpr hρ1)
+  have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
+  have hdA : (d : ℝ) ≤ A * B ^ 4 := by linarith
+  have hLA : Real.log (1 / ρ) ≤ A * B ^ 4 := by linarith
+  have hp := mul_le_mul hdA hLA hL (by positivity : 0 ≤ A * B ^ 4)
+  have he : (A * B ^ 4) * (A * B ^ 4) = A ^ 2 * B ^ 8 := by ring
+  rw [he] at hp
+  have h600 := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 600)
+  have h600d := mul_le_mul_of_nonneg_left h600 hd0
+  have hKlog := Real.log_le_self hK.le
+  have hslog : Real.log (Real.sqrt 2) ≤ 2 := by
+    have hl := Real.log_le_self (Real.sqrt_nonneg 2)
+    have hs : Real.sqrt 2 ≤ 2 := by
+      exact (Real.sqrt_le_iff).mpr ⟨by norm_num, by norm_num⟩
+    exact hl.trans hs
+  have hδmul := mul_le_mul_of_nonneg_left hδB (by positivity : 0 ≤ (N : ℝ) + 4)
+  have hB8 : B ≤ B ^ 8 := by simpa using pow_le_pow_right₀ hB (by norm_num : 1 ≤ 8)
+  have hB48 : B ^ 4 ≤ B ^ 8 := pow_le_pow_right₀ hB (by norm_num : 4 ≤ 8)
+  have hB80 : 1 ≤ B ^ 8 := one_le_pow₀ hB
+  have hN := mul_le_mul_of_nonneg_left hB8 (by positivity : 0 ≤ (N : ℝ) + 4)
+  have hC := mul_le_mul_of_nonneg_left hB80 (by positivity : 0 ≤ K + 2)
+  have hD := mul_le_mul_of_nonneg_left hB48 (by positivity : 0 ≤ 600 * A)
+  nlinarith
+
+theorem finite_weighted_shift_error {G : Type*} [Fintype G] [AddCommGroup G]
+    (w μ : G → ℝ) (hμ : ∀ t, 0 ≤ μ t) (hμmass : (𝔼 t, μ t) = 1)
+    (F : G → ℂ) (hF : ∀ h, ‖F h‖ ≤ 1) {ε : ℝ}
+    (htrans : ∀ h t, μ t ≠ 0 → |w (h + t) - w h| ≤ ε) :
+    ‖(𝔼 h, (w h : ℂ) * F h) -
+      (𝔼 h, (w h : ℂ) * (𝔼 t, (μ t : ℂ) * F (h + t)))‖ ≤ ε := by
+  have he := finite_weighted_shift_average μ hμmass (fun h => (w h : ℂ) * F h)
+  rw [← he]
+  simp only [Finset.mul_expect, ← Finset.expect_sub_distrib]
+  calc
+    _ ≤ 𝔼 h, ‖𝔼 t, ((μ t : ℂ) * ((w (h + t) : ℂ) * F (h + t)) -
+        (w h : ℂ) * ((μ t : ℂ) * F (h + t)))‖ := RCLike.norm_expect_le (K := ℂ)
+    _ ≤ 𝔼 h, 𝔼 t, μ t * ε := by
+      apply Finset.expect_le_expect
+      intro h _
+      apply (RCLike.norm_expect_le (K := ℂ)).trans
+      apply Finset.expect_le_expect
+      intro t _
+      by_cases ht : μ t = 0
+      · simp [ht]
+      · have hc : (μ t : ℂ) * ((w (h + t) : ℂ) * F (h + t)) -
+            (w h : ℂ) * ((μ t : ℂ) * F (h + t)) =
+            (μ t : ℂ) * ((w (h + t) - w h : ℝ) : ℂ) * F (h + t) := by
+          push_cast
+          ring
+        rw [hc, norm_mul, norm_mul, Complex.norm_real, Real.norm_of_nonneg (hμ t),
+          Complex.norm_real, Real.norm_eq_abs]
+        have hp : |w (h + t) - w h| * ‖F (h + t)‖ ≤ ε := by
+          simpa only [mul_one] using mul_le_mul (htrans h t ht) (hF (h + t))
+            (norm_nonneg _) ((abs_nonneg _).trans (htrans h t ht))
+        simpa only [mul_assoc] using mul_le_mul_of_nonneg_left hp (hμ t)
+    _ = ε := by simp only [← Finset.expect_mul, hμmass, one_mul, Fintype.expect_const]
+theorem finite_weighted_shift_select {G : Type*} [Fintype G] [AddCommGroup G]
+    (w μ : G → ℝ) (hw : ∀ h, 0 ≤ w h) (hwmass : (𝔼 h, w h) ≤ 1)
+    (hμ : ∀ t, 0 ≤ μ t) (hμmass : (𝔼 t, μ t) = 1)
+    (F : G → ℂ) (hF : ∀ h, ‖F h‖ ≤ 1) {ζ ε : ℝ} (hζ : ε < ζ)
+    (hcorr : ζ ≤ ‖𝔼 h, (w h : ℂ) * F h‖)
+    (htrans : ∀ h t, μ t ≠ 0 → |w (h + t) - w h| ≤ ε) :
+    ∃ h, w h ≠ 0 ∧ ζ - ε ≤ ‖𝔼 t, (μ t : ℂ) * F (h + t)‖ := by
+  apply finite_weighted_correlation_select w hw hwmass _ (sub_pos.mpr hζ)
+  have herr := finite_weighted_shift_error w μ hμ hμmass F hF htrans
+  have hn := norm_le_norm_sub_add (𝔼 h, (w h : ℂ) * F h)
+    (𝔼 h, (w h : ℂ) * (𝔼 t, (μ t : ℂ) * F (h + t)))
+  linarith
+theorem graph_local_shift_select {q : ℕ} [NeZero q]
+    (w μ : ZMod q → ℝ) (hw : ∀ h, 0 ≤ w h) (hwmass : (𝔼 h, w h) ≤ 1)
+    (hμ : ∀ t, 0 ≤ μ t) (hμmass : (𝔼 t, μ t) = 1)
+    (M : ZMod q → ZMod q) (a b c : ZMod q → ℂ)
+    (ha : ∀ x, ‖a x‖ ≤ 1) (hb : ∀ x, ‖b x‖ ≤ 1) (hc : ∀ x, ‖c x‖ ≤ 1)
+    {ζ ε : ℝ} (hζ : ε < ζ) (hcorr : ζ ≤ ‖graphLocalCorrelation w M a b c‖)
+    (htrans : ∀ h t, μ t ≠ 0 → |w (h + t) - w h| ≤ ε)
+    (hadd : ∀ h, w h ≠ 0 → ∀ t, μ t ≠ 0 → M (h + t) = M h + M t) :
+    ∃ h, w h ≠ 0 ∧ ζ - ε ≤
+      ‖graphLocalCorrelation μ M (fun x => a (x + h))
+        (fun x => b x * ZMod.stdAddChar (-(2 * M h * x))) (fun t => c (h + t))‖ := by
+  let F := fun h => c h * (𝔼 x, a (x + h) * b x * ZMod.stdAddChar (-(2 * M h * x)))
+  have hF (h) : ‖F h‖ ≤ 1 := by
+    have hi : ‖𝔼 x, a (x + h) * b x * ZMod.stdAddChar (-(2 * M h * x))‖ ≤ 1 := by
+      apply (RCLike.norm_expect_le (K := ℂ)).trans
+      apply Finset.expect_le Finset.univ_nonempty
+      intro x _
+      simp only [norm_mul, ZMod.stdAddChar_apply, Circle.norm_coe, mul_one]
+      exact (mul_le_mul (ha _) (hb _) (norm_nonneg _) zero_le_one).trans_eq (mul_one 1)
+    dsimp [F]
+    rw [norm_mul]
+    exact (mul_le_mul (hc h) hi (norm_nonneg _) zero_le_one).trans_eq (mul_one 1)
+  have hcorr' : ζ ≤ ‖𝔼 h, (w h : ℂ) * F h‖ := by
+    simpa only [graphLocalCorrelation, F, ← Finset.mul_expect, mul_assoc] using hcorr
+  obtain ⟨h, hwh, hsel⟩ := finite_weighted_shift_select w μ hw hwmass hμ hμmass F hF
+    hζ hcorr' htrans
+  refine ⟨h, hwh, ?_⟩
+  convert hsel using 1
+  congr 1
+  unfold graphLocalCorrelation
+  apply Finset.expect_congr rfl
+  intro t _
+  dsimp [F]
+  rw [Finset.mul_expect, Finset.mul_expect]
+  apply Finset.expect_congr rfl
+  intro x _
+  by_cases ht : μ t = 0
+  · simp [ht]
+  · have hch : ZMod.stdAddChar (-(2 * M (h + t) * x)) =
+        ZMod.stdAddChar (-(2 * M h * x)) * ZMod.stdAddChar (-(2 * M t * x)) := by
+      rw [hadd h hwh t ht,
+        show -(2 * (M h + M t) * x) = -(2 * M h * x) + -(2 * M t * x) by ring,
+        AddChar.map_add_eq_mul]
+    rw [hch]
+    simp only [add_assoc, add_comm t h]
+    ring
+theorem graph_bohr_shift_select {q : ℕ} [NeZero q]
+    (cutoff : ℝ → ℝ) {L : ℝ≥0} (hLip : LipschitzWith L cutoff)
+    (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0)
+    (S T : Finset (ZMod q)) (hST : S ⊆ T) {r s ρ ζ : ℝ}
+    (hr : 0 < r) (hrsmall : r < 1 / 8) (hs : 0 < s) (hsr : s ≤ r)
+    (hrρ : r + s ≤ ρ) (hζ : 0 < ζ)
+    (herror : max (L : ℝ) 1 * S.card * s / r ≤ ζ / 100)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y)
+    (a b c : ZMod q → ℂ) (ha : ∀ x, ‖a x‖ ≤ 1)
+    (hb : ∀ x, ‖b x‖ ≤ 1) (hc : ∀ x, ‖c x‖ ≤ 1)
+    (hcorr : ζ ≤ ‖graphLocalCorrelation (graphBohrWeight cutoff S r) M a b c‖) :
+    ∃ h ∈ graphBohrSet S r, ζ / 2 ≤
+      ‖graphLocalCorrelation (graphBohrMeasure cutoff T s) M (fun x => a (x + h))
+        (fun x => b x * ZMod.stdAddChar (-(2 * M h * x))) (fun t => c (h + t))‖ := by
+  have hmass := graphBohrMass_pos cutoff hb0 hb1 hbone T hs (hsr.trans_lt hrsmall)
+  have hμsupp (t) (ht : graphBohrMeasure cutoff T s t ≠ 0) : t ∈ graphBohrSet S s := by
+    apply graphBohrSet_mono hST le_rfl
+    by_contra hn
+    exact ht (graphBohrMeasure_eq_zero_of_notMem cutoff hsupp T hs t hn)
+  have hwsupp (h) (hh : graphBohrWeight cutoff S r h ≠ 0) : h ∈ graphBohrSet S r := by
+    by_contra hn
+    exact hh (graphBohrWeight_eq_zero_of_notMem cutoff hsupp S hr h hn)
+  have htrans (h t) (ht : graphBohrMeasure cutoff T s t ≠ 0) :
+      |graphBohrWeight cutoff S r (h + t) - graphBohrWeight cutoff S r h| ≤ ζ / 100 := by
+    have hv := cyclicBohrWeight_translation cutoff hLip hb0 hb1 hsupp S hr hrsmall h t
+    change |graphBohrWeight cutoff S r (h + t) - graphBohrWeight cutoff S r h| ≤
+      max (L : ℝ) 1 * S.card * graphBohrNorm S t / r at hv
+    apply hv.trans
+    apply le_trans _ herror
+    apply div_le_div_of_nonneg_right _ hr.le
+    exact mul_le_mul_of_nonneg_left (graphBohrNorm_le_of_mem S hs.le (hμsupp t ht))
+      (by positivity)
+  have hlocal (h) (hh : graphBohrWeight cutoff S r h ≠ 0)
+      (t) (ht : graphBohrMeasure cutoff T s t ≠ 0) : M (h + t) = M h + M t := by
+    exact hadd h (graphBohrSet_mono (Finset.Subset.refl S) (by linarith : r ≤ ρ) (hwsupp h hh))
+      t (graphBohrSet_mono (Finset.Subset.refl S) (by linarith : s ≤ ρ) (hμsupp t ht))
+      (graphBohrSet_mono (Finset.Subset.refl S) hrρ
+        (graphBohrSet_add S (hwsupp h hh) (hμsupp t ht)))
+  obtain ⟨h, hh, hsel⟩ := graph_local_shift_select (graphBohrWeight cutoff S r)
+    (graphBohrMeasure cutoff T s) (fun h => (graphBohrWeight_bounds cutoff hb0 hb1 S r h).1)
+    (graphBohrMass_bounds cutoff hb0 hb1 hbone S hr hrsmall).2
+    (graphBohrMeasure_nonneg cutoff hb0 T s hmass)
+    (graphBohrMeasure_mean_one cutoff T s hmass) M a b c ha hb hc
+    (by linarith : ζ / 100 < ζ) hcorr htrans hlocal
+  exact ⟨h, hwsupp h hh, (by linarith : ζ / 2 ≤ ζ - ζ / 100).trans hsel⟩
+
+
+theorem graph_correlation_localization_explicit {q : ℕ} [NeZero q]
+    (w μ : ZMod q → ℝ) (hμ : (𝔼 u, μ u) = 1) (M : ZMod q → ZMod q)
+    (a b c : ZMod q → ℂ) {ζ : ℝ} (hζ : ζ ≤ ‖graphLocalCorrelation w M a b c‖) :
+    ∃ y : ZMod q, ζ ≤ ‖graphLocalizedCorrelation w μ M
+      (fun x => a (x + y)) (fun x => b (x + y))
+      (fun h => c h * ZMod.stdAddChar (-(2 * M h * y)))‖ := by
+  let F : ZMod q → ZMod q → ℂ := fun h x => (w h : ℂ) * c h *
+    (a (x + h) * b x * ZMod.stdAddChar (-(2 * M h * x)))
+  obtain ⟨y, hy⟩ := finite_weighted_translation_localization μ hμ F hζ
+  refine ⟨y, ?_⟩
+  have he : graphLocalizedCorrelation w μ M
+      (fun x => a (x + y)) (fun x => b (x + y))
+      (fun h => c h * ZMod.stdAddChar (-(2 * M h * y))) =
+      𝔼 h, 𝔼 u, (μ u : ℂ) * F h (y + u) := by
+    unfold graphLocalizedCorrelation
+    apply Finset.expect_congr rfl
+    intro h _
+    rw [Finset.mul_expect]
+    apply Finset.expect_congr rfl
+    intro u _
+    dsimp [F]
+    have hchar : ZMod.stdAddChar (-(2 * M h * (y + u))) =
+        ZMod.stdAddChar (-(2 * M h * y)) * ZMod.stdAddChar (-(2 * M h * u)) := by
+      rw [show -(2 * M h * (y + u)) = -(2 * M h * y) + -(2 * M h * u) by ring,
+        AddChar.map_add_eq_mul]
+    rw [hchar]
+    simp only [add_left_comm, add_comm]
+    ring
+  rw [he]
+  exact hy
+
+theorem graph_quadratic_polarization {q : ℕ} [NeZero q]
+    (M : ZMod q → ZMod q) (u t : ZMod q) (hM : M (u + t) = M u + M t) :
+    ZMod.stdAddChar (-(M u * t + M t * u)) =
+      ZMod.stdAddChar (M u * u) * ZMod.stdAddChar (M t * t) *
+        ZMod.stdAddChar (-(M (u + t) * (u + t))) := by
+  rw [← AddChar.map_add_eq_mul, ← AddChar.map_add_eq_mul, hM]
+  congr 1
+  ring
+theorem graph_skew_character_error {q : ℕ} [NeZero q]
+    (M : ZMod q → ZMod q) (u t : ZMod q) :
+    ‖ZMod.stdAddChar (-(2 * M t * u)) -
+      ZMod.stdAddChar (-(M u * t + M t * u))‖ ≤
+      2 * Real.pi * ‖graphAlternatingPhase M u t‖ := by
+  have he : ZMod.stdAddChar (-(2 * M t * u)) -
+      ZMod.stdAddChar (-(M u * t + M t * u)) =
+      ZMod.stdAddChar (-(M u * t + M t * u)) *
+        (ZMod.stdAddChar (graphAlternating M u t) - 1) := by
+    rw [mul_sub, mul_one, ← AddChar.map_add_eq_mul]
+    congr 2
+    unfold graphAlternating
+    ring
+  rw [he, norm_mul]
+  simpa only [ZMod.stdAddChar_apply, Circle.norm_coe, one_mul, graphAlternatingPhase]
+    using bogolyubov_stdChar_distance (graphAlternating M u t)
+theorem graph_localized_polarization_error {q : ℕ} [NeZero q]
+    (μ : ZMod q → ℝ) (hμ : ∀ x, 0 ≤ μ x) (hμmass : (𝔼 x, μ x) = 1)
+    (M : ZMod q → ZMod q) (D : Set (ZMod q))
+    (a b c : ZMod q → ℂ) (ha : ∀ x, ‖a x‖ ≤ 1)
+    (hb : ∀ x, ‖b x‖ ≤ 1) (hc : ∀ x, ‖c x‖ ≤ 1) {κ : ℝ}
+    (hskew : ∀ u t, μ u ≠ 0 → μ t ≠ 0 → ‖graphAlternatingPhase M u t‖ ≤ κ)
+    (hadd : ∀ u t, μ u ≠ 0 → μ t ≠ 0 → M (u + t) = M u + M t)
+    (hD : ∀ u t, μ u ≠ 0 → μ t ≠ 0 → u + t ∈ D) :
+    ‖graphLocalizedCorrelation μ μ M a b c -
+      (𝔼 u, 𝔼 t,
+        ((μ u : ℂ) * b u * ZMod.stdAddChar (M u * u)) *
+        ((μ t : ℂ) * c t * ZMod.stdAddChar (M t * t)) *
+        D.indicator (fun v => a v * ZMod.stdAddChar (-(M v * v))) (u + t))‖ ≤
+      2 * Real.pi * κ := by
+  classical
+  let F := fun u t => c t * a (u + t) * b u *
+    (ZMod.stdAddChar (-(2 * M t * u)) - ZMod.stdAddChar (-(M u * t + M t * u)))
+  have he : graphLocalizedCorrelation μ μ M a b c -
+      (𝔼 u, 𝔼 t,
+        ((μ u : ℂ) * b u * ZMod.stdAddChar (M u * u)) *
+        ((μ t : ℂ) * c t * ZMod.stdAddChar (M t * t)) *
+        D.indicator (fun v => a v * ZMod.stdAddChar (-(M v * v))) (u + t)) =
+      𝔼 u, 𝔼 t, (μ u : ℂ) * (μ t : ℂ) * F u t := by
+    unfold graphLocalizedCorrelation
+    simp only [Finset.mul_expect]
+    rw [Finset.expect_comm]
+    rw [← Finset.expect_sub_distrib]
+    apply Finset.expect_congr rfl
+    intro u _
+    rw [← Finset.expect_sub_distrib]
+    apply Finset.expect_congr rfl
+    intro t _
+    by_cases hu : μ u = 0
+    · simp [hu]
+    by_cases ht : μ t = 0
+    · simp [ht]
+    rw [Set.indicator_of_mem (hD u t hu ht)]
+    dsimp only [F]
+    rw [graph_quadratic_polarization M u t (hadd u t hu ht)]
+    ring
+  rw [he]
+  apply finite_weighted_pair_norm_le μ hμ hμmass F
+  intro u t hu ht
+  have habc : ‖c t * a (u + t) * b u‖ ≤ 1 := by
+    rw [norm_mul, norm_mul]
+    have hca := (mul_le_mul (hc t) (ha (u + t)) (norm_nonneg _) zero_le_one).trans_eq (mul_one 1)
+    exact (mul_le_mul hca (hb u) (norm_nonneg _) zero_le_one).trans_eq (mul_one 1)
+  dsimp only [F]
+  rw [norm_mul]
+  apply (mul_le_mul_of_nonneg_right habc (norm_nonneg _)).trans
+  rw [one_mul]
+  exact (graph_skew_character_error M u t).trans
+    (mul_le_mul_of_nonneg_left (hskew u t hu ht) (by positivity))
+theorem graph_bohr_polarized_correlation {q : ℕ} [NeZero q]
+    (cutoff : ℝ → ℝ) (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) (S : Finset (ZMod q))
+    {s ρ ζ : ℝ} (hs : 0 < s) (hs1 : s < 1 / 8) (hsρ : 2 * s ≤ ρ) (hζ : 0 < ζ)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ u ∈ graphBohrSet S ρ, ∀ t ∈ graphBohrSet S ρ,
+      u + t ∈ graphBohrSet S ρ → M (u + t) = M u + M t)
+    (hskew : ∀ u ∈ graphBohrSet S s, ∀ t ∈ graphBohrSet S s,
+      ‖graphAlternatingPhase M u t‖ ≤ ζ / 1000)
+    (a b c : ZMod q → ℂ) (ha : ∀ x, ‖a x‖ ≤ 1)
+    (hb : ∀ x, ‖b x‖ ≤ 1) (hc : ∀ x, ‖c x‖ ≤ 1)
+    (hcorr : ζ / 2 ≤ ‖graphLocalizedCorrelation (graphBohrMeasure cutoff S s)
+      (graphBohrMeasure cutoff S s) M a b c‖) :
+    let μ := graphBohrMeasure cutoff S s
+    ζ / 4 ≤ ‖𝔼 u, 𝔼 t,
+      ((μ u : ℂ) * b u * ZMod.stdAddChar (M u * u)) *
+      ((μ t : ℂ) * c t * ZMod.stdAddChar (M t * t)) *
+      (graphBohrSet S (2 * s) : Set (ZMod q)).indicator
+        (fun v => a v * ZMod.stdAddChar (-(M v * v))) (u + t)‖ := by
+  dsimp only
+  let μ := graphBohrMeasure cutoff S s
+  have hmass := graphBohrMass_pos cutoff hb0 hb1 hbone S hs hs1
+  have hsupport (u) (hu : μ u ≠ 0) : u ∈ graphBohrSet S s := by
+    by_contra hn
+    exact hu (graphBohrMeasure_eq_zero_of_notMem cutoff hsupp S hs u hn)
+  have hlocal (u t) (hu : μ u ≠ 0) (ht : μ t ≠ 0) : M (u + t) = M u + M t := by
+    exact hadd u (graphBohrSet_mono (Finset.Subset.refl S) (by linarith : s ≤ ρ) (hsupport u hu))
+      t (graphBohrSet_mono (Finset.Subset.refl S) (by linarith : s ≤ ρ) (hsupport t ht))
+      (graphBohrSet_mono (Finset.Subset.refl S) (by linarith : s + s ≤ ρ)
+        (graphBohrSet_add S (hsupport u hu) (hsupport t ht)))
+  have hsum (u t) (hu : μ u ≠ 0) (ht : μ t ≠ 0) : u + t ∈ graphBohrSet S (2 * s) := by
+    simpa only [two_mul] using graphBohrSet_add S (hsupport u hu) (hsupport t ht)
+  have herr := graph_localized_polarization_error μ
+    (graphBohrMeasure_nonneg cutoff hb0 S s hmass)
+    (graphBohrMeasure_mean_one cutoff S s hmass) M (graphBohrSet S (2 * s)) a b c ha hb hc
+    (fun u t hu ht => hskew u (hsupport u hu) t (hsupport t ht)) hlocal hsum
+  have hn := norm_le_norm_sub_add (graphLocalizedCorrelation μ μ M a b c)
+    (𝔼 u, 𝔼 t,
+      ((μ u : ℂ) * b u * ZMod.stdAddChar (M u * u)) *
+      ((μ t : ℂ) * c t * ZMod.stdAddChar (M t * t)) *
+      (graphBohrSet S (2 * s) : Set (ZMod q)).indicator
+        (fun v => a v * ZMod.stdAddChar (-(M v * v))) (u + t))
+  have hp := mul_le_mul_of_nonneg_right Real.pi_lt_four.le hζ.le
+  change ζ / 4 ≤ ‖𝔼 u, 𝔼 t,
+      ((μ u : ℂ) * b u * ZMod.stdAddChar (M u * u)) *
+      ((μ t : ℂ) * c t * ZMod.stdAddChar (M t * t)) *
+      (graphBohrSet S (2 * s) : Set (ZMod q)).indicator
+        (fun v => a v * ZMod.stdAddChar (-(M v * v))) (u + t)‖
+  change ζ / 2 ≤ ‖graphLocalizedCorrelation μ μ M a b c‖ at hcorr
+  linarith
+
+theorem graph_bohr_weighted_quadratic_correlation {q : ℕ} [NeZero q]
+    (cutoff : ℝ → ℝ) (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) (S : Finset (ZMod q))
+    {s ρ ζ : ℝ} (hs : 0 < s) (hs1 : s < 1 / 8) (hsρ : 2 * s ≤ ρ) (hζ : 0 < ζ)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ u ∈ graphBohrSet S ρ, ∀ t ∈ graphBohrSet S ρ,
+      u + t ∈ graphBohrSet S ρ → M (u + t) = M u + M t)
+    (hskew : ∀ u ∈ graphBohrSet S s, ∀ t ∈ graphBohrSet S s,
+      ‖graphAlternatingPhase M u t‖ ≤ ζ / 1000)
+    (a b c : ZMod q → ℂ) (ha : ∀ x, ‖a x‖ ≤ 1)
+    (hb : ∀ x, ‖b x‖ ≤ 1) (hc : ∀ x, ‖c x‖ ≤ 1)
+    (hcorr : ζ / 2 ≤ ‖graphLocalizedCorrelation (graphBohrMeasure cutoff S s)
+      (graphBohrMeasure cutoff S s) M a b c‖) :
+    let β := graphBohrMass cutoff S s
+    ∃ ξ : ZMod q, ζ * β * Real.sqrt β / 4 ≤
+      ‖𝔼 u, (graphBohrWeight cutoff S s u : ℂ) * b u *
+        ZMod.stdAddChar (M u * u - ξ * u)‖ := by
+  classical
+  dsimp only
+  let w := graphBohrWeight cutoff S s
+  let β := graphBohrMass cutoff S s
+  let B := fun u => b u * ZMod.stdAddChar (M u * u)
+  let C := fun t => c t * ZMod.stdAddChar (M t * t)
+  let A := (graphBohrSet S (2 * s) : Set (ZMod q)).indicator
+    (fun v => a v * ZMod.stdAddChar (-(M v * v)))
+  have hβ : 0 < β := graphBohrMass_pos cutoff hb0 hb1 hbone S hs hs1
+  have hC (t) : ‖C t‖ ≤ 1 := by
+    simpa only [C, norm_mul, ZMod.stdAddChar_apply, Circle.norm_coe, mul_one] using hc t
+  have hA (v) : ‖A v‖ ≤ 1 := by
+    by_cases hv : v ∈ graphBohrSet S (2 * s)
+    · simpa only [A, Set.indicator_of_mem hv, norm_mul, ZMod.stdAddChar_apply,
+        Circle.norm_coe, mul_one] using ha v
+    · simp [A, Set.indicator_of_notMem hv]
+  have hpol := graph_bohr_polarized_correlation cutoff hb0 hb1 hbone hsupp S
+    hs hs1 hsρ hζ M hadd hskew a b c ha hb hc hcorr
+  have hcorr' : ζ / 4 ≤ ‖𝔼 u, 𝔼 t,
+      ((w u / β : ℝ) : ℂ) * B u * (((w t / β : ℝ) : ℂ) * C t) * A (u + t)‖ := by
+    convert hpol using 1
+    congr 1
+    apply Finset.expect_congr rfl
+    intro u _
+    apply Finset.expect_congr rfl
+    intro t _
+    dsimp [w, β, B, C, A, graphBohrMeasure]
+    ring
+  obtain ⟨ξ, hξ⟩ := finite_weighted_trilinear_extract w
+    (fun u => (graphBohrWeight_bounds cutoff hb0 hb1 S s u).1)
+    (fun u => (graphBohrWeight_bounds cutoff hb0 hb1 S s u).2) hβ rfl B C A hC hA hcorr'
+  refine ⟨ξ, ?_⟩
+  have he : (𝔼 u, (w u : ℂ) * B u * ZMod.stdAddChar (-(ξ * u))) =
+      𝔼 u, (graphBohrWeight cutoff S s u : ℂ) * b u *
+        ZMod.stdAddChar (M u * u - ξ * u) := by
+    apply Finset.expect_congr rfl
+    intro u _
+    dsimp [w, B]
+    rw [sub_eq_add_neg, AddChar.map_add_eq_mul]
+    ring
+  rw [he] at hξ
+  convert hξ using 1
+  dsimp [β]
+  ring
+
+theorem graph_quadratic_correlation_recover {q : ℕ} [NeZero q]
+    (w : ZMod q → ℝ) (f : ZMod q → ℂ) (M : ZMod q → ZMod q)
+    (a y ξ : ZMod q) :
+    ‖𝔼 u, (w u : ℂ) * (conj (f (u + y)) * ZMod.stdAddChar (-(a * (u + y)))) *
+      ZMod.stdAddChar (M u * u - ξ * u)‖ =
+    ‖𝔼 u, (w u : ℂ) * f (u + y) *
+      ZMod.stdAddChar (-(M u * u) + (a + ξ) * u)‖ := by
+  have hp (u) : (w u : ℂ) * (conj (f (u + y)) * ZMod.stdAddChar (-(a * (u + y)))) *
+      ZMod.stdAddChar (M u * u - ξ * u) =
+      ZMod.stdAddChar (-(a * y)) * conj ((w u : ℂ) * f (u + y) *
+        ZMod.stdAddChar (-(M u * u) + (a + ξ) * u)) := by
+    simp only [map_mul, Complex.conj_ofReal, graph_stdChar_conj]
+    have hh : ZMod.stdAddChar (-(a * (u + y))) * ZMod.stdAddChar (M u * u - ξ * u) =
+        ZMod.stdAddChar (-(a * y)) * ZMod.stdAddChar (-(-(M u * u) + (a + ξ) * u)) := by
+      rw [← AddChar.map_add_eq_mul, ← AddChar.map_add_eq_mul]
+      congr 1
+      ring
+    linear_combination (w u : ℂ) * conj (f (u + y)) * hh
+  simp_rw [hp]
+  rw [← Finset.mul_expect, ← map_expect, norm_mul]
+  simp only [ZMod.stdAddChar_apply, Circle.norm_coe, Complex.norm_conj, one_mul]
+theorem graph_bohr_local_quadratic_correlation {q : ℕ} [NeZero q]
+    (cutoff : ℝ → ℝ) {L : ℝ≥0} (hLip : LipschitzWith L cutoff)
+    (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)
+    (hbone : ∀ x, |x| ≤ 1 / 2 → cutoff x = 1)
+    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0)
+    (S T : Finset (ZMod q)) (hST : S ⊆ T) {r s ρ ζ : ℝ}
+    (hr : 0 < r) (hrsmall : r < 1 / 8) (hs : 0 < s) (hsr : s ≤ r)
+    (hrρ : r + s ≤ ρ) (hζ : 0 < ζ)
+    (herror : max (L : ℝ) 1 * S.card * s / r ≤ ζ / 100)
+    (M : ZMod q → ZMod q)
+    (hadd : ∀ x ∈ graphBohrSet S ρ, ∀ y ∈ graphBohrSet S ρ,
+      x + y ∈ graphBohrSet S ρ → M (x + y) = M x + M y)
+    (hskew : ∀ u ∈ graphBohrSet T s, ∀ t ∈ graphBohrSet T s,
+      ‖graphAlternatingPhase M u t‖ ≤ ζ / 1000)
+    (a f c : ZMod q → ℂ) (ha : ∀ x, ‖a x‖ ≤ 1)
+    (hf : ∀ x, ‖f x‖ ≤ 1) (hc : ∀ x, ‖c x‖ ≤ 1) (ξ₀ : ZMod q)
+    (hcorr : ζ ≤ ‖graphLocalCorrelation (graphBohrWeight cutoff S r) M a
+      (fun x => conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))) c‖) :
+    let β := graphBohrMass cutoff T s
+    ∃ y ℓ : ZMod q, ζ * β * Real.sqrt β / 4 ≤
+      ‖𝔼 u, (graphBohrWeight cutoff T s u : ℂ) * f (u + y) *
+        ZMod.stdAddChar (-(M u * u) + ℓ * u)‖ := by
+  dsimp only
+  have hb (x) : ‖conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))‖ ≤ 1 := by
+    simpa only [norm_mul, Complex.norm_conj, ZMod.stdAddChar_apply, Circle.norm_coe,
+      mul_one] using hf x
+  obtain ⟨h, _, hshift⟩ := graph_bohr_shift_select cutoff hLip hb0 hb1 hbone hsupp
+    S T hST hr hrsmall hs hsr hrρ hζ herror M hadd a
+    (fun x => conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))) c ha hb hc hcorr
+  let α := ξ₀ + 2 * M h
+  have hlinear (x) : (conj (f x) * ZMod.stdAddChar (-(ξ₀ * x))) *
+      ZMod.stdAddChar (-(2 * M h * x)) = conj (f x) * ZMod.stdAddChar (-(α * x)) := by
+    rw [mul_assoc, ← AddChar.map_add_eq_mul]
+    congr 1
+    dsimp [α]
+    congr 1
+    ring
+  simp_rw [hlinear] at hshift
+  let μ := graphBohrMeasure cutoff T s
+  have hmass := graphBohrMass_pos cutoff hb0 hb1 hbone T hs (hsr.trans_lt hrsmall)
+  obtain ⟨y, hy⟩ := graph_correlation_localization_explicit μ μ
+    (graphBohrMeasure_mean_one cutoff T s hmass) M
+    (fun x => a (x + h)) (fun x => conj (f x) * ZMod.stdAddChar (-(α * x)))
+    (fun t => c (h + t)) hshift
+  have hlocal : ∀ x ∈ graphBohrSet T ρ, ∀ y ∈ graphBohrSet T ρ,
+      x + y ∈ graphBohrSet T ρ → M (x + y) = M x + M y := by
+    intro x hx y hy hxy
+    exact hadd x (graphBohrSet_mono hST le_rfl hx) y (graphBohrSet_mono hST le_rfl hy)
+      (graphBohrSet_mono hST le_rfl hxy)
+  have hby (x) : ‖conj (f (x + y)) * ZMod.stdAddChar (-(α * (x + y)))‖ ≤ 1 := by
+    simpa only [norm_mul, Complex.norm_conj, ZMod.stdAddChar_apply, Circle.norm_coe,
+      mul_one] using hf (x + y)
+  have hcy (t) : ‖c (h + t) * ZMod.stdAddChar (-(2 * M t * y))‖ ≤ 1 := by
+    simpa only [norm_mul, ZMod.stdAddChar_apply, Circle.norm_coe, mul_one] using hc (h + t)
+  obtain ⟨ξ, hξ⟩ := graph_bohr_weighted_quadratic_correlation cutoff hb0 hb1 hbone hsupp T
+    hs (hsr.trans_lt hrsmall) (by linarith : 2 * s ≤ ρ) hζ M hlocal hskew
+    (fun x => a (x + y + h))
+    (fun x => conj (f (x + y)) * ZMod.stdAddChar (-(α * (x + y))))
+    (fun t => c (h + t) * ZMod.stdAddChar (-(2 * M t * y)))
+    (fun x => ha (x + y + h)) hby hcy hy
+  rw [graph_quadratic_correlation_recover] at hξ
+  exact ⟨y, α + ξ, hξ⟩
+
+
+theorem local_inverse_polynomial_budget (d D : ℕ)
+    {P R Z T V B G : ℝ} (hP : 100000 ≤ P) (hT0 : 0 ≤ T)
+    (hV0 : 0 ≤ V) (hd : (d : ℝ) + R ≤ P) (hZ : Z ≤ P)
+    (hDT : (D : ℝ) + T ≤ P * (3 * P) ^ 8)
+    (hV : V ≤ T + Z + 2 * R + P + 20000 * ((D : ℝ) + 1) ^ 2)
+    (hB : B ≤ D * (6 + V)) (hG : G ≤ Z + (3 / 2) * B + 4) :
+    (D : ℝ) + V + 1 ≤ P ^ 22 ∧ G ≤ P ^ 34 := by
+  have hP0 : 0 ≤ P := by linarith
+  have hP1 : 1 ≤ P := by linarith
+  have hpow {m n : ℕ} (h : m ≤ n) : P ^ m ≤ P ^ n := pow_le_pow_right₀ hP1 h
+  have hDT' : (D : ℝ) + T ≤ P ^ 10 := by
+    apply hDT.trans
+    calc
+      P * (3 * P) ^ 8 = 6561 * P ^ 9 := by ring
+      _ ≤ P * P ^ 9 := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
+      _ = P ^ 10 := by ring
+  have hD : (D : ℝ) ≤ P ^ 10 := by linarith
+  have hT : T ≤ P ^ 10 := by linarith [Nat.cast_nonneg D (α := ℝ)]
+  have hR : R ≤ P := by linarith [Nat.cast_nonneg d (α := ℝ)]
+  have h10 : 1 ≤ P ^ 10 := one_le_pow₀ hP1
+  have hD2 : ((D : ℝ) + 1) ^ 2 ≤ 4 * P ^ 20 := by
+    calc
+      _ ≤ (2 * P ^ 10) ^ 2 := pow_le_pow_left₀ (by positivity) (by linarith) 2
+      _ = _ := by ring
+  have hP20 : P ≤ P ^ 20 := by simpa only [pow_one] using hpow (by norm_num : 1 ≤ 20)
+  have h1020 : P ^ 10 ≤ P ^ 20 := hpow (by norm_num)
+  have hV' : V ≤ P ^ 21 := by
+    calc
+      V ≤ 80005 * P ^ 20 := by nlinarith
+      _ ≤ P * P ^ 20 := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
+      _ = P ^ 21 := by ring
+  have hP21 : P ≤ P ^ 21 := by simpa only [pow_one] using hpow (by norm_num : 1 ≤ 21)
+  have h1021 : P ^ 10 ≤ P ^ 21 := hpow (by norm_num)
+  have hDVR : (D : ℝ) + V + 1 ≤ P ^ 22 := by
+    calc
+      _ ≤ 3 * P ^ 21 := by linarith [one_le_pow₀ hP1 (n := 21)]
+      _ ≤ P * P ^ 21 := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
+      _ = _ := by ring
+  have hB' : B ≤ P ^ 32 := by
+    calc
+      B ≤ D * (6 + V) := hB
+      _ ≤ P ^ 10 * (2 * P ^ 21) :=
+        mul_le_mul hD (by linarith) (by linarith) (by positivity)
+      _ = 2 * P ^ 31 := by ring
+      _ ≤ P * P ^ 31 := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
+      _ = P ^ 32 := by ring
+  have hP32 : P ≤ P ^ 32 := by simpa only [pow_one] using hpow (by norm_num : 1 ≤ 32)
+  refine ⟨hDVR, ?_⟩
+  calc
+    G ≤ 4 * P ^ 32 := by nlinarith [one_le_pow₀ hP1 (n := 32)]
+    _ ≤ P * P ^ 32 := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
+    _ = P ^ 33 := by ring
+    _ ≤ P ^ 34 := hpow (by norm_num)
+theorem graph_local_inverse_log_budget (d D : ℕ) {P ρ t r ζ β C K : ℝ}
+    (hP : 100000 ≤ P) (hρ : 0 < ρ) (hρ1 : ρ ≤ 1)
+    (ht : 0 < t) (ht1 : t ≤ 1) (hr : 0 < r) (hr1 : r ≤ 1)
+    (hζ : 0 < ζ) (hζ1 : ζ ≤ 1) (hKP : K ≤ P)
+    (hd : (d : ℝ) + Real.log (1 / ρ) ≤ P)
+    (hZ : Real.log (1 / ζ) ≤ P) (hC : Real.log C ≤ P)
+    (hDT : (D : ℝ) + Real.log (1 / t) ≤ K * graphSymmetryBudget d (ρ / 100) ζ ^ 8)
+    (hV : Real.log (1 / r) ≤ Real.log (1 / t) + Real.log (1 / ζ) +
+      2 * Real.log (1 / ρ) + Real.log C + 20000 * ((D : ℝ) + 1) ^ 2)
+    (hβ : (r / 6) ^ D ≤ β) :
+    (D : ℝ) + Real.log (1 / r) + 1 ≤ P ^ 22 ∧
+      Real.log (1 / (ζ * β * Real.sqrt β / 4)) ≤ P ^ 34 := by
+  have hP0 : 0 ≤ P := by linarith
+  have hρlog : 0 ≤ Real.log (1 / ρ) := Real.log_nonneg ((one_le_div hρ).mpr hρ1)
+  have hζlog : 0 ≤ Real.log (1 / ζ) := Real.log_nonneg ((one_le_div hζ).mpr hζ1)
+  have hlogscale : Real.log (1 / (ρ / 100)) =
+      Real.log 100 + Real.log (1 / ρ) := by
+    rw [show 1 / (ρ / 100) = 100 / ρ by field_simp,
+      Real.log_div (by norm_num : (100 : ℝ) ≠ 0) hρ.ne', one_div, Real.log_inv]
+    ring
+  have hbudget0 : 0 ≤ graphSymmetryBudget d (ρ / 100) ζ := by
+    dsimp [graphSymmetryBudget]
+    rw [hlogscale]
+    have hh : 0 ≤ Real.log (100 : ℝ) := Real.log_nonneg (by norm_num)
+    positivity
+  have hbudget : graphSymmetryBudget d (ρ / 100) ζ ≤ 3 * P := by
+    dsimp [graphSymmetryBudget]
+    rw [hlogscale]
+    have hh := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 100)
+    linarith
+  have hDT' : (D : ℝ) + Real.log (1 / t) ≤ P * (3 * P) ^ 8 :=
+    hDT.trans (mul_le_mul hKP (pow_le_pow_left₀ hbudget0 hbudget 8)
+      (pow_nonneg hbudget0 8) hP0)
+  have hβpos : 0 < β := (pow_pos (div_pos hr (by norm_num)) D).trans_le hβ
+  have hBlog : Real.log (1 / β) ≤ D * (6 + Real.log (1 / r)) := by
+    apply (graph_mass_log_bound D hr hβ).trans
+    rw [Real.log_div (by norm_num : (6 : ℝ) ≠ 0) hr.ne', one_div, Real.log_inv]
+    have hh := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 6)
+    gcongr
+    linarith
+  have hGlog : Real.log (1 / (ζ * β * Real.sqrt β / 4)) ≤
+      Real.log (1 / ζ) + (3 / 2) * Real.log (1 / β) + 4 := by
+    rw [one_div, Real.log_inv,
+      Real.log_div (by positivity : ζ * β * Real.sqrt β ≠ 0) (by norm_num : (4 : ℝ) ≠ 0),
+      Real.log_mul (mul_ne_zero hζ.ne' hβpos.ne') (by positivity : Real.sqrt β ≠ 0),
+      Real.log_mul hζ.ne' hβpos.ne', Real.log_sqrt hβpos.le]
+    simp only [one_div, Real.log_inv]
+    have hh := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 4)
+    linarith
+  exact local_inverse_polynomial_budget d D hP
+    (Real.log_nonneg ((one_le_div ht).mpr ht1))
+    (Real.log_nonneg ((one_le_div hr).mpr hr1)) hd hZ hDT'
+    (hV.trans (by linarith)) hBlog hGlog
+
 end Auto

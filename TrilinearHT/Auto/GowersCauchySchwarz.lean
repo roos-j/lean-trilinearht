@@ -19,6 +19,8 @@ extension of the eight-input cube form to L2. The L2 estimate holds on
 abelian probability groups with measurable, measure-preserving inversion,
 including every real torus. All statements and supporting definitions use
 only Mathlib and this module; there are no trilinear-transform parameters.
+The finite-to-continuous extension uses normalized counting measure, bounded
+cell averages, and integer lifts of supported cubes without modular wraparound.
 
 Verified source: `blueprint/formalization_blueprint.tex`, cube-definition,
 lines 162-175, and `lem:cube-foundation`, lines 216-237. The proof uses
@@ -1382,5 +1384,1931 @@ theorem gowersNorm_le_one {G : Type*} [AddCommGroup G] [MeasurableSpace G]
   have hr := Real.rpow_le_rpow hp ((Complex.re_le_norm _).trans hn)
     (by positivity : 0 ≤ (((2 ^ j : ℕ) : ℝ)⁻¹))
   simpa only [gowersNorm, Real.one_rpow] using hr
+
+/-- Normalized counting measure, the Haar probability measure on a finite group. -/
+noncomputable def finiteHaar (G : Type*) [Fintype G] [MeasurableSpace G] : Measure G :=
+  ((Fintype.card G : ℝ≥0∞)⁻¹) • Measure.count
+
+instance finiteHaar_isProbabilityMeasure (G : Type*) [Fintype G] [Nonempty G]
+    [MeasurableSpace G] : IsProbabilityMeasure (finiteHaar G) := by
+  constructor
+  suffices (Fintype.card G : ℝ≥0∞)⁻¹ * Fintype.card G = 1 by
+    simpa [finiteHaar] using this
+  exact ENNReal.inv_mul_cancel (by positivity) (by simp)
+
+instance finiteHaar_isAddLeftInvariant (G : Type*) [AddGroup G] [Fintype G]
+    [MeasurableSpace G] [MeasurableSingletonClass G] [MeasurableAdd G] :
+    (finiteHaar G).IsAddLeftInvariant := by
+  unfold finiteHaar
+  infer_instance
+
+
+noncomputable def cyclicCellAverage (L : ℕ) (g : ℝ → ℂ) (j : ZMod (16 * L + 1)) : ℂ :=
+  if j.val < L then (L : ℂ) *
+    ∫ x in (j.val : ℝ) / L..((j.val : ℝ) + 1) / L, g x else 0
+theorem cyclicCellAverage_eq_zero {L : ℕ} (g : ℝ → ℂ)
+    (j : ZMod (16 * L + 1)) (hj : L ≤ j.val) : cyclicCellAverage L g j = 0 := by
+  simp [cyclicCellAverage, not_lt.mpr hj]
+theorem cyclicCellAverage_norm_le_one {L : ℕ} (hL : 0 < L)
+    (g : ℝ → ℂ) (hg : ∀ x, ‖g x‖ ≤ 1) (j : ZMod (16 * L + 1)) :
+    ‖cyclicCellAverage L g j‖ ≤ 1 := by
+  have hLp : (0 : ℝ) < L := Nat.cast_pos.mpr hL
+  unfold cyclicCellAverage
+  split_ifs
+  · rw [norm_mul, Complex.norm_natCast]
+    have hi := intervalIntegral.norm_integral_le_of_norm_le_const
+      (a := (j.val : ℝ) / L) (b := ((j.val : ℝ) + 1) / L) (fun x _ => hg x)
+    have he : ((j.val : ℝ) + 1) / L - (j.val : ℝ) / L = 1 / L := by ring
+    rw [he, abs_of_pos (div_pos zero_lt_one hLp), one_mul] at hi
+    calc
+      (L : ℝ) * ‖∫ x in (j.val : ℝ) / L..((j.val : ℝ) + 1) / L, g x‖ ≤
+          L * (1 / L) := mul_le_mul_of_nonneg_left hi hLp.le
+      _ = 1 := by field_simp
+  · simp
+theorem cyclic_cube_no_wrap (L : ℕ) (x j : ℤ)
+    (hxlo : -3 * (L : ℤ) ≤ x) (hxhi : x ≤ 4 * (L : ℤ))
+    (hj0 : 0 ≤ j) (hjL : j < L) :
+    (x : ZMod (16 * L + 1)) = (j : ZMod (16 * L + 1)) ↔ x = j := by
+  constructor
+  · intro he
+    have hd := (ZMod.intCast_eq_intCast_iff_dvd_sub x j (16 * L + 1)).mp he
+    have ha : |j - x| < |((16 * L + 1 : ℕ) : ℤ)| := by
+      rw [abs_of_pos (by positivity : (0 : ℤ) < ((16 * L + 1 : ℕ) : ℤ))]
+      apply abs_lt.mpr
+      push_cast
+      omega
+    have hn : (j - x).natAbs < (((16 * L + 1 : ℕ) : ℤ)).natAbs := by
+      apply Int.ofNat_lt.mp
+      simpa only [Int.natCast_natAbs] using ha
+    have hz := Int.eq_zero_of_dvd_of_natAbs_lt_natAbs hd hn
+    omega
+  · rintro rfl
+    rfl
+theorem integer_cube_vertex_bounds {d : ℕ} {L x : ℤ} (hL : 0 ≤ L)
+    (hx0 : 0 ≤ x) (hxL : x ≤ L) (h : Fin d → ℤ)
+    (hh : ∀ i, -L ≤ h i ∧ h i ≤ L) (ω : Fin d → Bool) :
+    -(d : ℤ) * L ≤ x + cubeShift h ω ∧
+      x + cubeShift h ω ≤ ((d : ℤ) + 1) * L := by
+  have hlo : ∑ i : Fin d, (-L : ℤ) ≤ cubeShift h ω := by
+    apply Finset.sum_le_sum
+    intro i _
+    split_ifs <;> linarith [(hh i).1]
+  have hhi : cubeShift h ω ≤ ∑ i : Fin d, L := by
+    apply Finset.sum_le_sum
+    intro i _
+    split_ifs <;> linarith [(hh i).2]
+  simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul] at hlo hhi
+  constructor <;> nlinarith
+def cyclicCubeIntegerIncrement {L d : ℕ} (x : ZMod (16 * L + 1))
+    (h : Fin d → ZMod (16 * L + 1)) (i : Fin d) : ℤ :=
+  ((x + h i).val : ℤ) - (x.val : ℤ)
+theorem cyclicCubeIntegerIncrement_cast {L d : ℕ} (x : ZMod (16 * L + 1))
+    (h : Fin d → ZMod (16 * L + 1)) (i : Fin d) :
+    (cyclicCubeIntegerIncrement x h i : ZMod (16 * L + 1)) = h i := by
+  simp [cyclicCubeIntegerIncrement]
+theorem cyclic_cube_vertex_cast {L d : ℕ} (x : ZMod (16 * L + 1))
+    (h : Fin d → ZMod (16 * L + 1)) (ω : Fin d → Bool) :
+    (((x.val : ℤ) + cubeShift (cyclicCubeIntegerIncrement x h) ω : ℤ) :
+      ZMod (16 * L + 1)) = x + cubeShift h ω := by
+  simp [cubeShift, Int.cast_sum, apply_ite, cyclicCubeIntegerIncrement_cast]
+theorem cyclicCubeIntegerIncrement_bounds {L d : ℕ} (x : ZMod (16 * L + 1))
+    (h : Fin d → ZMod (16 * L + 1)) (hx : x.val < L)
+    (hh : ∀ i, (x + h i).val < L) (i : Fin d) :
+    -(L : ℤ) ≤ cyclicCubeIntegerIncrement x h i ∧
+      cyclicCubeIntegerIncrement x h i ≤ (L : ℤ) := by
+  have hx' : (x.val : ℤ) < L := by exact_mod_cast hx
+  have hi : ((x + h i).val : ℤ) < L := by exact_mod_cast hh i
+  dsimp [cyclicCubeIntegerIncrement]
+  omega
+theorem cyclic_cube_supported_vertex_iff {L : ℕ} (x : ZMod (16 * L + 1))
+    (h : Fin 3 → ZMod (16 * L + 1)) (hx : x.val < L)
+    (hh : ∀ i, (x + h i).val < L) (ω : Fin 3 → Bool) :
+    (x + cubeShift h ω).val < L ↔
+      0 ≤ (x.val : ℤ) + cubeShift (cyclicCubeIntegerIncrement x h) ω ∧
+        (x.val : ℤ) + cubeShift (cyclicCubeIntegerIncrement x h) ω < L := by
+  let v := (x.val : ℤ) + cubeShift (cyclicCubeIntegerIncrement x h) ω
+  have hx' : (x.val : ℤ) < L := by exact_mod_cast hx
+  have hv := integer_cube_vertex_bounds (L := (L : ℤ)) (by positivity)
+    (by positivity : (0 : ℤ) ≤ x.val) hx'.le (cyclicCubeIntegerIncrement x h)
+    (cyclicCubeIntegerIncrement_bounds x h hx hh) ω
+  have hv' : -3 * (L : ℤ) ≤ v ∧ v ≤ 4 * (L : ℤ) := by
+    norm_num only [Nat.cast_ofNat, show (3 : ℤ) + 1 = 4 by norm_num] at hv
+    exact hv
+  have hcast : (v : ZMod (16 * L + 1)) = x + cubeShift h ω := cyclic_cube_vertex_cast x h ω
+  constructor
+  · intro hj
+    have hj' : (((x + cubeShift h ω).val : ℕ) : ℤ) < L := by exact_mod_cast hj
+    have he : v = ((x + cubeShift h ω).val : ℤ) :=
+      (cyclic_cube_no_wrap L v _ hv'.1 hv'.2 (by positivity) hj').mp
+        (by simpa only [Int.cast_natCast, ZMod.natCast_zmod_val] using hcast)
+    change 0 ≤ v ∧ v < L
+    rw [he]
+    exact ⟨by positivity, hj'⟩
+  · rintro ⟨hv0, hvL⟩
+    have hval : (((x + cubeShift h ω).val : ℕ) : ℤ) = v := by
+      rw [← hcast, ZMod.val_intCast]
+      apply Int.emod_eq_of_lt hv0
+      dsimp [v] at hvL ⊢
+      omega
+    have hj : (((x + cubeShift h ω).val : ℕ) : ℤ) < L := by
+      rw [hval]
+      exact hvL
+    exact_mod_cast hj
+
+
+/-! ### Lattice sampling for cube discretization
+
+The following lattice-sampling section is adapted from
+`../lean-twocommuting/TwoCommuting/Auto/Sec2ElementaryPreparation.lean`,
+node A04, revision `99879fdcb600af02e0f58867b2ce54100e1deb81`.
+Copyright 2026 Joris Roos; original author Claude; Apache-2.0.
+It supplies the Banach-valued Riemann-sum step in blueprint lines 1187-1189. -/
+
+noncomputable section CubeLatticeSampling
+
+open Set
+
+variable {d : ℕ} {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E] [CompleteSpace E]
+
+/-- The lattice point `x_h = h ⌊x/h⌋` (coordinatewise) for the mesh `h = 1/N` (node A04). -/
+def latticeFloor (N : ℕ) (x : Fin d → ℝ) : Fin d → ℝ := fun i => (⌊(N : ℝ) * x i⌋ : ℝ) / N
+
+/-- The half-open lattice cube `hk + [0,h)^d` with `h = 1/N` (node A04). -/
+def latticeCube (N : ℕ) (k : Fin d → ℤ) : Set (Fin d → ℝ) :=
+  Set.pi Set.univ fun i => Set.Ico ((k i : ℝ) / N) (((k i : ℝ) + 1) / N)
+
+lemma mem_latticeCube {N : ℕ} (hN : 0 < N) {k : Fin d → ℤ} {x : Fin d → ℝ} :
+    x ∈ latticeCube N k ↔ ∀ i, ⌊(N : ℝ) * x i⌋ = k i := by
+  have hN' : (0 : ℝ) < N := by exact_mod_cast hN
+  simp only [latticeCube, Set.mem_pi, Set.mem_univ, true_implies, Set.mem_Ico, Int.floor_eq_iff]
+  refine forall_congr' fun i => ?_
+  rw [div_le_iff₀ hN', lt_div_iff₀ hN']
+  constructor <;> rintro ⟨h1, h2⟩ <;> constructor <;> linarith
+
+lemma volume_latticeCube {N : ℕ} (hN : 0 < N) (k : Fin d → ℤ) :
+    volume (latticeCube N k) = ENNReal.ofReal ((N : ℝ)⁻¹) ^ d := by
+  have hN' : (0 : ℝ) < N := by exact_mod_cast hN
+  rw [latticeCube, Real.volume_pi_Ico]
+  have : ∀ i, ((k i : ℝ) + 1) / N - (k i : ℝ) / N = (N : ℝ)⁻¹ := by
+    intro i; field_simp; ring
+  simp_rw [this]
+  simp
+
+lemma abs_sub_latticeFloor_le {N : ℕ} (hN : 0 < N) (x : Fin d → ℝ) (i : Fin d) :
+    |x i - latticeFloor N x i| ≤ (N : ℝ)⁻¹ := by
+  have hN' : (0 : ℝ) < N := by exact_mod_cast hN
+  have h1 := Int.floor_le ((N : ℝ) * x i)
+  have h2 := Int.lt_floor_add_one ((N : ℝ) * x i)
+  simp only [latticeFloor]
+  have key : x i - (⌊(N : ℝ) * x i⌋ : ℝ) / N = ((N : ℝ) * x i - ⌊(N : ℝ) * x i⌋) / N := by
+    field_simp
+  rw [key, abs_div, abs_of_pos hN', div_le_iff₀ hN', inv_mul_cancel₀ hN'.ne', abs_le]
+  constructor <;> linarith
+
+lemma tendsto_latticeFloor (x : Fin d → ℝ) :
+    Tendsto (fun N : ℕ => latticeFloor N x) atTop (𝓝 x) := by
+  rw [tendsto_pi_nhds]
+  intro i
+  have h0 : Tendsto (fun N : ℕ => (N : ℝ)⁻¹) atTop (𝓝 0) :=
+    tendsto_inv_atTop_zero.comp tendsto_natCast_atTop_atTop
+  have : Tendsto (fun N : ℕ => x i - latticeFloor N x i) atTop (𝓝 0) := by
+    refine squeeze_zero_norm' ?_ h0
+    filter_upwards [eventually_gt_atTop 0] with N hN
+    rw [Real.norm_eq_abs]
+    exact abs_sub_latticeFloor_le hN x i
+  have := (tendsto_const_nhds (x := x i)).sub this
+  simpa using this
+
+/-- Helper for node A04: coordinate hyperplanes are Lebesgue-null. -/
+lemma volume_coord_hyperplane (i : Fin d) (a : ℝ) :
+    volume {x : Fin d → ℝ | x i = a} = 0 := by
+  have : {x : Fin d → ℝ | x i = a} =
+      (Function.eval i : (Fin d → ℝ) → ℝ) ⁻¹' ({a} : Set ℝ) := rfl
+  rw [this, volume_pi]
+  exact Measure.pi_eval_preimage_null _ (Real.volume_singleton)
+
+/-- **Lemma 2.4 (node A04), lattice sampling.** Let `H : ℝ^d → E` be bounded, vanish outside a
+bounded set, and be continuous off finitely many coordinate hyperplanes `{x_i = a}`,
+`(i, a) ∈ S`. Then, with mesh `h = 1/N`, `h^d ∑_{k ∈ ℤ^d} H(hk) → ∫ H` as `N → ∞`. Every sum
+is finite (see `lattice_sampling_finite_support`). -/
+theorem lattice_sampling_dominated_convergence (H : (Fin d → ℝ) → E)
+    (hHb : ∃ M, ∀ x, ‖H x‖ ≤ M) (hHs : ∃ R, ∀ x, R < ‖x‖ → H x = 0)
+    (S : Finset (Fin d × ℝ)) (hHc : ∀ x, (∀ p ∈ S, x p.1 ≠ p.2) → ContinuousAt H x) :
+    Tendsto (fun N : ℕ => ((N : ℝ)⁻¹) ^ d • ∑' k : Fin d → ℤ, H (fun i => (k i : ℝ) / N))
+      atTop (𝓝 (∫ x, H x)) := by
+  classical
+  obtain ⟨M, hM⟩ := hHb
+  obtain ⟨R0, hR0⟩ := hHs
+  set R := max R0 0
+  have hR : ∀ x, R < ‖x‖ → H x = 0 := fun x hx => hR0 x (lt_of_le_of_lt (le_max_left _ _) hx)
+  -- the good set, off the hyperplanes
+  set O : Set (Fin d → ℝ) := {x | ∀ p ∈ S, x p.1 ≠ p.2}
+  have hO : ∀ᵐ x, x ∈ O := by
+    have : (Oᶜ) ⊆ ⋃ p ∈ S, {x : Fin d → ℝ | x p.1 = p.2} := by
+      intro x hx
+      simp only [O, Set.mem_compl_iff, Set.mem_ofPred_eq, not_forall, not_not] at hx
+      obtain ⟨p, hp, hxp⟩ := hx
+      exact Set.mem_biUnion hp hxp
+    rw [ae_iff]
+    refine measure_mono_null (fun x hx => this hx) ?_
+    exact (measure_biUnion_null_iff (Finset.countable_toSet S)).2
+      fun p _ => volume_coord_hyperplane p.1 p.2
+  -- finite range of lattice points
+  set F : ℕ → Finset (Fin d → ℤ) := fun N =>
+    Fintype.piFinset fun _ => Finset.Icc (-(⌈R * N⌉ + 1)) (⌈R * N⌉ + 1)
+  have hF : ∀ N : ℕ, 0 < N → ∀ k : Fin d → ℤ, k ∉ F N → H (fun i => (k i : ℝ) / N) = 0 := by
+    intro N hN k hk
+    have hN' : (0 : ℝ) < N := by exact_mod_cast hN
+    simp only [F, Fintype.mem_piFinset, Finset.mem_Icc, not_forall] at hk
+    obtain ⟨i, hi⟩ := hk
+    apply hR
+    have hki : R * N < |(k i : ℝ)| := by
+      have h1 := Int.le_ceil (R * N)
+      rcases not_and_or.1 hi with h | h
+      · push Not at h
+        have : (k i : ℝ) < -(⌈R * N⌉ + 1) := by exact_mod_cast h
+        rw [abs_of_neg (by linarith [mul_nonneg (le_max_right R0 0) hN'.le])]
+        linarith
+      · push Not at h
+        have : (⌈R * N⌉ + 1 : ℝ) < (k i : ℝ) := by exact_mod_cast h
+        rw [abs_of_pos (by linarith [mul_nonneg (le_max_right R0 0) hN'.le])]
+        linarith
+    calc R < |(k i : ℝ) / N| := by
+          rw [abs_div, Nat.abs_cast, lt_div_iff₀ hN']; exact hki
+      _ = ‖(fun i => (k i : ℝ) / N) i‖ := by rw [Real.norm_eq_abs]
+      _ ≤ ‖fun i => (k i : ℝ) / N‖ := norm_le_pi_norm (fun i => (k i : ℝ) / N) i
+  -- pointwise identity: the sampled function is a finite sum of cube indicators
+  have hrep : ∀ N : ℕ, 0 < N → ∀ x, H (latticeFloor N x) =
+      ∑ k ∈ F N, (latticeCube N k).indicator (fun _ => H (fun i => (k i : ℝ) / N)) x := by
+    intro N hN x
+    set k0 : Fin d → ℤ := fun i => ⌊(N : ℝ) * x i⌋
+    have hmem : ∀ k, x ∈ latticeCube N k ↔ k = k0 := by
+      intro k
+      rw [mem_latticeCube hN]
+      constructor
+      · intro h; funext i; exact (h i).symm
+      · rintro rfl i; rfl
+    have hk0 : latticeFloor N x = fun i => (k0 i : ℝ) / N := rfl
+    by_cases hk : k0 ∈ F N
+    · rw [Finset.sum_eq_single k0]
+      · rw [Set.indicator_of_mem ((hmem k0).2 rfl), hk0]
+      · intro k _ hkk
+        exact Set.indicator_of_notMem (fun h => hkk ((hmem k).1 h)) _
+      · intro h; exact absurd hk h
+    · rw [hk0, hF N hN k0 hk]
+      refine (Finset.sum_eq_zero fun k hkF => ?_).symm
+      exact Set.indicator_of_notMem (fun h => hk ((hmem k).1 h ▸ hkF)) _
+  have hcube_meas : ∀ N k, MeasurableSet (latticeCube (d := d) N k) := fun N k =>
+    MeasurableSet.univ_pi fun _ => measurableSet_Ico
+  -- the Riemann sums are integrals of the sampled function
+  have hsum : ∀ N : ℕ, 0 < N → ((N : ℝ)⁻¹) ^ d • ∑' k : Fin d → ℤ, H (fun i => (k i : ℝ) / N) =
+      ∫ x, H (latticeFloor N x) := by
+    intro N hN
+    have hN' : (0 : ℝ) < N := by exact_mod_cast hN
+    rw [tsum_eq_sum (s := F N) (fun k hk => hF N hN k hk)]
+    simp_rw [hrep N hN]
+    rw [integral_finsetSum]
+    · rw [Finset.smul_sum]
+      refine Finset.sum_congr rfl fun k _ => ?_
+      rw [integral_indicator_const _ (hcube_meas N k), measureReal_def, volume_latticeCube hN,
+        ENNReal.toReal_pow, ENNReal.toReal_ofReal (by positivity)]
+    · intro k _
+      refine IntegrableOn.integrable_indicator (integrableOn_const ?_) (hcube_meas N k)
+      rw [volume_latticeCube hN]; exact ENNReal.pow_ne_top ENNReal.ofReal_ne_top
+  -- dominated convergence
+  have hlim : Tendsto (fun N : ℕ => ∫ x, H (latticeFloor N x)) atTop (𝓝 (∫ x, H x)) := by
+    refine tendsto_integral_filter_of_dominated_convergence
+      ((Metric.closedBall (0 : Fin d → ℝ) (R + 1)).indicator fun _ => M) ?_ ?_ ?_ ?_
+    · filter_upwards [eventually_gt_atTop 0] with N hN
+      rw [show (fun x => H (latticeFloor N x)) = fun x => ∑ k ∈ F N,
+        (latticeCube N k).indicator (fun _ => H (fun i => (k i : ℝ) / N)) x from
+        funext (hrep N hN)]
+      exact Finset.aestronglyMeasurable_fun_sum _ fun k _ =>
+        aestronglyMeasurable_const.indicator (hcube_meas N k)
+    · filter_upwards [eventually_gt_atTop 0] with N hN
+      refine Filter.Eventually.of_forall fun x => ?_
+      by_cases hx : x ∈ Metric.closedBall (0 : Fin d → ℝ) (R + 1)
+      · rw [Set.indicator_of_mem hx]; exact hM _
+      · rw [Set.indicator_of_notMem hx, hR, norm_zero]
+        rw [Metric.mem_closedBall, dist_zero_right, not_le] at hx
+        have hd : ‖x - latticeFloor N x‖ ≤ 1 := by
+          refine (pi_norm_le_iff_of_nonneg zero_le_one).2 fun i => ?_
+          rw [Pi.sub_apply, Real.norm_eq_abs]
+          refine (abs_sub_latticeFloor_le hN x i).trans ?_
+          exact inv_le_one_of_one_le₀ (by exact_mod_cast hN)
+        have := norm_sub_norm_le x (latticeFloor N x)
+        linarith
+    · exact IntegrableOn.integrable_indicator (integrableOn_const measure_closedBall_lt_top.ne)
+        Metric.isClosed_closedBall.measurableSet
+    · filter_upwards [hO] with x hx
+      exact (hHc x hx).tendsto.comp (tendsto_latticeFloor x)
+  refine hlim.congr' ?_
+  filter_upwards [eventually_gt_atTop 0] with N hN
+  exact (hsum N hN).symm
+
+end CubeLatticeSampling
+
+theorem finiteHaar_pi {I G : Type*} [Fintype I] [DecidableEq I] [Fintype G] [Nonempty G]
+    [MeasurableSpace G] [MeasurableSingletonClass G] :
+    Measure.pi (fun _ : I => finiteHaar G) = finiteHaar (I → G) := by
+  apply Measure.ext_of_singleton
+  intro f
+  rw [Measure.pi_singleton]
+  simp [finiteHaar, ← ENNReal.inv_pow]
+
+noncomputable def realCubeKernel (g : ℝ → ℂ) (z : Fin 4 → ℝ) : ℂ :=
+  diagonalCubeIntegrand 3 g (fun i => z i.succ) (z 0)
+theorem continuous_realCubeKernel {g : ℝ → ℂ} (hg : Continuous g) :
+    Continuous (realCubeKernel g) := by
+  unfold realCubeKernel diagonalCubeIntegrand cubeIntegrand
+  apply continuous_finsetProd
+  intro ω _
+  have hv : Continuous (fun z : Fin 4 → ℝ => z 0 + cubeShift (fun i => z i.succ) ω) := by
+    unfold cubeShift
+    apply (continuous_apply 0).add
+    apply continuous_finsetSum
+    intro i _
+    split_ifs <;> fun_prop
+  unfold cubeConj
+  split_ifs
+  · exact hg.comp hv
+  · exact Complex.continuous_conj.comp (hg.comp hv)
+theorem realCubeKernel_norm_le_one (g : ℝ → ℂ) (hg : ∀ x, ‖g x‖ ≤ 1) (z : Fin 4 → ℝ) :
+    ‖realCubeKernel g z‖ ≤ 1 := by
+  simpa only [realCubeKernel, diagonalCubeIntegrand, one_pow] using
+    norm_cubeIntegrand_le (fun _ => g) (fun _ => hg)
+    (fun i : Fin 3 => z i.succ) (z 0)
+theorem realCubeKernel_eq_zero_outside (g : ℝ → ℂ)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1)
+    (z : Fin 4 → ℝ) (hz : 1 < ‖z‖) : realCubeKernel g z = 0 := by
+  by_contra hne
+  have hv (ω : Fin 3 → Bool) : g (z 0 + cubeShift (fun i => z i.succ) ω) ≠ 0 := by
+    intro hh
+    apply hne
+    unfold realCubeKernel diagonalCubeIntegrand cubeIntegrand
+    apply Finset.prod_eq_zero (Finset.mem_univ ω)
+    simp [cubeConj, hh]
+  have hbase : 0 < z 0 ∧ z 0 < 1 := by
+    have hh := hsupp _ (hv (fun _ => false))
+    simpa [cubeShift] using hh
+  have hunit (i : Fin 3) : 0 < z 0 + z i.succ ∧ z 0 + z i.succ < 1 := by
+    have hh := hsupp _ (hv (fun j => decide (j = i)))
+    simpa [cubeShift] using hh
+  have hnorm : ‖z‖ ≤ 1 := by
+    apply (pi_norm_le_iff_of_nonneg zero_le_one).mpr
+    intro i
+    rw [Real.norm_eq_abs, abs_le]
+    induction i using Fin.cases with
+    | zero => constructor <;> linarith [hbase.1, hbase.2]
+    | succ i => constructor <;> linarith [(hunit i).1, (hunit i).2, hbase.1, hbase.2]
+  exact (not_lt_of_ge hnorm) hz
+theorem realCubeKernel_lattice_limit (g : ℝ → ℂ) (hg : Continuous g)
+    (hunit : ∀ x, ‖g x‖ ≤ 1) (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1) :
+    Tendsto (fun N : ℕ => ((N : ℝ)⁻¹) ^ 4 •
+      ∑' k : Fin 4 → ℤ, realCubeKernel g (fun i => (k i : ℝ) / N))
+      atTop (𝓝 (∫ z, realCubeKernel g z)) := by
+  exact lattice_sampling_dominated_convergence (realCubeKernel g)
+    ⟨1, realCubeKernel_norm_le_one g hunit⟩
+    ⟨1, realCubeKernel_eq_zero_outside g hsupp⟩ ∅
+    (fun z _ => (continuous_realCubeKernel hg).continuousAt)
+
+theorem integral_finiteHaar_expect {G : Type*} [Fintype G] [MeasurableSpace G]
+    [MeasurableSingletonClass G] (f : G → ℂ) :
+    (∫ x, f x ∂finiteHaar G) = 𝔼 x, f x := by
+  rw [finiteHaar, integral_smul_measure, integral_count, Fintype.expect_eq_sum_div_card]
+  simp [ENNReal.toReal_inv, Complex.real_smul, div_eq_mul_inv, mul_comm]
+theorem cubeAverage_finiteHaar_eq_expect {G : Type*} [AddCommGroup G] [Fintype G]
+    [MeasurableSpace G] [MeasurableSingletonClass G] (j : ℕ)
+    (f : (Fin j → Bool) → G → ℂ) :
+    cubeAverage (finiteHaar G) j f =
+      𝔼 h : Fin j → G, 𝔼 x, cubeIntegrand f h x := by
+  simp only [cubeAverage, finiteHaar_pi, integral_finiteHaar_expect]
+
+def cyclicCubeIntegerLift {L : ℕ}
+    (p : ZMod (16 * L + 1) × (Fin 3 → ZMod (16 * L + 1))) : Fin 4 → ℤ :=
+  Fin.cons (p.1.val : ℤ) (cyclicCubeIntegerIncrement p.1 p.2)
+theorem cyclicCubeIntegerLift_injective {L : ℕ} :
+    Function.Injective (cyclicCubeIntegerLift (L := L)) := by
+  intro p q hpq
+  have hx : p.1 = q.1 := by
+    have hh := congrArg (fun z => (z 0 : ZMod (16 * L + 1))) hpq
+    simpa [cyclicCubeIntegerLift] using hh
+  have hh : p.2 = q.2 := by
+    funext i
+    have he := congrArg (fun z => (z i.succ : ZMod (16 * L + 1))) hpq
+    simpa [cyclicCubeIntegerLift, cyclicCubeIntegerIncrement_cast] using he
+  exact Prod.ext hx hh
+theorem cyclicCubeIntegerLift_of_supported {L : ℕ} (k : Fin 4 → ℤ)
+    (hbase : 0 ≤ k 0 ∧ k 0 < L)
+    (hunit : ∀ i : Fin 3, 0 ≤ k 0 + k i.succ ∧ k 0 + k i.succ < L) :
+    cyclicCubeIntegerLift ((k 0 : ZMod (16 * L + 1)),
+      fun i : Fin 3 => (k i.succ : ZMod (16 * L + 1))) = k := by
+  have hval (a : ℤ) (ha : 0 ≤ a ∧ a < L) :
+      (((a : ZMod (16 * L + 1)).val : ℕ) : ℤ) = a := by
+    rw [ZMod.val_intCast]
+    apply Int.emod_eq_of_lt ha.1
+    omega
+  funext i
+  induction i using Fin.cases with
+  | zero => simpa [cyclicCubeIntegerLift] using hval _ hbase
+  | succ i =>
+    simp only [cyclicCubeIntegerLift, Fin.cons_succ, cyclicCubeIntegerIncrement]
+    rw [← Int.cast_add, hval _ (hunit i), hval _ hbase]
+    omega
+theorem realCubeKernel_lattice_support {L : ℕ} (hL : 0 < L) (g : ℝ → ℂ)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1) (k : Fin 4 → ℤ)
+    (hk : realCubeKernel g (fun i => (k i : ℝ) / L) ≠ 0) :
+    k ∈ Set.range (cyclicCubeIntegerLift (L := L)) := by
+  have hLr : (0 : ℝ) < L := by exact_mod_cast hL
+  have hv (ω : Fin 3 → Bool) :
+      g ((k 0 : ℝ) / L + cubeShift (fun i => (k i.succ : ℝ) / L) ω) ≠ 0 := by
+    intro he
+    apply hk
+    unfold realCubeKernel diagonalCubeIntegrand cubeIntegrand
+    apply Finset.prod_eq_zero (Finset.mem_univ ω)
+    simp [cubeConj, he]
+  have hb : 0 ≤ k 0 ∧ k 0 < L := by
+    have hh := hsupp _ (hv (fun _ => false))
+    simp only [cubeShift, Bool.false_eq_true, ↓reduceIte, Finset.sum_const_zero,
+      add_zero, Set.mem_Ioo] at hh
+    have ha := (div_pos_iff_of_pos_right hLr).mp hh.1
+    have hc := (div_lt_one hLr).mp hh.2
+    exact ⟨by exact_mod_cast ha.le, by exact_mod_cast hc⟩
+  have hu (i : Fin 3) : 0 ≤ k 0 + k i.succ ∧ k 0 + k i.succ < L := by
+    have hh := hsupp _ (hv (fun j => decide (j = i)))
+    have hh' : 0 < ((k 0 : ℝ) + k i.succ) / L ∧
+        ((k 0 : ℝ) + k i.succ) / L < 1 := by
+      simpa [cubeShift, add_div] using hh
+    have ha := (div_pos_iff_of_pos_right hLr).mp hh'.1
+    have hc := (div_lt_one hLr).mp hh'.2
+    exact ⟨by exact_mod_cast ha.le, by exact_mod_cast hc⟩
+  exact ⟨_, cyclicCubeIntegerLift_of_supported k hb hu⟩
+open scoped BigOperators
+theorem realCubeKernel_lattice_sum {L : ℕ} (hL : 0 < L) (g : ℝ → ℂ)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1) :
+    (∑' k : Fin 4 → ℤ, realCubeKernel g (fun i => (k i : ℝ) / L)) =
+      ∑ p : ZMod (16 * L + 1) × (Fin 3 → ZMod (16 * L + 1)),
+        realCubeKernel g (fun i => (cyclicCubeIntegerLift p i : ℝ) / L) := by
+  rw [← cyclicCubeIntegerLift_injective.tsum_eq
+    (f := fun k : Fin 4 → ℤ => realCubeKernel g (fun i => (k i : ℝ) / L))
+    (fun k hk => realCubeKernel_lattice_support hL g hsupp k hk)]
+  exact tsum_fintype _
+
+theorem supported_sample_vertex {L : ℕ} (hL : 0 < L) (g : ℝ → ℂ)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1)
+    (x : ZMod (16 * L + 1)) (h : Fin 3 → ZMod (16 * L + 1))
+    (hx : x.val < L) (hh : ∀ i, (x + h i).val < L) (ω : Fin 3 → Bool) :
+    g (((x.val : ℤ) + cubeShift (cyclicCubeIntegerIncrement x h) ω : ℤ) / (L : ℝ)) =
+      g ((x + cubeShift h ω).val / (L : ℝ)) := by
+  let v : ℤ := x.val + cubeShift (cyclicCubeIntegerIncrement x h) ω
+  have hc : (v : ZMod (16 * L + 1)) = x + cubeShift h ω :=
+    cyclic_cube_vertex_cast x h ω
+  have hLr : (0 : ℝ) < L := by exact_mod_cast hL
+  by_cases hj : (x + cubeShift h ω).val < L
+  · have hv := (cyclic_cube_supported_vertex_iff x h hx hh ω).mp hj
+    have he : (((x + cubeShift h ω).val : ℕ) : ℤ) = v := by
+      rw [← hc, ZMod.val_intCast]
+      apply Int.emod_eq_of_lt hv.1
+      dsimp [v]
+      omega
+    change g ((v : ℝ) / L) = _
+    rw [← he, Int.cast_natCast]
+  · have hleft : g ((v : ℝ) / L) = 0 := by
+      by_contra hn
+      have hs := hsupp _ hn
+      have hv0 : (0 : ℝ) < v := (div_pos_iff_of_pos_right hLr).mp hs.1
+      have hvL : (v : ℝ) < L := (div_lt_one hLr).mp hs.2
+      apply hj
+      apply (cyclic_cube_supported_vertex_iff x h hx hh ω).mpr
+      exact ⟨by exact_mod_cast hv0.le, by exact_mod_cast hvL⟩
+    have hright : g ((x + cubeShift h ω).val / (L : ℝ)) = 0 := by
+      by_contra hn
+      have hs := hsupp _ hn
+      have hvL := (div_lt_one hLr).mp hs.2
+      exact hj (by exact_mod_cast hvL)
+    exact hleft.trans hright.symm
+theorem realCubeKernel_lift_formula {L : ℕ} (g : ℝ → ℂ)
+    (p : ZMod (16 * L + 1) × (Fin 3 → ZMod (16 * L + 1))) :
+    realCubeKernel g (fun i => (cyclicCubeIntegerLift p i : ℝ) / L) =
+      diagonalCubeIntegrand 3
+        (fun a : ℤ => g ((a : ℝ) / L)) (cyclicCubeIntegerIncrement p.1 p.2)
+          (p.1.val : ℤ) := by
+  unfold realCubeKernel diagonalCubeIntegrand cubeIntegrand
+  apply Finset.prod_congr rfl
+  intro ω _
+  apply congrArg (cubeConj (cubeWeight ω))
+  apply congrArg g
+  simp [cyclicCubeIntegerLift, cubeShift, Int.cast_sum, apply_ite,
+    Finset.sum_div, add_div, ite_div]
+theorem realCubeKernel_lift_eq_cyclic {L : ℕ} (hL : 0 < L) (g : ℝ → ℂ)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1)
+    (p : ZMod (16 * L + 1) × (Fin 3 → ZMod (16 * L + 1))) :
+    realCubeKernel g (fun i => (cyclicCubeIntegerLift p i : ℝ) / L) =
+      diagonalCubeIntegrand 3 (fun j : ZMod (16 * L + 1) => g (j.val / (L : ℝ)))
+        p.2 p.1 := by
+  rw [realCubeKernel_lift_formula]
+  have hLr : (0 : ℝ) < L := by exact_mod_cast hL
+  have hzero (j : ℕ) (hj : ¬j < L) : g (j / (L : ℝ)) = 0 := by
+    by_contra hn
+    have hh := (div_lt_one hLr).mp (hsupp _ hn).2
+    exact hj (by exact_mod_cast hh)
+  by_cases hx : p.1.val < L
+  · by_cases hh : ∀ i, (p.1 + p.2 i).val < L
+    · unfold diagonalCubeIntegrand cubeIntegrand
+      apply Finset.prod_congr rfl
+      intro ω _
+      exact congrArg (cubeConj (cubeWeight ω))
+        (supported_sample_vertex hL g hsupp p.1 p.2 hx hh ω)
+    · push Not at hh
+      obtain ⟨i, hi⟩ := hh
+      have hz := hzero _ (not_lt.mpr hi)
+      have hz1 : diagonalCubeIntegrand 3 (fun a : ℤ => g ((a : ℝ) / L))
+          (cyclicCubeIntegerIncrement p.1 p.2) (p.1.val : ℤ) = 0 := by
+        unfold diagonalCubeIntegrand cubeIntegrand
+        apply Finset.prod_eq_zero (Finset.mem_univ (fun j => decide (j = i)))
+        simp [cubeShift, cyclicCubeIntegerIncrement, cubeConj, hz, -ZMod.natCast_val]
+      have hz2 : diagonalCubeIntegrand 3
+          (fun j : ZMod (16 * L + 1) => g (j.val / (L : ℝ))) p.2 p.1 = 0 := by
+        unfold diagonalCubeIntegrand cubeIntegrand
+        apply Finset.prod_eq_zero (Finset.mem_univ (fun j => decide (j = i)))
+        simp [cubeShift, cubeConj, hz, -ZMod.natCast_val]
+      exact hz1.trans hz2.symm
+  · have hz := hzero _ hx
+    have hz1 : diagonalCubeIntegrand 3 (fun a : ℤ => g ((a : ℝ) / L))
+        (cyclicCubeIntegerIncrement p.1 p.2) (p.1.val : ℤ) = 0 := by
+      unfold diagonalCubeIntegrand cubeIntegrand
+      apply Finset.prod_eq_zero (Finset.mem_univ (fun _ => false))
+      simp [cubeShift, cubeConj, hz, -ZMod.natCast_val]
+    have hz2 : diagonalCubeIntegrand 3
+        (fun j : ZMod (16 * L + 1) => g (j.val / (L : ℝ))) p.2 p.1 = 0 := by
+      unfold diagonalCubeIntegrand cubeIntegrand
+      apply Finset.prod_eq_zero (Finset.mem_univ (fun _ => false))
+      simp [cubeShift, cubeConj, hz, -ZMod.natCast_val]
+    exact hz1.trans hz2.symm
+open scoped BigOperators
+theorem cyclic_point_cube_lattice_identity {L : ℕ} (hL : 0 < L) (g : ℝ → ℂ)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1) :
+    cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3
+      (fun _ j => g (j.val / (L : ℝ))) =
+    ((16 * L + 1 : ℕ) : ℂ)⁻¹ ^ 4 *
+      ∑' k : Fin 4 → ℤ, realCubeKernel g (fun i => (k i : ℝ) / L) := by
+  rw [realCubeKernel_lattice_sum hL g hsupp]
+  simp_rw [realCubeKernel_lift_eq_cyclic hL g hsupp]
+  rw [cubeAverage_finiteHaar_eq_expect]
+  simp only [Fintype.expect_eq_sum_div_card, Fintype.card_fun, ZMod.card,
+    Fintype.card_fin, Nat.cast_pow, Finset.sum_div, Fintype.sum_prod_type,
+    diagonalCubeIntegrand]
+  rw [Finset.sum_comm]
+  simp only [← Finset.sum_div]
+  ring
+
+theorem cyclic_point_cube_limit (g : ℝ → ℂ) (hg : Continuous g)
+    (hunit : ∀ x, ‖g x‖ ≤ 1) (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1) :
+    Tendsto (fun L : ℕ => cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3
+      (fun _ j => g (j.val / (L : ℝ)))) atTop
+      (𝓝 ((16 : ℝ)⁻¹ ^ 4 • ∫ z, realCubeKernel g z)) := by
+  have hc : Tendsto (fun L : ℕ => (16 + (L : ℝ)⁻¹)⁻¹ ^ 4)
+      atTop (𝓝 ((16 : ℝ)⁻¹ ^ 4)) := by
+    have hh := (tendsto_const_nhds.add
+      (tendsto_inv_atTop_nhds_zero_nat (𝕜 := ℝ))).inv₀ (by norm_num : (16 : ℝ) + 0 ≠ 0)
+    simpa using hh.pow 4
+  have ht := hc.smul (realCubeKernel_lattice_limit g hg hunit hsupp)
+  apply ht.congr'
+  filter_upwards [eventually_gt_atTop 0] with L hL
+  rw [cyclic_point_cube_lattice_identity hL g hsupp, smul_smul]
+  have hLr : (L : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hL)
+  have hqr : (16 : ℝ) * L + 1 ≠ 0 := by positivity
+  have he : (16 + (L : ℝ)⁻¹)⁻¹ ^ 4 * ((L : ℝ)⁻¹) ^ 4 =
+      ((16 : ℝ) * L + 1)⁻¹ ^ 4 := by
+    field_simp
+  rw [he, Complex.real_smul]
+  simp
+
+theorem norm_prod_sub_prod_le_sum {ι : Type*} (s : Finset ι) (a b : ι → ℂ)
+    (ha : ∀ i ∈ s, ‖a i‖ ≤ 1) (hb : ∀ i ∈ s, ‖b i‖ ≤ 1) :
+    ‖(∏ i ∈ s, a i) - ∏ i ∈ s, b i‖ ≤ ∑ i ∈ s, ‖a i - b i‖ := by
+  classical
+  induction s using Finset.induction_on with
+  | empty => simp
+  | @insert i s hi ih =>
+    have ha' : ∀ j ∈ s, ‖a j‖ ≤ 1 := fun j hj => ha j (Finset.mem_insert_of_mem hj)
+    have hb' : ∀ j ∈ s, ‖b j‖ ≤ 1 := fun j hj => hb j (Finset.mem_insert_of_mem hj)
+    have hprod : ‖∏ j ∈ s, a j‖ ≤ 1 := by
+      rw [norm_prod]
+      exact Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) ha'
+    rw [Finset.prod_insert hi, Finset.prod_insert hi, Finset.sum_insert hi]
+    calc
+      ‖a i * ∏ j ∈ s, a j - b i * ∏ j ∈ s, b j‖ =
+          ‖(a i - b i) * (∏ j ∈ s, a j) +
+            b i * ((∏ j ∈ s, a j) - ∏ j ∈ s, b j)‖ := by congr 1; ring
+      _ ≤ ‖(a i - b i) * (∏ j ∈ s, a j)‖ +
+          ‖b i * ((∏ j ∈ s, a j) - ∏ j ∈ s, b j)‖ := norm_add_le _ _
+      _ ≤ ‖a i - b i‖ * 1 + 1 * (∑ j ∈ s, ‖a j - b j‖) := by
+        simp only [norm_mul]
+        exact add_le_add (mul_le_mul_of_nonneg_left hprod (norm_nonneg _))
+          (mul_le_mul (hb i (Finset.mem_insert_self _ _)) (ih ha' hb')
+            (norm_nonneg _) zero_le_one)
+      _ = _ := by ring
+theorem norm_cubeIntegrand_sub_le {G : Type*} [AddCommMonoid G] (j : ℕ)
+    (f g : (Fin j → Bool) → G → ℂ)
+    (hf : ∀ ω x, ‖f ω x‖ ≤ 1) (hg : ∀ ω x, ‖g ω x‖ ≤ 1)
+    (h : Fin j → G) (x : G) :
+    ‖cubeIntegrand f h x - cubeIntegrand g h x‖ ≤
+      ∑ ω, ‖f ω (x + cubeShift h ω) - g ω (x + cubeShift h ω)‖ := by
+  unfold cubeIntegrand
+  convert norm_prod_sub_prod_le_sum Finset.univ
+    (fun ω => cubeConj (cubeWeight ω) (f ω (x + cubeShift h ω)))
+    (fun ω => cubeConj (cubeWeight ω) (g ω (x + cubeShift h ω)))
+    (fun ω _ => by simpa only [norm_cubeConj] using hf ω (x + cubeShift h ω))
+    (fun ω _ => by simpa only [norm_cubeConj] using hg ω (x + cubeShift h ω)) using 1
+  apply Finset.sum_congr rfl
+  intro ω _
+  unfold cubeConj
+  split_ifs
+  · rfl
+  · rw [← map_sub, Complex.norm_conj]
+theorem finite_cubeAverage_uniform_error {G : Type*} [AddCommGroup G] [Fintype G]
+    [MeasurableSpace G] [MeasurableSingletonClass G] (j : ℕ) (f g : G → ℂ)
+    (hf : ∀ x, ‖f x‖ ≤ 1) (hg : ∀ x, ‖g x‖ ≤ 1)
+    (ε : ℝ) (he : ∀ x, ‖f x - g x‖ ≤ ε) :
+    ‖cubeAverage (finiteHaar G) j (fun _ => f) -
+      cubeAverage (finiteHaar G) j (fun _ => g)‖ ≤ (2 : ℝ) ^ j * ε := by
+  simp only [cubeAverage_finiteHaar_eq_expect, ← Finset.expect_sub_distrib]
+  refine (RCLike.norm_expect_le (K := ℂ)).trans ?_
+  apply Finset.expect_le Finset.univ_nonempty
+  intro h _
+  refine (RCLike.norm_expect_le (K := ℂ)).trans ?_
+  calc
+    (𝔼 x, ‖cubeIntegrand (fun _ => f) h x - cubeIntegrand (fun _ => g) h x‖) ≤
+        𝔼 x : G, ((2 : ℝ) ^ j * ε) := by
+      apply Finset.expect_le_expect
+      intro x _
+      refine (norm_cubeIntegrand_sub_le j (fun _ => f) (fun _ => g)
+        (fun _ => hf) (fun _ => hg) h x).trans ?_
+      calc
+        _ ≤ ∑ _ω : Fin j → Bool, ε := Finset.sum_le_sum (fun _ _ => he _)
+        _ = _ := by simp
+    _ = _ := Fintype.expect_const _
+
+theorem cyclicCellAverage_sub_sample_le {L : ℕ} (hL : 0 < L)
+    (g : ℝ → ℂ) (hg : Continuous g) (j : ZMod (16 * L + 1)) (hj : j.val < L)
+    (ε : ℝ)
+    (hosc : ∀ y ∈ Set.uIcc ((j.val : ℝ) / L) (((j.val : ℝ) + 1) / L),
+      ‖g y - g ((j.val : ℝ) / L)‖ ≤ ε) :
+    ‖cyclicCellAverage L g j - g ((j.val : ℝ) / L)‖ ≤ ε := by
+  have hLp : (0 : ℝ) < L := Nat.cast_pos.mpr hL
+  have he : ((j.val : ℝ) + 1) / L - (j.val : ℝ) / L = 1 / L := by ring
+  have hi : (∫ y in (j.val : ℝ) / L..((j.val : ℝ) + 1) / L,
+      (g y - g ((j.val : ℝ) / L))) =
+      (∫ y in (j.val : ℝ) / L..((j.val : ℝ) + 1) / L, g y) -
+        (1 / (L : ℝ)) • g ((j.val : ℝ) / L) := by
+    rw [intervalIntegral.integral_sub (hg.intervalIntegrable _ _)
+      (continuous_const.intervalIntegrable _ _), intervalIntegral.integral_const, he]
+  have hid : cyclicCellAverage L g j - g ((j.val : ℝ) / L) =
+      (L : ℂ) * ∫ y in (j.val : ℝ) / L..((j.val : ℝ) + 1) / L,
+        (g y - g ((j.val : ℝ) / L)) := by
+    rw [hi]
+    simp only [cyclicCellAverage, ite_eq_left hj, Complex.real_smul, Complex.ofReal_div,
+      Complex.ofReal_one, Complex.ofReal_natCast]
+    have hLc : (L : ℂ) ≠ 0 := Nat.cast_ne_zero.mpr (Nat.ne_of_gt hL)
+    field_simp
+  rw [hid, norm_mul, Complex.norm_natCast]
+  have hb := intervalIntegral.norm_integral_le_of_norm_le_const
+    (fun y hy => hosc y (Set.uIoc_subset_uIcc hy))
+  rw [he, abs_of_pos (div_pos zero_lt_one hLp)] at hb
+  calc
+    _ ≤ (L : ℝ) * (ε * (1 / L)) := mul_le_mul_of_nonneg_left hb hLp.le
+    _ = ε := by field_simp
+theorem cyclicCellAverage_uniform_sample_error (g : ℝ → ℂ) (hg : Continuous g)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1)
+    (ε : ℝ) (hε : 0 < ε) :
+    ∀ᶠ L : ℕ in atTop, ∀ j : ZMod (16 * L + 1),
+      ‖cyclicCellAverage L g j - g (j.val / (L : ℝ))‖ ≤ ε := by
+  obtain ⟨δ, hδ, hmod⟩ := Metric.uniformContinuousOn_iff.mp
+    (isCompact_Icc.uniformContinuousOn_of_continuous hg.continuousOn) ε hε
+  have hsmall : ∀ᶠ L : ℕ in atTop, (L : ℝ)⁻¹ < δ :=
+    tendsto_inv_atTop_nhds_zero_nat.eventually (gt_mem_nhds hδ)
+  filter_upwards [hsmall, eventually_gt_atTop 0] with L hsmall hL j
+  have hLp : (0 : ℝ) < L := Nat.cast_pos.mpr hL
+  by_cases hj : j.val < L
+  · apply cyclicCellAverage_sub_sample_le hL g hg j hj ε
+    intro y hy
+    have ha0 : 0 ≤ (j.val : ℝ) / L := by positivity
+    have hab : (j.val : ℝ) / L ≤ ((j.val : ℝ) + 1) / L :=
+      div_le_div_of_nonneg_right (by linarith) hLp.le
+    have hb1 : ((j.val : ℝ) + 1) / L ≤ 1 := by
+      apply (div_le_one hLp).mpr
+      exact_mod_cast (Nat.succ_le_of_lt hj)
+    rw [Set.uIcc_of_le hab] at hy
+    have ha1 : (j.val : ℝ) / L ≤ 1 := hab.trans hb1
+    have hyd : dist y ((j.val : ℝ) / L) < δ := by
+      rw [Real.dist_eq, abs_of_nonneg (sub_nonneg.mpr hy.1)]
+      have hh : y - (j.val : ℝ) / L ≤ (L : ℝ)⁻¹ := by
+        calc
+          _ ≤ ((j.val : ℝ) + 1) / L - (j.val : ℝ) / L :=
+            sub_le_sub_right hy.2 _
+          _ = _ := by ring
+      exact hh.trans_lt hsmall
+    have hm := hmod y ⟨ha0.trans hy.1, hy.2.trans hb1⟩
+      ((j.val : ℝ) / L) ⟨ha0, ha1⟩ hyd
+    simpa only [dist_eq_norm] using hm.le
+  · have hz : g (j.val / (L : ℝ)) = 0 := by
+      by_contra hn
+      have hh := (div_lt_one hLp).mp (hsupp _ hn).2
+      exact hj (by exact_mod_cast hh)
+    simp only [cyclicCellAverage, ite_eq_right hj, hz, sub_zero, norm_zero]
+    exact hε.le
+theorem cyclic_cell_cube_limit (g : ℝ → ℂ) (hg : Continuous g)
+    (hunit : ∀ x, ‖g x‖ ≤ 1) (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1) :
+    Tendsto (fun L : ℕ => cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3
+      (fun _ => cyclicCellAverage L g)) atTop
+      (𝓝 ((16 : ℝ)⁻¹ ^ 4 • ∫ z, realCubeKernel g z)) := by
+  apply Metric.tendsto_nhds.mpr
+  intro ε hε
+  have hc := cyclicCellAverage_uniform_sample_error g hg hsupp (ε / 32) (by positivity)
+  have hp := Metric.tendsto_nhds.mp (cyclic_point_cube_limit g hg hunit hsupp)
+    (ε / 2) (by positivity)
+  filter_upwards [hc, hp, eventually_gt_atTop 0] with L hc hp hL
+  have he := finite_cubeAverage_uniform_error 3 (cyclicCellAverage L g)
+    (fun j : ZMod (16 * L + 1) => g (j.val / (L : ℝ)))
+    (cyclicCellAverage_norm_le_one hL g hunit) (fun _ => hunit _)
+    (ε / 32) hc
+  have ht := dist_triangle
+    (cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3 (fun _ => cyclicCellAverage L g))
+    (cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3
+      (fun _ j => g (j.val / (L : ℝ))))
+    ((16 : ℝ)⁻¹ ^ 4 • ∫ z, realCubeKernel g z)
+  simp only [dist_eq_norm] at ht hp ⊢
+  norm_num only [pow_succ, pow_zero, mul_one] at he
+  linarith only [ht, he, hp, hε]
+
+local instance : Fact (0 < (16 : ℝ)) := ⟨by norm_num⟩
+theorem circle_lift_supported_apply (g : ℝ → ℂ)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1)
+    (v : ℝ) (hv : -8 < v ∧ v < 9) :
+    AddCircle.liftIoc (16 : ℝ) (-8) g (v : AddCircle (16 : ℝ)) = g v := by
+  by_cases hn : g v ≠ 0
+  · exact AddCircle.liftIoc_coe_apply (by
+      have hh := hsupp v hn
+      constructor <;> linarith [hh.1, hh.2])
+  · have hgv : g v = 0 := not_ne_iff.mp hn
+    rw [hgv]
+    by_contra he
+    let r : ℝ := AddCircle.equivIoc (16 : ℝ) (-8) (v : AddCircle (16 : ℝ))
+    have hr : 0 < r ∧ r < 1 := hsupp r he
+    have hc : (r : AddCircle (16 : ℝ)) = (v : AddCircle (16 : ℝ)) :=
+      AddCircle.coe_equivIoc
+    have hrv : r = v := by
+      by_cases hv0 : v ≤ 0
+      · apply (AddCircle.coe_eq_coe_iff_of_mem_Ioc
+          (a := (-8 : ℝ)) (p := (16 : ℝ))
+          (by constructor <;> linarith [hr.1, hr.2])
+          (by constructor <;> linarith [hv.1])).mp hc
+      · apply (AddCircle.coe_eq_coe_iff_of_mem_Ioc
+          (a := (0 : ℝ)) (p := (16 : ℝ))
+          (by constructor <;> linarith [hr.1, hr.2])
+          (by constructor <;> linarith [hv.2])).mp hc
+    exact he (by change g r = 0; rw [hrv, hgv])
+theorem circle_cube_kernel_on_box (g : ℝ → ℂ)
+    (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1)
+    (z : Fin 4 → ℝ) (hz : ∀ i, z i ∈ Set.Ioc (-8 : ℝ) 8) :
+    diagonalCubeIntegrand 3 (AddCircle.liftIoc (16 : ℝ) (-8) g)
+      (fun i => (z i.succ : AddCircle (16 : ℝ))) (z 0 : AddCircle (16 : ℝ)) =
+      realCubeKernel g z := by
+  have hcast (ω : Fin 3 → Bool) :
+      ((z 0 + cubeShift (fun i => z i.succ) ω : ℝ) : AddCircle (16 : ℝ)) =
+        (z 0 : AddCircle (16 : ℝ)) +
+          cubeShift (fun i => (z i.succ : AddCircle (16 : ℝ))) ω := by
+    change (QuotientAddGroup.mk' (AddSubgroup.zmultiples (16 : ℝ))) _ = _
+    simp [cubeShift, apply_ite]
+  have hbase : AddCircle.liftIoc (16 : ℝ) (-8) g (z 0 : AddCircle (16 : ℝ)) =
+      g (z 0) := AddCircle.liftIoc_coe_apply (by constructor <;> linarith [(hz 0).1, (hz 0).2])
+  by_cases hx : g (z 0) = 0
+  · have hleft : diagonalCubeIntegrand 3 (AddCircle.liftIoc (16 : ℝ) (-8) g)
+        (fun i => (z i.succ : AddCircle (16 : ℝ))) (z 0 : AddCircle (16 : ℝ)) = 0 := by
+      unfold diagonalCubeIntegrand cubeIntegrand
+      apply Finset.prod_eq_zero (Finset.mem_univ (fun _ => false))
+      simp [cubeShift, cubeConj, hbase, hx]
+    have hright : realCubeKernel g z = 0 := by
+      unfold realCubeKernel diagonalCubeIntegrand cubeIntegrand
+      apply Finset.prod_eq_zero (Finset.mem_univ (fun _ => false))
+      simp [cubeShift, cubeConj, hx]
+    exact hleft.trans hright.symm
+  · have hx01 := hsupp _ hx
+    have hunit (i : Fin 3) :
+        AddCircle.liftIoc (16 : ℝ) (-8) g
+          ((z 0 + z i.succ : ℝ) : AddCircle (16 : ℝ)) = g (z 0 + z i.succ) :=
+      circle_lift_supported_apply g hsupp _ (by
+        constructor <;> linarith [(hz i.succ).1, (hz i.succ).2, hx01.1, hx01.2])
+    by_cases hu : ∀ i : Fin 3, g (z 0 + z i.succ) ≠ 0
+    · unfold diagonalCubeIntegrand cubeIntegrand realCubeKernel diagonalCubeIntegrand cubeIntegrand
+      apply Finset.prod_congr rfl
+      intro ω _
+      apply congrArg (cubeConj (cubeWeight ω))
+      change AddCircle.liftIoc (16 : ℝ) (-8) g _ = _
+      rw [← hcast]
+      apply circle_lift_supported_apply g hsupp
+      have hh (i : Fin 3) : |z i.succ| ≤ 1 := by
+        have hi := hsupp _ (hu i)
+        rw [abs_le]
+        constructor <;> linarith [hi.1, hi.2, hx01.1, hx01.2]
+      have hb : |cubeShift (fun i => z i.succ) ω| ≤ 3 := by
+        unfold cubeShift
+        calc
+          _ ≤ ∑ i : Fin 3, |if ω i then z i.succ else 0| := Finset.abs_sum_le_sum_abs _ _
+          _ ≤ ∑ _i : Fin 3, (1 : ℝ) := Finset.sum_le_sum (by
+            intro i _
+            split_ifs
+            · exact hh i
+            · norm_num)
+          _ = 3 := by simp
+      have hb' := abs_le.mp hb
+      constructor <;> linarith [hb'.1, hb'.2, hx01.1, hx01.2]
+    · push Not at hu
+      obtain ⟨i, hi⟩ := hu
+      have hleft : diagonalCubeIntegrand 3 (AddCircle.liftIoc (16 : ℝ) (-8) g)
+          (fun i => (z i.succ : AddCircle (16 : ℝ))) (z 0 : AddCircle (16 : ℝ)) = 0 := by
+        unfold diagonalCubeIntegrand cubeIntegrand
+        apply Finset.prod_eq_zero (Finset.mem_univ (fun j => decide (j = i)))
+        simp only [cubeShift, decide_eq_true_eq, Finset.sum_ite_eq', Finset.mem_univ, ite_true]
+        rw [← AddCircle.coe_add, hunit i, hi]
+        simp [cubeConj]
+      have hright : realCubeKernel g z = 0 := by
+        unfold realCubeKernel diagonalCubeIntegrand cubeIntegrand
+        apply Finset.prod_eq_zero (Finset.mem_univ (fun j => decide (j = i)))
+        simp [cubeShift, cubeConj, hi]
+      exact hleft.trans hright.symm
+
+theorem cubeAverage_eq_integral_tuple {G : Type*} [AddCommGroup G]
+    [MeasurableSpace G] [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ]
+    (j : ℕ) (g : G → ℂ) (hg : Measurable g) (hunit : ∀ x, ‖g x‖ ≤ 1) :
+    cubeAverage μ j (fun _ => g) =
+      ∫ z : Fin (j + 1) → G, diagonalCubeIntegrand j g (fun i => z i.succ) (z 0)
+        ∂Measure.pi (fun _ => μ) := by
+  have hm : Measurable (fun z : Fin (j + 1) → G =>
+      diagonalCubeIntegrand j g (fun i => z i.succ) (z 0)) :=
+    (measurable_cubeIntegrand (fun _ => g) (fun _ => hg)).comp
+      ((measurable_pi_iff.mpr (fun i => measurable_pi_apply i.succ)).prodMk
+        (measurable_pi_apply 0))
+  rw [integral_pi_cons μ _ hm (M := 1)]
+  · rfl
+  · intro z
+    simpa only [diagonalCubeIntegrand, one_pow] using
+      norm_cubeIntegrand_le (fun _ => g) (fun _ => hunit) (fun i => z i.succ) (z 0)
+theorem circle_pi_volume_eq (T : ℝ) [Fact (0 < T)] (d : ℕ) :
+    Measure.pi (fun _ : Fin d => (volume : Measure (AddCircle T))) =
+      (ENNReal.ofReal T) ^ d •
+        Measure.pi (fun _ : Fin d => (AddCircle.haarAddCircle : Measure (AddCircle T))) := by
+  apply Measure.pi_eq
+  intro s _
+  simp only [Measure.smul_apply, Measure.pi_pi, smul_eq_mul,
+    AddCircle.volume_eq_smul_haarAddCircle, Finset.prod_mul_distrib, Finset.prod_const,
+    Finset.card_univ, Fintype.card_fin]
+theorem circle_pi_integral_preimage (T : ℝ) [Fact (0 < T)] (d : ℕ)
+    (a : ℝ) (F : (Fin d → AddCircle T) → ℂ) (hF : Measurable F) :
+    (∫ z, F z ∂Measure.pi (fun _ : Fin d => (volume : Measure (AddCircle T)))) =
+      ∫ z in Set.pi Set.univ (fun _ : Fin d => Set.Ioc a (a + T)),
+        F (fun i => (z i : AddCircle T)) := by
+  have hm := measurePreserving_pi
+    (fun _ : Fin d => volume.restrict (Set.Ioc a (a + T)))
+    (fun _ : Fin d => (volume : Measure (AddCircle T)))
+    (fun _ => AddCircle.measurePreserving_mk T a)
+  rw [← hm.map_eq, integral_map hm.measurable.aemeasurable hF.aestronglyMeasurable]
+  rw [← Measure.restrict_pi_pi]
+  rfl
+
+theorem circle_cube_integral_eq_real (g : ℝ → ℂ) (hg : Measurable g)
+    (hunit : ∀ x, ‖g x‖ ≤ 1) (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1) :
+    cubeAverage (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+      (fun _ => AddCircle.liftIoc (16 : ℝ) (-8) g) =
+      (16 : ℝ)⁻¹ ^ 4 • ∫ z, realCubeKernel g z := by
+  let f := AddCircle.liftIoc (16 : ℝ) (-8) g
+  let F := fun z : Fin 4 → AddCircle (16 : ℝ) =>
+    diagonalCubeIntegrand 3 f (fun i => z i.succ) (z 0)
+  have hf : Measurable f :=
+    hg.comp (measurable_subtype_coe.comp (AddCircle.measurableEquivIoc (16 : ℝ) (-8)).measurable)
+  have hfu : ∀ x, ‖f x‖ ≤ 1 := by
+    intro x
+    exact hunit ((AddCircle.equivIoc (16 : ℝ) (-8) x : Set.Ioc (-8 : ℝ) (-8 + 16)) : ℝ)
+  have hF : Measurable F := by
+    have hm : Measurable (fun z : Fin 4 → AddCircle (16 : ℝ) =>
+        ((fun i : Fin 3 => z i.succ), z 0)) := by fun_prop
+    have hcomp := (measurable_cubeIntegrand (G := AddCircle (16 : ℝ)) (j := 3)
+      (fun _ => f) (fun _ => hf)).comp hm
+    exact hcomp
+  rw [cubeAverage_eq_integral_tuple _ 3 f hf hfu]
+  have hv : (∫ z, F z ∂Measure.pi
+      (fun _ : Fin 4 => (volume : Measure (AddCircle (16 : ℝ))))) =
+      (16 : ℝ) ^ 4 • ∫ z, F z ∂Measure.pi
+        (fun _ : Fin 4 => (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ)))) := by
+    rw [circle_pi_volume_eq, integral_smul_measure]
+    norm_num
+  have he : (∫ z, F z ∂Measure.pi
+      (fun _ : Fin 4 => (volume : Measure (AddCircle (16 : ℝ))))) =
+      ∫ z, realCubeKernel g z := by
+    rw [circle_pi_integral_preimage _ _ (-8) F hF]
+    have hbox : MeasurableSet (Set.pi Set.univ
+        (fun _ : Fin 4 => Set.Ioc (-8 : ℝ) (-8 + 16))) :=
+      MeasurableSet.univ_pi (fun _ => measurableSet_Ioc)
+    calc
+      _ = ∫ z in Set.pi Set.univ (fun _ : Fin 4 => Set.Ioc (-8 : ℝ) (-8 + 16)),
+          realCubeKernel g z := by
+        apply setIntegral_congr_fun hbox
+        intro z hz
+        apply circle_cube_kernel_on_box g hsupp z
+        intro i
+        have hi := Set.mem_pi.mp hz i (Set.mem_univ i)
+        norm_num at hi
+        exact hi
+      _ = _ := setIntegral_eq_integral_of_forall_compl_eq_zero (by
+        intro z hz
+        apply realCubeKernel_eq_zero_outside g hsupp
+        by_contra hn
+        have hn' : ‖z‖ ≤ 1 := le_of_not_gt hn
+        apply hz
+        apply Set.mem_pi.mpr
+        intro i _
+        have hi : ‖z i‖ ≤ 1 := (norm_le_pi_norm z i).trans hn'
+        rw [Real.norm_eq_abs, abs_le] at hi
+        constructor <;> linarith [hi.1, hi.2])
+  change (∫ z, F z ∂Measure.pi
+    (fun _ : Fin 4 => (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))))) = _
+  rw [← he, hv, smul_smul]
+  norm_num
+open Filter
+open scoped Topology
+/-- Blueprint `lem:inverse`, lines 1187–1189: the cell-averaged cyclic cube
+converges to the probability Haar cube of the zero extension to the circle of length 16,
+for continuous unit-bounded functions supported in the open unit interval. -/
+theorem cyclic_cell_cube_limit_haar (g : ℝ → ℂ) (hg : Continuous g)
+    (hunit : ∀ x, ‖g x‖ ≤ 1) (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Ioo (0 : ℝ) 1) :
+    Tendsto (fun L : ℕ => cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3
+      (fun _ => cyclicCellAverage L g)) atTop
+      (𝓝 (cubeAverage (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+        (fun _ => AddCircle.liftIoc (16 : ℝ) (-8) g))) := by
+  rw [circle_cube_integral_eq_real g hg.measurable hunit hsupp]
+  exact cyclic_cell_cube_limit g hg hunit hsupp
+
+/-- Telescoping the bounded cube factors gives the order-j L1 stability bound. -/
+theorem cubeAverage_L1_error {G : Type*} [AddCommGroup G] [MeasurableSpace G]
+    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant]
+    (j : ℕ) (f g : G → ℂ) (hf : Measurable f) (hg : Measurable g)
+    (hfu : ∀ x, ‖f x‖ ≤ 1) (hgu : ∀ x, ‖g x‖ ≤ 1) :
+    ‖cubeAverage μ j (fun _ => f) - cubeAverage μ j (fun _ => g)‖ ≤
+      (2 : ℝ) ^ j * ∫ x, ‖f x - g x‖ ∂μ := by
+  let ν := μ.prod (Measure.pi (fun _ : Fin j => μ))
+  have hif : Integrable (fun p : G × (Fin j → G) =>
+      cubeIntegrand (fun _ => f) p.2 p.1) ν :=
+    integrable_of_measurable_bounded
+      ((measurable_cubeIntegrand (fun _ => f) (fun _ => hf)).comp measurable_swap)
+      (fun p => by simpa only [one_pow] using
+        norm_cubeIntegrand_le (fun _ => f) (fun _ => hfu) p.2 p.1)
+  have hig : Integrable (fun p : G × (Fin j → G) =>
+      cubeIntegrand (fun _ => g) p.2 p.1) ν :=
+    integrable_of_measurable_bounded
+      ((measurable_cubeIntegrand (fun _ => g) (fun _ => hg)).comp measurable_swap)
+      (fun p => by simpa only [one_pow] using
+        norm_cubeIntegrand_le (fun _ => g) (fun _ => hgu) p.2 p.1)
+  have hdiff : Integrable (fun x => ‖f x - g x‖) μ :=
+    ((integrable_of_measurable_bounded hf hfu).sub
+      (integrable_of_measurable_bounded hg hgu)).norm
+  have hdi (ω : Fin j → Bool) :
+      Integrable (fun p : G × (Fin j → G) =>
+        ‖f (p.1 + cubeShift p.2 ω) - g (p.1 + cubeShift p.2 ω)‖) ν :=
+    (measurePreserving_cubeVertex μ j ω).integrable_comp_of_integrable hdiff
+  have hde (ω : Fin j → Bool) :
+      (∫ p : G × (Fin j → G),
+        ‖f (p.1 + cubeShift p.2 ω) - g (p.1 + cubeShift p.2 ω)‖ ∂ν) =
+        ∫ x, ‖f x - g x‖ ∂μ := by
+    have hm := measurePreserving_cubeVertex μ j ω
+    have he := integral_map (μ := ν) (f := fun x => ‖f x - g x‖)
+      hm.measurable.aemeasurable ((hf.sub hg).norm.aestronglyMeasurable)
+    rw [hm.map_eq] at he
+    exact he.symm
+  rw [cubeAverage, cubeAverage, ← integral_prod_symm _ hif,
+    ← integral_prod_symm _ hig, ← integral_sub hif hig]
+  calc
+    _ ≤ ∫ p : G × (Fin j → G),
+        ∑ ω : Fin j → Bool, ‖f (p.1 + cubeShift p.2 ω) - g (p.1 + cubeShift p.2 ω)‖ ∂ν := by
+      apply norm_integral_le_of_norm_le (integrable_finsetSum _ (fun ω _ => hdi ω))
+      exact Filter.Eventually.of_forall (fun p =>
+        norm_cubeIntegrand_sub_le j (fun _ => f) (fun _ => g)
+          (fun _ => hfu) (fun _ => hgu) p.2 p.1)
+    _ = _ := by
+      rw [integral_finsetSum _ (fun ω _ => hdi ω)]
+      simp only [hde, Finset.sum_const, Finset.card_univ, Fintype.card_fun,
+        Fintype.card_bool, Fintype.card_fin, nsmul_eq_mul, Nat.cast_pow, Nat.cast_ofNat]
+
+theorem sum_cyclic_initial_segment {E : Type*} [AddCommMonoid E] (L : ℕ) (F : ℕ → E) :
+    (∑ j : ZMod (16 * L + 1), if j.val < L then F j.val else 0) =
+      ∑ k ∈ Finset.range L, F k := by
+  change (∑ j : Fin (16 * L + 1), if (j : ℕ) < L then F j else 0) = _
+  rw [Fin.sum_univ_eq_sum_range (fun k => if k < L then F k else 0)]
+  calc
+    _ = ∑ k ∈ Finset.range L, if k < L then F k else 0 := by
+      symm
+      apply Finset.sum_subset (Finset.range_mono (by omega))
+      intro k _ hk
+      simp only [Finset.mem_range] at hk
+      simp [hk]
+    _ = _ := Finset.sum_congr rfl (fun k hk => by simp [Finset.mem_range.mp hk])
+theorem unit_cell_subset {L k : ℕ} (hL : 0 < L) (hk : k < L) :
+    Set.uIcc ((k : ℝ) / L) (((k : ℝ) + 1) / L) ⊆ Set.uIcc (0 : ℝ) 1 := by
+  have hLp : (0 : ℝ) < L := Nat.cast_pos.mpr hL
+  have hab : (k : ℝ) / L ≤ ((k : ℝ) + 1) / L :=
+    div_le_div_of_nonneg_right (by linarith) hLp.le
+  rw [Set.uIcc_of_le hab, Set.uIcc_of_le zero_le_one]
+  apply Set.Icc_subset_Icc
+  · positivity
+  · apply (div_le_one hLp).mpr
+    exact_mod_cast (Nat.succ_le_of_lt hk)
+theorem cyclicCellAverage_L1_contraction {L : ℕ} (hL : 0 < L)
+    (f g : ℝ → ℂ) (hf : IntervalIntegrable f volume 0 1)
+    (hg : IntervalIntegrable g volume 0 1) :
+    (𝔼 j : ZMod (16 * L + 1), ‖cyclicCellAverage L f j - cyclicCellAverage L g j‖) ≤
+      (L : ℝ) / (16 * L + 1) * ∫ x in (0 : ℝ)..1, ‖f x - g x‖ := by
+  have hLp : (0 : ℝ) < L := Nat.cast_pos.mpr hL
+  have hfi (k : ℕ) (hk : k < L) :
+      IntervalIntegrable f volume ((k : ℝ) / L) (((k : ℝ) + 1) / L) :=
+    hf.mono_set (unit_cell_subset hL hk)
+  have hgi (k : ℕ) (hk : k < L) :
+      IntervalIntegrable g volume ((k : ℝ) / L) (((k : ℝ) + 1) / L) :=
+    hg.mono_set (unit_cell_subset hL hk)
+  have he (j : ZMod (16 * L + 1)) :
+      ‖cyclicCellAverage L f j - cyclicCellAverage L g j‖ =
+        if j.val < L then ‖(L : ℂ) *
+          ((∫ x in (j.val : ℝ) / L..((j.val : ℝ) + 1) / L, f x) -
+            ∫ x in (j.val : ℝ) / L..((j.val : ℝ) + 1) / L, g x)‖ else 0 := by
+    unfold cyclicCellAverage
+    split_ifs <;> simp [mul_sub]
+  have hs : (∑ j : ZMod (16 * L + 1),
+      ‖cyclicCellAverage L f j - cyclicCellAverage L g j‖) ≤
+      (L : ℝ) * ∫ x in (0 : ℝ)..1, ‖f x - g x‖ := by
+    simp_rw [he]
+    rw [sum_cyclic_initial_segment L (fun k => ‖(L : ℂ) *
+      ((∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, f x) -
+        ∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, g x)‖)]
+    calc
+      _ ≤ ∑ k ∈ Finset.range L,
+          (L : ℝ) * ∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, ‖f x - g x‖ := by
+        apply Finset.sum_le_sum
+        intro k hk
+        have hk' := Finset.mem_range.mp hk
+        rw [← intervalIntegral.integral_sub (hfi k hk') (hgi k hk'),
+          norm_mul, Complex.norm_natCast]
+        apply mul_le_mul_of_nonneg_left _ hLp.le
+        apply intervalIntegral.norm_integral_le_integral_norm
+        exact div_le_div_of_nonneg_right (by linarith) hLp.le
+      _ = _ := by
+        rw [← Finset.mul_sum]
+        congr 1
+        have hh := intervalIntegral.sum_integral_adjacent_intervals
+          (a := fun k : ℕ => (k : ℝ) / L)
+          (f := fun x => ‖f x - g x‖)
+          (fun k hk => by simpa only [Nat.cast_add, Nat.cast_one] using
+            ((hfi k hk).sub (hgi k hk)).norm)
+        simpa only [Nat.cast_zero, zero_div, div_self hLp.ne', Nat.cast_add, Nat.cast_one] using hh
+  rw [Fintype.expect_eq_sum_div_card, ZMod.card]
+  push_cast
+  calc
+    _ ≤ ((L : ℝ) * ∫ x in (0 : ℝ)..1, ‖f x - g x‖) / (16 * L + 1) :=
+      div_le_div_of_nonneg_right hs (by positivity)
+    _ = _ := by ring
+theorem integral_finiteHaar_real_expect {G : Type*} [Fintype G] [MeasurableSpace G]
+    [MeasurableSingletonClass G] (f : G → ℝ) :
+    (∫ x, f x ∂finiteHaar G) = 𝔼 x, f x := by
+  rw [finiteHaar, integral_smul_measure, integral_count, Fintype.expect_eq_sum_div_card]
+  simp [ENNReal.toReal_inv, smul_eq_mul, div_eq_mul_inv, mul_comm]
+
+noncomputable def unitDiskProjection (z : ℂ) : ℂ :=
+  (max 1 ‖z‖)⁻¹ • z
+theorem continuous_unitDiskProjection : Continuous unitDiskProjection := by
+  unfold unitDiskProjection
+  have hm : Continuous (fun z : ℂ => max (1 : ℝ) ‖z‖) :=
+    continuous_const.max continuous_norm
+  have hi := hm.inv₀ (fun z =>
+    ne_of_gt (lt_of_lt_of_le zero_lt_one (le_max_left 1 ‖z‖)))
+  exact hi.smul continuous_id
+theorem unitDiskProjection_zero : unitDiskProjection 0 = 0 := by
+  simp [unitDiskProjection]
+theorem unitDiskProjection_norm_le (z : ℂ) : ‖unitDiskProjection z‖ ≤ 1 := by
+  have ht : 0 < max 1 ‖z‖ := lt_of_lt_of_le zero_lt_one (le_max_left _ _)
+  rw [unitDiskProjection, norm_smul, Real.norm_eq_abs, abs_inv,
+    abs_of_pos ht, ← div_eq_inv_mul]
+  exact (div_le_one ht).mpr (le_max_right _ _)
+theorem unitDiskProjection_eq {z : ℂ} (hz : ‖z‖ ≤ 1) : unitDiskProjection z = z := by
+  simp [unitDiskProjection, max_eq_left hz]
+theorem unitDiskProjection_dist_le (z w : ℂ) (hw : ‖w‖ ≤ 1) :
+    ‖unitDiskProjection z - w‖ ≤ ‖z - w‖ := by
+  by_cases hz : ‖z‖ ≤ 1
+  · rw [unitDiskProjection_eq hz]
+  · have hz1 : 1 < ‖z‖ := lt_of_not_ge hz
+    have hz0 : 0 < ‖z‖ := zero_lt_one.trans hz1
+    let u := unitDiskProjection z
+    have hu : ‖u‖ = 1 := by
+      simp [u, unitDiskProjection, max_eq_right hz1.le, hz0.ne']
+    have hzu : z = ‖z‖ • u := by
+      simp [u, unitDiskProjection, max_eq_right hz1.le, hz0.ne']
+    have hi : inner ℝ u w ≤ 1 := by
+      have hh := real_inner_le_norm u w
+      rw [hu, one_mul] at hh
+      exact hh.trans hw
+    have h1 := norm_sub_sq_real u w
+    rw [hu] at h1
+    have h2 : ‖z - w‖ ^ 2 =
+        ‖z‖ ^ 2 - 2 * ‖z‖ * inner ℝ u w + ‖w‖ ^ 2 := by
+      conv_lhs => rw [hzu]
+      rw [norm_sub_sq_real, norm_smul, real_inner_smul_left,
+        Real.norm_eq_abs, abs_of_pos hz0, hu]
+      ring
+    have hp : 0 ≤ (‖z‖ - 1) * (‖z‖ + 1 - 2 * inner ℝ u w) :=
+      mul_nonneg (by linarith only [hz1]) (by linarith only [hz1, hi])
+    change ‖u - w‖ ≤ ‖z - w‖
+    nlinarith only [h1, h2, hp, norm_nonneg (u - w), norm_nonneg (z - w)]
+
+theorem bounded_continuous_interior_L1_approximation (g : ℝ → ℂ)
+    (hg : Measurable g) (hunit : ∀ x, ‖g x‖ ≤ 1) (ε : ℝ) (hε : 0 < ε) :
+    ∃ h : ℝ → ℂ, Continuous h ∧ HasCompactSupport h ∧
+      tsupport h ⊆ Set.Ioo (0 : ℝ) 1 ∧ (∀ x, ‖h x‖ ≤ 1) ∧
+      (∫ x in (0 : ℝ)..1, ‖g x - h x‖) ≤ ε := by
+  let U := Set.Ioo (0 : ℝ) 1
+  let : MeasureSpace U := Measure.Subtype.measureSpace
+  let : IsFiniteMeasure (volume : Measure U) := ⟨by
+    change (volume.comap (Subtype.val : U → ℝ)) Set.univ < ⊤
+    rw [comap_subtype_coe_apply measurableSet_Ioo]
+    simpa only [Set.image_univ, Subtype.range_coe] using
+      (by simp only [U, Real.volume_Ioo]; finiteness : volume U < ⊤)⟩
+  let : LocallyCompactSpace U := isOpen_Ioo.locallyCompactSpace
+  have hgu : Integrable (fun x : U => g x) volume :=
+    integrable_of_measurable_bounded (hg.comp measurable_subtype_coe) (fun x => hunit x)
+  obtain ⟨f, hfc, herr, hf, hfi⟩ :=
+    hgu.exists_hasCompactSupport_integral_sub_le hε
+  let p : U → ℂ := fun x => unitDiskProjection (f x)
+  have hpc : HasCompactSupport p := hfc.comp_left unitDiskProjection_zero
+  have hpm : Continuous p := continuous_unitDiskProjection.comp hf
+  let h : ℝ → ℂ := (Subtype.val : U → ℝ).extend p 0
+  have hh : Continuous h := HasCompactSupport.continuous_extend_zero isOpen_Ioo hpm hpc
+  have hhc : HasCompactSupport h := hpc.extend_zero continuous_subtype_val
+  have hhs : tsupport h ⊆ U :=
+    (hpc.tsupport_extend_zero_subset continuous_subtype_val).trans (by
+      rintro x ⟨y, _, rfl⟩
+      exact y.property)
+  have he (x : U) : h x = p x := Subtype.val_injective.extend_apply p 0 x
+  have hhu : ∀ x, ‖h x‖ ≤ 1 := by
+    intro x
+    by_cases hx : x ∈ U
+    · rw [show x = (⟨x, hx⟩ : U).val from rfl, he]
+      exact unitDiskProjection_norm_le _
+    · have hz : h x = 0 := image_eq_zero_of_notMem_tsupport (fun hh => hx (hhs hh))
+      simp [hz]
+  refine ⟨h, hh, hhc, hhs, hhu, ?_⟩
+  rw [intervalIntegral.integral_of_le zero_le_one, integral_Ioc_eq_integral_Ioo,
+    ← integral_subtype measurableSet_Ioo]
+  calc
+    _ ≤ ∫ x : U, ‖g x - f x‖ := by
+      apply integral_mono_of_nonneg
+        (Filter.Eventually.of_forall (fun _ => norm_nonneg _)) (hgu.sub hfi).norm
+      filter_upwards [] with x
+      rw [he]
+      simpa only [p, Pi.sub_apply, norm_sub_rev] using
+        unitDiskProjection_dist_le (f x) (g x) (hunit x)
+    _ ≤ ε := herr
+
+theorem circle_lift_L1_eq (f g : ℝ → ℂ)
+    (hf : ∀ x, f x ≠ 0 → x ∈ Set.Icc (0 : ℝ) 1)
+    (hg : ∀ x, g x ≠ 0 → x ∈ Set.Icc (0 : ℝ) 1) :
+    (∫ z : AddCircle (16 : ℝ),
+      ‖AddCircle.liftIoc (16 : ℝ) (-8) f z - AddCircle.liftIoc (16 : ℝ) (-8) g z‖
+      ∂AddCircle.haarAddCircle) =
+      (16 : ℝ)⁻¹ * ∫ x in (0 : ℝ)..1, ‖f x - g x‖ := by
+  have hz (x : ℝ) (hx : x ∉ Set.Icc (0 : ℝ) 1) : ‖f x - g x‖ = 0 := by
+    have hfx : f x = 0 := by by_contra hn; exact hx (hf x hn)
+    have hgx : g x = 0 := by by_contra hn; exact hx (hg x hn)
+    simp [hfx, hgx]
+  change (∫ z : AddCircle (16 : ℝ),
+    AddCircle.liftIoc (16 : ℝ) (-8) (fun x => ‖f x - g x‖) z
+      ∂AddCircle.haarAddCircle) = _
+  rw [AddCircle.integral_haarAddCircle, AddCircle.integral_liftIoc_eq_intervalIntegral,
+    smul_eq_mul]
+  congr 1
+  rw [intervalIntegral.integral_eq_integral_of_support_subset (by
+    intro x hx
+    have hh : x ∈ Set.Icc (0 : ℝ) 1 := by
+      by_contra hn
+      exact hx (hz x hn)
+    constructor <;> linarith [hh.1, hh.2])]
+  symm
+  rw [intervalIntegral.integral_of_le zero_le_one, ← integral_Icc_eq_integral_Ioc]
+  exact setIntegral_eq_integral_of_forall_compl_eq_zero hz
+theorem bounded_measurable_intervalIntegrable (g : ℝ → ℂ)
+    (hg : Measurable g) (hunit : ∀ x, ‖g x‖ ≤ 1) :
+    IntervalIntegrable g volume 0 1 := by
+  apply (intervalIntegrable_iff_integrableOn_Ioc_of_le zero_le_one).mpr
+  exact integrable_of_measurable_bounded hg hunit
+open Filter
+open scoped Topology BigOperators
+/-- Blueprint `lem:inverse`, line 1189: cell-averaged cyclic cube averages converge
+to the probability Haar cube for every measurable unit-bounded input supported on [0,1]. -/
+theorem cyclic_cell_cube_limit_haar_bounded (g : ℝ → ℂ) (hg : Measurable g)
+    (hunit : ∀ x, ‖g x‖ ≤ 1) (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Icc (0 : ℝ) 1) :
+    Tendsto (fun L : ℕ => cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3
+      (fun _ => cyclicCellAverage L g)) atTop
+      (𝓝 (cubeAverage (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+        (fun _ => AddCircle.liftIoc (16 : ℝ) (-8) g))) := by
+  apply Metric.tendsto_nhds.mpr
+  intro ε hε
+  obtain ⟨h, hh, _, hhs, hhu, herr⟩ :=
+    bounded_continuous_interior_L1_approximation g hg hunit (ε / 64) (by positivity)
+  have hs (x : ℝ) (hx : h x ≠ 0) : x ∈ Set.Ioo (0 : ℝ) 1 :=
+    hhs (subset_tsupport _ hx)
+  have hgi := bounded_measurable_intervalIntegrable g hg hunit
+  have hhi := bounded_measurable_intervalIntegrable h hh.measurable hhu
+  have hI : 0 ≤ ∫ x in (0 : ℝ)..1, ‖g x - h x‖ :=
+    intervalIntegral.integral_nonneg zero_le_one (fun _ _ => norm_nonneg _)
+  have hdisc (L : ℕ) (hL : 0 < L) :
+      ‖cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3 (fun _ => cyclicCellAverage L g) -
+        cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3 (fun _ => cyclicCellAverage L h)‖ ≤
+        8 * (ε / 64) := by
+    have hb := cubeAverage_L1_error (finiteHaar (ZMod (16 * L + 1))) 3
+      (cyclicCellAverage L g) (cyclicCellAverage L h)
+      (measurable_of_countable _) (measurable_of_countable _)
+      (cyclicCellAverage_norm_le_one hL g hunit) (cyclicCellAverage_norm_le_one hL h hhu)
+    rw [integral_finiteHaar_real_expect] at hb
+    norm_num only [pow_succ, pow_zero, mul_one] at hb
+    have hc := cyclicCellAverage_L1_contraction hL g h hgi hhi
+    have hr : (L : ℝ) / (16 * L + 1) ≤ 1 := by
+      apply (div_le_one (by positivity)).mpr
+      have : (0 : ℝ) ≤ L := by positivity
+      linarith only [this]
+    have he : (L : ℝ) / (16 * L + 1) *
+        (∫ x in (0 : ℝ)..1, ‖g x - h x‖) ≤ ε / 64 := by
+      simpa only [one_mul] using mul_le_mul hr herr hI zero_le_one
+    linarith only [hb, hc, he]
+  let μ : Measure (AddCircle (16 : ℝ)) := AddCircle.haarAddCircle
+  let fg := AddCircle.liftIoc (16 : ℝ) (-8) g
+  let fh := AddCircle.liftIoc (16 : ℝ) (-8) h
+  have hfg : Measurable fg :=
+    hg.comp (measurable_subtype_coe.comp (AddCircle.measurableEquivIoc (16 : ℝ) (-8)).measurable)
+  have hfh : Measurable fh :=
+    hh.measurable.comp
+      (measurable_subtype_coe.comp (AddCircle.measurableEquivIoc (16 : ℝ) (-8)).measurable)
+  have hfgb : ∀ x, ‖fg x‖ ≤ 1 := fun x => hunit _
+  have hfhb : ∀ x, ‖fh x‖ ≤ 1 := fun x => hhu _
+  have hcircle : ‖cubeAverage μ 3 (fun _ => fg) - cubeAverage μ 3 (fun _ => fh)‖ ≤
+      8 * (ε / 64) := by
+    have hb := cubeAverage_L1_error μ 3 fg fh hfg hfh hfgb hfhb
+    have he := circle_lift_L1_eq g h hsupp (fun x hx => Set.Ioo_subset_Icc_self (hs x hx))
+    change (∫ z, ‖fg z - fh z‖ ∂μ) = _ at he
+    rw [he] at hb
+    norm_num only [pow_succ, pow_zero, mul_one] at hb
+    linarith only [hb, herr, hε]
+  have hp := Metric.tendsto_nhds.mp (cyclic_cell_cube_limit_haar h hh hhu hs)
+    (ε / 2) (by positivity)
+  filter_upwards [hp, eventually_gt_atTop 0] with L hp hL
+  have hd := hdisc L hL
+  have ht1 := dist_triangle
+    (cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3 (fun _ => cyclicCellAverage L g))
+    (cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3 (fun _ => cyclicCellAverage L h))
+    (cubeAverage μ 3 (fun _ => fg))
+  have ht2 := dist_triangle
+    (cubeAverage (finiteHaar (ZMod (16 * L + 1))) 3 (fun _ => cyclicCellAverage L h))
+    (cubeAverage μ 3 (fun _ => fh)) (cubeAverage μ 3 (fun _ => fg))
+  have hc' : dist (cubeAverage μ 3 (fun _ => fh)) (cubeAverage μ 3 (fun _ => fg)) ≤
+      8 * (ε / 64) := by
+    simpa only [dist_eq_norm, norm_sub_rev] using hcircle
+  rw [← dist_eq_norm] at hd
+  change dist _ (cubeAverage μ 3 (fun _ => fh)) < ε / 2 at hp
+  change dist _ (cubeAverage μ 3 (fun _ => fg)) < ε
+  linarith only [ht1, ht2, hd, hc', hp, hε]
+
+theorem cyclic_cell_gowersNorm_limit (g : ℝ → ℂ) (hg : Measurable g)
+    (hunit : ∀ x, ‖g x‖ ≤ 1) (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Icc (0 : ℝ) 1) :
+    Tendsto (fun L : ℕ => gowersNorm (finiteHaar (ZMod (16 * L + 1))) 3
+      (cyclicCellAverage L g)) atTop
+      (𝓝 (gowersNorm (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+        (AddCircle.liftIoc (16 : ℝ) (-8) g))) := by
+  unfold gowersNorm
+  exact ((Complex.continuous_re.tendsto _).comp
+    (cyclic_cell_cube_limit_haar_bounded g hg hunit hsupp)).rpow_const (.inr (by positivity))
+theorem exists_cyclic_cell_large_gowersNorm (g : ℝ → ℂ) (hg : Measurable g)
+    (hunit : ∀ x, ‖g x‖ ≤ 1) (hsupp : ∀ x, g x ≠ 0 → x ∈ Set.Icc (0 : ℝ) 1)
+    {δ : ℝ} (hδ : 0 < δ)
+    (hnorm : δ ≤ gowersNorm (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+      (AddCircle.liftIoc (16 : ℝ) (-8) g)) :
+    ∃ L : ℕ, 0 < L ∧ δ / 2 ≤
+      gowersNorm (finiteHaar (ZMod (16 * L + 1))) 3 (cyclicCellAverage L g) := by
+  have hh : δ / 2 <
+      gowersNorm (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+        (AddCircle.liftIoc (16 : ℝ) (-8) g) := by linarith only [hδ, hnorm]
+  have hev := (cyclic_cell_gowersNorm_limit g hg hunit hsupp).eventually (lt_mem_nhds hh)
+  obtain ⟨L, hLn, hLp⟩ := (hev.and (eventually_gt_atTop 0)).exists
+  exact ⟨L, hLp, hLn.le⟩
+theorem cyclicCellAverage_correlation_eq (L : ℕ) (g : ℝ → ℂ) (b : ℕ → ℂ) :
+    (𝔼 x : ZMod (16 * L + 1), cyclicCellAverage L g x * b x.val) =
+      (L : ℂ) / (16 * L + 1) *
+        ∑ k ∈ Finset.range L,
+          (∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, g x) * b k := by
+  rw [Fintype.expect_eq_sum_div_card, ZMod.card]
+  have he (x : ZMod (16 * L + 1)) :
+      cyclicCellAverage L g x * b x.val =
+        if x.val < L then (L : ℂ) *
+          ((∫ y in (x.val : ℝ) / L..((x.val : ℝ) + 1) / L, g y) * b x.val) else 0 := by
+    unfold cyclicCellAverage
+    split_ifs <;> simp [mul_assoc]
+  simp_rw [he]
+  rw [sum_cyclic_initial_segment L (fun k => (L : ℂ) *
+    ((∫ y in (k : ℝ) / L..((k : ℝ) + 1) / L, g y) * b k)), ← Finset.mul_sum]
+  push_cast
+  ring
+theorem cyclicCellAverage_correlation_le_cell_sum (L : ℕ) (g : ℝ → ℂ) (b : ℕ → ℂ) :
+    ‖𝔼 x : ZMod (16 * L + 1), cyclicCellAverage L g x * b x.val‖ ≤
+      ‖∑ k ∈ Finset.range L,
+        (∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, g x) * b k‖ := by
+  rw [cyclicCellAverage_correlation_eq, norm_mul]
+  have hr : ‖(L : ℂ) / (16 * L + 1)‖ ≤ 1 := by
+    have he : (16 * (L : ℂ) + 1) = ((16 * L + 1 : ℕ) : ℂ) := by push_cast; rfl
+    rw [he, norm_div, Complex.norm_natCast, Complex.norm_natCast]
+    push_cast
+    apply (div_le_one (by positivity)).mpr
+    have : (0 : ℝ) ≤ L := by positivity
+    linarith only [this]
+  exact mul_le_of_le_one_left (norm_nonneg _) hr
+
+theorem floor_on_unit_cell {L : ℕ} (hL : 0 < L) (k : ℕ) {x : ℝ}
+    (hx : x ∈ Set.Ioo ((k : ℝ) / L) (((k : ℝ) + 1) / L)) :
+    ⌊(L : ℝ) * x⌋ = (k : ℤ) := by
+  have hLp : (0 : ℝ) < L := by exact_mod_cast hL
+  apply Int.floor_eq_iff.mpr
+  push_cast
+  constructor
+  · have := (div_lt_iff₀ hLp).mp hx.1
+    nlinarith only [this]
+  · have := (lt_div_iff₀ hLp).mp hx.2
+    nlinarith only [this]
+
+theorem cell_sum_eq_floor_integral {L : ℕ} (hL : 0 < L)
+    (g : ℝ → ℂ) (hg : Measurable g) (hgb : ∀ x, ‖g x‖ ≤ 1)
+    (b : ℤ → ℂ) (hbb : ∀ n, ‖b n‖ ≤ 1) :
+    (∑ k ∈ Finset.range L,
+      (∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, g x) * b (k : ℤ)) =
+    ∫ x in (0 : ℝ)..1, g x * b ⌊(L : ℝ) * x⌋ := by
+  have hLp : (0 : ℝ) < L := by exact_mod_cast hL
+  let F := fun x : ℝ => g x * b ⌊(L : ℝ) * x⌋
+  have hFmeas : Measurable F :=
+    hg.mul ((measurable_of_countable b).comp
+      (Int.measurable_floor.comp (measurable_const.mul measurable_id)))
+  have hFb : ∀ x, ‖F x‖ ≤ 1 := by
+    intro x
+    dsimp only [F]
+    rw [norm_mul]
+    exact (mul_le_mul (hgb x) (hbb _) (norm_nonneg _) zero_le_one).trans_eq (one_mul 1)
+  have hFi := bounded_measurable_intervalIntegrable F hFmeas hFb
+  have hcell (k : ℕ) :
+      (∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, F x) =
+        (∫ x in (k : ℝ) / L..((k : ℝ) + 1) / L, g x) * b (k : ℤ) := by
+    rw [← intervalIntegral.integral_mul_const]
+    apply intervalIntegral.integral_congr_Ioo_of_le
+      (div_le_div_of_nonneg_right (by linarith) hLp.le)
+    intro x hx
+    dsimp only [F]
+    rw [floor_on_unit_cell hL k hx]
+  have hs := intervalIntegral.sum_integral_adjacent_intervals
+    (a := fun k : ℕ => (k : ℝ) / L) (f := F)
+    (fun k hk => by
+      simpa only [Nat.cast_add, Nat.cast_one] using hFi.mono_set (unit_cell_subset hL hk))
+  simp only [Nat.cast_zero, zero_div, div_self hLp.ne', Nat.cast_add, Nat.cast_one] at hs
+  simpa only [hcell] using hs
+
+theorem bounded_measurable_real_intervalIntegrable (f : ℝ → ℝ)
+    (hf : Measurable f) {M : ℝ} (hb : ∀ x, |f x| ≤ M) (a b : ℝ) :
+    IntervalIntegrable f volume a b := by
+  let : IsFiniteMeasure (volume.restrict (Set.uIoc a b)) :=
+    ⟨by simp [Set.uIoc]⟩
+  apply intervalIntegrable_iff.mpr
+  exact (integrable_const M).mono' hf.aestronglyMeasurable
+    (Filter.Eventually.of_forall (fun x => by simpa only [Real.norm_eq_abs] using hb x))
+
+theorem integral_fract_nat_mul {L : ℕ} (hL : 0 < L)
+    (f : ℝ → ℝ) (hf : Measurable f) {M : ℝ} (hb : ∀ x, |f x| ≤ M) :
+    (∫ x in (0 : ℝ)..1, f (Int.fract ((L : ℝ) * x))) =
+      ∫ x in (0 : ℝ)..1, f x := by
+  let F := fun x : ℝ => f (Int.fract x)
+  have hF : Measurable F := hf.comp measurable_fract
+  have hFi : ∀ a b, IntervalIntegrable F volume a b :=
+    bounded_measurable_real_intervalIntegrable F hF (fun x => hb (Int.fract x))
+  have hp : Function.Periodic F 1 := fun x => congrArg f (Int.fract_periodic ℝ x)
+  have hs := hp.intervalIntegral_add_zsmul_eq (L : ℤ) 0 hFi
+  simp only [zsmul_eq_mul, Int.cast_natCast, mul_one, zero_add] at hs
+  have hLp : (L : ℝ) ≠ 0 := by exact_mod_cast (Nat.ne_of_gt hL)
+  have hbase : (∫ x in (0 : ℝ)..1, F x) = ∫ x in (0 : ℝ)..1, f x := by
+    apply intervalIntegral.integral_congr_Ioo_of_le zero_le_one
+    intro x hx
+    change f (Int.fract x) = f x
+    rw [Int.fract_eq_self.mpr ⟨hx.1.le, hx.2⟩]
+  change (∫ x in (0 : ℝ)..1, F ((L : ℝ) * x)) = _
+  rw [intervalIntegral.integral_comp_mul_left _ hLp, mul_zero, mul_one, hs]
+  simp only [smul_eq_mul, ← mul_assoc, inv_mul_cancel₀ hLp, one_mul, hbase]
+
+theorem endpoint_cutoff_integral_error (η : ℝ → ℝ) (hη : Continuous η)
+    (hunit : ∀ x, η x ∈ Set.Icc (0 : ℝ) 1)
+    {ε : ℝ} (hε : 0 ≤ ε) (hεh : ε ≤ 1 / 2)
+    (hone : ∀ x ∈ Set.Icc ε (1 - ε), η x = 1) :
+    (∫ x in (0 : ℝ)..1, 1 - η x) ≤ 2 * ε := by
+  let F := fun x : ℝ => 1 - η x
+  have hF : Continuous F := continuous_const.sub hη
+  have hmid : ε ≤ 1 - ε := by linarith only [hεh]
+  have hright : 1 - ε ≤ 1 := by linarith only [hε]
+  have hb (x : ℝ) : F x ≤ 1 := by dsimp [F]; linarith only [(hunit x).1]
+  have hleft : (∫ x in (0 : ℝ)..ε, F x) ≤ ε := by
+    have hi := intervalIntegral.integral_mono hε (hF.intervalIntegrable _ _)
+      (intervalIntegrable_const : IntervalIntegrable (fun _ : ℝ => (1 : ℝ)) volume 0 ε) hb
+    simpa using hi
+  have hr : (∫ x in (1 - ε)..1, F x) ≤ ε := by
+    have hi := intervalIntegral.integral_mono hright (hF.intervalIntegrable _ _)
+      (intervalIntegrable_const : IntervalIntegrable (fun _ : ℝ => (1 : ℝ)) volume (1 - ε) 1) hb
+    simpa using hi
+  have hm : (∫ x in ε..(1 - ε), F x) = 0 := by
+    rw [show (0 : ℝ) = ∫ _x in ε..(1 - ε), (0 : ℝ) by simp]
+    apply intervalIntegral.integral_congr_Ioo_of_le hmid
+    intro x hx
+    dsimp [F]
+    rw [hone x ⟨hx.1.le, hx.2.le⟩, sub_self]
+  have ha := intervalIntegral.integral_add_adjacent_intervals (μ := volume)
+    (hF.intervalIntegrable 0 ε) (hF.intervalIntegrable ε (1 - ε))
+  have hc := intervalIntegral.integral_add_adjacent_intervals (μ := volume)
+    (hF.intervalIntegrable 0 (1 - ε)) (hF.intervalIntegrable (1 - ε) 1)
+  change (∫ x in (0 : ℝ)..1, F x) ≤ _
+  linarith only [hleft, hr, hm, ha, hc]
+theorem floor_cutoff_correlation_error {L : ℕ} (hL : 0 < L)
+    (g : ℝ → ℂ) (hg : Measurable g) (hgb : ∀ x, ‖g x‖ ≤ 1)
+    (b : ℤ → ℂ) (hbb : ∀ n, ‖b n‖ ≤ 1)
+    (η : ℝ → ℝ) (hη : Continuous η) (hunit : ∀ x, η x ∈ Set.Icc (0 : ℝ) 1)
+    {ε : ℝ} (hε : 0 ≤ ε) (hεh : ε ≤ 1 / 2)
+    (hone : ∀ x ∈ Set.Icc ε (1 - ε), η x = 1) :
+    ‖(∫ x in (0 : ℝ)..1, g x * b ⌊(L : ℝ) * x⌋) -
+      ∫ x in (0 : ℝ)..1, (η (Int.fract ((L : ℝ) * x)) : ℂ) *
+        (g x * b ⌊(L : ℝ) * x⌋)‖ ≤ 2 * ε := by
+  let F := fun x : ℝ => g x * b ⌊(L : ℝ) * x⌋
+  let q := fun x : ℝ => η (Int.fract ((L : ℝ) * x))
+  have hF : Measurable F := hg.mul
+    ((measurable_of_countable b).comp (measurable_const.mul measurable_id).floor)
+  have hq : Measurable q := hη.measurable.comp
+    ((measurable_const.mul measurable_id).fract)
+  have hFb (x : ℝ) : ‖F x‖ ≤ 1 := by
+    dsimp [F]
+    rw [norm_mul]
+    exact (mul_le_mul (hgb x) (hbb _) (norm_nonneg _) zero_le_one).trans_eq (one_mul 1)
+  have hqu (x : ℝ) : q x ∈ Set.Icc (0 : ℝ) 1 := hunit _
+  have hFint := bounded_measurable_intervalIntegrable F hF hFb
+  have hqFint : IntervalIntegrable (fun x => (q x : ℂ) * F x) volume 0 1 := by
+    apply bounded_measurable_intervalIntegrable _
+      ((Complex.continuous_ofReal.measurable.comp hq).mul hF)
+    intro x
+    change ‖(q x : ℂ) * F x‖ ≤ 1
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (hqu x).1]
+    exact (mul_le_mul (hqu x).2 (hFb x) (norm_nonneg _) zero_le_one).trans_eq (one_mul 1)
+  have hpoint (x : ℝ) : ‖F x - (q x : ℂ) * F x‖ ≤ 1 - q x := by
+    rw [show F x - (q x : ℂ) * F x = ((1 - q x : ℝ) : ℂ) * F x by push_cast; ring,
+      norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (by linarith only [(hqu x).2])]
+    exact mul_le_of_le_one_right (by linarith only [(hqu x).2]) (hFb x)
+  have hqi : IntervalIntegrable (fun x => 1 - q x) volume 0 1 :=
+    bounded_measurable_real_intervalIntegrable _ (measurable_const.sub hq)
+      (M := 1) (fun x => by
+        change |1 - q x| ≤ 1
+        rw [abs_of_nonneg (by linarith only [(hqu x).2])]
+        linarith only [(hqu x).1]) 0 1
+  change ‖(∫ x in (0 : ℝ)..1, F x) - ∫ x in (0 : ℝ)..1, (q x : ℂ) * F x‖ ≤ _
+  rw [← intervalIntegral.integral_sub hFint hqFint]
+  calc
+    _ ≤ ∫ x in (0 : ℝ)..1, ‖F x - (q x : ℂ) * F x‖ :=
+      intervalIntegral.norm_integral_le_integral_norm zero_le_one
+    _ ≤ ∫ x in (0 : ℝ)..1, 1 - q x :=
+      intervalIntegral.integral_mono zero_le_one (hFint.sub hqFint).norm hqi hpoint
+    _ = ∫ x in (0 : ℝ)..1, 1 - η x :=
+      integral_fract_nat_mul hL (fun x => 1 - η x) (measurable_const.sub hη.measurable)
+        (M := 1) (fun x => by
+          rw [abs_of_nonneg (by linarith only [(hunit x).2])]
+          linarith only [(hunit x).1])
+    _ ≤ _ := endpoint_cutoff_integral_error η hη hunit hε hεh hone
+
+noncomputable def normalizeIntervalFunction (a b : ℝ) (f : ℝ → ℂ) : ℝ → ℂ :=
+  (Set.Ico (0 : ℝ) 1).indicator (fun x => f (a + (b - a) * x))
+theorem normalizeIntervalFunction_measurable (a b : ℝ) (f : ℝ → ℂ) (hf : Measurable f) :
+    Measurable (normalizeIntervalFunction a b f) :=
+  (hf.comp (measurable_const.add (measurable_const.mul measurable_id))).indicator measurableSet_Ico
+theorem normalizeIntervalFunction_support (a b : ℝ) (f : ℝ → ℂ) (x : ℝ)
+    (hx : normalizeIntervalFunction a b f x ≠ 0) : x ∈ Set.Ico (0 : ℝ) 1 := by
+  by_contra hn
+  exact hx (Set.indicator_of_notMem hn _)
+theorem normalizeIntervalFunction_norm_le_one {a b : ℝ} (hab : a < b)
+    (f : ℝ → ℂ) (hf : ∀ x ∈ Set.Ico a b, ‖f x‖ ≤ 1) (x : ℝ) :
+    ‖normalizeIntervalFunction a b f x‖ ≤ 1 := by
+  unfold normalizeIntervalFunction
+  by_cases hx : x ∈ Set.Ico (0 : ℝ) 1
+  · rw [Set.indicator_of_mem hx]
+    apply hf
+    constructor
+    · nlinarith only [hx.1, hab]
+    · nlinarith only [hx.2, hab]
+  · rw [Set.indicator_of_notMem hx]
+    norm_num
+/-- The interval uniformity norm: affine pullback to [0,1), zero extension to
+the torus of length 16, and probability-Haar U3. -/
+noncomputable def intervalGowersNorm (a b : ℝ) (f : ℝ → ℂ) : ℝ :=
+  gowersNorm (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) 3
+    (AddCircle.liftIoc (16 : ℝ) (-8) (normalizeIntervalFunction a b f))
+
+theorem normalizeIntervalFunction_correlation {a b : ℝ} (hab : a < b)
+    (f φ : ℝ → ℂ) :
+    (∫ y in (0 : ℝ)..1, normalizeIntervalFunction a b f y * conj (φ (a + (b - a) * y))) =
+      (b - a)⁻¹ • ∫ x in a..b, f x * conj (φ x) := by
+  have he : (∫ y in (0 : ℝ)..1,
+      normalizeIntervalFunction a b f y * conj (φ (a + (b - a) * y))) =
+      ∫ y in (0 : ℝ)..1, f (a + (b - a) * y) * conj (φ (a + (b - a) * y)) := by
+    apply intervalIntegral.integral_congr_Ioo_of_le zero_le_one
+    intro y hy
+    dsimp only
+    rw [normalizeIntervalFunction,
+      Set.indicator_of_mem (show y ∈ Set.Ico (0 : ℝ) 1 from ⟨hy.1.le, hy.2⟩)]
+  rw [he]
+  have hs := intervalIntegral.integral_comp_add_mul
+    (fun x => f x * conj (φ x)) (a := (0 : ℝ)) (b := (1 : ℝ))
+    (sub_pos.mpr hab).ne' a
+  simpa only [mul_zero, add_zero, mul_one, add_sub_cancel] using hs
+
+section L2GowersSeminorm
+variable {G : Type*} [AddCommGroup G] [MeasurableSpace G]
+  [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
+  [μ.IsAddLeftInvariant] [μ.IsNegInvariant]
+noncomputable def l2GowersThreeNorm (f : Lp ℂ 2 μ) : ℝ :=
+  (l2CubeContinuous μ (fun _ => f)).re ^ ((8 : ℝ)⁻¹)
+theorem l2GowersThreeNorm_continuous : Continuous (l2GowersThreeNorm μ) := by
+  unfold l2GowersThreeNorm
+  exact (Complex.continuous_re.comp ((l2CubeContinuous μ).cont.comp
+    (continuous_pi (fun _ => continuous_id)))).rpow_const (fun _ => Or.inr (by positivity))
+theorem l2GowersThreeNorm_toLp (f : G → ℂ) (hf : Measurable f) (hfl : MemLp f 2 μ) :
+    l2GowersThreeNorm μ (hfl.toLp f) = gowersNorm μ 3 f := by
+  unfold l2GowersThreeNorm gowersNorm
+  rw [l2CubeContinuous_toLp μ (fun _ => f) (fun _ => hf) (fun _ => hfl)]
+  norm_num
+
+omit [AddCommGroup G] [MeasurableAdd₂ G] [MeasurableNeg G]
+  [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant] [μ.IsNegInvariant] in
+ theorem l2_simpleFunc_bounded_representative (f : Lp.simpleFunc ℂ 2 μ) :
+    ∃ (g : G → ℂ) (_hg : Measurable g) (hgl : MemLp g 2 μ),
+      hgl.toLp g = (f : Lp ℂ 2 μ) ∧ ∃ M : ℝ, ∀ x, ‖g x‖ ≤ M := by
+  let g := Lp.simpleFunc.toSimpleFunc f
+  refine ⟨g, g.measurable, Lp.simpleFunc.memLp f, ?_, ?_⟩
+  · have he := congrArg (fun u : Lp.simpleFunc ℂ 2 μ => (u : Lp ℂ 2 μ))
+      (Lp.simpleFunc.toLp_toSimpleFunc f)
+    exact he
+  · obtain ⟨M, _, hM⟩ := g.finite_range.isBounded.exists_pos_norm_le
+    exact ⟨M, fun x => hM (g x) ⟨x, rfl⟩⟩
+theorem l2GowersThreeNorm_add_le (f g : Lp ℂ 2 μ) :
+    l2GowersThreeNorm μ (f + g) ≤ l2GowersThreeNorm μ f + l2GowersThreeNorm μ g := by
+  refine (Lp.simpleFunc.denseRange (E := ℂ) (μ := μ) (p := 2) (by norm_num)).induction_on₂
+    (p := fun u v => l2GowersThreeNorm μ (u + v) ≤
+      l2GowersThreeNorm μ u + l2GowersThreeNorm μ v) ?_ ?_ f g
+  · exact isClosed_le ((l2GowersThreeNorm_continuous μ).comp (continuous_fst.add continuous_snd))
+      (((l2GowersThreeNorm_continuous μ).comp continuous_fst).add
+        ((l2GowersThreeNorm_continuous μ).comp continuous_snd))
+  · intro u v
+    obtain ⟨a, ha, hal, hea, M, hM⟩ := l2_simpleFunc_bounded_representative μ u
+    obtain ⟨b, hb, hbl, heb, N, hN⟩ := l2_simpleFunc_bounded_representative μ v
+    rw [← hea, ← heb, ← MemLp.toLp_add,
+      l2GowersThreeNorm_toLp μ (a + b) (ha.add hb) (hal.add hbl),
+      l2GowersThreeNorm_toLp μ a ha hal, l2GowersThreeNorm_toLp μ b hb hbl]
+    exact gowersNorm_three_add_le μ a b ha hb
+      (fun x => (hM x).trans (le_max_left M N))
+      (fun x => (hN x).trans (le_max_right M N))
+
+theorem l2GowersThreeNorm_smul (c : ℂ) (f : Lp ℂ 2 μ) :
+    l2GowersThreeNorm μ (c • f) = ‖c‖ * l2GowersThreeNorm μ f := by
+  refine (Lp.simpleFunc.denseRange (E := ℂ) (μ := μ) (p := 2) (by norm_num)).induction_on
+    (p := fun u => l2GowersThreeNorm μ (c • u) = ‖c‖ * l2GowersThreeNorm μ u) f ?_ ?_
+  · exact isClosed_eq ((l2GowersThreeNorm_continuous μ).comp (continuous_const_smul c))
+      (continuous_const.mul (l2GowersThreeNorm_continuous μ))
+  · intro u
+    obtain ⟨a, ha, hal, hea, M, hM⟩ := l2_simpleFunc_bounded_representative μ u
+    rw [← hea, ← MemLp.toLp_const_smul c hal,
+      l2GowersThreeNorm_toLp μ (c • a) (measurable_const.smul ha) (hal.const_smul c),
+      l2GowersThreeNorm_toLp μ a ha hal]
+    exact gowersNorm_three_const_mul μ c a ha hM
+
+noncomputable def l2GowersThreeSeminorm : Seminorm ℂ (Lp ℂ 2 μ) :=
+  Seminorm.of (l2GowersThreeNorm μ) (l2GowersThreeNorm_add_le μ) (l2GowersThreeNorm_smul μ)
+theorem l2CubeContinuous_diagonal_re_nonneg (f : Lp ℂ 2 μ) :
+    0 ≤ (l2CubeContinuous μ (fun _ => f)).re := by
+  refine (Lp.simpleFunc.denseRange (E := ℂ) (μ := μ) (p := 2) (by norm_num)).induction_on
+    (p := fun u => 0 ≤ (l2CubeContinuous μ (fun _ => u)).re) f ?_ ?_
+  · exact isClosed_le continuous_const (Complex.continuous_re.comp
+      ((l2CubeContinuous μ).cont.comp (continuous_pi (fun _ => continuous_id))))
+  · intro u
+    obtain ⟨a, ha, hal, hea, M, hM⟩ := l2_simpleFunc_bounded_representative μ u
+    rw [← hea, l2CubeContinuous_toLp μ (fun _ => a) (fun _ => ha) (fun _ => hal)]
+    exact cubeAverage_diagonal_re_nonneg μ (by norm_num) a ha hM
+
+theorem l2GowersThreeSeminorm_le_norm (f : Lp ℂ 2 μ) :
+    l2GowersThreeSeminorm μ f ≤ ‖f‖ := by
+  have hbound : ‖l2CubeContinuous μ (fun _ => f)‖ ≤ ‖f‖ ^ 8 := by
+    apply ((l2CubeContinuous μ).le_opNorm (fun _ => f)).trans
+    calc
+      _ ≤ 1 * ∏ _ω : Fin 3 → Bool, ‖f‖ :=
+        mul_le_mul_of_nonneg_right (l2CubeContinuous_norm_le_one μ) (by positivity)
+      _ = _ := by simp
+  change (l2CubeContinuous μ (fun _ => f)).re ^ ((8 : ℝ)⁻¹) ≤ ‖f‖
+  calc
+    _ ≤ (‖f‖ ^ 8) ^ ((8 : ℝ)⁻¹) :=
+      Real.rpow_le_rpow (l2CubeContinuous_diagonal_re_nonneg μ f)
+        ((Complex.re_le_norm _).trans hbound) (by positivity)
+    _ = _ := by
+      rw [← Real.rpow_natCast_mul (norm_nonneg f) 8]
+      norm_num
+end L2GowersSeminorm
+
+/-! The interval-to-torus L² realization used by `lem:inverse`, line 1218. -/
+
+noncomputable def unitIntervalMeasure : Measure ℝ := volume.restrict (Set.Ico (0 : ℝ) 1)
+instance unitIntervalMeasure_probability : IsProbabilityMeasure unitIntervalMeasure where
+  measure_univ := by simp [unitIntervalMeasure]
+noncomputable def unitIntervalL2Extension (f : Lp ℂ 2 unitIntervalMeasure) : ℝ → ℂ :=
+  (Set.Ico (0 : ℝ) 1).indicator (l2Representative unitIntervalMeasure f)
+theorem unitIntervalL2Extension_measurable (f : Lp ℂ 2 unitIntervalMeasure) :
+    Measurable (unitIntervalL2Extension f) :=
+  (l2Representative_measurable unitIntervalMeasure f).indicator measurableSet_Ico
+theorem unitIntervalL2Extension_memLp (f : Lp ℂ 2 unitIntervalMeasure) :
+    MemLp (unitIntervalL2Extension f) 2 volume :=
+  (memLp_indicator_iff_restrict measurableSet_Ico.nullMeasurableSet).mpr
+    (l2Representative_memLp unitIntervalMeasure f)
+theorem unitIntervalL2Extension_ae (f : Lp ℂ 2 unitIntervalMeasure) :
+    unitIntervalL2Extension f =ᵐ[unitIntervalMeasure] f := by
+  filter_upwards [l2Representative_ae unitIntervalMeasure f,
+    (ae_restrict_mem measurableSet_Ico : ∀ᵐ x ∂unitIntervalMeasure, x ∈ Set.Ico (0 : ℝ) 1)]
+    with x hrep hx
+  rw [unitIntervalL2Extension, Set.indicator_of_mem hx, hrep]
+theorem unitIntervalL2Extension_support (f : Lp ℂ 2 unitIntervalMeasure)
+    (x : ℝ) (hx : unitIntervalL2Extension f x ≠ 0) : x ∈ Set.Ico (0 : ℝ) 1 := by
+  by_contra hn
+  exact hx (Set.indicator_of_notMem hn _)
+local instance : Fact (0 < (16 : ℝ)) := ⟨by norm_num⟩
+theorem circle_lift_ae_congr {f g : ℝ → ℂ} (hfg : f =ᵐ[volume] g) :
+    AddCircle.liftIoc (16 : ℝ) (-8) f =ᵐ[AddCircle.haarAddCircle]
+      AddCircle.liftIoc (16 : ℝ) (-8) g := by
+  have hp := (measurePreserving_subtype_coe
+    (measurableSet_Ioc : MeasurableSet (Set.Ioc (-8 : ℝ) (-8 + 16)))).comp
+      (AddCircle.measurePreserving_equivIoc (16 : ℝ) (a := -8))
+  have hh := hp.quasiMeasurePreserving.ae_eq_comp (ae_restrict_of_ae hfg)
+  have hv : AddCircle.liftIoc (16 : ℝ) (-8) f =ᵐ[volume]
+      AddCircle.liftIoc (16 : ℝ) (-8) g := hh
+  rw [AddCircle.volume_eq_smul_haarAddCircle] at hv
+  exact (Measure.ae_ennreal_smul_measure_iff (by norm_num : ENNReal.ofReal (16 : ℝ) ≠ 0)).mp hv
+
+theorem unitIntervalL2Circle_memLp (f : Lp ℂ 2 unitIntervalMeasure) :
+    MemLp (AddCircle.liftIoc (16 : ℝ) (-8) (unitIntervalL2Extension f)) 2
+      AddCircle.haarAddCircle :=
+  ((unitIntervalL2Extension_memLp f).restrict
+    (s := Set.Ioc (-8 : ℝ) (-8 + 16))).memLp_liftIoc.haarAddCircle
+noncomputable def unitIntervalL2Circle (f : Lp ℂ 2 unitIntervalMeasure) :
+    Lp ℂ 2 (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) :=
+  (unitIntervalL2Circle_memLp f).toLp
+    (AddCircle.liftIoc (16 : ℝ) (-8) (unitIntervalL2Extension f))
+theorem unitIntervalL2Extension_add (f g : Lp ℂ 2 unitIntervalMeasure) :
+    unitIntervalL2Extension (f + g) =ᵐ[volume]
+      unitIntervalL2Extension f + unitIntervalL2Extension g := by
+  have hrep : l2Representative unitIntervalMeasure (f + g) =ᵐ[unitIntervalMeasure]
+      l2Representative unitIntervalMeasure f + l2Representative unitIntervalMeasure g :=
+    (l2Representative_ae unitIntervalMeasure (f + g)).trans
+      ((Lp.coeFn_add f g).trans
+        ((l2Representative_ae unitIntervalMeasure f).add
+          (l2Representative_ae unitIntervalMeasure g)).symm)
+  have hh := (ae_eq_restrict_iff_indicator_ae_eq measurableSet_Ico).mp hrep
+  filter_upwards [hh] with x hx
+  by_cases hm : x ∈ Set.Ico (0 : ℝ) 1
+  · simpa only [unitIntervalL2Extension, Set.indicator_of_mem hm, Pi.add_apply] using hx
+  · simp only [unitIntervalL2Extension, Pi.add_apply, Set.indicator_of_notMem hm, add_zero]
+
+theorem unitIntervalL2Extension_smul (c : ℂ) (f : Lp ℂ 2 unitIntervalMeasure) :
+    unitIntervalL2Extension (c • f) =ᵐ[volume] c • unitIntervalL2Extension f := by
+  have hrep : l2Representative unitIntervalMeasure (c • f) =ᵐ[unitIntervalMeasure]
+      c • l2Representative unitIntervalMeasure f :=
+    (l2Representative_ae unitIntervalMeasure (c • f)).trans
+      ((Lp.coeFn_smul c f).trans ((l2Representative_ae unitIntervalMeasure f).const_smul c).symm)
+  have hh := (ae_eq_restrict_iff_indicator_ae_eq measurableSet_Ico).mp hrep
+  filter_upwards [hh] with x hx
+  by_cases hm : x ∈ Set.Ico (0 : ℝ) 1
+  · simpa only [unitIntervalL2Extension, Set.indicator_of_mem hm, Pi.smul_apply] using hx
+  · simp only [unitIntervalL2Extension, Pi.smul_apply, Set.indicator_of_notMem hm, smul_zero]
+
+theorem unitIntervalL2Circle_add (f g : Lp ℂ 2 unitIntervalMeasure) :
+    unitIntervalL2Circle (f + g) = unitIntervalL2Circle f + unitIntervalL2Circle g := by
+  unfold unitIntervalL2Circle
+  rw [← MemLp.toLp_add]
+  apply (MemLp.toLp_eq_toLp_iff _ _).mpr
+  have hh := circle_lift_ae_congr (unitIntervalL2Extension_add f g)
+  exact hh
+
+theorem unitIntervalL2Circle_smul (c : ℂ) (f : Lp ℂ 2 unitIntervalMeasure) :
+    unitIntervalL2Circle (c • f) = c • unitIntervalL2Circle f := by
+  unfold unitIntervalL2Circle
+  rw [← MemLp.toLp_const_smul]
+  apply (MemLp.toLp_eq_toLp_iff _ _).mpr
+  have hh := circle_lift_ae_congr (unitIntervalL2Extension_smul c f)
+  exact hh
+
+noncomputable def unitIntervalL2CircleLinear :
+    Lp ℂ 2 unitIntervalMeasure →ₗ[ℂ]
+      Lp ℂ 2 (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) where
+  toFun := unitIntervalL2Circle
+  map_add' := unitIntervalL2Circle_add
+  map_smul' := unitIntervalL2Circle_smul
+theorem norm_toLp_sq_integral {X : Type*} [MeasurableSpace X] (ν : Measure X)
+    (f : X → ℂ) (hf : MemLp f 2 ν) :
+    ‖hf.toLp f‖ ^ 2 = ∫ x, ‖f x‖ ^ 2 ∂ν := by
+  rw [← haarL2Norm_l2Representative ν (hf.toLp f), haarL2Norm_sq]
+  apply integral_congr_ae
+  filter_upwards [(l2Representative_ae ν (hf.toLp f)).trans (MemLp.coeFn_toLp hf)] with x hx
+  rw [hx]
+
+theorem unitIntervalL2Circle_norm_sq (f : Lp ℂ 2 unitIntervalMeasure) :
+    ‖unitIntervalL2Circle f‖ ^ 2 = (1 / 16 : ℝ) * ‖f‖ ^ 2 := by
+  rw [unitIntervalL2Circle, norm_toLp_sq_integral]
+  have he : (fun z : AddCircle (16 : ℝ) =>
+      ‖AddCircle.liftIoc (16 : ℝ) (-8) (unitIntervalL2Extension f) z‖ ^ 2) =
+      AddCircle.liftIoc (16 : ℝ) (-8) (fun x => ‖unitIntervalL2Extension f x‖ ^ 2) := rfl
+  rw [he, AddCircle.integral_haarAddCircle, AddCircle.integral_liftIoc_eq_intervalIntegral]
+  norm_num only [neg_add_cancel_left]
+  have hext : (fun x => ‖unitIntervalL2Extension f x‖ ^ 2) =
+      (Set.Ico (0 : ℝ) 1).indicator
+        (fun x => ‖l2Representative unitIntervalMeasure f x‖ ^ 2) := by
+    funext x
+    by_cases hx : x ∈ Set.Ico (0 : ℝ) 1 <;>
+      simp only [unitIntervalL2Extension, Set.indicator_apply, hx, ↓reduceIte, norm_zero, zero_pow,
+        ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true]
+  have hsub : Set.Ico (0 : ℝ) 1 ⊆ Set.Ioc (-8 : ℝ) 8 := by
+    intro x hx
+    constructor <;> linarith [hx.1, hx.2]
+  rw [hext, intervalIntegral.integral_of_le (by norm_num), integral_indicator measurableSet_Ico,
+    Measure.restrict_restrict measurableSet_Ico, Set.inter_eq_left.mpr hsub]
+  change (1 / 16 : ℝ) * (∫ x, ‖l2Representative unitIntervalMeasure f x‖ ^ 2
+      ∂unitIntervalMeasure) = _
+  rw [← haarL2Norm_sq, haarL2Norm_l2Representative]
+
+theorem unitIntervalL2Circle_norm_le (f : Lp ℂ 2 unitIntervalMeasure) :
+    ‖unitIntervalL2Circle f‖ ≤ ‖f‖ := by
+  have hs := unitIntervalL2Circle_norm_sq f
+  nlinarith only [hs, norm_nonneg (unitIntervalL2Circle f), norm_nonneg f, sq_nonneg ‖f‖]
+
+noncomputable def unitIntervalL2CircleContinuous :
+    Lp ℂ 2 unitIntervalMeasure →L[ℂ]
+      Lp ℂ 2 (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ))) :=
+  unitIntervalL2CircleLinear.mkContinuous 1 (fun f => by
+    change ‖unitIntervalL2Circle f‖ ≤ 1 * ‖f‖
+    simpa only [one_mul] using unitIntervalL2Circle_norm_le f)
+noncomputable def unitIntervalGowersSeminorm : Seminorm ℂ (Lp ℂ 2 unitIntervalMeasure) :=
+  (l2GowersThreeSeminorm (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ)))).comp
+    unitIntervalL2CircleLinear
+theorem unitIntervalGowersSeminorm_le_norm (f : Lp ℂ 2 unitIntervalMeasure) :
+    unitIntervalGowersSeminorm f ≤ ‖f‖ :=
+  (l2GowersThreeSeminorm_le_norm _ (unitIntervalL2Circle f)).trans
+    (unitIntervalL2Circle_norm_le f)
+theorem unitIntervalL2Extension_toLp {f : ℝ → ℂ} (hf : MemLp f 2 unitIntervalMeasure) :
+    unitIntervalL2Extension (hf.toLp f) =ᵐ[volume] (Set.Ico (0 : ℝ) 1).indicator f := by
+  exact (ae_eq_restrict_iff_indicator_ae_eq measurableSet_Ico).mp
+    ((l2Representative_ae unitIntervalMeasure (hf.toLp f)).trans (MemLp.coeFn_toLp hf))
+
+theorem unitIntervalGowersSeminorm_continuous : Continuous unitIntervalGowersSeminorm := by
+  exact (l2GowersThreeNorm_continuous
+    (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ)))).comp
+      unitIntervalL2CircleContinuous.continuous
+
+theorem unitIntervalGowersSeminorm_toLp {f : ℝ → ℂ} (hf : Measurable f)
+    (hfl : MemLp f 2 unitIntervalMeasure) :
+    unitIntervalGowersSeminorm (hfl.toLp f) = intervalGowersNorm 0 1 f := by
+  let g := (Set.Ico (0 : ℝ) 1).indicator f
+  let F := AddCircle.liftIoc (16 : ℝ) (-8) g
+  have he := circle_lift_ae_congr (unitIntervalL2Extension_toLp hfl)
+  have hF : MemLp F 2 AddCircle.haarAddCircle :=
+    (memLp_congr_ae he).mp (unitIntervalL2Circle_memLp (hfl.toLp f))
+  have hm : Measurable F :=
+    (hf.indicator measurableSet_Ico).comp
+      (measurable_subtype_coe.comp (AddCircle.measurableEquivIoc (16 : ℝ) (-8)).measurable)
+  have heq : unitIntervalL2Circle (hfl.toLp f) = hF.toLp F :=
+    (MemLp.toLp_eq_toLp_iff _ _).mpr he
+  change l2GowersThreeNorm AddCircle.haarAddCircle
+    (unitIntervalL2Circle (hfl.toLp f)) = _
+  rw [heq, l2GowersThreeNorm_toLp _ F hm hF]
+  simp only [intervalGowersNorm, normalizeIntervalFunction, sub_zero, one_mul, zero_add, F, g]
+
+theorem l2_bounded_measurable_representative {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) (f : Lp ℂ 2 μ) (hf : ∀ᵐ x ∂μ, ‖f x‖ ≤ 1) :
+    ∃ g : X → ℂ, Measurable g ∧ (∀ x, ‖g x‖ ≤ 1) ∧ g =ᵐ[μ] f := by
+  let F := l2Representative μ f
+  let S := {x | ‖F x‖ ≤ 1}
+  have hS : MeasurableSet S :=
+    measurableSet_le (l2Representative_measurable μ f).norm measurable_const
+  refine ⟨S.indicator F, (l2Representative_measurable μ f).indicator hS, ?_, ?_⟩
+  · intro x
+    by_cases hx : x ∈ S
+    · rw [Set.indicator_of_mem hx]
+      exact hx
+    · rw [Set.indicator_of_notMem hx]
+      simp
+  · filter_upwards [l2Representative_ae μ f, hf] with x hx hb
+    have hxs : x ∈ S := by change ‖F x‖ ≤ 1; simpa only [F, hx] using hb
+    rw [Set.indicator_of_mem hxs]
+    exact hx
+
+theorem unitIntervalL2_inner_correlation {f φ : ℝ → ℂ}
+    (hf : MemLp f 2 unitIntervalMeasure) (hφ : MemLp φ 2 unitIntervalMeasure) :
+    ‖inner ℂ (hf.toLp f) (hφ.toLp φ)‖ =
+      ‖∫ x in (0 : ℝ)..1, f x * conj (φ x)‖ := by
+  rw [← norm_inner_symm]
+  have he : inner ℂ (hφ.toLp φ) (hf.toLp f) =
+      ∫ x, f x * conj (φ x) ∂unitIntervalMeasure := by
+    rw [L2.inner_def]
+    apply integral_congr_ae
+    filter_upwards [MemLp.coeFn_toLp hf, MemLp.coeFn_toLp hφ] with x hx hy
+    rw [hx, hy]
+    simp [inner]
+  rw [he, intervalIntegral.integral_of_le (by norm_num), ← integral_Ico_eq_integral_Ioc]
+  rfl
+noncomputable def intervalProbabilityMeasure (a b : ℝ) : Measure ℝ :=
+  Measure.map (fun y => a + (b - a) * y) unitIntervalMeasure
+theorem intervalAffine_measurePreserving (a b : ℝ) :
+    MeasurePreserving (fun y => a + (b - a) * y) unitIntervalMeasure
+      (intervalProbabilityMeasure a b) :=
+  ⟨by fun_prop, rfl⟩
+instance intervalProbabilityMeasure_probability (a b : ℝ) :
+    IsProbabilityMeasure (intervalProbabilityMeasure a b) where
+  measure_univ := by
+    rw [intervalProbabilityMeasure, Measure.map_apply (by fun_prop) MeasurableSet.univ]
+    simp
+noncomputable def intervalL2Pullback (a b : ℝ) :
+    Lp ℂ 2 (intervalProbabilityMeasure a b) →ₗᵢ[ℂ] Lp ℂ 2 unitIntervalMeasure :=
+  Lp.compMeasurePreservingₗᵢ ℂ (fun y => a + (b - a) * y)
+    (intervalAffine_measurePreserving a b)
+noncomputable def intervalL2GowersSeminorm (a b : ℝ) :
+    Seminorm ℂ (Lp ℂ 2 (intervalProbabilityMeasure a b)) :=
+  unitIntervalGowersSeminorm.comp (intervalL2Pullback a b).toLinearMap
+theorem intervalL2GowersSeminorm_le_norm (a b : ℝ)
+    (f : Lp ℂ 2 (intervalProbabilityMeasure a b)) :
+    intervalL2GowersSeminorm a b f ≤ ‖f‖ := by
+  exact (unitIntervalGowersSeminorm_le_norm (intervalL2Pullback a b f)).trans_eq
+    ((intervalL2Pullback a b).norm_map f)
+theorem intervalL2GowersSeminorm_toLp (a b : ℝ) {f : ℝ → ℂ} (hf : Measurable f)
+    (hfl : MemLp f 2 (intervalProbabilityMeasure a b)) :
+    intervalL2GowersSeminorm a b (hfl.toLp f) = intervalGowersNorm a b f := by
+  change unitIntervalGowersSeminorm
+    (Lp.compMeasurePreserving _ (intervalAffine_measurePreserving a b) (hfl.toLp f)) = _
+  rw [Lp.toLp_compMeasurePreserving]
+  rw [unitIntervalGowersSeminorm_toLp (hf.comp (by fun_prop))]
+  unfold intervalGowersNorm normalizeIntervalFunction
+  simp only [sub_zero, one_mul, zero_add, Function.comp_apply]
+theorem intervalProbabilityMeasure_eq {a b : ℝ} (hab : a < b) :
+    intervalProbabilityMeasure a b =
+      ENNReal.ofReal (b - a)⁻¹ • volume.restrict (Set.Ico a b) := by
+  have hp : 0 < b - a := sub_pos.mpr hab
+  have hpre : (fun y : ℝ => a + (b - a) * y) ⁻¹' Set.Ico a b = Set.Ico 0 1 := by
+    ext y
+    simp only [Set.mem_preimage, Set.mem_Ico]
+    constructor
+    · intro hy
+      constructor <;> nlinarith only [hy.1, hy.2, hp]
+    · intro hy
+      constructor <;> nlinarith only [hy.1, hy.2, hp]
+  have hm : Measure.map (fun y : ℝ => a + (b - a) * y) volume =
+      ENNReal.ofReal (b - a)⁻¹ • volume := by
+    have he : (fun y : ℝ => a + (b - a) * y) =
+        (fun z => a + z) ∘ (fun y => (b - a) * y) := rfl
+    rw [he, ← Measure.map_map (by fun_prop) (by fun_prop),
+      Real.map_volume_mul_left hp.ne', Measure.map_smul]
+    · rw [Measure.IsAddLeftInvariant.map_add_left_eq_self]
+      simp only [abs_of_pos (inv_pos.mpr hp)]
+    · fun_prop
+  rw [intervalProbabilityMeasure, unitIntervalMeasure, ← hpre,
+    ← Measure.restrict_map (by fun_prop) measurableSet_Ico, hm, Measure.restrict_smul]
+
+theorem integral_intervalProbabilityMeasure {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {a b : ℝ} (hab : a < b) (f : ℝ → E) :
+    (∫ x, f x ∂intervalProbabilityMeasure a b) = (b - a)⁻¹ • ∫ x in a..b, f x := by
+  rw [intervalProbabilityMeasure_eq hab, integral_smul_measure,
+    ENNReal.toReal_ofReal (inv_nonneg.mpr (sub_pos.mpr hab).le),
+    intervalIntegral.integral_of_le hab.le, integral_Ico_eq_integral_Ioc]
+
+theorem intervalL2_inner_correlation {a b : ℝ} (hab : a < b) {f φ : ℝ → ℂ}
+    (hf : MemLp f 2 (intervalProbabilityMeasure a b))
+    (hφ : MemLp φ 2 (intervalProbabilityMeasure a b)) :
+    ‖inner ℂ (hf.toLp f) (hφ.toLp φ)‖ =
+      (b - a)⁻¹ * ‖∫ x in a..b, f x * conj (φ x)‖ := by
+  rw [← norm_inner_symm]
+  have he : inner ℂ (hφ.toLp φ) (hf.toLp f) =
+      ∫ x, f x * conj (φ x) ∂intervalProbabilityMeasure a b := by
+    rw [L2.inner_def]
+    apply integral_congr_ae
+    filter_upwards [MemLp.coeFn_toLp hf, MemLp.coeFn_toLp hφ] with x hx hy
+    rw [hx, hy]
+    simp [inner]
+  rw [he, integral_intervalProbabilityMeasure hab, norm_smul, Real.norm_eq_abs,
+    abs_of_pos (inv_pos.mpr (sub_pos.mpr hab))]
 
 end Auto

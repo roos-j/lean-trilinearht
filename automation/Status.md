@@ -2,19 +2,27 @@
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-not started | thm:main, lines 2934Ã¢â‚¬â€œ2941 | Uniform L3 trilinear Hilbert transform estimate | 2026-10-08T21:50:31.6115335-04:00
-not started | thm:main, lines 2984Ã¢â‚¬â€œ2992 | Pointwise principal value on Schwartz inputs | 2026-10-08T21:50:31.6115335-04:00
-not started | thm:main, lines 2999Ã¢â‚¬â€œ3009 | Unique bounded extension to L3 triples | 2026-10-08T21:50:31.6115335-04:00
+not started | thm:main, lines 2934–2941 | Uniform L3 trilinear Hilbert transform estimate | 2026-10-08T21:50:31.6115335-04:00
+not started | thm:main, lines 2984–2992 | Pointwise principal value on Schwartz inputs | 2026-10-08T21:50:31.6115335-04:00
+not started | thm:main, lines 2999–3009 | Unique bounded extension to L3 triples | 2026-10-08T21:50:31.6115335-04:00
 
-# Quantitative Gevrey cutoff prerequisite
+# Quantitative quadratic chart calculus prerequisite
 
-The Fourier localization needs compact cutoffs and a locally finite integer partition with uniform all-orders Gevrey bounds. Pinned Mathlib supplies smooth expNegInvGlue and smooth transitions but no quantitative Gevrey derivative or partition theorem; the repository's already-proved construction supplies this substantial classical calculus prerequisite. Move that entire independent development, without duplicating or changing its proofs, into TrilinearHT/Auto/GevreyCutoffs.lean. Its general interval, affine-rescaling and finite-product statements use only Mathlib and local definitions. This is the reusable-prerequisite exception, not a machine-blueprint section split. Verified references: blueprint lem:gevrey, lines 107Ã¢â‚¬â€œ126, and Mathlib.Analysis.SpecialFunctions.SmoothTransition. Recorded before module creation at 2026-10-09T09:58:48.1075144-04:00.
+The locally quadratic chart lemma needs the substantial general calculus of compactly supported quadratic lattice-sum charts: finite summation, normalization, conjugation, products, affine changes and uniform Gevrey complexity. Pinned Mathlib has no matching quadratic chart theorem; its calculus and Fourier primitives underlie the already-proved general development. Extract that complete development into TrilinearHT/Auto/QuadraticCharts.lean under the reusable-prerequisite exception, not a machine-blueprint section split. Move the primitive logarithmic-size and quasipolynomial-bound definitions with it. Use a primitive local rational height definition, definitionally equal to the existing one, so every statement and local definition depends only on Mathlib and the same module. RationalLinearAlgebra may be imported for proof reuse only. A declaration-reference scan found no other external project dependencies. Verified source: def:chart, lines 625-637, lem:chart-operations, lines 642-660, and the several-variable chart formula. Recorded before creation at 2026-10-09T19:20:45.754745-04:00.
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-complete | lem:gevrey, lines 110Ã¢â‚¬â€œ114 | Quantitative derivative bounds for expNegInvGlue | 2026-10-08T22:14:53.8863812-04:00
-complete | lem:gevrey, lines 116Ã¢â‚¬â€œ117 | Normalized compact bump and interval cutoffs | 2026-10-08T22:24:10-04:00
-complete | lem:gevrey, lines 117Ã¢â‚¬â€œ125 | Locally finite partition of unity | 2026-10-08T22:24:10-04:00
+complete | def:chart and lem:chart-operations, lines 625-660 | Independent quantitative quadratic chart calculus | 2026-10-09T19:24:17.868635-04:00
+
+# Quantitative Gevrey cutoff prerequisite
+
+The Fourier localization needs compact cutoffs and a locally finite integer partition with uniform all-orders Gevrey bounds. Pinned Mathlib supplies smooth expNegInvGlue and smooth transitions but no quantitative Gevrey derivative or partition theorem; the repository's already-proved construction supplies this substantial classical calculus prerequisite. Move that entire independent development, without duplicating or changing its proofs, into TrilinearHT/Auto/GevreyCutoffs.lean. Its general interval, affine-rescaling and finite-product statements use only Mathlib and local definitions. This is the reusable-prerequisite exception, not a machine-blueprint section split. Verified references: blueprint lem:gevrey, lines 107–126, and Mathlib.Analysis.SpecialFunctions.SmoothTransition. Recorded before module creation at 2026-10-09T09:58:48.1075144-04:00.
+
+status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
+--- | --- | --- | ---
+complete | lem:gevrey, lines 110–114 | Quantitative derivative bounds for expNegInvGlue | 2026-10-08T22:14:53.8863812-04:00
+complete | lem:gevrey, lines 116–117 | Normalized compact bump and interval cutoffs | 2026-10-08T22:24:10-04:00
+complete | lem:gevrey, lines 117–125 | Locally finite partition of unity | 2026-10-08T22:24:10-04:00
 complete | lem:gevrey, line 126 | Rescaling and multidimensional products | 2026-10-08T22:24:10-04:00
 
 # Quantitative Fourier approximation prerequisite
@@ -23,8 +31,8 @@ The chart development and later Fourier splitting use the general derivative-to-
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-complete | lem:fourier-foundation, lines 130Ã¢â‚¬â€œ146 | Coordinate Fourier coefficient decay | 2026-10-08T22:44:53-04:00
-complete | lem:fourier-foundation, lines 134Ã¢â‚¬â€œ146 | Nonzero shell counting, tails, and uniform convergence | 2026-10-08T22:44:53-04:00
+complete | lem:fourier-foundation, lines 130–146 | Coordinate Fourier coefficient decay | 2026-10-08T22:44:53-04:00
+complete | lem:fourier-foundation, lines 134–146 | Nonzero shell counting, tails, and uniform convergence | 2026-10-08T22:44:53-04:00
 complete | lem:fourier-foundation, lines 130-146 | Independent Fourier approximation module verification | 2026-10-09T13:30:19.8983506-04:00
 
 # Balog-Szemeredi-Gowers prerequisite
@@ -55,12 +63,12 @@ complete | lem:Chang, lines 739-764 | Spectrum generation, cyclic Fourier bridge
 
 # Khintchine and empirical sampling prerequisite
 
-The later almost-period and signed-stack arguments need the general Khintchine upper inequality and its empirical-sampling consequence. Searches of pinned Mathlib Probability and Analysis found no Khintchine or symmetrization/sampling moment theorem; the repository already contains a complete proof adapted from ../lean-variationalsw. Extract that substantial textbook probability prerequisite, unchanged, into TrilinearHT/Auto/KhintchineSampling.lean. Include all sign, independent-copy, finite-mean, finite-Lp and convolution definitions it uses. A declaration-reference scan found only finiteAverage and finiteConvolution as outside dependencies; move those definitions too, so all statements depend only on Mathlib and local definitions. This invokes the reusable-prerequisite exception, not a blueprint section split. Extend this same independent empirical-sampling module with the Croot-Sisask almost-period consequence, blueprint lem:almostperiods, lines 766-784, using its existing probability norms and sampling theorem. No additional module is needed. Verified reference: blueprint lem:finite-fourier, lines 177-209; preserve sibling attribution. Recorded before creation at 2026-10-09T13:58:52.3025486-04:00.
+The later almost-period and signed-stack arguments need the general Khintchine upper inequality and its empirical-sampling consequence. Searches of pinned Mathlib Probability and Analysis found no Khintchine or symmetrization/sampling moment theorem; the repository already contains a complete proof adapted from ../lean-variationalsw. Extract that substantial textbook probability prerequisite, unchanged, into TrilinearHT/Auto/KhintchineSampling.lean. Include all sign, independent-copy, finite-mean, finite-Lp and convolution definitions it uses. A declaration-reference scan found only finiteAverage and finiteConvolution as outside dependencies; move those definitions too, so all statements depend only on Mathlib and local definitions. This invokes the reusable-prerequisite exception, not a blueprint section split. Extend this same independent empirical-sampling module with the Croot-Sisask almost-period consequence, blueprint lem:almostperiods, lines 766-784, using its existing probability norms and sampling theorem. No additional module is needed. Verified reference: blueprint lem:finite-fourier, lines 177-209; preserve sibling attribution. Recorded before creation at 2026-10-09T13:58:52.3025486-04:00. Consolidation recorded at 2026-10-09T21:22:18.523546-04:00: move the already-proved finite Fourier foundations from main into this module, beside their local finiteAverage, finiteConvolution and uniformMean primitives; add the trilinear Fourier selection estimate needed for finite-inverse lines 1148-1157. The unchanged foundation statements depend only on Mathlib and this module.
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-complete | lem:finite-fourier, lines 177Ã¢â‚¬â€œ200 | Signs with constant 2 sqrt(p) and double randomization | 2026-10-08T23:38:00-04:00
-complete | lem:finite-fourier, lines 183Ã¢â‚¬â€œ209 | Independent-copy symmetrization and sampling convolution bound with constant 4 | 2026-10-08T23:38:00-04:00
+complete | lem:finite-fourier, lines 177–200 | Signs with constant 2 sqrt(p) and double randomization | 2026-10-08T23:38:00-04:00
+complete | lem:finite-fourier, lines 183–209 | Independent-copy symmetrization and sampling convolution bound with constant 4 | 2026-10-08T23:38:00-04:00
 complete | lem:finite-fourier, lines 177-209 | Independent Khintchine and sampling module verification | 2026-10-09T14:01:38.3847714-04:00
 complete | lem:almostperiods, lines 766-783 | Finite probability Lp triangle and translation laws | 2026-10-09T15:53:14.874213-04:00
 complete | lem:almostperiods, lines 777-781 | Markov bound and at least half good sample tuples | 2026-10-09T15:56:41.390579-04:00
@@ -80,29 +88,34 @@ complete | lem:dense-Bohr, lines 806-812 | Iterated averaging measure and Fourie
 complete | lem:dense-Bohr, lines 813-817 | Spectrum split and uniform Fourier translation estimate | 2026-10-09T16:39:28.562564-04:00
 complete | lem:dense-Bohr, lines 786-820 | Quasipolynomial rank, radius, containment and density | 2026-10-09T16:47:09.953962-04:00
 
-# GowersÃ¢â‚¬â€œCauchyÃ¢â‚¬â€œSchwarz and cube continuity prerequisite
 
-The mixed cube estimates used by lem:cube-foundation and later local von Neumann arguments require the classical GowersÃ¢â‚¬â€œCauchyÃ¢â‚¬â€œSchwarz inequality, its U3 seminorm, and eight-input L2 continuity. A search of pinned Mathlib found no Gowers development; Haar integration and Holder provide only its ingredients. Move the already-proved general Haar-probability construction and its supporting cube definitions, without duplication, into TrilinearHT/Auto/GowersCauchySchwarz.lean. The inspected statements use only Mathlib and local definitions, and a declaration-dependency scan found no remaining main-file dependencies. This substantial general additive-combinatorial theorem qualifies for the reusable-prerequisite exception; it is not a machine-blueprint section split. Verified source: blueprint cube-definition, lines 162Ã¢â‚¬â€œ175, and lem:cube-foundation, lines 216Ã¢â‚¬â€œ237. Recorded before creation at 2026-10-09T10:55:13.8581673-04:00.
+# Hilbert-space atomic decomposition prerequisite
 
-status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
---- | --- | --- | ---
-complete | cube-definition, lines 162Ã¢â‚¬â€œ175 | Mixed cubes, squared-face identity, positivity and nonnegative roots | 2026-10-08T23:24:00-04:00
-complete | lem:cube-foundation, lines 216Ã¢â‚¬â€œ231 | Coordinate reflection CauchyÃ¢â‚¬â€œSchwarz and mixed cube bound | 2026-10-08T23:55:00-04:00
-complete | lem:cube-foundation, lines 218Ã¢â‚¬â€œ232 | Homogeneity, triangle inequality, and bundled U3 seminorm | 2026-10-09T00:00:00-04:00
-complete | eq:cube-L2, lines 223Ã¢â‚¬â€œ237 | Independent vertex halves and eight L2 bounds | 2026-10-09T00:15:00-04:00
-complete | lem:cube-foundation, lines 227Ã¢â‚¬â€œ237 | Continuous extension to eight L2 inputs | 2026-10-09T00:24:23.8312378-04:00
+The decomposition in lem:inverse, lines 1218-1239, requires a substantial general Hilbert-space separation theorem for finite atomic sums and two seminorm balls, together with probability-L2 dual bounds. Mathlib supplies Hahn--Banach, Riesz representation and convex hulls but no matching quantitative atomic decomposition theorem; the sibling lean-spherical convex-duality module concerns scalar convex functions. Develop TrilinearHT/Auto/HilbertAtomicDecomposition.lean under the reusable-prerequisite exception, using only Mathlib and definitions local to that module in its statements. The general result will take an independently stated inverse-correlation hypothesis; the main file must discharge it using continuous_inverse. This is not a split along machine-blueprint sections. Recorded before creation at 2026-10-10T00:38:41.342043-04:00.
 
-# FeffermanÃ¢â‚¬â€œStein maximal inequality prerequisite
+# Gowers–Cauchy–Schwarz and cube continuity prerequisite
 
-The mixed maximal estimate in lem:vector-maximal needs the general vector HardyÃ¢â‚¬â€œLittlewood theorem, absent from pinned Mathlib; the textbook FeffermanÃ¢â‚¬â€œStein theorem is a substantial reusable prerequisite, developed for general exponents and finite inner measure spaces in TrilinearHT/Auto/FeffermanStein.lean, adapting the finite Hilbert-family proof in ../lean-variationalsw.
+The mixed cube estimates used by lem:cube-foundation and later local von Neumann arguments require the classical Gowers–Cauchy–Schwarz inequality, its U3 seminorm, and eight-input L2 continuity. A search of pinned Mathlib found no Gowers development; Haar integration and Holder provide only its ingredients. Move the already-proved general Haar-probability construction and its supporting cube definitions, without duplication, into TrilinearHT/Auto/GowersCauchySchwarz.lean. The inspected statements use only Mathlib and local definitions, and a declaration-dependency scan found no remaining main-file dependencies. This substantial general additive-combinatorial theorem qualifies for the reusable-prerequisite exception; it is not a machine-blueprint section split. Verified source: blueprint cube-definition, lines 162–175, and lem:cube-foundation, lines 216–237. Recorded before creation at 2026-10-09T10:55:13.8581673-04:00. Extension recorded at 2026-10-09T21:49:19.044725-04:00: the continuous inverse requires finite-to-continuous convergence of cell-averaged cube integrals (lines 1183-1189). Searches of pinned Mathlib and sibling repositories found no ready Gowers discretization theorem. Develop the general cube discretization in this existing module, using Mathlib integration and approximation. Move the normalized finite Haar definition and its two basic instances from main here so all new statements use Mathlib/local definitions; retain source-specific chart applications in main.
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-complete | ../lean-variationalsw/VariationalSW/Auto/MarcinkiewiczInterpolation.lean, lines 692Ã¢â‚¬â€œ914 | Weak-type interpolation and scalar maximal foundations | 2026-10-09T00:27:15.9941126-04:00
-complete | ../lean-variationalsw/VariationalSW/Auto/FeffermanSteinInequality.lean, lines 829Ã¢â‚¬â€œ953 | Weighted maximal inequality for arbitrary exponents greater than one | 2026-10-09T00:30:18.3551556-04:00
-complete | ../lean-variationalsw/VariationalSW/Auto/FeffermanSteinInequality.lean, lines 955Ã¢â‚¬â€œ1114 | Mixed norm duality for outer exponent above inner exponent | 2026-10-09T00:36:18.5217726-04:00
-complete | lem:vector-maximal, lines 248Ã¢â‚¬â€œ250, permitted vector maximal theorem | Mixed HÃƒÂ¶lder and dual testing | 2026-10-09T00:41:08.5159750-04:00
-complete | lem:vector-maximal, lines 248Ã¢â‚¬â€œ250, permitted vector maximal theorem | Remaining exponent range and truncation on finite inner measure spaces | 2026-10-09T00:48:15.5427826-04:00
+complete | cube-definition, lines 162–175 | Mixed cubes, squared-face identity, positivity and nonnegative roots | 2026-10-08T23:24:00-04:00
+complete | lem:cube-foundation, lines 216–231 | Coordinate reflection Cauchy–Schwarz and mixed cube bound | 2026-10-08T23:55:00-04:00
+complete | lem:cube-foundation, lines 218–232 | Homogeneity, triangle inequality, and bundled U3 seminorm | 2026-10-09T00:00:00-04:00
+complete | eq:cube-L2, lines 223–237 | Independent vertex halves and eight L2 bounds | 2026-10-09T00:15:00-04:00
+complete | lem:cube-foundation, lines 227–237 | Continuous extension to eight L2 inputs | 2026-10-09T00:24:23.8312378-04:00
+
+# Fefferman–Stein maximal inequality prerequisite
+
+The mixed maximal estimate in lem:vector-maximal needs the general vector Hardy–Littlewood theorem, absent from pinned Mathlib; the textbook Fefferman–Stein theorem is a substantial reusable prerequisite, developed for general exponents and finite inner measure spaces in TrilinearHT/Auto/FeffermanStein.lean, adapting the finite Hilbert-family proof in ../lean-variationalsw.
+
+status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
+--- | --- | --- | ---
+complete | ../lean-variationalsw/VariationalSW/Auto/MarcinkiewiczInterpolation.lean, lines 692–914 | Weak-type interpolation and scalar maximal foundations | 2026-10-09T00:27:15.9941126-04:00
+complete | ../lean-variationalsw/VariationalSW/Auto/FeffermanSteinInequality.lean, lines 829–953 | Weighted maximal inequality for arbitrary exponents greater than one | 2026-10-09T00:30:18.3551556-04:00
+complete | ../lean-variationalsw/VariationalSW/Auto/FeffermanSteinInequality.lean, lines 955–1114 | Mixed norm duality for outer exponent above inner exponent | 2026-10-09T00:36:18.5217726-04:00
+complete | lem:vector-maximal, lines 248–250, permitted vector maximal theorem | Mixed Hölder and dual testing | 2026-10-09T00:41:08.5159750-04:00
+complete | lem:vector-maximal, lines 248–250, permitted vector maximal theorem | Remaining exponent range and truncation on finite inner measure spaces | 2026-10-09T00:48:15.5427826-04:00
 
 # Lattice transference principle prerequisite
 
@@ -110,46 +123,46 @@ The successive-minima transference principle is needed by lem:transference and l
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-complete | lem:integer-basis, lines 257Ã¢â‚¬â€œ263 | Primitive integer vector extends to a basis | 2026-10-09T01:00:16.2290272-04:00
-complete | lem:integer-basis, lines 257Ã¢â‚¬â€œ263 | Saturated subgroup adapted basis and free quotient | 2026-10-09T01:03:57.7910860-04:00
+complete | lem:integer-basis, lines 257–263 | Primitive integer vector extends to a basis | 2026-10-09T01:00:16.2290272-04:00
+complete | lem:integer-basis, lines 257–263 | Saturated subgroup adapted basis and free quotient | 2026-10-09T01:03:57.7910860-04:00
 complete | lem:integer-basis, line 263 | Rational subspace integer intersection is saturated | 2026-10-09T01:05:29.6315041-04:00
 complete | lem:reduced-basis, line 279 | Finite bounded lattice intersections and shortest nonzero vector | 2026-10-09T01:07:12.4000815-04:00
 complete | lem:reduced-basis, line 279 | Shortest vector primitive and extendible to a lattice basis | 2026-10-09T01:09:47.9043507-04:00
 complete | lem:reduced-basis, line 279 | Remaining basis projects to a full lattice in the perpendicular space | 2026-10-09T01:16:56.5275745-04:00
 complete | lem:reduced-basis, line 279 | Induction on projected lattices and lifting the basis | 2026-10-09T01:27:54.7175149-04:00
 complete | lem:reduced-basis, line 279 | Descending integer size reduction preserves later projections | 2026-10-09T01:35:04.0994644-04:00
-complete | lem:reduced-basis, line 281 | Adjacent GramÃ¢â‚¬â€œSchmidt length inequality | 2026-10-09T01:40:07.0238090-04:00
-complete | lem:reduced-basis, lines 281Ã¢â‚¬â€œ286 | Geometric prefix sum and primal basis norm bound | 2026-10-09T01:44:45.0578284-04:00
-complete | lem:reduced-basis, lines 287Ã¢â‚¬â€œ290 | Upper triangular inverse coefficient bound | 2026-10-09T01:49:45.1986603-04:00
-complete | lem:reduced-basis, lines 291Ã¢â‚¬â€œ292 | Dual basis norm bound | 2026-10-09T01:59:33.1650998-04:00
-complete | lem:transference, lines 296Ã¢â‚¬â€œ303 | Euclidean dual lattice and integer pairing | 2026-10-09T02:04:59.6064805-04:00
-complete | lem:transference, lines 296Ã¢â‚¬â€œ305 | Symmetric convex body, polar, and gauge | 2026-10-09T02:10:25.7703001-04:00
+complete | lem:reduced-basis, line 281 | Adjacent Gram–Schmidt length inequality | 2026-10-09T01:40:07.0238090-04:00
+complete | lem:reduced-basis, lines 281–286 | Geometric prefix sum and primal basis norm bound | 2026-10-09T01:44:45.0578284-04:00
+complete | lem:reduced-basis, lines 287–290 | Upper triangular inverse coefficient bound | 2026-10-09T01:49:45.1986603-04:00
+complete | lem:reduced-basis, lines 291–292 | Dual basis norm bound | 2026-10-09T01:59:33.1650998-04:00
+complete | lem:transference, lines 296–303 | Euclidean dual lattice and integer pairing | 2026-10-09T02:04:59.6064805-04:00
+complete | lem:transference, lines 296–305 | Symmetric convex body, polar, and gauge | 2026-10-09T02:10:25.7703001-04:00
 complete | lem:transference, line 305 | Successive minima are finite and attained | 2026-10-09T02:14:34.5091558-04:00
 complete | lem:transference, line 305 | Dimension and integer pairing give lower product bound | 2026-10-09T02:18:17.6561629-04:00
 complete | lem:transference, line 307 | Euclidean ball upper product bound | 2026-10-09T02:21:48.7216481-04:00
-complete | lem:transference, lines 309Ã¢â‚¬â€œ313 | Maximum determinant basis and ellipsoid comparison | 2026-10-09T02:30:01.4863767-04:00
+complete | lem:transference, lines 309–313 | Maximum determinant basis and ellipsoid comparison | 2026-10-09T02:30:01.4863767-04:00
 complete | lem:transference, line 314 | Linear transport and full successive-minima product bound | 2026-10-09T02:34:55.5923175-04:00
 
 # Quantitative rational linear algebra prerequisite
 
-The rational height bounds needed throughout the finite coefficient constructions are absent from pinned Mathlib: its rational heights, determinants and projections do not provide the required uniform counting, inverse, pivot right-inverse and projection estimates. Effective rational linear algebra via common denominators and Cramer's rule is a substantial reusable development, including real scalar extension and operator norms. The complete development moves together to TrilinearHT/Auto/RationalLinearAlgebra.lean; all statements and local definitions depend only on Mathlib. This invokes the reusable-prerequisite exception, not a split along machine-generated blueprint sections. Verified references are blueprint lem:rational-linear, lines 416Ã¢â‚¬â€œ420, and the pinned Mathlib rational, matrix adjugate, rank and orthogonal-projection developments. The independently reusable height-bin theorem (lem:height, lines 603Ã¢â‚¬â€œ619) extends this same module using its local rationalHeight and sharp denominator/minor bounds; no project-specific operator data enter its statements.
+The rational height bounds needed throughout the finite coefficient constructions are absent from pinned Mathlib: its rational heights, determinants and projections do not provide the required uniform counting, inverse, pivot right-inverse and projection estimates. Effective rational linear algebra via common denominators and Cramer's rule is a substantial reusable development, including real scalar extension and operator norms. The complete development moves together to TrilinearHT/Auto/RationalLinearAlgebra.lean; all statements and local definitions depend only on Mathlib. This invokes the reusable-prerequisite exception, not a split along machine-generated blueprint sections. Verified references are blueprint lem:rational-linear, lines 416–420, and the pinned Mathlib rational, matrix adjugate, rank and orthogonal-projection developments. The independently reusable height-bin theorem (lem:height, lines 603–619) extends this same module using its local rationalHeight and sharp denominator/minor bounds; no project-specific operator data enter its statements.
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-complete | lem:rational-linear, lines 416Ã¢â‚¬â€œ418 | Bounded-height rational and matrix counting | 2026-10-09T04:31:15.4544041-04:00
+complete | lem:rational-linear, lines 416–418 | Bounded-height rational and matrix counting | 2026-10-09T04:31:15.4544041-04:00
 complete | lem:rational-linear, line 420 | Common denominators and determinant bounds | 2026-10-09T04:37:05.2495747-04:00
-complete | lem:rational-linear, lines 418Ã¢â‚¬â€œ420 | Nonsingular inverse heights and operator norms | 2026-10-09T04:47:12.4740063-04:00
+complete | lem:rational-linear, lines 418–420 | Nonsingular inverse heights and operator norms | 2026-10-09T04:47:12.4740063-04:00
 complete | lem:rational-linear, line 420 | Pivot right inverses and bounded-height basis selection | 2026-10-09T04:57:14.3462437-04:00
 complete | lem:rational-linear, line 420 | Gram inverse formula for the orthogonal row-space projection | 2026-10-09T05:03:39.3851991-04:00
 complete | lem:rational-linear, line 420 | Common integer numerator and denominator bounds for projections | 2026-10-09T05:08:24.1740810-04:00
-complete | lem:rational-linear, lines 418Ã¢â‚¬â€œ420 | Exponential projection height and norm bounds | 2026-10-09T05:10:46.2540625-04:00
+complete | lem:rational-linear, lines 418–420 | Exponential projection height and norm bounds | 2026-10-09T05:10:46.2540625-04:00
 complete | lem:rational-linear, line 420 | Arbitrary rational systems and orthogonal complements | 2026-10-09T05:14:42.2332350-04:00
 complete | lem:height, proof line 617 | Sharp per-vector denominator clearing with entries bounded by B^d | 2026-10-09T12:23:24.6448111-04:00
 complete | lem:height, proof line 617 | Bounded nonzero integer circuit coefficients | 2026-10-09T12:35:56.2258794-04:00
 complete | lem:height, proof line 617 | Independence of geometrically separated nonzero evaluations | 2026-10-09T12:44:46.8898622-04:00
 complete | lem:height, lines 603 and 617 | Greedy cover by at most d logarithmic intervals | 2026-10-09T12:52:49.8680184-04:00
 complete | lem:height, lines 603-610 and 617 | Dyadic magnitude bins and translated scale counts | 2026-10-09T13:04:45.5253073-04:00
-complete | eq:tiny-sum, lines 611Ã¢â‚¬â€œ617 | Geometric small-value tail summed over occupied bins | 2026-10-09T16:47:09.953962-04:00
+complete | eq:tiny-sum, lines 611–617 | Geometric small-value tail summed over occupied bins | 2026-10-09T16:47:09.953962-04:00
 complete | lem:height, lines 616-617 | Coordinate suprema and Euclidean-norm enlargements | 2026-10-09T13:27:14.2870246-04:00
 
 # Dyadic stopping and logarithmic hull maximal prerequisite
@@ -159,18 +172,18 @@ The fixed-function hull cuts in lem:cuts need a general finite dyadic stopping t
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
 complete | line 364 | Real dyadic grid data, partitions and children | 2026-10-09T06:18:23.3127599-04:00
-complete | eq:path, lines 424Ã¢â‚¬â€œ428 | Exact finite dyadic path integral identity | 2026-10-09T05:22:11.5434714-04:00
+complete | eq:path, lines 424–428 | Exact finite dyadic path integral identity | 2026-10-09T05:22:11.5434714-04:00
 complete | path-packing, line 429 | Generation decay and geometric restart bound | 2026-10-09T05:25:27.5191409-04:00
 complete | path-packing, line 429 | Combining first-stop families by maximal union cells | 2026-10-09T05:28:40.5509687-04:00
-complete | lem:cuts, lines 433Ã¢â‚¬â€œ436 | Dyadic nesting and disjoint maximal cells | 2026-10-09T05:31:58.4189825-04:00
-complete | lem:cuts, lines 435Ã¢â‚¬â€œ436 | Ancestor sums, first crossings and retained cells | 2026-10-09T05:34:17.8549265-04:00
+complete | lem:cuts, lines 433–436 | Dyadic nesting and disjoint maximal cells | 2026-10-09T05:31:58.4189825-04:00
+complete | lem:cuts, lines 435–436 | Ancestor sums, first crossings and retained cells | 2026-10-09T05:34:17.8549265-04:00
 complete | lem:cuts, line 451 | First-crossing length cost from path integration and Markov | 2026-10-09T05:43:43.7884176-04:00
 complete | lem:cuts, lines 436 and 451 | Everywhere bound for retained ancestor sums | 2026-10-09T05:46:23.9059690-04:00
-complete | lem:cuts, lines 453Ã¢â‚¬â€œ457 | Finite hull maximal weak bound and support bound | 2026-10-09T05:50:31.2491202-04:00
-complete | lem:cuts, lines 458Ã¢â‚¬â€œ462 | Truncated hull maxima logarithmic integral estimate | 2026-10-09T05:59:06.4870164-04:00
+complete | lem:cuts, lines 453–457 | Finite hull maximal weak bound and support bound | 2026-10-09T05:50:31.2491202-04:00
+complete | lem:cuts, lines 458–462 | Truncated hull maxima logarithmic integral estimate | 2026-10-09T05:59:06.4870164-04:00
 complete | lem:cuts, line 463 | Partial hull maxima through the current depth and full-max domination | 2026-10-09T06:04:06.0704663-04:00
-complete | lem:cuts, lines 458 and 463Ã¢â‚¬â€œ465 | Individual and truncated-sum first-crossing costs and their combination | 2026-10-09T06:11:17.7463948-04:00
-complete | eq:hull-cap, lines 444Ã¢â‚¬â€œ448 and 464Ã¢â‚¬â€œ465 | Everywhere whole-cell cap on retained hull maxima | 2026-10-09T06:18:00.8333180-04:00
+complete | lem:cuts, lines 458 and 463–465 | Individual and truncated-sum first-crossing costs and their combination | 2026-10-09T06:11:17.7463948-04:00
+complete | eq:hull-cap, lines 444–448 and 464–465 | Everywhere whole-cell cap on retained hull maxima | 2026-10-09T06:18:00.8333180-04:00
 
 complete | lem:compression, line 553 | Finite dyadic descendant generations and partition identities | 2026-10-09T08:14:25.2978306-04:00
 complete | lem:compression, line 553 | Enclosing finite cell families in complete finite dyadic trees | 2026-10-09T08:18:00.0622912-04:00
@@ -178,9 +191,9 @@ complete | lem:compression, line 553 | Finite threshold stopping cuts and termin
 complete | lem:compression, line 553 | Parent averages and the four-times-root threshold-cut estimate | 2026-10-09T08:32:31.0451735-04:00
 complete | lem:compression, line 553 | Iterated doubling roots and finite depth termination | 2026-10-09T08:36:05.0045950-04:00
 complete | lem:compression, line 553 | Deepest stopping-root assignment and size-segment partitions | 2026-10-09T08:41:02.1914034-04:00
-complete | lem:compression, lines 561Ã¢â‚¬â€œ565 | Local weak-type distribution and weighted layer-cake energy inequality | 2026-10-09T09:10:35.7673445-04:00
-complete | lem:compression, lines 561Ã¢â‚¬â€œ565 | Finite dyadic maximal L2 estimate with norm constant two | 2026-10-09T09:18:35.4175737-04:00
-complete | lem:compression, lines 561Ã¢â‚¬â€œ564 | Pointwise geometric square-average bound along stopping paths | 2026-10-09T09:23:00.9337250-04:00
+complete | lem:compression, lines 561–565 | Local weak-type distribution and weighted layer-cake energy inequality | 2026-10-09T09:10:35.7673445-04:00
+complete | lem:compression, lines 561–565 | Finite dyadic maximal L2 estimate with norm constant two | 2026-10-09T09:18:35.4175737-04:00
+complete | lem:compression, lines 561–564 | Pointwise geometric square-average bound along stopping paths | 2026-10-09T09:23:00.9337250-04:00
 complete | lem:compression, line 565 | Small-size geometric sums and logarithmic counts of large stopping sizes | 2026-10-09T09:34:12.4117912-04:00
 complete | lem:compression, line 565 | Abstract logarithmic energy estimate for supported moment families | 2026-10-09T09:42:35.6697747-04:00
 
@@ -188,19 +201,19 @@ complete | lem:compression, line 567 | Norm-threshold anchor generations, finite
 
 complete | lem:compression, line 569 | Completion of anchor generations to refining terminal partitions | 2026-10-09T10:09:32.7778492-04:00
 
-complete | lem:compression, lines 569Ã¢â‚¬â€œ572 | Jump ancestors and disjoint-cell L2 mass bounds | 2026-10-09T10:27:41.7129579-04:00
+complete | lem:compression, lines 569–572 | Jump ancestors and disjoint-cell L2 mass bounds | 2026-10-09T10:27:41.7129579-04:00
 
-# RademacherÃ¢â‚¬â€œMenshov and nested projection products prerequisite
+# Rademacher–Menshov and nested projection products prerequisite
 
-Justification: the dyadic-prefix row estimate and noncommuting nested-product consequences needed by lem:prefix (lines 508Ã¢â‚¬â€œ535) are absent from pinned Mathlib and searched sibling repositories. The classical RademacherÃ¢â‚¬â€œMenshov dyadic decomposition is a substantial general Hilbert-space theorem (Tao, 247A Lecture Notes 2, page 31, Q14Ã¢â‚¬â€œQ15); one independent Mathlib-only module, TrilinearHT/Auto/RademacherMenshov.lean, will contain the finite row version, nested projections and disjoint-interval jumps, with no project-specific column data. Recorded before creation at 2026-10-09T07:32:32.3778862-04:00.
+Justification: the dyadic-prefix row estimate and noncommuting nested-product consequences needed by lem:prefix (lines 508–535) are absent from pinned Mathlib and searched sibling repositories. The classical Rademacher–Menshov dyadic decomposition is a substantial general Hilbert-space theorem (Tao, 247A Lecture Notes 2, page 31, Q14–Q15); one independent Mathlib-only module, TrilinearHT/Auto/RademacherMenshov.lean, will contain the finite row version, nested projections and disjoint-interval jumps, with no project-specific column data. Recorded before creation at 2026-10-09T07:32:32.3778862-04:00.
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-complete | lem:prefix proof, lines 522Ã¢â‚¬â€œ526 | Orthogonal block energy and restriction of square-summable rows | 2026-10-09T07:37:43.9518782-04:00
-complete | lem:prefix proof, lines 522Ã¢â‚¬â€œ527 | Dyadic prefix decomposition and logarithmic row estimate | 2026-10-09T07:43:58.6653854-04:00
-complete | lem:prefix, lines 508Ã¢â‚¬â€œ514 and 522Ã¢â‚¬â€œ527 | Nested projection increments and exact logarithmic prefix bound | 2026-10-09T07:49:01.1014365-04:00
-complete | lem:prefix, lines 508Ã¢â‚¬â€œ514 and 524Ã¢â‚¬â€œ527 | Noncommuting products of nested projection layers | 2026-10-09T07:53:09.8162355-04:00
-complete | eq:product-jump, lines 515Ã¢â‚¬â€œ519 and 529Ã¢â‚¬â€œ534 | Product telescoping and square-sum jump estimate | 2026-10-09T07:59:32.7934472-04:00
+complete | lem:prefix proof, lines 522–526 | Orthogonal block energy and restriction of square-summable rows | 2026-10-09T07:37:43.9518782-04:00
+complete | lem:prefix proof, lines 522–527 | Dyadic prefix decomposition and logarithmic row estimate | 2026-10-09T07:43:58.6653854-04:00
+complete | lem:prefix, lines 508–514 and 522–527 | Nested projection increments and exact logarithmic prefix bound | 2026-10-09T07:49:01.1014365-04:00
+complete | lem:prefix, lines 508–514 and 524–527 | Noncommuting products of nested projection layers | 2026-10-09T07:53:09.8162355-04:00
+complete | eq:product-jump, lines 515–519 and 529–534 | Product telescoping and square-sum jump estimate | 2026-10-09T07:59:32.7934472-04:00
 complete | lem:prefix, lines 519 and 534 | Disjoint-interval product jumps and empty products | 2026-10-09T08:06:08.5974719-04:00
 
 complete | lem:compression, line 579 | Explicit logarithmic prefix count and numerical restart contraction | 2026-10-09T10:45:41.2520088-04:00
@@ -212,77 +225,77 @@ complete | lem:compression, lines 550 and 597 | Finite row averages for arbitrar
 
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
-complete | lem:budget-rules, lines 82Ã¢â‚¬â€œ101 | Sums and products of quasipolynomial bounds | 2026-10-08T21:53:39.6248575-04:00
-complete | lem:budget-rules, lines 82Ã¢â‚¬â€œ101 | Positive fixed powers and compositions | 2026-10-08T21:53:39.6248575-04:00
-complete | lem:budget-rules, lines 82Ã¢â‚¬â€œ101 | Polynomial logarithmic bounds and parameter-uniform degrees | 2026-10-08T21:58:59.7690527-04:00
-complete | lem:budget-rules, lines 82Ã¢â‚¬â€œ101 | Compression overhead bound in logarithmic k | 2026-10-08T21:58:59.7690527-04:00
-complete | lem:budget-rules, lines 82Ã¢â‚¬â€œ101 | Domination by every positive power of P | 2026-10-08T21:58:59.7690527-04:00
-complete | lem:fourier-foundation, lines 137Ã¢â‚¬â€œ157 | Separated-frequency rows, multipliers, finite Schur test, and Hilbert duality | 2026-10-08T23:05:08-04:00
-complete | lem:fourier-foundation, lines 143Ã¢â‚¬â€œ158 | Quadratic oscillatory integral | 2026-10-08T23:10:30-04:00
-complete | cube-definition, lines 162Ã¢â‚¬â€œ175 | Probability counting measure and normalized finite convolution | 2026-10-08T23:24:00-04:00
-complete | lem:finite-fourier, lines 190Ã¢â‚¬â€œ213 | Finite cyclic Fourier inversion, Parseval, and convolution | 2026-10-08T23:48:00-04:00
-complete | lem:finite-fourier, lines 192Ã¢â‚¬â€œ213 | U2 Fourier identity and U3 recursion | 2026-10-08T23:48:00-04:00
-complete | lem:vector-maximal, lines 240Ã¢â‚¬â€œ251 | Real-line transport and Mq mixed norm power identities | 2026-10-09T00:53:14.8239152-04:00
-complete | line 67 and lem:vector-maximal, lines 240Ã¢â‚¬â€œ251 | Uncentered maximal comparison and source specialization | 2026-10-09T04:03:13.5692952-04:00
-complete | lem:lattice-box, lines 329Ã¢â‚¬â€œ331 | Reduced basis and uniform weighted coordinate bound | 2026-10-09T02:38:35.6077786-04:00
-complete | lem:lattice-box, lines 332Ã¢â‚¬â€œ336 | Integer side lengths, active basis subset, and norm budget | 2026-10-09T02:40:44.5036572-04:00
-complete | lem:lattice-box, lines 337Ã¢â‚¬â€œ342 | Explicit radius and containment of small lattice vectors | 2026-10-09T02:43:55.2702442-04:00
+complete | lem:budget-rules, lines 82–101 | Sums and products of quasipolynomial bounds | 2026-10-08T21:53:39.6248575-04:00
+complete | lem:budget-rules, lines 82–101 | Positive fixed powers and compositions | 2026-10-08T21:53:39.6248575-04:00
+complete | lem:budget-rules, lines 82–101 | Polynomial logarithmic bounds and parameter-uniform degrees | 2026-10-08T21:58:59.7690527-04:00
+complete | lem:budget-rules, lines 82–101 | Compression overhead bound in logarithmic k | 2026-10-08T21:58:59.7690527-04:00
+complete | lem:budget-rules, lines 82–101 | Domination by every positive power of P | 2026-10-08T21:58:59.7690527-04:00
+complete | lem:fourier-foundation, lines 137–157 | Separated-frequency rows, multipliers, finite Schur test, and Hilbert duality | 2026-10-08T23:05:08-04:00
+complete | lem:fourier-foundation, lines 143–158 | Quadratic oscillatory integral | 2026-10-08T23:10:30-04:00
+complete | cube-definition, lines 162–175 | Probability counting measure and normalized finite convolution | 2026-10-08T23:24:00-04:00
+complete | lem:finite-fourier, lines 190–213 | Finite cyclic Fourier inversion, Parseval, and convolution | 2026-10-08T23:48:00-04:00
+complete | lem:finite-fourier, lines 192–213 | U2 Fourier identity and U3 recursion | 2026-10-08T23:48:00-04:00
+complete | lem:vector-maximal, lines 240–251 | Real-line transport and Mq mixed norm power identities | 2026-10-09T00:53:14.8239152-04:00
+complete | line 67 and lem:vector-maximal, lines 240–251 | Uncentered maximal comparison and source specialization | 2026-10-09T04:03:13.5692952-04:00
+complete | lem:lattice-box, lines 329–331 | Reduced basis and uniform weighted coordinate bound | 2026-10-09T02:38:35.6077786-04:00
+complete | lem:lattice-box, lines 332–336 | Integer side lengths, active basis subset, and norm budget | 2026-10-09T02:40:44.5036572-04:00
+complete | lem:lattice-box, lines 337–342 | Explicit radius and containment of small lattice vectors | 2026-10-09T02:43:55.2702442-04:00
 complete | lem:lattice-box, lines 325, 344 | Partial sums, empty box, and complete coefficient-box theorem | 2026-10-09T02:46:06.8602077-04:00
 complete | lem:torus-annihilator, line 358 | Integer basis coordinate automorphism and annihilator model | 2026-10-09T02:52:41.7613034-04:00
 complete | lem:torus-annihilator, line 358 | Coordinate torus homeomorphism and connectedness | 2026-10-09T02:57:38.6589457-04:00
-complete | lem:torus-annihilator, lines 350Ã¢â‚¬â€œ352, 358 | Haar character integral equals the lattice indicator | 2026-10-09T03:02:30.0789289-04:00
-complete | lem:torus-annihilator, lines 354Ã¢â‚¬â€œ358 | Nonzero integer multiplication and progression surjectivity | 2026-10-09T03:05:20.2536652-04:00
-complete | lem:torus-annihilator, lines 358Ã¢â‚¬â€œ360 | Progression map preserves Haar probability | 2026-10-09T03:13:39.7011648-04:00
+complete | lem:torus-annihilator, lines 350–352, 358 | Haar character integral equals the lattice indicator | 2026-10-09T03:02:30.0789289-04:00
+complete | lem:torus-annihilator, lines 354–358 | Nonzero integer multiplication and progression surjectivity | 2026-10-09T03:05:20.2536652-04:00
+complete | lem:torus-annihilator, lines 358–360 | Progression map preserves Haar probability | 2026-10-09T03:13:39.7011648-04:00
 complete | lem:absolute, line 390 | Reciprocal exponent polytope is the convex hull of Boolean endpoints | 2026-10-09T03:19:36.5033979-04:00
-complete | lem:absolute, line 392 | Positive interpolation by finite HÃƒÂ¶lder | 2026-10-09T03:24:08.0681733-04:00
-complete | eq:local and lem:absolute, lines 366Ã¢â‚¬â€œ388 | Real local form and endpoint change of variables estimates | 2026-10-09T03:30:47.0555808-04:00
+complete | lem:absolute, line 392 | Positive interpolation by finite Hölder | 2026-10-09T03:24:08.0681733-04:00
+complete | eq:local and lem:absolute, lines 366–388 | Real local form and endpoint change of variables estimates | 2026-10-09T03:30:47.0555808-04:00
 complete | lem:absolute, line 394 | Torus and integer lattice endpoint estimates | 2026-10-09T03:37:20.9352088-04:00
-complete | eq:absolute, lines 378Ã¢â‚¬â€œ396 | Full positive local form estimate in all three settings | 2026-10-09T03:55:09.8722956-04:00
-complete | eq:local, eq:marginals and eq:CN, lines 364Ã¢â‚¬â€œ403 | Dyadic grid and admissible kernel-family data | 2026-10-09T04:11:38.5255697-04:00
+complete | eq:absolute, lines 378–396 | Full positive local form estimate in all three settings | 2026-10-09T03:55:09.8722956-04:00
+complete | eq:local, eq:marginals and eq:CN, lines 364–403 | Dyadic grid and admissible kernel-family data | 2026-10-09T04:11:38.5255697-04:00
 complete | lem:finite-CN, line 409 | Local norms bounded by uncentered maximal functions | 2026-10-09T04:15:03.5938819-04:00
 complete | lem:finite-CN, line 409 | Disjoint depth summation gives linear depth bound | 2026-10-09T04:22:34.3225331-04:00
-complete | eq:CN, lines 398Ã¢â‚¬â€œ403 | Real supremum of positive finite-denominator ratios | 2026-10-09T04:24:35.3227759-04:00
-complete | lem:finite-CN, lines 405Ã¢â‚¬â€œ411 | Least constant, zero denominator and infinite denominator cases | 2026-10-09T04:26:36.8900084-04:00
-complete | column-data, lines 470Ã¢â‚¬â€œ481 | Finite private-coordinate column data and inherited masks | 2026-10-09T06:26:52.2367035-04:00
-complete | column-data, lines 480Ã¢â‚¬â€œ483 | Cell-supported L2 columns and finite-dimensional projection ranges | 2026-10-09T06:31:55.2415063-04:00
-complete | column-data, lines 480Ã¢â‚¬â€œ483 | Restriction to descendants preserves old column combinations | 2026-10-09T06:37:27.8067536-04:00
-complete | column-data, lines 480Ã¢â‚¬â€œ483 | Cell support and orthogonality of disjoint column ranges | 2026-10-09T06:40:45.5650753-04:00
-complete | column-data, lines 480Ã¢â‚¬â€œ483 | Finite stopping-partition ranges and direct-sum projections | 2026-10-09T06:43:15.1970088-04:00
-complete | column-data, lines 480Ã¢â‚¬â€œ483 | Refinement range inclusion and nested orthogonal projections | 2026-10-09T06:47:42.2970661-04:00
+complete | eq:CN, lines 398–403 | Real supremum of positive finite-denominator ratios | 2026-10-09T04:24:35.3227759-04:00
+complete | lem:finite-CN, lines 405–411 | Least constant, zero denominator and infinite denominator cases | 2026-10-09T04:26:36.8900084-04:00
+complete | column-data, lines 470–481 | Finite private-coordinate column data and inherited masks | 2026-10-09T06:26:52.2367035-04:00
+complete | column-data, lines 480–483 | Cell-supported L2 columns and finite-dimensional projection ranges | 2026-10-09T06:31:55.2415063-04:00
+complete | column-data, lines 480–483 | Restriction to descendants preserves old column combinations | 2026-10-09T06:37:27.8067536-04:00
+complete | column-data, lines 480–483 | Cell support and orthogonality of disjoint column ranges | 2026-10-09T06:40:45.5650753-04:00
+complete | column-data, lines 480–483 | Finite stopping-partition ranges and direct-sum projections | 2026-10-09T06:43:15.1970088-04:00
+complete | column-data, lines 480–483 | Refinement range inclusion and nested orthogonal projections | 2026-10-09T06:47:42.2970661-04:00
 complete | column-data, line 483 | Row-family square bound and exact decision-cell locality interface | 2026-10-09T06:50:38.6993511-04:00
-complete | lem:coeff, lines 487Ã¢â‚¬â€œ491 and 503 | Private-coordinate lower bound and column-sum upper bound | 2026-10-09T07:00:16.0160019-04:00
+complete | lem:coeff, lines 487–491 and 503 | Private-coordinate lower bound and column-sum upper bound | 2026-10-09T07:00:16.0160019-04:00
 complete | lem:coeff, line 503 | Positive averaged Gram operator and inverse bound | 2026-10-09T07:11:31.5815479-04:00
 complete | lem:coeff, line 503 | Inverse-Gram formula for orthogonal projection coefficients | 2026-10-09T07:15:33.6342620-04:00
 complete | lem:coeff, line 503 | Pointwise projection kernel formula and norm bound | 2026-10-09T07:20:53.0092731-04:00
-complete | lem:coeff, lines 492Ã¢â‚¬â€œ495 | D5 average-to-supremum projection bound | 2026-10-09T07:23:24.4128418-04:00
-complete | eq:predictor-moment, lines 496Ã¢â‚¬â€œ503 | Predictor moment identity and coefficient uniqueness | 2026-10-09T07:32:32.3778862-04:00
-complete | lem:prefix, lines 508Ã¢â‚¬â€œ535 | Nested-product row, successive-jump and disjoint-interval estimates | 2026-10-09T08:06:08.5974719-04:00
+complete | lem:coeff, lines 492–495 | D5 average-to-supremum projection bound | 2026-10-09T07:23:24.4128418-04:00
+complete | eq:predictor-moment, lines 496–503 | Predictor moment identity and coefficient uniqueness | 2026-10-09T07:32:32.3778862-04:00
+complete | lem:prefix, lines 508–535 | Nested-product row, successive-jump and disjoint-interval estimates | 2026-10-09T08:06:08.5974719-04:00
 complete | lem:compression, lines 553 and 569 | Extend inherited masks to the completed tree while preserving original projections | 2026-10-09T08:24:02.1251863-04:00
 complete | lem:compression, line 553 | Doubling-average stopping roots, size segments and terminal cut partitions | 2026-10-09T08:47:11.4674460-04:00
 complete | lem:compression, line 553 | Cut-cell averages are at most four times the segment-root average | 2026-10-09T08:49:22.6254717-04:00
-complete | eq:moment-representative, lines 555Ã¢â‚¬â€œ556 | Cut-supported projections onto segment-ancestor columns | 2026-10-09T08:54:01.9618301-04:00
-complete | eq:moment-representative, lines 558Ã¢â‚¬â€œ559 | Uniform bound and projection energy identity for moment representatives | 2026-10-09T08:58:12.3591228-04:00
-complete | eq:moment-representative, lines 559Ã¢â‚¬â€œ561 | Preservation of every first-layer segment projection | 2026-10-09T09:04:40.8956322-04:00
-complete | lem:compression, lines 561Ã¢â‚¬â€œ564 | Dyadic maximal L2 bound and square-average stopping energy | 2026-10-09T09:27:18.1036025-04:00
+complete | eq:moment-representative, lines 555–556 | Cut-supported projections onto segment-ancestor columns | 2026-10-09T08:54:01.9618301-04:00
+complete | eq:moment-representative, lines 558–559 | Uniform bound and projection energy identity for moment representatives | 2026-10-09T08:58:12.3591228-04:00
+complete | eq:moment-representative, lines 559–561 | Preservation of every first-layer segment projection | 2026-10-09T09:04:40.8956322-04:00
+complete | lem:compression, lines 561–564 | Dyadic maximal L2 bound and square-average stopping energy | 2026-10-09T09:27:18.1036025-04:00
 complete | lem:compression, line 565 | Logarithmic aggregate energy of moment representatives | 2026-10-09T09:52:57.8411587-04:00
 complete | lem:compression, line 567 | Common coefficient space and cell-product representation | 2026-10-09T09:55:47.6236077-04:00
 complete | lem:compression, line 567 | Coefficient anchors and finite restart attempts | 2026-10-09T10:05:12.9968656-04:00
-complete | lem:compression, lines 569Ã¢â‚¬â€œ572 | Refining anchor partitions and private-coordinate jump lower bounds | 2026-10-09T10:23:00.3276588-04:00
-complete | lem:compression, lines 570Ã¢â‚¬â€œ572 | Integrated restart-length jump budget | 2026-10-09T10:30:10.1098631-04:00
-complete | lem:compression, lines 573Ã¢â‚¬â€œ578 | Restart length and energy contraction ratios | 2026-10-09T10:39:00.3980632-04:00
+complete | lem:compression, lines 569–572 | Refining anchor partitions and private-coordinate jump lower bounds | 2026-10-09T10:23:00.3276588-04:00
+complete | lem:compression, lines 570–572 | Integrated restart-length jump budget | 2026-10-09T10:30:10.1098631-04:00
+complete | lem:compression, lines 573–578 | Restart length and energy contraction ratios | 2026-10-09T10:39:00.3980632-04:00
 complete | lem:compression, line 579 | Specialize numerical contraction below one half | 2026-10-09T10:49:05.5614132-04:00
 complete | lem:compression, line 579 | Total attempt length and energy packing | 2026-10-09T11:04:34.5127904-04:00
 complete | lem:compression, line 581 | Finite attempt-root and last-anchor assignment | 2026-10-09T11:08:49.1472456-04:00
 complete | lem:compression, line 581 | Anchor row control from the nested-product prefix theorem | 2026-10-09T11:13:59.1976582-04:00
-complete | lem:compression, lines 587Ã¢â‚¬â€œ589 | Birth-supported columns and integrated path-budget bound | 2026-10-09T11:17:53.2464169-04:00
-complete | lem:compression, lines 581Ã¢â‚¬â€œ584 | Exact local coefficient-error formula | 2026-10-09T11:21:52.8936208-04:00
-complete | lem:compression, lines 585Ã¢â‚¬â€œ589 | Coefficient-error row estimate from the original Bessel bound | 2026-10-09T11:29:19.1331720-04:00
-complete | lem:compression, lines 592Ã¢â‚¬â€œ595 | Combine anchor and error rows on a fixed attempt | 2026-10-09T11:32:01.5588805-04:00
-complete | lem:compression, lines 591Ã¢â‚¬â€œ595 | Sum attempt packing within each size segment | 2026-10-09T11:35:05.9756521-04:00
-complete | lem:compression, lines 591Ã¢â‚¬â€œ595 | Sum size segments using logarithmic moment energy | 2026-10-09T11:40:16.3109986-04:00
+complete | lem:compression, lines 587–589 | Birth-supported columns and integrated path-budget bound | 2026-10-09T11:17:53.2464169-04:00
+complete | lem:compression, lines 581–584 | Exact local coefficient-error formula | 2026-10-09T11:21:52.8936208-04:00
+complete | lem:compression, lines 585–589 | Coefficient-error row estimate from the original Bessel bound | 2026-10-09T11:29:19.1331720-04:00
+complete | lem:compression, lines 592–595 | Combine anchor and error rows on a fixed attempt | 2026-10-09T11:32:01.5588805-04:00
+complete | lem:compression, lines 591–595 | Sum attempt packing within each size segment | 2026-10-09T11:35:05.9756521-04:00
+complete | lem:compression, lines 591–595 | Sum size segments using logarithmic moment energy | 2026-10-09T11:40:16.3109986-04:00
 complete | eq:compression, line 597 | Polynomial prefix constant and final depth-independent estimate | 2026-10-09T11:51:55.5962485-04:00
-complete | lem:compression, lines 548Ã¢â‚¬â€œ550 and 597 | Spatial compression for projection complements | 2026-10-09T12:04:59.1914717-04:00
-complete | lem:compression, lines 548Ã¢â‚¬â€œ550 and 597 | Fixed averages with total-variation cost | 2026-10-09T12:16:34.1914303-04:00
+complete | lem:compression, lines 548–550 and 597 | Spatial compression for projection complements | 2026-10-09T12:04:59.1914717-04:00
+complete | lem:compression, lines 548–550 and 597 | Fixed averages with total-variation cost | 2026-10-09T12:16:34.1914303-04:00
 complete | def:chart, lines 625-637 | Quadratic chart data, atom formula, Gevrey complexity and boundedness | 2026-10-09T13:37:25.5127427-04:00
 complete | def:chart, lines 635-637 | Finite lattice summands and pointwise counting | 2026-10-09T13:43:28.7736816-04:00
 complete | def:chart, lines 635-637 | Zero-dimensional phases and quasipolynomial normalization | 2026-10-09T13:55:36.3709952-04:00
@@ -327,10 +340,61 @@ complete | lem:local-symmetry, lines 983-989 | Large local spectrum set and ordi
 complete | lem:local-symmetry, lines 990-999 | Local Fourier decay on the iterated spectrum difference set | 2026-10-09T18:58:12.158953-04:00
 complete | lem:local-symmetry, lines 1000-1007 | Dense Bohr subdomain and refined radius | 2026-10-09T19:02:00.616408-04:00
 complete | lem:local-symmetry, lines 1008-1013 | Doubling the Bohr domain and controlling the alternating phase | 2026-10-09T19:06:12.639691-04:00
-in progress | lem:local-symmetry, lines 1015-1017 | Polynomial complexity and complete local symmetry theorem | 2026-10-09T19:06:12.639691-04:00
-not started | Declaration local-chart, line 1086 | THT.Gowers.locallyQuadraticChart | 2026-10-08T21:50:31.6115335-04:00
-not started | Declaration finite-inverse, line 1161 | THT.Gowers.finiteChartInverse | 2026-10-08T21:50:31.6115335-04:00
-not started | Declaration inverse, line 1241 | THT.Chart.continuousInverseAndDecomposition | 2026-10-08T21:50:31.6115335-04:00
+complete | lem:local-symmetry, lines 951-1015 | Correlation assembly with explicit complexity cost | 2026-10-09T19:11:42.409035-04:00
+complete | lem:local-symmetry, lines 1015-1016 | Logarithmic bounds for inner radius, mass and decay constant | 2026-10-09T19:16:27.238754-04:00
+complete | lem:local-symmetry, line 1017 | Polynomial complexity and complete local symmetry theorem | 2026-10-09T19:20:45.754745-04:00
+complete | lem:local-chart, lines 1035-1039 | Cyclic Bohr full lattice, integer sublattice and quotient map | 2026-10-09T19:32:50.336387-04:00
+complete | lem:local-chart, lines 1041 | Scaled coefficient box and injective Bohr projection | 2026-10-09T19:40:07.707715-04:00
+complete | lem:local-chart, lines 1043-1052 | Local additivity on coefficient paths and quadratic polynomial | 2026-10-09T19:45:55.943219-04:00
+complete | lem:local-chart, lines 1054-1057 | Integral dual basis and integer linear coordinate formula | 2026-10-09T19:53:23.591614-04:00
+complete | lem:local-chart, line 1054 | Supported centered lift and coefficient-box containment | 2026-10-09T19:58:25.698286-04:00
+complete | lem:local-chart, lines 1058-1067 | Coefficient reduction modulo one and phase substitution | 2026-10-09T20:06:09.245399-04:00
+complete | lem:local-chart, lines 1069-1076 | Rational block chart and partitioned lattice-sum formula | 2026-10-09T20:16:55.633272-04:00
+complete | lem:local-chart, line 1078 | Integer values and global boundedness of the constructed chart | 2026-10-09T20:25:07.731526-04:00
+complete | lem:local-chart, lines 1080-1082 | Tensor cutoff and bounded quadratic-phase derivative estimates | 2026-10-09T20:31:36.297204-04:00
+complete | lem:local-chart, line 1082 | Uniform Gevrey bound for the actual doubled amplitude | 2026-10-09T20:40:24.117674-04:00
+complete | lem:local-chart, line 1084 | Quasipolynomial complexity and complete local-chart theorem | 2026-10-09T20:48:31.840712-04:00
+complete | thm:finite-inverse, lines 1100-1104 | Weighted translate mass and supported basepoint selection | 2026-10-09T20:54:41.974919-04:00
+complete | thm:finite-inverse, lines 1104-1107 | Affine derivative frequency on the selected Bohr translate | 2026-10-09T20:56:47.026006-04:00
+complete | thm:finite-inverse, lines 1109-1114 | Phase alignment and the initial local correlation | 2026-10-09T21:05:49.911267-04:00
+complete | thm:finite-inverse, lines 1116-1120 | Symmetry refinement and quantitative final radius | 2026-10-09T21:09:38.705201-04:00
+complete | thm:finite-inverse, lines 1122-1127 | Shift averaging, weight error and supported translate selection | 2026-10-09T21:15:18.744942-04:00
+complete | thm:finite-inverse, lines 1128-1132 | Spatial localization to the two weighted variables | 2026-10-09T21:17:08.202449-04:00
+complete | thm:finite-inverse, lines 1133-1146 | Skew-phase replacement and exact local polarization | 2026-10-09T21:21:25.675914-04:00
+complete | thm:finite-inverse, lines 1148-1157 | Fourier extraction of weighted quadratic correlation | 2026-10-09T21:31:20.163041-04:00
+complete | thm:finite-inverse, line 1159 | Translated modulated bounded chart and exact input correlation | 2026-10-09T21:36:08.443678-04:00
+complete | thm:finite-inverse, lines 1114, 1120, 1159 | Common uniform quasipolynomial budget for all parameters | 2026-10-09T21:41:51.375657-04:00
+complete | thm:finite-inverse, lines 1088-1159 | Complete finite inverse theorem | 2026-10-09T21:49:19.044725-04:00
+complete | lem:inverse, lines 1183-1187 | Cell averages, boundedness and no-wraparound supported cubes | 2026-10-09T21:57:25.027189-04:00
+complete | lem:inverse, lines 1187-1189 | Continuous supported cube Riemann sums and torus Haar identification | 2026-10-09T22:40:10.827785-04:00
+complete | lem:inverse, line 1189 | Eight-factor L1 stability of bounded cube averages | 2026-10-09T22:46:03.160480-04:00
+complete | lem:inverse, line 1189 | L1 contraction of cell averaging with the cyclic normalization | 2026-10-09T22:50:58.257869-04:00
+complete | lem:inverse, line 1189 | Unit-bounded continuous interior approximation in L1 | 2026-10-09T22:58:58.412183-04:00
+complete | lem:inverse, line 1189 | Uniform approximation and convergence for bounded measurable functions | 2026-10-09T23:04:40.289792-04:00
+complete | lem:inverse, lines 1191-1195 | Selection and normalization of the finite inverse witness | 2026-10-09T23:13:58.884082-04:00
+complete | lem:inverse, lines 1197 | Integer-preserving reduction of unrestricted chart parameters | 2026-10-09T23:21:20.646135-04:00
+complete | lem:inverse, lines 1199-1214 | Exact floor interpolation and global boundedness | 2026-10-09T23:34:58.757115-04:00
+complete | lem:inverse, lines 1214 | Uniform Gevrey complexity of the interpolated chart | 2026-10-09T23:56:35.703403-04:00
+complete | lem:inverse, lines 1216 | Cell integral identity and the continuous inverse witness on intervals | 2026-10-10T00:18:30.324507-04:00
+complete | lem:inverse, lines 1218 | L2 realization of the interval U3 seminorm | 2026-10-10T00:38:41.342043-04:00
+complete | lem:inverse, lines 1218-1237 | Balanced convex separation and the three dual bounds | 2026-10-10T00:48:24.870995-04:00
+complete | lem:inverse, line 1239 | Inverse contradiction and finite L2 decomposition | 2026-10-10T01:01:37.792154-04:00
+complete | lem:inverse, lines 1173-1183 and 1239 | Probability-L2 interval normalization and general-interval decomposition | 2026-10-10T01:10:05.218436-04:00
+complete | lem:inverse, line 1239 | One quasipolynomial chart and coefficient budget | 2026-10-10T01:15:13.747585-04:00
+complete | lem:inverse, lines 1173-1241 | Complete continuous inverse and decomposition theorem | 2026-10-10T01:15:13.747585-04:00
+complete | lem:return-splitting, lines 1265-1269 | Short-return bilinear identity, integer pairing and isotropy | 2026-10-10T01:24:38.000193-04:00
+complete | lem:return-splitting, lines 1271 | Zero-dimensional short-return bound | 2026-10-10T01:30:55.935946-04:00
+complete | lem:return-splitting, lines 1271-1275 | Symmetric convex return body with nonempty interior | 2026-10-10T01:35:52.287571-04:00
+complete | lem:return-splitting, lines 1275-1279 | An empty interval of successive minima | 2026-10-10T01:40:59.595572-04:00
+complete | lem:return-splitting, lines 1279-1281 | Isotropic span of short return lattice points | 2026-10-10T01:53:23.972865-04:00
+complete | lem:return-splitting, line 1281 | Rank gap and annihilation by short dual vectors | 2026-10-10T01:56:30.407663-04:00
+complete | lem:return-splitting, line 1281 | Transference dual basis spanning the orthogonal complement | 2026-10-10T02:00:10.647428-04:00
+complete | lem:return-splitting, line 1281 | Dual coordinate and velocity-pairing bounds | 2026-10-10T02:03:22.340765-04:00
+complete | lem:return-splitting, lines 1281-1285 | Rational slow projection with controlled height | 2026-10-10T02:08:39.251119-04:00
+complete | lem:return-splitting, lines 1281-1285 | Bounded slow velocity | 2026-10-10T02:15:13.227933-04:00
+complete | lem:return-splitting, lines 1287-1292 | Quantitative coordinate-axis returns by torus pigeonhole | 2026-10-10T02:19:35.514095-04:00
+complete | lem:return-splitting, lines 1293-1300 | Effective quadratic identity and column bounds | 2026-10-10T02:30:17.767922-04:00
+in progress | lem:return-splitting, lines 1300 | Uniform quasipolynomial short-return budget | 2026-10-10T02:30:17.767922-04:00
 not started | Declaration return-splitting, line 1302 | THT.Chart.shortReturnSplitting | 2026-10-08T21:50:31.6115335-04:00
 not started | Declaration weyl, line 1335 | THT.Chart.weylSplitting | 2026-10-08T21:50:31.6115335-04:00
 not started | Declaration chart-fourier, line 1379 | THT.Chart.splitFourierExpansion | 2026-10-08T21:50:31.6115335-04:00

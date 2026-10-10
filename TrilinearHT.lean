@@ -7,6 +7,7 @@ module
 
 public import TrilinearHT.Auto.TrilinearHilbertTransform
 public import TrilinearHT.Auto.FeffermanStein
+public import TrilinearHT.Auto.HilbertAtomicDecomposition
 
 /-!
 # Trilinear Hilbert transform
