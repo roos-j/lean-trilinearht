@@ -15,8 +15,14 @@ public import TrilinearHT.Auto.SecBaseReductionBase
 public import TrilinearHT.Auto.SecBaseReductionBaseAssembly
 public import TrilinearHT.Auto.SecCurvatureLocalization
 public import TrilinearHT.Auto.SecCurvatureLocalizationCatalogs
+public import TrilinearHT.Auto.SecCurvatureLocalizationBinary
+public import TrilinearHT.Auto.SecFixedModes
+public import TrilinearHT.Auto.SecTwoSideEstimate
+public import TrilinearHT.Auto.SecCoreTerms
+public import TrilinearHT.Auto.SecCompletion
 public import TrilinearHT.Auto.FeffermanStein
 public import TrilinearHT.Auto.HilbertAtomicDecomposition
+public import TrilinearHT.Auto.MinkowskiIntegralInequality
 
 /-!
 # Trilinear Hilbert transform

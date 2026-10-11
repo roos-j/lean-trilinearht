@@ -2,9 +2,9 @@
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-not started | 2026-10-08 21:50:31 ET | thm:main, lines 2934–2941 | Uniform L3 trilinear Hilbert transform estimate
-not started | 2026-10-08 21:50:31 ET | thm:main, lines 2984–2992 | Pointwise principal value on Schwartz inputs
-not started | 2026-10-08 21:50:31 ET | thm:main, lines 2999–3009 | Unique bounded extension to L3 triples
+not started | 2026-10-11 13:53:48 ET | thm:main, lines 2934–2941 | Uniform L3 THT estimate: proved given prop:normalized (tht_main_of_uniform); prop:normalized open
+complete | 2026-10-11 11:29:42 ET | thm:main, lines 2984–2992 | Pointwise principal value on Schwartz inputs (Auto.thtTruncated_tendsto)
+complete | 2026-10-11 11:35:58 ET | thm:main, lines 2999–3009 | Unique bounded L3 extension given the bound (Auto.schwartz_L3_unique_extension)
 
 # Quantitative quadratic chart calculus prerequisite
 
@@ -221,6 +221,14 @@ complete | 2026-10-09 10:45:41 ET | lem:compression, line 579 | Explicit logarit
 complete | 2026-10-09 11:43:48 ET | lem:compression, line 597 | General cubic layer-count and logarithmic budget prefix bound
 complete | 2026-10-09 11:56:34 ET | lem:compression, line 597 | General complement-product expansion and finite row bound
 complete | 2026-10-09 12:11:54 ET | lem:compression, lines 550 and 597 | Finite row averages for arbitrary complex measures and total variation
+
+# Minkowski integral inequality prerequisite
+
+Justification: lem:shortblock (lines 2328-2340: "Minkowski and the sign moments give (E‖F^σ(n,·)‖_2^a)^(1/a) ≤ C_a e_j(n)", and the deletion bound) needs Minkowski's integral inequality (L^p norm of an integral at most the integral of L^p norms). Searches of pinned Mathlib (MeasureTheory/Integral/MeanInequalities: only the two-function Minkowski inequality) and the repository found no integral version. It is a named textbook theorem (Stein, Singular Integrals, Appendix A.1; Hardy–Littlewood–Pólya, Inequalities, Thm 202). Stated for ℝ≥0∞-valued jointly measurable f, σ-finite μ, s-finite ν, p ≥ 1, depending only on Mathlib, in TrilinearHT/Auto/MinkowskiIntegralInequality.lean. Recorded before creation at 2026-10-11 14:44:15 ET.
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-11 14:47:28 ET | lem:shortblock, line 2330 | Minkowski integral inequality via Hölder duality and truncation (lintegral_minkowski)
 
 # Main proof ledger
 
@@ -486,35 +494,93 @@ complete | 2026-10-11 07:43:32 ET | lem:whole-ranges, proof line 1785 | Combined
 complete | 2026-10-11 07:43:32 ET | Declaration whole-ranges, line 1791 | THT.Localization.usableRangeBessel (usableRangeBessel)
 complete | 2026-10-11 08:45:32 ET | same-tag, line 1813 | One-term bound: plane change of variables, slot triple as convolution form, kernel Fourier expansion (slotTriple_form_le)
 complete | 2026-10-11 08:45:32 ET | same-tag, lines 1800-1810 | Exact phase transfer and unit-piece decomposition (tag_transfer_pointwise)
-in progress | 2026-10-11 08:45:32 ET | same-tag, line 1810 | Periodized source expansion with quasipolynomial coefficient mass; form assembly into sameTagTemplateTest
-not started | 2026-10-08 21:50:31 ET | Declaration closure, line 1832 | THT.Localization.catalogClosure
-not started | 2026-10-08 21:50:31 ET | Declaration localize, line 1856 | THT.Localization.binaryGroupExpansion
-not started | 2026-10-08 21:50:31 ET | Declaration variation, line 1879 | THT.Localization.certifiedVariation
-not started | 2026-10-08 21:50:31 ET | Declaration first-match, line 1936 | THT.Modes.firstMatchExpansionAndLift
-not started | 2026-10-08 21:50:31 ET | Declaration mode-schedule, line 1976 | THT.Modes.chooseSchedule
-not started | 2026-10-08 21:50:31 ET | Declaration tiny-space, line 2000 | THT.Modes.exceptionalBlocksAndTinySpan
-not started | 2026-10-08 21:50:31 ET | Declaration stabilize, line 2029 | THT.Modes.heightStabilization
-not started | 2026-10-08 21:50:31 ET | Declaration coherence, line 2047 | THT.Modes.goodPredicateCoherence
-not started | 2026-10-08 21:50:31 ET | Declaration mode-rows, line 2059 | THT.Modes.separatedProjectionRows
-not started | 2026-10-08 21:50:31 ET | Declaration lift-composition, line 2077 | THT.Modes.composeLiftWithMainHistories
-not started | 2026-10-08 21:50:31 ET | Declaration linear-side, line 2120 | THT.Modes.linearSideSquareEnergy
-not started | 2026-10-08 21:50:31 ET | Declaration offset-selection, line 2157 | THT.Modes.selectOffsetsByMajorant
-not started | 2026-10-08 21:50:31 ET | Declaration side-caps, line 2166 | THT.Modes.retainedSideCaps
-not started | 2026-10-08 21:50:31 ET | Declaration helpers, line 2169 | THT.Localization.instantiateHelperCatalog
-not started | 2026-10-08 21:50:31 ET | Declaration representatives, line 2194 | THT.Modes.hereditaryRepresentatives
-not started | 2026-10-08 21:50:31 ET | Declaration component-sizes, line 2210 | THT.Modes.componentSizeComparison
-not started | 2026-10-08 21:50:31 ET | Declaration tops, line 2231 | THT.Modes.firstTopCount
-not started | 2026-10-08 21:50:31 ET | Declaration transfer, line 2265 | THT.Sides.transferComplementaryFilters
-not started | 2026-10-08 21:50:31 ET | Declaration shortblock, line 2369 | THT.Sides.shortBlockComparison
-not started | 2026-10-08 21:50:31 ET | Declaration power-costs, line 2390 | THT.Sides.threeSidePowerAndFreezing
-not started | 2026-10-08 21:50:31 ET | Declaration fixed-stacks, line 2423 | THT.Sides.fixedStackRepresentation
-not started | 2026-10-08 21:50:31 ET | Declaration side-estimate, line 2456 | THT.Sides.completeSideEstimate
-not started | 2026-10-08 21:50:31 ET | Declaration common-height, line 2480 | THT.Core.firstSuccessfulHeight
-not started | 2026-10-08 21:50:31 ET | Declaration frequency-tests, line 2585 | THT.Core.principalFrequencyTests
-not started | 2026-10-08 21:50:31 ET | Declaration sparse-count, line 2705 | THT.Counting.sparseProgressionMass
-not started | 2026-10-08 21:50:31 ET | Declaration tested-counts, line 2744 | THT.Core.testedTupleCounts
-not started | 2026-10-08 21:50:31 ET | Declaration distribution, line 2769 | THT.Counting.distributionPower
-not started | 2026-10-08 21:50:31 ET | Declaration core-estimate, line 2822 | THT.Core.poweredCoreEstimate
-not started | 2026-10-08 21:50:31 ET | Declaration normalized, line 2904 | THT.LocalForm.normalizedAbsorption
-not started | 2026-10-08 21:50:31 ET | Declaration uniform-local, line 2932 | THT.LocalForm.uniformEstimate
-not started | 2026-10-08 21:50:31 ET | Declaration main, line 3010 | THT.trilinearHilbertTransform_L3_L3_L3_L1
+complete | 2026-10-11 09:15:54 ET | same-tag, line 1810 | Periodized source expansion, quasipolynomial mass, form assembly (tag_single_term_le)
+complete | 2026-10-11 09:16:02 ET | Declaration same-tag, line 1817 | THT.Localization.sameTagTemplateTest (sameTagTemplateTest, tagTemplate_column)
+complete | 2026-10-11 09:25:17 ET | lem:closure, lines 1825-1829 | Trial count via eq:prefix with complements expanded (catalog_trial_count, catalog_rank_count)
+complete | 2026-10-11 09:25:17 ET | lem:closure, lines 1829-1831 | Path counts n_r = exp(r k^C₂): caps not attained, log n_(L+5) ≤ k^O(1) (closure_parameters)
+complete | 2026-10-11 09:25:17 ET | Declaration closure, line 1832 | THT.Localization.catalogClosure (catalogClosure)
+complete | 2026-10-11 09:34:44 ET | prop:localize, lines 1841-1843 | Binary color search: exact split-tree expansion, L leaves, height O(log L) (SplitTree, colorSearch)
+complete | 2026-10-11 09:34:44 ET | prop:localize, lines 1845-1852 | Leaf expansion: old sources, matching difference, pair separation, residual tests (leaf_localization)
+complete | 2026-10-11 09:34:44 ET | prop:localize, line 1858 | Cell minima distributed over leaves via eq:min-subadd (cell_min_leaves)
+complete | 2026-10-11 09:34:44 ET | Declaration localize, line 1856 | THT.Localization.binaryGroupExpansion (binaryGroupExpansion)
+complete | 2026-10-11 09:41:08 ET | lem:variation, line 1867 | Joint Bessel across groups from eq:whole-ranges by duality (joint_bessel_of_wholeRanges)
+complete | 2026-10-11 09:41:08 ET | lem:variation, lines 1870-1871 | Product jumps with compressed right factors (product_jumps_compression)
+complete | 2026-10-11 09:41:08 ET | Declaration variation, line 1879 | THT.Localization.certifiedVariation (certifiedVariation)
+complete | 2026-10-11 09:59:21 ET | first-match, line 1908 | eq:offset-mean for the periodic Gevrey branch cutoff (offsetMean)
+complete | 2026-10-11 09:59:21 ET | first-match, lines 1913-1922 | eq:firstmatch, eq:mode-differences from tagEdge via chartfourier (splitPhase, firstMatchExpansion)
+complete | 2026-10-11 09:59:21 ET | first-match, lines 1932-1940 | Pointwise lift to modes: exact synthesis, absolute norm bound (modeLift_synthesis, modeLift_norm_sq_le)
+complete | 2026-10-11 09:59:21 ET | Declaration first-match, line 1936 | THT.Modes.firstMatchExpansionAndLift (firstMatchExpansionAndLift)
+complete | 2026-10-11 10:13:41 ET | mode-schedule, line 1942 | eq:gauge-cancel with integer carries for four offsets (gauge_cancel, gaugeCarry_int)
+complete | 2026-10-11 10:13:41 ET | mode-schedule, line 1966 | eq:slope-variation on frozen pre-cells (slope_variation)
+complete | 2026-10-11 10:13:41 ET | Declaration mode-schedule, line 1976 | THT.Modes.chooseSchedule: eq:mode-parameters, polynomial logarithms (chooseSchedule)
+complete | 2026-10-11 10:21:11 ET | Declaration tiny-space, line 2000 | Auto.exceptional_blocks_count, Auto.tiny_span_closed (FixedModes)
+complete | 2026-10-11 10:30:16 ET | Declaration stabilize, line 2029 | Auto.height_stabilization, Auto.stable_heights_card (FixedModes; see ErrorReport)
+complete | 2026-10-11 10:35:00 ET | Declaration coherence, line 2047 | Auto.ModeComponents.good_same_predecessor, core_good_iff, core_bad_proportion
+complete | 2026-10-11 10:40:28 ET | Declaration mode-rows, line 2059 | Auto.separated_projection_rows, Auto.cell_cross_pair_le (FixedModes; see ErrorReport)
+complete | 2026-10-11 10:48:10 ET | Declaration lift-composition, line 2077 | Auto.compose_lift_with_main_histories (FixedModes; see ErrorReport)
+complete | 2026-10-11 10:48:10 ET | Declaration linear-side, line 2120 | Auto.linear_side_square_energy, chain_length_bound, sum_frac_le_log (see ErrorReport)
+complete | 2026-10-11 10:51:29 ET | Declaration offset-selection, line 2157 | Auto.select_offsets_by_majorant, majorant_offset_mean (see ErrorReport)
+complete | 2026-10-11 10:51:29 ET | Declaration side-caps, line 2166 | Auto.rolling_side_budget; cuts from DyadicStopping (see ErrorReport)
+complete | 2026-10-11 10:51:29 ET | Declaration helpers, line 2169 | Auto.catalogClosure (universal helper part on fixed bases)
+complete | 2026-10-11 10:54:28 ET | Declaration representatives, line 2194 | Auto.early_predecessor_nested, affine_separation_on_cell (see ErrorReport)
+complete | 2026-10-11 10:54:28 ET | Declaration component-sizes, line 2210 | Auto.component_size_comparison (FixedModes)
+complete | 2026-10-11 10:54:28 ET | Declaration tops, line 2231 | Auto.top_measure_absorb (FixedModes; see ErrorReport)
+complete | 2026-10-11 10:57:42 ET | Declaration transfer, line 2265 | Auto.transfer_identity, Auto.transfer_near_bands (TwoSideEstimate; see ErrorReport)
+complete | 2026-10-11 11:02:45 ET | Declaration shortblock, line 2369 | components only: fourth_moment_pairing, position_holder_sum; assembly open (ErrorReport)
+complete | 2026-10-11 14:01:33 ET | lem:shortblock, lines 2290-2296 | Leaf-depth rectangles partition depth tuples (DepthRect.existsUnique_mem, uniq_disjoint)
+complete | 2026-10-11 14:16:46 ET | lem:shortblock, lines 2298-2312 | δ-lattice decomposition; first kernel-sampling error per cell (latticeSampled_form_error)
+complete | 2026-10-11 14:28:54 ET | lem:shortblock, lines 2302-2326 | Fast lift; U_(j,γ) invariance and eq:fourth-moment for finite Fourier sums
+complete | 2026-10-11 14:31:58 ET | lem:shortblock, lines 2328-2332 | eq:window-mass, local bound, regular-slot bound ℓ + 2r_t (leaf_window_mass_le, window sums)
+complete | 2026-10-11 15:35:41 ET | lem:shortblock, lines 2334-2340 | Per-cell deletion bound, exponents (1,3,3,3), Hölder in (γ,σ) (per_cell_deletion_bound)
+complete | 2026-10-11 15:41:56 ET | lem:shortblock, lines 2340-2343 | Deletion summed over cells, depths, positions (deletion_sum_bound, deletion_threshold_cost)
+complete | 2026-10-11 16:02:13 ET | lem:shortblock, lines 2345-2357 | Interval inputs, progression of centers, second sampling error, eq:CN (interval_form_identity)
+complete | 2026-10-11 16:21:03 ET | lem:shortblock, lines 2357-2369 | Mixed Hölder, interval-input norms, window powers, block factor (mixed_holder_four, block_factor_bound)
+complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2302-2325 | Fast lift on T₀², L² fast form and S_N limit, maximalQ measurable (fast_lift_form, fast_form_tendsto)
+complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2307-2312 | Sampled form as lattice sum of fast forms; summed first sampling error (BlockData.total_eq, err1_bound)
+complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2314-2337 | Fatou over S_N, γ-invariance on T₀², heavy-slot split, window majorant (norm_latticeSum_le_windows)
+complete | 2026-10-11 18:43:03 ET | lem:shortblock, lines 2334-2369 | Per-rectangle bound: deletion, interval comparison, eq:CN main term, second error (BlockData.rect_bound)
+in progress | 2026-10-11 18:43:03 ET | lem:shortblock, line 2272 | eq:shortblock assembled: tree piece, leaf masks, rectangle and level sums, normalization
+complete | 2026-10-11 11:05:57 ET | Declaration power-costs, line 2390 | components: three_sides_power, min_le_rpow_mul (see ErrorReport)
+complete | 2026-10-11 11:05:57 ET | Declaration fixed-stacks, line 2423 | component: binary_prefix_expansion; eq:stack-energy open (ErrorReport)
+not started | 2026-10-11 13:57:00 ET | fixed-stacks, lines 2400-2423 | eq:stack-energy from product-jump estimates
+complete | 2026-10-11 11:05:57 ET | Declaration side-estimate, line 2456 | component: hull_maxima_cauchy_schwarz; assembly open (ErrorReport)
+not started | 2026-10-11 13:57:00 ET | side-estimate, lines 2425-2456 | Assembly: freezing flags, Rademacher selection, sparse split, eq:near-band
+complete | 2026-10-11 11:07:56 ET | Declaration common-height, line 2480 | components: first_success_weights_sum, all_good_proportion (see ErrorReport)
+complete | 2026-10-11 11:07:56 ET | Declaration frequency-tests, line 2585 | component: schur_test; Fourier tests open (ErrorReport)
+not started | 2026-10-11 13:57:00 ET | frequency-tests, lines 2500-2585 | eq:core-torus-form, eq:Haar-four, eq:four-tests, kernel decay
+complete | 2026-10-11 11:17:15 ET | Declaration sparse-count, line 2705 | components: minimal_growth_iteration, packing_card_le, count_balance_bound
+not started | 2026-10-11 13:57:00 ET | lem:sparse-count, lines 2587-2705 | Four-step paths, difference covers, slab cover, eq:sparse-count
+complete | 2026-10-11 11:23:11 ET | Declaration tested-counts, line 2744 | components: pair_difference_eq_zero, total_count_le (see ErrorReport)
+not started | 2026-10-11 13:57:00 ET | tested-counts, lines 2707-2744 | eq:triple-test, side incidence, eq:applied-sparse
+complete | 2026-10-11 11:17:15 ET | Declaration distribution, line 2769 | Auto.distribution_power (exact statement; CoreTerms)
+complete | 2026-10-11 11:17:15 ET | Declaration core-estimate, line 2822 | components: powered_count_exponents, amplitude_factor_le_one (ErrorReport)
+not started | 2026-10-11 13:57:00 ET | core-estimate, lines 2771-2822 | Hölder over groups, band sums, eq:core-final
+complete | 2026-10-11 11:20:02 ET | Declaration normalized, line 2904 | components: exists_exponent_near_two, absorption_power_bound (ErrorReport)
+not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2838-2840 | Attempt on an active setup: catalogs, colors, ball histories, leaf data
+not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2838-2840 | Attempt: first-match modes, offsets, linear sides, helpers instantiated
+not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2840-2843 | Cuts, exceptional roots ≤ |R|/4, restarts, root packing 4|R|/3
+not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2845-2848 | Cores, three sides and transfer decomposition of the active form
+not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2850-2858 | eq:before-absorption for a retained attempt
+not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2860-2890 | Choice of q, α, P; eq:active-final
+not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2892-2900 | Summing the update levels
+not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2902-2904 | Cutoff limit; eq:normalized (NormalizedAbsorption)
+complete | 2026-10-11 11:20:02 ET | thm:uniform-local, lines 2926-2931 | Absorption C_N ≤ 2 + 2CA (uniform_constant_absorption)
+complete | 2026-10-11 11:48:20 ET | thm:uniform-local, lines 2906-2908 | prop:normalized as a hypothesis (Auto.NormalizedAbsorption)
+complete | 2026-10-11 12:01:34 ET | thm:uniform-local, lines 2910-2915 | Stopping generations, first stops of total length ≤ abs(J)/4 (stops_measure_le)
+complete | 2026-10-11 12:01:34 ET | thm:uniform-local, lines 2916-2918 | Piece bound from prop:normalized after rescaling (piece_bound_of_normalized)
+complete | 2026-10-11 12:01:34 ET | thm:uniform-local, lines 2919-2924 | Sparse sets E_J, sum abs(J) prod a ≤ (4/3) ∫ prod M_q f (stop_sparse_bound)
+complete | 2026-10-11 12:01:34 ET | thm:uniform-local, line 2931 | C_N ≤ 2 + 2CA for all N, given prop:normalized (uniform_local_of_normalized)
+complete | 2026-10-11 12:05:08 ET | thm:main, lines 2944-2950 | Kernel W = Π_j (∂_S - j∂_X) g has four zero marginals (fourMarginalKernel_marginal)
+complete | 2026-10-11 12:11:17 ET | thm:main, lines 2951-2955 | Partition sum of W equals φ''''; eq:kernel-reconstruction (gevrey_fourMarginalKernel_partition_sum)
+complete | 2026-10-11 12:11:12 ET | thm:main, lines 2963-2967 | Three nested lattices interlace; short intervals avoid two of them (interlacing_boundaries)
+complete | 2026-10-11 12:13:58 ET | thm:main, line 2944 | W for ω(X)φ(S) = ωφ'''' - 6ω'φ''' + 11ω''φ'' - 6ω'''φ' (fourMarginalKernel_tensor)
+complete | 2026-10-11 12:32:08 ET | thm:main, lines 2970-2974 | Rescaled W: derivative bound r^{-u}(C(u+2))^{C(u+2)} given Gevrey ω,φ (rescaledW_derivative_bound)
+complete | 2026-10-11 12:48:27 ET | thm:main, lines 2966-2970 | Rescaled translates admissible in a margin-r/24 lattice cell (rescaledW_admissible)
+complete | 2026-10-11 12:51:14 ET | thm:main, lines 2962-2965 | The three lattices r_s(ℤ + (-1)^s j/3) as nested dyadic grids (interlacedGrid)
+complete | 2026-10-11 12:51:14 ET | thm:main, lines 2968-2969 | A cell receives at most D + 1 translates (card_int_le_of_interval)
+complete | 2026-10-11 12:58:35 ET | thm:main, lines 2971-2976 | Scale-truncated form ≤ 3(D+1) C_N ∫ Π M_q f for each b (truncated_scale_sum_bound)
+complete | 2026-10-11 13:02:45 ET | thm:main, lines 2976-2980 | ∫ Π M_q f ≤ B Π C‖f_j‖_3 by Hölder and the maximal theorem (maximal_product_bound)
+complete | 2026-10-11 13:34:22 ET | thm:main, lines 2982-2995 | Scale limit to φ'''(0)·∫ f₀ p.v.; uniform bound (scale_fubini, integrated_scale_form_bound, pv_form_bound)
+complete | 2026-10-11 13:39:56 ET | thm:main, lines 2996-2999 | L1 bound by duality, thtPV bounded measurable (lintegral_enorm_le_of_duality, thtPV_lintegral_le)
+complete | 2026-10-11 13:53:48 ET | thm:main, lines 2934-2947 | ω, φ = S³χ chosen; L1 operator, L3 extension given uniform-local (tht_main_of_uniform)
+complete | 2026-10-11 13:53:48 ET | thm:main, line 2931 | uniform-local for every class from prop:normalized (uniform_of_normalized)
