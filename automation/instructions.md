@@ -436,3 +436,11 @@ Verified at 2026-10-11T07:43:32-04:00: lem:whole-ranges complete (usableRangeBes
 File split recorded 2026-10-11T07:50:04-04:00: blueprint §12.3 (Finite same-tag catalogs: same-tag, lem:closure, lines 1793-1835) goes into the new file TrilinearHT/Auto/SecCurvatureLocalizationCatalogs.lean, imported after SecCurvatureLocalization.lean. Justification: SecCurvatureLocalization.lean (§12.1-12.2 and lem:whole-ranges) is about 6020 lines, and §12.3-12.4 would push it past the 10000-line limit; the split is at the blueprint subsection boundary §12.3 and the file is named after that subsection. §12.4 (binary localization and variation) may follow in SecCurvatureLocalizationBinary.lean if needed.
 
 User prompt 2026-10-11T08:45:32-04:00: commit, push and continue (authorizes one commit and push of the current work; then resume same-tag).
+
+User prompt 2026-10-11T08:53:45-04:00: Status.md rows now use the order status | timestamp | location | step; existing timestamps are moved unchanged, never regenerated. Recorded in both autoformalize skill editions.
+
+User prompt 2026-10-11T08:54:32-04:00: Status.md timestamps use the format YYYY-MM-DD HH:MM:SS ET (US Eastern); existing instants were converted, not regenerated. Recorded in both autoformalize skill editions.
+
+User prompt 2026-10-11T08:56:55-04:00: every Status.md row is one line of at most 180 characters; long step descriptions were shortened (timestamps unchanged). Recorded in both skill editions.
+
+User prompt 2026-10-11T08:59:01-04:00: commit and push, then continue (authorizes one commit and push).
