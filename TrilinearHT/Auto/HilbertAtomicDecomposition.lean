@@ -162,6 +162,10 @@ theorem atomicSeminormSum_separation {E : Type*} [NormedAddCommGroup E]
 section ProbabilityL2
 variable {X : Type*} [MeasurableSpace X] (μ : Measure X) [IsProbabilityMeasure μ]
 noncomputable def probabilityL2L1Norm (f : Lp ℂ 2 μ) : ℝ := ∫ x, ‖f x‖ ∂μ
+omit [IsProbabilityMeasure μ] in
+theorem probabilityL2L1Norm_eq (f : Lp ℂ 2 μ) :
+    probabilityL2L1Norm μ f = ∫ x, ‖f x‖ ∂μ := by
+  unfold probabilityL2L1Norm; rfl
 theorem probabilityL2L1Norm_add (f g : Lp ℂ 2 μ) :
     probabilityL2L1Norm μ (f + g) ≤ probabilityL2L1Norm μ f + probabilityL2L1Norm μ g := by
   have hf := ((Lp.memLp f).integrable (by norm_num : (1 : ENNReal) ≤ 2)).norm

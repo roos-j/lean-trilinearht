@@ -7,6 +7,7 @@ module
 
 public import Mathlib
 public import TrilinearHT.Auto.RationalLinearAlgebra
+public import TrilinearHT.Auto.FourierApproximation
 public import TrilinearHT.Auto.GevreyCutoffs
 
 /-!
@@ -4236,5 +4237,1011 @@ theorem shortReturnScale_reciprocal_bound {t c g b : ℝ} (ht : 2 ≤ t)
       _ ≤ _ := Real.rpow_le_rpow_of_exponent_le (shortReturnGapBudget_one_le ht)
         (add_le_add hd le_rfl)
   exact hb.trans (mul_le_mul hcT hp (pow_nonneg hg0 _) hI)
+
+
+theorem shortReturnProjectionBudget_bound {t B : ℝ} (ht : 2 ≤ t) (hB : 2 ≤ B)
+    (hBT : B ≤ shortReturnRowBudget t) {d : ℕ}
+    (hd : (d : ℝ) ≤ logarithmicSize t) :
+    Real.exp (8 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B)) ≤
+      shortReturnProjectionBudget t := by
+  have hR := shortReturnRowBudget_two_le ht
+  have hL := one_le_logarithmicSize ht
+  have hlog : 0 ≤ Real.log (2 * B) := Real.log_nonneg (by linarith only [hB])
+  have hl := Real.log_le_log (show 0 < 2 * B by linarith only [hB])
+    (show 2 * B ≤ 2 * shortReturnRowBudget t by linarith only [hBT])
+  unfold shortReturnProjectionBudget
+  rw [Real.rpow_def_of_pos (by positivity)]
+  apply Real.exp_le_exp.mpr
+  calc
+    _ ≤ 8 * (logarithmicSize t + 1) ^ 4 * Real.log (2 * shortReturnRowBudget t) := by
+      gcongr
+    _ = _ := by ring
+
+theorem shortReturnGramBudget_bound {t : ℝ} (ht : 2 ≤ t) {d : ℕ}
+    (hd : (d : ℝ) ≤ logarithmicSize t) :
+    max 2 ((d : ℝ) * shortReturnRowBudget t ^ 2) ≤ shortReturnGramBudget t := by
+  apply max_le (shortReturnGramBudget_two_le ht)
+  have hh := mul_le_mul_of_nonneg_right hd (sq_nonneg (shortReturnRowBudget t))
+  exact hh.trans (le_add_of_nonneg_left (by norm_num))
+
+theorem shortReturnGram_exponential_bound {t : ℝ} (ht : 2 ≤ t) {r d : ℕ}
+    (hr : r ≤ d) (hd : (d : ℝ) ≤ logarithmicSize t) :
+    Real.exp (2 * (r + 1 : ℝ) ^ 4 *
+      Real.log (2 * max 2 ((d : ℝ) * shortReturnRowBudget t ^ 2))) ≤
+      (2 * shortReturnGramBudget t) ^ (2 * (logarithmicSize t + 1) ^ (4 : ℕ)) := by
+  have hG := shortReturnGramBudget_two_le ht
+  have hL := one_le_logarithmicSize ht
+  have hrR : (r : ℝ) ≤ logarithmicSize t := (by exact_mod_cast hr : (r : ℝ) ≤ d).trans hd
+  have hm := shortReturnGramBudget_bound ht hd
+  have hmax : (2 : ℝ) ≤ max 2 ((d : ℝ) * shortReturnRowBudget t ^ 2) := le_max_left _ _
+  have hlog : 0 ≤ Real.log (2 * max 2 ((d : ℝ) * shortReturnRowBudget t ^ 2)) :=
+    Real.log_nonneg (by linarith only [hmax])
+  have hl := Real.log_le_log (show 0 < 2 * max 2 ((d : ℝ) * shortReturnRowBudget t ^ 2) by
+    linarith only [hmax]) (show
+      2 * max 2 ((d : ℝ) * shortReturnRowBudget t ^ 2) ≤ 2 * shortReturnGramBudget t by
+        linarith only [hm])
+  rw [Real.rpow_def_of_pos (by positivity)]
+  apply Real.exp_le_exp.mpr
+  calc
+    _ ≤ 2 * (logarithmicSize t + 1) ^ 4 * Real.log (2 * shortReturnGramBudget t) := by
+      gcongr
+    _ = _ := by ring
+
+theorem shortReturnSlowBudget_bound {t : ℝ} (ht : 2 ≤ t) {r d k : ℕ}
+    (hr : r ≤ d) (hd : (d : ℝ) ≤ logarithmicSize t) (hk : k ≤ 3) :
+    ((d : ℝ) * r * shortReturnRowBudget t) *
+      (((r : ℝ) * r * Real.exp (2 * (r + 1 : ℝ) ^ 4 *
+        Real.log (2 * max 2 ((d : ℝ) * shortReturnRowBudget t ^ 2)))) *
+          ((r : ℝ) * k * (t * shortReturnRowBudget t))) ≤ shortReturnSlowBudget t := by
+  have hL := one_le_logarithmicSize ht
+  have hR := shortReturnRowBudget_two_le ht
+  have hG := shortReturnGramBudget_two_le ht
+  have hrR : (r : ℝ) ≤ logarithmicSize t := (by exact_mod_cast hr : (r : ℝ) ≤ d).trans hd
+  have hkR : (k : ℝ) ≤ 3 := by exact_mod_cast hk
+  have hE := shortReturnGram_exponential_bound ht hr hd
+  calc
+    _ ≤ (logarithmicSize t * logarithmicSize t * shortReturnRowBudget t) *
+        ((logarithmicSize t * logarithmicSize t *
+          (2 * shortReturnGramBudget t) ^ (2 * (logarithmicSize t + 1) ^ (4 : ℕ))) *
+            (logarithmicSize t * 3 * (t * shortReturnRowBudget t))) := by
+      gcongr
+    _ = shortReturnSlowBudget t - 2 := by unfold shortReturnSlowBudget; ring
+    _ ≤ shortReturnSlowBudget t := by linarith
+
+
+theorem shortReturnTimeInverseBudget_bound {t b : ℝ} (ht : 2 ≤ t) (hb : 0 < b)
+    (hbT : b⁻¹ ≤ shortReturnScaleBudget t) {d : ℕ}
+    (hd : (d : ℝ) ≤ logarithmicSize t) :
+    (1 + 4 / b) ^ d / b ≤ shortReturnTimeInverseBudget t := by
+  have hQ := quasipolynomialBound_nonneg shortReturnScaleBudget_quasipolynomial ht
+  have hL := one_le_logarithmicSize ht
+  have hbase : 1 ≤ 1 + 4 * shortReturnScaleBudget t := by linarith only [hQ]
+  have hp : (1 + 4 / b) ^ d ≤
+      (1 + 4 * shortReturnScaleBudget t) ^ logarithmicSize t := by
+    calc
+      (1 + 4 / b) ^ d = (1 + 4 / b) ^ (d : ℝ) := (Real.rpow_natCast _ _).symm
+      _ ≤ (1 + 4 * shortReturnScaleBudget t) ^ (d : ℝ) :=
+        Real.rpow_le_rpow (by positivity) (by
+          rw [div_eq_mul_inv]
+          linarith only [hbT]) (Nat.cast_nonneg _)
+      _ ≤ _ := Real.rpow_le_rpow_of_exponent_le hbase hd
+  rw [div_eq_mul_inv]
+  exact mul_le_mul hp hbT (inv_nonneg.mpr hb.le) (by positivity)
+
+
+theorem shortReturnQuadraticBudget_bound {t a M s : ℝ} (ht : 2 ≤ t)
+    (ha : 0 ≤ a) (ha1 : a ≤ 1) (hM : 0 ≤ M) (hMt : M ≤ t)
+    (hs : 0 < s) (hsT : s⁻¹ ≤ shortReturnTimeInverseBudget t)
+    {d k : ℕ} (hd : (d : ℝ) ≤ logarithmicSize t) (hk : k ≤ 3) :
+    (k : ℝ) * k *
+      ((M + (k : ℝ) * d * shortReturnSlowBudget t *
+        (shortReturnAlternatingBudget t * (shortReturnSlowBudget t * a)) +
+          (k : ℝ) * d * shortReturnSlowBudget t * (shortReturnAlternatingBudget t * a)) / s) ≤
+      shortReturnQuadraticBudget t := by
+  have hL := one_le_logarithmicSize ht
+  have hS := shortReturnSlowBudget_two_le ht
+  have hA := quasipolynomialBound_nonneg shortReturnAlternatingBudget_quasipolynomial ht
+  have hT := quasipolynomialBound_nonneg shortReturnTimeInverseBudget_quasipolynomial ht
+  have hkR : (k : ℝ) ≤ 3 := by exact_mod_cast hk
+  have hnum :
+      M + (k : ℝ) * d * shortReturnSlowBudget t *
+        (shortReturnAlternatingBudget t * (shortReturnSlowBudget t * a)) +
+          (k : ℝ) * d * shortReturnSlowBudget t * (shortReturnAlternatingBudget t * a) ≤
+      t + 3 * logarithmicSize t * shortReturnSlowBudget t *
+        (shortReturnAlternatingBudget t * (shortReturnSlowBudget t * 1)) +
+          3 * logarithmicSize t * shortReturnSlowBudget t *
+            (shortReturnAlternatingBudget t * 1) := by
+    gcongr
+  rw [div_eq_mul_inv]
+  calc
+    _ ≤ 3 * 3 *
+        (t + 3 * logarithmicSize t * shortReturnSlowBudget t *
+          (shortReturnAlternatingBudget t * (shortReturnSlowBudget t * 1)) +
+            3 * logarithmicSize t * shortReturnSlowBudget t *
+              (shortReturnAlternatingBudget t * 1)) * shortReturnTimeInverseBudget t := by
+      calc
+        _ = ((k : ℝ) * k *
+            (M + (k : ℝ) * d * shortReturnSlowBudget t *
+              (shortReturnAlternatingBudget t * (shortReturnSlowBudget t * a)) +
+                (k : ℝ) * d * shortReturnSlowBudget t *
+                  (shortReturnAlternatingBudget t * a))) * s⁻¹ := by ring
+        _ ≤ _ := by gcongr
+    _ = _ := by unfold shortReturnQuadraticBudget; ring
+
+theorem shortReturnSplittingBudget_dominates {t : ℝ} (ht : 2 ≤ t) :
+    shortReturnProjectionBudget t ≤ shortReturnSplittingBudget t ∧
+    shortReturnSlowBudget t ≤ shortReturnSplittingBudget t ∧
+    shortReturnQuadraticBudget t ≤ shortReturnSplittingBudget t := by
+  have hP := quasipolynomialBound_nonneg shortReturnProjectionBudget_quasipolynomial ht
+  have hS := quasipolynomialBound_nonneg shortReturnSlowBudget_quasipolynomial ht
+  have hQ := quasipolynomialBound_nonneg shortReturnQuadraticBudget_quasipolynomial ht
+  unfold shortReturnSplittingBudget
+  constructor
+  · linarith only [hS, hQ]
+  constructor
+  · linarith only [hP, hQ]
+  · linarith only [hP, hS]
+
+
+theorem shortReturnParameter_product_bounds {H P a M : ℝ}
+    (hH : 2 ≤ H) (hP : 1 ≤ P) (ha : 0 < a) (ha1 : a ≤ 1) (hM : 1 ≤ M) :
+    let t := H * P * a⁻¹ * M
+    2 ≤ t ∧ H ≤ t ∧ P ≤ t ∧ a⁻¹ ≤ t ∧ M ≤ t ∧
+      logarithmicSize t = 1 + Real.log H + Real.log P + Real.log (1 / a) + Real.log M := by
+  intro t
+  have hH1 : 1 ≤ H := by linarith only [hH]
+  have hH0 : 0 ≤ H := by linarith only [hH]
+  have hP0 : 0 ≤ P := by linarith only [hP]
+  have hM0 : 0 ≤ M := by linarith only [hM]
+  have haI : 1 ≤ a⁻¹ := (one_le_inv₀ ha).mpr ha1
+  have haI0 : 0 ≤ a⁻¹ := inv_nonneg.mpr ha.le
+  have hHP : 1 ≤ H * P := by
+    simpa using mul_le_mul hH1 hP zero_le_one hH0
+  have hHPA : 1 ≤ H * P * a⁻¹ := by
+    simpa using mul_le_mul hHP haI zero_le_one (mul_nonneg hH0 hP0)
+  have htail : H * P ≤ t :=
+    (le_mul_of_one_le_right (mul_nonneg hH0 hP0) haI).trans
+      (le_mul_of_one_le_right (by positivity) hM)
+  have hh : H ≤ t := (le_mul_of_one_le_right hH0 hP).trans htail
+  have hp : P ≤ t := (le_mul_of_one_le_left hP0 hH1).trans htail
+  have hi : a⁻¹ ≤ t := (le_mul_of_one_le_left haI0 hHP).trans
+    (le_mul_of_one_le_right (by positivity) hM)
+  have hm : M ≤ t := le_mul_of_one_le_left hM0 hHPA
+  refine ⟨hH.trans hh, hh, hp, hi, hm, ?_⟩
+  dsimp [t, logarithmicSize]
+  rw [Real.log_mul (by positivity) (by positivity),
+    Real.log_mul (by positivity) (by positivity),
+    Real.log_mul (by positivity) (by positivity)]
+  simp only [one_div]
+  ring
+
+theorem shortReturnSplittingBudget_uniform :
+    ∃ D : ℕ, 1 ≤ D ∧ ∀ H P a M : ℝ,
+      2 ≤ H → 1 ≤ P → 0 < a → a ≤ 1 → 1 ≤ M →
+      shortReturnSplittingBudget (H * P * a⁻¹ * M) ≤
+        Real.exp ((D : ℝ) *
+          (1 + Real.log H + Real.log P + Real.log (1 / a) + Real.log M) ^ D) := by
+  obtain ⟨C, hC, e, he, hbudget⟩ := shortReturnSplittingBudget_quasipolynomial
+  obtain ⟨D, hD, heD, hCD, henv⟩ := monomial_uniform_natural_envelope C e
+  refine ⟨D, hD, ?_⟩
+  intro H P a M hH hP ha ha1 hM
+  obtain ⟨ht, _, _, _, _, hlog⟩ := shortReturnParameter_product_bounds hH hP ha ha1 hM
+  have hh := (hbudget _ ht).2.trans
+    (Real.exp_le_exp.mpr (henv _ (one_le_logarithmicSize ht)))
+  simpa only [hlog] using hh
+
+/-- Blueprint Lemma `lem:budget-rules`: every fixed power of a logarithm is
+eventually dominated by any positive power, with any prescribed positive coefficient. -/
+theorem logarithmic_power_eventually_le_rpow (C : ℝ) (d : ℕ)
+    {θ ε : ℝ} (hθ : 0 < θ) (hε : 0 < ε) :
+    ∀ᶠ k : ℝ in atTop, C * logarithmicSize (2 * k) ^ d ≤ ε * k ^ θ := by
+  let A : ℝ := (|C| + 1) * 3 ^ d
+  have hA : 0 < A := by dsimp [A]; positivity
+  have hsmall : (fun k : ℝ => A * Real.log k ^ d) =o[atTop] (fun k => k ^ θ) := by
+    simpa only [Real.rpow_natCast] using
+      (isLittleO_log_rpow_rpow_atTop (d : ℝ) hθ).const_mul_left A
+  filter_upwards [hsmall.bound hε, eventually_ge_atTop (2 : ℝ),
+    Real.tendsto_log_atTop.eventually_ge_atTop 1] with k hk hk2 hklog
+  have hk0 : 0 < k := by linarith
+  have hlog2 : Real.log 2 ≤ Real.log k := Real.log_le_log (by norm_num) hk2
+  have hsize : logarithmicSize (2 * k) ≤ 3 * Real.log k := by
+    rw [logarithmicSize, Real.log_mul (by norm_num) hk0.ne']
+    linarith
+  have hsize0 : 0 ≤ logarithmicSize (2 * k) := by
+    linarith [one_le_logarithmicSize (show 2 ≤ 2 * k by linarith)]
+  have hpow : logarithmicSize (2 * k) ^ d ≤ (3 * Real.log k) ^ d := by gcongr
+  have hC : C ≤ |C| + 1 := by linarith [le_abs_self C]
+  have habs : C * logarithmicSize (2 * k) ^ d ≤ A * Real.log k ^ d := by
+    calc
+      _ ≤ (|C| + 1) * logarithmicSize (2 * k) ^ d := by gcongr
+      _ ≤ (|C| + 1) * (3 * Real.log k) ^ d := by gcongr
+      _ = A * Real.log k ^ d := by dsimp [A]; rw [mul_pow]; ring
+  have hnonneg : 0 ≤ A * Real.log k ^ d := by positivity
+  rw [Real.norm_of_nonneg hnonneg, Real.norm_of_nonneg (Real.rpow_nonneg hk0.le θ)] at hk
+  exact habs.trans hk
+
+/-- Blueprint Lemma `lem:budget-rules`, last assertion: the ceiling in the
+definition of the large parameter does not impair domination of logarithmic overheads. -/
+theorem quasipolynomial_overhead_eventually_le_ceiling_power (C : ℝ) (d : ℕ)
+    {α θ ε : ℝ} (hα : 0 < α) (hθ : 0 < θ) (hε : 0 < ε) :
+    ∀ᶠ k : ℝ in atTop,
+      Real.exp (C * logarithmicSize (2 * k) ^ d) ≤
+        (⌈Real.exp (α * k ^ θ)⌉₊ : ℝ) ^ ε := by
+  filter_upwards [logarithmic_power_eventually_le_rpow C d hθ (mul_pos hα hε)] with k hk
+  calc
+    Real.exp (C * logarithmicSize (2 * k) ^ d) ≤ Real.exp (α * ε * k ^ θ) :=
+      Real.exp_le_exp.mpr hk
+    _ = Real.exp (α * k ^ θ) ^ ε := by rw [← Real.exp_mul]; congr 1; ring
+    _ ≤ (⌈Real.exp (α * k ^ θ)⌉₊ : ℝ) ^ ε :=
+      Real.rpow_le_rpow (Real.exp_pos _).le (Nat.le_ceil _) hε.le
+
+/-- Blueprint Lemma `lem:budget-rules`, compression overhead estimate.
+The exponent two is independent of all coefficients, including any dependence on `q`. -/
+theorem compression_overhead_bound {k D m A B C F : ℝ} (d : ℕ)
+    (hk : 2 ≤ k) (hD : 1 ≤ D) (hm : 0 ≤ m) (hA : 1 ≤ A) (hB : 0 ≤ B)
+    (hC : 1 ≤ C) (hDbound : D ≤ Real.exp (A * k ^ d))
+    (hmbound : m ≤ B * Real.log (2 * k))
+    (hF : F ≤ (C * (m + 1) * Real.log (2 * D)) ^ (C * (m + 1))) :
+    F ≤ Real.exp ((C * (B + 1) * (C * (B + 1) * (A + 1) + 1 + d)) *
+      logarithmicSize (2 * k) ^ 2) := by
+  let u := logarithmicSize (2 * k)
+  let E := C * (B + 1) * (A + 1)
+  have hk0 : 0 < k := by linarith
+  have hD0 : 0 < D := by linarith
+  have hC0 : 0 < C := by linarith
+  have hu : 1 ≤ u := one_le_logarithmicSize (by linarith)
+  have hE : 0 < E := by dsimp [E]; positivity
+  have hkd : 1 ≤ k ^ d := one_le_pow₀ (show 1 ≤ k by linarith)
+  have hlogD : Real.log D ≤ A * k ^ d := by
+    have := Real.log_le_log hD0 hDbound
+    simpa only [Real.log_exp] using this
+  have hlog2 : Real.log 2 ≤ 1 := by
+    have := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 2 by norm_num)
+    norm_num at this ⊢
+    exact this
+  have hlog2D : Real.log (2 * D) ≤ (A + 1) * k ^ d := by
+    rw [Real.log_mul (by norm_num) hD0.ne']
+    nlinarith
+  have hm1 : m + 1 ≤ (B + 1) * u := by
+    dsimp [u, logarithmicSize]
+    have := Real.log_nonneg (show 1 ≤ 2 * k by linarith)
+    nlinarith
+  have hlog2D0 : 0 ≤ Real.log (2 * D) := Real.log_nonneg (by linarith)
+  have hbase : C * (m + 1) * Real.log (2 * D) ≤ E * u * k ^ d := by
+    calc
+      _ ≤ C * ((B + 1) * u) * ((A + 1) * k ^ d) := by gcongr
+      _ = _ := by dsimp [E]; ring
+  have hbase0 : 0 < C * (m + 1) * Real.log (2 * D) := by
+    apply mul_pos (mul_pos hC0 (by linarith))
+    apply Real.log_pos
+    linarith
+  have hlogk : Real.log k ≤ u := by
+    have := Real.log_le_log hk0 (show k ≤ 2 * k by linarith)
+    dsimp [u, logarithmicSize]
+    linarith
+  have hlogE : Real.log E ≤ E := (Real.log_le_sub_one_of_pos hE).trans (by linarith)
+  have hlogu : Real.log u ≤ u :=
+    (Real.log_le_sub_one_of_pos (by linarith)).trans (by linarith)
+  have hlogbase : Real.log (C * (m + 1) * Real.log (2 * D)) ≤ (E + 1 + d) * u := by
+    calc
+      _ ≤ Real.log (E * u * k ^ d) := Real.log_le_log hbase0 hbase
+      _ = Real.log E + Real.log u + (d : ℝ) * Real.log k := by
+        rw [Real.log_mul (mul_pos hE (by linarith)).ne' (pow_pos hk0 d).ne',
+          Real.log_mul hE.ne' (by linarith : u ≠ 0), Real.log_pow]
+      _ ≤ (E + 1 + d) * u := by
+        have := mul_le_mul_of_nonneg_left hlogk (Nat.cast_nonneg d)
+        have : E ≤ E * u := by nlinarith
+        nlinarith
+  refine hF.trans ?_
+  rw [Real.rpow_def_of_pos hbase0]
+  apply Real.exp_le_exp.mpr
+  calc
+    Real.log (C * (m + 1) * Real.log (2 * D)) * (C * (m + 1)) ≤
+        ((E + 1 + d) * u) * (C * ((B + 1) * u)) := by
+      apply mul_le_mul hlogbase (by gcongr) (by positivity) (by positivity)
+    _ = _ := by dsimp [E, u]; ring
+
+/-- Blueprint Lemma `lem:budget-rules`: polynomial majorants add with a
+degree independent of their coefficients. Substitute a logarithmic size for `u`. -/
+theorem polynomial_majorant_add {u x y C D : ℝ} {d e : ℕ}
+    (hu : 1 ≤ u) (hC : 0 ≤ C) (hD : 0 ≤ D)
+    (hx : x ≤ C * u ^ d) (hy : y ≤ D * u ^ e) :
+    x + y ≤ (C + D) * u ^ (d + e) := by
+  have h₁ := mul_le_mul_of_nonneg_left
+    (pow_le_pow_right₀ hu (Nat.le_add_right d e)) hC
+  have h₂ := mul_le_mul_of_nonneg_left
+    (pow_le_pow_right₀ hu (Nat.le_add_left e d)) hD
+  nlinarith
+
+/-- Blueprint Lemma `lem:budget-rules`: polynomial majorants multiply. -/
+theorem polynomial_majorant_mul {u x y C D : ℝ} {d e : ℕ}
+    (hu : 0 ≤ u) (hy0 : 0 ≤ y) (hC : 0 ≤ C)
+    (hx : x ≤ C * u ^ d) (hy : y ≤ D * u ^ e) :
+    x * y ≤ (C * D) * u ^ (d + e) := by
+  calc
+    x * y ≤ (C * u ^ d) * (D * u ^ e) := mul_le_mul hx hy hy0 (by positivity)
+    _ = _ := by rw [pow_add]; ring
+
+/-- Blueprint Lemma `lem:budget-rules`: polynomial majorants compose,
+with degree `e * d` regardless of any auxiliary-parameter dependence of `C,D`. -/
+theorem polynomial_majorant_comp {u v x C D : ℝ} {d e : ℕ}
+    (hv : 0 ≤ v) (hC : 0 ≤ C) (hx : x ≤ C * v ^ d) (hvbound : v ≤ D * u ^ e) :
+    x ≤ C * D ^ d * u ^ (e * d) := by
+  calc
+    x ≤ C * v ^ d := hx
+    _ ≤ C * (D * u ^ e) ^ d := by gcongr
+    _ = _ := by rw [mul_pow, ← pow_mul]; ring
+
+/-- Blueprint Lemma `lem:budget-rules`, domination of fixed powers of `k`
+by every positive power of the large ceiling parameter. -/
+theorem fixed_power_eventually_le_ceiling_power {p α θ ε : ℝ}
+    (hp : 0 ≤ p) (hα : 0 < α) (hθ : 0 < θ) (hε : 0 < ε) :
+    ∀ᶠ k : ℝ in atTop, k ^ p ≤ (⌈Real.exp (α * k ^ θ)⌉₊ : ℝ) ^ ε := by
+  filter_upwards [quasipolynomial_overhead_eventually_le_ceiling_power p 1 hα hθ hε,
+    eventually_ge_atTop (2 : ℝ)] with k hk hk2
+  have hk0 : 0 < k := by linarith
+  have hlog : Real.log k ≤ logarithmicSize (2 * k) := by
+    have := Real.log_le_log hk0 (show k ≤ 2 * k by linarith)
+    dsimp [logarithmicSize]
+    linarith
+  calc
+    k ^ p = Real.exp (Real.log k * p) := Real.rpow_def_of_pos hk0 _
+    _ ≤ Real.exp (p * logarithmicSize (2 * k) ^ 1) := by
+      apply Real.exp_le_exp.mpr
+      simpa [mul_comm] using mul_le_mul_of_nonneg_left hlog hp
+    _ ≤ _ := hk
+
+
+/-- Bilinear matrix phase in dot-product notation. -/
+theorem chartMatrixPhase_eq_dotProduct {d : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℚ) (u w : Fin d → ℝ) :
+    chartMatrixPhase C u w = dotProduct u ((C.map (fun q => (q : ℝ))).mulVec w) := by
+  simp [chartMatrixPhase, dotProduct, Matrix.mulVec, Finset.mul_sum, mul_assoc]
+
+/-- The complete phase of one lattice summand of a several-variable chart. -/
+noncomputable def multivariableChartPhase {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) (z : Fin k → ℝ) (n : Fin d → ℤ) : ℝ :=
+  dotProduct z (A.quadratic.mulVec z) + dotProduct A.linear z +
+    chartMatrixPhase A.matrix (A.horizontal.mulVec z)
+      (A.horizontal.mulVec z - fun i => (n i : ℝ))
+
+theorem multivariableQuadraticChartAtom_eq_tsum {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) (z : Fin k → ℝ) :
+    multivariableQuadraticChartAtom A z =
+      ∑' n : Fin d → ℤ, A.amplitude (A.horizontal.mulVec z - fun i => (n i : ℝ)) *
+        (Real.fourierChar (multivariableChartPhase A z n) : ℂ) := by
+  have he : dotProduct z (A.quadratic.mulVec z) =
+      ∑ i, ∑ j, z i * A.quadratic i j * z j := by
+    simp [dotProduct, Matrix.mulVec, Finset.mul_sum, mul_assoc]
+  unfold multivariableQuadraticChartAtom multivariableChartPhase
+  rw [← tsum_mul_left]
+  apply tsum_congr
+  intro n
+  rw [he]
+  simp only [dotProduct, AddChar.map_add_eq_mul, Circle.coe_mul]
+  ring
+
+/-- Exact reindexing and modulation for a chart return. The residual amplitude
+is shifted only by the return defect; its phase involves that defect rather
+than the unrestricted horizontal velocity. Source: lem:weyl, lines 1321–1331. -/
+theorem multivariableQuadraticChart_return_identity {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) (z h : Fin k → ℝ) (m : Fin d → ℤ)
+    (hint : ∀ i j, ∃ q : ℤ, (q : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) :
+    let e := A.horizontal.mulVec h - fun i => (m i : ℝ)
+    let C := A.matrix.map (fun q => (q : ℝ))
+    let ω := (2 • A.quadratic + A.horizontal.transpose * C * A.horizontal).mulVec h -
+      (A.horizontal.transpose * (C - C.transpose)).mulVec (fun i => (m i : ℝ))
+    let c := dotProduct h (A.quadratic.mulVec h) + dotProduct A.linear h +
+      chartMatrixPhase A.matrix (A.horizontal.mulVec h) e
+    multivariableQuadraticChartAtom A (z + h) =
+      (Real.fourierChar (c + dotProduct z ω) : ℂ) *
+        ∑' n : Fin d → ℤ,
+          A.amplitude (A.horizontal.mulVec z - (fun i => (n i : ℝ)) + e) *
+          (Real.fourierChar (chartMatrixPhase A.matrix e
+            (A.horizontal.mulVec z - fun i => (n i : ℝ))) : ℂ) *
+          (Real.fourierChar (multivariableChartPhase A z n) : ℂ) := by
+  classical
+  intro e C ω c
+  rw [multivariableQuadraticChartAtom_eq_tsum]
+  rw [show (∑' n : Fin d → ℤ,
+      A.amplitude (A.horizontal.mulVec (z + h) - fun i => (n i : ℝ)) *
+        (Real.fourierChar (multivariableChartPhase A (z + h) n) : ℂ)) =
+      ∑' n : Fin d → ℤ,
+        A.amplitude (A.horizontal.mulVec (z + h) - fun i => ((n + m) i : ℝ)) *
+          (Real.fourierChar (multivariableChartPhase A (z + h) (n + m)) : ℂ) from
+    ((Equiv.addRight m).tsum_eq _).symm, ← tsum_mul_left]
+  apply tsum_congr
+  intro n
+  have hw : A.horizontal.mulVec (z + h) - (fun i => ((n + m) i : ℝ)) =
+      A.horizontal.mulVec z - (fun i => (n i : ℝ)) + e := by
+    rw [Matrix.mulVec_add]
+    ext i
+    simp only [Pi.sub_apply, Pi.add_apply, Int.cast_add, e]
+    ring
+  have hp := quadratic_lattice_return_phase C A.horizontal A.quadratic A.symmetric
+    A.linear z h (fun i => (n i : ℝ)) (fun i => (m i : ℝ))
+  have hn : (fun i => ((n + m) i : ℝ)) =
+      (fun i => (n i : ℝ)) + (fun i => (m i : ℝ)) := by ext i; simp
+  have hp' : multivariableChartPhase A (z + h) (n + m) +
+      chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (fun i => (n i : ℝ)) =
+      (c + dotProduct z ω) + chartMatrixPhase A.matrix e
+        (A.horizontal.mulVec z - fun i => (n i : ℝ)) + multivariableChartPhase A z n := by
+    simp only [multivariableChartPhase, chartMatrixPhase_eq_dotProduct, hn]
+    dsimp [c, ω, e, C] at hp ⊢
+    simp only [chartMatrixPhase_eq_dotProduct, quadraticReturnFrequency] at hp ⊢
+    linear_combination hp
+  obtain ⟨q, hq⟩ := chartMatrixPhase_integer_of_coefficients A.matrix m n hint
+  have hchar := congrArg (fun r : ℝ => (Real.fourierChar r : ℂ)) hp'
+  rw [← hq, chart_fourierChar_add_int] at hchar
+  rw [hw, hchar]
+  simp only [AddChar.map_add_eq_mul, Circle.coe_mul]
+  ring
+
+/-- A clearing period makes every lattice return eligible for exact reindexing. -/
+theorem chart_integer_period_coefficients {d : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℚ) (P : ℤ)
+    (hPC : ∀ i j, ∃ z : ℤ, (P : ℚ) * C i j = z) (n : Fin d → ℤ) :
+    ∀ i j, ∃ z : ℤ, (z : ℝ) = ((P * n i : ℤ) : ℝ) * (C i j : ℝ) := by
+  intro i j
+  obtain ⟨z, hz⟩ := hPC i j
+  have hr : (P : ℝ) * (C i j : ℝ) = z := by exact_mod_cast hz
+  refine ⟨n i * z, ?_⟩
+  push_cast
+  rw [← hr]
+  ring
+
+
+theorem chart_fourierChar_sub_one_norm_le (x : ℝ) :
+    ‖(Real.fourierChar x : ℂ) - 1‖ ≤ 2 * Real.pi * |x| := by
+  have hh := Real.norm_exp_I_mul_ofReal_sub_one_le (x := 2 * Real.pi * x)
+  simpa [Real.fourierChar_apply, mul_comm Complex.I, Real.norm_eq_abs,
+    abs_mul, abs_of_pos Real.pi_pos] using hh
+
+/-- A global first-derivative estimate for the actual chart cutoff. -/
+theorem multivariableChart_amplitude_difference {k d c₀ : ℕ} {H : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
+    (x y : Fin d → ℝ) :
+    ‖A.amplitude y - A.amplitude x‖ ≤
+      (H ^ (4 * c₀) * (2 : ℝ) ^ (2 * c₀)) * ‖y - x‖ := by
+  have hder (z : Fin d → ℝ) : ‖fderiv ℝ A.amplitude z‖ ≤
+      H ^ (4 * c₀) * (2 : ℝ) ^ (2 * c₀) := by
+    have hh := chart_cutoff_iteratedFDeriv_bound hA hc 1 z
+    simpa only [norm_iteratedFDeriv_one, multivariableChartAlongLine,
+      Nat.reduceAdd, Nat.cast_one, one_add_one_eq_two,
+      show 2 * c₀ * 2 = 4 * c₀ by omega, show c₀ * 2 = 2 * c₀ by omega] using hh
+  exact (convex_univ : Convex ℝ (Set.univ : Set (Fin d → ℝ))).norm_image_sub_le_of_norm_fderiv_le
+    (fun z _ => A.smooth.differentiable (by simp) z) (fun z _ => hder z)
+    (Set.mem_univ x) (Set.mem_univ y)
+
+/-- Shifting a compact amplitude and multiplying by the small defect phase
+costs linearly in the defect, uniformly in the horizontal location. -/
+theorem chart_modulated_amplitude_error {d : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℚ) (χ : (Fin d → ℝ) → ℂ)
+    {B K L R : ℝ} (hB : 0 ≤ B) (hK : 0 ≤ K) (hR : 0 ≤ R)
+    (hC : ∀ i j, |(C i j : ℝ)| ≤ B)
+    (hχ : ∀ w, ‖χ w‖ ≤ K) (hsupp : ∀ w, χ w ≠ 0 → ‖w‖ ≤ R)
+    (hLip : ∀ x y, ‖χ y - χ x‖ ≤ L * ‖y - x‖) (w e : Fin d → ℝ) :
+    ‖χ (w + e) * (Real.fourierChar (chartMatrixPhase C e w) : ℂ) - χ w‖ ≤
+      (L + K * (2 * Real.pi * (d : ℝ) ^ 2 * B * R)) * ‖e‖ := by
+  let p : ℂ := Real.fourierChar (chartMatrixPhase C e w)
+  have hp : ‖p‖ = 1 := Circle.norm_coe _
+  have he : ‖χ (w + e) - χ w‖ ≤ L * ‖e‖ := by
+    simpa only [add_sub_cancel_left] using hLip w (w + e)
+  have hphase : ‖χ w * (p - 1)‖ ≤
+      K * (2 * Real.pi * (d : ℝ) ^ 2 * B * R) * ‖e‖ := by
+    by_cases hz : χ w = 0
+    · simp only [hz, zero_mul, norm_zero]
+      positivity
+    have hn := chartMatrixLeftLinear_norm_le C e hB (norm_nonneg e) hC
+      (fun i => by simpa only [Real.norm_eq_abs] using norm_le_pi_norm e i)
+    have hval : |chartMatrixPhase C e w| ≤ ((d : ℝ) ^ 2 * ‖e‖ * B) * R := by
+      rw [← chartMatrixLeftLinear_apply, ← Real.norm_eq_abs]
+      exact (chartMatrixLeftLinear C e).le_of_opNorm_le_of_le hn (hsupp w hz)
+    rw [norm_mul]
+    calc
+      _ ≤ K * (2 * Real.pi * (((d : ℝ) ^ 2 * ‖e‖ * B) * R)) :=
+        mul_le_mul (hχ w) ((chart_fourierChar_sub_one_norm_le _).trans
+          (mul_le_mul_of_nonneg_left hval (by positivity))) (norm_nonneg _) hK
+      _ = _ := by ring
+  calc
+    _ = ‖(χ (w + e) - χ w) * p + χ w * (p - 1)‖ := by congr 1; dsimp [p]; ring
+    _ ≤ ‖(χ (w + e) - χ w) * p‖ + ‖χ w * (p - 1)‖ := norm_add_le _ _
+    _ ≤ L * ‖e‖ + K * (2 * Real.pi * (d : ℝ) ^ 2 * B * R) * ‖e‖ := by
+      rw [norm_mul, hp, mul_one]
+      exact add_le_add he hphase
+    _ = _ := by ring
+
+
+/-- A lattice sum inherits the defect estimate with only the uniform number
+of terms meeting the original or shifted amplitude support. -/
+theorem chart_lattice_modulation_error {d : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℚ) (χ : (Fin d → ℝ) → ℂ)
+    {B K L R : ℝ} (hB : 0 ≤ B) (hK : 0 ≤ K) (hL : 0 ≤ L) (hR : 0 ≤ R)
+    (hC : ∀ i j, |(C i j : ℝ)| ≤ B)
+    (hχ : ∀ w, ‖χ w‖ ≤ K)
+    (hsupp : ∀ w, χ w ≠ 0 → ∀ i, |w i| ≤ R)
+    (hLip : ∀ x y, ‖χ y - χ x‖ ≤ L * ‖y - x‖)
+    (u e : Fin d → ℝ) (φ : (Fin d → ℤ) → ℂ) (hφ : ∀ n, ‖φ n‖ ≤ 1) :
+    ‖(∑' n : Fin d → ℤ, χ (u - (fun i => (n i : ℝ)) + e) *
+        (Real.fourierChar (chartMatrixPhase C e (u - fun i => (n i : ℝ))) : ℂ) * φ n) -
+      ∑' n : Fin d → ℤ, χ (u - fun i => (n i : ℝ)) * φ n‖ ≤
+      (2 * (2 * R + 3) ^ d) * (L + K * (2 * Real.pi * (d : ℝ) ^ 2 * B * R)) * ‖e‖ := by
+  classical
+  let S := chartLatticeBox R u ∪ chartLatticeBox R (u + e)
+  let T := (L + K * (2 * Real.pi * (d : ℝ) ^ 2 * B * R)) * ‖e‖
+  have hT : 0 ≤ T := by dsimp [T]; positivity
+  have hz (v : Fin d → ℝ) (n : Fin d → ℤ) (hn : n ∉ chartLatticeBox R v) :
+      χ (v - fun i => (n i : ℝ)) = 0 := by
+    by_contra hh
+    exact hn (mem_chartLatticeBox_of_bound (hsupp _ hh))
+  have hshift (n : Fin d → ℤ) :
+      u - (fun i => (n i : ℝ)) + e = (u + e) - (fun i => (n i : ℝ)) := by abel
+  rw [tsum_eq_sum (s := S) (fun n hn => by
+    rw [hshift, hz (u + e) n (fun h => hn (Finset.mem_union_right _ h))]
+    simp),
+    tsum_eq_sum (s := S) (fun n hn => by
+      rw [hz u n (fun h => hn (Finset.mem_union_left _ h))]
+      simp), ← Finset.sum_sub_distrib]
+  have hcard : (S.card : ℝ) ≤ 2 * (2 * R + 3) ^ d := by
+    have hh : (S.card : ℝ) ≤
+        (chartLatticeBox R u).card + (chartLatticeBox R (u + e)).card := by
+      exact_mod_cast Finset.card_union_le (chartLatticeBox R u) (chartLatticeBox R (u + e))
+    linarith only [hh, chartLatticeBox_card_le hR u, chartLatticeBox_card_le hR (u + e)]
+  calc
+    _ ≤ ∑ n ∈ S, ‖χ (u - (fun i => (n i : ℝ)) + e) *
+        (Real.fourierChar (chartMatrixPhase C e (u - fun i => (n i : ℝ))) : ℂ) * φ n -
+        χ (u - fun i => (n i : ℝ)) * φ n‖ := norm_sum_le _ _
+    _ ≤ ∑ _n ∈ S, T := by
+      apply Finset.sum_le_sum
+      intro n _
+      rw [← sub_mul, norm_mul]
+      exact (mul_le_mul (chart_modulated_amplitude_error C χ hB hK hR hC hχ
+        (fun w hw => (pi_norm_le_iff_of_nonneg hR).mpr
+          (fun i => by simpa only [Real.norm_eq_abs] using hsupp w hw i))
+        hLip _ e) (hφ n) (norm_nonneg _) hT).trans_eq (mul_one T)
+    _ = (S.card : ℝ) * T := by simp
+    _ ≤ (2 * (2 * R + 3) ^ d) * T := mul_le_mul_of_nonneg_right hcard hT
+    _ = _ := by dsimp [T]; ring
+
+
+theorem multivariableQuadraticChart_norm_le {k d c₀ : ℕ} {H : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A) (z : Fin k → ℝ) :
+    ‖multivariableQuadraticChartAtom A z‖ ≤ (2 * H + 3) ^ d * H ^ c₀ := by
+  have hh := quadraticChartAtom_norm_le (multivariableChartAlongLine_complexity hA z) 1
+  simpa only [multivariableChartAlongLine_atom, one_smul] using hh
+
+/-- The return error for the actual several-variable atom is uniform in the
+horizontal and ordinary quadratic parameters. Source: eq:return. -/
+theorem multivariableQuadraticChart_return_error {k d c₀ : ℕ} {H : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
+    (z h : Fin k → ℝ) (m : Fin d → ℤ)
+    (hint : ∀ i j, ∃ q : ℤ, (q : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) :
+    let e := A.horizontal.mulVec h - fun i => (m i : ℝ)
+    let C := A.matrix.map (fun q => (q : ℝ))
+    let ω := (2 • A.quadratic + A.horizontal.transpose * C * A.horizontal).mulVec h -
+      (A.horizontal.transpose * (C - C.transpose)).mulVec (fun i => (m i : ℝ))
+    let c := dotProduct h (A.quadratic.mulVec h) + dotProduct A.linear h +
+      chartMatrixPhase A.matrix (A.horizontal.mulVec h) e
+    ‖multivariableQuadraticChartAtom A (z + h) -
+      (Real.fourierChar (c + dotProduct z ω) : ℂ) * multivariableQuadraticChartAtom A z‖ ≤
+      (2 * (2 * H + 3) ^ d) *
+        (H ^ (4 * c₀) * (2 : ℝ) ^ (2 * c₀) +
+          H ^ c₀ * (2 * Real.pi * (d : ℝ) ^ 2 * H * H)) * ‖e‖ := by
+  intro e C ω c
+  have hH := (quadraticChartComplexity_parameter_pos hA).le
+  have hC (i j) : |(A.matrix i j : ℝ)| ≤ H := by
+    have hh : |(A.matrix i j : ℝ)| ≤ (chartRationalHeight (A.matrix i j) : ℝ) := by
+      exact_mod_cast rational_abs_le_height (A.matrix i j)
+    exact hh.trans (hA.height i j)
+  rw [multivariableQuadraticChart_return_identity A z h m hint,
+    multivariableQuadraticChartAtom_eq_tsum, ← mul_sub, norm_mul, Circle.norm_coe, one_mul]
+  exact chart_lattice_modulation_error A.matrix A.amplitude hH (pow_nonneg hH _)
+    (by positivity) hH hC (quadraticChartComplexity_amplitude_bound hA) hA.support
+    (multivariableChart_amplitude_difference hA hc) (A.horizontal.mulVec z) e
+    (fun n => (Real.fourierChar (multivariableChartPhase A z n) : ℂ))
+    (fun n => (Circle.norm_coe _).le)
+
+
+theorem multivariableQuadraticChartAtom_measurable {k d : ℕ}
+    (A : MultivariableQuadraticChartData k d) :
+    Measurable (multivariableQuadraticChartAtom A) := by
+  unfold multivariableQuadraticChartAtom
+  apply Measurable.mul
+  · fun_prop
+  · apply Measurable.tsum
+    intro n
+    apply Measurable.mul
+    · exact A.smooth.continuous.measurable.comp (by fun_prop)
+    · unfold chartMatrixPhase
+      fun_prop
+
+/-- Localization adds only the cutoff's translation error to a modulation error. -/
+theorem localized_modulation_error {E : Type*} [NormedAddCommGroup E]
+    (θ Q : E → ℂ) (z h : E) (p : ℂ) {K L B D η : ℝ}
+    (hK : 0 ≤ K) (hL : 0 ≤ L) (hB : 0 ≤ B) (hD : 0 ≤ D) (hη : 0 ≤ η)
+    (hθ : ‖θ z‖ ≤ K) (hθh : ‖θ (z + h) - θ z‖ ≤ L * ‖h‖)
+    (hQ : ‖Q (z + h)‖ ≤ B) (herr : ‖Q (z + h) - p * Q z‖ ≤ D * η) :
+    ‖θ (z + h) * Q (z + h) - p * (θ z * Q z)‖ ≤
+      (L * B + K * D) * (‖h‖ + η) := by
+  calc
+    _ = ‖(θ (z + h) - θ z) * Q (z + h) +
+        θ z * (Q (z + h) - p * Q z)‖ := by congr 1; ring
+    _ ≤ ‖(θ (z + h) - θ z) * Q (z + h)‖ +
+        ‖θ z * (Q (z + h) - p * Q z)‖ := norm_add_le _ _
+    _ ≤ (L * ‖h‖) * B + K * (D * η) := by
+      simp only [norm_mul]
+      exact add_le_add (mul_le_mul hθh hQ (norm_nonneg _) (by positivity))
+        (mul_le_mul hθ herr (norm_nonneg _) hK)
+    _ ≤ _ := by nlinarith [mul_nonneg (mul_nonneg hL hB) hη,
+      mul_nonneg (mul_nonneg hK hD) (norm_nonneg h)]
+
+/-- An explicitly bounded measurable function supported in a finite-measure
+set is integrable, with its L1 norm bounded by size times measure. -/
+theorem bounded_supported_integral_norm {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℂ} {S : Set X} {B : ℝ}
+    (hf : AEStronglyMeasurable f μ) (hS : MeasurableSet S) (hSf : μ S ≠ ⊤)
+    (hbound : ∀ x, ‖f x‖ ≤ B) (hsupp : ∀ x, x ∉ S → f x = 0) :
+    Integrable f μ ∧ (∫ x, ‖f x‖ ∂μ) ≤ μ.real S * B := by
+  have hg : Integrable (S.indicator (fun _ : X => B)) μ :=
+    (integrable_indicator_iff hS).mpr (integrableOn_const (C := B) hSf)
+  have hb (x) : ‖f x‖ ≤ S.indicator (fun _ : X => B) x := by
+    by_cases hx : x ∈ S
+    · simpa only [Set.indicator_of_mem hx] using hbound x
+    · simp [Set.indicator_of_notMem hx, hsupp x hx]
+  have hfi : Integrable f μ := hg.mono' hf (Filter.Eventually.of_forall hb)
+  refine ⟨hfi, ?_⟩
+  exact (integral_mono hfi.norm hg hb).trans_eq (by
+    rw [integral_indicator_const B hS]
+    rfl)
+
+/-- The preceding bound with the exact volume of a coordinate box. -/
+theorem bounded_box_integral_norm {k : ℕ} {f : (Fin k → ℝ) → ℂ} {R B : ℝ}
+    (hf : Measurable f) (hR : 0 ≤ R)
+    (hbound : ∀ x, ‖f x‖ ≤ B)
+    (hsupp : ∀ x, f x ≠ 0 → ∀ i, |x i| ≤ R) :
+    Integrable f ∧ (∫ x, ‖f x‖) ≤ (2 * R) ^ k * B := by
+  let S := Set.Icc (fun _ : Fin k => -R) (fun _ : Fin k => R)
+  have hSf : volume S ≠ ⊤ := (isCompact_Icc : IsCompact S).measure_ne_top
+  have hz (x) (hx : x ∉ S) : f x = 0 := by
+    by_contra hh
+    exact hx ⟨fun i => (abs_le.mp (hsupp x hh i)).1,
+      fun i => (abs_le.mp (hsupp x hh i)).2⟩
+  obtain ⟨hfi, hb⟩ := bounded_supported_integral_norm hf.aestronglyMeasurable
+    measurableSet_Icc hSf hbound hz
+  have hvol : volume.real S = (2 * R) ^ k := by
+    change (volume S).toReal = _
+    rw [Real.volume_Icc_pi_toReal (fun i => by linarith only [hR])]
+    simp [sub_neg_eq_add, ← two_mul]
+  change (∫ x, ‖f x‖) ≤ volume.real S * B at hb
+  exact ⟨hfi, by simpa only [hvol] using hb⟩
+
+
+/-- Explicit defect constant in the chart return estimate. -/
+noncomputable def chartReturnErrorConstant (c₀ d : ℕ) (H : ℝ) : ℝ :=
+  (2 * (2 * H + 3) ^ d) *
+    (H ^ (4 * c₀) * (2 : ℝ) ^ (2 * c₀) +
+      H ^ c₀ * (2 * Real.pi * (d : ℝ) ^ 2 * H * H))
+
+/-- The localization constant includes the volume of the enlarged fixed box. -/
+noncomputable def localizedReturnErrorConstant (c₀ d k : ℕ) (H R : ℝ) : ℝ :=
+  (1 + (2 * (R + 1)) ^ k) *
+    (H * ((2 * H + 3) ^ d * H ^ c₀) + H * chartReturnErrorConstant c₀ d H)
+
+/-- Blueprint eq:return: the genuine localized error is integrable and its
+L1 norm plus every pointwise norm is bounded linearly in the return size.
+The constant has no dependence on the unrestricted velocity or phase. -/
+theorem localized_multivariableChart_return_error {k d c₀ : ℕ} {H R : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
+    (θ : (Fin k → ℝ) → ℂ) (hθm : Measurable θ) (hR : 0 ≤ R)
+    (hθ : ∀ z, ‖θ z‖ ≤ H)
+    (hθLip : ∀ x y, ‖θ y - θ x‖ ≤ H * ‖y - x‖)
+    (hθsupp : ∀ z, θ z ≠ 0 → ∀ i, |z i| ≤ R)
+    (h : Fin k → ℝ) (hh : ‖h‖ ≤ 1) (m : Fin d → ℤ)
+    (hint : ∀ i j, ∃ q : ℤ, (q : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) :
+    let e := A.horizontal.mulVec h - fun i => (m i : ℝ)
+    let C := A.matrix.map (fun q => (q : ℝ))
+    let ω := (2 • A.quadratic + A.horizontal.transpose * C * A.horizontal).mulVec h -
+      (A.horizontal.transpose * (C - C.transpose)).mulVec (fun i => (m i : ℝ))
+    let c := dotProduct h (A.quadratic.mulVec h) + dotProduct A.linear h +
+      chartMatrixPhase A.matrix (A.horizontal.mulVec h) e
+    let E := fun z => θ (z + h) * multivariableQuadraticChartAtom A (z + h) -
+      (Real.fourierChar (c + dotProduct z ω) : ℂ) * (θ z * multivariableQuadraticChartAtom A z)
+    Integrable E ∧ ∀ z, (∫ x, ‖E x‖) + ‖E z‖ ≤
+      localizedReturnErrorConstant c₀ d k H R * (‖h‖ + ‖e‖) := by
+  intro e C ω c E
+  have hH := (quadraticChartComplexity_parameter_pos hA).le
+  let K := H * ((2 * H + 3) ^ d * H ^ c₀) + H * chartReturnErrorConstant c₀ d H
+  have hD : 0 ≤ chartReturnErrorConstant c₀ d H := by
+    unfold chartReturnErrorConstant
+    positivity
+  have hEm : Measurable E := by
+    have hQm := multivariableQuadraticChartAtom_measurable A
+    dsimp [E]
+    apply Measurable.sub
+    · exact (hθm.comp (by fun_prop)).mul (hQm.comp (by fun_prop))
+    · apply Measurable.mul
+      · unfold dotProduct
+        fun_prop
+      · exact hθm.mul hQm
+  have hEb (z) : ‖E z‖ ≤ K * (‖h‖ + ‖e‖) := by
+    exact localized_modulation_error θ (multivariableQuadraticChartAtom A) z h
+      (Real.fourierChar (c + dotProduct z ω)) hH hH (by positivity) hD (norm_nonneg e)
+      (hθ z) (by simpa only [add_sub_cancel_left] using hθLip z (z + h))
+      (multivariableQuadraticChart_norm_le hA (z + h))
+      (multivariableQuadraticChart_return_error hA hc z h m hint)
+  have hEs (z) (hz : E z ≠ 0) : ∀ i, |z i| ≤ R + 1 := by
+    intro i
+    by_cases hθz : θ z = 0
+    · have hθzh : θ (z + h) ≠ 0 := by
+        intro hh0
+        exact hz (by simp [E, hθz, hh0])
+      have hi0 : |h i| ≤ ‖h‖ := by
+        simpa only [Real.norm_eq_abs] using norm_le_pi_norm h i
+      have hi : |h i| ≤ 1 := hi0.trans hh
+      have hz' : z i = (z + h) i - h i := by simp
+      rw [hz']
+      exact (abs_sub _ _).trans (add_le_add (hθsupp (z + h) hθzh i) hi)
+    · exact (hθsupp z hθz i).trans (by linarith)
+  obtain ⟨hEi, hEL⟩ := bounded_box_integral_norm hEm (by positivity) hEb hEs
+  refine ⟨hEi, ?_⟩
+  intro z
+  calc
+    _ ≤ (2 * (R + 1)) ^ k * (K * (‖h‖ + ‖e‖)) + K * (‖h‖ + ‖e‖) :=
+      add_le_add hEL (hEb z)
+    _ = _ := by dsimp [localizedReturnErrorConstant, K]; ring
+
+
+/-- A bounded box-supported function has explicit L2 mass and first-moment
+bounds, as needed before the Weyl Fourier argument. -/
+theorem bounded_box_L2_and_moment {k : ℕ} {f : (Fin k → ℝ) → ℂ} {R B : ℝ}
+    (hf : Measurable f) (hR : 0 ≤ R) (hB : 0 ≤ B)
+    (hbound : ∀ x, ‖f x‖ ≤ B)
+    (hsupp : ∀ x, f x ≠ 0 → ∀ i, |x i| ≤ R) :
+    MemLp f 2 ∧ (∫ x, ‖f x‖ ^ 2) ≤ (2 * R) ^ k * B ^ 2 ∧
+      Integrable (fun x => ‖x‖ * ‖f x‖) ∧
+      (∫ x, ‖x‖ * ‖f x‖) ≤ (2 * R) ^ k * R * B := by
+  obtain ⟨hfi, hL1⟩ := bounded_box_integral_norm hf hR hbound hsupp
+  have hsq (x) : ‖f x‖ ^ 2 ≤ B * ‖f x‖ := by
+    simpa only [pow_two] using mul_le_mul_of_nonneg_right (hbound x) (norm_nonneg (f x))
+  have hsqi : Integrable (fun x => ‖f x‖ ^ 2) :=
+    (hfi.norm.const_mul B).mono' (by fun_prop) (Filter.Eventually.of_forall fun x => by
+      simpa only [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg ‖f x‖)] using hsq x)
+  have hmoment (x) : ‖x‖ * ‖f x‖ ≤ R * ‖f x‖ := by
+    by_cases hz : f x = 0
+    · simp [hz]
+    have hx : ‖x‖ ≤ R := (pi_norm_le_iff_of_nonneg hR).mpr
+      (fun i => by simpa only [Real.norm_eq_abs] using hsupp x hz i)
+    exact mul_le_mul_of_nonneg_right hx (norm_nonneg _)
+  have hmi : Integrable (fun x => ‖x‖ * ‖f x‖) :=
+    (hfi.norm.const_mul R).mono' (by fun_prop) (Filter.Eventually.of_forall fun x => by
+      simpa only [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg (norm_nonneg x) (norm_nonneg (f x)))]
+        using hmoment x)
+  refine ⟨(memLp_two_iff_integrable_sq_norm hf.aestronglyMeasurable).mpr hsqi, ?_, hmi, ?_⟩
+  · calc
+      _ ≤ ∫ x, B * ‖f x‖ := integral_mono hsqi (hfi.norm.const_mul B) hsq
+      _ = B * ∫ x, ‖f x‖ := integral_const_mul _ _
+      _ ≤ B * ((2 * R) ^ k * B) := mul_le_mul_of_nonneg_left hL1 hB
+      _ = _ := by ring
+  · calc
+      _ ≤ ∫ x, R * ‖f x‖ := integral_mono hmi (hfi.norm.const_mul R) hmoment
+      _ = R * ∫ x, ‖f x‖ := integral_const_mul _ _
+      _ ≤ R * ((2 * R) ^ k * B) := mul_le_mul_of_nonneg_left hL1 hR
+      _ = _ := by ring
+
+/-- All analytic size assumptions on F=θQ in the Weyl proof follow from the
+actual chart complexity and the fixed support box of θ. -/
+theorem localized_multivariableChart_size {k d c₀ : ℕ} {H R : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A)
+    (θ : (Fin k → ℝ) → ℂ) (hθm : Measurable θ) (hR : 0 ≤ R)
+    (hθ : ∀ z, ‖θ z‖ ≤ H)
+    (hθsupp : ∀ z, θ z ≠ 0 → ∀ i, |z i| ≤ R) :
+    let F := fun z => θ z * multivariableQuadraticChartAtom A z
+    let B := H * ((2 * H + 3) ^ d * H ^ c₀)
+    Measurable F ∧ (∀ z, ‖F z‖ ≤ B) ∧
+      (∀ z, F z ≠ 0 → ∀ i, |z i| ≤ R) ∧
+      Integrable F ∧ (∫ z, ‖F z‖) ≤ (2 * R) ^ k * B ∧
+      MemLp F 2 ∧ (∫ z, ‖F z‖ ^ 2) ≤ (2 * R) ^ k * B ^ 2 ∧
+      Integrable (fun z => ‖z‖ * ‖F z‖) ∧
+      (∫ z, ‖z‖ * ‖F z‖) ≤ (2 * R) ^ k * R * B := by
+  intro F B
+  have hH := (quadraticChartComplexity_parameter_pos hA).le
+  have hm : Measurable F := hθm.mul (multivariableQuadraticChartAtom_measurable A)
+  have hb (z) : ‖F z‖ ≤ B := by
+    exact (norm_mul _ _).le.trans
+      (mul_le_mul (hθ z) (multivariableQuadraticChart_norm_le hA z) (norm_nonneg _) hH)
+  have hs (z) (hz : F z ≠ 0) : ∀ i, |z i| ≤ R :=
+    hθsupp z (mul_ne_zero_iff.mp hz).1
+  obtain ⟨hi, hL1⟩ := bounded_box_integral_norm hm hR hb hs
+  obtain ⟨hL2, hsq, hmi, hmb⟩ := bounded_box_L2_and_moment hm hR (by dsimp [B]; positivity) hb hs
+  exact ⟨hm, hb, hs, hi, hL1, hL2, hsq, hmi, hmb⟩
+
+
+/-- Coordinate sup norm and Euclidean norm comparisons, including dimension zero. -/
+theorem euclidean_norm_le_dimension_mul_pi_norm {k : ℕ} (x : Fin k → ℝ) :
+    ‖WithLp.toLp 2 x‖ ≤ (k : ℝ) * ‖x‖ := by
+  calc
+    _ ≤ ∑ i, ‖x i‖ := euclidean_norm_le_sum_coordinates _
+    _ ≤ ∑ _i : Fin k, ‖x‖ := Finset.sum_le_sum fun i _ => norm_le_pi_norm x i
+    _ = _ := by simp
+
+/-- Passing from coordinate functions to Euclidean space preserves volume and
+costs at most the dimension in the first absolute moment. -/
+theorem coordinate_lift_first_moment {k : ℕ} {f : (Fin k → ℝ) → ℂ}
+    (hf : Measurable f) (hm : Integrable (fun x => ‖x‖ * ‖f x‖)) :
+    Integrable (fun x : EuclideanSpace ℝ (Fin k) => ‖x‖ * ‖f x.ofLp‖) ∧
+      (∫ x : EuclideanSpace ℝ (Fin k), ‖x‖ * ‖f x.ofLp‖) ≤
+        (k : ℝ) * ∫ x : Fin k → ℝ, ‖x‖ * ‖f x‖ := by
+  have hp : MeasurePreserving (fun x : EuclideanSpace ℝ (Fin k) => x.ofLp) := by
+    convert! PiLp.volume_preserving_ofLp (Fin k)
+  let g := fun x : EuclideanSpace ℝ (Fin k) => (k : ℝ) * (‖x.ofLp‖ * ‖f x.ofLp‖)
+  have hgi : Integrable g :=
+    (hp.integrable_comp_of_integrable hm).const_mul (k : ℝ)
+  have hb (x : EuclideanSpace ℝ (Fin k)) : ‖x‖ * ‖f x.ofLp‖ ≤ g x := by
+    have hh := euclidean_norm_le_dimension_mul_pi_norm x.ofLp
+    have ht := mul_le_mul_of_nonneg_right hh (norm_nonneg (f x.ofLp))
+    simpa only [WithLp.toLp_ofLp, mul_assoc] using ht
+  have hfi : Integrable (fun x : EuclideanSpace ℝ (Fin k) => ‖x‖ * ‖f x.ofLp‖) := by
+    apply hgi.mono' (by fun_prop)
+    exact Filter.Eventually.of_forall fun x => by
+      simpa only [Real.norm_eq_abs,
+        abs_of_nonneg (mul_nonneg (norm_nonneg x) (norm_nonneg (f x.ofLp)))] using hb x
+  refine ⟨hfi, (integral_mono hfi hgi hb).trans_eq ?_⟩
+  rw [show g = fun x : EuclideanSpace ℝ (Fin k) =>
+      (k : ℝ) * (‖x.ofLp‖ * ‖f x.ofLp‖) from rfl, integral_const_mul]
+  congr 1
+  convert! hp.integral_comp
+    (MeasurableEquiv.toLp 2 (Fin k → ℝ)).symm.measurableEmbedding
+    (fun x : Fin k → ℝ => ‖x‖ * ‖f x‖)
+
+
+/-- The analytic input to the Weyl argument on Euclidean space, with the
+standard Lebesgue measure and the Euclidean first absolute moment. -/
+theorem localized_multivariableChart_euclidean_size {k d c₀ : ℕ} {H R : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A)
+    (θ : (Fin k → ℝ) → ℂ) (hθm : Measurable θ) (hR : 0 ≤ R)
+    (hθ : ∀ z, ‖θ z‖ ≤ H)
+    (hθsupp : ∀ z, θ z ≠ 0 → ∀ i, |z i| ≤ R) :
+    let F := fun z : EuclideanSpace ℝ (Fin k) =>
+      θ z.ofLp * multivariableQuadraticChartAtom A z.ofLp
+    let B := H * ((2 * H + 3) ^ d * H ^ c₀)
+    Measurable F ∧ (∀ z, ‖F z‖ ≤ B) ∧
+      Integrable F ∧ (∫ z, ‖F z‖) ≤ (2 * R) ^ k * B ∧
+      MemLp F 2 ∧ (∫ z, ‖F z‖ ^ 2) ≤ (2 * R) ^ k * B ^ 2 ∧
+      Integrable (fun z => ‖z‖ * ‖F z‖) ∧
+      (∫ z, ‖z‖ * ‖F z‖) ≤ (k : ℝ) * ((2 * R) ^ k * R * B) := by
+  intro F B
+  let f := fun z => θ z * multivariableQuadraticChartAtom A z
+  obtain ⟨hfm, hfb, _, hfi, hL1, hL2, hsq, hmi, hmb⟩ :=
+    localized_multivariableChart_size hA θ hθm hR hθ hθsupp
+  have hp : MeasurePreserving (fun x : EuclideanSpace ℝ (Fin k) => x.ofLp) := by
+    convert! PiLp.volume_preserving_ofLp (Fin k)
+  have he (g : (Fin k → ℝ) → ℝ) :
+      (∫ z : EuclideanSpace ℝ (Fin k), g z.ofLp) = ∫ z : Fin k → ℝ, g z :=
+    by convert! hp.integral_comp
+        (MeasurableEquiv.toLp 2 (Fin k → ℝ)).symm.measurableEmbedding g
+  obtain ⟨hFm, hFM⟩ := coordinate_lift_first_moment hfm hmi
+  refine ⟨hfm.comp hp.measurable, fun z => hfb z.ofLp, hp.integrable_comp_of_integrable hfi,
+    ?_, hL2.comp_measurePreserving hp, ?_, hFm, ?_⟩
+  · change (∫ z : EuclideanSpace ℝ (Fin k), ‖f z.ofLp‖) ≤ _
+    rw [he (fun z => ‖f z‖)]
+    exact hL1
+  · change (∫ z : EuclideanSpace ℝ (Fin k), ‖f z.ofLp‖ ^ 2) ≤ _
+    rw [he (fun z => ‖f z‖ ^ 2)]
+    exact hsq
+  · exact hFM.trans (mul_le_mul_of_nonneg_left hmb (Nat.cast_nonneg k))
+
+
+/-- The localized chart Fourier transform is quantitatively Lipschitz,
+without any bound on its unrestricted horizontal or quadratic parameters. -/
+theorem localized_multivariableChart_fourier_lipschitz {k d c₀ : ℕ} {H R : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A)
+    (θ : (Fin k → ℝ) → ℂ) (hθm : Measurable θ) (hR : 0 ≤ R)
+    (hθ : ∀ z, ‖θ z‖ ≤ H)
+    (hθsupp : ∀ z, θ z ≠ 0 → ∀ i, |z i| ≤ R)
+    (ξ η : EuclideanSpace ℝ (Fin k)) :
+    let F := fun z : EuclideanSpace ℝ (Fin k) =>
+      θ z.ofLp * multivariableQuadraticChartAtom A z.ofLp
+    ‖𝓕 F ξ - 𝓕 F η‖ ≤
+      (2 * Real.pi * ((k : ℝ) *
+        ((2 * R) ^ k * R * (H * ((2 * H + 3) ^ d * H ^ c₀))))) * ‖ξ - η‖ := by
+  intro F
+  obtain ⟨_, _, hi, _, _, _, hmi, hmb⟩ :=
+    localized_multivariableChart_euclidean_size hA θ hθm hR hθ hθsupp
+  exact (fourier_first_moment_lipschitz hi hmi ξ η).trans
+    (mul_le_mul_of_nonneg_right
+      (mul_le_mul_of_nonneg_left hmb (by positivity)) (norm_nonneg _))
+
+
+/-- The actual chart return error propagates Fourier magnitude by one return
+frequency. This is the quantitative input for the multiple-return argument. -/
+theorem localized_multivariableChart_fourier_return_lower {k d c₀ : ℕ} {H R : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
+    (θ : (Fin k → ℝ) → ℂ) (hθm : Measurable θ) (hR : 0 ≤ R)
+    (hθ : ∀ z, ‖θ z‖ ≤ H)
+    (hθLip : ∀ x y, ‖θ y - θ x‖ ≤ H * ‖y - x‖)
+    (hθsupp : ∀ z, θ z ≠ 0 → ∀ i, |z i| ≤ R)
+    (h : Fin k → ℝ) (hh : ‖h‖ ≤ 1) (m : Fin d → ℤ)
+    (hint : ∀ i j, ∃ q : ℤ, (q : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ))
+    (ξ : EuclideanSpace ℝ (Fin k)) :
+    let e := A.horizontal.mulVec h - fun i => (m i : ℝ)
+    let C := A.matrix.map (fun q => (q : ℝ))
+    let ω := (2 • A.quadratic + A.horizontal.transpose * C * A.horizontal).mulVec h -
+      (A.horizontal.transpose * (C - C.transpose)).mulVec (fun i => (m i : ℝ))
+    let F := fun z : EuclideanSpace ℝ (Fin k) =>
+      θ z.ofLp * multivariableQuadraticChartAtom A z.ofLp
+    ‖𝓕 F ξ‖ - localizedReturnErrorConstant c₀ d k H R * (‖h‖ + ‖e‖) ≤
+      ‖𝓕 F (ξ - WithLp.toLp 2 ω)‖ := by
+  intro e C ω F
+  let c := dotProduct h (A.quadratic.mulVec h) + dotProduct A.linear h +
+    chartMatrixPhase A.matrix (A.horizontal.mulVec h) e
+  let E := fun z => θ (z + h) * multivariableQuadraticChartAtom A (z + h) -
+    (Real.fourierChar (c + dotProduct z ω) : ℂ) * (θ z * multivariableQuadraticChartAtom A z)
+  obtain ⟨_, herror⟩ :=
+    localized_multivariableChart_return_error hA hc θ hθm hR hθ hθLip hθsupp h hh m hint
+  have hEL : (∫ z, ‖E z‖) ≤ localizedReturnErrorConstant c₀ d k H R * (‖h‖ + ‖e‖) := by
+    have hb := herror 0
+    have hz := norm_nonneg (E 0)
+    change (∫ z, ‖E z‖) + ‖E 0‖ ≤ _ at hb
+    linarith only [hb, hz]
+  obtain ⟨_, _, hFi, _, _, _, _, _⟩ :=
+    localized_multivariableChart_euclidean_size hA θ hθm hR hθ hθsupp
+  have hpair (z : EuclideanSpace ℝ (Fin k)) :
+      inner ℝ z (WithLp.toLp 2 ω) = dotProduct z.ofLp ω := by
+    simp only [EuclideanSpace.inner_eq_star_dotProduct, star_trivial,
+      dotProduct_comm]
+  have he : (fun z : EuclideanSpace ℝ (Fin k) => F (z + WithLp.toLp 2 h) -
+      (Real.fourierChar (c + inner ℝ z (WithLp.toLp 2 ω)) : ℂ) * F z) =
+      fun z => E z.ofLp := by
+    funext z
+    rw [hpair]
+    rfl
+  have hp : MeasurePreserving (fun z : EuclideanSpace ℝ (Fin k) => z.ofLp) := by
+    convert! PiLp.volume_preserving_ofLp (Fin k)
+  have hmeasure : (∫ z : EuclideanSpace ℝ (Fin k), ‖E z.ofLp‖) = ∫ z, ‖E z‖ := by
+    convert! hp.integral_comp
+      (MeasurableEquiv.toLp 2 (Fin k → ℝ)).symm.measurableEmbedding (fun z => ‖E z‖)
+  have hhF := fourier_return_lower hFi (WithLp.toLp 2 h) (WithLp.toLp 2 ω) ξ c
+  change ‖𝓕 F ξ‖ - (∫ z, ‖F (z + WithLp.toLp 2 h) -
+    (Real.fourierChar (c + inner ℝ z (WithLp.toLp 2 ω)) : ℂ) * F z‖) ≤ _ at hhF
+  have hfun : (fun z : EuclideanSpace ℝ (Fin k) => ‖F (z + WithLp.toLp 2 h) -
+      (Real.fourierChar (c + inner ℝ z (WithLp.toLp 2 ω)) : ℂ) * F z‖) =
+      fun z => ‖E z.ofLp‖ := congrArg (fun f => fun z => ‖f z‖) he
+  rw [hfun, hmeasure] at hhF
+  linarith only [hhF, hEL]
+
+/-- The source progression of large Fourier values follows by iterating the
+verified one-return estimate; no new return hypotheses are assumed. -/
+theorem localized_multivariableChart_fourier_progression {k d c₀ : ℕ} {H R : ℝ}
+    {A : MultivariableQuadraticChartData k d}
+    (hA : MultivariableQuadraticChartComplexity c₀ H A) (hc : 1 ≤ c₀)
+    (θ : (Fin k → ℝ) → ℂ) (hθm : Measurable θ) (hR : 0 ≤ R)
+    (hθ : ∀ z, ‖θ z‖ ≤ H)
+    (hθLip : ∀ x y, ‖θ y - θ x‖ ≤ H * ‖y - x‖)
+    (hθsupp : ∀ z, θ z ≠ 0 → ∀ i, |z i| ≤ R)
+    (h : Fin k → ℝ) (hh : ‖h‖ ≤ 1) (m : Fin d → ℤ)
+    (hint : ∀ i j, ∃ q : ℤ, (q : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ))
+    (ξ : EuclideanSpace ℝ (Fin k)) (j : ℕ) :
+    let e := A.horizontal.mulVec h - fun i => (m i : ℝ)
+    let C := A.matrix.map (fun q => (q : ℝ))
+    let ω := (2 • A.quadratic + A.horizontal.transpose * C * A.horizontal).mulVec h -
+      (A.horizontal.transpose * (C - C.transpose)).mulVec (fun i => (m i : ℝ))
+    let F := fun z : EuclideanSpace ℝ (Fin k) =>
+      θ z.ofLp * multivariableQuadraticChartAtom A z.ofLp
+    ‖𝓕 F ξ‖ - (j : ℝ) *
+      (localizedReturnErrorConstant c₀ d k H R * (‖h‖ + ‖e‖)) ≤
+        ‖𝓕 F (ξ - j • WithLp.toLp 2 ω)‖ := by
+  intro e C ω F
+  exact fourier_progression_lower (𝓕 F) (WithLp.toLp 2 ω)
+    (localizedReturnErrorConstant c₀ d k H R * (‖h‖ + ‖e‖))
+    (fun η => localized_multivariableChart_fourier_return_lower
+      hA hc θ hθm hR hθ hθLip hθsupp h hh m hint η) ξ j
 
 end Auto

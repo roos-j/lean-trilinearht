@@ -23,8 +23,7 @@ Its types, hypotheses, conclusions and local definitions use only Mathlib.
 
 The proof develops integer basis extension, shortest-projection size reduction,
 primal and dual basis estimates, attainment of minima, and a maximum-determinant
-ellipsoid comparison. The coefficient-box application is kept in the consuming
-trilinear Hilbert transform module.
+ellipsoid comparison, and the quantitative coefficient-box application.
 
 Verified source: `blueprint/formalization_blueprint.tex`, lem:integer-basis
 (lines 257–263), lem:reduced-basis (lines 267–292), and lem:transference
@@ -3457,5 +3456,280 @@ theorem shortReturnBody_coordinate_return {d k : ℕ}
   rw [hhn]
   have hnonneg : 0 ≤ P * (d : ℝ) * b := by positivity
   nlinarith only [hdn, hthi, hnonneg]
+
+/-- The reduced-basis estimates imply a uniform bound on each coefficient
+weighted by its basis-vector length; used in blueprint `lem:lattice-box`. -/
+theorem reducedBasis_weighted_coordinate_bound {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] {n : ℕ}
+    (b : Module.Basis (Fin n) ℝ E) (hb : IsShortestProjectionBasis b)
+    (hr : IsSizeReducedBasis b) (i : Fin n) (x : E) :
+    ‖b i‖ * |b.repr x i| ≤ (8 : ℝ) ^ n * ‖x‖ := by
+  calc
+    _ ≤ ((2 : ℝ) ^ n * ‖InnerProductSpace.gramSchmidt ℝ b i‖) * |b.repr x i| :=
+      mul_le_mul_of_nonneg_right (reducedBasis_primal_prefix_bound b hb hr le_rfl)
+        (abs_nonneg _)
+    _ = (2 : ℝ) ^ n * (‖InnerProductSpace.gramSchmidt ℝ b i‖ * |b.repr x i|) := by ring
+    _ ≤ (2 : ℝ) ^ n * ((4 : ℝ) ^ n * ‖x‖) :=
+      mul_le_mul_of_nonneg_left (reducedBasis_coordinate_bound b hb hr i x) (by positivity)
+    _ = (8 : ℝ) ^ n * ‖x‖ := by rw [← mul_assoc, ← mul_pow]; norm_num
+
+/-- The printed floored side length; zero lengths will be discarded. -/
+noncomputable def latticeBoxSideLength {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (i : Fin n) : ℤ :=
+  ⌊(4 * (n : ℝ) * ‖b i‖)⁻¹⌋
+
+/-- The part of the lattice basis retained in the coefficient box. -/
+noncomputable def latticeBoxIndices {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) : Finset (Fin n) :=
+  Finset.univ.filter (fun i => 0 < latticeBoxSideLength b i)
+
+/-- An integer coefficient box on the selected part of a basis. -/
+def integerCoefficientBox {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (I : Finset (Fin n)) (L : Fin n → ℤ) : Set E :=
+  {x | ∃ z : Fin n → ℤ, (∀ i ∉ I, z i = 0) ∧
+    (∀ i ∈ I, |z i| ≤ L i) ∧ ∑ i, z i • b i = x}
+
+theorem latticeBoxSideLength_nonneg {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (i : Fin n) :
+    0 ≤ latticeBoxSideLength b i := Int.floor_nonneg.mpr (by positivity)
+
+theorem latticeBoxSideLength_pos {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) {i : Fin n}
+    (hi : i ∈ latticeBoxIndices b) : 1 ≤ latticeBoxSideLength b i := by
+  have h : 0 < latticeBoxSideLength b i := (Finset.mem_filter.mp hi).2
+  omega
+
+theorem latticeBoxSideLength_zero {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) {i : Fin n}
+    (hi : i ∉ latticeBoxIndices b) : latticeBoxSideLength b i = 0 := by
+  have h : ¬0 < latticeBoxSideLength b i := by simpa [latticeBoxIndices] using hi
+  exact le_antisymm (le_of_not_gt h) (latticeBoxSideLength_nonneg b i)
+
+theorem latticeBoxSideLength_weight_le {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (hn : 0 < n) (b : Module.Basis (Fin n) ℝ E) (i : Fin n) :
+    (latticeBoxSideLength b i : ℝ) * ‖b i‖ ≤ (4 * (n : ℝ))⁻¹ := by
+  have hn0 : (n : ℝ) ≠ 0 := by exact_mod_cast hn.ne'
+  have hb : ‖b i‖ ≠ 0 := norm_ne_zero_iff.mpr (b.ne_zero i)
+  calc
+    _ ≤ (4 * (n : ℝ) * ‖b i‖)⁻¹ * ‖b i‖ :=
+      mul_le_mul_of_nonneg_right (Int.floor_le _) (norm_nonneg _)
+    _ = _ := by field_simp
+
+/-- Blueprint `lem:lattice-box`, line 336: the total length budget is `1/4`. -/
+theorem latticeBoxSideLength_sum_le {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (hn : 0 < n) (b : Module.Basis (Fin n) ℝ E) :
+    ∑ i, (latticeBoxSideLength b i : ℝ) * ‖b i‖ ≤ (1 / 4 : ℝ) := by
+  have hn0 : (n : ℝ) ≠ 0 := by exact_mod_cast hn.ne'
+  calc
+    _ ≤ ∑ _i : Fin n, (4 * (n : ℝ))⁻¹ :=
+      Finset.sum_le_sum fun i _ => latticeBoxSideLength_weight_le hn b i
+    _ = (1 / 4 : ℝ) := by simp; field_simp
+
+/-- The explicit radius `(100d)^(-10d)` from blueprint `lem:lattice-box`. -/
+noncomputable def latticeBoxRadius (n : ℕ) : ℝ := ((100 * (n : ℝ)) ^ (10 * n))⁻¹
+
+theorem latticeBoxRadius_pos {n : ℕ} (hn : 0 < n) : 0 < latticeBoxRadius n := by
+  unfold latticeBoxRadius
+  have : (0 : ℝ) < n := by exact_mod_cast hn
+  positivity
+
+theorem latticeBoxRadius_scaled_le {n : ℕ} (hn : 0 < n) :
+    (4 * (n : ℝ) * (8 : ℝ) ^ n) * latticeBoxRadius n ≤ 1 := by
+  have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast hn
+  have hbase : (1 : ℝ) ≤ 100 * n := by linarith
+  have hbound : (4 * (n : ℝ)) * (8 : ℝ) ^ n ≤ (100 * (n : ℝ)) ^ (10 * n) := by
+    calc
+      _ ≤ (100 * (n : ℝ)) * (100 * (n : ℝ)) ^ n :=
+        mul_le_mul (by linarith) (pow_le_pow_left₀ (by norm_num) (by linarith) n)
+          (by positivity) (by positivity)
+      _ = (100 * (n : ℝ)) ^ (n + 1) := by rw [pow_succ]; ring
+      _ ≤ _ := pow_le_pow_right₀ hbase (by omega)
+  rw [latticeBoxRadius, ← div_eq_mul_inv]
+  exact (div_le_one (by positivity)).mpr hbound
+
+/-- Integer coordinates in a real basis of its integer span. -/
+theorem exists_integer_basis_coordinates {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) {v : E}
+    (hv : v ∈ Submodule.span ℤ (Set.range b)) :
+    ∃ z : Fin n → ℤ, (∀ i, (z i : ℝ) = b.repr v i) ∧ ∑ i, z i • b i = v := by
+  have hcoord : ∀ i, ∃ z : ℤ, (z : ℝ) = b.repr v i :=
+    (b.mem_span_iff_repr_mem ℤ v).mp hv
+  choose z hz using hcoord
+  refine ⟨z, hz, ?_⟩
+  calc
+    _ = ∑ i, b.repr v i • b i := by
+      apply Finset.sum_congr rfl
+      intro i _
+      rw [← hz i, Int.cast_smul_eq_zsmul ℝ]
+    _ = v := b.sum_repr v
+
+/-- Blueprint `lem:lattice-box`, lines 337–342: every lattice vector with
+norm at most the explicit radius belongs to the selected coefficient box. -/
+theorem small_lattice_vector_mem_coefficientBox {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] {n : ℕ} (hn : 0 < n)
+    (b : Module.Basis (Fin n) ℝ E) (hb : IsShortestProjectionBasis b)
+    (hr : IsSizeReducedBasis b) {v : E} (hv : v ∈ Submodule.span ℤ (Set.range b))
+    (hnorm : ‖v‖ ≤ latticeBoxRadius n) :
+    v ∈ integerCoefficientBox b (latticeBoxIndices b) (latticeBoxSideLength b) := by
+  obtain ⟨z, hz, hsum⟩ := exists_integer_basis_coordinates b hv
+  have hn' : (0 : ℝ) < n := by exact_mod_cast hn
+  have hcoeff (i : Fin n) : |z i| ≤ latticeBoxSideLength b i := by
+    apply Int.le_floor.mpr
+    rw [Int.cast_abs]
+    rw [← one_div]
+    have hbi : 0 < ‖b i‖ := norm_pos_iff.mpr (b.ne_zero i)
+    apply (le_div_iff₀ (by positivity)).mpr
+    calc
+      _ = (4 * (n : ℝ)) * (‖b i‖ * |b.repr v i|) := by rw [hz i]; ring
+      _ ≤ (4 * (n : ℝ)) * ((8 : ℝ) ^ n * ‖v‖) :=
+        mul_le_mul_of_nonneg_left (reducedBasis_weighted_coordinate_bound b hb hr i v)
+          (by positivity)
+      _ ≤ (4 * (n : ℝ)) * ((8 : ℝ) ^ n * latticeBoxRadius n) :=
+        mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hnorm (by positivity)) (by positivity)
+      _ = (4 * (n : ℝ) * (8 : ℝ) ^ n) * latticeBoxRadius n := by ring
+      _ ≤ 1 := latticeBoxRadius_scaled_le hn
+  refine ⟨z, ?_, fun i _ => hcoeff i, hsum⟩
+  intro i hi
+  exact abs_nonpos_iff.mp (by simpa only [latticeBoxSideLength_zero b hi] using hcoeff i)
+
+/-- Every partial coordinate sum in the selected coefficient box has norm
+at most `1/4`, as required in blueprint `lem:lattice-box`. -/
+theorem coefficientBox_partial_sum_le {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (hn : 0 < n) (b : Module.Basis (Fin n) ℝ E)
+    (z : Fin n → ℤ) (hz : ∀ i ∉ latticeBoxIndices b, z i = 0)
+    (hbound : ∀ i ∈ latticeBoxIndices b, |z i| ≤ latticeBoxSideLength b i)
+    (s : Finset (Fin n)) : ‖∑ i ∈ s, z i • b i‖ ≤ (1 / 4 : ℝ) := by
+  have hcoeff (i : Fin n) : |z i| ≤ latticeBoxSideLength b i := by
+    by_cases hi : i ∈ latticeBoxIndices b
+    · exact hbound i hi
+    · rw [hz i hi, abs_zero]
+      exact latticeBoxSideLength_nonneg b i
+  calc
+    _ ≤ ∑ i ∈ s, |(z i : ℝ)| * ‖b i‖ := by
+      simpa only [norm_zsmul ℝ, Real.norm_eq_abs] using norm_sum_le s (fun i => z i • b i)
+    _ ≤ ∑ i ∈ s, (latticeBoxSideLength b i : ℝ) * ‖b i‖ := by
+      apply Finset.sum_le_sum
+      intro i _
+      apply mul_le_mul_of_nonneg_right _ (norm_nonneg _)
+      exact_mod_cast hcoeff i
+    _ ≤ ∑ i, (latticeBoxSideLength b i : ℝ) * ‖b i‖ :=
+      Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ s) (fun i _ _ =>
+        mul_nonneg (by exact_mod_cast latticeBoxSideLength_nonneg b i) (norm_nonneg _))
+    _ ≤ (1 / 4 : ℝ) := latticeBoxSideLength_sum_le hn b
+
+theorem coefficientBox_subset_quarter_ball {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (hn : 0 < n) (b : Module.Basis (Fin n) ℝ E) :
+    integerCoefficientBox b (latticeBoxIndices b) (latticeBoxSideLength b) ⊆
+      Metric.closedBall (0 : E) (1 / 4) := by
+  rintro x ⟨z, hz, hbound, rfl⟩
+  rw [Metric.mem_closedBall, dist_zero_right]
+  exact coefficientBox_partial_sum_le hn b z hz hbound Finset.univ
+
+theorem integerCoefficientBox_empty {E : Type*} [NormedAddCommGroup E]
+    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (L : Fin n → ℤ) :
+    integerCoefficientBox b ∅ L = {0} := by
+  ext x
+  constructor
+  · rintro ⟨z, hz, _, hsum⟩
+    have hzero : z = 0 := funext fun i => hz i (Finset.notMem_empty i)
+    simpa only [hzero, Pi.zero_apply, zero_smul, Finset.sum_const_zero,
+      Set.mem_singleton_iff] using hsum.symm
+  · intro hx
+    have hx0 : x = 0 := Set.mem_singleton_iff.mp hx
+    subst x
+    exact ⟨0, by simp, by simp, by simp⟩
+
+/-- Blueprint `lem:lattice-box`, complete statement: a part of a lattice
+basis with positive integer side lengths contains the closed radius
+`(100d)^(-10d)` lattice ball and lies in the closed radius `1/4` ball;
+every partial coordinate sum satisfies the same outer bound. -/
+theorem smallBallCoefficientBox {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] {n : ℕ} (hn : 0 < n)
+    (b : Module.Basis (Fin n) ℝ E) :
+    ∃ (c : Module.Basis (Fin n) ℝ E) (I : Finset (Fin n)) (L : Fin n → ℤ),
+      Submodule.span ℤ (Set.range c) = Submodule.span ℤ (Set.range b) ∧
+      (∀ i ∈ I, 1 ≤ L i) ∧
+      (Metric.closedBall (0 : E) (latticeBoxRadius n) ∩
+        (Submodule.span ℤ (Set.range b) : Set E) ⊆ integerCoefficientBox c I L) ∧
+      (integerCoefficientBox c I L ⊆ Metric.closedBall 0 (1 / 4)) ∧
+      ∀ z : Fin n → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ L i) →
+        ∀ s : Finset (Fin n), ‖∑ i ∈ s, z i • c i‖ ≤ (1 / 4 : ℝ) := by
+  obtain ⟨c, hc, hshort, hred⟩ := exists_reducedShortestProjectionBasis b
+  refine ⟨c, latticeBoxIndices c, latticeBoxSideLength c, hc,
+    fun _ hi => latticeBoxSideLength_pos c hi, ?_,
+    coefficientBox_subset_quarter_ball hn c, coefficientBox_partial_sum_le hn c⟩
+  intro v hv
+  apply small_lattice_vector_mem_coefficientBox hn c hshort hred
+  · rw [hc]
+    exact hv.2
+  · simpa only [Metric.mem_closedBall, dist_zero_right] using hv.1
+
+/-- The coefficient-box theorem for an arbitrary full lattice in positive dimension. -/
+theorem smallBallCoefficientBox_fullLattice {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] (L : Submodule ℤ E)
+    [DiscreteTopology L] [IsZLattice ℝ L] (hd : 0 < Module.finrank ℝ E) :
+    ∃ (b : Module.Basis (Fin (Module.finrank ℝ E)) ℝ E)
+      (I : Finset (Fin (Module.finrank ℝ E))) (a : Fin (Module.finrank ℝ E) → ℤ),
+      Submodule.span ℤ (Set.range b) = L ∧ (∀ i ∈ I, 1 ≤ a i) ∧
+      (Metric.closedBall (0 : E) (latticeBoxRadius (Module.finrank ℝ E)) ∩
+        (L : Set E) ⊆ integerCoefficientBox b I a) ∧
+      (integerCoefficientBox b I a ⊆ Metric.closedBall 0 (1 / 4)) ∧
+      ∀ z : Fin (Module.finrank ℝ E) → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ a i) →
+        ∀ s : Finset (Fin (Module.finrank ℝ E)), ‖∑ i ∈ s, z i • b i‖ ≤ (1 / 4 : ℝ) := by
+  let := ZLattice.module_finite ℝ L
+  let := ZLattice.module_free ℝ L
+  let b := ((Module.finBasis ℤ L).ofZLatticeBasis ℝ L).reindex (finCongr (ZLattice.rank ℝ L))
+  have hb : Submodule.span ℤ (Set.range b) = L := by
+    rw [Module.Basis.range_reindex, Module.Basis.ofZLatticeBasis_span]
+  simpa only [hb] using smallBallCoefficientBox hd b
+
+
+/-- Integer generators of the orthogonal complement of the short-return span,
+including the full-rank case. Coordinate and velocity-pairing bounds depend
+only on the reciprocal return scale. -/
+theorem shortReturnLatticeSpan_dual_coordinates {d k : ℕ}
+    (V : EuclideanSpace ℝ (Fin k) →L[ℝ] EuclideanSpace ℝ (Fin d))
+    {P b : ℝ} (hP : 0 < P) (hb : 0 < b)
+    (hgap : ∀ j : ℕ, 0 < j → j ≤ d →
+      successiveMinimum (shortReturnBody V P) (coordinateIntegerLattice d) j ≤ b ∨
+        (16 * (100 * (d : ℝ)) ^ (10 * d)) * b <
+          successiveMinimum (shortReturnBody V P) (coordinateIntegerLattice d) j) :
+    ∃ r ≤ d, ∃ q : Fin r → EuclideanSpace ℝ (Fin d),
+      LinearIndependent ℝ q ∧
+      (∀ i, q i ∈ coordinateIntegerLattice d) ∧
+      (∀ i j, |q i j| ≤ b⁻¹) ∧
+      (∀ i j, |inner ℝ (q i) (V (EuclideanSpace.basisFun (Fin k) ℝ j))| ≤ P * b⁻¹) ∧
+      Submodule.span ℝ (Set.range q) = (shortReturnLatticeSpan V P b)ᗮ := by
+  classical
+  by_cases hr : Module.finrank ℝ (shortReturnLatticeSpan V P b) < d
+  · obtain ⟨q, hq, hqL, hqt, hspan⟩ := shortReturnLatticeSpan_dual_basis V P hb hgap hr
+    have hd : 0 < d := by omega
+    have hC : 0 < (100 * (d : ℝ)) ^ (10 * d) := by positivity
+    have he : (100 * (d : ℝ)) ^ (10 * d) /
+        ((16 * (100 * (d : ℝ)) ^ (10 * d)) * b) = b⁻¹ / 16 := by
+      field_simp
+    have hs : 0 ≤ b⁻¹ / 16 := by positivity
+    have hsle : b⁻¹ / 16 ≤ b⁻¹ := by have := inv_pos.mpr hb; linarith
+    refine ⟨d - Module.finrank ℝ (shortReturnLatticeSpan V P b),
+      Nat.sub_le _ _, q, hq, hqL, ?_, ?_, hspan⟩
+    · intro i j
+      have hi := hqt i
+      rw [he] at hi
+      exact ((shortReturnBody_polar_coordinates V hP hs hi).1 j).trans hsle
+    · intro i j
+      have hi := hqt i
+      rw [he] at hi
+      exact ((shortReturnBody_polar_coordinates V hP hs hi).2 j).trans
+        (mul_le_mul_of_nonneg_left hsle hP.le)
+  · have htop : shortReturnLatticeSpan V P b = ⊤ := by
+      apply Submodule.eq_top_of_finrank_eq
+      have hle := (shortReturnLatticeSpan V P b).finrank_le
+      simp only [finrank_euclideanSpace, Fintype.card_fin] at hle ⊢
+      omega
+    refine ⟨0, Nat.zero_le _, Fin.elim0, linearIndependent_empty_type, ?_, ?_, ?_, ?_⟩
+    · intro i; exact Fin.elim0 i
+    · intro i; exact Fin.elim0 i
+    · intro i; exact Fin.elim0 i
+    · simp [htop]
 
 end Auto

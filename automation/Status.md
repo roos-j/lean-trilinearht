@@ -34,6 +34,7 @@ status | exact source location | brief mathematical step | ISO 8601 timestamp wi
 complete | lem:fourier-foundation, lines 130–146 | Coordinate Fourier coefficient decay | 2026-10-08T22:44:53-04:00
 complete | lem:fourier-foundation, lines 134–146 | Nonzero shell counting, tails, and uniform convergence | 2026-10-08T22:44:53-04:00
 complete | lem:fourier-foundation, lines 130-146 | Independent Fourier approximation module verification | 2026-10-09T13:30:19.8983506-04:00
+complete | lem:separation, line 1409 | Module extension: bilinear convolution forms bounded by the kernel's Fourier supremum (Parseval, Cauchy-Schwarz); statement uses only Mathlib | 2026-10-10T11:41:13-04:00
 
 # Balog-Szemeredi-Gowers prerequisite
 
@@ -394,14 +395,61 @@ complete | lem:return-splitting, lines 1281-1285 | Rational slow projection with
 complete | lem:return-splitting, lines 1281-1285 | Bounded slow velocity | 2026-10-10T02:15:13.227933-04:00
 complete | lem:return-splitting, lines 1287-1292 | Quantitative coordinate-axis returns by torus pigeonhole | 2026-10-10T02:19:35.514095-04:00
 complete | lem:return-splitting, lines 1293-1300 | Effective quadratic identity and column bounds | 2026-10-10T02:30:17.767922-04:00
-in progress | lem:return-splitting, lines 1300 | Uniform quasipolynomial short-return budget | 2026-10-10T02:30:17.767922-04:00
-not started | Declaration return-splitting, line 1302 | THT.Chart.shortReturnSplitting | 2026-10-08T21:50:31.6115335-04:00
-not started | Declaration weyl, line 1335 | THT.Chart.weylSplitting | 2026-10-08T21:50:31.6115335-04:00
-not started | Declaration chart-fourier, line 1379 | THT.Chart.splitFourierExpansion | 2026-10-08T21:50:31.6115335-04:00
-not started | Declaration separation, line 1413 | THT.Chart.progressionSeparation | 2026-10-08T21:50:31.6115335-04:00
-not started | Declaration von-neumann, line 1449 | THT.LocalForm.vonNeumannOneL2 | 2026-10-08T21:50:31.6115335-04:00
-not started | Declaration detection, line 1475 | THT.LocalForm.detectResidual | 2026-10-08T21:50:31.6115335-04:00
-not started | Declaration predictors, line 1536 | THT.Base.finitePredictorList | 2026-10-08T21:50:31.6115335-04:00
+complete | lem:return-splitting, lines 1300 | Uniform quasipolynomial short-return budget | 2026-10-10T07:24:03.638469-04:00
+complete | Declaration return-splitting, line 1302 | THT.Chart.shortReturnSplitting | 2026-10-10T07:32:42.178233-04:00
+complete | lem:weyl, lines 1321-1331 | Exact quadratic lattice return phase and reindexing | 2026-10-10T07:38:45.645436-04:00
+complete | lem:weyl, lines 1321-1331 | Uniform amplitude and localized return-error estimates | 2026-10-10T07:48:44.280954-04:00
+complete | lem:weyl, line 1321 | Localized support, L1, L2 and first-moment bounds | 2026-10-10T07:56:49.141626-04:00
+complete | lem:weyl, line 1333 | Fourier Lipschitz bound from the first absolute moment | 2026-10-10T08:01:13.935609-04:00
+complete | lem:weyl, line 1333 | Quantitative propagation along return multiples | 2026-10-10T08:25:42-04:00
+complete | lem:weyl, line 1333 | Disjoint frequency balls and Plancherel mass bound | 2026-10-10T08:44:51-04:00
+complete | lem:weyl, line 1333 | Uniform return threshold and denominator budget | 2026-10-10T08:44:51-04:00
+complete | Declaration weyl, line 1335 | THT.Chart.weylSplitting | 2026-10-10T08:44:51-04:00
+complete | lem:chartfourier, lines 1349-1355 | Exact symmetric/skew phase extraction of the effective quadratic form | 2026-10-10T08:51:14-04:00
+complete | lem:chartfourier, line 1355 | Smooth periodic functions on R^n have absolutely convergent Fourier series with derivative-controlled coefficients | 2026-10-10T08:58:39-04:00
+complete | lem:chartfourier, line 1355 | Even clearing period, residue phase and slow lattice values with quasipolynomial count | 2026-10-10T09:08:31-04:00
+complete | lem:chartfourier, lines 1357-1361 | Exact equality cutoff and periodic two-variable amplitude identity | 2026-10-10T09:08:31-04:00
+complete | lem:chartfourier, lines 1361-1363 | Periodization in the slow variable and rescaling to unit periods | 2026-10-10T09:13:30-04:00
+complete | lem:chartfourier, lines 1368-1372 | Uniform derivative bounds of the rescaled periodic amplitudes | 2026-10-10T09:25:09-04:00
+complete | lem:chartfourier, lines 1363-1366 and 1372-1377 | Fourier substitution, rational frequency heights, coefficient decay, shell bounds and family count | 2026-10-10T10:20:52-04:00
+complete | Declaration chart-fourier, line 1379 | THT.Chart.splitFourierExpansion | 2026-10-10T10:20:52-04:00
+complete | lem:separation, lines 1401-1405 | Fixed rational coefficients and the exact quadratic/lift phase identity | 2026-10-10T10:24:56-04:00
+complete | lem:separation, lines 1402-1404 | Bounded carries, exact equality cutoff and the coupled amplitude for one atom | 2026-10-10T10:35:27-04:00
+complete | lem:separation, line 1407 | Product-cutoff Fourier expansion of a compactly supported smooth amplitude | 2026-10-10T10:40:13-04:00
+complete | lem:separation, line 1407 | Factorization into three chart amplitudes and exact one-atom separation | 2026-10-10T10:55:36-04:00
+complete | lem:separation, line 1407 | Product of the two separated atoms and normalization to bounded atoms | 2026-10-10T11:06:47-04:00
+complete | lem:separation, line 1407 | Shell mass, dimension and complexity bounds of the separated terms | 2026-10-10T11:32:21-04:00
+complete | lem:separation, line 1409 | Single-scale two-slot form norm bound by the Fourier supremum A_r | 2026-10-10T12:00:35-04:00
+complete | lem:separation, line 1411 | Separated phase eq:separated-phase from the Weyl splitting and Fourier expansion | 2026-10-10T12:17:26-04:00
+complete | lem:separation, line 1411 | Uniform separated approximation of the two-variable kernel by bounded atoms | 2026-10-10T12:53:29-04:00
+complete | Declaration separation, line 1413 | THT.Chart.progressionSeparation (Lean: progressionSeparation, separated_form_le, separatedPhase, separatedKernelApprox) | 2026-10-10T13:14:38-04:00
+complete | lem:von-neumann, lines 1431-1446 | Three Cauchy-Schwarz steps for the progression average on a compact abelian probability group | 2026-10-10T13:41:06-04:00
+complete | lem:von-neumann, line 1447 | Integer dilations preserve Haar probability on the torus; identification with the U3 norm | 2026-10-10T13:54:24-04:00
+complete | lem:von-neumann, lines 1427-1429 | Kernel Fourier expansion, distribution of characters to slots 0 and 1, modulation invariance of the L^p and U norms | 2026-10-10T14:30:12-04:00
+complete | lem:von-neumann, line 1429 | Identification of the real progression form with the torus average without wraparound | 2026-10-10T14:30:12-04:00
+complete | lem:von-neumann, lines 1426, 1447 | L1 two-coordinate case and extension to L2 inputs by truncation | 2026-10-10T14:30:12-04:00
+complete | Declaration von-neumann, line 1449 | THT.LocalForm.vonNeumannOneL2 (Lean: vonNeumannOneL2, vonNeumann_local_L2, vonNeumann_local_L1) | 2026-10-10T14:30:12-04:00
+complete | lem:detection, lines 1465-1467 | Clipping of the three opponents and the clipped-form lower bound (Lean: detection_clipping, eLpNorm_sub_truncateNorm_le) | 2026-10-10T14:52:38-04:00
+complete | lem:detection, lines 1469-1471 | Two successive decompositions and a bounded atom pair with a large form (detection_structured_slot twice in detectResidual) | 2026-10-10T15:34:52-04:00
+complete | lem:detection, line 1473 | Separation of the atom pair, shell truncation and the A_r lower bound (detection_atom_pair, localProgressionForm_pair_expansion, exists_large_retained_term, exists_pad_chart) | 2026-10-10T15:34:52-04:00
+complete | lem:detection, line 1473 | Kernel separation and extraction of a large normalized moment of R (separated_moment_extraction) | 2026-10-10T15:17:46-04:00
+complete | lem:detection, line 1473 | Quasipolynomial budget of the detection constant (QPLe calculus, detection_budget; absolute degree, q only in the coefficient) | 2026-10-10T15:34:52-04:00
+complete | Declaration detection, line 1475 | THT.LocalForm.detectResidual (Lean: detectResidual) | 2026-10-10T15:34:52-04:00
+complete | lem:predictors, proof line 1531 | Single-scale square function for modulated mean-zero bumps on disjoint cells (cell_bump_square_function) | 2026-10-10T15:59:41-04:00
+complete | lem:predictors, proof lines 1539-1541 | Multi-scale Bessel bound from band multiplicity, lem:height and center separation (multiscale_meanZero_bessel, rational_center_multiplicity, card_le_of_one_separated) | 2026-10-10T17:17:34-04:00
+complete | lem:predictors, proof lines 1521-1523 | Elementary L1 bound for bounded time modifiers, depth energy of opponents and single-phase scale sums (separatedLocalForm_sup_le, HasDepthEnergy, depth_weighted_energy_sum, single_phase_scale_sum) | 2026-10-10T17:17:34-04:00
+complete | lem:predictors, proof line 1529 | Mean-zero tensor decomposition of the kernel in (y_a,y_b) (slotPairKernel_meanZero_tensor, meanZeroWave_props, admissibleKernel_fourier_weighted) | 2026-10-10T16:32:50-04:00
+complete | lem:predictors, proof lines 1534-1542 | Linear-phase scale sum against admissible opponents given frequency multiplicity M (waveRow_bessel, waveRowFamily, linear_phase_scale_sum) | 2026-10-10T16:57:45-04:00
+complete | lem:predictors, proof lines 1517-1542 | Core band scale sum from per-depth chart expansions: exceptional depths, clump representatives and coefficients (band plateau Fourier decay), replacement errors, catalog tails (band_scale_sum_core, clump_coefficient_le, clump_cell_bound, exists_clump_representatives) | 2026-10-10T17:41:50-04:00
+complete | lem:predictors, lines 1489-1494 and proof lines 1517-1542 | eq:band-scale-sum: band scale sum e^-m C (2+m+log H)^C Ka Kb ‖1_J Fa‖ ‖1_J Fb‖ for one separated chart time factor and admissible opponents with depth energy (band_scale_sum; chart_depth_expansion, band_exceptional_depths, band_tiny_sum, catalog_tail_le, band_scale_sum_assembly, bandBracket_poly) | 2026-10-10T18:28:58-04:00
+complete | lem:predictors, proof line 1533 | Square-energy and fixed opponents are admissible with depth energy (isAdmissibleOpponent_squareEnergy, isAdmissibleOpponent_fixed, hasDepthEnergy_fixed) | 2026-10-10T19:35:00-04:00
+not started | lem:predictors, proof line 1532 (applied in prop:base) | Current projection opponents are admissible via lem:compression (columnSpatialCompression with F := pointwise column norm) | 2026-10-10T19:35:00-04:00
+complete | lem:predictors, proof line 1535 | Finite predictor list eq:predictors with explicit parameters: per-cell pair expansion, band/shell/catalog discards, regrouping into (q, M, σ) (predictor_list_param, pair_expansion_cell, predictor_grouping, predictor_sum_bound, expansion_catalog_tail, weighted_shell_tail, pd_shell_budget, pd_band_budget, pd_catalog_budget) | 2026-10-10T19:35:00-04:00
+complete | lem:predictors, line 1514 | Quasipolynomial budget log D_pred ≤ poly(1+B, log H) for list size, coefficient norm, complexities and |λ|r² (qp_pdCard, qp_pdH0, qp_pdLE_exp, qp_pdK0, qp_tailCT) | 2026-10-10T19:35:00-04:00
+complete | Declaration predictors, line 1536 | THT.Base.finitePredictorList (Lean: finitePredictorList) | 2026-10-10T19:35:00-04:00
+complete | lem:delay, lines 1549-1562 | eq:delay-telescope with dyadic conditional expectations, delayed row sums, chirp expansion of e(λt²)-1 and eq:delay-error for scalar delay data (delay_cell_telescope, delay_rows_sum, chirp_fourier, delay_error_bound) | 2026-10-10T20:43:15-04:00
+in progress | lem:delay, lines 1549-1553 | Column partition projections with predictor label give the delay data (ColumnDepthFamily bridge) | 2026-10-10T20:43:15-04:00
+not started | lem:delay, lines 1563-1565 | Rolling differences are admissible square-energy opponents (sequential replacement) | 2026-10-10T20:43:15-04:00
 not started | Declaration delay, line 1566 | THT.Base.delayedPredictorReplacement | 2026-10-08T21:50:31.6115335-04:00
 not started | Declaration adaptive-fit, line 1579 | THT.Base.inheritedAdaptiveFit | 2026-10-08T21:50:31.6115335-04:00
 not started | Declaration stagger, line 1598 | THT.Base.twoEarliestIncrements | 2026-10-08T21:50:31.6115335-04:00

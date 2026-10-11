@@ -56,167 +56,6 @@ namespace Auto
 open Filter
 open scoped Topology
 
-/-- Blueprint Lemma `lem:budget-rules`: every fixed power of a logarithm is
-eventually dominated by any positive power, with any prescribed positive coefficient. -/
-theorem logarithmic_power_eventually_le_rpow (C : ℝ) (d : ℕ)
-    {θ ε : ℝ} (hθ : 0 < θ) (hε : 0 < ε) :
-    ∀ᶠ k : ℝ in atTop, C * logarithmicSize (2 * k) ^ d ≤ ε * k ^ θ := by
-  let A : ℝ := (|C| + 1) * 3 ^ d
-  have hA : 0 < A := by dsimp [A]; positivity
-  have hsmall : (fun k : ℝ => A * Real.log k ^ d) =o[atTop] (fun k => k ^ θ) := by
-    simpa only [Real.rpow_natCast] using
-      (isLittleO_log_rpow_rpow_atTop (d : ℝ) hθ).const_mul_left A
-  filter_upwards [hsmall.bound hε, eventually_ge_atTop (2 : ℝ),
-    Real.tendsto_log_atTop.eventually_ge_atTop 1] with k hk hk2 hklog
-  have hk0 : 0 < k := by linarith
-  have hlog2 : Real.log 2 ≤ Real.log k := Real.log_le_log (by norm_num) hk2
-  have hsize : logarithmicSize (2 * k) ≤ 3 * Real.log k := by
-    rw [logarithmicSize, Real.log_mul (by norm_num) hk0.ne']
-    linarith
-  have hsize0 : 0 ≤ logarithmicSize (2 * k) := by
-    linarith [one_le_logarithmicSize (show 2 ≤ 2 * k by linarith)]
-  have hpow : logarithmicSize (2 * k) ^ d ≤ (3 * Real.log k) ^ d := by gcongr
-  have hC : C ≤ |C| + 1 := by linarith [le_abs_self C]
-  have habs : C * logarithmicSize (2 * k) ^ d ≤ A * Real.log k ^ d := by
-    calc
-      _ ≤ (|C| + 1) * logarithmicSize (2 * k) ^ d := by gcongr
-      _ ≤ (|C| + 1) * (3 * Real.log k) ^ d := by gcongr
-      _ = A * Real.log k ^ d := by dsimp [A]; rw [mul_pow]; ring
-  have hnonneg : 0 ≤ A * Real.log k ^ d := by positivity
-  rw [Real.norm_of_nonneg hnonneg, Real.norm_of_nonneg (Real.rpow_nonneg hk0.le θ)] at hk
-  exact habs.trans hk
-
-/-- Blueprint Lemma `lem:budget-rules`, last assertion: the ceiling in the
-definition of the large parameter does not impair domination of logarithmic overheads. -/
-theorem quasipolynomial_overhead_eventually_le_ceiling_power (C : ℝ) (d : ℕ)
-    {α θ ε : ℝ} (hα : 0 < α) (hθ : 0 < θ) (hε : 0 < ε) :
-    ∀ᶠ k : ℝ in atTop,
-      Real.exp (C * logarithmicSize (2 * k) ^ d) ≤
-        (⌈Real.exp (α * k ^ θ)⌉₊ : ℝ) ^ ε := by
-  filter_upwards [logarithmic_power_eventually_le_rpow C d hθ (mul_pos hα hε)] with k hk
-  calc
-    Real.exp (C * logarithmicSize (2 * k) ^ d) ≤ Real.exp (α * ε * k ^ θ) :=
-      Real.exp_le_exp.mpr hk
-    _ = Real.exp (α * k ^ θ) ^ ε := by rw [← Real.exp_mul]; congr 1; ring
-    _ ≤ (⌈Real.exp (α * k ^ θ)⌉₊ : ℝ) ^ ε :=
-      Real.rpow_le_rpow (Real.exp_pos _).le (Nat.le_ceil _) hε.le
-
-/-- Blueprint Lemma `lem:budget-rules`, compression overhead estimate.
-The exponent two is independent of all coefficients, including any dependence on `q`. -/
-theorem compression_overhead_bound {k D m A B C F : ℝ} (d : ℕ)
-    (hk : 2 ≤ k) (hD : 1 ≤ D) (hm : 0 ≤ m) (hA : 1 ≤ A) (hB : 0 ≤ B)
-    (hC : 1 ≤ C) (hDbound : D ≤ Real.exp (A * k ^ d))
-    (hmbound : m ≤ B * Real.log (2 * k))
-    (hF : F ≤ (C * (m + 1) * Real.log (2 * D)) ^ (C * (m + 1))) :
-    F ≤ Real.exp ((C * (B + 1) * (C * (B + 1) * (A + 1) + 1 + d)) *
-      logarithmicSize (2 * k) ^ 2) := by
-  let u := logarithmicSize (2 * k)
-  let E := C * (B + 1) * (A + 1)
-  have hk0 : 0 < k := by linarith
-  have hD0 : 0 < D := by linarith
-  have hC0 : 0 < C := by linarith
-  have hu : 1 ≤ u := one_le_logarithmicSize (by linarith)
-  have hE : 0 < E := by dsimp [E]; positivity
-  have hkd : 1 ≤ k ^ d := one_le_pow₀ (show 1 ≤ k by linarith)
-  have hlogD : Real.log D ≤ A * k ^ d := by
-    have := Real.log_le_log hD0 hDbound
-    simpa only [Real.log_exp] using this
-  have hlog2 : Real.log 2 ≤ 1 := by
-    have := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 2 by norm_num)
-    norm_num at this ⊢
-    exact this
-  have hlog2D : Real.log (2 * D) ≤ (A + 1) * k ^ d := by
-    rw [Real.log_mul (by norm_num) hD0.ne']
-    nlinarith
-  have hm1 : m + 1 ≤ (B + 1) * u := by
-    dsimp [u, logarithmicSize]
-    have := Real.log_nonneg (show 1 ≤ 2 * k by linarith)
-    nlinarith
-  have hlog2D0 : 0 ≤ Real.log (2 * D) := Real.log_nonneg (by linarith)
-  have hbase : C * (m + 1) * Real.log (2 * D) ≤ E * u * k ^ d := by
-    calc
-      _ ≤ C * ((B + 1) * u) * ((A + 1) * k ^ d) := by gcongr
-      _ = _ := by dsimp [E]; ring
-  have hbase0 : 0 < C * (m + 1) * Real.log (2 * D) := by
-    apply mul_pos (mul_pos hC0 (by linarith))
-    apply Real.log_pos
-    linarith
-  have hlogk : Real.log k ≤ u := by
-    have := Real.log_le_log hk0 (show k ≤ 2 * k by linarith)
-    dsimp [u, logarithmicSize]
-    linarith
-  have hlogE : Real.log E ≤ E := (Real.log_le_sub_one_of_pos hE).trans (by linarith)
-  have hlogu : Real.log u ≤ u :=
-    (Real.log_le_sub_one_of_pos (by linarith)).trans (by linarith)
-  have hlogbase : Real.log (C * (m + 1) * Real.log (2 * D)) ≤ (E + 1 + d) * u := by
-    calc
-      _ ≤ Real.log (E * u * k ^ d) := Real.log_le_log hbase0 hbase
-      _ = Real.log E + Real.log u + (d : ℝ) * Real.log k := by
-        rw [Real.log_mul (mul_pos hE (by linarith)).ne' (pow_pos hk0 d).ne',
-          Real.log_mul hE.ne' (by linarith : u ≠ 0), Real.log_pow]
-      _ ≤ (E + 1 + d) * u := by
-        have := mul_le_mul_of_nonneg_left hlogk (Nat.cast_nonneg d)
-        have : E ≤ E * u := by nlinarith
-        nlinarith
-  refine hF.trans ?_
-  rw [Real.rpow_def_of_pos hbase0]
-  apply Real.exp_le_exp.mpr
-  calc
-    Real.log (C * (m + 1) * Real.log (2 * D)) * (C * (m + 1)) ≤
-        ((E + 1 + d) * u) * (C * ((B + 1) * u)) := by
-      apply mul_le_mul hlogbase (by gcongr) (by positivity) (by positivity)
-    _ = _ := by dsimp [E, u]; ring
-
-/-- Blueprint Lemma `lem:budget-rules`: polynomial majorants add with a
-degree independent of their coefficients. Substitute a logarithmic size for `u`. -/
-theorem polynomial_majorant_add {u x y C D : ℝ} {d e : ℕ}
-    (hu : 1 ≤ u) (hC : 0 ≤ C) (hD : 0 ≤ D)
-    (hx : x ≤ C * u ^ d) (hy : y ≤ D * u ^ e) :
-    x + y ≤ (C + D) * u ^ (d + e) := by
-  have h₁ := mul_le_mul_of_nonneg_left
-    (pow_le_pow_right₀ hu (Nat.le_add_right d e)) hC
-  have h₂ := mul_le_mul_of_nonneg_left
-    (pow_le_pow_right₀ hu (Nat.le_add_left e d)) hD
-  nlinarith
-
-/-- Blueprint Lemma `lem:budget-rules`: polynomial majorants multiply. -/
-theorem polynomial_majorant_mul {u x y C D : ℝ} {d e : ℕ}
-    (hu : 0 ≤ u) (hy0 : 0 ≤ y) (hC : 0 ≤ C)
-    (hx : x ≤ C * u ^ d) (hy : y ≤ D * u ^ e) :
-    x * y ≤ (C * D) * u ^ (d + e) := by
-  calc
-    x * y ≤ (C * u ^ d) * (D * u ^ e) := mul_le_mul hx hy hy0 (by positivity)
-    _ = _ := by rw [pow_add]; ring
-
-/-- Blueprint Lemma `lem:budget-rules`: polynomial majorants compose,
-with degree `e * d` regardless of any auxiliary-parameter dependence of `C,D`. -/
-theorem polynomial_majorant_comp {u v x C D : ℝ} {d e : ℕ}
-    (hv : 0 ≤ v) (hC : 0 ≤ C) (hx : x ≤ C * v ^ d) (hvbound : v ≤ D * u ^ e) :
-    x ≤ C * D ^ d * u ^ (e * d) := by
-  calc
-    x ≤ C * v ^ d := hx
-    _ ≤ C * (D * u ^ e) ^ d := by gcongr
-    _ = _ := by rw [mul_pow, ← pow_mul]; ring
-
-/-- Blueprint Lemma `lem:budget-rules`, domination of fixed powers of `k`
-by every positive power of the large ceiling parameter. -/
-theorem fixed_power_eventually_le_ceiling_power {p α θ ε : ℝ}
-    (hp : 0 ≤ p) (hα : 0 < α) (hθ : 0 < θ) (hε : 0 < ε) :
-    ∀ᶠ k : ℝ in atTop, k ^ p ≤ (⌈Real.exp (α * k ^ θ)⌉₊ : ℝ) ^ ε := by
-  filter_upwards [quasipolynomial_overhead_eventually_le_ceiling_power p 1 hα hθ hε,
-    eventually_ge_atTop (2 : ℝ)] with k hk hk2
-  have hk0 : 0 < k := by linarith
-  have hlog : Real.log k ≤ logarithmicSize (2 * k) := by
-    have := Real.log_le_log hk0 (show k ≤ 2 * k by linarith)
-    dsimp [logarithmicSize]
-    linarith
-  calc
-    k ^ p = Real.exp (Real.log k * p) := Real.rpow_def_of_pos hk0 _
-    _ ≤ Real.exp (p * logarithmicSize (2 * k) ^ 1) := by
-      apply Real.exp_le_exp.mpr
-      simpa [mul_comm] using mul_le_mul_of_nonneg_left hlog hp
-    _ ≤ _ := hk
-
 open Polynomial MeasureTheory
 
 open AddCircle
@@ -1266,232 +1105,6 @@ theorem centeredOneMixedNorm (p q : ℝ) (hq2 : 2 < q) (hq3 : q < 3) (hpq : q < 
   intro Ω _ ν _ f hf
   rw [ENNReal.coe_toNNReal hC]
   exact centeredMaximalQ_mixedNorm ν hq2 hq3 hpq f hf
-
-/-- The reduced-basis estimates imply a uniform bound on each coefficient
-weighted by its basis-vector length; used in blueprint `lem:lattice-box`. -/
-theorem reducedBasis_weighted_coordinate_bound {E : Type*} [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] {n : ℕ}
-    (b : Module.Basis (Fin n) ℝ E) (hb : IsShortestProjectionBasis b)
-    (hr : IsSizeReducedBasis b) (i : Fin n) (x : E) :
-    ‖b i‖ * |b.repr x i| ≤ (8 : ℝ) ^ n * ‖x‖ := by
-  calc
-    _ ≤ ((2 : ℝ) ^ n * ‖InnerProductSpace.gramSchmidt ℝ b i‖) * |b.repr x i| :=
-      mul_le_mul_of_nonneg_right (reducedBasis_primal_prefix_bound b hb hr le_rfl)
-        (abs_nonneg _)
-    _ = (2 : ℝ) ^ n * (‖InnerProductSpace.gramSchmidt ℝ b i‖ * |b.repr x i|) := by ring
-    _ ≤ (2 : ℝ) ^ n * ((4 : ℝ) ^ n * ‖x‖) :=
-      mul_le_mul_of_nonneg_left (reducedBasis_coordinate_bound b hb hr i x) (by positivity)
-    _ = (8 : ℝ) ^ n * ‖x‖ := by rw [← mul_assoc, ← mul_pow]; norm_num
-
-/-- The printed floored side length; zero lengths will be discarded. -/
-noncomputable def latticeBoxSideLength {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (i : Fin n) : ℤ :=
-  ⌊(4 * (n : ℝ) * ‖b i‖)⁻¹⌋
-
-/-- The part of the lattice basis retained in the coefficient box. -/
-noncomputable def latticeBoxIndices {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) : Finset (Fin n) :=
-  Finset.univ.filter (fun i => 0 < latticeBoxSideLength b i)
-
-/-- An integer coefficient box on the selected part of a basis. -/
-def integerCoefficientBox {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
-    {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (I : Finset (Fin n)) (L : Fin n → ℤ) : Set E :=
-  {x | ∃ z : Fin n → ℤ, (∀ i ∉ I, z i = 0) ∧
-    (∀ i ∈ I, |z i| ≤ L i) ∧ ∑ i, z i • b i = x}
-
-theorem latticeBoxSideLength_nonneg {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (i : Fin n) :
-    0 ≤ latticeBoxSideLength b i := Int.floor_nonneg.mpr (by positivity)
-
-theorem latticeBoxSideLength_pos {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) {i : Fin n}
-    (hi : i ∈ latticeBoxIndices b) : 1 ≤ latticeBoxSideLength b i := by
-  have h : 0 < latticeBoxSideLength b i := (Finset.mem_filter.mp hi).2
-  omega
-
-theorem latticeBoxSideLength_zero {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) {i : Fin n}
-    (hi : i ∉ latticeBoxIndices b) : latticeBoxSideLength b i = 0 := by
-  have h : ¬0 < latticeBoxSideLength b i := by simpa [latticeBoxIndices] using hi
-  exact le_antisymm (le_of_not_gt h) (latticeBoxSideLength_nonneg b i)
-
-theorem latticeBoxSideLength_weight_le {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (hn : 0 < n) (b : Module.Basis (Fin n) ℝ E) (i : Fin n) :
-    (latticeBoxSideLength b i : ℝ) * ‖b i‖ ≤ (4 * (n : ℝ))⁻¹ := by
-  have hn0 : (n : ℝ) ≠ 0 := by exact_mod_cast hn.ne'
-  have hb : ‖b i‖ ≠ 0 := norm_ne_zero_iff.mpr (b.ne_zero i)
-  calc
-    _ ≤ (4 * (n : ℝ) * ‖b i‖)⁻¹ * ‖b i‖ :=
-      mul_le_mul_of_nonneg_right (Int.floor_le _) (norm_nonneg _)
-    _ = _ := by field_simp
-
-/-- Blueprint `lem:lattice-box`, line 336: the total length budget is `1/4`. -/
-theorem latticeBoxSideLength_sum_le {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (hn : 0 < n) (b : Module.Basis (Fin n) ℝ E) :
-    ∑ i, (latticeBoxSideLength b i : ℝ) * ‖b i‖ ≤ (1 / 4 : ℝ) := by
-  have hn0 : (n : ℝ) ≠ 0 := by exact_mod_cast hn.ne'
-  calc
-    _ ≤ ∑ _i : Fin n, (4 * (n : ℝ))⁻¹ :=
-      Finset.sum_le_sum fun i _ => latticeBoxSideLength_weight_le hn b i
-    _ = (1 / 4 : ℝ) := by simp; field_simp
-
-/-- The explicit radius `(100d)^(-10d)` from blueprint `lem:lattice-box`. -/
-noncomputable def latticeBoxRadius (n : ℕ) : ℝ := ((100 * (n : ℝ)) ^ (10 * n))⁻¹
-
-theorem latticeBoxRadius_pos {n : ℕ} (hn : 0 < n) : 0 < latticeBoxRadius n := by
-  unfold latticeBoxRadius
-  have : (0 : ℝ) < n := by exact_mod_cast hn
-  positivity
-
-theorem latticeBoxRadius_scaled_le {n : ℕ} (hn : 0 < n) :
-    (4 * (n : ℝ) * (8 : ℝ) ^ n) * latticeBoxRadius n ≤ 1 := by
-  have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast hn
-  have hbase : (1 : ℝ) ≤ 100 * n := by linarith
-  have hbound : (4 * (n : ℝ)) * (8 : ℝ) ^ n ≤ (100 * (n : ℝ)) ^ (10 * n) := by
-    calc
-      _ ≤ (100 * (n : ℝ)) * (100 * (n : ℝ)) ^ n :=
-        mul_le_mul (by linarith) (pow_le_pow_left₀ (by norm_num) (by linarith) n)
-          (by positivity) (by positivity)
-      _ = (100 * (n : ℝ)) ^ (n + 1) := by rw [pow_succ]; ring
-      _ ≤ _ := pow_le_pow_right₀ hbase (by omega)
-  rw [latticeBoxRadius, ← div_eq_mul_inv]
-  exact (div_le_one (by positivity)).mpr hbound
-
-/-- Integer coordinates in a real basis of its integer span. -/
-theorem exists_integer_basis_coordinates {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) {v : E}
-    (hv : v ∈ Submodule.span ℤ (Set.range b)) :
-    ∃ z : Fin n → ℤ, (∀ i, (z i : ℝ) = b.repr v i) ∧ ∑ i, z i • b i = v := by
-  have hcoord : ∀ i, ∃ z : ℤ, (z : ℝ) = b.repr v i :=
-    (b.mem_span_iff_repr_mem ℤ v).mp hv
-  choose z hz using hcoord
-  refine ⟨z, hz, ?_⟩
-  calc
-    _ = ∑ i, b.repr v i • b i := by
-      apply Finset.sum_congr rfl
-      intro i _
-      rw [← hz i, Int.cast_smul_eq_zsmul ℝ]
-    _ = v := b.sum_repr v
-
-/-- Blueprint `lem:lattice-box`, lines 337–342: every lattice vector with
-norm at most the explicit radius belongs to the selected coefficient box. -/
-theorem small_lattice_vector_mem_coefficientBox {E : Type*} [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] {n : ℕ} (hn : 0 < n)
-    (b : Module.Basis (Fin n) ℝ E) (hb : IsShortestProjectionBasis b)
-    (hr : IsSizeReducedBasis b) {v : E} (hv : v ∈ Submodule.span ℤ (Set.range b))
-    (hnorm : ‖v‖ ≤ latticeBoxRadius n) :
-    v ∈ integerCoefficientBox b (latticeBoxIndices b) (latticeBoxSideLength b) := by
-  obtain ⟨z, hz, hsum⟩ := exists_integer_basis_coordinates b hv
-  have hn' : (0 : ℝ) < n := by exact_mod_cast hn
-  have hcoeff (i : Fin n) : |z i| ≤ latticeBoxSideLength b i := by
-    apply Int.le_floor.mpr
-    rw [Int.cast_abs]
-    rw [← one_div]
-    have hbi : 0 < ‖b i‖ := norm_pos_iff.mpr (b.ne_zero i)
-    apply (le_div_iff₀ (by positivity)).mpr
-    calc
-      _ = (4 * (n : ℝ)) * (‖b i‖ * |b.repr v i|) := by rw [hz i]; ring
-      _ ≤ (4 * (n : ℝ)) * ((8 : ℝ) ^ n * ‖v‖) :=
-        mul_le_mul_of_nonneg_left (reducedBasis_weighted_coordinate_bound b hb hr i v)
-          (by positivity)
-      _ ≤ (4 * (n : ℝ)) * ((8 : ℝ) ^ n * latticeBoxRadius n) :=
-        mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hnorm (by positivity)) (by positivity)
-      _ = (4 * (n : ℝ) * (8 : ℝ) ^ n) * latticeBoxRadius n := by ring
-      _ ≤ 1 := latticeBoxRadius_scaled_le hn
-  refine ⟨z, ?_, fun i _ => hcoeff i, hsum⟩
-  intro i hi
-  exact abs_nonpos_iff.mp (by simpa only [latticeBoxSideLength_zero b hi] using hcoeff i)
-
-/-- Every partial coordinate sum in the selected coefficient box has norm
-at most `1/4`, as required in blueprint `lem:lattice-box`. -/
-theorem coefficientBox_partial_sum_le {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (hn : 0 < n) (b : Module.Basis (Fin n) ℝ E)
-    (z : Fin n → ℤ) (hz : ∀ i ∉ latticeBoxIndices b, z i = 0)
-    (hbound : ∀ i ∈ latticeBoxIndices b, |z i| ≤ latticeBoxSideLength b i)
-    (s : Finset (Fin n)) : ‖∑ i ∈ s, z i • b i‖ ≤ (1 / 4 : ℝ) := by
-  have hcoeff (i : Fin n) : |z i| ≤ latticeBoxSideLength b i := by
-    by_cases hi : i ∈ latticeBoxIndices b
-    · exact hbound i hi
-    · rw [hz i hi, abs_zero]
-      exact latticeBoxSideLength_nonneg b i
-  calc
-    _ ≤ ∑ i ∈ s, |(z i : ℝ)| * ‖b i‖ := by
-      simpa only [norm_zsmul ℝ, Real.norm_eq_abs] using norm_sum_le s (fun i => z i • b i)
-    _ ≤ ∑ i ∈ s, (latticeBoxSideLength b i : ℝ) * ‖b i‖ := by
-      apply Finset.sum_le_sum
-      intro i _
-      apply mul_le_mul_of_nonneg_right _ (norm_nonneg _)
-      exact_mod_cast hcoeff i
-    _ ≤ ∑ i, (latticeBoxSideLength b i : ℝ) * ‖b i‖ :=
-      Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ s) (fun i _ _ =>
-        mul_nonneg (by exact_mod_cast latticeBoxSideLength_nonneg b i) (norm_nonneg _))
-    _ ≤ (1 / 4 : ℝ) := latticeBoxSideLength_sum_le hn b
-
-theorem coefficientBox_subset_quarter_ball {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (hn : 0 < n) (b : Module.Basis (Fin n) ℝ E) :
-    integerCoefficientBox b (latticeBoxIndices b) (latticeBoxSideLength b) ⊆
-      Metric.closedBall (0 : E) (1 / 4) := by
-  rintro x ⟨z, hz, hbound, rfl⟩
-  rw [Metric.mem_closedBall, dist_zero_right]
-  exact coefficientBox_partial_sum_le hn b z hz hbound Finset.univ
-
-theorem integerCoefficientBox_empty {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (L : Fin n → ℤ) :
-    integerCoefficientBox b ∅ L = {0} := by
-  ext x
-  constructor
-  · rintro ⟨z, hz, _, hsum⟩
-    have hzero : z = 0 := funext fun i => hz i (Finset.notMem_empty i)
-    simpa only [hzero, Pi.zero_apply, zero_smul, Finset.sum_const_zero,
-      Set.mem_singleton_iff] using hsum.symm
-  · intro hx
-    have hx0 : x = 0 := Set.mem_singleton_iff.mp hx
-    subst x
-    exact ⟨0, by simp, by simp, by simp⟩
-
-/-- Blueprint `lem:lattice-box`, complete statement: a part of a lattice
-basis with positive integer side lengths contains the closed radius
-`(100d)^(-10d)` lattice ball and lies in the closed radius `1/4` ball;
-every partial coordinate sum satisfies the same outer bound. -/
-theorem smallBallCoefficientBox {E : Type*} [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] {n : ℕ} (hn : 0 < n)
-    (b : Module.Basis (Fin n) ℝ E) :
-    ∃ (c : Module.Basis (Fin n) ℝ E) (I : Finset (Fin n)) (L : Fin n → ℤ),
-      Submodule.span ℤ (Set.range c) = Submodule.span ℤ (Set.range b) ∧
-      (∀ i ∈ I, 1 ≤ L i) ∧
-      (Metric.closedBall (0 : E) (latticeBoxRadius n) ∩
-        (Submodule.span ℤ (Set.range b) : Set E) ⊆ integerCoefficientBox c I L) ∧
-      (integerCoefficientBox c I L ⊆ Metric.closedBall 0 (1 / 4)) ∧
-      ∀ z : Fin n → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ L i) →
-        ∀ s : Finset (Fin n), ‖∑ i ∈ s, z i • c i‖ ≤ (1 / 4 : ℝ) := by
-  obtain ⟨c, hc, hshort, hred⟩ := exists_reducedShortestProjectionBasis b
-  refine ⟨c, latticeBoxIndices c, latticeBoxSideLength c, hc,
-    fun _ hi => latticeBoxSideLength_pos c hi, ?_,
-    coefficientBox_subset_quarter_ball hn c, coefficientBox_partial_sum_le hn c⟩
-  intro v hv
-  apply small_lattice_vector_mem_coefficientBox hn c hshort hred
-  · rw [hc]
-    exact hv.2
-  · simpa only [Metric.mem_closedBall, dist_zero_right] using hv.1
-
-/-- The coefficient-box theorem for an arbitrary full lattice in positive dimension. -/
-theorem smallBallCoefficientBox_fullLattice {E : Type*} [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] (L : Submodule ℤ E)
-    [DiscreteTopology L] [IsZLattice ℝ L] (hd : 0 < Module.finrank ℝ E) :
-    ∃ (b : Module.Basis (Fin (Module.finrank ℝ E)) ℝ E)
-      (I : Finset (Fin (Module.finrank ℝ E))) (a : Fin (Module.finrank ℝ E) → ℤ),
-      Submodule.span ℤ (Set.range b) = L ∧ (∀ i ∈ I, 1 ≤ a i) ∧
-      (Metric.closedBall (0 : E) (latticeBoxRadius (Module.finrank ℝ E)) ∩
-        (L : Set E) ⊆ integerCoefficientBox b I a) ∧
-      (integerCoefficientBox b I a ⊆ Metric.closedBall 0 (1 / 4)) ∧
-      ∀ z : Fin (Module.finrank ℝ E) → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ a i) →
-        ∀ s : Finset (Fin (Module.finrank ℝ E)), ‖∑ i ∈ s, z i • b i‖ ≤ (1 / 4 : ℝ) := by
-  let := ZLattice.module_finite ℝ L
-  let := ZLattice.module_free ℝ L
-  let b := ((Module.finBasis ℤ L).ofZLatticeBasis ℝ L).reindex (finCongr (ZLattice.rank ℝ L))
-  have hb : Submodule.span ℤ (Set.range b) = L := by
-    rw [Module.Basis.range_reindex, Module.Basis.ofZLatticeBasis_span]
-  simpa only [hb] using smallBallCoefficientBox hd b
 
 /-- The standard real torus used in blueprint `lem:torus-annihilator`. -/
 abbrev StandardTorus (d : ℕ) := Fin d → AddCircle (1 : ℝ)
@@ -9838,5 +9451,244 @@ theorem continuous_decomposition :
       (Real.exp_pos ((C : ℝ) * (1 + Real.log (1 / (τ / 2) ^ 2)) ^ C))
     linarith only [hp]
   · simpa only [inverseDecompositionBudget_at_reciprocal] using hc
+
+
+/-- The rational slow projection supplied by the return-body gap has
+simultaneously bounded height and velocity, without a bound on V. -/
+theorem shortReturn_projection_budget {d k : ℕ}
+    (V : Matrix (Fin d) (Fin k) ℝ) {P b t : ℝ}
+    (ht : 2 ≤ t) (hP : 0 < P) (hPt : P ≤ t) (hb : 0 < b)
+    (hbT : b⁻¹ ≤ shortReturnScaleBudget t)
+    (hd : (d : ℝ) ≤ logarithmicSize t) (hk : k ≤ 3)
+    (hgap : ∀ j : ℕ, 0 < j → j ≤ d →
+      successiveMinimum (shortReturnBody (realMatrixOperator V) P)
+        (coordinateIntegerLattice d) j ≤ b ∨
+      (16 * (100 * (d : ℝ)) ^ (10 * d)) * b <
+        successiveMinimum (shortReturnBody (realMatrixOperator V) P)
+          (coordinateIntegerLattice d) j) :
+    let U := shortReturnLatticeSpan (realMatrixOperator V) P b
+    ∃ Q : Matrix (Fin d) (Fin d) ℚ,
+      realMatrixOperator (Q.map (fun q => (q : ℝ))) = Uᗮ.starProjection ∧
+      realMatrixOperator ((1 - Q).map (fun q => (q : ℝ))) = U.starProjection ∧
+      (∀ i j, (rationalHeight (Q i j) : ℝ) ≤ shortReturnProjectionBudget t) ∧
+      (∀ i j, (rationalHeight ((1 - Q) i j) : ℝ) ≤ shortReturnProjectionBudget t) ∧
+      ‖realMatrixOperator (Q.map (fun q => (q : ℝ)) * V)‖ ≤ shortReturnSlowBudget t := by
+  classical
+  intro U
+  obtain ⟨r, hr, q, hq, hqL, hqb, hqV, hspan⟩ :=
+    shortReturnLatticeSpan_dual_coordinates (realMatrixOperator V) hP hb hgap
+  choose Z hZ using fun i => coordinateIntegerLattice_coordinates (hqL i)
+  change Matrix (Fin r) (Fin d) ℤ at Z
+  have hfun : q = fun i => WithLp.toLp 2 (fun j => (Z i j : ℝ)) := funext hZ
+  have hB := shortReturnRowBudget_two_le ht
+  have hbB : b⁻¹ ≤ shortReturnRowBudget t :=
+    hbT.trans (le_add_of_nonneg_left (by norm_num))
+  have hZi (i j) : |(Z i j : ℝ)| ≤ shortReturnRowBudget t := by
+    have hh := (hqb i j).trans hbB
+    rw [hZ i] at hh
+    exact hh
+  have hZV (i j) :
+      |(Z.map (fun z : ℤ => (z : ℝ)) * V) i j| ≤ t * shortReturnRowBudget t := by
+    rw [real_matrix_mul_entry_eq_row_inner]
+    have hh := hqV i j
+    rw [hZ i] at hh
+    exact hh.trans (mul_le_mul hPt hbB (inv_nonneg.mpr hb.le) (by linarith only [ht]))
+  obtain ⟨Q, hQ, hQc, hQh, hQch, _, _, hQV⟩ :=
+    integer_span_projection_velocity_bounds Z V (hfun ▸ hq) hB (by positivity) hZi hZV
+  have hU : Submodule.span ℝ
+      (Set.range (fun i => WithLp.toLp 2 (fun j => (Z i j : ℝ)))) = Uᗮ := by
+    rw [← hfun]
+    exact hspan
+  rw [hU] at hQ hQc
+  simp only [Submodule.orthogonal_orthogonal] at hQc
+  refine ⟨Q, hQ, hQc, ?_, ?_, ?_⟩
+  · intro i j
+    exact (hQh i j).trans (shortReturnProjectionBudget_bound ht hB le_rfl hd)
+  · intro i j
+    exact (hQch i j).trans (shortReturnProjectionBudget_bound ht hB le_rfl hd)
+  · exact hQV.trans (shortReturnSlowBudget_bound ht hr hd hk)
+
+
+/-- Blueprint lem:return-splitting, lines 1245–1302, with the explicit common
+budget. Both complementary projections are rational, the fast space is
+isotropic, and the slow velocity and effective quadratic form are bounded. -/
+theorem shortReturnSplitting_explicit {d k : ℕ} (hk1 : 1 ≤ k) (hk3 : k ≤ 3)
+    (C : Matrix (Fin d) (Fin d) ℚ) (V : Matrix (Fin d) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (hΛ : Λ.IsSymm)
+    (P : ℤ) (hP : 1 ≤ P)
+    (hPC : ∀ i j, ∃ z : ℤ, (P : ℚ) * C i j = z)
+    {t a M : ℝ} (ht : 2 ≤ t) (hPt : (P : ℝ) ≤ t)
+    (hd : (d : ℝ) ≤ logarithmicSize t)
+    (hC : ∀ i j, (rationalHeight (C i j) : ℝ) ≤ t)
+    (ha : 0 < a) (ha1 : a ≤ 1) (hat : a⁻¹ ≤ t) (hM : 0 ≤ M) (hMt : M ≤ t)
+    (hΩ : ∀ (h : Fin k → ℝ) (n : Fin d → ℤ),
+      ‖WithLp.toLp 2 h‖ +
+        ‖WithLp.toLp 2 (V.mulVec h - fun i => (P : ℝ) * n i)‖ ≤ a →
+      ‖WithLp.toLp 2 (quadraticReturnFrequency (C.map (fun q => (q : ℝ)))
+        V Λ h (fun i => (P : ℝ) * n i))‖ ≤ M) :
+    ∃ (U : Submodule ℝ (EuclideanSpace ℝ (Fin d))) (Q : Matrix (Fin d) (Fin d) ℚ),
+      realMatrixOperator (Q.map (fun q => (q : ℝ))) = Uᗮ.starProjection ∧
+      realMatrixOperator ((1 - Q).map (fun q => (q : ℝ))) = U.starProjection ∧
+      (∀ x ∈ U, ∀ y ∈ U, inner ℝ y
+        (realMatrixOperator ((C.map (fun q => (q : ℝ))) -
+          (C.map (fun q => (q : ℝ))).transpose) x) = 0) ∧
+      (∀ i j, (rationalHeight (Q i j) : ℝ) ≤ shortReturnSplittingBudget t) ∧
+      (∀ i j, (rationalHeight ((1 - Q) i j) : ℝ) ≤ shortReturnSplittingBudget t) ∧
+      ‖realMatrixOperator (Q.map (fun q => (q : ℝ)) * V)‖ ≤ shortReturnSplittingBudget t ∧
+      ‖realMatrixOperator (effectiveReturnQuadratic (C.map (fun q => (q : ℝ))) Λ V
+        ((1 - Q).map (fun q => (q : ℝ)) * V) (Q.map (fun q => (q : ℝ)) * V))‖ ≤
+          shortReturnSplittingBudget t := by
+  classical
+  let Cr := C.map (fun q => (q : ℝ))
+  let A := Cr - Cr.transpose
+  have hPr : (1 : ℝ) ≤ P := by exact_mod_cast hP
+  have hPpos : (0 : ℝ) < P := by linarith only [hPr]
+  have hL := one_le_logarithmicSize ht
+  have hCa (i j) : |Cr i j| ≤ t := by
+    have hh : |(C i j : ℝ)| ≤ (rationalHeight (C i j) : ℝ) := by
+      exact_mod_cast rational_abs_le_height (C i j)
+    exact hh.trans (hC i j)
+  have hA : ‖realMatrixOperator A‖ ≤ shortReturnAlternatingBudget t := by
+    have hh := realMatrixOperator_norm_le A (show 0 ≤ 2 * t by linarith only [ht])
+      (fun i j => (abs_sub_le (Cr i j) 0 (Cr j i)).trans (by
+        simpa only [sub_zero, zero_sub, abs_neg, two_mul] using add_le_add (hCa i j) (hCa j i)))
+    calc
+      _ ≤ (d : ℝ) * d * (2 * t) := hh
+      _ ≤ logarithmicSize t * logarithmicSize t * (2 * t) := by gcongr
+      _ = _ := by unfold shortReturnAlternatingBudget; ring
+  let r := min a (100 * (M + ‖realMatrixOperator A‖ + 1))⁻¹
+  obtain ⟨hr, hra, hri⟩ := shortReturnRadius_reciprocal_bound ht ha hM
+    (norm_nonneg (realMatrixOperator A)) hat hMt hA
+  change 0 < r at hr
+  change r ≤ a at hra
+  let bmax := min (1 / 100 : ℝ) (r / (100 * (P : ℝ) * (d + k + 1)))
+  obtain ⟨hbmax, hbmaxI⟩ :=
+    shortReturnInitialScale_reciprocal_bound ht hPpos hr hPt hri hd hk3
+  change 0 < bmax at hbmax
+  let g := 16 * (100 * (d : ℝ)) ^ (10 * d)
+  have hg : 1 < g := by
+    have hh : (1 : ℝ) ≤ (100 * (d : ℝ)) ^ (10 * d) := by
+      cases d with
+      | zero => norm_num
+      | succ n =>
+        apply one_le_pow₀
+        have hn : (0 : ℝ) ≤ n := Nat.cast_nonneg n
+        push_cast
+        linarith
+    dsimp [g]
+    linarith only [hh]
+  obtain ⟨b, hb, hbb, hbI, hgap⟩ := successiveMinimum_geometric_gap
+    (shortReturnBody (realMatrixOperator V) P) (coordinateIntegerLattice d) d hbmax hg
+  have hbT := shortReturnScale_reciprocal_bound ht (le_of_lt (lt_trans zero_lt_one hg))
+    hd hbmaxI (shortReturnGapBudget_bound ht hd) hbI
+  have hbsmall : b ≤ r / (100 * (P : ℝ) * (d + k + 1)) :=
+    hbb.trans (min_le_right _ _)
+  let U := shortReturnLatticeSpan (realMatrixOperator V) P b
+  have hPCr (i j) : ∃ z : ℤ, (P : ℝ) * Cr i j = z := by
+    obtain ⟨z, hz⟩ := hPC i j
+    refine ⟨z, ?_⟩
+    change (P : ℝ) * (C i j : ℝ) = (z : ℝ)
+    exact_mod_cast hz
+  have hiso : ∀ x ∈ U, ∀ y ∈ U, inner ℝ y (realMatrixOperator A x) = 0 := by
+    have hh := shortReturnLatticeSpan_isotropic Cr V Λ hΛ P hP hPCr ha hM hb.le hΩ hbsmall
+    intro x hx y hy
+    rw [real_inner_comm]
+    simpa only [EuclideanSpace.inner_eq_star_dotProduct, star_trivial,
+      realMatrixOperator_apply] using hh x hx y hy
+  obtain ⟨Q, hQ, hQc, hQh, hQch, hQV⟩ :=
+    shortReturn_projection_budget V ht hPpos hPt hb hbT hd hk3 hgap
+  let S := Q.map (fun q => (q : ℝ)) * V
+  let F := (1 - Q).map (fun q => (q : ℝ)) * V
+  have hV : V = F + S := by
+    change V = ((1 - Q).map (Rat.castHom ℝ)) * V + (Q.map (Rat.castHom ℝ)) * V
+    rw [Matrix.map_sub, Matrix.map_one, Matrix.sub_mul, Matrix.one_mul]
+    · abel
+    all_goals simp
+  have hproj (x) : realMatrixOperator F x = U.starProjection (realMatrixOperator V x) := by
+    rw [realMatrixOperator_mul_apply, hQc]
+  let s := b / (1 + 4 / b) ^ d
+  have hden : 0 < (1 + 4 / b) ^ d := by positivity
+  have hs : 0 < s := div_pos hb hden
+  have hsT : s⁻¹ ≤ shortReturnTimeInverseBudget t := by
+    simpa only [s, inv_div] using shortReturnTimeInverseBudget_bound ht hb hbT hd
+  have hreturn : ∀ j : Fin k, ∃ (u : ℝ) (m : EuclideanSpace ℝ (Fin d)),
+      s ≤ u ∧ m ∈ U ∧
+      ‖u • EuclideanSpace.basisFun (Fin k) ℝ j‖ +
+        ‖realMatrixOperator V (u • EuclideanSpace.basisFun (Fin k) ℝ j) - m‖ ≤ r ∧
+      ‖WithLp.toLp 2 (quadraticReturnFrequency Cr V Λ
+        (u • EuclideanSpace.basisFun (Fin k) ℝ j).ofLp m.ofLp)‖ ≤ M := by
+    intro j
+    obtain ⟨N, u, n, hN, hNb, hu, _, _, hm, _, hsize⟩ :=
+      shortReturnBody_coordinate_return (realMatrixOperator V) hPpos hb j
+    have hNr : (0 : ℝ) < N := by exact_mod_cast hN
+    have hsu : s ≤ u := (div_le_div_of_nonneg_left hb.le hNr hNb).trans hu
+    have hsize' : ‖u • EuclideanSpace.basisFun (Fin k) ℝ j‖ +
+        ‖realMatrixOperator V (u • EuclideanSpace.basisFun (Fin k) ℝ j) -
+          (P : ℝ) • WithLp.toLp 2 (fun i => (n i : ℝ))‖ ≤ r := by
+      apply hsize.trans
+      have hkr : (1 : ℝ) ≤ k := by exact_mod_cast hk1
+      exact (mul_le_mul_of_nonneg_right (add_le_add hkr le_rfl) hb.le).trans
+        (shortReturn_scale_bound d k hPr hb.le hbsmall)
+    refine ⟨u, (P : ℝ) • WithLp.toLp 2 (fun i => (n i : ℝ)), hsu, hm, hsize', ?_⟩
+    exact hΩ _ n (hsize'.trans hra)
+  have hquad := effectiveReturnQuadratic_norm_of_coordinate_returns Cr Λ V F S hV U
+    hproj hiso hr.le hM hs hQV hA hreturn
+  have hquad' := hquad.trans
+    (shortReturnQuadraticBudget_bound ht hr.le (hra.trans ha1) hM hMt hs hsT hd hk3)
+  obtain ⟨hDP, hDS, hDQ⟩ := shortReturnSplittingBudget_dominates ht
+  exact ⟨U, Q, hQ, hQc, hiso, fun i j => (hQh i j).trans hDP,
+    fun i j => (hQch i j).trans hDP, hQV.trans hDS, hquad'.trans hDQ⟩
+
+
+/-- Blueprint lem:return-splitting (lines 1245–1302): an absolute constant
+and degree control both rational projection heights, the slow velocity, and
+the effective symmetric quadratic form. The rational matrix Q is the slow
+projection; 1-Q projects onto the isotropic rational fast subspace U.
+There is no size assumption on V or on the symmetric matrix Λ. -/
+theorem shortReturnSplitting :
+    ∃ D : ℕ, 1 ≤ D ∧ ∀ {d k : ℕ}, 1 ≤ k → k ≤ 3 →
+      ∀ (H : ℝ), Real.exp 2 ≤ H → (d : ℝ) ≤ Real.log H →
+      ∀ (C : Matrix (Fin d) (Fin d) ℚ), (∀ i j, (rationalHeight (C i j) : ℝ) ≤ H) →
+      ∀ (V : Matrix (Fin d) (Fin k) ℝ) (Λ : Matrix (Fin k) (Fin k) ℝ), Λ.IsSymm →
+      ∀ (P : ℤ), 1 ≤ P → (∀ i j, ∃ z : ℤ, (P : ℚ) * C i j = z) →
+      ∀ (a M : ℝ), 0 < a → a < 1 → 1 ≤ M →
+      (∀ (h : Fin k → ℝ) (n : Fin d → ℤ),
+        ‖WithLp.toLp 2 h‖ +
+          ‖WithLp.toLp 2 (V.mulVec h - fun i => (P : ℝ) * n i)‖ ≤ a →
+        ‖WithLp.toLp 2 (quadraticReturnFrequency (C.map (fun q => (q : ℝ)))
+          V Λ h (fun i => (P : ℝ) * n i))‖ ≤ M) →
+      let B := Real.exp ((D : ℝ) *
+        (1 + Real.log H + Real.log P + Real.log (1 / a) + Real.log M) ^ D)
+      ∃ (U : Submodule ℝ (EuclideanSpace ℝ (Fin d))) (Q : Matrix (Fin d) (Fin d) ℚ),
+        realMatrixOperator (Q.map (fun q => (q : ℝ))) = Uᗮ.starProjection ∧
+        realMatrixOperator ((1 - Q).map (fun q => (q : ℝ))) = U.starProjection ∧
+        (∀ x ∈ U, ∀ y ∈ U, inner ℝ y
+          (realMatrixOperator ((C.map (fun q => (q : ℝ))) -
+            (C.map (fun q => (q : ℝ))).transpose) x) = 0) ∧
+        (∀ i j, (rationalHeight (Q i j) : ℝ) ≤ B) ∧
+        (∀ i j, (rationalHeight ((1 - Q) i j) : ℝ) ≤ B) ∧
+        ‖realMatrixOperator (Q.map (fun q => (q : ℝ)) * V)‖ ≤ B ∧
+        ‖realMatrixOperator (effectiveReturnQuadratic (C.map (fun q => (q : ℝ))) Λ V
+          ((1 - Q).map (fun q => (q : ℝ)) * V) (Q.map (fun q => (q : ℝ)) * V))‖ ≤ B := by
+  obtain ⟨D, hD, hbudget⟩ := shortReturnSplittingBudget_uniform
+  refine ⟨D, hD, ?_⟩
+  intro d k hk1 hk3 H hH hd C hC V Λ hΛ P hP hPC a M ha ha1 hM hΩ B
+  have hH2 : 2 ≤ H := by
+    have hh := Real.add_one_le_exp (2 : ℝ)
+    linarith only [hh, hH]
+  have hPr : (1 : ℝ) ≤ P := by exact_mod_cast hP
+  obtain ⟨ht, hHt, hPt, hat, hMt, _⟩ :=
+    shortReturnParameter_product_bounds hH2 hPr ha ha1.le hM
+  have hdT : (d : ℝ) ≤ logarithmicSize (H * P * a⁻¹ * M) := by
+    apply hd.trans
+    have hh := Real.log_le_log (show 0 < H by linarith only [hH2]) hHt
+    exact hh.trans (le_add_of_nonneg_left (by norm_num))
+  obtain ⟨U, Q, hQ, hQc, hiso, hQh, hQch, hS, hE⟩ :=
+    shortReturnSplitting_explicit hk1 hk3 C V Λ hΛ P hP hPC ht hPt hdT
+      (fun i j => (hC i j).trans hHt) ha ha1.le hat (by linarith only [hM]) hMt hΩ
+  have hb : shortReturnSplittingBudget (H * P * a⁻¹ * M) ≤ B :=
+    hbudget H P a M hH2 hPr ha ha1.le hM
+  exact ⟨U, Q, hQ, hQc, hiso, fun i j => (hQh i j).trans hb,
+    fun i j => (hQch i j).trans hb, hS.trans hb, hE.trans hb⟩
 
 end Auto

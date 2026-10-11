@@ -3526,4 +3526,34 @@ theorem effectiveReturnQuadratic_isSymm {d k : ℕ}
   simp only [effectiveReturnQuadratic, Matrix.transpose_add, Matrix.transpose_smul,
     Matrix.transpose_mul, Matrix.transpose_transpose, hΛ, hC, hT, Matrix.mul_assoc]
 
+
+/-- The exact quadratic-lattice phase increment in the Weyl return identity
+(blueprint lem:weyl, lines 1323–1332), before discarding an integer phase. -/
+theorem quadratic_lattice_return_phase {d k : ℕ}
+    (C : Matrix (Fin d) (Fin d) ℝ) (V : Matrix (Fin d) (Fin k) ℝ)
+    (Λ : Matrix (Fin k) (Fin k) ℝ) (hΛ : Λ.IsSymm)
+    (ell z h : Fin k → ℝ) (n m : Fin d → ℝ) :
+    let e := V.mulVec h - m
+    dotProduct (z + h) (Λ.mulVec (z + h)) + dotProduct ell (z + h) +
+      dotProduct (V.mulVec (z + h)) (C.mulVec (V.mulVec (z + h) - (n + m))) =
+    (dotProduct z (Λ.mulVec z) + dotProduct ell z +
+      dotProduct (V.mulVec z) (C.mulVec (V.mulVec z - n))) +
+      dotProduct z (quadraticReturnFrequency C V Λ h m) +
+      (dotProduct h (Λ.mulVec h) + dotProduct ell h + dotProduct (V.mulVec h) (C.mulVec e)) +
+      dotProduct e (C.mulVec (V.mulVec z - n)) - dotProduct m (C.mulVec n) := by
+  dsimp only
+  have hs : dotProduct h (Λ.mulVec z) = dotProduct z (Λ.mulVec h) :=
+    hΛ.dotProduct_mulVec_comm
+  have ht (x y : Fin d → ℝ) :
+      dotProduct x (C.transpose.mulVec y) = dotProduct y (C.mulVec x) :=
+    Matrix.dotProduct_transpose_mulVec C x y
+  have hv (x : Fin k → ℝ) (y : Fin d → ℝ) :
+      dotProduct x (V.transpose.mulVec y) = dotProduct (V.mulVec x) y := by
+    rw [Matrix.dotProduct_transpose_mulVec, dotProduct_comm]
+  simp only [quadraticReturnFrequency, Matrix.add_mulVec, Matrix.smul_mulVec,
+    ← Matrix.mulVec_mulVec, Matrix.mulVec_add, Matrix.mulVec_sub, Matrix.sub_mulVec,
+    add_dotProduct, sub_dotProduct, dotProduct_add, dotProduct_sub, dotProduct_smul, hv, ht]
+  rw [hs]
+  ring
+
 end Auto

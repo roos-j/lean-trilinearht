@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2026 Joris Roos. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Codex
+Authors: Codex, Claude
 -/
 module
 
@@ -25,6 +25,21 @@ lines 130-146. Verified library references are
 `Mathlib.Analysis.Fourier.AddCircleMulti` (characters, coefficients and Fourier
 completeness), and `Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas`.
 The integration-by-parts attribution to `../lean-dfr` is retained below.
+
+For lem:weyl (line 1333) the module also contains the first-moment Lipschitz
+bound for Fourier integrals, Fourier propagation along return progressions,
+Plancherel's theorem on `L¹ ∩ L²` (adapted with attribution from
+`../lean-dfr/DFR/Auto/IntegralPlancherel.lean`; Stein–Weiss, Chapter I,
+Theorem 2.3), a square-mass bound on separated balls, and the resulting
+smallness of the progression step. For lem:chartfourier it proves that
+smooth `ℤⁿ`-periodic functions on `ℝⁿ` have absolutely convergent Fourier
+series with derivative-controlled coefficients (`periodic_fourier_expansion`).
+For lem:separation (line 1409) it proves that a bilinear convolution form
+`∫∫ F(u) G(v) K(v-u)` is bounded by `sup |𝓕 K|` times the `L²` norms of `F, G`
+(`norm_integral_convolution_form_le`, with the correlation form
+`norm_integral_correlation_le`), via Parseval on `L¹ ∩ L²`, the convolution
+structure of translates and Cauchy–Schwarz (Plancherel as in Stein–Weiss,
+Chapter I, Theorem 2.3).
 -/
 
 @[expose] public section
@@ -735,5 +750,674 @@ theorem norm_mFourier_truncation_error {d m : ℕ} {A : ℝ} (hm : d + 1 < m)
             norm_mFourierCoeff_le_derivative_bound F F.continuous n hn m hsmooth hbound) K
 
 end TorusFourier
+
+
+open scoped FourierTransform
+
+/-- A finite first absolute moment bounds the derivative of the Fourier
+integral, hence its global Lipschitz constant. Used in lem:weyl, line 1333. -/
+theorem fourier_first_moment_lipschitz {E : Type*}
+    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
+    [MeasurableSpace E] [BorelSpace E] {f : E → ℂ}
+    (hf : Integrable f) (hm : Integrable (fun x => ‖x‖ * ‖f x‖)) (ξ η : E) :
+    ‖𝓕 f ξ - 𝓕 f η‖ ≤ (2 * Real.pi * ∫ x, ‖x‖ * ‖f x‖) * ‖ξ - η‖ := by
+  have hd (x : E) : ‖fderiv ℝ (𝓕 f) x‖ ≤ 2 * Real.pi * ∫ y, ‖y‖ * ‖f y‖ := by
+    rw [Real.fderiv_fourier hf hm]
+    apply (Real.norm_fourier_le_integral_norm _ x).trans_eq
+    simp only [VectorFourier.norm_fourierSMulRight]
+    rw [← integral_const_mul]
+    congr 1
+    funext y
+    rw [innerSL_apply_norm]
+    ring
+  exact (convex_univ : Convex ℝ (Set.univ : Set E)).norm_image_sub_le_of_norm_fderiv_le
+    (fun x _ => Real.differentiable_fourier hf hm x) (fun x _ => hd x)
+    (Set.mem_univ η) (Set.mem_univ ξ)
+
+
+/-- The integral Fourier transform is L1-Lipschitz in its input. -/
+theorem fourier_sub_norm_le_integral {E : Type*}
+    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
+    [MeasurableSpace E] [BorelSpace E] {f g : E → ℂ}
+    (hf : Integrable f) (hg : Integrable g) (ξ : E) :
+    ‖𝓕 f ξ - 𝓕 g ξ‖ ≤ ∫ x, ‖f x - g x‖ := by
+  have he : 𝓕 (fun x => f x - g x) ξ = 𝓕 f ξ - 𝓕 g ξ := by
+    simp only [Real.fourier_eq, smul_sub]
+    exact integral_sub ((Real.fourierIntegral_convergent_iff ξ).mpr hf)
+      ((Real.fourierIntegral_convergent_iff ξ).mpr hg)
+  rw [← he]
+  exact Real.norm_fourier_le_integral_norm _ _
+
+/-- Translation of the argument changes only the Fourier phase. -/
+theorem fourier_translate_norm {E : Type*}
+    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
+    [MeasurableSpace E] [BorelSpace E] (f : E → ℂ) (h ξ : E) :
+    ‖𝓕 (fun x => f (x + h)) ξ‖ = ‖𝓕 f ξ‖ := by
+  have hh := congrFun (VectorFourier.fourierIntegral_comp_add_right
+    Real.fourierChar volume (innerₗ E) f h) ξ
+  change 𝓕 (fun x => f (x + h)) ξ = Real.fourierChar (inner ℝ h ξ) • 𝓕 f ξ at hh
+  rw [hh, Circle.norm_smul]
+
+/-- Multiplication by a linear phase translates the Fourier transform exactly. -/
+theorem fourier_modulation_eq {E : Type*}
+    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
+    [MeasurableSpace E] [BorelSpace E] (f : E → ℂ) (c : ℝ) (ω ξ : E) :
+    𝓕 (fun x => (Real.fourierChar (c + inner ℝ x ω) : ℂ) * f x) ξ =
+      (Real.fourierChar c : ℂ) * 𝓕 f (ξ - ω) := by
+  simp only [Real.fourier_eq, Circle.smul_def, smul_eq_mul]
+  rw [← integral_const_mul]
+  apply integral_congr_ae
+  filter_upwards with x
+  have he : -inner ℝ x ξ + (c + inner ℝ x ω) = c + -inner ℝ x (ξ - ω) := by
+    rw [inner_sub_right]
+    ring
+  have hh := congrArg (fun r : ℝ => (Real.fourierChar r : ℂ)) he
+  simp only [AddChar.map_add_eq_mul, Circle.coe_mul] at hh ⊢
+  linear_combination hh * f x
+
+/-- A translation-modulation error bounds the loss of Fourier magnitude along
+the corresponding frequency step. Source: lem:weyl, line 1333. -/
+theorem fourier_return_lower {E : Type*}
+    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
+    [MeasurableSpace E] [BorelSpace E] {f : E → ℂ} (hf : Integrable f)
+    (h ω ξ : E) (c : ℝ) :
+    ‖𝓕 f ξ‖ - (∫ x, ‖f (x + h) -
+      (Real.fourierChar (c + inner ℝ x ω) : ℂ) * f x‖) ≤ ‖𝓕 f (ξ - ω)‖ := by
+  have hmod : Integrable (fun x => (Real.fourierChar (c + inner ℝ x ω) : ℂ) * f x) :=
+    hf.bdd_mul (by fun_prop) (Filter.Eventually.of_forall fun x =>
+      (Circle.norm_coe (Real.fourierChar (c + inner ℝ x ω))).le)
+  have hb := fourier_sub_norm_le_integral (hf.comp_add_right h) hmod ξ
+  have hn := norm_sub_norm_le
+    (𝓕 (fun x => f (x + h)) ξ)
+    (𝓕 (fun x => (Real.fourierChar (c + inner ℝ x ω) : ℂ) * f x) ξ)
+  rw [fourier_translate_norm, fourier_modulation_eq, norm_mul, Circle.norm_coe, one_mul] at hn
+  rw [fourier_modulation_eq] at hb
+  linarith only [hn, hb]
+
+/-- Iterating a uniform one-step loss along an arithmetic progression. -/
+theorem fourier_progression_lower {E : Type*} [AddCommGroup E]
+    (f : E → ℂ) (ω : E) (ε : ℝ)
+    (hstep : ∀ ξ, ‖f ξ‖ - ε ≤ ‖f (ξ - ω)‖) (ξ : E) (j : ℕ) :
+    ‖f ξ‖ - (j : ℝ) * ε ≤ ‖f (ξ - j • ω)‖ := by
+  induction j with
+  | zero => simp
+  | succ j ih =>
+    have hh := hstep (ξ - j • ω)
+    rw [succ_nsmul, sub_add_eq_sub_sub]
+    push_cast
+    linarith only [ih, hh]
+
+section IntegralPlancherel
+
+/-! ### Plancherel's theorem on `L¹ ∩ L²`
+
+The identification of Mathlib's abstract `L²` Fourier transform with the
+integral transform on `L¹ ∩ L²`, and the resulting Plancherel identity, are
+adapted with attribution from `../lean-dfr/DFR/Auto/IntegralPlancherel.lean`
+(revision 28d3daff672dd670e2c4bd29130dab9668c9c1e2, Joris Roos, author Claude,
+Apache-2.0). References: Stein–Weiss, *Introduction to Fourier Analysis on
+Euclidean Spaces*, Chapter I, Theorem 2.3; Grafakos, *Classical Fourier
+Analysis*, 3rd ed., Theorem 2.2.14. Used in lem:weyl, line 1333. -/
+
+open MeasureTheory SchwartzMap FourierTransform Complex
+open scoped ENNReal ComplexConjugate ContDiff
+
+variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace ℝ V] [FiniteDimensional ℝ V]
+  [MeasurableSpace V] [BorelSpace V]
+
+/-- The multiplication formula `∫ (𝓕 g) f = ∫ g (𝓕 f)` for Schwartz `g`
+and integrable `f`. -/
+theorem integral_fourier_smul_eq_of_integrable (g : 𝓢(V, ℂ)) {f : V → ℂ} (hf : Integrable f) :
+    ∫ x, 𝓕 (g : V → ℂ) x • f x = ∫ ξ, g ξ • 𝓕 f ξ := by
+  have h := VectorFourier.integral_fourierIntegral_smul_eq_flip (L := innerₗ V)
+    (μ := volume) (ν := volume)
+    Real.continuous_fourierChar continuous_inner g.integrable hf
+  have hflip : (innerₗ V).flip = innerₗ V := by
+    ext x y
+    simp
+  rw [hflip] at h
+  simp only [smul_eq_mul] at h ⊢
+  exact h
+
+/-- The integral Fourier transform of an integrable function is continuous. -/
+theorem continuous_fourier_of_integrable {f : V → ℂ} (hf : Integrable f) :
+    Continuous (𝓕 f) :=
+  VectorFourier.fourierIntegral_continuous Real.continuous_fourierChar
+    (innerSL ℝ).continuous₂ hf
+
+/-- On `L¹ ∩ L²` the abstract `L²` Fourier transform agrees almost
+everywhere with the integral transform. -/
+theorem fourierLp_ae_eq_fourier {f : V → ℂ} (hf1 : Integrable f) (hf2 : MemLp f 2) :
+    ((𝓕 (hf2.toLp f) : Lp ℂ 2 (volume : Measure V)) : V → ℂ) =ᵐ[volume] 𝓕 f := by
+  apply ae_eq_of_integral_contDiff_smul_eq
+  · exact (Lp.memLp _).locallyIntegrable (by norm_num)
+  · exact (continuous_fourier_of_integrable hf1).locallyIntegrable
+  intro g hg hgc
+  have hg' : ContDiff ℝ ∞ (fun x => (g x : ℂ)) := ofRealCLM.contDiff.comp hg
+  have hgc' : HasCompactSupport (fun x => (g x : ℂ)) := hgc.comp_left Complex.ofReal_zero
+  set G : 𝓢(V, ℂ) := hgc'.toSchwartzMap hg' with hG
+  have hGx : ∀ x, G x = (g x : ℂ) := fun x => rfl
+  have hsmul : ∀ (x : V) (z : ℂ), g x • z = G x • z := fun x z => by
+    rw [hGx, Complex.real_smul, smul_eq_mul]
+  simp_rw [hsmul]
+  have h1 := Lp.toTemperedDistribution_apply (𝓕 (hf2.toLp f) : Lp ℂ 2 (volume : Measure V)) G
+  rw [← h1, ← Lp.fourier_toTemperedDistribution_eq, TemperedDistribution.fourier_apply,
+    Lp.toTemperedDistribution_apply, ← integral_fourier_smul_eq_of_integrable G hf1]
+  apply integral_congr_ae
+  filter_upwards [hf2.coeFn_toLp] with x hx
+  rw [hx, fourier_coe]
+
+/-- The integral Fourier transform of `f ∈ L¹ ∩ L²` is square integrable. -/
+theorem memLp_two_fourier {f : V → ℂ} (hf1 : Integrable f) (hf2 : MemLp f 2) :
+    MemLp (𝓕 f) 2 :=
+  (Lp.memLp _).ae_eq (fourierLp_ae_eq_fourier hf1 hf2)
+
+/-- The pairing identity `∫ conj (𝓕 f) (𝓕 g) = ∫ conj f g` on `L¹ ∩ L²`. -/
+theorem integral_conj_mul_fourier {f g : V → ℂ} (hf1 : Integrable f) (hf2 : MemLp f 2)
+    (hg1 : Integrable g) (hg2 : MemLp g 2) :
+    ∫ ξ, conj (𝓕 f ξ) * 𝓕 g ξ = ∫ x, conj (f x) * g x := by
+  have h := Lp.inner_fourier_eq (hf2.toLp f) (hg2.toLp g)
+  rw [L2.inner_def, L2.inner_def] at h
+  have e1 : ∫ ξ, conj (𝓕 f ξ) * 𝓕 g ξ =
+      ∫ ξ, inner ℂ ((𝓕 (hf2.toLp f) : Lp ℂ 2 (volume : Measure V)) ξ)
+        ((𝓕 (hg2.toLp g) : Lp ℂ 2 (volume : Measure V)) ξ) := by
+    apply integral_congr_ae
+    filter_upwards [fourierLp_ae_eq_fourier hf1 hf2, fourierLp_ae_eq_fourier hg1 hg2]
+      with ξ hf hg
+    rw [hf, hg, RCLike.inner_apply']
+  have e2 : ∫ x, conj (f x) * g x =
+      ∫ x, inner ℂ ((hf2.toLp f : Lp ℂ 2 (volume : Measure V)) x)
+        ((hg2.toLp g : Lp ℂ 2 (volume : Measure V)) x) := by
+    apply integral_congr_ae
+    filter_upwards [hf2.coeFn_toLp, hg2.coeFn_toLp] with x hf hg
+    rw [hf, hg, RCLike.inner_apply']
+  rw [e1, e2, h]
+
+/-- **Plancherel's theorem**: `∫ ‖𝓕 f‖² = ∫ ‖f‖²` for `f ∈ L¹ ∩ L²`. -/
+theorem integral_norm_sq_fourier {f : V → ℂ} (hf1 : Integrable f) (hf2 : MemLp f 2) :
+    ∫ ξ, ‖𝓕 f ξ‖ ^ 2 = ∫ x, ‖f x‖ ^ 2 := by
+  have h := integral_conj_mul_fourier hf1 hf2 hf1 hf2
+  have e : ∀ z : ℂ, conj z * z = ((‖z‖ ^ 2 : ℝ) : ℂ) := fun z => by
+    rw [mul_comm, mul_conj, normSq_eq_norm_sq, ofReal_pow]
+  rw [integral_congr_ae (Filter.Eventually.of_forall fun ξ => e (𝓕 f ξ)),
+    integral_congr_ae (Filter.Eventually.of_forall fun x => e (f x)),
+    integral_complex_ofReal, integral_complex_ofReal] at h
+  exact_mod_cast h
+
+/-- Cauchy–Schwarz for the absolute pairing of two square-integrable functions. -/
+theorem integral_norm_mul_le_sqrt {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    {f g : α → ℂ} (hf : MemLp f 2 μ) (hg : MemLp g 2 μ) :
+    ∫ x, ‖f x‖ * ‖g x‖ ∂μ ≤
+      Real.sqrt (∫ x, ‖f x‖ ^ 2 ∂μ) * Real.sqrt (∫ x, ‖g x‖ ^ 2 ∂μ) := by
+  have h := integral_mul_le_Lp_mul_Lq_of_nonneg (μ := μ) Real.HolderConjugate.two_two
+    (f := fun x => ‖f x‖) (g := fun x => ‖g x‖) (Filter.Eventually.of_forall fun _ => norm_nonneg _)
+    (Filter.Eventually.of_forall fun _ => norm_nonneg _) (by simpa using hf.norm)
+    (by simpa using hg.norm)
+  simp only [Real.rpow_two] at h
+  rw [Real.sqrt_eq_rpow, Real.sqrt_eq_rpow]
+  simpa only [one_div] using h
+
+/-- The Fourier transform of a right translate. -/
+theorem fourier_comp_add_right_apply (G : ℝ → ℂ) (s ξ : ℝ) :
+    𝓕 (fun u => G (u + s)) ξ = (Real.fourierChar (s * ξ) : ℂ) * 𝓕 G ξ := by
+  rw [Real.fourier_real_eq, Real.fourier_real_eq]
+  have h := integral_add_right_eq_self (μ := (volume : Measure ℝ))
+    (fun v : ℝ => (Real.fourierChar (-((v - s) * ξ)) : ℂ) * G v) s
+  simp only [add_sub_cancel_right] at h
+  simp only [Circle.smul_def, smul_eq_mul]
+  rw [h, ← integral_const_mul]
+  congr 1; funext v
+  rw [← mul_assoc, ← Circle.coe_mul, ← AddChar.map_add_eq_mul]
+  congr 3; ring
+
+/-- Blueprint lem:separation, line 1409: a correlation form `∫ K(s) ∫ F(u) G(u+s) du ds`
+is bounded by the supremum of the Fourier transform of `K` times the `L²` norms
+(Plancherel). -/
+theorem norm_integral_correlation_le {F G K : ℝ → ℂ} (hF1 : Integrable F)
+    (hF2 : MemLp F 2) (hG1 : Integrable G) (hG2 : MemLp G 2) (hK : Integrable K) {M : ℝ}
+    (hM : ∀ ξ, ‖𝓕 K ξ‖ ≤ M) :
+    ‖∫ s, K s * ∫ u, F u * G (u + s)‖ ≤
+      M * Real.sqrt (∫ x, ‖F x‖ ^ 2) * Real.sqrt (∫ x, ‖G x‖ ^ 2) := by
+  have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM 0)
+  set f : ℝ → ℂ := fun x => conj (F x) with hf
+  have hf2 : MemLp f 2 := hF2.star
+  have hf1 : Integrable f := memLp_one_iff_integrable.mp (memLp_one_iff_integrable.mpr hF1).star
+  -- Parseval for each translate
+  set h : ℝ → ℂ := fun ξ => conj (𝓕 f ξ) * 𝓕 G ξ with hh
+  have e2 (s : ℝ) : ∫ u, F u * G (u + s) = ∫ ξ, h ξ * (Real.fourierChar (s * ξ) : ℂ) := by
+    have hp := integral_conj_mul_fourier hf1 hf2 (hG1.comp_add_right s)
+      (hG2.comp_measurePreserving (measurePreserving_add_right volume s))
+    have hfF : ∀ u, conj (f u) = F u := fun u => by simp [hf]
+    simp only [hfF] at hp
+    rw [← hp]
+    congr 1; funext ξ
+    rw [fourier_comp_add_right_apply]; ring
+  have hfh : MemLp (𝓕 f) 2 := memLp_two_fourier hf1 hf2
+  have hGh : MemLp (𝓕 G) 2 := memLp_two_fourier hG1 hG2
+  have hhi : Integrable h := by
+    have := (hfh.star).integrable_mul hGh
+    exact this
+  -- Fubini in `(s, ξ)`
+  have hch : Continuous (fun z : ℝ × ℝ => (Real.fourierChar (z.1 * z.2) : ℂ)) :=
+    (continuous_subtype_val.comp Real.continuous_fourierChar).comp
+      (continuous_fst.mul continuous_snd)
+  have hΨ : Integrable (Function.uncurry fun (s ξ : ℝ) =>
+      K s * (h ξ * (Real.fourierChar (s * ξ) : ℂ))) (volume.prod volume) := by
+    have h0 := hK.mul_prod hhi
+    have h1 := h0.bdd_mul (c := 1) hch.aestronglyMeasurable
+      (Filter.Eventually.of_forall fun z => by simp)
+    refine h1.congr (Filter.Eventually.of_forall fun z => ?_)
+    simp only [Function.uncurry]; ring
+  have e3 : ∫ s, K s * ∫ u, F u * G (u + s) = ∫ ξ, h ξ * 𝓕 K (-ξ) := by
+    simp_rw [e2, ← integral_const_mul]
+    rw [integral_integral_swap hΨ]
+    congr 1; funext ξ
+    rw [Real.fourier_real_eq, ← integral_const_mul]
+    congr 1; funext s
+    simp only [Circle.smul_def, smul_eq_mul, mul_neg, neg_neg]
+    ring
+  rw [e3]
+  calc ‖∫ ξ, h ξ * 𝓕 K (-ξ)‖ ≤ ∫ ξ, ‖h ξ * 𝓕 K (-ξ)‖ := norm_integral_le_integral_norm _
+    _ ≤ ∫ ξ, M * (‖𝓕 f ξ‖ * ‖𝓕 G ξ‖) := by
+        apply integral_mono_of_nonneg (Filter.Eventually.of_forall fun _ => norm_nonneg _)
+        · exact (hhi.norm.const_mul M).congr (Filter.Eventually.of_forall fun ξ => by
+            simp [hh])
+        · refine Filter.Eventually.of_forall fun ξ => ?_
+          change ‖h ξ * 𝓕 K (-ξ)‖ ≤ M * (‖𝓕 f ξ‖ * ‖𝓕 G ξ‖)
+          rw [norm_mul, hh, norm_mul, Complex.norm_conj]
+          have := hM (-ξ)
+          have h0 : 0 ≤ ‖𝓕 f ξ‖ * ‖𝓕 G ξ‖ := by positivity
+          nlinarith
+    _ = M * ∫ ξ, ‖𝓕 f ξ‖ * ‖𝓕 G ξ‖ := integral_const_mul _ _
+    _ ≤ M * (Real.sqrt (∫ ξ, ‖𝓕 f ξ‖ ^ 2) * Real.sqrt (∫ ξ, ‖𝓕 G ξ‖ ^ 2)) :=
+        mul_le_mul_of_nonneg_left (integral_norm_mul_le_sqrt hfh hGh) hM0
+    _ = _ := by
+        rw [integral_norm_sq_fourier hf1 hf2, integral_norm_sq_fourier hG1 hG2, mul_assoc]
+        have : ∫ x, ‖f x‖ ^ 2 = ∫ x, ‖F x‖ ^ 2 := by
+          congr 1; funext x; simp [hf]
+        rw [this]
+
+/-- Blueprint lem:separation, line 1409: a bilinear convolution form is bounded by the
+supremum of the Fourier transform of its kernel times the `L²` norms (Plancherel). -/
+theorem norm_integral_convolution_form_le {F G K : ℝ → ℂ} (hF1 : Integrable F)
+    (hF2 : MemLp F 2) (hG1 : Integrable G) (hG2 : MemLp G 2) (hK : Integrable K) {M : ℝ}
+    (hM : ∀ ξ, ‖𝓕 K ξ‖ ≤ M) :
+    ‖∫ p : ℝ × ℝ, F p.1 * G p.2 * K (p.2 - p.1)‖ ≤
+      M * Real.sqrt (∫ x, ‖F x‖ ^ 2) * Real.sqrt (∫ x, ‖G x‖ ^ 2) := by
+  have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM 0)
+  by_cases hI : Integrable (fun p : ℝ × ℝ => F p.1 * G p.2 * K (p.2 - p.1))
+  swap
+  · rw [integral_undef hI, norm_zero]; positivity
+  have hmp := measurePreserving_prod_add (volume : Measure ℝ) (volume : Measure ℝ)
+  have hemb : MeasurableEmbedding (fun z : ℝ × ℝ => (z.1, z.1 + z.2)) :=
+    (MeasurableEquiv.shearAddRight ℝ).measurableEmbedding
+  set Φ : ℝ × ℝ → ℂ := fun p => F p.1 * G p.2 * K (p.2 - p.1)
+  have hΦ : (fun z : ℝ × ℝ => Φ (z.1, z.1 + z.2)) = fun z => F z.1 * G (z.1 + z.2) * K z.2 := by
+    funext z; simp [Φ]
+  have hI' : Integrable (fun z : ℝ × ℝ => F z.1 * G (z.1 + z.2) * K z.2) (volume.prod volume) := by
+    rw [← hΦ]; exact (hmp.integrable_comp_emb hemb).mpr hI
+  have e1 : ∫ p : ℝ × ℝ, Φ p = ∫ s, K s * ∫ u, F u * G (u + s) := by
+    have h := hmp.integral_comp hemb Φ
+    change ∫ p : ℝ × ℝ, Φ p ∂(volume.prod volume) = _
+    rw [← h, hΦ, integral_prod_symm _ hI']
+    congr 1; funext s
+    rw [← integral_const_mul]; congr 1; funext u; ring
+  change ‖∫ p : ℝ × ℝ, Φ p‖ ≤ _
+  rw [e1]
+  exact norm_integral_correlation_le hF1 hF2 hG1 hG2 hK hM
+
+end IntegralPlancherel
+
+section DisjointBalls
+
+open MeasureTheory Metric
+
+/-- Square mass on separated balls: if a square-integrable function has size
+at least `c` on `M` balls of radius `ρ` whose centers are `2ρ`-separated, then
+its total square mass is at least `M` times the ball volume times `c²`.
+Used in lem:weyl, line 1333. -/
+theorem separated_balls_sq_mass {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    [FiniteDimensional ℝ E] [MeasurableSpace E] [BorelSpace E]
+    (μ : Measure E) [μ.IsAddHaarMeasure] {g : E → ℂ}
+    (hg : Integrable (fun x => ‖g x‖ ^ 2) μ) (M : ℕ) (p : ℕ → E) {ρ c : ℝ}
+    (hsep : ∀ i < M, ∀ j < M, i ≠ j → 2 * ρ ≤ dist (p i) (p j))
+    (hc : ∀ j < M, ∀ x ∈ ball (p j) ρ, c ≤ ‖g x‖) (hc0 : 0 ≤ c) :
+    (M : ℝ) * (μ.real (ball (0 : E) ρ) * c ^ 2) ≤ ∫ x, ‖g x‖ ^ 2 ∂μ := by
+  classical
+  let t := Finset.range M
+  have hdisj : Set.Pairwise (↑t) (Function.onFun Disjoint fun j => ball (p j) ρ) := by
+    intro i hi j hj hij
+    exact ball_disjoint_ball (by
+      have := hsep i (Finset.mem_range.mp hi) j (Finset.mem_range.mp hj) hij
+      linarith only [this])
+  have hU := integral_biUnion_finset (μ := μ) (f := fun x => ‖g x‖ ^ 2) t
+    (fun j _ => measurableSet_ball) hdisj (fun j _ => hg.integrableOn)
+  have hle : ∫ x in ⋃ j ∈ t, ball (p j) ρ, ‖g x‖ ^ 2 ∂μ ≤ ∫ x, ‖g x‖ ^ 2 ∂μ :=
+    setIntegral_le_integral hg (Filter.Eventually.of_forall fun x => by positivity)
+  have hball (j) (hj : j ∈ t) :
+      μ.real (ball (0 : E) ρ) * c ^ 2 ≤ ∫ x in ball (p j) ρ, ‖g x‖ ^ 2 ∂μ := by
+    have h := setIntegral_ge_of_const_le_real (μ := μ) (c := c ^ 2)
+      (f := fun x => ‖g x‖ ^ 2) measurableSet_ball measure_ball_lt_top.ne
+      (fun x hx => pow_le_pow_left₀ hc0 (hc j (Finset.mem_range.mp hj) x hx) 2)
+      hg.integrableOn
+    rw [Measure.addHaar_real_ball_center] at h
+    linarith only [h]
+  calc
+    _ = ∑ _j ∈ t, μ.real (ball (0 : E) ρ) * c ^ 2 := by simp [t]
+    _ ≤ ∑ j ∈ t, ∫ x in ball (p j) ρ, ‖g x‖ ^ 2 ∂μ := Finset.sum_le_sum hball
+    _ ≤ _ := hU ▸ hle
+
+end DisjointBalls
+
+section WeylFrequency
+
+open MeasureTheory Metric
+open scoped FourierTransform
+
+/-- Euclidean balls contain an explicit coordinate cube, giving the volume
+lower bound `(2ρ/(k+1))^k`. Used in lem:weyl, line 1333. -/
+theorem euclidean_ball_volume_lower {k : ℕ} {ρ : ℝ} (hρ : 0 < ρ) :
+    (2 * (ρ / (k + 1))) ^ k ≤ volume.real (ball (0 : EuclideanSpace ℝ (Fin k)) ρ) := by
+  set r := ρ / (k + 1) with hr
+  have hr0 : 0 ≤ r := by positivity
+  let Q : Set (Fin k → ℝ) := Set.Icc (fun _ => -r) (fun _ => r)
+  have hp : MeasurePreserving (fun x : EuclideanSpace ℝ (Fin k) => x.ofLp) := by
+    convert! PiLp.volume_preserving_ofLp (Fin k)
+  have hsub : (fun x : EuclideanSpace ℝ (Fin k) => x.ofLp) ⁻¹' Q ⊆ ball 0 ρ := by
+    intro x hx
+    rw [mem_ball_zero_iff]
+    have hsup : ‖x.ofLp‖ ≤ r := (pi_norm_le_iff_of_nonneg hr0).mpr fun i => by
+      rw [Real.norm_eq_abs, abs_le]
+      exact ⟨hx.1 i, hx.2 i⟩
+    have hsq : ‖x‖ ^ 2 ≤ (k : ℝ) * r ^ 2 := by
+      rw [EuclideanSpace.norm_sq_eq]
+      calc ∑ i, ‖x i‖ ^ 2 ≤ ∑ _i : Fin k, r ^ 2 := Finset.sum_le_sum fun i _ =>
+            pow_le_pow_left₀ (norm_nonneg _) ((norm_le_pi_norm x.ofLp i).trans hsup) 2
+        _ = _ := by simp
+    have hkr : (k : ℝ) * r ^ 2 < ρ ^ 2 := by
+      have hk1 : (0 : ℝ) < k + 1 := by positivity
+      have hρr : ρ = (k + 1) * r := by rw [hr]; field_simp
+      rw [hρr]
+      have hr' : 0 < r := by rw [hr]; positivity
+      nlinarith [sq_nonneg (k : ℝ), mul_pos hr' hr']
+    exact lt_of_pow_lt_pow_left₀ 2 hρ.le (hsq.trans_lt hkr)
+  have hvol : volume.real ((fun x : EuclideanSpace ℝ (Fin k) => x.ofLp) ⁻¹' Q) =
+      (2 * r) ^ k := by
+    rw [measureReal_def, hp.measure_preimage measurableSet_Icc.nullMeasurableSet]
+    change (volume Q).toReal = _
+    rw [Real.volume_Icc_pi_toReal (fun i => by linarith only [hr0])]
+    simp [sub_neg_eq_add, ← two_mul]
+  rw [← hvol]
+  exact measureReal_mono hsub measure_ball_lt_top.ne
+
+/-- The Fourier half of the Weyl alternative: a Lipschitz Fourier transform
+cannot stay large on `M` points of a progression with step of size at least
+one, once `M` balls of the explicit radius exceed the Plancherel mass.
+Source: lem:weyl, line 1333. -/
+theorem fourier_progression_step_small {E : Type*}
+    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
+    [MeasurableSpace E] [BorelSpace E] {f : E → ℂ}
+    (hf1 : Integrable f) (hf2 : MemLp f 2) {L δ S : ℝ} (hL : 0 < L) (hδ : 0 < δ)
+    (hLip : ∀ ξ η, ‖𝓕 f ξ - 𝓕 f η‖ ≤ L * ‖ξ - η‖)
+    (hS : ∫ x, ‖f x‖ ^ 2 ≤ S) (M : ℕ)
+    (hM : S < (M : ℝ) *
+      (volume.real (ball (0 : E) (min (1 / 2) (δ / (6 * L)))) * (δ / 3) ^ 2))
+    (ω ξ : E) (hlarge : ∀ j < M, δ / 2 ≤ ‖𝓕 f (ξ - j • ω)‖) : ‖ω‖ < 1 := by
+  by_contra hω
+  push Not at hω
+  set ρ := min (1 / 2) (δ / (6 * L))
+  have hρ1 : ρ ≤ 1 / 2 := min_le_left _ _
+  have hρ2 : ρ ≤ δ / (6 * L) := min_le_right _ _
+  have hLρ : L * ρ ≤ δ / 6 := by
+    have h := mul_le_mul_of_nonneg_left hρ2 hL.le
+    have he : L * (δ / (6 * L)) = δ / 6 := by field_simp
+    linarith only [h, he]
+  have hsq : Integrable (fun x => ‖𝓕 f x‖ ^ 2) :=
+    (memLp_two_iff_integrable_sq_norm
+      (continuous_fourier_of_integrable hf1).aestronglyMeasurable).mp
+      (memLp_two_fourier hf1 hf2)
+  have hmass := separated_balls_sq_mass (μ := volume) hsq M (fun j => ξ - j • ω)
+    (ρ := ρ) (c := δ / 3)
+    (fun i _ j _ hij => by
+      have he : (ξ - i • ω) - (ξ - j • ω) = (((j : ℤ) - i : ℤ) : ℝ) • ω := by
+        rw [Int.cast_smul_eq_zsmul, sub_zsmul, natCast_zsmul, natCast_zsmul]
+        abel
+      have hij' : (1 : ℝ) ≤ |(((j : ℤ) - i : ℤ) : ℝ)| := by
+        have h0 : ((j : ℤ) - i) ≠ 0 := sub_ne_zero.mpr (by exact_mod_cast (Ne.symm hij))
+        exact_mod_cast Int.one_le_abs h0
+      rw [dist_eq_norm, he, norm_smul, Real.norm_eq_abs]
+      nlinarith [norm_nonneg ω])
+    (fun j hj x hx => by
+      have h1 := hlarge j hj
+      have h2 := hLip x (ξ - j • ω)
+      have h3 : ‖x - (ξ - j • ω)‖ ≤ ρ := (mem_ball_iff_norm.mp hx).le
+      have h4 := norm_sub_norm_le (𝓕 f (ξ - j • ω)) (𝓕 f x)
+      rw [norm_sub_rev] at h4
+      nlinarith [mul_le_mul_of_nonneg_left h3 hL.le])
+    (by positivity)
+  rw [integral_norm_sq_fourier hf1 hf2] at hmass
+  linarith only [hmass, hS, hM]
+
+end WeylFrequency
+
+section PeriodicFourier
+
+/-! ### Fourier series of smooth periodic functions on `ℝⁿ`
+
+The torus results above are transported to `ℤⁿ`-periodic functions on `ℝⁿ`.
+Used in lem:chartfourier, lines 1361–1377. -/
+
+open MeasureTheory
+
+noncomputable local instance : MeasureSpace UnitAddCircle := ⟨AddCircle.haarAddCircle⟩
+
+local instance : IsProbabilityMeasure (volume : Measure UnitAddCircle) :=
+  inferInstanceAs (IsProbabilityMeasure AddCircle.haarAddCircle)
+
+/-- The coordinatewise quotient map `ℝⁿ → (ℝ/ℤ)ⁿ`. -/
+noncomputable def torusProjection (n : ℕ) : (Fin n → ℝ) → UnitAddTorus (Fin n) :=
+  fun x i => (x i : UnitAddCircle)
+
+theorem torusProjection_isOpenQuotientMap (n : ℕ) :
+    IsOpenQuotientMap (torusProjection n) :=
+  IsOpenQuotientMap.piMap (fun _ => QuotientAddGroup.isOpenQuotientMap_mk)
+
+theorem torusProjection_surjective (n : ℕ) : Function.Surjective (torusProjection n) :=
+  (torusProjection_isOpenQuotientMap n).surjective
+
+theorem torusProjection_eq_iff {n : ℕ} {x y : Fin n → ℝ} :
+    torusProjection n x = torusProjection n y ↔
+      ∃ j : Fin n → ℤ, x = y + fun i => (j i : ℝ) := by
+  constructor
+  · intro h
+    have hi (i : Fin n) : ∃ k : ℤ, x i = y i + k := by
+      have h1 : ((x i : ℝ) : UnitAddCircle) = (y i : UnitAddCircle) := congrFun h i
+      have h2 : ((x i - y i : ℝ) : UnitAddCircle) = 0 := by
+        rw [AddCircle.coe_sub, h1, sub_self]
+      obtain ⟨k, hk⟩ := (AddCircle.coe_eq_zero_iff (1 : ℝ)).mp h2
+      exact ⟨k, by rw [zsmul_eq_mul, mul_one] at hk; linarith only [hk]⟩
+    choose j hj using hi
+    exact ⟨j, funext hj⟩
+  · rintro ⟨j, rfl⟩
+    funext i
+    simp [torusProjection]
+
+/-- The Fourier monomial at a projected point is the usual real character. -/
+theorem mFourier_torusProjection {n : ℕ} (v : Fin n → ℤ) (x : Fin n → ℝ) :
+    UnitAddTorus.mFourier v (torusProjection n x) =
+      (Real.fourierChar (∑ i, (v i : ℝ) * x i) : ℂ) := by
+  simp only [UnitAddTorus.mFourier, ContinuousMap.coe_mk, torusProjection, fourier_coe_apply,
+    Real.fourierChar_apply]
+  rw [← Complex.exp_sum]
+  congr 1
+  push_cast
+  rw [Finset.mul_sum, Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intro i _
+  ring
+
+/-- The function on the torus induced by a `ℤⁿ`-periodic function. -/
+noncomputable def periodicDescent {n : ℕ} (f : (Fin n → ℝ) → ℂ) :
+    UnitAddTorus (Fin n) → ℂ :=
+  fun y => f (Function.surjInv (torusProjection_surjective n) y)
+
+theorem periodicDescent_apply {n : ℕ} {f : (Fin n → ℝ) → ℂ}
+    (hper : ∀ x (j : Fin n → ℤ), f (x + fun i => (j i : ℝ)) = f x) (x : Fin n → ℝ) :
+    periodicDescent f (torusProjection n x) = f x := by
+  obtain ⟨j, hj⟩ := torusProjection_eq_iff.mp
+    (Function.surjInv_eq (torusProjection_surjective n) (torusProjection n x))
+  rw [periodicDescent, hj, hper]
+
+theorem periodicDescent_continuous {n : ℕ} {f : (Fin n → ℝ) → ℂ} (hf : Continuous f)
+    (hper : ∀ x (j : Fin n → ℤ), f (x + fun i => (j i : ℝ)) = f x) :
+    Continuous (periodicDescent f) := by
+  rw [← (torusProjection_isOpenQuotientMap n).continuous_comp_iff]
+  have : periodicDescent f ∘ torusProjection n = f := funext (periodicDescent_apply hper)
+  rw [this]
+  exact hf
+
+/-- The Fourier coefficients of a `ℤⁿ`-periodic function on `ℝⁿ`, defined through
+its descent to the torus. -/
+noncomputable def periodicFourierCoeff {n : ℕ} (f : (Fin n → ℝ) → ℂ) (v : Fin n → ℤ) : ℂ :=
+  UnitAddTorus.mFourierCoeff (periodicDescent f) v
+
+theorem torusProjection_insertNth {d : ℕ} (i : Fin (d + 1)) (t : ℝ) (x : Fin d → ℝ) :
+    torusProjection (d + 1) (i.insertNth t x) =
+      i.insertNth (t : UnitAddCircle) (torusProjection d x) := by
+  funext j
+  refine Fin.succAboveCases i ?_ (fun k => ?_) j
+  · simp [torusProjection]
+  · simp [torusProjection]
+
+/-- **Fourier series of smooth periodic functions.** A continuous `ℤⁿ`-periodic
+function whose coordinate slices have `m`-th derivatives bounded by `A`, with
+`m > n`, is the sum of its absolutely convergent Fourier series at every point.
+Its nonzero coefficients obey `|c_v| ≤ A (√n / (2π|v|))^m`, and every coefficient
+is bounded by the supremum of `|f|`. Used in lem:chartfourier, lines 1361–1377. -/
+theorem periodic_fourier_expansion {d m : ℕ} {A B : ℝ} (hm : d + 1 < m)
+    (f : (Fin (d + 1) → ℝ) → ℂ) (hf : Continuous f)
+    (hper : ∀ x (j : Fin (d + 1) → ℤ), f (x + fun i => (j i : ℝ)) = f x)
+    (hsmooth : ∀ (i : Fin (d + 1)) (x : Fin d → ℝ),
+      ContDiff ℝ m (fun t : ℝ => f (i.insertNth t x)))
+    (hbound : ∀ (i : Fin (d + 1)) (x : Fin d → ℝ) (t : ℝ),
+      ‖iteratedDeriv m (fun t : ℝ => f (i.insertNth t x)) t‖ ≤ A)
+    (hB : ∀ x, ‖f x‖ ≤ B) :
+    (∀ x, HasSum (fun v => periodicFourierCoeff f v *
+        (Real.fourierChar (∑ i, (v i : ℝ) * x i) : ℂ)) (f x)) ∧
+      Summable (fun v => ‖periodicFourierCoeff f v‖) ∧
+      (∀ v, v ≠ 0 → ‖periodicFourierCoeff f v‖ ≤
+        A * (Real.sqrt (d + 1 : ℝ) / (2 * Real.pi * frequencyLength v)) ^ m) ∧
+      (∀ v, ‖periodicFourierCoeff f v‖ ≤ B) := by
+  set F := periodicDescent f
+  have hF : Continuous F := periodicDescent_continuous hf hper
+  have hFx : ∀ x, F (torusProjection (d + 1) x) = f x := periodicDescent_apply hper
+  have hslice (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) :
+      ∃ x : Fin d → ℝ, (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) =
+        fun t : ℝ => f (i.insertNth t x) := by
+    obtain ⟨x, rfl⟩ := torusProjection_surjective d y
+    exact ⟨x, funext fun t => by
+      rw [← torusProjection_insertNth, hFx]⟩
+  have hsm : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)),
+      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) := by
+    intro i y
+    obtain ⟨x, hx⟩ := hslice i y
+    rw [hx]; exact hsmooth i x
+  have hbd : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) (t : ℝ),
+      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) t‖ ≤ A := by
+    intro i y t
+    obtain ⟨x, hx⟩ := hslice i y
+    rw [hx]; exact hbound i x t
+  let Fc : C(UnitAddTorus (Fin (d + 1)), ℂ) := ⟨F, hF⟩
+  have hsum := hasSum_mFourier_of_derivative_bound hm Fc hsm hbd
+  refine ⟨fun x => ?_,
+    summable_norm_mFourierCoeff hm F hF hsm hbd,
+    fun v hv => norm_mFourierCoeff_le_derivative_bound F hF v hv m hsm hbd, fun v => ?_⟩
+  · have hev := (ContinuousMap.evalCLM ℂ (torusProjection (d + 1) x)).hasSum hsum
+    simp only [ContinuousMap.evalCLM_apply, ContinuousMap.smul_apply, smul_eq_mul,
+      mFourier_torusProjection] at hev
+    change HasSum _ (F (torusProjection (d + 1) x)) at hev
+    rwa [hFx] at hev
+  · have hFB (y : UnitAddTorus (Fin (d + 1))) : ‖F y‖ ≤ B := by
+      obtain ⟨x, rfl⟩ := torusProjection_surjective (d + 1) y
+      rw [hFx]; exact hB x
+    change ‖UnitAddTorus.mFourierCoeff F v‖ ≤ B
+    rw [UnitAddTorus.mFourierCoeff]
+    have hpt (y : UnitAddTorus (Fin (d + 1))) : ‖UnitAddTorus.mFourier (-v) y • F y‖ ≤ B := by
+      rw [norm_smul]
+      have h1 : ‖UnitAddTorus.mFourier (-v) y‖ ≤ 1 := by
+        have := (UnitAddTorus.mFourier (-v)).norm_coe_le_norm y
+        rwa [UnitAddTorus.mFourier_norm] at this
+      nlinarith [norm_nonneg (UnitAddTorus.mFourier (-v) y), norm_nonneg (F y), hFB y]
+    exact (norm_integral_le_of_norm_le_const (Filter.Eventually.of_forall hpt)).trans_eq
+      (by simp)
+
+/-- A line through `x` in direction `v` loses at most `‖v‖ᵐ` in the `m`-th derivative. -/
+theorem norm_iteratedDeriv_line_le {E F : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
+    [NormedAddCommGroup F] [NormedSpace ℝ F] {f : E → F} (hf : ContDiff ℝ (⊤ : ℕ∞) f)
+    (x v : E) (m : ℕ) (t : ℝ) :
+    ‖iteratedDeriv m (fun s : ℝ => f (s • v + x)) t‖ ≤
+      ‖iteratedFDeriv ℝ m f (t • v + x)‖ * ‖v‖ ^ m := by
+  let L : ℝ →L[ℝ] E := ContinuousLinearMap.smulRight (ContinuousLinearMap.id ℝ ℝ) v
+  have hL : ‖L‖ ≤ ‖v‖ := by
+    apply L.opNorm_le_bound (norm_nonneg _)
+    intro s
+    simp [L, norm_smul, mul_comm]
+  have he : (fun s : ℝ => f (s • v + x)) = (fun z => f (z + x)) ∘ L := by
+    funext s; simp [L]
+  have hfc : ContDiff ℝ (⊤ : ℕ∞) (fun z => f (z + x)) :=
+    hf.comp (contDiff_id.add contDiff_const)
+  rw [← norm_iteratedFDeriv_eq_norm_iteratedDeriv, he,
+    L.iteratedFDeriv_comp_right hfc t (by simp)]
+  apply (ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _).trans
+  rw [iteratedFDeriv_comp_add_right' m x]
+  simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+  have hLt : L t = t • v := by simp [L]
+  rw [hLt]
+  exact mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (norm_nonneg _) hL m) (norm_nonneg _)
+
+/-- **Fourier series of smooth periodic functions on `ℝⁿ`, operator-norm form.**
+A smooth `ℤⁿ`-periodic function, `n ≥ 1`, whose `m`-th derivative (`m > n`) is
+bounded by `A` in operator norm is the sum of its absolutely convergent Fourier
+series, with `|c_v| ≤ A (√n/(2π|v|))^m` for `v ≠ 0` and `|c_v| ≤ sup |f|`. -/
+theorem periodic_fourier_expansion_of_fderiv {n m : ℕ} (hn : 1 ≤ n) (hm : n < m) {A B : ℝ}
+    (f : (Fin n → ℝ) → ℂ) (hf : ContDiff ℝ (⊤ : ℕ∞) f)
+    (hper : ∀ x (j : Fin n → ℤ), f (x + fun i => (j i : ℝ)) = f x)
+    (hA : ∀ x, ‖iteratedFDeriv ℝ m f x‖ ≤ A) (hB : ∀ x, ‖f x‖ ≤ B) :
+    (∀ x, HasSum (fun v => periodicFourierCoeff f v *
+        (Real.fourierChar (∑ i, (v i : ℝ) * x i) : ℂ)) (f x)) ∧
+      Summable (fun v => ‖periodicFourierCoeff f v‖) ∧
+      (∀ v, v ≠ 0 → ‖periodicFourierCoeff f v‖ ≤
+        A * (Real.sqrt n / (2 * Real.pi * frequencyLength v)) ^ m) ∧
+      (∀ v, ‖periodicFourierCoeff f v‖ ≤ B) := by
+  obtain ⟨D, rfl⟩ : ∃ D, n = D + 1 := ⟨n - 1, by omega⟩
+  have hline (i : Fin (D + 1)) (x : Fin D → ℝ) :
+      (fun t : ℝ => f (i.insertNth t x)) =
+        fun t : ℝ => f (t • Pi.single i (1 : ℝ) + i.insertNth 0 x) := by
+    funext t
+    congr 1
+    funext k
+    refine Fin.succAboveCases i ?_ (fun l => ?_) k
+    · simp
+    · simp [Fin.succAbove_ne]
+  have hsingle (i : Fin (D + 1)) : ‖(Pi.single i (1 : ℝ) : Fin (D + 1) → ℝ)‖ ≤ 1 :=
+    (pi_norm_le_iff_of_nonneg zero_le_one).mpr fun k => by
+      by_cases h : k = i
+      · subst h; simp
+      · simp [h]
+  have hA0 : 0 ≤ A := (norm_nonneg _).trans (hA 0)
+  obtain ⟨h1, h2, h3, h4⟩ := periodic_fourier_expansion (A := A) (B := B)
+    (by simpa using hm) f hf.continuous hper
+    (fun i x => by rw [hline]; exact (hf.comp ((contDiff_id.smul contDiff_const).add
+      contDiff_const)).of_le (by simp))
+    (fun i x t => by
+      rw [hline]
+      refine (norm_iteratedDeriv_line_le hf _ _ m t).trans ?_
+      calc _ ≤ A * 1 := mul_le_mul (hA _) (pow_le_one₀ (norm_nonneg _) (hsingle i))
+            (by positivity) hA0
+        _ = A := mul_one A)
+    hB
+  exact ⟨h1, h2, by simpa using h3, h4⟩
+
+end PeriodicFourier
 
 end Auto

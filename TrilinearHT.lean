@@ -1,11 +1,15 @@
 /-
 Copyright (c) 2026 Joris Roos. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Codex
+Authors: Codex, Claude
 -/
 module
 
 public import TrilinearHT.Auto.TrilinearHilbertTransform
+public import TrilinearHT.Auto.SecWeylSplitting
+public import TrilinearHT.Auto.SecDetection
+public import TrilinearHT.Auto.SecBaseReduction
+public import TrilinearHT.Auto.SecBaseReductionDelay
 public import TrilinearHT.Auto.FeffermanStein
 public import TrilinearHT.Auto.HilbertAtomicDecomposition
 
