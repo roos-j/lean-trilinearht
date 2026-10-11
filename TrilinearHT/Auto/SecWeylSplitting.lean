@@ -7762,8 +7762,13 @@ theorem progressionSeparation (c₀ : ℕ) (hc : 1 ≤ c₀) :
         (∀ q, QuadraticChartComplexity c₁ ((Real.exp (D * X ^ D) * size q) ^ 6) (φa q) ∧
           QuadraticChartComplexity c₁ ((Real.exp (D * X ^ D) * size q) ^ 6) (φb q) ∧
           QuadraticChartComplexity c₁ ((Real.exp (D * X ^ D) * size q) ^ 6) (φt q)) ∧
-        ∀ T : ℝ, 1 ≤ T → ∃ Qs : Finset τ, (∀ q, size q ≤ T → q ∈ Qs) ∧
-          (Qs.card : ℝ) ≤ Real.exp (10 * X ^ 2) * (3 * T) ^ (3 * (d + e)) := by
+        (∀ T : ℝ, 1 ≤ T → ∃ Qs : Finset τ, (∀ q, size q ≤ T → q ∈ Qs) ∧
+          (Qs.card : ℝ) ≤ Real.exp (10 * X ^ 2) * (3 * T) ^ (3 * (d + e))) ∧
+        ∀ q, (φt q).horizontal = Fin.append A.horizontal A'.horizontal ∧
+          (φt q).matrix = chartBlockMatrix (((i - a) * (i - b) : ℚ) • A.matrix)
+            (((k - a) * (k - b) : ℚ) • A'.matrix) ∧
+          (φt q).quadratic = (((i - a) * (i - b) : ℚ) : ℝ) * A.quadratic +
+            (((k - a) * (k - b) : ℚ) : ℝ) * A'.quadratic := by
   obtain ⟨ψ, Kψ, hKψ, hψ, hψ1', hψ1, hψ0, hψd⟩ := exists_plateau_cutoff
   obtain ⟨Kρ, hKρ, hρd⟩ := gevreyPartition_exists_derivative_bound
   obtain ⟨Da, hDa, hatom⟩ := sepAtomFamily_bounds c₀ hc hψ hψ1' hψ1 hψ0 hKψ hψd hKρ hρd
@@ -7809,7 +7814,7 @@ theorem progressionSeparation (c₀ : ℕ) (hc : 1 ≤ c₀) :
     fun q => sepPairChartB A A' hψ hψ0 i k a b q.1.1.1 q.1.1.2 q.2.1.1 q.2.1.2 q.1.2 q.2.2,
     fun q => sepPairChartT A A' hψ hψ0 i k a b q.1.2 q.2.2,
     fun q => max (1 + frequencyLength q.1.2) (1 + frequencyLength q.2.2), ?_, ?_, ?_, ?_, ?_,
-    ?_, ?_, ?_⟩
+    ?_, ?_, ?_, fun q => ⟨rfl, rfl, rfl⟩⟩
   · intro x t
     have h := sep_pair_expansion_normalized hd he A A' hA.support hA'.support hψ hψ1' hψ1 hψ0
       i k a b hab x t

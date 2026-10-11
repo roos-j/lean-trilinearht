@@ -3625,7 +3625,7 @@ theorem detection_atom_pair (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ 
   set H' := max H W₀ ^ 6 with hH'
   have hjl : ((jR : ℕ) : ℤ) ≠ ((lv : ℕ) : ℤ) := by
     intro h; apply h3; exact Fin.ext (by exact_mod_cast h)
-  obtain ⟨τ, hτc, cf, φa, φb, φt, size, hexp, hbdd, hsize1, hcs, hcsum, htail, hcomp, -⟩ :=
+  obtain ⟨τ, hτc, cf, φa, φb, φt, size, hexp, hbdd, hsize1, hcs, hcsum, htail, hcomp, -, -⟩ :=
     hsep H' P P' (by omega) (by omega) hPc hP'c ((i : ℕ) : ℤ) ((k : ℕ) : ℤ) ((jR : ℕ) : ℤ)
       ((lv : ℕ) : ℤ) hjl (abs_fin_int_le i) (abs_fin_int_le k) (abs_fin_int_le jR)
       (abs_fin_int_le lv)

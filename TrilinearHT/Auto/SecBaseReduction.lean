@@ -7561,7 +7561,8 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
   -- the separation of the atom pair
   have hab : ((a : ℕ) : ℤ) ≠ ((b : ℕ) : ℤ) := by
     intro h; apply h3; exact Fin.ext (by exact_mod_cast h)
-  obtain ⟨τ, hτc, cf, φa, φb, φt, size, hexpS, hbdd, hsize1, hcs, hcsum, htail, hcomp, hcount⟩ :=
+  obtain ⟨τ, hτc, cf, φa, φb, φt, size, hexpS, hbdd, hsize1, hcs, hcsum, htail, hcomp, hcount,
+    -⟩ :=
     hsep H A A' hd he hA hA' ((i : ℕ) : ℤ) ((k : ℕ) : ℤ) ((a : ℕ) : ℤ) ((b : ℕ) : ℤ) hab
       (abs_fin_int_le i) (abs_fin_int_le k) (abs_fin_int_le a) (abs_fin_int_le b)
   set Es := pdEs Ds H with hEs

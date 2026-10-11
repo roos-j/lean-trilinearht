@@ -10,6 +10,11 @@ public import TrilinearHT.Auto.SecWeylSplitting
 public import TrilinearHT.Auto.SecDetection
 public import TrilinearHT.Auto.SecBaseReduction
 public import TrilinearHT.Auto.SecBaseReductionDelay
+public import TrilinearHT.Auto.SecBaseReductionFits
+public import TrilinearHT.Auto.SecBaseReductionBase
+public import TrilinearHT.Auto.SecBaseReductionBaseAssembly
+public import TrilinearHT.Auto.SecCurvatureLocalization
+public import TrilinearHT.Auto.SecCurvatureLocalizationCatalogs
 public import TrilinearHT.Auto.FeffermanStein
 public import TrilinearHT.Auto.HilbertAtomicDecomposition
 
