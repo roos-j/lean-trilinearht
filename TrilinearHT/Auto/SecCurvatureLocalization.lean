@@ -4582,14 +4582,14 @@ theorem ppot_anc {I₀ I : T.Cell} (h : T.Anc I₀ I) (v : V) :
   · rfl
 
 omit [DecidableEq V] in
-theorem ppot_le [Fintype V] (I : T.Cell) (v : V) :
-    K.ppot T I v ≤ Fintype.card V * (K.d0 + 7) := by
+theorem ppot_le {Nv : ℕ} (hN : ∀ I, (T.X I).card ≤ Nv) (I : T.Cell) (v : V) :
+    K.ppot T I v ≤ Nv * (K.d0 + 7) := by
   unfold ppot
-  have h1 : (T.X I).card ≤ Fintype.card V := Finset.card_le_univ _
+  have h1 : (T.X I).card ≤ Nv := hN I
   have h2 : ∑ z ∈ T.X I, (K.d0 + 6 - capDiv (K.dist.d (T.depth I) z v) K.b1 (K.d0 + 6)) ≤
       ∑ _z ∈ T.X I, (K.d0 + 6) := Finset.sum_le_sum fun z _ => Nat.sub_le _ _
   rw [Finset.sum_const, smul_eq_mul] at h2
-  have h3 : (T.X I).card * (K.d0 + 6) ≤ Fintype.card V * (K.d0 + 6) := Nat.mul_le_mul_right _ h1
+  have h3 : (T.X I).card * (K.d0 + 6) ≤ Nv * (K.d0 + 6) := Nat.mul_le_mul_right _ h1
   nlinarith
 
 end ColorSetup
@@ -4646,21 +4646,21 @@ theorem hOff_eq {A A' : AdmState V} (hA : A.WF) (hA' : A'.WF) (h : A.Le A') {v :
     rw [hs]
 
 /-- The potential of the high situation. -/
-noncomputable def hpot [Fintype V] (I : T.Cell) (v : V) : ℕ :=
-  K.potential (Nat.size (Fintype.card V)) (K.d0 * flog32 (Fintype.card V))
-    (K.d0 * (2 * K.d0 + 1)) (T.st I) v * (Fintype.card V + 1) + (T.X I).card
+noncomputable def hpot (Nv : ℕ) (I : T.Cell) (v : V) : ℕ :=
+  K.potential (Nat.size Nv) (K.d0 * flog32 Nv)
+    (K.d0 * (2 * K.d0 + 1)) (T.st I) v * (Nv + 1) + (T.X I).card
 
-theorem hpot_anc [Fintype V] {I₀ I : T.Cell} (h : T.Anc I₀ I) {v : V} (hv : v ∈ T.X I₀) :
-    K.hpot T I₀ v ≤ K.hpot T I v ∧ (K.hpot T I₀ v = K.hpot T I v → K.hsit T I₀ v = K.hsit T I
-        v) := by
-  have hN : ∀ I, (T.X I).card ≤ Fintype.card V := fun I => Finset.card_le_univ _
-  obtain ⟨p1, p2⟩ := K.potential_anc T (B₂ := Nat.size (Fintype.card V))
-    (B₃ := K.d0 * flog32 (Fintype.card V)) (B₄ := K.d0 * (2 * K.d0 + 1))
+theorem hpot_anc {Nv : ℕ} (hN : ∀ I, (T.X I).card ≤ Nv) {I₀ I : T.Cell} (h : T.Anc I₀ I)
+    {v : V} (hv : v ∈ T.X I₀) :
+    K.hpot T Nv I₀ v ≤ K.hpot T Nv I v ∧
+      (K.hpot T Nv I₀ v = K.hpot T Nv I v → K.hsit T I₀ v = K.hsit T I v) := by
+  obtain ⟨p1, p2⟩ := K.potential_anc T (B₂ := Nat.size Nv)
+    (B₃ := K.d0 * flog32 Nv) (B₄ := K.d0 * (2 * K.d0 + 1))
     (fun I hvI => ⟨K.pot2_le (T.st_wf I) (hN I) v, K.pot3_le (hN I) v, K.pot4_le hvI⟩) h hv
   have hle := T.anc_le h
   have hcard := Finset.card_le_card hle.2.1
   have hb := hN I₀
-  obtain ⟨s1, s2⟩ := lex_step (B := Fintype.card V) hb p1 (fun _ => hcard)
+  obtain ⟨s1, s2⟩ := lex_step (B := Nv) hb p1 (fun _ => hcard)
   unfold hpot
   refine ⟨s1, fun he => ?_⟩
   obtain ⟨e1, e2⟩ := s2 he
@@ -4674,15 +4674,14 @@ theorem hpot_anc [Fintype V] {I₀ I : T.Cell} (h : T.Anc I₀ I) {v : V} (hv : 
   · exact K.hOff_eq (T.st_wf I₀) (T.st_wf I) hle hd a
   · rfl
 
-theorem hpot_le [Fintype V] (I : T.Cell) {v : V} (hv : v ∈ T.X I) :
-    K.hpot T I v ≤ K.potMax (Fintype.card V) * (Fintype.card V + 1) + Fintype.card V := by
-  have hN : ∀ I, (T.X I).card ≤ Fintype.card V := fun I => Finset.card_le_univ _
+theorem hpot_le {Nv : ℕ} (hN : ∀ I, (T.X I).card ≤ Nv) (I : T.Cell) {v : V} (hv : v ∈ T.X I) :
+    K.hpot T Nv I v ≤ K.potMax Nv * (Nv + 1) + Nv := by
   have h1 := K.potential_le (T.st_wf I) (hN I) hv
   have h2 := hN I
   unfold hpot
-  have : K.potential (Nat.size (Fintype.card V)) (K.d0 * flog32 (Fintype.card V))
-      (K.d0 * (2 * K.d0 + 1)) (T.st I) v * (Fintype.card V + 1) ≤
-      K.potMax (Fintype.card V) * (Fintype.card V + 1) := Nat.mul_le_mul_right _ h1.le
+  have : K.potential (Nat.size Nv) (K.d0 * flog32 Nv)
+      (K.d0 * (2 * K.d0 + 1)) (T.st I) v * (Nv + 1) ≤
+      K.potMax Nv * (Nv + 1) := Nat.mul_le_mul_right _ h1.le
   omega
 
 /-- Primary failure is the failure of all primary rounds at the primary situation. -/
@@ -4758,9 +4757,10 @@ def FailAt (dist : DepthDistance V) (d0 b1 b2 : ℕ) (ωp ωh : Fin d0 → V →
   ∃ v ∈ T.X I, ¬ (ofArrays dist d0 b1 b2 ωp ωh).Success
     ((ofArrays dist d0 b1 b2 ωp ωh).colorData (T.st I) v)
 
-theorem fail_cases {dist : DepthDistance V} {d0 b1 b2 : ℕ}
-    (hd : flog32 (Fintype.card V) + 2 ≤ d0) (ωp ωh : Fin d0 → V → Fin (d0 + 1)) {I : T.Cell}
-    {v : V} (hf : ¬ (ofArrays dist d0 b1 b2 ωp ωh).Success
+omit [Fintype V] in
+theorem fail_cases {dist : DepthDistance V} {d0 b1 b2 : ℕ} {Nv : ℕ}
+    (hN : ∀ I, (T.X I).card ≤ Nv) (hd : flog32 Nv + 2 ≤ d0) (ωp ωh : Fin d0 → V → Fin (d0 + 1))
+    {I : T.Cell} {v : V} (hf : ¬ (ofArrays dist d0 b1 b2 ωp ωh).Success
       ((ofArrays dist d0 b1 b2 ωp ωh).colorData (T.st I) v)) :
     (ofArrays dist d0 b1 b2 ωp ωh).prim (T.st I) v = none ∨
       ∃ t, (ofArrays dist d0 b1 b2 ωp ωh).prim (T.st I) v = some t ∧
@@ -4776,8 +4776,7 @@ theorem fail_cases {dist : DepthDistance V} {d0 b1 b2 : ℕ}
         sigData (roundSig (T.st I).X (fun ρ' => K.hsc ρ g z (admFrozen (T.st I) z)
           (K.ballSel (K.ballVec ρ g z (admFrozen (T.st I) z) (T.st I).X v)).1 v ρ'))) := by
       unfold colorData; rw [hc]
-    have hl := K.ballSel_pos ρ g z (admFrozen (T.st I) z) (T.st I).X v
-      (Finset.card_le_univ _) hd
+    have hl := K.ballSel_pos ρ g z (admFrozen (T.st I) z) (T.st I).X v (hN I) hd
     cases hh : ((K.colorData (T.st I) v).2.2.2) with
     | none => rfl
     | some u =>
@@ -4798,36 +4797,47 @@ namespace ColorSetup
 variable {V : Type*} [Fintype V] [DecidableEq V] (T : AdmTree V)
 
 open Classical in
-theorem situation_unmarked_le {d0 : ℕ} (hd5 : 5 ≤ d0)
-    (hq : (Fintype.card V : ℝ) * (1 / 2 : ℝ) ^ (d0 - 4) ≤ 1 / 2) {σ : Finset V × (V → ℕ)}
-    (hσ : σ.1.Nonempty) :
+theorem situation_unmarked_le {d0 Nv : ℕ} (hd5 : 5 ≤ d0)
+    (hq : (Nv : ℝ) * (1 / 2 : ℝ) ^ (d0 - 4) ≤ 1 / 2) {σ : Finset V × (V → ℕ)}
+    (hσ : σ.1.Nonempty) (hσN : σ.1.card ≤ Nv) :
     ∑ D : Fin d0 → V → Fin (d0 + 1),
       (if ∀ ρ, ¬ RoundMarked σ.1 (delayScore (D ρ) σ.2) then roundsW d0 D else 0) ≤
       (65 / 66 : ℝ) ^ d0 := by
   apply rounds_unmarked_le hd5 σ.1 hσ σ.2
-  have : (σ.1.card : ℝ) ≤ Fintype.card V := by exact_mod_cast Finset.card_le_univ _
+  have : (σ.1.card : ℝ) ≤ Nv := by exact_mod_cast hσN
   have h2 : (0 : ℝ) ≤ (1 / 2 : ℝ) ^ (d0 - 4) := by positivity
   nlinarith
 
 /-- Counting the situations of the centers along a chain. -/
 theorem card_situations_le {C : Finset T.Cell} (htot : ∀ I ∈ C, ∀ J ∈ C, T.Anc I J ∨ T.Anc J I)
+    {Nv : ℕ} (hN : ∀ I, (T.X I).card ≤ Nv)
     (sit : T.Cell → V → Finset V × (V → ℕ)) (pot : T.Cell → V → ℕ) {M : ℕ}
     (hdet : ∀ v, ∀ I₀ I, T.Anc I₀ I → v ∈ T.X I₀ → pot I₀ v = pot I v → sit I₀ v = sit I v)
     (hM : ∀ I v, v ∈ T.X I → pot I v ≤ M) :
     (((C ×ˢ (Finset.univ : Finset V)).filter (fun p => p.2 ∈ T.X p.1)).image
-      (fun p => sit p.1 p.2)).card ≤ Fintype.card V * (M + 1) := by
+      (fun p => sit p.1 p.2)).card ≤ Nv * (M + 1) := by
   classical
-  calc _ ≤ (Finset.univ.biUnion (fun v => (C.filter (fun I => v ∈ T.X I)).image
+  rcases C.eq_empty_or_nonempty with rfl | hC
+  · simp
+  -- the present lists along the chain lie in the largest one
+  obtain ⟨I₁, hI₁, hmax⟩ := C.exists_max_image (fun I => (T.X I).card) hC
+  have hsub : ∀ I ∈ C, T.X I ⊆ T.X I₁ := by
+    intro I hI
+    rcases htot I hI I₁ hI₁ with h | h
+    · exact (T.anc_le h).2.1
+    · exact (Finset.eq_of_subset_of_card_le (T.anc_le h).2.1 (hmax I hI)).symm.subset
+  calc _ ≤ ((T.X I₁).biUnion (fun v => (C.filter (fun I => v ∈ T.X I)).image
         (fun I => sit I v))).card := by
         apply Finset.card_le_card
         intro σ hσ
         obtain ⟨⟨I, v⟩, hp, rfl⟩ := Finset.mem_image.mp hσ
         obtain ⟨hIv, hv⟩ := Finset.mem_filter.mp hp
-        exact Finset.mem_biUnion.mpr ⟨v, Finset.mem_univ _, Finset.mem_image.mpr
-          ⟨I, Finset.mem_filter.mpr ⟨(Finset.mem_product.mp hIv).1, hv⟩, rfl⟩⟩
-    _ ≤ ∑ v, ((C.filter (fun I => v ∈ T.X I)).image (fun I => sit I v)).card :=
+        have hIC := (Finset.mem_product.mp hIv).1
+        exact Finset.mem_biUnion.mpr ⟨v, hsub I hIC hv, Finset.mem_image.mpr
+          ⟨I, Finset.mem_filter.mpr ⟨hIC, hv⟩, rfl⟩⟩
+    _ ≤ ∑ v ∈ T.X I₁, ((C.filter (fun I => v ∈ T.X I)).image (fun I => sit I v)).card :=
         Finset.card_biUnion_le
-    _ ≤ ∑ _v : V, (M + 1) := by
+    _ ≤ ∑ _v ∈ T.X I₁, (M + 1) := by
         apply Finset.sum_le_sum
         intro v _
         apply card_image_le_of_potential T.Anc
@@ -4836,27 +4846,28 @@ theorem card_situations_le {C : Finset T.Cell} (htot : ∀ I ∈ C, ∀ J ∈ C,
         · intro I hI J _ hIJ he
           exact hdet v I J hIJ (Finset.mem_filter.mp hI).2 he
         · intro I hI; exact hM I v (Finset.mem_filter.mp hI).2
-    _ = Fintype.card V * (M + 1) := by simp
+    _ = (T.X I₁).card * (M + 1) := by simp
+    _ ≤ Nv * (M + 1) := Nat.mul_le_mul_right _ (hN I₁)
 
 open Classical in
 /-- The failure probability along one path (blueprint lines 1732-1733): the union bound over the
 primary situations and, conditionally on the primary arrays, over the high situations. -/
 theorem chain_fail_le (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ) (hd5 : 5 ≤ d0)
-    (hd : flog32 (Fintype.card V) + 2 ≤ d0)
-    (hq : (Fintype.card V : ℝ) * (1 / 2 : ℝ) ^ (d0 - 4) ≤ 1 / 2) (C : Finset T.Cell)
+    {Nv : ℕ} (hN : ∀ I, (T.X I).card ≤ Nv) (hd : flog32 Nv + 2 ≤ d0)
+    (hq : (Nv : ℝ) * (1 / 2 : ℝ) ^ (d0 - 4) ≤ 1 / 2) (C : Finset T.Cell)
     (htot : ∀ I ∈ C, ∀ J ∈ C, T.Anc I J ∨ T.Anc J I) :
     ∑ ωp : Fin d0 → V → Fin (d0 + 1), ∑ ωh : Fin d0 → V → Fin (d0 + 1),
       (if ∃ I ∈ C, FailAt T dist d0 b1 b2 ωp ωh I then roundsW d0 ωp * roundsW d0 ωh else 0) ≤
-      ((Fintype.card V : ℝ) * (Fintype.card V * (d0 + 7) + 1) + Fintype.card V *
-        ((ofArrays dist d0 b1 b2 (zeroArr d0) (zeroArr d0)).potMax (Fintype.card V) *
-          (Fintype.card V + 1) + Fintype.card V + 1)) * (65 / 66 : ℝ) ^ d0 := by
+      ((Nv : ℝ) * (Nv * (d0 + 7) + 1) + Nv *
+        ((ofArrays dist d0 b1 b2 (zeroArr d0) (zeroArr d0)).potMax Nv *
+          (Nv + 1) + Nv + 1)) * (65 / 66 : ℝ) ^ d0 := by
   set K₀ := ofArrays dist d0 b1 b2 (zeroArr d0) (zeroArr d0)
   set pairs := (C ×ˢ (Finset.univ : Finset V)).filter (fun p => p.2 ∈ T.X p.1)
   set PS := pairs.image (fun p => K₀.psit T p.1 p.2)
   set HS := fun ωp : Fin d0 → V → Fin (d0 + 1) =>
     pairs.image (fun p => (ofArrays dist d0 b1 b2 ωp (zeroArr d0)).hsit T p.1 p.2)
   set q := (65 / 66 : ℝ) ^ d0
-  set Hc := K₀.potMax (Fintype.card V) * (Fintype.card V + 1) + Fintype.card V
+  set Hc := K₀.potMax Nv * (Nv + 1) + Nv
   have hq0 : 0 ≤ q := by positivity
   -- situations do not depend on the arrays they do not use
   have hps : ∀ ωp ωh I v, (ofArrays dist d0 b1 b2 ωp ωh).psit T I v = K₀.psit T I v :=
@@ -4875,12 +4886,20 @@ theorem chain_fail_le (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ) (hd5 : 5
     intro ωp σ hσ
     obtain ⟨⟨I, v⟩, hp, rfl⟩ := Finset.mem_image.mp hσ
     exact ⟨v, (Finset.mem_filter.mp hp).2⟩
+  have hcN : ∀ σ ∈ PS, σ.1.card ≤ Nv := by
+    intro σ hσ
+    obtain ⟨⟨I, v⟩, _, rfl⟩ := Finset.mem_image.mp hσ
+    exact hN I
+  have hcN' : ∀ ωp, ∀ σ ∈ HS ωp, σ.1.card ≤ Nv := by
+    intro ωp σ hσ
+    obtain ⟨⟨I, v⟩, _, rfl⟩ := Finset.mem_image.mp hσ
+    exact hN I
   -- the event inclusion
   have hinc : ∀ ωp ωh, (∃ I ∈ C, FailAt T dist d0 b1 b2 ωp ωh I) →
       (∃ σ ∈ PS, ∀ ρ, ¬ RoundMarked σ.1 (delayScore (ωp ρ) σ.2)) ∨
       (∃ σ ∈ HS ωp, ∀ ρ, ¬ RoundMarked σ.1 (delayScore (ωh ρ) σ.2)) := by
     rintro ωp ωh ⟨I, hI, v, hv, hf⟩
-    rcases fail_cases T hd ωp ωh hf with hp | ⟨t, hp, hh⟩
+    rcases fail_cases T hN hd ωp ωh hf with hp | ⟨t, hp, hh⟩
     · left
       refine ⟨K₀.psit T I v, Finset.mem_image.mpr ⟨(I, v), hpair I hI v hv, rfl⟩, ?_⟩
       have := (prim_none_iff T ωp ωh I v).mp hp
@@ -4921,18 +4940,19 @@ theorem chain_fail_le (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ) (hd5 : 5
         nlinarith
     · positivity
   -- the situation counts
-  have hPS : (PS.card : ℝ) ≤ Fintype.card V * (Fintype.card V * (d0 + 7) + 1) := by
-    have := card_situations_le T htot (fun I v => K₀.psit T I v) (fun I v => K₀.ppot T I v)
-      (M := Fintype.card V * (d0 + 7))
-      (fun v I₀ I h _ he => (K₀.ppot_anc T h v).2 he) (fun I v _ => K₀.ppot_le T I v)
+  have hPS : (PS.card : ℝ) ≤ Nv * (Nv * (d0 + 7) + 1) := by
+    have := card_situations_le T htot hN (fun I v => K₀.psit T I v) (fun I v => K₀.ppot T I v)
+      (M := Nv * (d0 + 7))
+      (fun v I₀ I h _ he => (K₀.ppot_anc T h v).2 he) (fun I v _ => K₀.ppot_le T hN I v)
     exact_mod_cast this
-  have hHS : ∀ ωp, ((HS ωp).card : ℝ) ≤ Fintype.card V * (Hc + 1) := by
+  have hHS : ∀ ωp, ((HS ωp).card : ℝ) ≤ Nv * (Hc + 1) := by
     intro ωp
-    have := card_situations_le T htot
+    have := card_situations_le T htot hN
       (fun I v => (ofArrays dist d0 b1 b2 ωp (zeroArr d0)).hsit T I v)
-      (fun I v => (ofArrays dist d0 b1 b2 ωp (zeroArr d0)).hpot T I v) (M := Hc)
-      (fun v I₀ I h hv he => ((ofArrays dist d0 b1 b2 ωp (zeroArr d0)).hpot_anc T h hv).2 he)
-      (fun I v hv => (ofArrays dist d0 b1 b2 ωp (zeroArr d0)).hpot_le T I hv)
+      (fun I v => (ofArrays dist d0 b1 b2 ωp (zeroArr d0)).hpot T Nv I v) (M := Hc)
+      (fun v I₀ I h hv he =>
+        ((ofArrays dist d0 b1 b2 ωp (zeroArr d0)).hpot_anc T hN h hv).2 he)
+      (fun I v hv => (ofArrays dist d0 b1 b2 ωp (zeroArr d0)).hpot_le T hN I hv)
     exact_mod_cast this
   -- summing
   calc ∑ ωp : Fin d0 → V → Fin (d0 + 1), ∑ ωh : Fin d0 → V → Fin (d0 + 1),
@@ -4956,20 +4976,21 @@ theorem chain_fail_le (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ) (hd5 : 5
         congr 1
         exact Finset.sum_comm
     _ ≤ ∑ _σ ∈ PS, q + ∑ ωp : Fin d0 → V → Fin (d0 + 1),
-          roundsW d0 ωp * (Fintype.card V * (Hc + 1) * q) := by
+          roundsW d0 ωp * (Nv * (Hc + 1) * q) := by
         gcongr with σ hσ ωp _
-        · exact situation_unmarked_le hd5 hq (hne σ hσ)
+        · exact situation_unmarked_le hd5 hq (hne σ hσ) (hcN σ hσ)
         · exact roundsW_nonneg d0 ωp
         · calc ∑ σ ∈ HS ωp, ∑ ωh : Fin d0 → V → Fin (d0 + 1),
                 (if ∀ ρ, ¬ RoundMarked σ.1 (delayScore (ωh ρ) σ.2) then roundsW d0 ωh else 0)
               ≤ ∑ _σ ∈ HS ωp, q :=
-                Finset.sum_le_sum fun σ hσ => situation_unmarked_le hd5 hq (hne' ωp σ hσ)
+                Finset.sum_le_sum fun σ hσ =>
+                  situation_unmarked_le hd5 hq (hne' ωp σ hσ) (hcN' ωp σ hσ)
             _ = (HS ωp).card * q := by rw [Finset.sum_const, nsmul_eq_mul]
-            _ ≤ Fintype.card V * (Hc + 1) * q := by gcongr; exact hHS ωp
-    _ = PS.card * q + Fintype.card V * (Hc + 1) * q := by
+            _ ≤ Nv * (Hc + 1) * q := by gcongr; exact hHS ωp
+    _ = PS.card * q + Nv * (Hc + 1) * q := by
         rw [Finset.sum_const, nsmul_eq_mul, ← Finset.sum_mul, sum_roundsW, one_mul]
     _ ≤ _ := by
-        have h1 : (PS.card : ℝ) * q ≤ Fintype.card V * (Fintype.card V * (d0 + 7) + 1) * q :=
+        have h1 : (PS.card : ℝ) * q ≤ Nv * (Nv * (d0 + 7) + 1) * q :=
           by gcongr
         rw [add_mul]
         refine add_le_add h1 (le_of_eq ?_)
@@ -4983,24 +5004,26 @@ namespace ColorSetup
 
 variable {V : Type*} [Fintype V] [DecidableEq V] (T : AdmTree V)
 
+omit [Fintype V] in
 open Classical in
 /-- Blueprint lines 1732-1734: the delays can be fixed so that the cells carrying a failed
 marking have total length at most the path failure bound times `|R|`. -/
-theorem delays_exist (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ) (hd5 : 5 ≤ d0)
-    (hd : flog32 (Fintype.card V) + 2 ≤ d0)
-    (hq : (Fintype.card V : ℝ) * (1 / 2 : ℝ) ^ (d0 - 4) ≤ 1 / 2) (S : Finset T.Cell)
+theorem delays_exist [Finite V] (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ) (hd5 : 5 ≤ d0)
+    {Nv : ℕ} (hN : ∀ I, (T.X I).card ≤ Nv) (hd : flog32 Nv + 2 ≤ d0)
+    (hq : (Nv : ℝ) * (1 / 2 : ℝ) ^ (d0 - 4) ≤ 1 / 2) (S : Finset T.Cell)
     (cellSet : T.Cell → Set ℝ) (hmeas : ∀ I, MeasurableSet (cellSet I)) {R : Set ℝ}
     (hRm : MeasurableSet R) (hR : volume R ≠ ⊤) (hsub : ∀ I ∈ S, cellSet I ⊆ R)
     (hnest : ∀ I ∈ S, ∀ J ∈ S, (cellSet I ∩ cellSet J).Nonempty → T.Anc I J ∨ T.Anc J I) :
     ∃ ωp ωh : Fin d0 → V → Fin (d0 + 1),
       (volume (⋃ I ∈ S.filter (FailAt T dist d0 b1 b2 ωp ωh), cellSet I)).toReal ≤
-      ((Fintype.card V : ℝ) * (Fintype.card V * (d0 + 7) + 1) + Fintype.card V *
-        ((ofArrays dist d0 b1 b2 (zeroArr d0) (zeroArr d0)).potMax (Fintype.card V) *
-          (Fintype.card V + 1) + Fintype.card V + 1)) * (65 / 66 : ℝ) ^ d0 *
+      ((Nv : ℝ) * (Nv * (d0 + 7) + 1) + Nv *
+        ((ofArrays dist d0 b1 b2 (zeroArr d0) (zeroArr d0)).potMax Nv *
+          (Nv + 1) + Nv + 1)) * (65 / 66 : ℝ) ^ d0 *
         (volume R).toReal := by
-  set B := ((Fintype.card V : ℝ) * (Fintype.card V * (d0 + 7) + 1) + Fintype.card V *
-    ((ofArrays dist d0 b1 b2 (zeroArr d0) (zeroArr d0)).potMax (Fintype.card V) *
-      (Fintype.card V + 1) + Fintype.card V + 1)) * (65 / 66 : ℝ) ^ d0
+  have := Fintype.ofFinite V
+  set B := ((Nv : ℝ) * (Nv * (d0 + 7) + 1) + Nv *
+    ((ofArrays dist d0 b1 b2 (zeroArr d0) (zeroArr d0)).potMax Nv *
+      (Nv + 1) + Nv + 1)) * (65 / 66 : ℝ) ^ d0
   set F := fun (ωp ωh : Fin d0 → V → Fin (d0 + 1)) =>
     ⋃ I ∈ S.filter (FailAt T dist d0 b1 b2 ωp ωh), cellSet I
   have hFm : ∀ ωp ωh, MeasurableSet (F ωp ωh) := fun ωp ωh =>
@@ -5022,7 +5045,7 @@ theorem delays_exist (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ) (hd5 : 5 
       obtain ⟨hI, hyI⟩ := Finset.mem_filter.mp hI
       obtain ⟨hJ, hyJ⟩ := Finset.mem_filter.mp hJ
       exact hnest I hI J hJ ⟨y, hyI, hyJ⟩
-    refine le_trans (le_of_eq ?_) (chain_fail_le T dist b1 b2 hd5 hd hq C htot)
+    refine le_trans (le_of_eq ?_) (chain_fail_le T dist b1 b2 hd5 hN hd hq C htot)
     apply Finset.sum_congr rfl; intro ωp _; apply Finset.sum_congr rfl; intro ωh _
     by_cases hf : ∃ I ∈ C, FailAt T dist d0 b1 b2 ωp ωh I
     · rw [ite_eq_left hf, Set.indicator_of_mem, mul_one]
@@ -5255,47 +5278,47 @@ theorem pow_65_66_le {D : ℕ} (hD : 1 ≤ D) :
   linarith
 
 /-- The explicit failure bound of `delays_exist`. -/
-noncomputable def failBound (V : Type*) [Fintype V] [DecidableEq V] (dist : DepthDistance V)
-    (d0 b1 b2 : ℕ) : ℝ :=
-  ((Fintype.card V : ℝ) * (Fintype.card V * (d0 + 7) + 1) + Fintype.card V *
+noncomputable def failBound {V : Type*} [DecidableEq V] (dist : DepthDistance V)
+    (Nv d0 b1 b2 : ℕ) : ℝ :=
+  ((Nv : ℝ) * (Nv * (d0 + 7) + 1) + Nv *
     ((ColorSetup.ofArrays dist d0 b1 b2 (ColorSetup.zeroArr d0)
-      (ColorSetup.zeroArr d0)).potMax (Fintype.card V) *
-      (Fintype.card V + 1) + Fintype.card V + 1)) * (65 / 66 : ℝ) ^ d0
+      (ColorSetup.zeroArr d0)).potMax Nv *
+      (Nv + 1) + Nv + 1)) * (65 / 66 : ℝ) ^ d0
 
 /-- The failure bound tends to zero: with `d₀ = ⌈1000 log 2D⌉` and at most `D` vertices it is at
 most `100 · 2001⁷ / D` (blueprint line 1732: the union bound tends to zero as `D` grows). -/
-theorem failBound_le {V : Type*} [Fintype V] [DecidableEq V] (dist : DepthDistance V) (b1 b2 : ℕ)
-    {D : ℕ} (hD : 1 ≤ D) (hV : Fintype.card V ≤ D) :
-    failBound V dist (colorDegree D) b1 b2 ≤ 100 * 2001 ^ 7 / D := by
+theorem failBound_le {V : Type*} [DecidableEq V] (dist : DepthDistance V) (b1 b2 : ℕ)
+    {Nv D : ℕ} (hD : 1 ≤ D) (hV : Nv ≤ D) :
+    failBound dist Nv (colorDegree D) b1 b2 ≤ 100 * 2001 ^ 7 / D := by
+  have hlogV : Nat.log 2 Nv ≤ Nat.log 2 D := Nat.log_mono_right hV
   set d := colorDegree D
   set K := ColorSetup.ofArrays dist d b1 b2 (ColorSetup.zeroArr d) (ColorSetup.zeroArr d)
   have hdg := colorDegree_ge hD
-  have hlogV : Nat.log 2 (Fintype.card V) ≤ Nat.log 2 D := Nat.log_mono_right hV
-  have hs : Nat.size (Fintype.card V) ≤ K.d0 := by
-    have := size_le_log (Fintype.card V); change _ ≤ d; omega
-  have hf : flog32 (Fintype.card V) ≤ K.d0 := by
-    have := flog32_le_log (Fintype.card V); change _ ≤ d; omega
+  have hs : Nat.size Nv ≤ K.d0 := by
+    have := size_le_log Nv; change _ ≤ d; omega
+  have hf : flog32 Nv ≤ K.d0 := by
+    have := flog32_le_log Nv; change _ ≤ d; omega
   have hpm := K.potMax_le hs hf (by change 2 ≤ d; omega)
-  have hpm' : (K.potMax (Fintype.card V) : ℝ) ≤ 36 * (d : ℝ) ^ 7 := by exact_mod_cast hpm
+  have hpm' : (K.potMax Nv : ℝ) ≤ 36 * (d : ℝ) ^ 7 := by exact_mod_cast hpm
   have hD' : (1 : ℝ) ≤ D := by exact_mod_cast hD
-  have hcv : (Fintype.card V : ℝ) ≤ D := by exact_mod_cast hV
-  have hcv0 : (0 : ℝ) ≤ Fintype.card V := Nat.cast_nonneg _
+  have hcv : (Nv : ℝ) ≤ D := by exact_mod_cast hV
+  have hcv0 : (0 : ℝ) ≤ Nv := Nat.cast_nonneg _
   have hd8 : (8 : ℝ) ≤ d := by exact_mod_cast (show 8 ≤ d by omega)
   have hd7 : (1 : ℝ) ≤ (d : ℝ) ^ 7 := one_le_pow₀ (by linarith)
   have hdd7 : (d : ℝ) ≤ (d : ℝ) ^ 7 := by
     calc (d : ℝ) = (d : ℝ) ^ 1 := (pow_one _).symm
       _ ≤ _ := pow_le_pow_right₀ (by linarith) (by norm_num)
   -- the prefactor
-  have hP : (Fintype.card V : ℝ) * (Fintype.card V * (d + 7) + 1) + Fintype.card V *
-      (K.potMax (Fintype.card V) * (Fintype.card V + 1) + Fintype.card V + 1) ≤
+  have hP : (Nv : ℝ) * (Nv * (d + 7) + 1) + Nv *
+      (K.potMax Nv * (Nv + 1) + Nv + 1) ≤
       100 * (d : ℝ) ^ 7 * (D : ℝ) ^ 2 := by
-    have e1 : (Fintype.card V : ℝ) * (Fintype.card V * (d + 7) + 1) ≤ 9 * (d : ℝ) ^ 7 * D ^ 2 := by
-      have : (Fintype.card V : ℝ) * (Fintype.card V * (d + 7) + 1) ≤ D * (D * (d + 7) + 1) := by
+    have e1 : (Nv : ℝ) * (Nv * (d + 7) + 1) ≤ 9 * (d : ℝ) ^ 7 * D ^ 2 := by
+      have : (Nv : ℝ) * (Nv * (d + 7) + 1) ≤ D * (D * (d + 7) + 1) := by
         gcongr
       nlinarith
-    have e2 : (Fintype.card V : ℝ) * (K.potMax (Fintype.card V) * (Fintype.card V + 1) +
-        Fintype.card V + 1) ≤ D * (36 * (d : ℝ) ^ 7 * (D + 1) + D + 1) := by
-      have h0 : (0 : ℝ) ≤ K.potMax (Fintype.card V) := Nat.cast_nonneg _
+    have e2 : (Nv : ℝ) * (K.potMax Nv * (Nv + 1) +
+        Nv + 1) ≤ D * (36 * (d : ℝ) ^ 7 * (D + 1) + D + 1) := by
+      have h0 : (0 : ℝ) ≤ K.potMax Nv := Nat.cast_nonneg _
       gcongr
     have e3 : (D : ℝ) * (36 * (d : ℝ) ^ 7 * (D + 1) + D + 1) ≤ 91 * (d : ℝ) ^ 7 * D ^ 2 := by
       have hDD : (D : ℝ) ≤ D ^ 2 := by nlinarith
@@ -5326,17 +5349,16 @@ theorem failBound_le {V : Type*} [Fintype V] [DecidableEq V] (dist : DepthDistan
           _ ≤ _ := this
     _ = 100 * 2001 ^ 7 / D := by ring
 
-theorem card_half_pow_le {V : Type*} [Fintype V] {D : ℕ} (hD : 1 ≤ D)
-    (hV : Fintype.card V ≤ D) :
-    (Fintype.card V : ℝ) * (1 / 2 : ℝ) ^ (colorDegree D - 4) ≤ 1 / 2 := by
+theorem card_half_pow_le {Nv D : ℕ} (hD : 1 ≤ D) (hV : Nv ≤ D) :
+    (Nv : ℝ) * (1 / 2 : ℝ) ^ (colorDegree D - 4) ≤ 1 / 2 := by
   have hdg := colorDegree_ge hD
   set n := Nat.log 2 D
-  have h1 : (Fintype.card V : ℝ) ≤ 2 ^ (n + 1) := by
+  have h1 : (Nv : ℝ) ≤ 2 ^ (n + 1) := by
     have := Nat.lt_pow_succ_log_self (b := 2) (by norm_num) D
     exact_mod_cast (hV.trans this.le)
   have h2 : (1 / 2 : ℝ) ^ (colorDegree D - 4) ≤ (1 / 2 : ℝ) ^ (n + 2) :=
     pow_le_pow_of_le_one (by norm_num) (by norm_num) (by omega)
-  calc (Fintype.card V : ℝ) * (1 / 2 : ℝ) ^ (colorDegree D - 4)
+  calc (Nv : ℝ) * (1 / 2 : ℝ) ^ (colorDegree D - 4)
       ≤ 2 ^ (n + 1) * (1 / 2 : ℝ) ^ (n + 2) := by gcongr
     _ = 1 / 2 := by
         rw [show (1 / 2 : ℝ) ^ (n + 2) = (1 / 2) ^ (n + 1) * (1 / 2) by ring, ← mul_assoc,
@@ -5349,47 +5371,47 @@ open Classical in
 cells with a failed marking have total length at most `100 · 2001⁷ |R| / D`; the colors lie in
 `[1, L]` with `L ≤ d₀^{30}`, do not increase along paths (the change counter decreases at every
 change of the color data), and equal colors carry equal metadata. -/
-theorem monotoneColoring {V : Type*} [Fintype V] [DecidableEq V] (T : AdmTree V)
-    (dist : DepthDistance V) (b1 b2 : ℕ) {D : ℕ} (hD : 1 ≤ D) (hV : Fintype.card V ≤ D)
+theorem monotoneColoring {V : Type*} [Finite V] [DecidableEq V] (T : AdmTree V)
+    (dist : DepthDistance V) (b1 b2 : ℕ) {D : ℕ} (hD : 1 ≤ D) (hV : ∀ I, (T.X I).card ≤ D)
     (S : Finset T.Cell) (cellSet : T.Cell → Set ℝ) (hmeas : ∀ I, MeasurableSet (cellSet I))
     {R : Set ℝ} (hRm : MeasurableSet R) (hR : volume R ≠ ⊤) (hsub : ∀ I ∈ S, cellSet I ⊆ R)
     (hnest : ∀ I ∈ S, ∀ J ∈ S, (cellSet I ∩ cellSet J).Nonempty → T.Anc I J ∨ T.Anc J I) :
     ∃ ωp ωh : Fin (colorDegree D) → V → Fin (colorDegree D + 1),
       (volume (⋃ I ∈ S.filter (ColorSetup.FailAt T dist (colorDegree D) b1 b2 ωp ωh),
         cellSet I)).toReal ≤ 100 * 2001 ^ 7 / D * (volume R).toReal ∧
-      (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).numColors (Fintype.card V) ≤
+      (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).numColors D ≤
         colorDegree D ^ 30 ∧
       (∀ I v, v ∈ T.X I →
-        1 ≤ (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T (Fintype.card V) I v ∧
-        (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T (Fintype.card V) I v ≤
-          (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).numColors (Fintype.card V)) ∧
+        1 ≤ (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T D I v ∧
+        (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T D I v ≤
+          (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).numColors D) ∧
       (∀ I v, v ∈ T.X (T.par I) →
-        (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T (Fintype.card V) I v ≤
-        (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T (Fintype.card V)
+        (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T D I v ≤
+        (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T D
           (T.par I) v) ∧
       (∀ I J v w, v ∈ T.X I → w ∈ T.X J →
-        (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T (Fintype.card V) I v =
-          (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T (Fintype.card V) J w →
+        (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T D I v =
+          (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).color T D J w →
         (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).metaKey
           ((ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).colorData (T.st I) v) =
         (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).metaKey
           ((ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).colorData (T.st J) w)) := by
   have hdg := colorDegree_ge hD
-  have hlogV : Nat.log 2 (Fintype.card V) ≤ Nat.log 2 D := Nat.log_mono_right hV
-  have hfl : flog32 (Fintype.card V) + 2 ≤ colorDegree D := by
-    have := flog32_le_log (Fintype.card V); omega
-  have hsz : Nat.size (Fintype.card V) ≤ colorDegree D := by
-    have := size_le_log (Fintype.card V); omega
-  obtain ⟨ωp, ωh, hfail⟩ := ColorSetup.delays_exist T dist b1 b2 (by omega) hfl
-    (card_half_pow_le hD hV) S cellSet hmeas hRm hR hsub hnest
-  have hN : ∀ I, (T.X I).card ≤ Fintype.card V := fun I => Finset.card_le_univ _
+  have hfl : flog32 D + 2 ≤ colorDegree D := by
+    have := flog32_le_log D; omega
+  have hsz : Nat.size D ≤ colorDegree D := by
+    have := size_le_log D; omega
+  have := Fintype.ofFinite V
+  obtain ⟨ωp, ωh, hfail⟩ := ColorSetup.delays_exist T dist b1 b2 (by omega) hV hfl
+    (card_half_pow_le hD le_rfl) S cellSet hmeas hRm hR hsub hnest
+  have hN := hV
   set K := ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh
   refine ⟨ωp, ωh, ?_, K.numColors_le hsz (by change _ ≤ colorDegree D; omega)
     (by change 3 ≤ colorDegree D; omega),
     fun I v hv => K.color_mem T hN hv, fun I v hv => K.color_anti T hN hv,
     fun I J v w hv hw he => K.metaKey_eq_of_color_eq T hN hv hw he⟩
   refine hfail.trans ?_
-  have hB := failBound_le dist b1 b2 hD hV
+  have hB := failBound_le dist b1 b2 (Nv := D) hD le_rfl
   unfold failBound at hB
   exact mul_le_mul_of_nonneg_right hB ENNReal.toReal_nonneg
 
@@ -5410,29 +5432,30 @@ the pad masks `M_{G,h}` of eq:ball-mask with `h ≤ H_max`,
 `(d₀ + 1) b₁ + h` of the primary winner (so lemma graph gives a short path); (4) for distinct
 groups of one color, vertices of their pad masks on overlapping usable endpoints are at graph
 distance greater than one at the finer endpoint. -/
-theorem historicalMaskSeparation {V : Type*} [Fintype V] [DecidableEq V] (K : ColorSetup V)
-    {Hmax : ℕ} (hP : ColorParams K Hmax) (T : AdmTree V) :
+theorem historicalMaskSeparation {V : Type*} [Finite V] [DecidableEq V] (K : ColorSetup V)
+    {Hmax : ℕ} (hP : ColorParams K Hmax) (T : AdmTree V) (Nv : ℕ)
+    (hN : ∀ I, (T.X I).card ≤ Nv) :
     (∀ (I : T.Cell) (v : V), v ∈ T.X I → K.Success (K.colorData (T.st I) v) →
       ∀ b ∈ T.X I, ∀ h δ : ℕ, K.dist.d (T.depth I) b v = δ → δ ≤ h → h ≤ Hmax →
-        b ∈ K.mask T (Fintype.card V) (K.grp T (Fintype.card V) I v) h I) ∧
+        b ∈ K.mask T Nv (K.grp T Nv I v) h I) ∧
     (∀ (I : T.Cell) (v : V), v ∈ T.X I → K.Success (K.colorData (T.st I) v) →
       ∀ h : ℕ, h < Hmax → ∀ b b' : V,
-        b ∈ K.mask T (Fintype.card V) (K.grp T (Fintype.card V) I v) h I → b' ∈ T.X I →
+        b ∈ K.mask T Nv (K.grp T Nv I v) h I → b' ∈ T.X I →
         K.dist.d (T.depth I) b b' ≤ 1 →
-        b' ∈ K.mask T (Fintype.card V) (K.grp T (Fintype.card V) I v) (h + 1) I) ∧
+        b' ∈ K.mask T Nv (K.grp T Nv I v) (h + 1) I) ∧
     (∀ G ρ z g, G.2.1 = some (ρ, z, g) → ∀ (h : ℕ) (I : T.Cell) (b : V),
-      b ∈ K.mask T (Fintype.card V) G h I →
+      b ∈ K.mask T Nv G h I →
       ∃ k : ℕ, K.dist.d (T.depth I) z b = k ∧ k ≤ (K.d0 + 1) * K.b1 + h) ∧
     (∀ (I J u₀ u : T.Cell) (v₁ v₂ : V), T.Anc I J → T.Anc I u₀ → T.Anc J u →
       v₁ ∈ T.X u₀ → v₂ ∈ T.X u → K.Success (K.colorData (T.st u₀) v₁) →
       K.Success (K.colorData (T.st u) v₂) →
-      K.color T (Fintype.card V) u₀ v₁ = K.color T (Fintype.card V) u v₂ →
-      K.grp T (Fintype.card V) u₀ v₁ ≠ K.grp T (Fintype.card V) u v₂ →
+      K.color T Nv u₀ v₁ = K.color T Nv u v₂ →
+      K.grp T Nv u₀ v₁ ≠ K.grp T Nv u v₂ →
       ∀ h h' : ℕ, h ≤ Hmax → h' ≤ Hmax → ∀ b b' : V,
-        b ∈ K.mask T (Fintype.card V) (K.grp T (Fintype.card V) u₀ v₁) h I →
-        b' ∈ K.mask T (Fintype.card V) (K.grp T (Fintype.card V) u v₂) h' J →
+        b ∈ K.mask T Nv (K.grp T Nv u₀ v₁) h I →
+        b' ∈ K.mask T Nv (K.grp T Nv u v₂) h' J →
         ¬ K.dist.d (T.depth J) b b' ≤ 1) := by
-  have hN : ∀ I, (T.X I).card ≤ Fintype.card V := fun I => Finset.card_le_univ _
+  have := Fintype.ofFinite V
   refine ⟨fun I v hv hs b hb h δ hbv hδ hh =>
       K.mem_mask_of_dist T hP _ hv hs hb hbv hδ (hh.trans hP.Hmax_le), ?_,
     fun G ρ z g hG h I b hb => K.mask_short_path T _ hG hb,
@@ -6018,5 +6041,294 @@ theorem usableRangeBessel (Gd : RealDyadicGrid) (φ : V → ℝ → ℂ) (ε : V
     exact (hpriv G G' hne v I hI J hJ).le_bot ⟨hyI, hyJ⟩
 
 end WholeRanges
+
+/-! ### Refinement of the tag graph (blueprint lines 1685-1686) -/
+
+theorem chartMatrixPhase_smul {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (t : ℝ) (z w : Fin d → ℝ) :
+    chartMatrixPhase C (t • z) (t • w) = t ^ 2 * chartMatrixPhase C z w := by
+  simp only [chartMatrixPhase, Pi.smul_apply, smul_eq_mul, Finset.mul_sum]
+  refine Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun j _ => by ring
+
+theorem chartAltForm_smul {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (t : ℝ) (z w : Fin d → ℝ) :
+    chartAltForm C (t • z) (t • w) = t ^ 2 * chartAltForm C z w := by
+  simp only [chartAltForm, chartMatrixPhase_smul]; ring
+
+/-- Blueprint lines 1685-1686: the edge relation persists under refinement: at a smaller length
+`r' ≤ r` the difference data `V` and `Λ` are scaled by `r'/r` and `(r'/r)²`, and the same
+splitting works. Hence graph distances decrease with depth. -/
+theorem tagEdge_refine {B r r' : ℝ} {v w : ChartTag} (h : tagEdge B r v w) (hr' : 0 ≤ r')
+    (hrr : r' ≤ r) : tagEdge B r' v w := by
+  rcases eq_or_lt_of_le (hr'.trans hrr) with hr0 | hr0
+  · have : r' = r := le_antisymm hrr (hr0 ▸ hr')
+    rwa [this]
+  set t := r' / r
+  have ht0 : 0 ≤ t := div_nonneg hr' hr0.le
+  have ht1 : t ≤ 1 := (div_le_one hr0).mpr hrr
+  unfold tagEdge at h ⊢
+  rw [weylSplitData_iff] at h ⊢
+  obtain ⟨U, Q, h1, h2, h3, h4, h5, h6, h7⟩ := h
+  have hB0 : 0 ≤ B := (norm_nonneg _).trans h6
+  have hV : (fun i => tagDiffV r' v w i 0) = t • (fun i => tagDiffV r v w i 0) := by
+    funext i; simp only [tagDiffV, Pi.smul_apply, smul_eq_mul, t]; field_simp
+  have hΛ : tagDiffΛ r' v w 0 0 = t ^ 2 * tagDiffΛ r v w 0 0 := by
+    simp only [tagDiffΛ, t]; field_simp
+  refine ⟨U, Q, h1, h2, h3, h4, h5, ?_, ?_⟩
+  · rw [hV, WithLp.toLp_smul, map_smul, norm_smul, Real.norm_of_nonneg ht0]
+    calc t * ‖Uᗮ.starProjection (WithLp.toLp 2 fun i => tagDiffV r v w i 0)‖ ≤ 1 * B :=
+          mul_le_mul ht1 h6 (norm_nonneg _) zero_le_one
+      _ = B := one_mul B
+  · rw [hV, hΛ, WithLp.toLp_smul, map_smul, WithLp.ofLp_smul, chartMatrixPhase_smul,
+      chartAltForm_smul]
+    have e : t ^ 2 * tagDiffΛ r v w 0 0 +
+        1 / 2 * (t ^ 2 * chartMatrixPhase (tagDiffC v w) (fun i => tagDiffV r v w i 0)
+          (fun i => tagDiffV r v w i 0)) +
+        1 / 2 * (t ^ 2 * chartAltForm (tagDiffC v w)
+          (U.starProjection (WithLp.toLp 2 fun i => tagDiffV r v w i 0)).ofLp
+          (fun i => tagDiffV r v w i 0)) =
+        t ^ 2 * (tagDiffΛ r v w 0 0 +
+          1 / 2 * chartMatrixPhase (tagDiffC v w) (fun i => tagDiffV r v w i 0)
+            (fun i => tagDiffV r v w i 0) +
+          1 / 2 * chartAltForm (tagDiffC v w)
+            (U.starProjection (WithLp.toLp 2 fun i => tagDiffV r v w i 0)).ofLp
+            (fun i => tagDiffV r v w i 0)) := by ring
+    rw [e, abs_mul, abs_of_nonneg (sq_nonneg t)]
+    have ht2 : t ^ 2 ≤ 1 := pow_le_one₀ ht0 ht1
+    calc t ^ 2 * _ ≤ 1 * B := mul_le_mul ht2 h7 (abs_nonneg _) zero_le_one
+      _ = B := one_mul B
+
+theorem chartMatrixPhase_reindex {n m : ℕ} (e : Fin n ≃ Fin m) (C : Matrix (Fin n) (Fin n) ℚ)
+    (z w : Fin n → ℝ) :
+    chartMatrixPhase (C.submatrix e.symm e.symm) (fun i => z (e.symm i)) (fun i => w (e.symm i)) =
+      chartMatrixPhase C z w := by
+  unfold chartMatrixPhase
+  simp only [Matrix.submatrix_apply]
+  exact (e.symm.sum_comp (fun i => ∑ j, z i * (C i (e.symm j) : ℝ) * w (e.symm j))).trans
+    (Finset.sum_congr rfl fun i _ => e.symm.sum_comp (fun j => z i * (C i j : ℝ) * w j))
+
+theorem chartAltForm_reindex {n m : ℕ} (e : Fin n ≃ Fin m) (C : Matrix (Fin n) (Fin n) ℚ)
+    (z w : Fin n → ℝ) :
+    chartAltForm (C.submatrix e.symm e.symm) (fun i => z (e.symm i)) (fun i => w (e.symm i)) =
+      chartAltForm C z w := by
+  simp only [chartAltForm, chartMatrixPhase_reindex]
+
+/-- `eq:weyl-splitting` is invariant under reindexing the coordinates. -/
+theorem WeylSplitData.reindex {B : ℝ} {n m : ℕ} (e : Fin n ≃ Fin m) {V : Matrix (Fin n) (Fin 1) ℝ}
+    {C : Matrix (Fin n) (Fin n) ℚ} {Λ : Matrix (Fin 1) (Fin 1) ℝ} (h : WeylSplitData B V C Λ) :
+    WeylSplitData B (V.submatrix e.symm id) (C.submatrix e.symm e.symm) Λ := by
+  rw [weylSplitData_iff] at h ⊢
+  obtain ⟨U, Q, h1, h2, h3, h4, h5, h6, h7⟩ := h
+  set P := LinearIsometryEquiv.piLpCongrLeft 2 ℝ ℝ e
+  have hP : ∀ x : EuclideanSpace ℝ (Fin n), (P x).ofLp = fun i => x.ofLp (e.symm i) := by
+    intro x; funext i; simp [P, LinearIsometryEquiv.piLpCongrLeft_apply, Equiv.piCongrLeft'_apply]
+  have hPs : ∀ x : EuclideanSpace ℝ (Fin m), (P.symm x).ofLp = fun i => x.ofLp (e i) := by
+    intro x; funext i
+    simp [P, LinearIsometryEquiv.piLpCongrLeft_symm, LinearIsometryEquiv.piLpCongrLeft_apply,
+      Equiv.piCongrLeft'_apply]
+  set U' := U.map (P.toLinearEquiv : EuclideanSpace ℝ (Fin n) →ₗ[ℝ] EuclideanSpace ℝ (Fin m))
+  have hproj : ∀ x, U'.starProjection x = P (U.starProjection (P.symm x)) := fun x =>
+    Submodule.starProjection_map_apply P U x
+  -- the conjugated operators
+  have hop : ∀ (A : Matrix (Fin n) (Fin n) ℚ) (x : EuclideanSpace ℝ (Fin m)),
+      realMatrixOperator ((A.submatrix e.symm e.symm).map (fun q => (q : ℝ))) x =
+        P (realMatrixOperator (A.map (fun q => (q : ℝ))) (P.symm x)) := by
+    intro A x
+    apply WithLp.ofLp_injective
+    rw [realMatrixOperator_apply, hP, realMatrixOperator_apply, hPs]
+    funext i
+    simp only [Matrix.mulVec, dotProduct, Matrix.map_apply, Matrix.submatrix_apply]
+    rw [← e.symm.sum_comp (fun j => (A (e.symm i) j : ℝ) * x.ofLp (e j))]
+    simp only [Equiv.apply_symm_apply]
+  have hv : (WithLp.toLp 2 fun i => (V.submatrix e.symm id) i 0 :
+      EuclideanSpace ℝ (Fin m)) = P (WithLp.toLp 2 fun i => V i 0) := by
+    apply WithLp.ofLp_injective
+    rw [hP]; rfl
+  have e1 : (1 - Q.submatrix e.symm e.symm) = (1 - Q).submatrix e.symm e.symm := by
+    ext i j
+    simp [Matrix.sub_apply, Matrix.one_apply]
+  refine ⟨U', Q.submatrix e.symm e.symm, ?_, ?_, ?_, fun i j => h4 _ _, ?_, ?_, ?_⟩
+  · ext1 x
+    rw [hop, h1, Submodule.starProjection_orthogonal_val, Submodule.starProjection_orthogonal_val,
+      hproj, map_sub, LinearIsometryEquiv.apply_symm_apply]
+  · ext1 x
+    rw [e1, hop, h2, hproj]
+  · intro x hx y hy
+    obtain ⟨x₀, hx₀, rfl⟩ := Submodule.mem_map.mp hx
+    obtain ⟨y₀, hy₀, rfl⟩ := Submodule.mem_map.mp hy
+    change chartAltForm _ (P y₀).ofLp (P x₀).ofLp = 0
+    rw [hP, hP, chartAltForm_reindex]
+    exact h3 x₀ hx₀ y₀ hy₀
+  · intro i j
+    rw [e1]; exact h5 _ _
+  · rw [hv, Submodule.starProjection_orthogonal_val, hproj, LinearIsometryEquiv.symm_apply_apply,
+      ← map_sub, LinearIsometryEquiv.norm_map, ← Submodule.starProjection_orthogonal_val]
+    exact h6
+  · rw [hv, hproj, LinearIsometryEquiv.symm_apply_apply, hP]
+    have k1 := chartMatrixPhase_reindex e C (fun j => V j 0) (fun j => V j 0)
+    have k2 := chartAltForm_reindex e C
+      (fun j => (U.starProjection (WithLp.toLp 2 fun i => V i 0)).ofLp j) (fun j => V j 0)
+    simp only [Matrix.submatrix_apply, id] at k1 k2 ⊢
+    rw [k1, k2]
+    exact h7
+
+theorem chartAltForm_neg {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (z w : Fin d → ℝ) :
+    chartAltForm (-C) z w = -chartAltForm C z w := by
+  simp only [chartAltForm, chartMatrixPhase_neg]; ring
+
+/-- `eq:weyl-splitting` is invariant under negating the matrix and the quadratic. -/
+theorem WeylSplitData.neg {B : ℝ} {d : ℕ} {V : Matrix (Fin d) (Fin 1) ℝ}
+    {C : Matrix (Fin d) (Fin d) ℚ} {Λ : Matrix (Fin 1) (Fin 1) ℝ} (h : WeylSplitData B V C Λ) :
+    WeylSplitData B V (-C) (-Λ) := by
+  rw [weylSplitData_iff] at h ⊢
+  obtain ⟨U, Q, h1, h2, h3, h4, h5, h6, h7⟩ := h
+  refine ⟨U, Q, h1, h2, fun x hx y hy => ?_, h4, h5, h6, ?_⟩
+  · rw [chartAltForm_neg, h3 x hx y hy, neg_zero]
+  · rw [Matrix.neg_apply, chartMatrixPhase_neg, chartAltForm_neg]
+    have e : -Λ 0 0 + 1 / 2 * -chartMatrixPhase C (fun i => V i 0) (fun i => V i 0) +
+        1 / 2 * -chartAltForm C (U.starProjection (WithLp.toLp 2 fun i => V i 0)).ofLp
+          (fun i => V i 0) =
+        -(Λ 0 0 + 1 / 2 * chartMatrixPhase C (fun i => V i 0) (fun i => V i 0) +
+          1 / 2 * chartAltForm C (U.starProjection (WithLp.toLp 2 fun i => V i 0)).ofLp
+            (fun i => V i 0)) := by ring
+    rw [e, abs_neg]
+    exact h7
+
+/-- The block swap of the coordinates of a pair of tags. -/
+def tagSwap (v w : ChartTag) : Fin (v.dim + w.dim) ≃ Fin (w.dim + v.dim) :=
+  finSumFinEquiv.symm.trans ((Equiv.sumComm _ _).trans finSumFinEquiv)
+
+/-- Blueprint lines 1682-1684: the edge relation of the tag graph is symmetric (swap the two
+blocks and negate the difference matrix and quadratic). -/
+theorem tagEdge_symm {B r : ℝ} {v w : ChartTag} (h : tagEdge B r v w) : tagEdge B r w v := by
+  have hV : tagDiffV r w v = (tagDiffV r v w).submatrix (tagSwap v w).symm id := by
+    ext i j
+    refine Fin.addCases (fun a => ?_) (fun a => ?_) i <;>
+      simp [tagDiffV, tagSwap, Fin.append_left, Fin.append_right]
+  have hC : tagDiffC w v = -((tagDiffC v w).submatrix (tagSwap v w).symm (tagSwap v w).symm) := by
+    ext i j
+    refine Fin.addCases (fun a => ?_) (fun a => ?_) i <;>
+      refine Fin.addCases (fun b => ?_) (fun b => ?_) j <;>
+      simp [tagDiffC, tagSwap, chartBlockMatrix]
+  have hΛ : tagDiffΛ r w v = -tagDiffΛ r v w := by
+    ext i j; simp [tagDiffΛ]; ring
+  unfold tagEdge at h ⊢
+  rw [hV, hC, hΛ]
+  exact (h.reindex (tagSwap v w)).neg
+
+/-! ### Graph distances of depth-dependent edge relations (blueprint lines 1682-1686) -/
+
+section GraphDistance
+
+variable {V : Type*} (edge : ℤ → V → V → Prop)
+
+/-- Walks of length `n` in the graph of `edge s`. -/
+def reachIn (s : ℤ) : ℕ → V → V → Prop
+  | 0, v, w => v = w
+  | n + 1, v, w => ∃ u, reachIn s n v u ∧ edge s u w
+
+/-- The graph distance at depth `s` (infinite without a connecting walk). -/
+noncomputable def graphDist (s : ℤ) (v w : V) : ℕ∞ :=
+  ⨅ (n : ℕ) (_ : reachIn edge s n v w), (n : ℕ∞)
+
+variable {edge}
+
+theorem graphDist_le_of_reach {s : ℤ} {n : ℕ} {v w : V} (h : reachIn edge s n v w) :
+    graphDist edge s v w ≤ n :=
+  iInf₂_le n h
+
+theorem reachIn_append {s : ℤ} {n m : ℕ} {u v w : V} (h₁ : reachIn edge s n u v)
+    (h₂ : reachIn edge s m v w) : reachIn edge s (n + m) u w := by
+  induction m generalizing w with
+  | zero => simp only [reachIn] at h₂; subst h₂; simpa using h₁
+  | succ m ih =>
+    obtain ⟨x, hx, hxw⟩ := h₂
+    exact ⟨x, ih hx, hxw⟩
+
+theorem reachIn_succ_left {s : ℤ} {n : ℕ} {u v w : V} (h₁ : edge s u v)
+    (h₂ : reachIn edge s n v w) : reachIn edge s (n + 1) u w := by
+  have h₁' : reachIn edge s 1 u v := ⟨u, rfl, h₁⟩
+  simpa [add_comm] using reachIn_append h₁' h₂
+
+theorem reachIn_symm (hsymm : ∀ s v w, edge s v w → edge s w v) {s : ℤ} {n : ℕ} {v w : V}
+    (h : reachIn edge s n v w) : reachIn edge s n w v := by
+  induction n generalizing w with
+  | zero => exact (h : v = w).symm
+  | succ n ih =>
+    obtain ⟨u, hu, huw⟩ := h
+    exact reachIn_succ_left (hsymm s u w huw) (ih hu)
+
+theorem reachIn_mono (hmono : ∀ {s s'}, s ≤ s' → ∀ v w, edge s v w → edge s' v w)
+    {s s' : ℤ} (hss : s ≤ s') {n : ℕ} {v w : V} (h : reachIn edge s n v w) :
+    reachIn edge s' n v w := by
+  induction n generalizing w with
+  | zero => exact h
+  | succ n ih =>
+    obtain ⟨u, hu, huw⟩ := h
+    exact ⟨u, ih hu, hmono hss u w huw⟩
+
+/-- A finite graph distance is attained by a walk. -/
+theorem exists_reachIn_of_graphDist_eq {s : ℤ} {v w : V} {k : ℕ}
+    (h : graphDist edge s v w = k) : reachIn edge s k v w := by
+  classical
+  by_contra hk
+  have hne : ∃ n, reachIn edge s n v w := by
+    by_contra hno
+    push Not at hno
+    have : graphDist edge s v w = ⊤ := by
+      unfold graphDist
+      simp only [iInf_eq_top]
+      intro n hn; exact absurd hn (hno n)
+    rw [this] at h; exact ENat.top_ne_natCast k h
+  set n₀ := Nat.find hne
+  have hn₀ : reachIn edge s n₀ v w := Nat.find_spec hne
+  have hle : graphDist edge s v w ≤ n₀ := graphDist_le_of_reach hn₀
+  have hge : (n₀ : ℕ∞) ≤ graphDist edge s v w := by
+    unfold graphDist
+    refine le_iInf₂ fun n hn => ?_
+    exact_mod_cast Nat.find_min' hne hn
+  have heq : graphDist edge s v w = n₀ := le_antisymm hle hge
+  rw [heq] at h
+  have : n₀ = k := by exact_mod_cast h
+  exact hk (this ▸ hn₀)
+
+/-- The depth distance of a symmetric edge relation that persists under refinement. -/
+noncomputable def DepthDistance.ofEdges (edge : ℤ → V → V → Prop)
+    (hsymm : ∀ s v w, edge s v w → edge s w v)
+    (hmono : ∀ {s s'}, s ≤ s' → ∀ v w, edge s v w → edge s' v w) : DepthDistance V where
+  d := graphDist edge
+  self := fun s v => le_antisymm (graphDist_le_of_reach (n := 0) rfl) zero_le
+  symm := fun s v w => le_antisymm
+    (le_iInf₂ fun n hn => graphDist_le_of_reach (reachIn_symm hsymm hn))
+    (le_iInf₂ fun n hn => graphDist_le_of_reach (reachIn_symm hsymm hn))
+  triangle := fun s u v w => by
+    rcases eq_top_or_lt_top (graphDist edge s u v) with h₁ | h₁
+    · rw [h₁, top_add]; exact le_top
+    rcases eq_top_or_lt_top (graphDist edge s v w) with h₂ | h₂
+    · rw [h₂, add_top]; exact le_top
+    obtain ⟨a, ha⟩ := ENat.ne_top_iff_exists.mp h₁.ne
+    obtain ⟨b, hb⟩ := ENat.ne_top_iff_exists.mp h₂.ne
+    have r₁ := exists_reachIn_of_graphDist_eq ha.symm
+    have r₂ := exists_reachIn_of_graphDist_eq hb.symm
+    rw [← ha, ← hb]
+    exact_mod_cast graphDist_le_of_reach (reachIn_append r₁ r₂)
+  anti := fun {s s'} hss v w =>
+    le_iInf₂ fun n hn => graphDist_le_of_reach (reachIn_mono hmono hss hn)
+
+theorem graphDist_le_one_of_edge {s : ℤ} {v w : V} (h : edge s v w) : graphDist edge s v w ≤ 1 :=
+  graphDist_le_of_reach (n := 1) ⟨v, rfl, h⟩
+
+/-- Distance at most one means equality or an edge. -/
+theorem eq_or_edge_of_graphDist_le_one {s : ℤ} {v w : V} (h : graphDist edge s v w ≤ 1) :
+    v = w ∨ edge s v w := by
+  rcases eq_top_or_lt_top (graphDist edge s v w) with h₁ | h₁
+  · rw [h₁] at h; exact absurd h (by decide)
+  obtain ⟨k, hk⟩ := ENat.ne_top_iff_exists.mp h₁.ne
+  have hr := exists_reachIn_of_graphDist_eq hk.symm
+  have hk1 : k ≤ 1 := by rw [← hk] at h; exact_mod_cast h
+  interval_cases k
+  · exact Or.inl hr
+  · obtain ⟨u, hu, huw⟩ := hr
+    exact Or.inr ((hu : v = u) ▸ huw)
+
+end GraphDistance
 
 end Auto

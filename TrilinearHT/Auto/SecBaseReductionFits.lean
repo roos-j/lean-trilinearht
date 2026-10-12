@@ -2277,15 +2277,20 @@ theorem fitOpponentConst_nonneg (M : ℕ) : 0 ≤ fitOpponentConst M := by
 
 /-- The adaptive fits as opponents (blueprint prop:base, line 1630, and lem:compression): for each
 attempt root `K` there is one opponent, equal to the fit on the cells of the segment of `K`, which
-is admissible with depth energy one on every tree cell below `K`. -/
+is admissible with depth energy one on every tree cell below `K`; it is the physical part of the
+current projections `g_I = P_I F` of a column depth family rooted at `K` applied to the input
+`F = 1_J f` (blueprint line 1570). -/
 def IsFitOpponent (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (f : ℝ → ℂ)
     (roots : Finset (ℤ × ℤ)) (seg : ℤ × ℤ → ℤ × ℤ) (g : ℤ × ℤ → ℝ → ℂ) (C : ℝ) : Prop :=
   ∀ K ∈ roots, ∃ z : ℤ × ℤ → ℝ → ℂ,
     (∀ I, Measurable (z I) ∧ MemLp (z I) 2 (volume.restrict (dyadicGridCell G I.1 I.2))) ∧
     (∀ I ∈ dyadicFiniteTree G J N, seg I = K →
       ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 → z I y = g I y) ∧
-    ∀ J' ∈ dyadicFiniteTree G J N, dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G K.1 K.2 →
-      IsAdmissibleOpponent G J' f z C ∧ HasDepthEnergy G J' f z 1
+    (∀ J' ∈ dyadicFiniteTree G J N, dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G K.1 K.2 →
+      IsAdmissibleOpponent G J' f z C ∧ HasDepthEnergy G J' f z 1) ∧
+    ∃ (V : Type) (_ : Fintype V) (Ψ : ColumnDepthFamily V) (F : Lp ℂ 2 (volume : Measure ℝ)),
+      Ψ.D.grid = G ∧ Ψ.D.root = K ∧ (∀ I, z I = Ψ.current F I) ∧
+      (F : ℝ → ℂ) =ᵐ[volume] (dyadicGridCell G J.1 J.2).indicator f
 
 namespace FitSetup
 
@@ -2325,7 +2330,8 @@ theorem Hyp.isFitOpponent (h : S.Hyp) :
           (physicalColumnInput S.input) := treeProjection_eq hKT hKT subset_rfl le_rfl hm _
     funext y
     rw [e1, e2, hanc]
-  refine ⟨z, fun I => ⟨?_, ?_⟩, fun I hI hseg => ?_, fun J' hJ' hJ'K => ?_⟩
+  refine ⟨z, fun I => ⟨?_, ?_⟩, fun I hI hseg => ?_, fun J' hJ' hJ'K => ?_,
+    Fin S.M, inferInstance, Ψ, S.input, rfl, rfl, fun I => rfl, h.input_ae⟩
   · change Measurable (Ψ.current S.input I)
     unfold ColumnDepthFamily.current
     split_ifs

@@ -7488,4 +7488,1033 @@ theorem rect_simplified (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMeas
 
 end ShortBlockTree
 
+namespace ShortBlockTree
+
+variable {G : RealDyadicGrid} {K : ℕ} (T : ShortBlockTree G K)
+
+/-- Blueprint lines 2366-2369 (summing the rectangle bounds over positions and levels): with
+`n_L` levels and at most `2^m` positions per level, designated disjointness gives
+`Σ_R [X₁ (M_a M_b)^{1/2} + X₂ K M_a + Y M_a^{1/p} M_b^{1/p}] ≤ n_L (X₁ |R| + X₂ K |R| +
+Y (2^m)^{1 - 2/p} |R|^{2/p})`. -/
+theorem sum_rects_le (m : ℕ) {p : ℝ} (hp : 2 < p) (X₁ X₂ Y : ℝ≥0∞) :
+    ∑ R ∈ (DepthRect.upTo m).filter DepthRect.Valid,
+      (X₁ * (volume (T.mask R (DepthRect.heavy R)) ^ (1 / 2 : ℝ) *
+          volume (T.mask R (DepthRect.desig R)) ^ (1 / 2 : ℝ)) +
+        X₂ * (K * volume (T.mask R (DepthRect.heavy R))) +
+        Y * (volume (T.mask R (DepthRect.heavy R)) ^ (1 / p) *
+          volume (T.mask R (DepthRect.desig R)) ^ (1 / p))) ≤
+      (((DepthRect.upTo m).filter DepthRect.Valid).image DepthRect.level).card *
+        (X₁ * volume (dyadicGridCell G T.root.1 T.root.2) +
+          X₂ * (K * volume (dyadicGridCell G T.root.1 T.root.2)) +
+          Y * ((2 ^ m : ℕ) : ℝ≥0∞) ^ (1 - 2 / p) *
+            volume (dyadicGridCell G T.root.1 T.root.2) ^ (2 / p)) := by
+  classical
+  set V := (DepthRect.upTo m).filter DepthRect.Valid
+  set Rv := volume (dyadicGridCell G T.root.1 T.root.2)
+  have hV : ∀ R ∈ V, DepthRect.Valid R := fun R hR => (Finset.mem_filter.mp hR).2
+  rw [← Finset.sum_fiberwise_of_maps_to (g := DepthRect.level) (t := V.image DepthRect.level)
+    (fun R hR => Finset.mem_image_of_mem _ hR), ← nsmul_eq_mul, ← Finset.sum_const]
+  refine Finset.sum_le_sum fun key _ => ?_
+  set F := V.filter fun R => DepthRect.level R = key
+  have ha := T.sum_heavy_mask_le V hV key
+  have hb := T.sum_desig_mask_le V hV key
+  have hcard : (F.card : ℝ≥0∞) ≤ ((2 ^ m : ℕ) : ℝ≥0∞) := by
+    exact_mod_cast DepthRect.card_level_fiber_le m V (Finset.filter_subset _ _) key
+  rw [Finset.sum_add_distrib, Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum,
+    ← Finset.mul_sum]
+  have hRab : (∑ R ∈ F, volume (T.mask R (DepthRect.heavy R))) ^ (1 / 2 : ℝ) *
+      (∑ R ∈ F, volume (T.mask R (DepthRect.desig R))) ^ (1 / 2 : ℝ) ≤ Rv := by
+    calc _ ≤ Rv ^ (1 / 2 : ℝ) * Rv ^ (1 / 2 : ℝ) := by gcongr
+      _ = Rv := by
+          rw [← ENNReal.rpow_add_of_nonneg _ _ (by norm_num) (by norm_num)]; norm_num
+  refine add_le_add (add_le_add ?_ ?_) ?_
+  · gcongr
+    exact (ennreal_sum_sqrt_mul_le F _ _).trans hRab
+  · gcongr
+  · rw [← Finset.mul_sum, mul_assoc]
+    gcongr
+    refine (ennreal_position_holder F _ _ hp).trans ?_
+    gcongr
+    · have : 0 ≤ 1 - 2 / p := by
+        rw [sub_nonneg, div_le_one (by linarith)]; linarith
+      exact this
+
+end ShortBlockTree
+
+namespace ShortBlockTree
+
+variable {G : RealDyadicGrid} {K : ℕ} (T : ShortBlockTree G K) (κ : LocalKernelClass)
+  (cells : Finset (ℤ × ℤ)) (hcells : cells ⊆ T.internal) (kernel : ℤ × ℤ → ℝ × ℝ → ℂ)
+  (hker : ∀ I ∈ T.internal, IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2)
+    (dyadicGridLength G I.1) (kernel I))
+  {Ω : Type*} [MeasurableSpace Ω] {E : Type*} [NormedAddCommGroup E] (z : Fin 4 → ℝ → E)
+  (hz : ∀ j, Measurable fun y => ‖z j y‖) (zσ : Fin 4 → Ω → ℝ → ℂ)
+  (hzσ : ∀ j, Measurable (Function.uncurry (zσ j)))
+
+/-- The root is covered by leaves of finite total mass. -/
+theorem lintegral_root_lt_top (hL : T.LeafBound z) (j : Fin 4) :
+    ∫⁻ y in dyadicGridCell G T.root.1 T.root.2, ENNReal.ofReal ‖z j y‖ ^ (2 : ℝ) < ⊤ := by
+  calc ∫⁻ y in dyadicGridCell G T.root.1 T.root.2, ENNReal.ofReal ‖z j y‖ ^ (2 : ℝ)
+      ≤ ∫⁻ y in ⋃ L ∈ T.leaves, dyadicGridCell G L.1 L.2, ENNReal.ofReal ‖z j y‖ ^ (2 : ℝ) :=
+        lintegral_mono_set T.leaf_cover
+    _ = ∑ L ∈ T.leaves, ∫⁻ y in dyadicGridCell G L.1 L.2, ENNReal.ofReal ‖z j y‖ ^ (2 : ℝ) :=
+        lintegral_biUnion_finset T.leaf_disjoint (fun L _ => dyadicGridCell_measurable G _ _) _
+    _ ≤ ∑ L ∈ T.leaves, ENNReal.ofReal (dyadicGridLength G L.1) := by
+        refine Finset.sum_le_sum fun L hL' => le_trans (le_of_eq ?_) (hL j L hL')
+        refine lintegral_congr fun y => ?_
+        rw [ofReal_norm, ENNReal.rpow_two]
+    _ < ⊤ := ENNReal.sum_lt_top.mpr fun L _ => ENNReal.ofReal_lt_top
+
+include hz hzσ in
+/-- Almost every random parameter gives inputs in `L²` of the root. -/
+theorem ae_memLp_root (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMeasure P] {C4 : ℝ}
+    (hmom : ∀ j y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤
+      ENNReal.ofReal C4 * ‖z j y‖ₑ) :
+    ∀ᵐ σ ∂P, ∀ j, MemLp ((dyadicGridCell G T.root.1 T.root.2).indicator (zσ j σ)) 2 volume := by
+  rw [ae_all_iff]
+  intro j
+  set ν := volume.restrict (dyadicGridCell G T.root.1 T.root.2)
+  have hmom' : ∀ y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤
+      ENNReal.ofReal C4 * ENNReal.ofReal ‖z j y‖ := fun y => by rw [ofReal_norm]; exact hmom j y
+  have h := random_local_L2 P ν (zσ j) (hzσ j) (fun y => ‖z j y‖) (hz j) hmom'
+  have hlt : (∫⁻ σ, eLpNorm (zσ j σ) 2 ν ^ (4 : ℝ) ∂P) < ⊤ := by
+    have h2 : (∫⁻ σ, eLpNorm (zσ j σ) 2 ν ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) < ⊤ :=
+      h.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+        (ENNReal.rpow_lt_top_of_nonneg (by norm_num) (T.lintegral_root_lt_top z hL j).ne))
+    exact (ENNReal.rpow_lt_top_iff_of_pos (by norm_num : (0 : ℝ) < 1 / 4)).mp h2
+  have hm0 : Measurable fun σ => eLpNorm (zσ j σ) 2 ν := by
+    have hm' : ∀ σ, Measurable (zσ j σ) := fun σ => by
+      have h := (hzσ j).comp (measurable_prodMk_left (x := σ)); exact h
+    have : (fun σ => eLpNorm (zσ j σ) 2 ν) = fun σ =>
+        (∫⁻ y, ‖zσ j σ y‖ₑ ^ (2 : ℝ) ∂ν) ^ (1 / 2 : ℝ) := by
+      funext σ
+      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)
+        (hm' σ).aestronglyMeasurable]
+      norm_num
+    rw [this]
+    exact (((hzσ j).enorm.pow_const _).lintegral_prod_right').pow_const _
+  filter_upwards [ae_lt_top (hm0.pow_const (4 : ℝ)) hlt.ne] with σ hσ
+  rw [memLp_iff, eLpNorm_indicator_eq_eLpNorm_restrict
+    (dyadicGridCell_measurable G _ _).nullMeasurableSet]
+  by_contra hc
+  rw [not_lt, top_le_iff] at hc
+  rw [hc, ENNReal.top_rpow_of_pos (by norm_num)] at hσ
+  exact lt_irrefl _ hσ
+
+end ShortBlockTree
+
+theorem two_lt_pStar {q : ℝ} (hq : 2 < q) : 2 < pStar q := by unfold pStar; linarith
+
+namespace ShortBlockTree
+
+/-- The sampling-error constant of `eq:shortblock`. -/
+noncomputable def coreX1 (κ : LocalKernelClass) (C4 : ℝ) : ℝ≥0∞ :=
+  ENNReal.ofReal (4 * admissibleLipConst κ * C4 ^ 4) +
+    ENNReal.ofReal (256 / (volume (offsetPolygon (1 / 8))).toReal) *
+      (ENNReal.ofReal (4 * admissibleLipConst κ) * BlockData.err2Const C4 ^ 2)
+
+/-- The deletion constant of `eq:shortblock`. -/
+noncomputable def coreX2 (κ : LocalKernelClass) (C4 : ℝ) : ℝ≥0∞ :=
+  4 * ENNReal.ofReal (256 * localKernelSupBound κ) * BlockData.regConst C4 (regE2 κ) ^ 3 *
+    ENNReal.ofReal C4
+
+/-- The main-term constant of `eq:shortblock`. -/
+noncomputable def coreX3 (κ : LocalKernelClass) (C4 : ℝ) (Cs Cd : ℝ≥0∞) : ℝ≥0∞ :=
+  ENNReal.ofReal (256 / (volume (offsetPolygon (1 / 8))).toReal) *
+    (max Cs Cd * (2 ^ (1 / 4 : ℝ) * ENNReal.ofReal C4)) ^ 4 *
+      (ENNReal.ofReal (regE2 κ) ^ (1 / 2 : ℝ)) ^ 3
+
+/-- The number of levels for depths below `2^m`. -/
+noncomputable def numLevels (m : ℕ) : ℕ :=
+  (((DepthRect.upTo m).filter DepthRect.Valid).image DepthRect.level).card
+
+variable {G : RealDyadicGrid} {K : ℕ} (T : ShortBlockTree G K) (κ : LocalKernelClass)
+  (cells : Finset (ℤ × ℤ)) (hcells : cells ⊆ T.internal) (kernel : ℤ × ℤ → ℝ × ℝ → ℂ)
+  (hker : ∀ I ∈ T.internal, IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2)
+    (dyadicGridLength G I.1) (kernel I))
+  {Ω : Type*} [MeasurableSpace Ω] {E : Type*} [NormedAddCommGroup E] (z : Fin 4 → ℝ → E)
+  (hz : ∀ j, Measurable fun y => ‖z j y‖) (zσ : Fin 4 → Ω → ℝ → ℂ)
+  (hzσ : ∀ j, Measurable (Function.uncurry (zσ j)))
+
+include hcells hker hz hzσ in
+open Auto.ClassicalMaximal in
+/-- `eq:shortblock` for normalized sizes, before the numerical simplification of the
+constants (blueprint lines 2276-2369). -/
+theorem short_block_core (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMeasure P]
+    {C4 : ℝ} (hC4 : 0 ≤ C4) (hmom : ∀ j y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤
+      ENNReal.ofReal C4 * ‖z j y‖ₑ)
+    (ε : ℤ × ℤ → Ω → ℂ) (hε : ∀ I, Measurable (ε I)) (hε1 : ∀ I σ, ‖ε I σ‖ ≤ 1)
+    {q : ℝ} (hq : 2 < q) {Nd : ℕ} (hKN : K ≤ Nd) (Cs Cd : ℝ≥0∞)
+    (hCs : ∀ f : ℝ × ((Ω × ℝ) × FastCircle) → ℂ, Measurable f →
+      mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pStar q) 4 (maximalQ q f) ≤
+        Cs * mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pStar q) 4
+          (fun z => ‖f z‖ₑ))
+    (hCd : ∀ f : ℝ × ((Ω × ℝ) × FastCircle) → ℂ, Measurable f →
+      mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pReg q) 4 (maximalQ q f) ≤
+        Cd * mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pReg q) 4
+          (fun z => ‖f z‖ₑ)) :
+    ∫⁻ σ, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
+      localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ)‖ₑ ∂P ≤
+      (numLevels (Nat.log 2 (K + 1) + 1) : ℝ≥0∞) *
+        (coreX1 κ C4 * volume (dyadicGridCell G T.root.1 T.root.2) +
+          coreX2 κ C4 * (ENNReal.ofReal ((K : ℝ) + 2))⁻¹ *
+            (K * volume (dyadicGridCell G T.root.1 T.root.2)) +
+          ENNReal.ofReal (finiteDepthConstant κ q Nd) * coreX3 κ C4 Cs Cd *
+            ENNReal.ofReal ((K : ℝ) + 2) ^ ((pStar q - 2) / pStar q) *
+            (volume (dyadicGridCell G T.root.1 T.root.2) ^ (1 / pReg q)) ^ 2 *
+            ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ≥0∞) ^ (1 - 2 / pStar q) *
+            volume (dyadicGridCell G T.root.1 T.root.2) ^ (2 / pStar q)) := by
+  classical
+  set m := Nat.log 2 (K + 1) + 1
+  have hm : K < 2 ^ m := by
+    have := Nat.lt_pow_succ_log_self (b := 2) (by norm_num) (K + 1)
+    exact lt_of_lt_of_le (Nat.lt_succ_self K) this.le
+  set V := (DepthRect.upTo m).filter DepthRect.Valid
+  set D := fun R => T.rectData κ cells hcells kernel hker z hz zσ hzσ R
+  have hpt : ∀ᵐ σ ∂P, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
+      localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ)‖ₑ ≤
+      ∑ R ∈ V, ‖(D R).total ε σ‖ₑ := by
+    filter_upwards [T.ae_memLp_root z hz zσ hzσ hL P hmom] with σ hσ
+    rw [T.total_decomp κ cells hcells kernel hker z hz zσ hzσ hm ε σ hσ]
+    exact enorm_sum_le _ _
+  refine (lintegral_mono_ae hpt).trans ?_
+  rw [lintegral_finsetSum _ fun R _ => ((D R).measurable_total ε hε).enorm]
+  have hsimp : ∀ R ∈ V, ∫⁻ σ, ‖(D R).total ε σ‖ₑ ∂P ≤
+      coreX1 κ C4 * (volume (T.mask R (DepthRect.heavy R)) ^ (1 / 2 : ℝ) *
+          volume (T.mask R (DepthRect.desig R)) ^ (1 / 2 : ℝ)) +
+        coreX2 κ C4 * (ENNReal.ofReal ((K : ℝ) + 2))⁻¹ *
+          ((K : ℝ≥0∞) * volume (T.mask R (DepthRect.heavy R))) +
+        ENNReal.ofReal (finiteDepthConstant κ q Nd) * coreX3 κ C4 Cs Cd *
+          ENNReal.ofReal ((K : ℝ) + 2) ^ ((pStar q - 2) / pStar q) *
+          (volume (dyadicGridCell G T.root.1 T.root.2) ^ (1 / pReg q)) ^ 2 *
+          (volume (T.mask R (DepthRect.heavy R)) ^ (1 / pStar q) *
+            volume (T.mask R (DepthRect.desig R)) ^ (1 / pStar q)) := by
+    intro R hR
+    refine (T.rect_simplified κ cells hcells kernel hker z hz zσ hzσ hL P hC4 hmom ε hε hε1 hq
+      hKN Cs Cd hCs hCd (Finset.mem_filter.mp hR).2).trans (le_of_eq ?_)
+    unfold coreX1 coreX2 coreX3
+    ring
+  refine (Finset.sum_le_sum hsimp).trans ?_
+  have h := T.sum_rects_le m (two_lt_pStar hq) (coreX1 κ C4)
+    (coreX2 κ C4 * (ENNReal.ofReal ((K : ℝ) + 2))⁻¹)
+    (ENNReal.ofReal (finiteDepthConstant κ q Nd) * coreX3 κ C4 Cs Cd *
+      ENNReal.ofReal ((K : ℝ) + 2) ^ ((pStar q - 2) / pStar q) *
+      (volume (dyadicGridCell G T.root.1 T.root.2) ^ (1 / pReg q)) ^ 2)
+  refine le_trans (le_of_eq ?_) (h.trans (le_of_eq ?_))
+  · refine Finset.sum_congr rfl fun R _ => ?_
+    ring
+  · unfold numLevels; ring
+
+end ShortBlockTree
+
+theorem numLevels_le (m : ℕ) : ShortBlockTree.numLevels m ≤ 16 + 64 * m := by
+  classical
+  unfold ShortBlockTree.numLevels
+  exact (Finset.card_le_card (Finset.image_subset_image (Finset.filter_subset _ _))).trans
+    (DepthRect.card_levels_le m)
+
+theorem natLog_le_two_log (K : ℕ) : (Nat.log 2 (K + 1) : ℝ) ≤ 2 * Real.log ((K : ℝ) + 2) := by
+  have h1 : 2 ^ Nat.log 2 (K + 1) ≤ K + 1 := Nat.pow_log_le_self 2 (by omega)
+  have h2 : ((2 : ℝ) ^ Nat.log 2 (K + 1)) ≤ (K : ℝ) + 2 := by
+    have : ((2 ^ Nat.log 2 (K + 1) : ℕ) : ℝ) ≤ ((K + 1 : ℕ) : ℝ) := by exact_mod_cast h1
+    push_cast at this ⊢; linarith
+  have h3 : (Nat.log 2 (K + 1) : ℝ) * Real.log 2 ≤ Real.log ((K : ℝ) + 2) := by
+    rw [← Real.log_pow]
+    exact Real.log_le_log (by positivity) h2
+  have hl := Real.log_two_gt_d9
+  have hK : 0 ≤ Real.log ((K : ℝ) + 2) :=
+    Real.log_nonneg (by linarith [(K.cast_nonneg : (0 : ℝ) ≤ K)])
+  nlinarith
+
+theorem numLevels_le_log (K : ℕ) :
+    (ShortBlockTree.numLevels (Nat.log 2 (K + 1) + 1) : ℝ) ≤
+      200 * (1 + Real.log ((K : ℝ) + 2)) := by
+  have h := numLevels_le (Nat.log 2 (K + 1) + 1)
+  have h' : (ShortBlockTree.numLevels (Nat.log 2 (K + 1) + 1) : ℝ) ≤
+      16 + 64 * ((Nat.log 2 (K + 1) : ℝ) + 1) := by exact_mod_cast h
+  have := natLog_le_two_log K
+  have hK : 0 ≤ Real.log ((K : ℝ) + 2) :=
+    Real.log_nonneg (by linarith [(K.cast_nonneg : (0 : ℝ) ≤ K)])
+  linarith
+
+theorem two_pow_succ_log_le (K : ℕ) :
+    ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ) ≤ 2 * ((K : ℝ) + 2) := by
+  have h1 : 2 ^ Nat.log 2 (K + 1) ≤ K + 1 := Nat.pow_log_le_self 2 (by omega)
+  have : ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ) ≤ 2 * ((K + 1 : ℕ) : ℝ) := by
+    rw [pow_succ]; push_cast; exact_mod_cast (by omega : 2 ^ Nat.log 2 (K + 1) * 2 ≤ 2 * (K + 1))
+  push_cast at this ⊢; linarith
+
+theorem pStar_exponent {q : ℝ} (hq : 2 < q) :
+    (pStar q - 2) / pStar q = (q - 2) / (q - 1) ∧ 1 - 2 / pStar q = (q - 2) / (q - 1) := by
+  unfold pStar
+  have h1 : (2 * q - 2) ≠ 0 := by linarith
+  have h2 : q - 1 ≠ 0 := by linarith
+  constructor <;> field_simp <;> ring
+
+namespace ShortBlockTree
+
+theorem coreX1_ne_top (κ : LocalKernelClass) (C4 : ℝ) : coreX1 κ C4 ≠ ⊤ := by
+  unfold coreX1 BlockData.err2Const
+  have h2 : (2 : ℝ≥0∞) ^ (1 / 2 : ℝ) ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg (by norm_num) (by simp)
+  refine ENNReal.add_ne_top.mpr ⟨ENNReal.ofReal_ne_top, ENNReal.mul_ne_top ENNReal.ofReal_ne_top
+    (ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.pow_ne_top ?_))⟩
+  exact ENNReal.div_ne_top (ENNReal.mul_ne_top h2 (ENNReal.pow_ne_top ENNReal.ofReal_ne_top))
+    (by norm_num)
+
+theorem coreX2_ne_top (κ : LocalKernelClass) (C4 : ℝ) : coreX2 κ C4 ≠ ⊤ := by
+  unfold coreX2 BlockData.regConst
+  have h : ((2 : ℝ≥0∞) ^ (1 / 3 : ℝ) * (4 * ENNReal.ofReal C4 ^ 4 *
+      ENNReal.ofReal (regE2 κ) ^ 2)) ^ (1 / 4 : ℝ) ≠ ⊤ :=
+    ENNReal.rpow_ne_top_of_nonneg (by norm_num) (ENNReal.mul_ne_top
+      (ENNReal.rpow_ne_top_of_nonneg (by norm_num) (by simp))
+      (ENNReal.mul_ne_top (ENNReal.mul_ne_top (by simp)
+        (ENNReal.pow_ne_top ENNReal.ofReal_ne_top)) (ENNReal.pow_ne_top ENNReal.ofReal_ne_top)))
+  exact ENNReal.mul_ne_top (ENNReal.mul_ne_top (ENNReal.mul_ne_top (by simp)
+    ENNReal.ofReal_ne_top) (ENNReal.pow_ne_top h)) ENNReal.ofReal_ne_top
+
+theorem coreX3_ne_top (κ : LocalKernelClass) (C4 : ℝ) {Cs Cd : ℝ≥0∞} (hs : Cs ≠ ⊤)
+    (hd : Cd ≠ ⊤) : coreX3 κ C4 Cs Cd ≠ ⊤ := by
+  unfold coreX3
+  have h2 : (2 : ℝ≥0∞) ^ (1 / 4 : ℝ) ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg (by norm_num) (by simp)
+  have hE : ENNReal.ofReal (regE2 κ) ^ (1 / 2 : ℝ) ≠ ⊤ :=
+    ENNReal.rpow_ne_top_of_nonneg (by norm_num) ENNReal.ofReal_ne_top
+  exact ENNReal.mul_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.pow_ne_top
+    (ENNReal.mul_ne_top (max_ne_top hs hd) (ENNReal.mul_ne_top h2 ENNReal.ofReal_ne_top))))
+    (ENNReal.pow_ne_top hE)
+
+/-- The constant of `eq:shortblock`. -/
+noncomputable def shortBlockConst (κ : LocalKernelClass) (C4 : ℝ) (Cs Cd : ℝ≥0∞) : ℝ :=
+  200 * ((coreX1 κ C4).toReal + (coreX2 κ C4).toReal + 2 * (coreX3 κ C4 Cs Cd).toReal)
+
+theorem shortBlockConst_nonneg (κ : LocalKernelClass) (C4 : ℝ) (Cs Cd : ℝ≥0∞) :
+    0 ≤ shortBlockConst κ C4 Cs Cd := by
+  unfold shortBlockConst; positivity
+
+/-- The numerical form of the core bound. -/
+theorem core_rhs_le (κ : LocalKernelClass) (C4 : ℝ) {Cs Cd : ℝ≥0∞} (hs : Cs ≠ ⊤)
+    (hd : Cd ≠ ⊤) {q : ℝ} (hq : 2 < q) (K : ℕ) {CN L : ℝ} (hCN : 0 ≤ CN) (hL : 0 ≤ L) :
+    (numLevels (Nat.log 2 (K + 1) + 1) : ℝ≥0∞) *
+        (coreX1 κ C4 * ENNReal.ofReal L +
+          coreX2 κ C4 * (ENNReal.ofReal ((K : ℝ) + 2))⁻¹ * (K * ENNReal.ofReal L) +
+          ENNReal.ofReal CN * coreX3 κ C4 Cs Cd *
+            ENNReal.ofReal ((K : ℝ) + 2) ^ ((pStar q - 2) / pStar q) *
+            (ENNReal.ofReal L ^ (1 / pReg q)) ^ 2 *
+            ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ≥0∞) ^ (1 - 2 / pStar q) *
+            ENNReal.ofReal L ^ (2 / pStar q)) ≤
+      ENNReal.ofReal (shortBlockConst κ C4 Cs Cd * (1 + CN) * (1 + Real.log ((K : ℝ) + 2)) *
+        ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * L) := by
+  obtain ⟨hθ1, hθ2⟩ := pStar_exponent hq
+  set τ := (q - 2) / (q - 1)
+  have hτ0 : 0 ≤ τ := div_nonneg (by linarith) (by linarith)
+  have hτ1 : τ ≤ 1 := (div_le_one (by linarith)).mpr (by linarith)
+  set x1 := (coreX1 κ C4).toReal
+  set x2 := (coreX2 κ C4).toReal
+  set x3 := (coreX3 κ C4 Cs Cd).toReal
+  have e1 : coreX1 κ C4 = ENNReal.ofReal x1 := (ENNReal.ofReal_toReal (coreX1_ne_top κ C4)).symm
+  have e2 : coreX2 κ C4 = ENNReal.ofReal x2 := (ENNReal.ofReal_toReal (coreX2_ne_top κ C4)).symm
+  have e3 : coreX3 κ C4 Cs Cd = ENNReal.ofReal x3 :=
+    (ENNReal.ofReal_toReal (coreX3_ne_top κ C4 hs hd)).symm
+  have hK2 : (1 : ℝ) ≤ (K : ℝ) + 2 := by linarith [(K.cast_nonneg : (0 : ℝ) ≤ K)]
+  set u := ((K : ℝ) + 2) ^ τ
+  have hu : 1 ≤ u := Real.one_le_rpow hK2 hτ0
+  have hx1 : 0 ≤ x1 := ENNReal.toReal_nonneg
+  have hx2 : 0 ≤ x2 := ENNReal.toReal_nonneg
+  have hx3 : 0 ≤ x3 := ENNReal.toReal_nonneg
+  -- the three terms
+  have t1 : coreX1 κ C4 * ENNReal.ofReal L = ENNReal.ofReal (x1 * L) := by
+    rw [e1, ← ENNReal.ofReal_mul hx1]
+  have t2 : coreX2 κ C4 * (ENNReal.ofReal ((K : ℝ) + 2))⁻¹ * (K * ENNReal.ofReal L) ≤
+      ENNReal.ofReal (x2 * L) := by
+    have hk : (ENNReal.ofReal ((K : ℝ) + 2))⁻¹ * (K : ℝ≥0∞) ≤ 1 := by
+      rw [← ENNReal.div_eq_inv_mul, ENNReal.div_le_iff (by simp; linarith) (by simp), one_mul,
+        ← ENNReal.ofReal_natCast]
+      exact ENNReal.ofReal_le_ofReal (by linarith)
+    calc coreX2 κ C4 * (ENNReal.ofReal ((K : ℝ) + 2))⁻¹ * (K * ENNReal.ofReal L)
+        = coreX2 κ C4 * ((ENNReal.ofReal ((K : ℝ) + 2))⁻¹ * K) * ENNReal.ofReal L := by ring
+      _ ≤ coreX2 κ C4 * 1 * ENNReal.ofReal L := by gcongr
+      _ = _ := by rw [mul_one, e2, ← ENNReal.ofReal_mul hx2]
+  have hJ : ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ≥0∞) ^ (1 - 2 / pStar q) ≤
+      ENNReal.ofReal (2 * u) := by
+    rw [hθ2, ← ENNReal.ofReal_natCast]
+    calc ENNReal.ofReal ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ) ^ τ
+        ≤ ENNReal.ofReal (2 * ((K : ℝ) + 2)) ^ τ := by
+          gcongr; exact two_pow_succ_log_le K
+      _ = ENNReal.ofReal ((2 * ((K : ℝ) + 2)) ^ τ) :=
+          ENNReal.ofReal_rpow_of_nonneg (by positivity) hτ0
+      _ ≤ ENNReal.ofReal (2 * u) := by
+          apply ENNReal.ofReal_le_ofReal
+          rw [Real.mul_rpow (by norm_num) (by positivity)]
+          gcongr
+          calc (2 : ℝ) ^ τ ≤ 2 ^ (1 : ℝ) := Real.rpow_le_rpow_of_exponent_le (by norm_num) hτ1
+            _ = 2 := Real.rpow_one 2
+  have hLL : (ENNReal.ofReal L ^ (1 / pReg q)) ^ 2 * ENNReal.ofReal L ^ (2 / pStar q) =
+      ENNReal.ofReal L := by
+    rw [← ENNReal.rpow_natCast, ← ENNReal.rpow_mul, ← ENNReal.rpow_add_of_nonneg _ _
+      (by have := two_le_pReg hq; positivity) (by have := two_le_pStar hq; positivity)]
+    have := pStar_pReg_sum hq
+    have e : 1 / pReg q * ((2 : ℕ) : ℝ) = 2 / pReg q := by push_cast; ring
+    rw [e, show 2 / pReg q + 2 / pStar q = 1 by linarith, ENNReal.rpow_one]
+  have t3 : ENNReal.ofReal CN * coreX3 κ C4 Cs Cd *
+      ENNReal.ofReal ((K : ℝ) + 2) ^ ((pStar q - 2) / pStar q) *
+      (ENNReal.ofReal L ^ (1 / pReg q)) ^ 2 *
+      ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ≥0∞) ^ (1 - 2 / pStar q) *
+      ENNReal.ofReal L ^ (2 / pStar q) ≤ ENNReal.ofReal (CN * x3 * u * (2 * u) * L) := by
+    rw [hθ1, hθ2, e3, ENNReal.ofReal_rpow_of_nonneg (by positivity) hτ0]
+    calc ENNReal.ofReal CN * ENNReal.ofReal x3 * ENNReal.ofReal u *
+          (ENNReal.ofReal L ^ (1 / pReg q)) ^ 2 *
+          ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ≥0∞) ^ τ * ENNReal.ofReal L ^ (2 / pStar q)
+        = ENNReal.ofReal CN * ENNReal.ofReal x3 * ENNReal.ofReal u *
+          ((2 ^ (Nat.log 2 (K + 1) + 1) : ℕ) : ℝ≥0∞) ^ τ *
+            ((ENNReal.ofReal L ^ (1 / pReg q)) ^ 2 * ENNReal.ofReal L ^ (2 / pStar q)) := by
+          ring
+      _ ≤ ENNReal.ofReal CN * ENNReal.ofReal x3 * ENNReal.ofReal u * ENNReal.ofReal (2 * u) *
+            ENNReal.ofReal L := by
+          rw [hLL]; gcongr; rw [← hθ2]; exact hJ
+      _ = _ := by
+          rw [← ENNReal.ofReal_mul hCN, ← ENNReal.ofReal_mul (by positivity),
+            ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_mul (by positivity)]
+  have hnL := numLevels_le_log K
+  have hlog : 0 ≤ Real.log ((K : ℝ) + 2) := Real.log_nonneg hK2
+  calc _ ≤ (numLevels (Nat.log 2 (K + 1) + 1) : ℝ≥0∞) *
+        (ENNReal.ofReal (x1 * L) + ENNReal.ofReal (x2 * L) +
+          ENNReal.ofReal (CN * x3 * u * (2 * u) * L)) := by
+        rw [t1]; gcongr
+    _ = ENNReal.ofReal ((numLevels (Nat.log 2 (K + 1) + 1) : ℝ) *
+          (x1 * L + x2 * L + CN * x3 * u * (2 * u) * L)) := by
+        rw [← ENNReal.ofReal_add (by positivity) (by positivity),
+          ← ENNReal.ofReal_add (by positivity) (by positivity),
+          ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_natCast]
+    _ ≤ _ := by
+        apply ENNReal.ofReal_le_ofReal
+        have hu2 : ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) = u * u := by
+          rw [← Real.rpow_add (by linarith)]; congr 1; simp only [τ]; ring
+        rw [hu2]
+        unfold shortBlockConst
+        have hA : x1 * L + x2 * L + CN * x3 * u * (2 * u) * L ≤
+            (x1 + x2 + 2 * x3) * (1 + CN) * (u * u) * L := by
+          have huu : 1 ≤ u * u := by nlinarith
+          have h1 : x1 * L ≤ x1 * (1 + CN) * (u * u) * L := by
+            have : x1 * 1 * 1 * L ≤ x1 * (1 + CN) * (u * u) * L := by gcongr; linarith
+            linarith
+          have h2 : x2 * L ≤ x2 * (1 + CN) * (u * u) * L := by
+            have : x2 * 1 * 1 * L ≤ x2 * (1 + CN) * (u * u) * L := by gcongr; linarith
+            linarith
+          have h3 : CN * x3 * u * (2 * u) * L ≤ 2 * x3 * (1 + CN) * (u * u) * L := by
+            have : CN * (2 * x3 * (u * u) * L) ≤ (1 + CN) * (2 * x3 * (u * u) * L) := by
+              gcongr; linarith
+            nlinarith
+          nlinarith
+        calc (numLevels (Nat.log 2 (K + 1) + 1) : ℝ) *
+              (x1 * L + x2 * L + CN * x3 * u * (2 * u) * L)
+            ≤ (200 * (1 + Real.log ((K : ℝ) + 2))) *
+              ((x1 + x2 + 2 * x3) * (1 + CN) * (u * u) * L) := by
+              gcongr
+          _ = _ := by ring
+
+end ShortBlockTree
+
+theorem localProgressionForm_mul_const (r : ℝ) (w : ℝ × ℝ → ℂ) (f : Fin 4 → ℝ → ℂ)
+    (c : Fin 4 → ℂ) :
+    localProgressionForm r w (fun j y => f j y * c j) =
+      (∏ j, c j) * localProgressionForm r w f := by
+  unfold localProgressionForm
+  simp_rw [Finset.prod_mul_distrib]
+  rw [show (fun z : ℝ × ℝ => w z * ((∏ j, f j (realProgressionCoordinate j z)) * ∏ j, c j)) =
+    fun z => (w z * ∏ j, f j (realProgressionCoordinate j z)) * ∏ j, c j by funext z; ring,
+    integral_mul_const]
+  ring
+
+theorem q_lt_pStar {q : ℝ} (hq : 2 < q) : q < pStar q := by unfold pStar; linarith
+
+theorem q_lt_pReg {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) : q < pReg q := by
+  unfold pReg; rw [lt_div_iff₀ (by linarith)]; nlinarith
+
+open Auto.ClassicalMaximal in
+/-- **Lemma `lem:shortblock`** (blueprint lines 2276-2283, `eq:shortblock`). Let a finite dyadic
+tree piece have root `R`, internal summation cells in at most `K` consecutive depths of the
+original `N`-depth range (`K ≤ N`), and leaves in that block or one depth below. Suppose
+deterministic inputs `z_j` satisfy `‖z_j‖_{2,L} ≤ s_j` on every leaf, and the scalar
+randomizations satisfy `(E_σ|z_j^σ(y)|⁴)^{1/4} ≤ C₄ ‖z_j(y)‖` (the finite moment used). Then for
+arbitrary measurable `|ε_I(σ)| ≤ 1` and any subcollection of internal cells,
+`E_σ |Σ_I |I| ε_I(σ) H_I(z^σ)| ≤ C_q (1 + C_N) (1 + log(K+2)) (K+2)^{2(q-2)/(q-1)} |R| Π_j s_j`,
+with `C_q` depending only on the kernel class, `q ∈ (2, 3)` and `C₄`. -/
+theorem short_block_comparison (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
+    {C4 : ℝ} (hC4 : 0 ≤ C4) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ), K ≤ Nd →
+      ∀ (T : ShortBlockTree G K) {E : Type*} [NormedAddCommGroup E] (z : Fin 4 → ℝ → E),
+      (∀ j, Measurable fun y => ‖z j y‖) → ∀ s : Fin 4 → ℝ, (∀ j, 0 ≤ s j) →
+      (∀ j, ∀ L ∈ T.leaves, ∫⁻ y in dyadicGridCell G L.1 L.2, ‖z j y‖ₑ ^ 2 ≤
+        ENNReal.ofReal (s j ^ 2 * dyadicGridLength G L.1)) →
+      ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+        (zσ : Fin 4 → Ω → ℝ → ℂ), (∀ j, Measurable (Function.uncurry (zσ j))) →
+      (∀ j y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤ ENNReal.ofReal C4 * ‖z j y‖ₑ) →
+      ∀ (kernel : ℤ × ℤ → ℝ × ℝ → ℂ), (∀ I ∈ T.internal, IsAdmissibleLocalKernel κ
+        (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (kernel I)) →
+      ∀ cells ⊆ T.internal, ∀ ε : ℤ × ℤ → Ω → ℂ, (∀ I, Measurable (ε I)) →
+      (∀ I σ, ‖ε I σ‖ ≤ 1) →
+      ∫⁻ σ, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
+        localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ)‖ₑ ∂P ≤
+        ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
+          (1 + Real.log ((K : ℝ) + 2)) * ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) *
+          dyadicGridLength G T.root.1 * ∏ j, s j) := by
+  obtain ⟨Cs, hCs⟩ := oneMixedNorm (pStar q) q hq2 hq3 (q_lt_pStar hq2)
+  obtain ⟨Cd, hCd⟩ := oneMixedNorm (pReg q) q hq2 hq3 (q_lt_pReg hq2 hq3)
+  refine ⟨ShortBlockTree.shortBlockConst κ C4 Cs Cd,
+    ShortBlockTree.shortBlockConst_nonneg κ C4 Cs Cd, ?_⟩
+  intro G K Nd hKN T E _ z hz s hs hleaf Ω _ P _ zσ hzσ hmom kernel hker cells hcells ε hε hε1
+  set Cq := ShortBlockTree.shortBlockConst κ C4 (Cs : ℝ≥0∞) Cd
+  set X := ∫⁻ σ, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
+    localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ)‖ₑ ∂P
+  set B : ℝ := Cq * (1 + finiteDepthConstant κ q Nd) * (1 + Real.log ((K : ℝ) + 2)) *
+    ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * dyadicGridLength G T.root.1
+  have hCN : 0 ≤ finiteDepthConstant κ q Nd :=
+    le_trans zero_le_one (finiteDepthConstant_bounds κ (by linarith) Nd).1
+  have hB : 0 ≤ B := by
+    have := ShortBlockTree.shortBlockConst_nonneg κ C4 Cs Cd
+    have := dyadicGridLength_pos G T.root.1
+    have : 0 ≤ Real.log ((K : ℝ) + 2) :=
+      Real.log_nonneg (by linarith [(K.cast_nonneg : (0 : ℝ) ≤ K)])
+    positivity
+  -- the bound for the enlarged sizes `s + η`
+  have key : ∀ η : ℝ, 0 < η → X ≤ ENNReal.ofReal (B * ∏ j, (s j + η)) := by
+    intro η hη
+    set s' : Fin 4 → ℝ := fun j => s j + η
+    have hs' : ∀ j, 0 < s' j := fun j => by simp only [s']; linarith [hs j]
+    set z' : Fin 4 → ℝ → ℝ := fun j y => ‖z j y‖ / s' j
+    set zσ' : Fin 4 → Ω → ℝ → ℂ := fun j σ y => zσ j σ y * ((s' j)⁻¹ : ℂ)
+    have hz' : ∀ j, Measurable fun y => ‖z' j y‖ := fun j => ((hz j).div_const _).norm
+    have hzσ' : ∀ j, Measurable (Function.uncurry (zσ' j)) := fun j => (hzσ j).mul_const _
+    have hL : T.LeafBound z' := by
+      intro j L hL'
+      have hsj := hs' j
+      have hpt : ∀ y, ‖z' j y‖ₑ ^ 2 = ENNReal.ofReal ((s' j)⁻¹ ^ 2) * ‖z j y‖ₑ ^ 2 := by
+        intro y
+        simp only [z']
+        rw [Real.enorm_of_nonneg (by positivity), ← ofReal_norm, ← ENNReal.ofReal_pow
+          (by positivity), ← ENNReal.ofReal_pow (norm_nonneg _), ← ENNReal.ofReal_mul
+          (by positivity)]
+        congr 1; field_simp
+      simp_rw [hpt]
+      rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+      calc ENNReal.ofReal ((s' j)⁻¹ ^ 2) * ∫⁻ y in dyadicGridCell G L.1 L.2, ‖z j y‖ₑ ^ 2
+          ≤ ENNReal.ofReal ((s' j)⁻¹ ^ 2) *
+            ENNReal.ofReal (s j ^ 2 * dyadicGridLength G L.1) := by gcongr; exact hleaf j L hL'
+        _ ≤ ENNReal.ofReal (dyadicGridLength G L.1) := by
+            rw [← ENNReal.ofReal_mul (by positivity)]
+            apply ENNReal.ofReal_le_ofReal
+            have hlen := dyadicGridLength_pos G L.1
+            have hss : s j ^ 2 ≤ s' j ^ 2 := by
+              have := hs j; simp only [s']; nlinarith
+            calc (s' j)⁻¹ ^ 2 * (s j ^ 2 * dyadicGridLength G L.1)
+                ≤ (s' j)⁻¹ ^ 2 * (s' j ^ 2 * dyadicGridLength G L.1) := by gcongr
+              _ = dyadicGridLength G L.1 := by field_simp
+    have hmom' : ∀ j y, (∫⁻ σ, ‖zσ' j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤
+        ENNReal.ofReal C4 * ‖z' j y‖ₑ := by
+      intro j y
+      have hsj := hs' j
+      have hc : ‖((s' j)⁻¹ : ℂ)‖ₑ = ENNReal.ofReal (s' j)⁻¹ := by
+        rw [← ofReal_norm]; congr 1; rw [← Complex.ofReal_inv, Complex.norm_real,
+          Real.norm_of_nonneg (by positivity)]
+      have e : ∀ σ, ‖zσ' j σ y‖ₑ ^ (4 : ℝ) =
+          ENNReal.ofReal (s' j)⁻¹ ^ (4 : ℝ) * ‖zσ j σ y‖ₑ ^ (4 : ℝ) := by
+        intro σ; simp only [zσ']
+        rw [enorm_mul, hc, ENNReal.mul_rpow_of_nonneg _ _ (by norm_num), mul_comm]
+      simp_rw [e]
+      rw [lintegral_const_mul' _ _ (ENNReal.rpow_ne_top_of_nonneg (by norm_num)
+        ENNReal.ofReal_ne_top), ENNReal.mul_rpow_of_nonneg _ _ (by norm_num), ← ENNReal.rpow_mul,
+        show (4 : ℝ) * (1 / 4) = 1 by norm_num, ENNReal.rpow_one]
+      calc ENNReal.ofReal (s' j)⁻¹ * (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ)
+          ≤ ENNReal.ofReal (s' j)⁻¹ * (ENNReal.ofReal C4 * ‖z j y‖ₑ) := by gcongr; exact hmom j y
+        _ = ENNReal.ofReal C4 * ‖z' j y‖ₑ := by
+            simp only [z']
+            rw [Real.enorm_of_nonneg (by positivity), ← ofReal_norm, div_eq_mul_inv,
+              ENNReal.ofReal_mul (norm_nonneg _)]
+            ring
+    have hcore := T.short_block_core κ cells hcells kernel hker z' hz' zσ' hzσ' hL P hC4 hmom' ε
+      hε hε1 hq2 hKN Cs Cd (fun f hf => hCs _ f hf) (fun f hf => hCd _ f hf)
+    rw [dyadicGridCell_volume] at hcore
+    have hnum := ShortBlockTree.core_rhs_le κ C4 (Cs := Cs) (Cd := Cd) ENNReal.coe_ne_top
+      ENNReal.coe_ne_top hq2 K
+      hCN (dyadicGridLength_pos G T.root.1).le
+    have hX' := hcore.trans hnum
+    -- scaling back
+    have hscale : ∀ σ, ∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
+        localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ) =
+        ((∏ j, s' j : ℝ) : ℂ) * ∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
+          localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ' j σ) := by
+      intro σ
+      rw [Finset.mul_sum]
+      refine Finset.sum_congr rfl fun I _ => ?_
+      have := localProgressionForm_mul_const (dyadicGridLength G I.1) (kernel I)
+        (fun j => zσ j σ) (fun j => ((s' j)⁻¹ : ℂ))
+      change _ = _ * (_ * _ * localProgressionForm _ _
+        (fun j y => zσ j σ y * ((s' j)⁻¹ : ℂ)))
+      rw [this, ← mul_assoc, ← mul_assoc]
+      have hprod : ((∏ j, s' j : ℝ) : ℂ) * ∏ j, ((s' j)⁻¹ : ℂ) = 1 := by
+        push_cast
+        rw [← Finset.prod_mul_distrib]
+        exact Finset.prod_eq_one fun j _ => mul_inv_cancel₀ (by exact_mod_cast (hs' j).ne')
+      calc (dyadicGridLength G I.1 : ℂ) * ε I σ * localProgressionForm (dyadicGridLength G I.1)
+            (kernel I) (fun j => zσ j σ)
+          = (((∏ j, s' j : ℝ) : ℂ) * ∏ j, ((s' j)⁻¹ : ℂ)) * ((dyadicGridLength G I.1 : ℂ) *
+            ε I σ * localProgressionForm (dyadicGridLength G I.1) (kernel I)
+              (fun j => zσ j σ)) := by rw [hprod, one_mul]
+        _ = _ := by ring
+    have hPs : 0 ≤ ∏ j, s' j := Finset.prod_nonneg fun j _ => (hs' j).le
+    calc X = ∫⁻ σ, ENNReal.ofReal (∏ j, s' j) * ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) *
+          ε I σ * localProgressionForm (dyadicGridLength G I.1) (kernel I)
+            (fun j => zσ' j σ)‖ₑ ∂P := by
+          refine lintegral_congr fun σ => ?_
+          rw [hscale σ, enorm_mul, ← ofReal_norm, Complex.norm_real, Real.norm_of_nonneg hPs]
+      _ = ENNReal.ofReal (∏ j, s' j) * ∫⁻ σ, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) *
+          ε I σ * localProgressionForm (dyadicGridLength G I.1) (kernel I)
+            (fun j => zσ' j σ)‖ₑ ∂P := lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+      _ ≤ ENNReal.ofReal (∏ j, s' j) * ENNReal.ofReal B := by gcongr
+      _ = ENNReal.ofReal (B * ∏ j, s' j) := by
+          rw [← ENNReal.ofReal_mul hPs, mul_comm]
+  -- the limit `η → 0`
+  have hcont : Filter.Tendsto (fun η : ℝ => ENNReal.ofReal (B * ∏ j, (s j + η)))
+      (nhdsWithin 0 (Set.Ioi 0)) (nhds (ENNReal.ofReal (B * ∏ j, s j))) := by
+    have : Continuous fun η : ℝ => B * ∏ j, (s j + η) := by fun_prop
+    have h := (ENNReal.continuous_ofReal.comp this).tendsto 0
+    simp only [Function.comp_apply, add_zero] at h
+    exact h.mono_left nhdsWithin_le_nhds
+  exact ge_of_tendsto hcont (eventually_nhdsWithin_of_forall fun η hη => key η hη)
+
+/-! ### Fixed stacks for the two varying sides (blueprint lines 2400-2423) -/
+
+section FixedStacks
+
+variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H] [CompleteSpace H]
+
+/-- Products of orthogonal projections are contractions. -/
+theorem nestedProjectionProduct_norm_le (P : ℕ → ℕ → H →L[ℂ] H) (T m : ℕ)
+    (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n)) {n : ℕ} (hn : n ≤ T) (g : H) :
+    ‖nestedProjectionProduct P m n g‖ ≤ ‖g‖ := by
+  induction m with
+  | zero => simp [nestedProjectionProduct]
+  | succ m ih =>
+    change ‖P m n (nestedProjectionProduct P m n g)‖ ≤ ‖g‖
+    exact (starProjection_norm_apply_le _ (hP m (by omega) n hn) _).trans
+      (ih fun l hl => hP l (by omega))
+
+/-- Blueprint lines 2414-2420 (fixed linear side): for a fixed vector `V` and a subsequent
+product history `T_s` of `m` nested projection layers, on a family of disjoint position intervals
+`[r, t]` at one binary length the base term and the outer bands satisfy
+`‖T_b V‖² + Σ_{[r,t]} ‖(T_t - T_r) V‖² ≤ (1 + m² L_T^{2(m-1)}) ‖V‖²` (`lem:prefix`). -/
+theorem stack_energy_linear {ι : Type*} [Fintype ι] (P : ℕ → ℕ → H →L[ℂ] H) (T m : ℕ)
+    (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n))
+    (hnest : ∀ l < m, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (P l i).comp (P l j) = P l i)
+    (r t : ι → ℕ) (hrt : ∀ i, r i ≤ t i) (ht : ∀ i, t i ≤ T)
+    (hdis : ∀ i j, i ≠ j → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r j) (t j)))
+    {b : ℕ} (hb : b ≤ T) (V : H) :
+    ‖nestedProjectionProduct P m b V‖ ^ 2 + ∑ i, ‖nestedProjectionProduct P m (t i) V -
+      nestedProjectionProduct P m (r i) V‖ ^ 2 ≤
+      (1 + (m : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m - 1))) * ‖V‖ ^ 2 := by
+  have h1 := pow_le_pow_left₀ (norm_nonneg _) (nestedProjectionProduct_norm_le P T m hP hb V) 2
+  have h2 := nestedProjectionProduct_interval_jumps P T m hP hnest r t hrt ht hdis V
+  linarith
+
+omit [CompleteSpace H] in
+/-- Blueprint line 2422 (rolling side): with `W_s = T_s (Z_s - Z_u)`, the increments split exactly
+as `W_t - W_r = T_t (Z_t - Z_r) + (T_t - T_r)(Z_r - Z_u)`. -/
+theorem rolling_increment_split (T : ℕ → H →L[ℂ] H) (Z : ℕ → H) (u r t : ℕ) :
+    T t (Z t - Z u) - T r (Z r - Z u) = T t (Z t - Z r) + (T t - T r) (Z r - Z u) := by
+  simp only [map_sub, sub_apply]
+  abel
+
+/-- Blueprint lines 2422-2423 (rolling side, second term): fix an inner binary interval with fixed
+input `X_k`, independent of the outer position; if at every outer position `[r_i, t_i]` using it
+the restriction `E_i` to the use cells sees `(T_t - T_r)(Y_{i,k}) = (T_t - T_r) X_k` (locality),
+then the outer-position sum costs the product-jump constant:
+`Σ_k Σ_i ‖E_i (T_{t_i} - T_{r_i}) Y_{i,k}‖² ≤ m² L_T^{2(m-1)} Σ_k ‖X_k‖²`. -/
+theorem stack_energy_rolling_jumps {ι κ : Type*} [Fintype ι] (s : Finset κ)
+    (P : ℕ → ℕ → H →L[ℂ] H) (T m : ℕ)
+    (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n))
+    (hnest : ∀ l < m, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (P l i).comp (P l j) = P l i)
+    (r t : ι → ℕ) (hrt : ∀ i, r i ≤ t i) (ht : ∀ i, t i ≤ T)
+    (hdis : ∀ i j, i ≠ j → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r j) (t j)))
+    (E : ι → H →L[ℂ] H) (hE : ∀ i y, ‖E i y‖ ≤ ‖y‖) (Y : ι → κ → H) (X : κ → H)
+    (hloc : ∀ i, ∀ k ∈ s, E i (nestedProjectionProduct P m (t i) (Y i k) -
+      nestedProjectionProduct P m (r i) (Y i k)) = E i (nestedProjectionProduct P m (t i) (X k) -
+        nestedProjectionProduct P m (r i) (X k))) :
+    ∑ k ∈ s, ∑ i, ‖E i (nestedProjectionProduct P m (t i) (Y i k) -
+      nestedProjectionProduct P m (r i) (Y i k))‖ ^ 2 ≤
+      (m : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m - 1)) * ∑ k ∈ s, ‖X k‖ ^ 2 := by
+  rw [Finset.mul_sum]
+  refine Finset.sum_le_sum fun k hk => ?_
+  calc ∑ i, ‖E i (nestedProjectionProduct P m (t i) (Y i k) -
+        nestedProjectionProduct P m (r i) (Y i k))‖ ^ 2
+      = ∑ i, ‖E i (nestedProjectionProduct P m (t i) (X k) -
+        nestedProjectionProduct P m (r i) (X k))‖ ^ 2 := by
+        refine Finset.sum_congr rfl fun i _ => ?_; rw [hloc i k hk]
+    _ ≤ ∑ i, ‖nestedProjectionProduct P m (t i) (X k) -
+        nestedProjectionProduct P m (r i) (X k)‖ ^ 2 :=
+        Finset.sum_le_sum fun i _ => pow_le_pow_left₀ (norm_nonneg _) (hE i _) 2
+    _ ≤ _ := nestedProjectionProduct_interval_jumps P T m hP hnest r t hrt ht hdis (X k)
+
+/-- Blueprint line 2422 (rolling side, first term): `Σ_i ‖E_i T_{t_i}(Z_{t_i} - Z_{r_i})‖² ≤
+Σ_i ‖Z_{t_i} - Z_{r_i}‖²`, the right side being controlled by `lem:variation`. -/
+theorem stack_energy_rolling_direct {ι : Type*} [Fintype ι] (P : ℕ → ℕ → H →L[ℂ] H)
+    (T m : ℕ) (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n))
+    (r t : ι → ℕ) (ht : ∀ i, t i ≤ T) (E : ι → H →L[ℂ] H) (hE : ∀ i y, ‖E i y‖ ≤ ‖y‖)
+    (Z : ℕ → H) :
+    ∑ i, ‖E i (nestedProjectionProduct P m (t i) (Z (t i) - Z (r i)))‖ ^ 2 ≤
+      ∑ i, ‖Z (t i) - Z (r i)‖ ^ 2 :=
+  Finset.sum_le_sum fun i _ => pow_le_pow_left₀ (norm_nonneg _)
+    ((hE i _).trans (nestedProjectionProduct_norm_le P T m hP (ht i) _)) 2
+
+/-- Blueprint `eq:stack-energy` (lines 2400-2423), Hilbert-space core: for the rolling side
+`W_s = T_s (Z_s - Z_u)` on a block, at one outer binary length (disjoint outer intervals) the
+stack components `E_i (W_{t_i} - W_{r_i})`, with the inner difference `Z_{r_i} - Z_u` expanded as
+`Σ_k Y_{i,k}` over inner binary intervals with local fixed inputs `X_k`, satisfy
+`Σ_i ‖E_i (W_{t_i} - W_{r_i})‖² ≤ 2 Σ_i ‖Z_{t_i} - Z_{r_i}‖² + 2 J m² L_T^{2(m-1)} Σ_k ‖X_k‖²`,
+where `J` bounds the number of inner intervals used at one outer position. -/
+theorem stack_energy_rolling {ι κ : Type*} [Fintype ι] (s : Finset κ)
+    (P : ℕ → ℕ → H →L[ℂ] H) (T m : ℕ)
+    (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n))
+    (hnest : ∀ l < m, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (P l i).comp (P l j) = P l i)
+    (r t : ι → ℕ) (hrt : ∀ i, r i ≤ t i) (ht : ∀ i, t i ≤ T)
+    (hdis : ∀ i j, i ≠ j → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r j) (t j)))
+    (E : ι → H →L[ℂ] H) (hE : ∀ i y, ‖E i y‖ ≤ ‖y‖) (Z : ℕ → H) (u : ℕ)
+    (Y : ι → κ → H) (hY : ∀ i, Z (r i) - Z u = ∑ k ∈ s, Y i k) (X : κ → H)
+    (hloc : ∀ i, ∀ k ∈ s, E i (nestedProjectionProduct P m (t i) (Y i k) -
+      nestedProjectionProduct P m (r i) (Y i k)) = E i (nestedProjectionProduct P m (t i) (X k) -
+        nestedProjectionProduct P m (r i) (X k))) :
+    ∑ i, ‖E i (nestedProjectionProduct P m (t i) (Z (t i) - Z u) -
+      nestedProjectionProduct P m (r i) (Z (r i) - Z u))‖ ^ 2 ≤
+      2 * ∑ i, ‖Z (t i) - Z (r i)‖ ^ 2 + 2 * s.card *
+        ((m : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m - 1)) * ∑ k ∈ s, ‖X k‖ ^ 2) := by
+  set Tm := nestedProjectionProduct P m
+  have hsplit : ∀ i, E i (Tm (t i) (Z (t i) - Z u) - Tm (r i) (Z (r i) - Z u)) =
+      E i (Tm (t i) (Z (t i) - Z (r i))) +
+        ∑ k ∈ s, E i (Tm (t i) (Y i k) - Tm (r i) (Y i k)) := by
+    intro i
+    rw [rolling_increment_split Tm Z u (r i) (t i), map_add, hY i]
+    simp only [map_sum, sub_apply]
+  have hsq : ∀ i, ‖E i (Tm (t i) (Z (t i) - Z u) - Tm (r i) (Z (r i) - Z u))‖ ^ 2 ≤
+      2 * ‖E i (Tm (t i) (Z (t i) - Z (r i)))‖ ^ 2 +
+        2 * (s.card * ∑ k ∈ s, ‖E i (Tm (t i) (Y i k) - Tm (r i) (Y i k))‖ ^ 2) := by
+    intro i
+    rw [hsplit i]
+    have h1 := norm_add_le (E i (Tm (t i) (Z (t i) - Z (r i))))
+      (∑ k ∈ s, E i (Tm (t i) (Y i k) - Tm (r i) (Y i k)))
+    have h2 : ‖∑ k ∈ s, E i (Tm (t i) (Y i k) - Tm (r i) (Y i k))‖ ^ 2 ≤
+        s.card * ∑ k ∈ s, ‖E i (Tm (t i) (Y i k) - Tm (r i) (Y i k))‖ ^ 2 := by
+      refine (pow_le_pow_left₀ (norm_nonneg _) (norm_sum_le _ _) 2).trans ?_
+      exact sq_sum_le_card_mul_sum_sq
+    have h0 := norm_nonneg (E i (Tm (t i) (Z (t i) - Z (r i))) +
+      ∑ k ∈ s, E i (Tm (t i) (Y i k) - Tm (r i) (Y i k)))
+    nlinarith [sq_nonneg (‖E i (Tm (t i) (Z (t i) - Z (r i)))‖ -
+      ‖∑ k ∈ s, E i (Tm (t i) (Y i k) - Tm (r i) (Y i k))‖)]
+  have hdirect := stack_energy_rolling_direct P T m hP r t ht E hE Z
+  have hjumps := stack_energy_rolling_jumps s P T m hP hnest r t hrt ht hdis E hE Y X hloc
+  calc ∑ i, ‖E i (Tm (t i) (Z (t i) - Z u) - Tm (r i) (Z (r i) - Z u))‖ ^ 2
+      ≤ ∑ i, (2 * ‖E i (Tm (t i) (Z (t i) - Z (r i)))‖ ^ 2 +
+        2 * (s.card * ∑ k ∈ s, ‖E i (Tm (t i) (Y i k) - Tm (r i) (Y i k))‖ ^ 2)) :=
+        Finset.sum_le_sum fun i _ => hsq i
+    _ = 2 * ∑ i, ‖E i (Tm (t i) (Z (t i) - Z (r i)))‖ ^ 2 + 2 * s.card *
+        ∑ k ∈ s, ∑ i, ‖E i (Tm (t i) (Y i k) - Tm (r i) (Y i k))‖ ^ 2 := by
+        rw [Finset.sum_add_distrib, ← Finset.mul_sum, Finset.sum_comm]
+        simp_rw [← Finset.mul_sum]; ring
+    _ ≤ _ := by
+        have : (0 : ℝ) ≤ 2 * s.card := by positivity
+        gcongr
+
+end FixedStacks
+
+/-! ### Sparse decomposition and summation for the side estimate (blueprint lines 2425-2456) -/
+
+/-- Blueprint lines 2430-2431: in a finite family of cells inside a root, the cells whose
+average of a fixed energy `g` exceeds `λ` cover total length at most `(∫_root g) / λ`; the bound
+is realized by the disjoint maximal stopping cells. -/
+theorem stopping_cells_volume_le (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (root : ℤ × ℤ)
+    (hS : ∀ c ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G root.1 root.2)
+    (g : ℝ → ℝ≥0∞) {lam : ℝ≥0∞} (hlam : lam ≠ 0) :
+    volume (⋃ c ∈ S.filter (fun c => lam < dyadicEnergyAverage G g c),
+      dyadicGridCell G c.1 c.2) ≤ (∫⁻ x in dyadicGridCell G root.1 root.2, g x) / lam := by
+  classical
+  set F := S.filter (fun c => lam < dyadicEnergyAverage G g c)
+  set M := maximalDyadicCells G F
+  have hdis := maximalDyadicCells_pairwiseDisjoint G F
+  have hmeas : ∀ c ∈ M, MeasurableSet (dyadicGridCell G c.1 c.2) :=
+    fun c _ => dyadicGridCell_measurable G c.1 c.2
+  rw [← maximalDyadicCells_union G F, measure_biUnion_finset hdis hmeas]
+  have hcell : ∀ c ∈ M, volume (dyadicGridCell G c.1 c.2) ≤
+      (∫⁻ x in dyadicGridCell G c.1 c.2, g x) / lam := by
+    intro c hc
+    have hlt := (Finset.mem_filter.mp (maximalDyadicCells_subset G F hc)).2
+    unfold dyadicEnergyAverage at hlt
+    have hpos : ENNReal.ofReal (dyadicGridLength G c.1) ≠ 0 :=
+      ENNReal.ofReal_ne_zero_iff.mpr (dyadicGridLength_pos G c.1)
+    have h1 : lam * ENNReal.ofReal (dyadicGridLength G c.1) ≤
+        ∫⁻ x in dyadicGridCell G c.1 c.2, g x :=
+      ((ENNReal.lt_div_iff_mul_lt (Or.inl hpos) (Or.inl ENNReal.ofReal_ne_top)).mp hlt).le
+    rw [dyadicGridCell_volume]
+    rw [ENNReal.le_div_iff_mul_le (Or.inl hlam) (Or.inl (ne_top_of_lt hlt)), mul_comm]
+    exact h1
+  calc ∑ c ∈ M, volume (dyadicGridCell G c.1 c.2)
+      ≤ ∑ c ∈ M, (∫⁻ x in dyadicGridCell G c.1 c.2, g x) / lam := Finset.sum_le_sum hcell
+    _ = (∫⁻ x in ⋃ c ∈ M, dyadicGridCell G c.1 c.2, g x) / lam := by
+        rw [lintegral_biUnion_finset hdis hmeas, ENNReal.sum_div]
+    _ ≤ _ := by
+        gcongr
+        exact Set.iUnion₂_subset fun c hc =>
+          hS c (Finset.mem_filter.mp (maximalDyadicCells_subset G F hc)).1
+
+/-- Blueprint lines 2430-2431: stopping at the first descendants where either squared stack
+average exceeds sixteen times its root average, the next roots have total length at most
+`|Q|/8`; a zero root size gives no stopping cell. -/
+theorem sparse_two_stacks_volume_le (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (root : ℤ × ℤ)
+    (hS : ∀ c ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G root.1 root.2)
+    (ga gb : ℝ → ℝ≥0∞) :
+    volume (⋃ c ∈ S.filter (fun c => 16 * dyadicEnergyAverage G ga root <
+        dyadicEnergyAverage G ga c ∨ 16 * dyadicEnergyAverage G gb root <
+          dyadicEnergyAverage G gb c), dyadicGridCell G c.1 c.2) ≤
+      volume (dyadicGridCell G root.1 root.2) / 8 := by
+  classical
+  have hlen := dyadicGridLength_pos G root.1
+  have hL0 : ENNReal.ofReal (dyadicGridLength G root.1) ≠ 0 :=
+    ENNReal.ofReal_ne_zero_iff.mpr hlen
+  have hone : ∀ g : ℝ → ℝ≥0∞, volume (⋃ c ∈ S.filter
+      (fun c => 16 * dyadicEnergyAverage G g root < dyadicEnergyAverage G g c),
+        dyadicGridCell G c.1 c.2) ≤ volume (dyadicGridCell G root.1 root.2) / 16 := by
+    intro g
+    by_cases h0 : dyadicEnergyAverage G g root = 0
+    · have hA : ∀ c ∈ S, dyadicEnergyAverage G g c = 0 := by
+        intro c hc
+        unfold dyadicEnergyAverage at h0 ⊢
+        rcases ENNReal.div_eq_zero_iff.mp h0 with h | h
+        · have : ∫⁻ x in dyadicGridCell G c.1 c.2, g x = 0 :=
+            le_antisymm ((lintegral_mono_set (hS c hc)).trans h.le) (zero_le)
+          rw [this, ENNReal.zero_div]
+        · exact absurd h ENNReal.ofReal_ne_top
+      have : S.filter (fun c => 16 * dyadicEnergyAverage G g root <
+          dyadicEnergyAverage G g c) = ∅ :=
+        Finset.filter_eq_empty_iff.mpr fun c hc => by rw [hA c hc]; exact not_lt_of_ge (zero_le)
+      rw [this]; simp
+    · by_cases htop : dyadicEnergyAverage G g root = ⊤
+      · have : S.filter (fun c => 16 * dyadicEnergyAverage G g root <
+            dyadicEnergyAverage G g c) = ∅ :=
+          Finset.filter_eq_empty_iff.mpr fun c _ => by
+            rw [htop, ENNReal.mul_top (by norm_num)]; exact not_top_lt
+        rw [this]; simp
+      refine (stopping_cells_volume_le G S root hS g (mul_ne_zero (by norm_num) h0)).trans
+        (le_of_eq ?_)
+      unfold dyadicEnergyAverage at h0 htop ⊢
+      rw [dyadicGridCell_volume]
+      set I := ∫⁻ x in dyadicGridCell G root.1 root.2, g x
+      set L := ENNReal.ofReal (dyadicGridLength G root.1)
+      have hI0 : I ≠ 0 := fun h => h0 (by rw [h, ENNReal.zero_div])
+      have hItop : I ≠ ⊤ := fun h =>
+        htop (by rw [h, ENNReal.top_div_of_ne_top ENNReal.ofReal_ne_top])
+      rw [div_eq_mul_inv, div_eq_mul_inv, div_eq_mul_inv, ENNReal.mul_inv (by simp) (by simp),
+        ENNReal.mul_inv (Or.inl hI0) (Or.inl hItop), inv_inv]
+      rw [show I * ((16 : ℝ≥0∞)⁻¹ * (I⁻¹ * L)) = (I * I⁻¹) * L * 16⁻¹ by ring,
+        ENNReal.mul_inv_cancel hI0 hItop, one_mul]
+  calc _ ≤ volume ((⋃ c ∈ S.filter (fun c => 16 * dyadicEnergyAverage G ga root <
+          dyadicEnergyAverage G ga c), dyadicGridCell G c.1 c.2) ∪
+        ⋃ c ∈ S.filter (fun c => 16 * dyadicEnergyAverage G gb root <
+          dyadicEnergyAverage G gb c), dyadicGridCell G c.1 c.2) := by
+        refine measure_mono fun x hx => ?_
+        simp only [Set.mem_iUnion, Finset.mem_filter, Set.mem_union] at hx ⊢
+        obtain ⟨c, ⟨hc, h | h⟩, hxc⟩ := hx
+        · exact Or.inl ⟨c, ⟨hc, h⟩, hxc⟩
+        · exact Or.inr ⟨c, ⟨hc, h⟩, hxc⟩
+    _ ≤ _ := measure_union_le _ _
+    _ ≤ volume (dyadicGridCell G root.1 root.2) / 16 +
+        volume (dyadicGridCell G root.1 root.2) / 16 := add_le_add (hone ga) (hone gb)
+    _ = _ := by
+        rw [← ENNReal.add_div, ← two_mul, ENNReal.div_eq_inv_mul, ENNReal.div_eq_inv_mul,
+          ← mul_assoc]
+        congr 1
+        rw [show (16 : ℝ≥0∞) = 2 * 8 by norm_num, ENNReal.mul_inv (by simp) (by simp),
+          mul_right_comm, ENNReal.inv_mul_cancel (by simp) (by simp), one_mul]
+
+/-- The sign `ε_i = ±1` of the sign pattern `u` (`+1` on `u`). -/
+def patternSign {ι : Type*} [DecidableEq ι] (u : Finset ι) (i : ι) : ℝ := if i ∈ u then 1 else -1
+
+theorem rademacherSum_eq_sign {ι E : Type*} [DecidableEq ι] [AddCommGroup E] [Module ℝ E]
+    (s u : Finset ι) (v : ι → E) : rademacherSum s u v = ∑ i ∈ s, patternSign u i • v i := by
+  unfold rademacherSum patternSign
+  refine Finset.sum_congr rfl fun i _ => ?_
+  split_ifs <;> simp
+
+/-- Sign orthogonality: `Σ_{u ⊆ s} ε_a(u) ε_i(u) = 2^{|s|} [a = i]` for `a, i ∈ s`. -/
+theorem sum_patternSign_mul {ι : Type*} [DecidableEq ι] (s : Finset ι) {a i : ι}
+    (ha : a ∈ s) (hi : i ∈ s) :
+    ∑ u ∈ s.powerset, patternSign u a * patternSign u i = if a = i then 2 ^ s.card else 0 := by
+  split_ifs with h
+  · subst h
+    have : ∀ u, patternSign u a * patternSign u a = 1 := fun u => by
+      unfold patternSign; split_ifs <;> norm_num
+    simp [this, Finset.card_powerset]
+  · obtain ⟨t, hit, rfl⟩ : ∃ t, i ∉ t ∧ s = insert i t :=
+      ⟨s.erase i, Finset.notMem_erase i s, (Finset.insert_erase hi).symm⟩
+    rw [Finset.sum_powerset_insert hit, ← Finset.sum_add_distrib]
+    refine Finset.sum_eq_zero fun u hu => ?_
+    have hiu : i ∉ u := fun h' => hit (Finset.mem_powerset.mp hu h')
+    unfold patternSign
+    simp only [hiu, ite_false, Finset.mem_insert_self, ite_true, Finset.mem_insert, h, false_or]
+    ring
+
+/-- Blueprint lines 2422-2423 (Rademacher selection): averaging `ε_a` against the randomized
+stack `Σ_i ε_i v_i` selects exactly the position `a`. -/
+theorem rademacher_select {ι E : Type*} [DecidableEq ι] [AddCommGroup E] [Module ℝ E]
+    (s : Finset ι) (v : ι → E) {a : ι} (ha : a ∈ s) :
+    ((2 : ℝ) ^ s.card)⁻¹ • ∑ u ∈ s.powerset, patternSign u a • rademacherSum s u v = v a := by
+  have hsum : ∑ u ∈ s.powerset, patternSign u a • rademacherSum s u v =
+      ((2 : ℝ) ^ s.card) • v a := by
+    calc ∑ u ∈ s.powerset, patternSign u a • rademacherSum s u v
+        = ∑ u ∈ s.powerset, ∑ i ∈ s, (patternSign u a * patternSign u i) • v i := by
+          refine Finset.sum_congr rfl fun u _ => ?_
+          rw [rademacherSum_eq_sign, Finset.smul_sum]
+          simp_rw [smul_smul]
+      _ = ∑ i ∈ s, (∑ u ∈ s.powerset, patternSign u a * patternSign u i) • v i := by
+          rw [Finset.sum_comm]; simp_rw [Finset.sum_smul]
+      _ = ((2 : ℝ) ^ s.card) • v a := by
+          rw [Finset.sum_eq_single a (fun i hi hia => by
+              rw [sum_patternSign_mul s ha hi, ite_eq_right (Ne.symm hia), zero_smul])
+            (fun h => absurd ha h), sum_patternSign_mul s ha ha, ite_eq_left rfl]
+  rw [hsum, smul_smul, inv_mul_cancel₀ (by positivity), one_smul]
+
+/-- Blueprint lines 2422-2423: with independent sign families for the two position indices,
+multiplying a bilinear use by `ε_a η_b` and averaging selects exactly the positions `(a, b)`. -/
+theorem rademacher_select_two {ι κ E F R : Type*} [DecidableEq ι] [DecidableEq κ]
+    [AddCommGroup E] [Module ℝ E] [AddCommGroup F] [Module ℝ F] [AddCommGroup R] [Module ℝ R]
+    (B : E →ₗ[ℝ] F →ₗ[ℝ] R) (s : Finset ι) (t : Finset κ) (v : ι → E) (w : κ → F)
+    {a : ι} {b : κ} (ha : a ∈ s) (hb : b ∈ t) :
+    ((2 : ℝ) ^ s.card)⁻¹ • ∑ u ∈ s.powerset, ((2 : ℝ) ^ t.card)⁻¹ • ∑ u' ∈ t.powerset,
+      (patternSign u a * patternSign u' b) • B (rademacherSum s u v) (rademacherSum t u' w) =
+      B (v a) (w b) := by
+  have hin : ∀ u, ((2 : ℝ) ^ t.card)⁻¹ • ∑ u' ∈ t.powerset,
+      (patternSign u a * patternSign u' b) • B (rademacherSum s u v) (rademacherSum t u' w) =
+      patternSign u a • B (rademacherSum s u v) (w b) := by
+    intro u
+    calc ((2 : ℝ) ^ t.card)⁻¹ • ∑ u' ∈ t.powerset,
+          (patternSign u a * patternSign u' b) • B (rademacherSum s u v) (rademacherSum t u' w)
+        = patternSign u a • B (rademacherSum s u v) (((2 : ℝ) ^ t.card)⁻¹ •
+            ∑ u' ∈ t.powerset, patternSign u' b • rademacherSum t u' w) := by
+          rw [map_smul, map_sum, Finset.smul_sum, Finset.smul_sum, Finset.smul_sum]
+          refine Finset.sum_congr rfl fun u' _ => ?_
+          rw [map_smul, mul_smul, smul_comm]
+      _ = _ := by rw [rademacher_select t w hb]
+  calc ((2 : ℝ) ^ s.card)⁻¹ • ∑ u ∈ s.powerset, ((2 : ℝ) ^ t.card)⁻¹ • ∑ u' ∈ t.powerset,
+        (patternSign u a * patternSign u' b) • B (rademacherSum s u v) (rademacherSum t u' w)
+      = B (((2 : ℝ) ^ s.card)⁻¹ • ∑ u ∈ s.powerset, patternSign u a • rademacherSum s u v)
+          (w b) := by
+        simp_rw [hin]
+        rw [map_smul, map_sum, LinearMap.smul_apply, LinearMap.sum_apply]
+        simp_rw [map_smul, LinearMap.smul_apply]
+    _ = _ := by rw [rademacher_select s v ha]
+
+/-- Pointwise Cauchy–Schwarz for hull maxima in `ℝ≥0∞`:
+`Σ_ν √(m_{a,ν} m_{b,ν}) ≤ √(Σ_ν m_{a,ν}) √(Σ_ν m_{b,ν})`. -/
+theorem sum_sqrt_mul_le_ennreal {ι : Type*} (s : Finset ι) (x y : ι → ℝ≥0∞) :
+    ∑ i ∈ s, (x i * y i) ^ (1 / 2 : ℝ) ≤
+      (∑ i ∈ s, x i) ^ (1 / 2 : ℝ) * (∑ i ∈ s, y i) ^ (1 / 2 : ℝ) := by
+  have h := ENNReal.inner_le_Lp_mul_Lq s (fun i => x i ^ (1 / 2 : ℝ))
+    (fun i => y i ^ (1 / 2 : ℝ)) Real.HolderConjugate.two_two
+  have hsq : ∀ z : ℝ≥0∞, (z ^ (1 / 2 : ℝ)) ^ (2 : ℝ) = z := fun z => by
+    rw [← ENNReal.rpow_mul]; norm_num
+  simp only [hsq] at h
+  refine le_trans (le_of_eq ?_) h
+  refine Finset.sum_congr rfl fun i _ => ?_
+  exact ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)
+
+/-- Blueprint lines 2433-2440 (summation for `eq:near-band`): for each index `ν` the sparse
+pieces `Q` have disjoint remainders `E_Q ⊆ R` with `|E_Q| ≥ 7|Q|/8`; on `E_Q` the root sizes obey
+`a_Q b_Q ≤ √(m_{a,ν} m_{b,ν})`; and the hull maxima satisfy the joint caps
+`Σ_ν m_{a,ν} ≤ A`, `Σ_ν m_{b,ν} ≤ B` on `R`. Then `Σ_{ν,Q} |Q| a_Q b_Q ≤ (8/7) √(AB) |R|`. -/
+theorem near_band_summation {N ι : Type*} (Ns : Finset N) (Qs : N → Finset ι)
+    (len a b : ι → ℝ≥0∞) (E : ι → Set ℝ) (hEm : ∀ Q, MeasurableSet (E Q)) {R : Set ℝ}
+    (hRm : MeasurableSet R)
+    (hdis : ∀ ν ∈ Ns, (Qs ν : Set ι).PairwiseDisjoint E) (hER : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, E Q ⊆ R)
+    (hvol : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, 7 * len Q ≤ 8 * volume (E Q)) (ma mb : N → ℝ → ℝ≥0∞)
+    (hab : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, ∀ x ∈ E Q, a Q * b Q ≤ (ma ν x * mb ν x) ^ (1 / 2 : ℝ))
+    {A B : ℝ≥0∞} (hA : ∀ x ∈ R, ∑ ν ∈ Ns, ma ν x ≤ A) (hB : ∀ x ∈ R, ∑ ν ∈ Ns, mb ν x ≤ B) :
+    7 * ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, len Q * (a Q * b Q) ≤ 8 * ((A * B) ^ (1 / 2 : ℝ) * volume R) := by
+  classical
+  have hstep1 : 7 * ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, len Q * (a Q * b Q) ≤
+      8 * ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, volume (E Q) * (a Q * b Q) := by
+    simp_rw [Finset.mul_sum, ← mul_assoc]
+    exact Finset.sum_le_sum fun ν hν => Finset.sum_le_sum fun Q hQ =>
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (hvol ν hν Q hQ) zero_le) zero_le
+  refine hstep1.trans ?_
+  gcongr
+  have hint : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, volume (E Q) * (a Q * b Q) =
+      ∫⁻ x in R, (E Q).indicator (fun _ => a Q * b Q) x := by
+    intro ν hν Q hQ
+    rw [lintegral_indicator_const (hEm Q), Measure.restrict_apply (hEm Q),
+      Set.inter_eq_left.mpr (hER ν hν Q hQ), mul_comm]
+  have hpt : ∀ x ∈ R, ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, (E Q).indicator (fun _ => a Q * b Q) x ≤
+      (A * B) ^ (1 / 2 : ℝ) := by
+    intro x hx
+    have hν : ∀ ν ∈ Ns, ∑ Q ∈ Qs ν, (E Q).indicator (fun _ => a Q * b Q) x ≤
+        (ma ν x * mb ν x) ^ (1 / 2 : ℝ) := by
+      intro ν hν
+      by_cases hex : ∃ Q ∈ Qs ν, x ∈ E Q
+      · obtain ⟨Q0, hQ0, hxQ0⟩ := hex
+        rw [Finset.sum_eq_single_of_mem Q0 hQ0 fun Q hQ hne => Set.indicator_of_notMem
+          (fun hxQ => Set.disjoint_left.mp (hdis ν hν hQ hQ0 hne) hxQ hxQ0) _,
+          Set.indicator_of_mem hxQ0]
+        exact hab ν hν Q0 hQ0 x hxQ0
+      · push Not at hex
+        rw [Finset.sum_eq_zero fun Q hQ => Set.indicator_of_notMem (hex Q hQ) _]
+        exact zero_le
+    calc _ ≤ ∑ ν ∈ Ns, (ma ν x * mb ν x) ^ (1 / 2 : ℝ) := Finset.sum_le_sum hν
+      _ ≤ (∑ ν ∈ Ns, ma ν x) ^ (1 / 2 : ℝ) * (∑ ν ∈ Ns, mb ν x) ^ (1 / 2 : ℝ) :=
+          sum_sqrt_mul_le_ennreal Ns _ _
+      _ ≤ A ^ (1 / 2 : ℝ) * B ^ (1 / 2 : ℝ) := by
+          gcongr
+          · exact hA x hx
+          · exact hB x hx
+      _ = _ := (ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)).symm
+  calc ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, volume (E Q) * (a Q * b Q)
+      = ∫⁻ x in R, ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, (E Q).indicator (fun _ => a Q * b Q) x := by
+        rw [lintegral_finsetSum' _ fun ν _ => (Finset.aemeasurable_fun_sum _ fun Q _ =>
+          (measurable_const.indicator (hEm Q)).aemeasurable)]
+        refine Finset.sum_congr rfl fun ν hν => ?_
+        rw [lintegral_finsetSum' _ fun Q _ => (measurable_const.indicator (hEm Q)).aemeasurable]
+        exact Finset.sum_congr rfl fun Q hQ => hint ν hν Q hQ
+    _ ≤ ∫⁻ _ in R, (A * B) ^ (1 / 2 : ℝ) := by
+        exact setLIntegral_mono' hRm hpt
+    _ = _ := setLIntegral_const _ _
+
+/-- Blueprint lines 2393-2394 (freeze flags): if a frozen complement exceeds twice its current
+uniform bound `C₀`, the event indicator is at most `C₀⁻²` times the squared difference size. -/
+theorem freeze_flag_le {x y C0 : ℝ} (hC0 : 0 < C0) (hy : |y| ≤ C0) :
+    (if 2 * C0 < |x| then (1 : ℝ) else 0) ≤ (x - y) ^ 2 / C0 ^ 2 := by
+  split_ifs with h
+  · rw [le_div_iff₀ (by positivity), one_mul]
+    have h1 : C0 ≤ |x - y| := by
+      have := abs_sub_abs_le_abs_sub x y
+      linarith
+    calc C0 ^ 2 ≤ |x - y| ^ 2 := pow_le_pow_left₀ hC0.le h1 2
+      _ = (x - y) ^ 2 := sq_abs _
+  · positivity
+
+/-- Blueprint lines 2433-2442 (`eq:near-band` assembly): if every sparse piece `Q` of every
+index `ν` contributes at most `C |Q| a_Q b_Q` (the short-block comparison on the piece), the
+remainders satisfy the hypotheses of `near_band_summation` and the hull maxima the joint caps
+`A`, `B`, then the total is at most `(8/7) C √(AB) |R|`. -/
+theorem near_band_total {N ι : Type*} (Ns : Finset N) (Qs : N → Finset ι)
+    (len a b : ι → ℝ≥0∞) (E : ι → Set ℝ) (hEm : ∀ Q, MeasurableSet (E Q)) {R : Set ℝ}
+    (hRm : MeasurableSet R)
+    (hdis : ∀ ν ∈ Ns, (Qs ν : Set ι).PairwiseDisjoint E) (hER : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, E Q ⊆ R)
+    (hvol : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, 7 * len Q ≤ 8 * volume (E Q)) (ma mb : N → ℝ → ℝ≥0∞)
+    (hab : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, ∀ x ∈ E Q, a Q * b Q ≤ (ma ν x * mb ν x) ^ (1 / 2 : ℝ))
+    {A B : ℝ≥0∞} (hA : ∀ x ∈ R, ∑ ν ∈ Ns, ma ν x ≤ A) (hB : ∀ x ∈ R, ∑ ν ∈ Ns, mb ν x ≤ B)
+    (term : ι → ℝ≥0∞) (C : ℝ≥0∞)
+    (hterm : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, term Q ≤ C * (len Q * (a Q * b Q))) :
+    7 * ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, term Q ≤ 8 * C * ((A * B) ^ (1 / 2 : ℝ) * volume R) := by
+  have h := near_band_summation Ns Qs len a b E hEm hRm hdis hER hvol ma mb hab hA hB
+  calc 7 * ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, term Q
+      ≤ 7 * ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, C * (len Q * (a Q * b Q)) := by
+        gcongr with ν hν Q hQ; exact hterm ν hν Q hQ
+    _ = C * (7 * ∑ ν ∈ Ns, ∑ Q ∈ Qs ν, len Q * (a Q * b Q)) := by
+        simp_rw [← Finset.mul_sum]; ring
+    _ ≤ C * (8 * ((A * B) ^ (1 / 2 : ℝ) * volume R)) := by gcongr
+    _ = _ := by ring
+
 end Auto

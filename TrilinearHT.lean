@@ -19,6 +19,8 @@ public import TrilinearHT.Auto.SecCurvatureLocalizationBinary
 public import TrilinearHT.Auto.SecFixedModes
 public import TrilinearHT.Auto.SecTwoSideEstimate
 public import TrilinearHT.Auto.SecCoreTerms
+public import TrilinearHT.Auto.SecCompletionAttempt
+public import TrilinearHT.Auto.SecCompletionAttemptModes
 public import TrilinearHT.Auto.SecCompletion
 public import TrilinearHT.Auto.FeffermanStein
 public import TrilinearHT.Auto.HilbertAtomicDecomposition

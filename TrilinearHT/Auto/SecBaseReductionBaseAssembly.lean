@@ -909,6 +909,10 @@ structure ActiveSetup (κ : LocalKernelClass) (c₀ : ℕ) where
   path_chart : ∀ y v, ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀ H B ∧
     IsBoundedQuadraticChart B ∧ ∀ I ∈ cells, y ∈ dyadicGridCell G I.1 I.2 →
       (∃ l, coef l I v ≠ 0) → ∀ x ∈ dyadicGridCell G I.1 I.2, φ I v x = quadraticChartAtom B x
+  nested_chart : ∀ I ∈ cells, ∀ v, (∃ l, coef l I v ≠ 0) → ∃ (d : ℕ) (B : QuadraticChartData d),
+    QuadraticChartComplexity c₀ H B ∧ IsBoundedQuadraticChart B ∧ φ I v = quadraticChartAtom B
+  nested_cons : ∀ I ∈ cells, ∀ I' ∈ cells, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G I'.1 I'.2 →
+    ∀ v, (∃ l, coef l I v ≠ 0) → (∃ l, coef l I' v ≠ 0) → φ I v = φ I' v
   Dc : ℝ
   Dc_nonneg : 0 ≤ Dc
   coef_le : ∀ l I v, ‖coef l I v‖ ≤ Dc
@@ -1453,40 +1457,42 @@ theorem reduction (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
 
 end ActiveSetup
 
-theorem PathCharts.mono_c {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ : Type*}
-    {φ : ℤ × ℤ → Λ → ℝ → ℂ} {av : ℤ × ℤ → Λ → Prop} {c₀ c₁ : ℕ} {H : ℝ}
-    (h : ∀ y v, ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀ H B ∧
-      IsBoundedQuadraticChart B ∧ ∀ I ∈ cells, y ∈ dyadicGridCell G I.1 I.2 → av I v →
-        ∀ x ∈ dyadicGridCell G I.1 I.2, φ I v x = quadraticChartAtom B x) (hc : c₀ ≤ c₁) :
-    ∀ y v, ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₁ H B ∧
-      IsBoundedQuadraticChart B ∧ ∀ I ∈ cells, y ∈ dyadicGridCell G I.1 I.2 → av I v →
-        ∀ x ∈ dyadicGridCell G I.1 I.2, φ I v x = quadraticChartAtom B x := by
-  intro y v
-  obtain ⟨d, B, hBc, hBb, hB⟩ := h y v
-  exact ⟨d, B, quadraticChartComplexity_order_mono hBc hc, hBb, hB⟩
-
 /-! ### Path charts of labelled cell functions -/
 
-/-- Along every path, each available label is one fixed bounded quadratic chart atom on the cells
-through the path (blueprint prop:base, line 1645: "after recentering at this fixed `y`, all
-unscaled oscillation parameters are fixed along the path"). -/
+/-- Charts of labelled cell functions that are nested along the tree (blueprint prop:base, line
+1645, and sec:localization, line 1677: each available label is one fixed bounded quadratic chart
+atom, and the functions of a label agree on nested cells where it is available). In particular,
+along every path each available label is one chart atom (`PathCharts.path`). -/
 def PathCharts (G : RealDyadicGrid) (cells : Finset (ℤ × ℤ)) {Λ : Type*}
     (φ : ℤ × ℤ → Λ → ℝ → ℂ) (av : ℤ × ℤ → Λ → Prop) (c₀ : ℕ) (H : ℝ) : Prop :=
-  ∀ y v, ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀ H B ∧
-    IsBoundedQuadraticChart B ∧ ∀ I ∈ cells, y ∈ dyadicGridCell G I.1 I.2 → av I v →
-      ∀ x ∈ dyadicGridCell G I.1 I.2, φ I v x = quadraticChartAtom B x
+  (∀ I ∈ cells, ∀ v, av I v → ∃ (d : ℕ) (B : QuadraticChartData d),
+      QuadraticChartComplexity c₀ H B ∧ IsBoundedQuadraticChart B ∧ φ I v = quadraticChartAtom B) ∧
+    ∀ I ∈ cells, ∀ I' ∈ cells, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G I'.1 I'.2 →
+      ∀ v, av I v → av I' v → φ I v = φ I' v
 
 /-- Path charts from charts at the available cells that agree along nested available cells. -/
 theorem PathCharts.of_nested {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ : Type*}
     {φ : ℤ × ℤ → Λ → ℝ → ℂ} {av : ℤ × ℤ → Λ → Prop} {c₀ : ℕ} {H : ℝ}
-    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀ H B ∧
-      IsBoundedQuadraticChart B)
     (hchart : ∀ I ∈ cells, ∀ v, av I v → ∃ (d : ℕ) (B : QuadraticChartData d),
       QuadraticChartComplexity c₀ H B ∧ IsBoundedQuadraticChart B ∧ φ I v = quadraticChartAtom B)
     (hcons : ∀ I ∈ cells, ∀ I' ∈ cells, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G I'.1 I'.2 →
       ∀ v, av I v → av I' v → φ I v = φ I' v) :
-    PathCharts G cells φ av c₀ H := by
+    PathCharts G cells φ av c₀ H :=
+  ⟨hchart, hcons⟩
+
+/-- Along every path, each available label is one fixed bounded quadratic chart atom on the cells
+through the path (blueprint prop:base, line 1645: "after recentering at this fixed `y`, all
+unscaled oscillation parameters are fixed along the path"). -/
+theorem PathCharts.path {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ : Type*}
+    {φ : ℤ × ℤ → Λ → ℝ → ℂ} {av : ℤ × ℤ → Λ → Prop} {c₀ : ℕ} {H : ℝ}
+    (h : PathCharts G cells φ av c₀ H)
+    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀ H B ∧
+      IsBoundedQuadraticChart B) :
+    ∀ y v, ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀ H B ∧
+      IsBoundedQuadraticChart B ∧ ∀ I ∈ cells, y ∈ dyadicGridCell G I.1 I.2 → av I v →
+        ∀ x ∈ dyadicGridCell G I.1 I.2, φ I v x = quadraticChartAtom B x := by
   classical
+  obtain ⟨hchart, hcons⟩ := h
   intro y v
   by_cases h : ∃ I₀ ∈ cells, y ∈ dyadicGridCell G I₀.1 I₀.2 ∧ av I₀ v
   · obtain ⟨I₀, hI₀, hy₀, hav₀⟩ := h
@@ -1505,21 +1511,26 @@ theorem PathCharts.of_nested {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} 
     refine ⟨d, B, hBc, hBb, fun I hI hy hav => ?_⟩
     exact absurd ⟨I, hI, hy, hav⟩ h
 
+theorem PathCharts.mono_c {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ : Type*}
+    {φ : ℤ × ℤ → Λ → ℝ → ℂ} {av : ℤ × ℤ → Λ → Prop} {c₀ c₁ : ℕ} {H : ℝ}
+    (h : PathCharts G cells φ av c₀ H) (hc : c₀ ≤ c₁) : PathCharts G cells φ av c₁ H := by
+  refine ⟨fun I hI v hv => ?_, h.2⟩
+  obtain ⟨d, B, hBc, hBb, hB⟩ := h.1 I hI v hv
+  exact ⟨d, B, quadraticChartComplexity_order_mono hBc hc, hBb, hB⟩
+
 theorem PathCharts.mono {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ : Type*}
     {φ : ℤ × ℤ → Λ → ℝ → ℂ} {av av' : ℤ × ℤ → Λ → Prop} {c₀ : ℕ} {H H' : ℝ}
     (h : PathCharts G cells φ av c₀ H) (hav : ∀ I v, av' I v → av I v) (hH : H ≤ H') :
     PathCharts G cells φ av' c₀ H' := by
-  intro y v
-  obtain ⟨d, B, hBc, hBb, hB⟩ := h y v
-  exact ⟨d, B, quadraticChartComplexity_mono hBc hH, hBb,
-    fun I hI hy hv' => hB I hI hy (hav I v hv')⟩
+  refine ⟨fun I hI v hv => ?_, fun I hI I' hI' hII' v hv hv' =>
+    h.2 I hI I' hI' hII' v (hav I v hv) (hav I' v hv')⟩
+  obtain ⟨d, B, hBc, hBb, hB⟩ := h.1 I hI v (hav I v hv)
+  exact ⟨d, B, quadraticChartComplexity_mono hBc hH, hBb, hB⟩
 
 theorem PathCharts.subset {G : RealDyadicGrid} {cells cells' : Finset (ℤ × ℤ)} {Λ : Type*}
     {φ : ℤ × ℤ → Λ → ℝ → ℂ} {av : ℤ × ℤ → Λ → Prop} {c₀ : ℕ} {H : ℝ}
-    (h : PathCharts G cells φ av c₀ H) (hs : cells' ⊆ cells) : PathCharts G cells' φ av c₀ H := by
-  intro y v
-  obtain ⟨d, B, hBc, hBb, hB⟩ := h y v
-  exact ⟨d, B, hBc, hBb, fun I hI => hB I (hs hI)⟩
+    (h : PathCharts G cells φ av c₀ H) (hs : cells' ⊆ cells) : PathCharts G cells' φ av c₀ H :=
+  ⟨fun I hI => h.1 I (hs hI), fun I hI I' hI' => h.2 I (hs hI) I' (hs hI')⟩
 
 /-- Path charts of two label families combine. -/
 theorem PathCharts.sum {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ₁ Λ₂ : Type*}
@@ -1528,18 +1539,19 @@ theorem PathCharts.sum {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ₁
     (h₂ : PathCharts G cells φ₂ av₂ c₀ H) :
     PathCharts G cells (fun I => Sum.elim (φ₁ I) (φ₂ I)) (fun I => Sum.elim (av₁ I) (av₂ I))
       c₀ H := by
-  intro y v
-  cases v with
-  | inl v => exact h₁ y v
-  | inr v => exact h₂ y v
+  refine ⟨fun I hI v hv => ?_, fun I hI I' hI' hII' v hv hv' => ?_⟩
+  · cases v with
+    | inl v => exact h₁.1 I hI v hv
+    | inr v => exact h₂.1 I hI v hv
+  · cases v with
+    | inl v => exact h₁.2 I hI I' hI' hII' v hv hv'
+    | inr v => exact h₂.2 I hI I' hI' hII' v hv hv'
 
 /-- The low lists have path charts: births are canonical along paths. -/
 theorem LowList.pathCharts {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {R : ℤ × ℤ} {c₀ : ℕ}
-    {H : ℝ} (X : LowList G J N R c₀ H) (cells : Finset (ℤ × ℤ))
-    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀ H B ∧
-      IsBoundedQuadraticChart B) :
+    {H : ℝ} (X : LowList G J N R c₀ H) (cells : Finset (ℤ × ℤ)) :
     PathCharts G cells (fun I l => X.atom I l) (fun I l => X.coef I l ≠ 0) c₀ H := by
-  refine PathCharts.of_nested hdef (fun I _ l _ => ⟨_, _, X.complexity _ l, X.bounded _ l, rfl⟩)
+  refine PathCharts.of_nested (fun I _ l _ => ⟨_, _, X.complexity _ l, X.bounded _ l, rfl⟩)
     fun I hI I' hI' hII' l hl hl' => ?_
   unfold LowList.atom
   rw [X.birth_eq_of_le (X.coef_avail I l hl) (X.coef_avail I' l hl') hII']
@@ -1550,12 +1562,10 @@ theorem IsAdaptiveFit.pathCharts {c₂ : ℕ} {B : ℝ} {G : RealDyadicGrid} {J 
     {roots : Finset (ℤ × ℤ)} {seg : ℤ × ℤ → ℤ × ℤ} {n : ℤ × ℤ → ℕ}
     {a : ℤ × ℤ → ℕ → ℝ → ℂ} {g : ℤ × ℤ → ℝ → ℂ}
     (hF : IsAdaptiveFit c₂ B G J N w j q f k M roots seg n a g) (K : ℤ × ℤ)
-    (cells : Finset (ℤ × ℤ)) (hcells : ∀ I ∈ cells, I ∈ dyadicFiniteTree G J N)
-    (hdef : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₂ B Φ ∧
-      IsBoundedQuadraticChart Φ) :
+    (cells : Finset (ℤ × ℤ)) (hcells : ∀ I ∈ cells, I ∈ dyadicFiniteTree G J N) :
     PathCharts G cells (fun I (m : Fin M) => a I m) (fun I m => (m : ℕ) < n I ∧ seg I = K) c₂ B :=
         by
-  refine PathCharts.of_nested hdef (fun I hI m hm => ?_) fun I hI I' hI' hII' m hm hm' => ?_
+  refine PathCharts.of_nested (fun I hI m hm => ?_) fun I hI I' hI' hII' m hm hm' => ?_
   · obtain ⟨d, Φ, h1, h2, h3⟩ := (hF.2.2.2.2 I (hcells I hI)).2.2.2.2.1 m hm.1
     exact ⟨d, Φ, h1, h2, h3⟩
   · have hinh := (hF.2.2.2.2 I (hcells I hI)).2.2.2.1 I' (hcells I' hI') hII' (by
@@ -1585,15 +1595,13 @@ theorem Hyp.atoms_good (h : S.Hyp) (d : ℕ) (c : ℤ × ℤ) :
 system. -/
 theorem Hyp.system_pathCharts (h : S.Hyp) (K : ℤ × ℤ) (cells : Finset (ℤ × ℤ)) {c₀ : ℕ} {H : ℝ}
     (hP₀ : PathCharts S.G cells (fun c v => S.P₀.scalarAt c v) (fun c v => v ∈ S.P₀.avail c) c₀ H)
-    (hc₀ : S.c₂ ≤ c₀) (hBH : S.B ≤ H)
-    (hdef : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₀ H Φ ∧
-      IsBoundedQuadraticChart Φ) :
+    (hc₀ : S.c₂ ≤ c₀) (hBH : S.B ≤ H) :
     PathCharts S.G cells (fun c v => (S.system K).scalarAt c v)
       (fun c v => v ∈ (S.system K).avail c) c₀ H := by
   classical
   have hfit : PathCharts S.G cells (fun c (m : Fin S.M) => S.fatoms K c m)
       (fun c m => (m : ℕ) < S.fcount K c) c₀ H := by
-    refine PathCharts.of_nested hdef (fun c hc m hm => ?_) fun c hc c' hc' hcc' m hm hm' => ?_
+    refine PathCharts.of_nested (fun c hc m hm => ?_) fun c hc c' hc' hcc' m hm hm' => ?_
     · unfold fcount at hm
       split_ifs at hm with hcond
       · obtain ⟨p, h1, h2, h3⟩ := h.atoms_good _ _ m hm
@@ -1605,17 +1613,24 @@ theorem Hyp.system_pathCharts (h : S.Hyp) (K : ℤ × ℤ) (cells : Finset (ℤ 
       · exact (fit_prefix hcc' hcond'.2.2).2 m hm'
       all_goals omega
   have hsum := hP₀.sum hfit
-  intro y v
-  obtain ⟨d, B, hBc, hBb, hB⟩ := hsum y v
-  refine ⟨d, B, hBc, hBb, fun I hI hy hav x hx => ?_⟩
-  cases v with
-  | inl v =>
-    have := hB I hI hy (by simpa [system] using hav) x hx
-    simpa [system, sc] using this
-  | inr m =>
-    have := hB I hI hy (by
-      simpa [system, fitLabels] using hav) x hx
-    simpa [system, sc] using this
+  refine ⟨fun c hc v hv => ?_, fun c hc c' hc' hcc' v hv hv' => ?_⟩
+  · cases v with
+    | inl v =>
+      obtain ⟨d, B, hBc, hBb, hB⟩ := hsum.1 c hc (Sum.inl v) (by simpa [system] using hv)
+      exact ⟨d, B, hBc, hBb, by simpa [system, sc] using hB⟩
+    | inr m =>
+      obtain ⟨d, B, hBc, hBb, hB⟩ := hsum.1 c hc (Sum.inr m) (by
+        simpa [system, fitLabels] using hv)
+      exact ⟨d, B, hBc, hBb, by simpa [system, sc] using hB⟩
+  · cases v with
+    | inl v =>
+      have := hsum.2 c hc c' hc' hcc' (Sum.inl v) (by simpa [system] using hv)
+        (by simpa [system] using hv')
+      simpa [system, sc] using this
+    | inr m =>
+      have := hsum.2 c hc c' hc' hcc' (Sum.inr m) (by simpa [system, fitLabels] using hv)
+        (by simpa [system, fitLabels] using hv')
+      simpa [system, sc] using this
 
 end AccSetup
 
@@ -1629,13 +1644,11 @@ variable (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ}
 /-- The predictor system has path charts: its scalars are conjugate predictor charts, fixed along
 paths by the canonical births of the low labels. -/
 theorem predSystem_pathCharts {ε : ℝ} (hε0 : 0 < ε) (hε1 : ε ≤ 1) (cells : Finset (ℤ × ℤ))
-    (hcells : ∀ I ∈ cells, I ∈ dyadicFiniteTree G J N)
-    (hdef : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₁ D Φ ∧
-      IsBoundedQuadraticChart Φ) :
+    (hcells : ∀ I ∈ cells, I ∈ dyadicFiniteTree G J N) :
     PathCharts G cells (fun c v => (predSystem κ Xi Xk a i k b B D pkg hε0 hε1).scalarAt c v)
       (fun c v => v ∈ (predSystem κ Xi Xk a i k b B D pkg hε0 hε1).avail c) c₁ D := by
   classical
-  refine PathCharts.of_nested hdef (fun c hc v hv => ?_) fun c hc c' hc' hcc' v hv hv' => ?_
+  refine PathCharts.of_nested (fun c hc v hv => ?_) fun c hc c' hc' hcc' v hv hv' => ?_
   · have hPA : PredAvail κ Xi Xk a i k b B D pkg c v := by simpa [predSystem] using hv
     set P := pkg (Xi.birth c v.1) (Xk.birth c v.2.1) v.1 v.2.1
     have hlt : (v.2.2 : ℕ) < P.L.card := hPA.2.2.2
@@ -1734,6 +1747,183 @@ theorem coef_sq_le (c : ℤ × ℤ) (z : ColumnL2 V) (v : V) :
 
 end PathColumnSystem
 
+/-! ### Basic projections (blueprint prop:base, lines 1611-1613; line 1859) -/
+
+open scoped Classical in
+/-- The physical part `(P_{u(I)} Z)_phys` of the current projection of an augmented input, with
+`u(I)` the tree cell above `I` (zero outside the tree). -/
+noncomputable def ColumnDepthFamily.currentZ {V : Type*} [Fintype V] (Ψ : ColumnDepthFamily V)
+    (Z : ColumnL2 V) (I : ℤ × ℤ) (y : ℝ) : ℂ :=
+  if h : Ψ.anc I ∈ Ψ.D.cells then
+    (cellColumnProjection Ψ.D Ψ.A h Z : ℝ → ColumnHilbert V) y none
+  else 0
+
+theorem ColumnDepthFamily.current_eq_currentZ {V : Type*} [Fintype V] (Ψ : ColumnDepthFamily V)
+    (f : Lp ℂ 2 (volume : Measure ℝ)) : Ψ.current f = Ψ.currentZ (physicalColumnInput f) :=
+  rfl
+
+/-- A basic projection below the root `R`: an inherited column depth family on the grid of `R`
+whose root contains `R`, and an augmented input `Z` of energy at most `CF |R|` on `R`; its value
+at a cell `I` is the physical part of the current projection `(P_I Z)_phys` (blueprint prop:base,
+line 1611: "each `B_l` is a difference of at most two current basic projections"). -/
+structure BasicProjection (G : RealDyadicGrid) (R : ℤ × ℤ) (CF : ℝ) where
+  V : Type
+  [fin : Fintype V]
+  Ψ : ColumnDepthFamily V
+  Z : ColumnL2 V
+  grid : Ψ.D.grid = G
+  root_sub : dyadicGridCell G R.1 R.2 ⊆ dyadicGridCell G Ψ.D.root.1 Ψ.D.root.2
+  energy : ∫ y in dyadicGridCell G R.1 R.2, ‖(Z : ℝ → ColumnHilbert V) y‖ ^ 2 ≤
+    CF * dyadicGridLength G R.1
+
+attribute [instance] BasicProjection.fin
+
+namespace BasicProjection
+
+variable {G : RealDyadicGrid} {R : ℤ × ℤ} {CF : ℝ}
+
+/-- The value of a basic projection at a cell. -/
+noncomputable def val (P : BasicProjection G R CF) (I : ℤ × ℤ) (y : ℝ) : ℂ :=
+  P.Ψ.currentZ P.Z I y
+
+/-- The zero input on the family of another basic projection. -/
+noncomputable def zero (P : BasicProjection G R CF) (hCF : 0 ≤ CF) : BasicProjection G R CF where
+  V := P.V
+  Ψ := P.Ψ
+  Z := 0
+  grid := P.grid
+  root_sub := P.root_sub
+  energy := by
+    have : ∫ y in dyadicGridCell G R.1 R.2, ‖((0 : ColumnL2 P.V) : ℝ → ColumnHilbert P.V) y‖ ^ 2
+        = 0 := by
+      refine integral_eq_zero_of_ae (Filter.Eventually.of_forall fun y => ?_)
+      simp
+    rw [this]
+    exact mul_nonneg hCF (dyadicGridLength_pos G R.1).le
+
+theorem zero_val (P : BasicProjection G R CF) (hCF : 0 ≤ CF) (I : ℤ × ℤ) :
+    ∀ᵐ y ∂volume, (P.zero hCF).val I y = 0 := by
+  classical
+  unfold val ColumnDepthFamily.currentZ
+  change ∀ᵐ y ∂volume, (if h : P.Ψ.anc I ∈ P.Ψ.D.cells then
+    (cellColumnProjection P.Ψ.D P.Ψ.A h 0 : ℝ → ColumnHilbert P.V) y none else 0) = 0
+  split_ifs with h
+  · rw [map_zero]
+    filter_upwards [Lp.coeFn_zero (ColumnHilbert P.V) 2 (volume : Measure ℝ)] with y hy
+    rw [hy]; rfl
+  · exact Filter.Eventually.of_forall fun _ => rfl
+
+/-- Enlarging the energy constant. -/
+def mono (P : BasicProjection G R CF) {CF' : ℝ} (h : CF ≤ CF') : BasicProjection G R CF' where
+  V := P.V
+  Ψ := P.Ψ
+  Z := P.Z
+  grid := P.grid
+  root_sub := P.root_sub
+  energy := P.energy.trans (mul_le_mul_of_nonneg_right h (dyadicGridLength_pos G R.1).le)
+
+theorem mono_val (P : BasicProjection G R CF) {CF' : ℝ} (h : CF ≤ CF') :
+    (P.mono h).val = P.val := rfl
+
+end BasicProjection
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
+
+/-- The column representation of the basic arguments of an active setup (blueprint prop:base,
+lines 1611-1613): on every cell of the setup each basic argument `B_l` is, almost everywhere on
+the cell, the difference of two current basic projections below the root, with inputs of energy
+at most `CF |R|` on the root. -/
+def HasColumnRep (CF : ℝ) : Prop :=
+  ∀ l : Fin 4, ∃ P₁ P₂ : BasicProjection A.G A.R CF, ∀ I ∈ A.cells,
+    ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 → A.B l I y = P₁.val I y - P₂.val I y
+
+theorem HasColumnRep.mono {A : ActiveSetup κ c₀} {CF CF' : ℝ} (h : A.HasColumnRep CF)
+    (hCF : CF ≤ CF') : A.HasColumnRep CF' := fun l => by
+  obtain ⟨P₁, P₂, hP⟩ := h l
+  exact ⟨P₁.mono hCF, P₂.mono hCF, hP⟩
+
+end ActiveSetup
+
+namespace PathColumnSystem
+
+variable {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {V : Type} [Fintype V]
+  (P : PathColumnSystem G J N V)
+
+/-- On a tree cell below `R` the current projection of the system rooted at `R` is the cell
+projection of the system. -/
+theorem family_currentZ_ae {R I : ℤ × ℤ} (hR : R ∈ dyadicFiniteTree G J N)
+    (hI : I ∈ dyadicFiniteTree G J N)
+    (hIR : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2) (z : ColumnL2 V) :
+    ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 →
+      (P.family R hR).currentZ z I y = ∑ v, P.coef I z v * P.scalarAt I v y := by
+  classical
+  have hIN : I.1 ≤ (P.family R hR).N := by
+    have := ((dyadicFiniteTree_mem_iff G J I N).mp hI).2
+    change I.1 ≤ J.1 + N; omega
+  have hanc : (P.family R hR).anc I = I := (P.family R hR).anc_self hIN
+  have hmem : I ∈ (P.rooted R).cells := (below_mem_iff hR I).mpr ⟨hI, hIR⟩
+  have hmem' : (P.family R hR).anc I ∈ (P.family R hR).D.cells := by rw [hanc]; exact hmem
+  have key : ∀ (c : ℤ × ℤ) (hc : c ∈ (P.family R hR).D.cells), c = I →
+      cellColumnProjection (P.family R hR).D (P.family R hR).A hc z =
+        cellColumnProjection (P.rooted R) (P.mask R hR) hmem z := by
+    rintro c hc rfl; rfl
+  have e : (P.family R hR).currentZ z I = fun y =>
+      (cellColumnProjection (P.rooted R) (P.mask R hR) hmem z : ℝ → ColumnHilbert V) y none := by
+    funext y
+    unfold ColumnDepthFamily.currentZ
+    simp only [hmem', ↓reduceDIte]
+    rw [key _ hmem' hanc]
+  rw [e, P.rooted_proj hR hmem]
+  exact P.proj_none_ae I z
+
+/-- The current projections of the system rooted at `R` applied to an input of energy at most
+`CF |R|` on `R`, as a basic projection. -/
+noncomputable def basicProjection {R : ℤ × ℤ} (hR : R ∈ dyadicFiniteTree G J N) (z : ColumnL2 V)
+    {CF : ℝ} (hz : ∫ y in dyadicGridCell G R.1 R.2, ‖(z : ℝ → ColumnHilbert V) y‖ ^ 2 ≤
+      CF * dyadicGridLength G R.1) : BasicProjection G R CF where
+  V := V
+  Ψ := P.family R hR
+  Z := z
+  grid := rfl
+  root_sub := subset_rfl
+  energy := hz
+
+theorem basicProjection_val_ae {R I : ℤ × ℤ} (hR : R ∈ dyadicFiniteTree G J N)
+    (hI : I ∈ dyadicFiniteTree G J N)
+    (hIR : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2) (z : ColumnL2 V) {CF : ℝ}
+    (hz : ∫ y in dyadicGridCell G R.1 R.2, ‖(z : ℝ → ColumnHilbert V) y‖ ^ 2 ≤
+      CF * dyadicGridLength G R.1) :
+    ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 →
+      (P.basicProjection hR z hz).val I y = ∑ v, P.coef I z v * P.scalarAt I v y :=
+  P.family_currentZ_ae hR hI hIR z
+
+end PathColumnSystem
+
+/-- The fit opponent of an attempt root containing `R`, as a basic projection below `R`: its
+input is `1_J f`, whose energy on a tree cell `R` normalized by `‖f‖_{q,R} ≤ 1` (`q ≥ 2`) is at most
+`|R|`. -/
+theorem fitOpponent_basicProjection {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {f : ℝ → ℂ}
+    {roots : Finset (ℤ × ℤ)} {seg : ℤ × ℤ → ℤ × ℤ} {g : ℤ × ℤ → ℝ → ℂ} {C : ℝ}
+    (h : IsFitOpponent G J N f roots seg g C) {K R : ℤ × ℤ} (hK : K ∈ roots)
+    (hRK : dyadicGridCell G R.1 R.2 ⊆ dyadicGridCell G K.1 K.2) {CF : ℝ}
+    (hf : ∫ y in dyadicGridCell G R.1 R.2, ‖(dyadicGridCell G J.1 J.2).indicator f y‖ ^ 2 ≤
+      CF * dyadicGridLength G R.1) :
+    ∃ z : ℤ × ℤ → ℝ → ℂ,
+      (∀ I ∈ dyadicFiniteTree G J N, seg I = K →
+        ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 → z I y = g I y) ∧
+      (∀ J' ∈ dyadicFiniteTree G J N, dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G K.1 K.2 →
+        IsAdmissibleOpponent G J' f z C ∧ HasDepthEnergy G J' f z 1) ∧
+      ∃ P : BasicProjection G R CF, ∀ I, z I = P.val I := by
+  obtain ⟨z, -, hz2, hz3, V, _, Ψ, F, hgrid, hroot, hzΨ, hF⟩ := h K hK
+  refine ⟨z, hz2, hz3, ⟨V, Ψ, physicalColumnInput F, hgrid, by rw [hroot]; exact hRK, ?_⟩,
+    fun I => hzΨ I⟩
+  rw [integral_physical_sq]
+  refine le_of_eq_of_le (integral_congr_ae (ae_restrict_of_ae ?_)) hf
+  filter_upwards [hF] with y hy
+  rw [hy]
+
 /-! ### The active setup of the base data -/
 
 section BaseActive
@@ -1797,7 +1987,31 @@ theorem baseB_b (hib : i ≠ b) (hkb : k ≠ b) (hab : a ≠ b) (I : ℤ × ℤ)
   ring
 
 omit [Fintype Ga] [Fintype Gb] in
-/-- Path charts of the base labels from those of the four families. -/
+/-- A nonzero base coefficient of a label means availability in its family. -/
+theorem base_av {I : ℤ × ℤ} {v : BaseLabel Xi Xk (Wa := Wa) (Wb := Wb) (Ga := Ga) (Gb := Gb)}
+    (h : ∃ l, baseCoef Xi Xk Pa Pb Za Zb cga cgb i k a b l I v ≠ 0) :
+    match v with
+    | .inl li => Xi.coef I li ≠ 0
+    | .inr (.inl lk) => Xk.coef I lk ≠ 0
+    | .inr (.inr (.inl (.inl w))) => w ∈ Pa.avail I
+    | .inr (.inr (.inl (.inr m))) => cga I m ≠ 0
+    | .inr (.inr (.inr (.inl w))) => w ∈ Pb.avail I
+    | .inr (.inr (.inr (.inr m))) => cgb I m ≠ 0 := by
+  classical
+  have hcoefP : ∀ (W : Type) [Fintype W] (P : PathColumnSystem G J N W) (Z : ColumnL2 W) I w,
+      P.coef I Z w ≠ 0 → w ∈ P.avail I := fun W _ P Z I w h => by
+    by_contra hw; exact h (by simp [PathColumnSystem.coef, hw])
+  obtain ⟨l, hl⟩ := h
+  rcases v with li | lk | (w | m) | (w | m) <;> simp only [baseCoef] at hl <;> split_ifs at hl
+  all_goals first
+    | exact absurd rfl hl
+    | exact hl
+    | exact hcoefP _ Pa Za I w hl
+    | exact hcoefP _ Pb Zb I w hl
+    | exact fun h0 => hl (by rw [h0, neg_zero])
+
+omit [Fintype Ga] [Fintype Gb] in
+/-- Nested charts of the base labels from those of the four families. -/
 theorem base_pathCharts (cells : Finset (ℤ × ℤ)) {c₀' : ℕ} {H' : ℝ}
     (hXi : PathCharts G cells (fun I l => Xi.atom I l) (fun I l => Xi.coef I l ≠ 0) c₀' H')
     (hXk : PathCharts G cells (fun I l => Xk.atom I l) (fun I l => Xk.coef I l ≠ 0) c₀' H')
@@ -1805,47 +2019,26 @@ theorem base_pathCharts (cells : Finset (ℤ × ℤ)) {c₀' : ℕ} {H' : ℝ}
     (hPb : PathCharts G cells (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c₀' H')
     (hga : PathCharts G cells aga (fun I m => cga I m ≠ 0) c₀' H')
     (hgb : PathCharts G cells agb (fun I m => cgb I m ≠ 0) c₀' H') :
-    ∀ y v, ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀' H' B ∧
-      IsBoundedQuadraticChart B ∧ ∀ I ∈ cells, y ∈ dyadicGridCell G I.1 I.2 →
-        (∃ l, baseCoef Xi Xk Pa Pb Za Zb cga cgb i k a b l I v ≠ 0) →
-        ∀ x ∈ dyadicGridCell G I.1 I.2,
-          baseAtom Xi Xk Pa Pb aga agb I v x = quadraticChartAtom B x := by
-  classical
-  intro y v
-  have hcoefP : ∀ (W : Type) [Fintype W] (P : PathColumnSystem G J N W) (Z : ColumnL2 W) I w,
-      P.coef I Z w ≠ 0 → w ∈ P.avail I := fun W _ P Z I w h => by
-    by_contra hw; exact h (by simp [PathColumnSystem.coef, hw])
-  rcases v with li | lk | (w | m) | (w | m)
-  · obtain ⟨d, B, h1, h2, h3⟩ := hXi y li
-    refine ⟨d, B, h1, h2, fun I hI hy ⟨l, hl⟩ => h3 I hI hy ?_⟩
-    simp only [baseCoef] at hl; split_ifs at hl
-    · exact hl
-    · exact absurd rfl hl
-  · obtain ⟨d, B, h1, h2, h3⟩ := hXk y lk
-    refine ⟨d, B, h1, h2, fun I hI hy ⟨l, hl⟩ => h3 I hI hy ?_⟩
-    simp only [baseCoef] at hl; split_ifs at hl
-    · exact hl
-    · exact absurd rfl hl
-  · obtain ⟨d, B, h1, h2, h3⟩ := hPa y w
-    refine ⟨d, B, h1, h2, fun I hI hy ⟨l, hl⟩ => h3 I hI hy ?_⟩
-    simp only [baseCoef] at hl; split_ifs at hl
-    · exact hcoefP _ Pa Za I w hl
-    · exact absurd rfl hl
-  · obtain ⟨d, B, h1, h2, h3⟩ := hga y m
-    refine ⟨d, B, h1, h2, fun I hI hy ⟨l, hl⟩ => h3 I hI hy ?_⟩
-    simp only [baseCoef] at hl; split_ifs at hl
-    · exact fun h0 => hl (by rw [h0, neg_zero])
-    · exact absurd rfl hl
-  · obtain ⟨d, B, h1, h2, h3⟩ := hPb y w
-    refine ⟨d, B, h1, h2, fun I hI hy ⟨l, hl⟩ => h3 I hI hy ?_⟩
-    simp only [baseCoef] at hl; split_ifs at hl
-    · exact hcoefP _ Pb Zb I w hl
-    · exact absurd rfl hl
-  · obtain ⟨d, B, h1, h2, h3⟩ := hgb y m
-    refine ⟨d, B, h1, h2, fun I hI hy ⟨l, hl⟩ => h3 I hI hy ?_⟩
-    simp only [baseCoef] at hl; split_ifs at hl
-    · exact fun h0 => hl (by rw [h0, neg_zero])
-    · exact absurd rfl hl
+    PathCharts G cells (baseAtom Xi Xk Pa Pb aga agb)
+      (fun I v => ∃ l, baseCoef Xi Xk Pa Pb Za Zb cga cgb i k a b l I v ≠ 0) c₀' H' := by
+  refine ⟨fun I hI v hv => ?_, fun I hI I' hI' hII' v hv hv' => ?_⟩
+  · have h := base_av Xi Xk Pa Pb Za Zb cga cgb i k a b hv
+    rcases v with li | lk | (w | m) | (w | m)
+    · exact hXi.1 I hI li h
+    · exact hXk.1 I hI lk h
+    · exact hPa.1 I hI w h
+    · exact hga.1 I hI m h
+    · exact hPb.1 I hI w h
+    · exact hgb.1 I hI m h
+  · have h := base_av Xi Xk Pa Pb Za Zb cga cgb i k a b hv
+    have h' := base_av Xi Xk Pa Pb Za Zb cga cgb i k a b hv'
+    rcases v with li | lk | (w | m) | (w | m)
+    · exact hXi.2 I hI I' hI' hII' li h h'
+    · exact hXk.2 I hI I' hI' hII' lk h h'
+    · exact hPa.2 I hI I' hI' hII' w h h'
+    · exact hga.2 I hI I' hI' hII' m h h'
+    · exact hPb.2 I hI I' hI' hII' w h h'
+    · exact hgb.2 I hI I' hI' hII' m h h'
 
 end BaseActive
 
@@ -1881,6 +2074,8 @@ noncomputable def baseActiveSetup {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset
     (hPb : PathCharts G cells (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c₀' H')
     (hga : PathCharts G cells aga (fun I m => cga I m ≠ 0) c₀' H')
     (hgb : PathCharts G cells agb (fun I m => cgb I m ≠ 0) c₀' H')
+    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀' H' B ∧
+      IsBoundedQuadraticChart B)
     (Dc : ℝ) (hDc : 1 ≤ Dc) (hPac : ∀ I ∈ cells, ∀ v, ‖Pa.coef I Za v‖ ≤ Dc)
     (hPbc : ∀ I ∈ cells, ∀ v, ‖Pb.coef I Zb v‖ ≤ Dc) (hcga : ∀ I m, ‖cga I m‖ ≤ 1)
     (hcgb : ∀ I m, ‖cgb I m‖ ≤ 1)
@@ -1928,10 +2123,22 @@ noncomputable def baseActiveSetup {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset
     exact if I ∈ cells then baseCoef Xi Xk Pa Pb Za Zb cga cgb i k a b l I v else 0
   path_chart := fun y v => by
     classical
-    obtain ⟨d, B, h1, h2, h3⟩ := base_pathCharts Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b cells
-      hXi hXk hPa hPb hga hgb y v
+    obtain ⟨d, B, h1, h2, h3⟩ := (base_pathCharts Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b cells
+      hXi hXk hPa hPb hga hgb).path hdef y v
     refine ⟨d, B, h1, h2, fun I hI hy ⟨l, hl⟩ => h3 I hI hy ⟨l, ?_⟩⟩
     simpa only [hI, ↓reduceIte] using hl
+  nested_chart := fun I hI v hv => by
+    classical
+    obtain ⟨l, hl⟩ := hv
+    exact (base_pathCharts Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b cells
+      hXi hXk hPa hPb hga hgb).1 I hI v ⟨l, by simpa only [hI, ↓reduceIte] using hl⟩
+  nested_cons := fun I hI I' hI' hII' v hv hv' => by
+    classical
+    obtain ⟨l, hl⟩ := hv
+    obtain ⟨l', hl'⟩ := hv'
+    exact (base_pathCharts Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b cells
+      hXi hXk hPa hPb hga hgb).2 I hI I' hI' hII' v ⟨l, by simpa only [hI, ↓reduceIte] using hl⟩
+        ⟨l', by simpa only [hI', ↓reduceIte] using hl'⟩
   Dc := Dc
   Dc_nonneg := by linarith
   coef_le := fun l I v => by
@@ -2351,6 +2558,8 @@ theorem baseActiveSetup_U_a {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ 
     (hPb : PathCharts G cells (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c₀' H')
     (hga : PathCharts G cells aga (fun I m => cga I m ≠ 0) c₀' H')
     (hgb : PathCharts G cells agb (fun I m => cgb I m ≠ 0) c₀' H')
+    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀' H' B ∧
+      IsBoundedQuadraticChart B)
     (Dc : ℝ) (hDc : 1 ≤ Dc) (hPac : ∀ I ∈ cells, ∀ v, ‖Pa.coef I Za v‖ ≤ Dc)
     (hPbc : ∀ I ∈ cells, ∀ v, ‖Pb.coef I Zb v‖ ≤ Dc) (hcga : ∀ I m, ‖cga I m‖ ≤ 1)
     (hcgb : ∀ I m, ‖cgb I m‖ ≤ 1)
@@ -2368,7 +2577,8 @@ theorem baseActiveSetup_U_a {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ 
     (hsmall : ∀ I ∈ cells, ‖localProgressionForm (dyadicGridLength G I.1) (w I)
       (slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb I))‖ ≤ η) (I : ℤ × ℤ) :
     (baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb hab
-        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
+        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+          hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
             S hS hUa hUb hUa' hUb' η hsmall).U a I = Ya I - baseHighB Pa Za cga aga I := by
   change (if a = a then _ else _) = _
   simp only [↓reduceIte]
@@ -2388,6 +2598,8 @@ theorem baseActiveSetup_U_b {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ 
     (hPb : PathCharts G cells (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c₀' H')
     (hga : PathCharts G cells aga (fun I m => cga I m ≠ 0) c₀' H')
     (hgb : PathCharts G cells agb (fun I m => cgb I m ≠ 0) c₀' H')
+    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀' H' B ∧
+      IsBoundedQuadraticChart B)
     (Dc : ℝ) (hDc : 1 ≤ Dc) (hPac : ∀ I ∈ cells, ∀ v, ‖Pa.coef I Za v‖ ≤ Dc)
     (hPbc : ∀ I ∈ cells, ∀ v, ‖Pb.coef I Zb v‖ ≤ Dc) (hcga : ∀ I m, ‖cga I m‖ ≤ 1)
     (hcgb : ∀ I m, ‖cgb I m‖ ≤ 1)
@@ -2405,7 +2617,8 @@ theorem baseActiveSetup_U_b {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ 
     (hsmall : ∀ I ∈ cells, ‖localProgressionForm (dyadicGridLength G I.1) (w I)
       (slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb I))‖ ≤ η) (I : ℤ × ℤ) :
     (baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb hab
-        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
+        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+          hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
             S hS hUa hUb hUa' hUb' η hsmall).U b I = Yb I - baseHighB Pb Zb cgb agb I := by
   change (if b = a then _ else if b = b then _ else 0) = _
   simp only [hab.symm, ↓reduceIte]
@@ -2425,6 +2638,8 @@ theorem baseActiveSetup_B {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ ×
     (hPb : PathCharts G cells (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c₀' H')
     (hga : PathCharts G cells aga (fun I m => cga I m ≠ 0) c₀' H')
     (hgb : PathCharts G cells agb (fun I m => cgb I m ≠ 0) c₀' H')
+    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀' H' B ∧
+      IsBoundedQuadraticChart B)
     (Dc : ℝ) (hDc : 1 ≤ Dc) (hPac : ∀ I ∈ cells, ∀ v, ‖Pa.coef I Za v‖ ≤ Dc)
     (hPbc : ∀ I ∈ cells, ∀ v, ‖Pb.coef I Zb v‖ ≤ Dc) (hcga : ∀ I m, ‖cga I m‖ ≤ 1)
     (hcgb : ∀ I m, ‖cgb I m‖ ≤ 1)
@@ -2443,7 +2658,8 @@ theorem baseActiveSetup_B {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ ×
       (slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb I))‖ ≤ η) {I : ℤ × ℤ} (hI : I ∈ cells) (l :
           Fin 4) :
     (baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb hab
-        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
+        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+          hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
             S hS hUa hUb hUa' hUb' η hsmall).B l I = fun x => ∑ v, baseCoef Xi Xk Pa Pb Za Zb cga
                 cgb i k a b l I v *
       baseAtom Xi Xk Pa Pb aga agb I v x := by
@@ -2468,6 +2684,8 @@ theorem baseActiveSetup_Y {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ ×
     (hPb : PathCharts G cells (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c₀' H')
     (hga : PathCharts G cells aga (fun I m => cga I m ≠ 0) c₀' H')
     (hgb : PathCharts G cells agb (fun I m => cgb I m ≠ 0) c₀' H')
+    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀' H' B ∧
+      IsBoundedQuadraticChart B)
     (Dc : ℝ) (hDc : 1 ≤ Dc) (hPac : ∀ I ∈ cells, ∀ v, ‖Pa.coef I Za v‖ ≤ Dc)
     (hPbc : ∀ I ∈ cells, ∀ v, ‖Pb.coef I Zb v‖ ≤ Dc) (hcga : ∀ I m, ‖cga I m‖ ≤ 1)
     (hcgb : ∀ I m, ‖cgb I m‖ ≤ 1)
@@ -2485,13 +2703,14 @@ theorem baseActiveSetup_Y {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ ×
     (hsmall : ∀ I ∈ cells, ‖localProgressionForm (dyadicGridLength G I.1) (w I)
       (slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb I))‖ ≤ η) {I : ℤ × ℤ} (hI : I ∈ cells) :
     (baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb hab
-        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
+        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+          hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
             S hS hUa hUb hUa' hUb' η hsmall).Y I = slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb
                 I) := by
   classical
   funext l
   rw [ActiveSetup.Y, (baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik
-      hia hib hka hkb hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga
+      hia hib hka hkb hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb hdef Dc hDc hPac hPbc hcga
           hcgb Ya Yb hYam hYbm S hS hUa hUb hUa' hUb' η hsmall hI l)]
   change _ + (if l = a ∨ l = b then _ else 0) = _
   rcases fin_four_cover hia.symm hka.symm hab hik hib hkb l with h | h | h | h <;> rw [h]
@@ -2529,6 +2748,8 @@ theorem baseActiveSetup_z3 {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ �
     (hPb : PathCharts G cells (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c₀' H')
     (hga : PathCharts G cells aga (fun I m => cga I m ≠ 0) c₀' H')
     (hgb : PathCharts G cells agb (fun I m => cgb I m ≠ 0) c₀' H')
+    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀' H' B ∧
+      IsBoundedQuadraticChart B)
     (Dc : ℝ) (hDc : 1 ≤ Dc) (hPac : ∀ I ∈ cells, ∀ v, ‖Pa.coef I Za v‖ ≤ Dc)
     (hPbc : ∀ I ∈ cells, ∀ v, ‖Pb.coef I Zb v‖ ≤ Dc) (hcga : ∀ I m, ‖cga I m‖ ≤ 1)
     (hcgb : ∀ I m, ‖cgb I m‖ ≤ 1)
@@ -2546,7 +2767,8 @@ theorem baseActiveSetup_z3 {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ �
     (hsmall : ∀ I ∈ cells, ‖localProgressionForm (dyadicGridLength G I.1) (w I)
       (slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb I))‖ ≤ η) {I : ℤ × ℤ} (hI : I ∈ cells) :
     (baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb hab
-        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
+        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+          hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
             S hS hUa hUb hUa' hUb' η hsmall).z 3 I = slots4 a i k (Ya I - baseHighB Pa Za cga aga
                 I) (Xi.val I) (Xk.val I)
       (Yb I - baseHighB Pb Zb cgb agb I) := by
@@ -2554,30 +2776,119 @@ theorem baseActiveSetup_z3 {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ �
   funext l
   change Function.update (Function.update (fun l => (baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga
       cgb agb R cells hsub w hw hik hia hib hka hkb hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga
-          hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm S hS hUa hUb hUa' hUb' η hsmall).B l I) a
+          hgb hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm S hS hUa hUb hUa' hUb' η
+            hsmall).B l I) a
               ((baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib
-                  hka hkb hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga
+                  hka hkb hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+                    hdef Dc hDc hPac hPbc hcga
                       hcgb Ya Yb hYam hYbm S hS hUa hUb hUa' hUb' η hsmall).U a I)) b
                           ((baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw
                               hik hia hib hka hkb hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga
-                                  hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm S hS hUa hUb hUa'
-                                      hUb' η hsmall).U b I) l = _
+                                  hgb hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm S hS
+                                    hUa hUb hUa' hUb' η hsmall).U b I) l = _
   rw [baseActiveSetup_U_a, baseActiveSetup_U_b]
   rcases fin_four_cover hia.symm hka.symm hab hik hib hkb l with h | h | h | h <;> rw [h]
   · rw [Function.update_of_ne hab, Function.update_self, slots4_a]
   · rw [Function.update_of_ne hib, Function.update_of_ne hia, slots4_i hia.symm,
       (baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
-          hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
+          hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+            hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
               hYbm S hS hUa hUb hUa' hUb' η hsmall hI i)]
     funext y
     exact baseB_i Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hia hib I y
   · rw [Function.update_of_ne hkb, Function.update_of_ne hka, slots4_k hka.symm hik,
       (baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
-          hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
+          hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+            hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
               hYbm S hS hUa hUb hUa' hUb' η hsmall hI k)]
     funext y
     exact baseB_k Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hka hkb I y
   · rw [Function.update_self, slots4_b hab hib hkb]
+
+/-- The column representation of the base active setup from the representations of its four
+basic arguments (blueprint prop:base, lines 1611-1613). -/
+theorem baseActiveSetup_hasColumnRep {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ × ℤ))
+    (hsub : ∀ I ∈ cells, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2)
+    (w : ℤ × ℤ → ℝ × ℝ → ℂ)
+    (hw : ∀ I ∈ cells, IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2)
+      (dyadicGridLength G I.1) (w I))
+    (hik : i ≠ k) (hia : i ≠ a) (hib : i ≠ b) (hka : k ≠ a) (hkb : k ≠ b) (hab : a ≠ b)
+    (hagm : ∀ I m, Measurable (aga I m)) (hagb : ∀ I m y, ‖aga I m y‖ ≤ 1)
+    (hbgm : ∀ I m, Measurable (agb I m)) (hbgb : ∀ I m y, ‖agb I m y‖ ≤ 1)
+    (H' : ℝ)
+    (hXi : PathCharts G cells (fun I l => Xi.atom I l) (fun I l => Xi.coef I l ≠ 0) c₀' H')
+    (hXk : PathCharts G cells (fun I l => Xk.atom I l) (fun I l => Xk.coef I l ≠ 0) c₀' H')
+    (hPa : PathCharts G cells (fun I v => Pa.scalarAt I v) (fun I v => v ∈ Pa.avail I) c₀' H')
+    (hPb : PathCharts G cells (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c₀' H')
+    (hga : PathCharts G cells aga (fun I m => cga I m ≠ 0) c₀' H')
+    (hgb : PathCharts G cells agb (fun I m => cgb I m ≠ 0) c₀' H')
+    (hdef : ∃ (d : ℕ) (B : QuadraticChartData d), QuadraticChartComplexity c₀' H' B ∧
+      IsBoundedQuadraticChart B)
+    (Dc : ℝ) (hDc : 1 ≤ Dc) (hPac : ∀ I ∈ cells, ∀ v, ‖Pa.coef I Za v‖ ≤ Dc)
+    (hPbc : ∀ I ∈ cells, ∀ v, ‖Pb.coef I Zb v‖ ≤ Dc) (hcga : ∀ I m, ‖cga I m‖ ≤ 1)
+    (hcgb : ∀ I m, ‖cgb I m‖ ≤ 1)
+    (Ya Yb : ℤ × ℤ → ℝ → ℂ) (hYam : ∀ I, Measurable (Ya I)) (hYbm : ∀ I, Measurable (Yb I))
+    (S : ℝ) (hS : 0 ≤ S)
+    (hUa : ∀ I, MemLp (Ya I - baseHighB Pa Za cga aga I) 2
+      (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)))
+    (hUb : ∀ I, MemLp (Yb I - baseHighB Pb Zb cgb agb I) 2
+      (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)))
+    (hUa' : ∀ I, (eLpNorm (Ya I - baseHighB Pa Za cga aga I) 2
+      (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1))).toReal ≤ S)
+    (hUb' : ∀ I, (eLpNorm (Yb I - baseHighB Pb Zb cgb agb I) 2
+      (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1))).toReal ≤ S)
+    (η : ℝ)
+    (hsmall : ∀ I ∈ cells, ‖localProgressionForm (dyadicGridLength G I.1) (w I)
+      (slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb I))‖ ≤ η)
+    {CF : ℝ}
+    (hri : ∃ P₁ P₂ : BasicProjection G R CF, ∀ I ∈ cells, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → Xi.val I y = P₁.val I y - P₂.val I y)
+    (hrk : ∃ P₁ P₂ : BasicProjection G R CF, ∀ I ∈ cells, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → Xk.val I y = P₁.val I y - P₂.val I y)
+    (hra : ∃ P₁ P₂ : BasicProjection G R CF, ∀ I ∈ cells, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → ∑ v, Pa.coef I Za v * Pa.scalarAt I v y -
+        ∑ m, cga I m * aga I m y = P₁.val I y - P₂.val I y)
+    (hrb : ∃ P₁ P₂ : BasicProjection G R CF, ∀ I ∈ cells, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → ∑ v, Pb.coef I Zb v * Pb.scalarAt I v y -
+        ∑ m, cgb I m * agb I m y = P₁.val I y - P₂.val I y) :
+    (baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb hab
+        hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+          hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
+            S hS hUa hUb hUa' hUb' η hsmall).HasColumnRep CF := by
+  intro l
+  rcases fin_four_cover hia.symm hka.symm hab hik hib hkb l with h | h | h | h <;> rw [h]
+  · obtain ⟨P₁, P₂, hP⟩ := hra
+    refine ⟨P₁, P₂, fun I hI => ?_⟩
+    filter_upwards [hP I hI] with y hy hyI
+    rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
+          hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+            hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
+              hYbm S hS hUa hUb hUa' hUb' η hsmall hI a)]
+    exact (baseB_a Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hia hka hab I y).trans (hy hyI)
+  · obtain ⟨P₁, P₂, hP⟩ := hri
+    refine ⟨P₁, P₂, fun I hI => ?_⟩
+    filter_upwards [hP I hI] with y hy hyI
+    rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
+          hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+            hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
+              hYbm S hS hUa hUb hUa' hUb' η hsmall hI i)]
+    exact (baseB_i Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hia hib I y).trans (hy hyI)
+  · obtain ⟨P₁, P₂, hP⟩ := hrk
+    refine ⟨P₁, P₂, fun I hI => ?_⟩
+    filter_upwards [hP I hI] with y hy hyI
+    rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
+          hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+            hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
+              hYbm S hS hUa hUb hUa' hUb' η hsmall hI k)]
+    exact (baseB_k Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hka hkb I y).trans (hy hyI)
+  · obtain ⟨P₁, P₂, hP⟩ := hrb
+    refine ⟨P₁, P₂, fun I hI => ?_⟩
+    filter_upwards [hP I hI] with y hy hyI
+    rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
+          hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
+            hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
+              hYbm S hS hUa hUb hUa' hUb' η hsmall hI b)]
+    exact (baseB_b Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hib hkb hab I y).trans (hy hyI)
 
 end BaseActiveSetupFacts
 
@@ -2739,8 +3050,12 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
     (hDH : D ≤ H') (hBa : Ba ≤ H') (hBb : Bb ≤ H')
     (hdef₀ : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₀ H Φ ∧
       IsBoundedQuadraticChart Φ)
-    (hdef₁ : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₁ D Φ ∧
-      IsBoundedQuadraticChart Φ) :
+    (hri : ∃ P₁ P₂ : BasicProjection G R 1, ∀ I ∈ T, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → Xi.val I y = P₁.val I y - P₂.val I y)
+    (hrk : ∃ P₁ P₂ : BasicProjection G R 1, ∀ I ∈ T, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → Xk.val I y = P₁.val I y - P₂.val I y)
+    (hrga : ∃ P : BasicProjection G R 1, ∀ I, zga I = P.val I)
+    (hrgb : ∃ P : BasicProjection G R 1, ∀ I, zgb I = P.val I) :
     let Sa := predAccSetup κ Xi Xk a i k b Bp D pkga hε0 hε1 K₀ Ma (f a) w q ka c₂ Ba
     let Sb := predAccSetup κ Xi Xk b i k a Bp D pkgb hε0 hε1 K₀ Mb (f b) w q kb c₂ Bb
     let Ea := 2 * Real.exp (-Bp) * (2 * (compressionOneConst ((Sa.system Ka).rooted R) + K₀) + 1)
@@ -2773,7 +3088,8 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
       (∀ l, ∑ I ∈ T, dyadicGridLength G I.1 * (eLpNorm (A.U l I) 2 (A.μ I)).toReal ^ 2 ≤
         (K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) ∧
       ∑ I ∈ T, dyadicGridLength G I.1 * ‖A.Hf I (A.z 3 I)‖ ≤
-        η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) := by
+        η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) ∧
+      A.HasColumnRep 1 := by
   intro Sa Sb Ea Eb S₀ Sp
   classical
   set Pa := Sa.system Ka with hPa_def
@@ -2928,13 +3244,13 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
     exact ⟨d, Φ, quadraticChartComplexity_order_mono (quadraticChartComplexity_mono h1 hHH) hc₀, h2⟩
   have hlowc : ∀ X : LowList G J N J c₀ H, PathCharts G T (fun I l => X.atom I l)
       (fun I l => X.coef I l ≠ 0) c' H' := fun X =>
-    PathCharts.mono_c (((X.pathCharts T hdef₀).mono (fun _ _ h => h) hHH)) hc₀
+    PathCharts.mono_c (((X.pathCharts T).mono (fun _ _ h => h) hHH)) hc₀
   have hPac' : PathCharts G T (fun I v => Pa.scalarAt I v) (fun I v => v ∈ Pa.avail I) c' H' :=
     hSa.system_pathCharts Ka T (PathCharts.mono_c (((predSystem_pathCharts κ Xi Xk a i k b Bp D
-      pkga hε0 hε1 T hTtree hdef₁).mono (fun _ _ h => h) hDH)) hc₁) hc₂ hBa hdefc
+      pkga hε0 hε1 T hTtree).mono (fun _ _ h => h) hDH)) hc₁) hc₂ hBa
   have hPbc' : PathCharts G T (fun I v => Pb.scalarAt I v) (fun I v => v ∈ Pb.avail I) c' H' :=
     hSb.system_pathCharts Kb T (PathCharts.mono_c (((predSystem_pathCharts κ Xi Xk b i k a Bp D
-      pkgb hε0 hε1 T hTtree hdef₁).mono (fun _ _ h => h) hDH)) hc₁) hc₂ hBb hdefc
+      pkgb hε0 hε1 T hTtree).mono (fun _ _ h => h) hDH)) hc₁) hc₂ hBb
   -- coefficient bounds
   have hDc : 1 ≤ Real.sqrt ε⁻¹ := by
     rw [show (1 : ℝ) = Real.sqrt 1 from Real.sqrt_one.symm]
@@ -2957,22 +3273,22 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
     (fun I l => Xgb.atom I l) R T hsub w (fun I _ => hw I) hik hai.symm hib hak.symm hkb hab
     (fun I m => Xga.atom_measurable I m) (fun I m y => Xga.atom_bound I m y)
     (fun I m => Xgb.atom_measurable I m) (fun I m y => Xgb.atom_bound I m y) H'
-    (hlowc Xi) (hlowc Xk) hPac' hPbc' (hlowc Xga) (hlowc Xgb) (Real.sqrt ε⁻¹) hDc hPac hPbc
+    (hlowc Xi) (hlowc Xk) hPac' hPbc' (hlowc Xga) (hlowc Xgb) hdefc (Real.sqrt ε⁻¹) hDc hPac hPbc
     Xga.coef_le Xgb.coef_le Ya Yb hYam hYbm 2 (by norm_num) hUa hUb hUa' hUb'
     (4 * η₀) hsmall with hA
   have hY : ∀ I ∈ T, A.Y I = slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb I) := fun I hI =>
-    baseActiveSetup_Y _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    baseActiveSetup_Y _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
         _ _ _ _ _ _ _ _ _ _ _ _ _ hI
   have hUa_eq : ∀ I, A.U a I = Ya I - baseHighB Pa Sa.Z Xga.coef (fun I l => Xga.atom I l) I :=
-    fun I => baseActiveSetup_U_a _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    fun I => baseActiveSetup_U_a _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
         _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ I
   have hUb_eq : ∀ I, A.U b I = Yb I - baseHighB Pb Sb.Z Xgb.coef (fun I l => Xgb.atom I l) I :=
-    fun I => baseActiveSetup_U_b _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+    fun I => baseActiveSetup_U_b _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
         _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ I
   have hz3 : ∀ I ∈ T, A.z 3 I = slots4 a i k (A.U a I) (Xi.val I) (Xk.val I) (A.U b I) :=
     fun I hI => by
       rw [hUa_eq, hUb_eq]
-      exact baseActiveSetup_z3 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+      exact baseActiveSetup_z3 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
           _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ hI
   have hU0 : ∀ l I, l ≠ a → l ≠ b → A.U l I = 0 := by
     intro l I h1 h2
@@ -2992,7 +3308,7 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
     rw [hUb_eq, hUbT I hI]
     exact Sb.U_sq_eq Kb I
   have hRpos := dyadicGridLength_pos G R.1
-  refine ⟨A, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨A, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- the label count
     change Fintype.card (Xi.Λ ⊕ Xk.Λ ⊕ (Sa.W ⊕ Xga.Λ) ⊕ (Sb.W ⊕ Xgb.Λ)) = _
     simp only [Fintype.card_sum]
@@ -3072,6 +3388,28 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
       _ ≤ η₀ / 2 * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R.1 +
           (K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) := by gcongr
       _ = _ := by ring
+  · -- the column representation
+    have hEa : ∫ y in dyadicGridCell G R.1 R.2, ‖(Sa.Z : ℝ → ColumnHilbert Sa.W) y‖ ^ 2 ≤
+        1 * dyadicGridLength G R.1 := by
+      rw [one_mul]
+      exact hSa.energy_cell_le hR
+    have hEb : ∫ y in dyadicGridCell G R.1 R.2, ‖(Sb.Z : ℝ → ColumnHilbert Sb.W) y‖ ^ 2 ≤
+        1 * dyadicGridLength G R.1 := by
+      rw [one_mul]
+      exact hSb.energy_cell_le hR
+    obtain ⟨Pga, hPga⟩ := hrga
+    obtain ⟨Pgb, hPgb⟩ := hrgb
+    apply baseActiveSetup_hasColumnRep (hri := hri) (hrk := hrk)
+      (hra := ⟨Pa.basicProjection hR Sa.Z hEa, Pga, fun I hI => ?_⟩)
+      (hrb := ⟨Pb.basicProjection hR Sb.Z hEb, Pgb, fun I hI => ?_⟩)
+    · filter_upwards [Pa.basicProjection_val_ae hR (hTtree I hI) (hT I hI).2.2.2.1 Sa.Z hEa,
+        (hT I hI).2.2.2.2.1] with y h1 h2 hyI
+      rw [← hPga I, h2 hyI]
+      exact congrArg (· - Xga.val I y) (h1 hyI).symm
+    · filter_upwards [Pb.basicProjection_val_ae hR (hTtree I hI) (hT I hI).2.2.2.1 Sb.Z hEb,
+        (hT I hI).2.2.2.2.2] with y h1 h2 hyI
+      rw [← hPgb I, h2 hyI]
+      exact congrArg (· - Xgb.val I y) (h1 hyI).symm
 
 end BaseRoot
 
@@ -3246,6 +3584,29 @@ theorem sqrt_mul_sqrt_le_of_le {x y r : ℝ} (hx : x ≤ r) (hy : y ≤ r) (hr :
           (Real.sqrt_nonneg _)
     _ = r := Real.mul_self_sqrt hr
 
+/-- A family of cell functions that is a basic projection below every tree cell: the physical part
+of the current projections of one column depth family whose root contains `J`, applied to an
+augmented input of energy at most `CF |R|` on every tree cell `R`. -/
+def IsBasicOn (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (CF : ℝ) (z : ℤ × ℤ → ℝ → ℂ) : Prop :=
+  ∃ (V : Type) (_ : Fintype V) (Ψ : ColumnDepthFamily V) (Z : ColumnL2 V), Ψ.D.grid = G ∧
+    dyadicGridCell G J.1 J.2 ⊆ dyadicGridCell G Ψ.D.root.1 Ψ.D.root.2 ∧
+    (∀ R ∈ dyadicFiniteTree G J N, ∫ y in dyadicGridCell G R.1 R.2,
+      ‖(Z : ℝ → ColumnHilbert V) y‖ ^ 2 ≤ CF * dyadicGridLength G R.1) ∧
+    ∀ I, z I = Ψ.currentZ Z I
+
+theorem IsBasicOn.restrict {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ}
+    {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF z) {R : ℤ × ℤ}
+    (hR : R ∈ dyadicFiniteTree G J N) : IsBasicOn G R (dyadicRemainingDepth J N R) CF z := by
+  obtain ⟨V, _, Ψ, Z, hG, hJ, hE, hz⟩ := h
+  refine ⟨V, inferInstance, Ψ, Z, hG, (((dyadicFiniteTree_mem_iff G J R N).mp hR).1).trans hJ,
+    fun R' hR' => hE R' ((dyadicFiniteTree_below_iff G J N hR R').mp hR').1, hz⟩
+
+theorem IsBasicOn.basicProjection {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ}
+    {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF z) {R : ℤ × ℤ}
+    (hR : R ∈ dyadicFiniteTree G J N) : ∃ P : BasicProjection G R CF, ∀ I, z I = P.val I := by
+  obtain ⟨V, _, Ψ, Z, hG, hJ, hE, hz⟩ := h
+  exact ⟨⟨V, Ψ, Z, hG, (((dyadicFiniteTree_mem_iff G J R N).mp hR).1).trans hJ, hE R hR⟩, hz⟩
+
 section BaseSegments
 
 theorem arith_two_terms {c Ea Eb X Y s1 s2 s3 s4 r : ℝ} (hc : 0 ≤ c) (hEa : 0 ≤ Ea)
@@ -3324,8 +3685,11 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     (hDH : D ≤ H') (hBa : Ba ≤ H') (hBb : Bb ≤ H')
     (hdef₀ : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₀ H Φ ∧
       IsBoundedQuadraticChart Φ)
-    (hdef₁ : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₁ D Φ ∧
-      IsBoundedQuadraticChart Φ) :
+    (hri : ∃ z₁ z₂, IsBasicOn G J N 1 z₁ ∧ IsBasicOn G J N 1 z₂ ∧ ∀ I ∈ Tc, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → Xi.val I y = z₁ I y - z₂ I y)
+    (hrk : ∃ z₁ z₂, IsBasicOn G J N 1 z₁ ∧ IsBasicOn G J N 1 z₂ ∧ ∀ I ∈ Tc, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → Xk.val I y = z₁ I y - z₂ I y)
+    (hrga : IsBasicOn G J N 1 zga) (hrgb : IsBasicOn G J N 1 zgb) :
     let Sa := predAccSetup κ Xi Xk a i k b Bp D pkga hε0 hε1 K₀ Ma (f a) w q ka c₂ Ba
     let Sb := predAccSetup κ Xi Xk b i k a Bp D pkgb hε0 hε1 K₀ Mb (f b) w q kb c₂ Bb
     let Ea := 2 * Real.exp (-Bp) * (2 * (compressionOneConst ((Sa.system J).rooted J) + K₀) + 1)
@@ -3358,7 +3722,8 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
           (eLpNorm ((A p).U l I) 2 ((A p).μ I)).toReal ^ 2 ≤
             (K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
         ∑ I ∈ (A p).cells, dyadicGridLength G I.1 * ‖(A p).Hf I ((A p).z 3 I)‖ ≤
-          η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) := by
+          η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
+        (A p).HasColumnRep 1 := by
   intro Sa Sb Ea Eb E S₀ Sp
   classical
   have hthA := hSa.treeHyp
@@ -3407,7 +3772,22 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     (fun I hI => hLk I (hTmem p I hI).1) (fun I hI => hLga I (hTmem p I hI).1)
     (fun I hI => hLgb I (hTmem p I hI).1) hη₀ hδa hδb
     (fun I hI => hpairs I (hTmem p I hI).1) (fun I hI => hsa I (hTmem p I hI).1)
-    (fun I hI => hsb I (hTmem p I hI).1) hc₀ hc₁ hc₂ hHH hDH hBa hBb hdef₀ hdef₁
+    (fun I hI => hsb I (hTmem p I hI).1) hc₀ hc₁ hc₂ hHH hDH hBa hBb hdef₀
+    (by
+      obtain ⟨z₁, z₂, h₁, h₂, h₃⟩ := hri
+      obtain ⟨P₁, hP₁⟩ := h₁.basicProjection (hRtree p)
+      obtain ⟨P₂, hP₂⟩ := h₂.basicProjection (hRtree p)
+      refine ⟨P₁, P₂, fun I hI => ?_⟩
+      filter_upwards [h₃ I (hTmem p I hI).1] with y hy hyI
+      rw [hy hyI, hP₁ I, hP₂ I])
+    (by
+      obtain ⟨z₁, z₂, h₁, h₂, h₃⟩ := hrk
+      obtain ⟨P₁, hP₁⟩ := h₁.basicProjection (hRtree p)
+      obtain ⟨P₂, hP₂⟩ := h₂.basicProjection (hRtree p)
+      refine ⟨P₁, P₂, fun I hI => ?_⟩
+      filter_upwards [h₃ I (hTmem p I hI).1] with y hy hyI
+      rw [hy hyI, hP₁ I, hP₂ I])
+    (hrga.basicProjection (hRtree p)) (hrgb.basicProjection (hRtree p))
   dsimp only at hex
   choose A hA using hex
   refine ⟨P, A, ?_, ?_, ?_, fun p => ?_⟩
@@ -3434,11 +3814,11 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     rw [(hA p').2.2.1] at hp'
     exact Subtype.ext ((Finset.mem_filter.mp hp).2.symm.trans (Finset.mem_filter.mp hp').2)
   · obtain ⟨hG, hR, hcells, hw', ha, hb, hH, hDc, hS, hη, hcard, hrep, hpair, hsize, hside,
-      htwo⟩ := hA p
+      htwo, hcol⟩ := hA p
     rw [← hR] at hside htwo hrep
     rw [hcells]
     refine ⟨Finset.filter_subset _ _, hG, hw', ha, hb, by rw [hR]; exact hRtree p, hH, hDc, hS,
-      hη, hcard, ?_, hpair, hsize, hside, htwo⟩
+      hη, hcard, ?_, hpair, hsize, hside, htwo, hcol⟩
     refine hrep.trans ?_
     have hRR := hRtree p
     have hRa : ∫ y in dyadicGridCell G (A p).R.1 (A p).R.2, ‖(Sa.input : ℝ → ℂ) y‖ ^ 2 ≤
@@ -3616,6 +3996,70 @@ theorem eLpNorm_two_le_of_q {a r : ℝ} (hr : 0 < r) {g : ℝ → ℂ} {q : ℝ}
   rw [show (2 : ENNReal) = ENNReal.ofReal 2 by norm_num]
   exact ENNReal.ofReal_le_ofReal hq
 
+/-- The energy of the cut-off input on a cell normalized in `L²`. -/
+theorem cell_indicator_sq_le {G : RealDyadicGrid} {J c : ℤ × ℤ} {f : ℝ → ℂ}
+    (hcJ : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G J.1 J.2)
+    (hn : eLpNorm f 2 (normalizedIntervalMeasure (dyadicGridLeft G c.1 c.2)
+      (dyadicGridLength G c.1)) ≤ 1) :
+    ∫ y in dyadicGridCell G c.1 c.2, ‖(dyadicGridCell G J.1 J.2).indicator f y‖ ^ 2 ≤
+      1 * dyadicGridLength G c.1 := by
+  have hr := dyadicGridLength_pos G c.1
+  have heq : ∫ y in dyadicGridCell G c.1 c.2, ‖(dyadicGridCell G J.1 J.2).indicator f y‖ ^ 2 =
+      ∫ y in dyadicGridCell G c.1 c.2, ‖f y‖ ^ 2 :=
+    setIntegral_congr_fun (dyadicGridCell_measurable _ _ _) fun y hy => by
+      simp only [Set.indicator_of_mem (hcJ hy)]
+  rw [← ENNReal.ofReal_one] at hn
+  have hsq := sqrt_normalized_le_of_eLpNorm hr zero_le_one hn
+  rw [Real.sqrt_le_iff] at hsq
+  have h2 := hsq.2
+  rw [one_pow, inv_mul_le_iff₀ hr, mul_one] at h2
+  rw [heq, one_mul]
+  exact h2
+
+theorem ColumnDepthFamily.currentZ_zero_ae {V : Type*} [Fintype V] (Ψ : ColumnDepthFamily V)
+    (I : ℤ × ℤ) : ∀ᵐ y ∂volume, Ψ.currentZ 0 I y = 0 := by
+  classical
+  unfold ColumnDepthFamily.currentZ
+  split_ifs with h
+  · rw [map_zero]
+    filter_upwards [Lp.coeFn_zero (ColumnHilbert V) 2 (volume : Measure ℝ)] with y hy
+    rw [hy]; rfl
+  · exact Filter.Eventually.of_forall fun _ => rfl
+
+/-- A basic family has a basic zero family on the same columns. -/
+theorem IsBasicOn.zero {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ} (hCF : 0 ≤ CF)
+    {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF z) :
+    ∃ z₀, IsBasicOn G J N CF z₀ ∧ ∀ I, ∀ᵐ y ∂volume, z₀ I y = 0 := by
+  obtain ⟨V, _, Ψ, Z, hG, hJ, -, -⟩ := h
+  refine ⟨fun I => Ψ.currentZ 0 I, ⟨V, inferInstance, Ψ, 0, hG, hJ, fun R _ => ?_,
+    fun I => rfl⟩, fun I => Ψ.currentZ_zero_ae I⟩
+  have : ∫ y in dyadicGridCell G R.1 R.2, ‖((0 : ColumnL2 V) : ℝ → ColumnHilbert V) y‖ ^ 2 = 0 :=
+    integral_eq_zero_of_ae (Filter.Eventually.of_forall fun y => by simp)
+  rw [this]
+  exact mul_nonneg hCF (dyadicGridLength_pos G R.1).le
+
+/-- The fit opponent of the segment root above a tree cell `R`, as a basic family below `R`. -/
+theorem isBasicOn_of_current {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {f : ℝ → ℂ}
+    {q : ℝ} (hq : 2 ≤ q) (hfq : ∀ I ∈ dyadicFiniteTree G J N, eLpNorm f (ENNReal.ofReal q)
+      (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)) ≤ 1)
+    {K R : ℤ × ℤ} (hR : R ∈ dyadicFiniteTree G J N)
+    (hRK : dyadicGridCell G R.1 R.2 ⊆ dyadicGridCell G K.1 K.2) {z : ℤ × ℤ → ℝ → ℂ}
+    (hz : ∃ (V : Type) (_ : Fintype V) (Ψ : ColumnDepthFamily V)
+      (F : Lp ℂ 2 (volume : Measure ℝ)), Ψ.D.grid = G ∧ Ψ.D.root = K ∧
+        (∀ I, z I = Ψ.current F I) ∧
+        (F : ℝ → ℂ) =ᵐ[volume] (dyadicGridCell G J.1 J.2).indicator f) :
+    IsBasicOn G R (dyadicRemainingDepth J N R) 1 z := by
+  obtain ⟨V, _, Ψ, F, hG, hroot, hzΨ, hF⟩ := hz
+  refine ⟨V, inferInstance, Ψ, physicalColumnInput F, hG, by rw [hroot]; exact hRK,
+    fun R' hR' => ?_, hzΨ⟩
+  have hR'J := ((dyadicFiniteTree_below_iff G J N hR R').mp hR').1
+  rw [integral_physical_sq]
+  refine le_of_eq_of_le (integral_congr_ae (ae_restrict_of_ae ?_))
+    (cell_indicator_sq_le ((dyadicFiniteTree_mem_iff G J R' N).mp hR'J).1
+      (eLpNorm_two_le_of_q (dyadicGridLength_pos G R'.1) hq (hfq R' hR'J)))
+  filter_upwards [hF] with y hy
+  rw [hy]
+
 /-- The compression constant is monotone in the budget. -/
 theorem compressionOneConst_le_of_budget {V : Type*} [Fintype V] (D' : ColumnTreeData V) {X : ℝ}
     (hX : D'.budget ≤ X) :
@@ -3743,6 +4187,14 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
       dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2 ∧ I.1 + K₀ ≤ J.1 + N ∧
       (∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 → zga I y = Xga.val I y) ∧
       (∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 → zgb I y = Xgb.val I y)) →
+    (∃ z₁ z₂, IsBasicOn G R (dyadicRemainingDepth J N R) 1 z₁ ∧
+      IsBasicOn G R (dyadicRemainingDepth J N R) 1 z₂ ∧ ∀ I ∈ Tc, ∀ᵐ y ∂volume,
+        y ∈ dyadicGridCell G I.1 I.2 → Xi.val I y = z₁ I y - z₂ I y) →
+    (∃ z₁ z₂, IsBasicOn G R (dyadicRemainingDepth J N R) 1 z₁ ∧
+      IsBasicOn G R (dyadicRemainingDepth J N R) 1 z₂ ∧ ∀ I ∈ Tc, ∀ᵐ y ∂volume,
+        y ∈ dyadicGridCell G I.1 I.2 → Xk.val I y = z₁ I y - z₂ I y) →
+    IsBasicOn G R (dyadicRemainingDepth J N R) 1 zga →
+    IsBasicOn G R (dyadicRemainingDepth J N R) 1 zgb →
     (∀ I ∈ Tc, eLpNorm (Xi.val I) 2
       (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)) ≤
         ENNReal.ofReal 2) →
@@ -3794,15 +4246,16 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
           (eLpNorm ((A p).U l I) 2 ((A p).μ I)).toReal ^ 2 ≤
             (K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
         ∑ I ∈ (A p).cells, dyadicGridLength G I.1 * ‖(A p).Hf I ((A p).z 3 I)‖ ≤
-          η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) := by
+          η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
+        (A p).HasColumnRep 1 := by
   obtain ⟨c₁, C₁, hc₁, hpkg⟩ := predictorPackage_nonempty c₀ hc₀ κ
   obtain ⟨c₂, Ca, hc₂, -, hacc⟩ := AccSetup.accurateFit κ
   refine ⟨c₁, C₁, c₂, Ca, hc₁, hc₂, fun q hq => ?_⟩
   obtain ⟨Cqa, hCqa, hacc'⟩ := hacc q hq
   refine ⟨Cqa, hCqa, ?_⟩
   intro G J N H R hR hH a i k b hai hak hab hik hib hkb w hw f hfm hfq Xi Xk Xga Xgb hdef₀ zga zgb
-    Cga Cgb hCga hCgb hzga hzgb K₀ Tc hTc hLi hLk hLga hLgb η₀ hη₀ hpairs Bp ε ka kb Ma Mb hBp hε0
-    hε1 hka1 hkb1 hMa hMb D Wa Wb S₀ Sp
+    Cga Cgb hCga hCgb hzga hzgb K₀ Tc hTc hri hrk hrga hrgb hLi hLk hLga hLgb η₀ hη₀ hpairs Bp ε
+    ka kb Ma Mb hBp hε0 hε1 hka1 hkb1 hMa hMb D Wa Wb S₀ Sp
   classical
   -- the empty case
   by_cases hTe : Tc = ∅
@@ -3853,11 +4306,6 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
   have hdef₀' : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₀ H Φ ∧
       IsBoundedQuadraticChart Φ := by
     obtain ⟨d, Φ, -, h1, h2⟩ := hdef₀; exact ⟨d, Φ, h1, h2⟩
-  have hdef₁' : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity (max c₁ c₀) D Φ ∧
-      IsBoundedQuadraticChart Φ := by
-    obtain ⟨d, Φ, -, h1, h2⟩ := hdef₀
-    exact ⟨d, Φ, quadraticChartComplexity_order_mono (quadraticChartComplexity_mono h1 hD)
-      (le_max_right _ _), h2⟩
   have hcoarse : ∀ I ∈ Tc, I ∈ dyadicFiniteTree G R (N' - K₀) := fun I hI =>
     (mem_coarse_below hR (hTc I hI).2.1 (hTc I hI).2.2.1).2
   have hseg := baseSegments κ Xi' Xk' Bp D pkga pkgb hε0 hε1 hai hak hab hik hib hkb hD1 K₀ Ma Mb
@@ -3872,7 +4320,7 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
     (le_trans (le_max_right c₁ c₀) (le_max_left _ _)) (le_max_left _ _) (le_max_right _ _)
     (le_trans hD (le_max_left _ _)) (le_max_left _ _)
     (le_trans (le_max_left _ _) (le_max_right _ _)) (le_trans (le_max_right _ _) (le_max_right _ _))
-    hdef₀' hdef₁'
+    hdef₀' hri hrk hrga hrgb
   dsimp only at hseg
   obtain ⟨P, A, hpack, hcover, hdisj, hA⟩ := hseg
   have hWa : Fintype.card (predAccSetup κ Xi' Xk' a i k b Bp D pkga hε0 hε1 K₀ Ma (f a) w q ka c₂
@@ -3891,9 +4339,9 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
     rfl
   refine ⟨P, A, hpack, hcover, hdisj, fun p => ?_⟩
   obtain ⟨hcells, hG, hw', ha, hb, hRp, hH', hDc, hS, hη, hcard, hrep, hpair, hsize, hside,
-    htwo⟩ := hA p
+    htwo, hcol⟩ := hA p
   refine ⟨hcells, hG, hw', ha, hb, ((hbelow _).mp hRp).1, ((hbelow _).mp hRp).2, hH', hDc, hS,
-    hη, ?_, ?_, ?_, hsize, hside, htwo⟩
+    hη, ?_, ?_, ?_, hsize, hside, htwo, hcol⟩
   · rw [hcard, hWa, hWb]; rfl
   · refine hrep.trans (mul_le_mul_of_nonneg_right ?_ (dyadicGridLength_pos G _).le)
     have hcomp : ∀ (V : Type) [Fintype V] (D' : ColumnTreeData V),
@@ -4181,7 +4629,8 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
           (eLpNorm ((A p).U l I) 2 ((A p).μ I)).toReal ^ 2 ≤
             (K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
         ∑ I ∈ (A p).cells, dyadicGridLength G I.1 * ‖(A p).Hf I ((A p).z 3 I)‖ ≤
-          η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1)) ∧
+          η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
+        (A p).HasColumnRep 1) ∧
       ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
           ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖ ≤
         ∑ p, ∑ I ∈ (A p).cells, dyadicGridLength G I.1 * ‖(A p).Hf I ((A p).Y I)‖ +
@@ -4331,7 +4780,21 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
       ∀ J' ∈ dyadicFiniteTree G J N, dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G R.1 R.2 →
         IsAdmissibleOpponent G J' (f (stagPos ℓ)) (z ℓ R hR) (fitOpponentConst (M ℓ)) ∧
           HasDepthEnergy G J' (f (stagPos ℓ)) (z ℓ R hR) 1 := fun ℓ R hR J' hJ' hJ'R =>
-    hz3 ℓ R hR J' hJ' (hJ'R.trans ((hfit ℓ).1.2.2.2.2 R hR).2.1)
+    (hz3 ℓ R hR).1 J' hJ' (hJ'R.trans ((hfit ℓ).1.2.2.2.2 R hR).2.1)
+  -- the fit opponents as basic families below each first-level root
+  have hzB : ∀ ℓ (R : ℤ × ℤ) (hR : R ∈ dyadicFiniteTree G J N),
+      IsBasicOn G R (dyadicRemainingDepth J N R) 1 (z ℓ R hR) := fun ℓ R hR =>
+    isBasicOn_of_current hq.le (hfq (stagPos ℓ)) hR ((hfit ℓ).1.2.2.2.2 R hR).2.1 (hz3 ℓ R hR).2
+  have hvY : ∀ ℓ (hℓ : ℓ ≤ t), ℓ ∈ Lset → ∀ (R : ℤ × ℤ) (hR : R ∈ dyadicFiniteTree G J N),
+      ∀ I ∈ Tup.filter (fun I => Rf I = R), ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 →
+        (Y ℓ hℓ R hR).val I y = z ℓ R hR I y := by
+    intro ℓ hℓ hℓL R hR I hI
+    obtain ⟨hIT, hRI⟩ := Finset.mem_filter.mp hI
+    have hIt := (Finset.mem_filter.mp hIT).1
+    subst hRI
+    filter_upwards [hz2 ℓ (Rf I) hR I hIt (hcellR I hIt ℓ hℓL)] with y hy hyI
+    rw [hy hyI]
+    exact hYval ℓ hℓ _ _ I hIt (hRtree I hIt).2 (hcellR I hIt ℓ hℓL) y
   -- the base data on each first-level root
   have hbase : ∀ (R : ℤ × ℤ) (hR : R ∈ Rs), _ := fun R hR =>
     hfr' (hRsT R hR) hH1 hai hak hab hpos hbi.symm hbk.symm w hw f hfm hfq (Xi R (hRsT R hR))
@@ -4349,6 +4812,25 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
           rw [hy hyI, hgav I hIt]
         · filter_upwards [hz2 lb (Rf I) _ I hIt (hcellR I hIt lb hlbL)] with y hy hyI
           rw [hy hyI, hgbv I hIt])
+      (by
+        by_cases hu4' : u ≤ 4
+        · obtain ⟨z₀, hz₀, hz₀0⟩ := (hzB u R (hRsT R hR)).zero zero_le_one
+          refine ⟨z u R (hRsT R hR), z₀, hzB u R _, hz₀, fun I hI => ?_⟩
+          filter_upwards [hvY u hut.le huL R (hRsT R hR) I hI, hz₀0 I] with y hy h0 hyI
+          rw [h0, sub_zero, ← hy hyI]
+          simp only [Xi, hu4', ↓reduceIte]
+        · refine ⟨z u R (hRsT R hR), z (u - 4) R (hRsT R hR), hzB u R _, hzB (u - 4) R _,
+            fun I hI => ?_⟩
+          filter_upwards [hvY u hut.le huL R (hRsT R hR) I hI,
+            hvY (u - 4) hu4 hu4L R (hRsT R hR) I hI] with y h1 h2 hyI
+          rw [← h1 hyI, ← h2 hyI]
+          simp only [Xi, hu4', ↓reduceIte, LowList.sub_val])
+      ⟨z t R (hRsT R hR), z (t - 4) R (hRsT R hR), hzB t R _, hzB (t - 4) R _, fun I hI => by
+        filter_upwards [hvY t le_rfl htL R (hRsT R hR) I hI,
+          hvY (t - 4) ht4 ht4L R (hRsT R hR) I hI] with y h1 h2 hyI
+        rw [← h1 hyI, ← h2 hyI]
+        simp only [Xk, LowList.sub_val]⟩
+      (hzB la R (hRsT R hR)) (hzB lb R (hRsT R hR))
       (fun I hI => by
         obtain ⟨hIT, hRI⟩ := Finset.mem_filter.mp hI
         have hIt := (Finset.mem_filter.mp hIT).1
@@ -4462,11 +4944,11 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
   · -- the bounds of each setup
     rintro ⟨⟨R, hR⟩, p⟩
     obtain ⟨hcells, hG, hw', -, -, hRp, -, hH', hDc, hS, hη, hcard, -, hpairs, hsize, hside,
-      htwo⟩ := (hPA R hR).2.2.2 p
+      htwo, hcol⟩ := (hPA R hR).2.2.2 p
     have hRT := hRsT R hR
     obtain ⟨hci, hck, hcga, hcgb, hWa, hWb⟩ := hcards R hRT
     refine ⟨fun I hI => (hcellsT R hR p I hI).1, hG, hw', hRp, hH', hDc, hS, hη, ?_, ?_, hsize,
-      hside, htwo⟩
+      hside, htwo, hcol⟩
     · have hcard' : Fintype.card (A R hR p).L = Fintype.card (Xi R hRT).Λ +
           Fintype.card (Xk R hRT).Λ +
           ((Fintype.card (Xi R hRT).Λ * Fintype.card (Xk R hRT).Λ * ⌊D⌋₊ + Ma) +
@@ -5236,7 +5718,9 @@ private weights and the delay `K₀` are at most `exp(k^{C_b})`; every pair of `
 `2η₀`-small; the normalized sizes are at most two; the basic sides satisfy
 `eq:basic-side` with constant `k^{C_b}`, and the two-`U` term is at most `η₀ k^{C_b} |R|`; and
 the length-weighted sum of `|H_I(X)|` over the tree is at most the sum of `|H_I(Y)|` over the
-active cells plus `e^{-k} 64/3 |J|` plus `η₀ k^{C_b} |J|`. The reduction to the active minima
+active cells plus `e^{-k} 64/3 |J|` plus `η₀ k^{C_b} |J|`; and each basic argument is a
+difference of two current basic projections whose inputs have energy at most `|R|` on the root
+(lines 1611-1613). The reduction to the active minima
 `eq:active-min` with path multiplicity is `ActiveSetup.reduction` and `ActiveSetup.active_count`
 applied to each setup. -/
 theorem activeCellReduction (κ : LocalKernelClass) :
@@ -5289,7 +5773,8 @@ theorem activeCellReduction (κ : LocalKernelClass) :
                 (stagAcc k₁ A t : ℝ) ^ Cb * dyadicGridLength G (B p).R.1) ∧
             ∑ I ∈ (B p).cells, dyadicGridLength G I.1 * ‖(B p).Hf I ((B p).z 3 I)‖ ≤
               Real.exp (-2 * (stagAcc k₁ A t : ℝ) ^ θ₀) *
-                ((stagAcc k₁ A t : ℝ) ^ Cb * dyadicGridLength G (B p).R.1)) ∧
+                ((stagAcc k₁ A t : ℝ) ^ Cb * dyadicGridLength G (B p).R.1) ∧
+            (B p).HasColumnRep 1) ∧
           ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
               ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖ ≤
             ∑ p, ∑ I ∈ (B p).cells, dyadicGridLength G I.1 * ‖(B p).Hf I ((B p).Y I)‖ +
@@ -5475,10 +5960,11 @@ theorem activeCellReduction (κ : LocalKernelClass) :
   have hK2 : ((⌈L ^ (d + 1)⌉₊ : ℕ) : ℝ) ^ 2 ≤ x ^ (2 * ((C + 2) * S) + 2) :=
     (pow_le_pow_left₀ (Nat.cast_nonneg _) hKb 2).trans hLS2
   refine ⟨ι, hι, B, hpack, hdisj, fun p => ?_, ?_⟩
-  · obtain ⟨hcellsT, hG, hw', hR, hH', hDc, hS, hη, hcard, hpairs, hsize, hside, htwo⟩ := hB p
+  · obtain ⟨hcellsT, hG, hw', hR, hH', hDc, hS, hη, hcard, hpairs, hsize, hside, htwo, hcol⟩ :=
+      hB p
     have hexp : Real.exp (L ^ S) ≤ Real.exp (x ^ (2 * ((C + 2) * S) + 2)) :=
       Real.exp_le_exp.mpr hLS
-    refine ⟨hcellsT, hG, hw', hR, ?_, ?_, ?_, hS, hη, ?_, hsize, ?_, ?_⟩
+    refine ⟨hcellsT, hG, hw', hR, ?_, ?_, ?_, hS, hη, ?_, hsize, ?_, ?_, hcol⟩
     · rw [hH']; exact (max_le hDb (max_le hBab hBbb)).trans hexp
     · rw [hDc]; exact hDcb.trans hexp
     · have h1 := (Nat.cast_le (α := ℝ)).mpr hcard

@@ -5,7 +5,7 @@ Authors: Claude
 -/
 module
 
-public import TrilinearHT.Auto.SecCoreTerms
+public import TrilinearHT.Auto.SecCompletionAttemptModes
 
 /-!
 # Normalized absorption and the operator estimate
@@ -813,17 +813,6 @@ theorem cellLqNorm_eq (G : RealDyadicGrid) {q : ℝ} (hq : 0 < q) (f : ℝ → �
   congr 1
   rw [dyadicGridCell]
   exact (setLIntegral_congr Ico_ae_eq_Icc).symm
-
-/-- The local form is multilinear: scaling the inputs scales the form by the product. -/
-theorem localProgressionForm_smul (r : ℝ) (w : ℝ × ℝ → ℂ) (f : Fin 4 → ℝ → ℂ)
-    (c : Fin 4 → ℂ) :
-    localProgressionForm r w (fun j => c j • f j) =
-      (∏ j, c j) * localProgressionForm r w f := by
-  simp only [localProgressionForm, Pi.smul_apply, smul_eq_mul, Finset.prod_mul_distrib]
-  rw [show (fun z : ℝ × ℝ => w z * ((∏ j, c j) * ∏ j, f j (realProgressionCoordinate j z))) =
-    fun z => (∏ j, c j) * (w z * ∏ j, f j (realProgressionCoordinate j z)) by
-      funext z; ring, integral_const_mul]
-  ring
 
 /-- Finite data restricted to a subset of its cells, with rescaled inputs. -/
 noncomputable def FiniteDepthLocalData.restrictScale {κ : LocalKernelClass} {q : ℝ} {N : ℕ}

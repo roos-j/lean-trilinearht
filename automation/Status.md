@@ -539,25 +539,73 @@ complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2302-2325 | Fast lift 
 complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2307-2312 | Sampled form as lattice sum of fast forms; summed first sampling error (BlockData.total_eq, err1_bound)
 complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2314-2337 | Fatou over S_N, γ-invariance on T₀², heavy-slot split, window majorant (norm_latticeSum_le_windows)
 complete | 2026-10-11 18:43:03 ET | lem:shortblock, lines 2334-2369 | Per-rectangle bound: deletion, interval comparison, eq:CN main term, second error (BlockData.rect_bound)
-in progress | 2026-10-11 18:43:03 ET | lem:shortblock, line 2272 | eq:shortblock assembled: tree piece, leaf masks, rectangle and level sums, normalization
+complete | 2026-10-11 19:43:38 ET | lem:shortblock, lines 2276-2369 | eq:shortblock: tree piece, leaf masks, level sums, normalization (short_block_comparison)
 complete | 2026-10-11 11:05:57 ET | Declaration power-costs, line 2390 | components: three_sides_power, min_le_rpow_mul (see ErrorReport)
 complete | 2026-10-11 11:05:57 ET | Declaration fixed-stacks, line 2423 | component: binary_prefix_expansion; eq:stack-energy open (ErrorReport)
-not started | 2026-10-11 13:57:00 ET | fixed-stacks, lines 2400-2423 | eq:stack-energy from product-jump estimates
+complete | 2026-10-11 19:49:35 ET | fixed-stacks, lines 2400-2423 | eq:stack-energy: stack_energy_linear, stack_energy_rolling (Hilbert-space core)
 complete | 2026-10-11 11:05:57 ET | Declaration side-estimate, line 2456 | component: hull_maxima_cauchy_schwarz; assembly open (ErrorReport)
-not started | 2026-10-11 13:57:00 ET | side-estimate, lines 2425-2456 | Assembly: freezing flags, Rademacher selection, sparse split, eq:near-band
+complete | 2026-10-11 19:59:04 ET | side-estimate, lines 2425-2456 | Flags, Rademacher selection, sparse split, eq:near-band (near_band_total, sparse_two_stacks_volume_le)
 complete | 2026-10-11 11:07:56 ET | Declaration common-height, line 2480 | components: first_success_weights_sum, all_good_proportion (see ErrorReport)
 complete | 2026-10-11 11:07:56 ET | Declaration frequency-tests, line 2585 | component: schur_test; Fourier tests open (ErrorReport)
-not started | 2026-10-11 13:57:00 ET | frequency-tests, lines 2500-2585 | eq:core-torus-form, eq:Haar-four, eq:four-tests, kernel decay
+complete | 2026-10-11 20:17:35 ET | frequency-tests, lines 2482-2585 | eq:Haar-four, character averages, kernel decay, Hölder moments (haar_four, core_moment_bound)
 complete | 2026-10-11 11:17:15 ET | Declaration sparse-count, line 2705 | components: minimal_growth_iteration, packing_card_le, count_balance_bound
-not started | 2026-10-11 13:57:00 ET | lem:sparse-count, lines 2587-2705 | Four-step paths, difference covers, slab cover, eq:sparse-count
+complete | 2026-10-11 22:25:13 ET | lem:sparse-count, lines 2587-2705 | eq:sparse-count: four-step paths, covers, slab count, grid reduction (sparse_count)
 complete | 2026-10-11 11:23:11 ET | Declaration tested-counts, line 2744 | components: pair_difference_eq_zero, total_count_le (see ErrorReport)
-not started | 2026-10-11 13:57:00 ET | tested-counts, lines 2707-2744 | eq:triple-test, side incidence, eq:applied-sparse
+complete | 2026-10-11 22:27:54 ET | tested-counts, lines 2707-2744 | Pair determination, Parseval side incidence, eq:total-count (side_incidence_count)
 complete | 2026-10-11 11:17:15 ET | Declaration distribution, line 2769 | Auto.distribution_power (exact statement; CoreTerms)
 complete | 2026-10-11 11:17:15 ET | Declaration core-estimate, line 2822 | components: powered_count_exponents, amplitude_factor_le_one (ErrorReport)
-not started | 2026-10-11 13:57:00 ET | core-estimate, lines 2771-2822 | Hölder over groups, band sums, eq:core-final
+complete | 2026-10-11 22:33:40 ET | core-estimate, lines 2771-2822 | Powered count, Hölder over groups, band sums, minimum step (powered_count, sum_prod_rpow_le)
 complete | 2026-10-11 11:20:02 ET | Declaration normalized, line 2904 | components: exists_exponent_near_two, absorption_power_bound (ErrorReport)
-not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2838-2840 | Attempt on an active setup: catalogs, colors, ball histories, leaf data
-not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2838-2840 | Attempt: first-match modes, offsets, linear sides, helpers instantiated
+complete | 2026-10-11 23:15:34 ET | prop:normalized row 1, lines 1675-1686 | Nested charts of active setups; tag graph refinement, symmetry; graph distances (DepthDistance.ofEdges)
+complete | 2026-10-11 23:15:34 ET | prop:normalized row 1, lines 1677-1681 | Admission tree below a root: admission cells, positions, AdmTree (admTree)
+complete | 2026-10-11 23:21:26 ET | prop:normalized row 1, lines 1677-1686 | Active-setup vertices, charts, normalized tags, tag graph and its distances (vtag, tagDist)
+complete | 2026-10-11 23:46:19 ET | prop:normalized row 1, lines 1720-1734 | Colors on the admission tree: per-cell bound D = 4|L|+1, failed cells ≤ 100·2001⁷|R|/D (coloring)
+complete | 2026-10-11 23:47:54 ET | prop:normalized row 1, lines 1712-1760 | Color parameters b₁, b₂ and historical mask properties for the attempt (colorParams, masks)
+complete | 2026-10-12 00:31:50 ET | prop:normalized row 1, lines 1611-1613, 1859 | Basic args as differences of two current basic projections, root energy ≤ |R| (HasColumnRep)
+complete | 2026-10-12 00:40:15 ET | prop:normalized row 1, lines 1820-1831 | Local catalog closure: valid insertion sequences, cap argument, maximal sequence passes all tests (local_closure)
+complete | 2026-10-12 00:44:40 ET | prop:normalized row 1, lines 1805-1809, 1823-1825 | Catalog columns, rank/mask projections, nesting, fresh coordinates, insertion gain (catProj_gain)
+complete | 2026-10-12 00:52:12 ET | prop:normalized row 1, lines 1809-1831 | Catalog tests at a cell, same-tag repair of failed tests, per-cell closure with rank counts (cell_closure)
+complete | 2026-10-12 01:01:38 ET | prop:normalized row 1, lines 1820-1831 | Catalog over a finite tree: ancestors first, earlier tests preserved, per-cell rank counts (tree_closure)
+complete | 2026-10-12 01:05:18 ET | prop:normalized row 1, lines 488-497, 1835 | Catalog outputs as column combinations with private-coordinate coefficient bounds (catRange_expansion)
+complete | 2026-10-12 01:12:07 ET | prop:normalized row 1, lines 418-420, 1845 | Local form a.e.-invariant in each slot; multilinear cell form on augmented inputs (cellForm)
+complete | 2026-10-12 01:17:53 ET | prop:normalized row 1, lines 1798-1803 | Inserted columns recorded as same-tag templates; templates are pure modulated charts (templateCol_chart)
+complete | 2026-10-12 01:25:10 ET | prop:normalized row 1, lines 1804-1813 | Cumulative masks (monotone, neighbor closure, old/current split, depth growth); averaged histories as choice averages
+complete | 2026-10-12 01:29:30 ET | prop:normalized row 1, lines 1809-1815, 1850-1852 | Form only sees the cell; a passing test bounds forms with a pure source and scaled spectators (CatTest.form_le)
+complete | 2026-10-12 01:36:12 ET | prop:normalized row 1, lines 1841-1849 | Guarded binary color search: exact leaf expansion, guard invariants, leaves = colors (searchLeaves)
+complete | 2026-10-12 01:46:24 ET | prop:normalized row 1, lines 1813, 1850-1852 | Averaged residual bound; leaf residuals as averages of single-choice test residuals (residual_layerOp_eq_avg)
+complete | 2026-10-12 01:51:07 ET | prop:normalized row 1, lines 1835, 1850 | Averaged catalog filter outputs as column combinations of the largest mask with coefficients ≤ ‖X‖/√|I|
+complete | 2026-10-12 01:53:38 ET | prop:normalized row 1, lines 1850-1852 | Spectator sizes ≤ ‖x‖/√|I|; pair separation bound for a source against separated columns (cellForm_pair_le)
+complete | 2026-10-12 01:58:24 ET | prop:normalized row 1, lines 1850-1855 | Source combinations against averaged residuals (CatTest.form_combo_le); contractions of averaged filters and layers
+complete | 2026-10-12 02:08:30 ET | prop:normalized row 1, lines 1850-1855 | Leaf filters; old-source, matching, separation and residual-insertion bounds at a leaf (LeafFilters.old_le, match_le, sep_le, res_le)
+complete | 2026-10-12 02:12:28 ET | prop:normalized row 1, lines 1848-1856 | Leaf error of the localization from the catalog tests and separation (LeafFilters.leaf_error)
+complete | 2026-10-12 02:15:19 ET | prop:normalized row 1, lines 1838-1856 | Cell sums of the localization over the leaves of the guarded search (search_cell_min)
+complete | 2026-10-12 02:26:36 ET | prop:normalized row 1, lines 1835, 1850-1855 | ℓ² coefficient bounds (private recovery); separation and residual errors with √N; rank-split thresholds in leaf_error
+complete | 2026-10-12 02:37:43 ET | prop:normalized row 1, lines 1677-1680 | Base inputs as cell L² classes; dimension padding of charts; vertex charts of dimension ≥ 1 (vchart_spec)
+complete | 2026-10-12 02:40:25 ET | prop:normalized row 1, lines 1760-1762 | Attempt mask facts: pad monotonicity, current vertices in group masks, separation of distinct groups, no tag edges
+complete | 2026-10-12 02:46:32 ET | prop:normalized row 1, lines 1804-1853 | Attempt parameters; cell masks, filters, current groups, named tests of each slot (AttemptParams.tests)
+complete | 2026-10-12 02:51:11 ET | prop:normalized row 1, lines 1820-1831 | Attempt catalogs for the four slots passing all named tests (AttemptParams.catalogs_exist)
+complete | 2026-10-12 02:59:25 ET | prop:normalized row 1, lines 1798-1803, 1850 | Leaf layer lengths; Pass monotone; present vertices available; vertex charts and templates as sources of common complexity (templateCol_source)
+complete | 2026-10-12 03:03:18 ET | prop:normalized row 1, line 1798 | Mask vertices are present; selected catalog columns are pure sources of their tags (catColumn_source)
+complete | 2026-10-12 03:10:19 ET | prop:normalized row 1, lines 1835, 1858 | Upper guard expansions: catalog case (upper_expansion) and basic case in vertex charts (basic_expansion, basic_source)
+complete | 2026-10-12 03:16:00 ET | prop:normalized row 1, lines 1848-1851 | Complete-search leaves have one color in [1,L] (leafAt_facts); old/current classification of upper sources (classify)
+complete | 2026-10-12 03:20:41 ET | prop:normalized row 1, lines 1851-1853 | Ball pads restricted to Fin P in leaf_error; template atoms are bounded charts; current groups pair-separated (sep_pair)
+complete | 2026-10-12 03:27:53 ET | prop:normalized row 1, lines 1848-1856 | One leaf at one active cell from a bounded-chart expansion of the upper guard (AttemptParams.leaf_bound)
+complete | 2026-10-12 03:32:48 ET | prop:normalized row 1, lines 1850, 1858 | Leaf bound with both upper-guard cases: catalog filter with l2 coefficients, basic slot in vertex charts (leaf_main)
+complete | 2026-10-12 03:37:53 ET | prop:normalized row 1, lines 1838-1856 | Localized sum of an attempt over successful cells and all leaves, rank-wise leaf errors (localized_sum)
+complete | 2026-10-12 03:45:34 ET | prop:normalized row 1, lines 1826-1831 | Label counts by birth and rank; thresholds τ_r from a count sequence give catalogs with ≤ n_r labels (catalogs_counted)
+complete | 2026-10-12 03:48:31 ET | prop:normalized row 1, lines 1834-1836, 1855 | Leaf error O(G_c τ₃) from rank-wise cancellation; √n_r τ_(r+1) ≤ τ₃ under the closure ratio (leafErr_le, catTau_ratio)
+complete | 2026-10-12 03:53:23 ET | prop:normalized row 1, lines 1820-1856 | Attempt localization with counted catalogs: error Σ|I|·#leaves·5(D+2)(S⁴+|L|D_c S³)τ₃ (attempt_localization)
+complete | 2026-10-12 03:54:12 ET | prop:normalized, lines 2838-2840 | Attempt on an active setup: catalogs, colors, ball histories, leaf data (attempt_localization)
+complete | 2026-10-12 04:15:05 ET | prop:normalized row 2, lines 1684, 1704, 1903 | Short tag paths; equal tags joined; ball-mask primaries tag-joined to the group center (mask_tagEdge_center)
+complete | 2026-10-12 04:23:44 ET | prop:normalized row 2, lines 470-483, 1748, 1807 | Catalog projections as column-tree projections; attempt masks inherited in depth (catProj_eq_cellColumnProjection)
+complete | 2026-10-12 04:41:28 ET | prop:normalized row 2, lines 1893-1922 | Branch-chart complexity; recentred first-match expansions on the first-match cell (firstMatch_attempt)
+complete | 2026-10-12 04:57:24 ET | prop:normalized row 2, lines 1907, 1932-1940 | First-match truncation; global mode lift, ‖R‖ ≤ √5, exact synthesis after the match (LiftData.op)
+complete | 2026-10-12 05:25:52 ET | prop:normalized row 2, lines 1891, 1913, 1924-1940 | First-match cells; counted finite expansions (box truncation); the mode lift R_(l,G) (attemptLift)
+complete | 2026-10-12 05:39:43 ET | prop:normalized row 2, lines 1913-1922, 1980-1988 | Mode curvature and rational differences of the lift; PRE/CURRENT edges and components (preCurrent)
+complete | 2026-10-12 05:52:57 ET | prop:normalized row 2, lines 1958, 2005-2012 | CURRENT paths sum their witnesses; bounded-denominator basis expansion (rational_span_expand_bounded)
+complete | 2026-10-12 06:07:56 ET | prop:normalized row 2, lines 1995-2029 | Tiny span closure; stabilization core; good heights give direct PRE adjacency on a pre-cell (stabilize_pre); bad-height count (bad_heights_card)
+complete | 2026-10-12 06:26:46 ET | prop:normalized row 2, lines 1893, 1913, 2031-2045 | Normalized vector Θ'=(θ_v,θ_z/Q₀); same-key differences; hstab from good primaries (hstab_of_primaryGood)
+in progress | 2026-10-12 03:57:21 ET | prop:normalized, lines 2838-2840 | Attempt: first-match modes, offsets, linear sides, helpers instantiated
 not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2840-2843 | Cuts, exceptional roots ≤ |R|/4, restarts, root packing 4|R|/3
 not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2845-2848 | Cores, three sides and transfer decomposition of the active form
 not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2850-2858 | eq:before-absorption for a retained attempt
