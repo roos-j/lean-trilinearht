@@ -5930,7 +5930,7 @@ cells satisfy `‖Σ_G Z_G‖² ≤ (1 + τ N W₀²) Σ_G ‖Z_G‖²` provided
 (i) overlapping endpoint cells of labels in different groups have depth at most the last
 separating depth `s_*(v, w)` of the two labels (lemma masks),
 (ii) at that depth the physical pairing of the two pure columns is at most `τ` on every cell
-(lemma graph),
+(lemma graph), for labels with overlapping occurrences in different groups,
 (iii) private labels never coincide on an overlap, and
 (iv) at most `N` group-label pairs are present at each point and inverse private weights are
 at most `W₀²`. -/
@@ -5945,8 +5945,10 @@ theorem usableRangeBessel (Gd : RealDyadicGrid) (φ : V → ℝ → ℂ) (ε : V
       (dyadicGridCell Gd I.1 I.2 ∩ dyadicGridCell Gd J.1 J.2).Nonempty →
         I.1 ≤ sep v w ∧ J.1 ≤ sep v w)
     {τ : ℝ} (hτ : 0 ≤ τ)
-    (hcell : ∀ v w, ∀ n, ‖∫ y in dyadicGridCell Gd (sep v w) n,
-      starRingEnd ℂ (φ v y) * φ w y‖ ≤ τ * dyadicGridLength Gd (sep v w))
+    (hcell : ∀ G G', G ≠ G' → ∀ v w, (∃ I ∈ occ G v, ∃ J ∈ occ G' w,
+      (dyadicGridCell Gd I.1 I.2 ∩ dyadicGridCell Gd J.1 J.2).Nonempty) →
+      ∀ n, ‖∫ y in dyadicGridCell Gd (sep v w) n,
+        starRingEnd ℂ (φ v y) * φ w y‖ ≤ τ * dyadicGridLength Gd (sep v w))
     (hpriv : ∀ G G', G ≠ G' → ∀ v, ∀ I ∈ occ G v, ∀ J ∈ occ G' v,
       Disjoint (dyadicGridCell Gd I.1 I.2) (dyadicGridCell Gd J.1 J.2))
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × V)).filter
@@ -5975,6 +5977,21 @@ theorem usableRangeBessel (Gd : RealDyadicGrid) (φ : V → ℝ → ℂ) (ε : V
     (occCoef_measurable Gd occ c) hM0 hab hsupp hφm hφb' hτ _ _ hN
   · -- the cross pairings
     intro G G' hne v w
+    by_cases hov : ∃ I ∈ occ G v, ∃ J ∈ occ G' w,
+        (dyadicGridCell Gd I.1 I.2 ∩ dyadicGridCell Gd J.1 J.2).Nonempty
+    swap
+    · have h0 : ∀ y, a G v y * a G' w y = 0 := by
+        intro y
+        by_contra h
+        obtain ⟨I, hI, hyI⟩ := hmem G v y (left_ne_zero_of_mul h)
+        obtain ⟨J, hJ, hyJ⟩ := hmem G' w y (right_ne_zero_of_mul h)
+        exact hov ⟨I, hI, J, hJ, y, hyI, hyJ⟩
+      have hz : (fun y => starRingEnd ℂ (a G v y * φ v y) * (a G' w y * φ w y)) = fun _ => 0 := by
+        funext y
+        have := h0 y
+        rcases mul_eq_zero.mp this with h | h <;> simp [h]
+      rw [hz, integral_zero, norm_zero]
+      exact mul_nonneg hτ (integral_nonneg fun y => by positivity)
     set s := sep v w
     obtain ⟨𝒦, h𝒦⟩ := cells_meeting_finite Gd s ra rb
     set f : ℝ → ℂ := fun y => starRingEnd ℂ (a G v y) * a G' w y
@@ -6031,7 +6048,7 @@ theorem usableRangeBessel (Gd : RealDyadicGrid) (φ : V → ℝ → ℂ) (ε : V
       have hyR := hroot G v I hI hyI
       obtain ⟨n, hn⟩ := dyadicGridCell_covers Gd s y
       exact ⟨n, h𝒦 n y hn hyR.1 hyR.2, hn⟩
-    · intro n _; exact hcell v w n
+    · intro n _; exact hcell G G' hne v w hov n
   · -- private coordinates never coincide on an overlap
     intro G G' hne v y
     by_contra h

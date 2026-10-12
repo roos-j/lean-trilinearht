@@ -5,7 +5,7 @@ Authors: Claude
 -/
 module
 
-public import TrilinearHT.Auto.SecCompletionAttemptModes
+public import TrilinearHT.Auto.SecCompletionAttemptSides
 
 /-!
 # Normalized absorption and the operator estimate

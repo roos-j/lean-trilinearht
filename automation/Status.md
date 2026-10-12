@@ -8,7 +8,13 @@ complete | 2026-10-11 11:35:58 ET | thm:main, lines 2999–3009 | Unique bounded
 
 # Quantitative quadratic chart calculus prerequisite
 
-The locally quadratic chart lemma needs the substantial general calculus of compactly supported quadratic lattice-sum charts: finite summation, normalization, conjugation, products, affine changes and uniform Gevrey complexity. Pinned Mathlib has no matching quadratic chart theorem; its calculus and Fourier primitives underlie the already-proved general development. Extract that complete development into TrilinearHT/Auto/QuadraticCharts.lean under the reusable-prerequisite exception, not a machine-blueprint section split. Move the primitive logarithmic-size and quasipolynomial-bound definitions with it. Use a primitive local rational height definition, definitionally equal to the existing one, so every statement and local definition depends only on Mathlib and the same module. RationalLinearAlgebra may be imported for proof reuse only. A declaration-reference scan found no other external project dependencies. Verified source: def:chart, lines 625-637, lem:chart-operations, lines 642-660, and the several-variable chart formula. Recorded before creation at 2026-10-09 19:20:45 ET.
+The locally quadratic chart lemma needs the substantial general calculus of compactly supported quadratic lattice-sum charts: finite summation, normalization, conjugation,
+products, affine changes and uniform Gevrey complexity. Pinned Mathlib has no matching quadratic chart theorem; its calculus and Fourier primitives underlie the already-proved
+general development. Extract that complete development into TrilinearHT/Auto/QuadraticCharts.lean under the reusable-prerequisite exception, not a machine-blueprint section split.
+Move the primitive logarithmic-size and quasipolynomial-bound definitions with it. Use a primitive local rational height definition, definitionally equal to the existing one, so
+every statement and local definition depends only on Mathlib and the same module. RationalLinearAlgebra may be imported for proof reuse only. A declaration-reference scan found no
+other external project dependencies. Verified source: def:chart, lines 625-637, lem:chart-operations, lines 642-660, and the several-variable chart formula. Recorded before
+creation at 2026-10-09 19:20:45 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -16,7 +22,11 @@ complete | 2026-10-09 19:24:17 ET | def:chart and lem:chart-operations, lines 62
 
 # Quantitative Gevrey cutoff prerequisite
 
-The Fourier localization needs compact cutoffs and a locally finite integer partition with uniform all-orders Gevrey bounds. Pinned Mathlib supplies smooth expNegInvGlue and smooth transitions but no quantitative Gevrey derivative or partition theorem; the repository's already-proved construction supplies this substantial classical calculus prerequisite. Move that entire independent development, without duplicating or changing its proofs, into TrilinearHT/Auto/GevreyCutoffs.lean. Its general interval, affine-rescaling and finite-product statements use only Mathlib and local definitions. This is the reusable-prerequisite exception, not a machine-blueprint section split. Verified references: blueprint lem:gevrey, lines 107–126, and Mathlib.Analysis.SpecialFunctions.SmoothTransition. Recorded before module creation at 2026-10-09 09:58:48 ET.
+The Fourier localization needs compact cutoffs and a locally finite integer partition with uniform all-orders Gevrey bounds. Pinned Mathlib supplies smooth expNegInvGlue and smooth
+transitions but no quantitative Gevrey derivative or partition theorem; the repository's already-proved construction supplies this substantial classical calculus prerequisite. Move
+that entire independent development, without duplicating or changing its proofs, into TrilinearHT/Auto/GevreyCutoffs.lean. Its general interval, affine-rescaling and finite-product
+statements use only Mathlib and local definitions. This is the reusable-prerequisite exception, not a machine-blueprint section split. Verified references: blueprint lem:gevrey,
+lines 107–126, and Mathlib.Analysis.SpecialFunctions.SmoothTransition. Recorded before module creation at 2026-10-09 09:58:48 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -27,7 +37,12 @@ complete | 2026-10-08 22:24:10 ET | lem:gevrey, line 126 | Rescaling and multidi
 
 # Quantitative Fourier approximation prerequisite
 
-The chart development and later Fourier splitting use the general derivative-to-Fourier-decay, absolute convergence and quantitative uniform truncation theorem on finite-dimensional tori. Pinned Mathlib has Fourier completeness and summability interfaces, but searches found no matching explicit derivative-order, dimension and tail estimate. This is a substantial classical Fourier-analysis prerequisite. Move the entire already-proved 702-line independent development, without changing its mathematics, into TrilinearHT/Auto/FourierApproximation.lean. A declaration-reference scan found no external project dependencies; its statements and local definitions use only Mathlib. This invokes the reusable-prerequisite exception, not a source-section split. Verified references: blueprint lem:fourier-foundation, lines 130-146, and Mathlib.Analysis.Fourier.AddCircleMulti. Preserve the existing attribution to ../lean-dfr. Recorded before creation at 2026-10-09 13:27:14 ET.
+The chart development and later Fourier splitting use the general derivative-to-Fourier-decay, absolute convergence and quantitative uniform truncation theorem on
+finite-dimensional tori. Pinned Mathlib has Fourier completeness and summability interfaces, but searches found no matching explicit derivative-order, dimension and tail estimate.
+This is a substantial classical Fourier-analysis prerequisite. Move the entire already-proved 702-line independent development, without changing its mathematics, into
+TrilinearHT/Auto/FourierApproximation.lean. A declaration-reference scan found no external project dependencies; its statements and local definitions use only Mathlib. This invokes
+the reusable-prerequisite exception, not a source-section split. Verified references: blueprint lem:fourier-foundation, lines 130-146, and Mathlib.Analysis.Fourier.AddCircleMulti.
+Preserve the existing attribution to ../lean-dfr. Recorded before creation at 2026-10-09 13:27:14 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -38,7 +53,12 @@ complete | 2026-10-10 11:41:13 ET | lem:separation, line 1409 | Convolution form
 
 # Balog-Szemeredi-Gowers prerequisite
 
-The finite inverse argument needs the classical Balog-Szemeredi-Gowers energy-to-small-difference theorem and its dense bipartite four-path prerequisite. Pinned Mathlib supplies Finset.addEnergy and basic finite inequalities, but direct searches found no quantitative BSG or dependent-random-choice four-path theorem; searches of ../lean-spherical, ../lean-dfr and ../lean-variationalsw found no adequate replacement. This substantial textbook additive-combinatorics theorem qualifies for the reusable-prerequisite exception. Develop exactly one independent module, TrilinearHT/Auto/BalogSzemerediGowers.lean, with general finite bipartite relations and finite subsets of arbitrary abelian groups. Its statements and supporting definitions use only Mathlib and that module, including Mathlib additive energy. Verified reference: blueprint lem:four-paths, lines 668-680, and lem:BSG, lines 683-698. Recorded before module creation at 2026-10-09 14:47:46 ET.
+The finite inverse argument needs the classical Balog-Szemeredi-Gowers energy-to-small-difference theorem and its dense bipartite four-path prerequisite. Pinned Mathlib supplies
+Finset.addEnergy and basic finite inequalities, but direct searches found no quantitative BSG or dependent-random-choice four-path theorem; searches of ../lean-spherical,
+../lean-dfr and ../lean-variationalsw found no adequate replacement. This substantial textbook additive-combinatorics theorem qualifies for the reusable-prerequisite exception.
+Develop exactly one independent module, TrilinearHT/Auto/BalogSzemerediGowers.lean, with general finite bipartite relations and finite subsets of arbitrary abelian groups. Its
+statements and supporting definitions use only Mathlib and that module, including Mathlib additive energy. Verified reference: blueprint lem:four-paths, lines 668-680, and lem:BSG,
+lines 683-698. Recorded before module creation at 2026-10-09 14:47:46 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -53,7 +73,13 @@ complete | 2026-10-09 15:20:55 ET | lem:BSG, lines 683-698 | Energy-to-small-dif
 
 # Chang spectrum and Bohr cardinality prerequisite
 
-The finite inverse theorem and dense Bogolyubov argument need Chang's quantitative spectrum-generating theorem and the Bohr-set cardinality estimate. Pinned Mathlib has AddDissociated, maximal dissociated span, and AddDissociated.randomisation (the Riesz-product mean identity), but direct searches found no quantitative spectrum cardinality bound or Bohr-set pigeonhole estimate; searches of ../lean-spherical, ../lean-dfr and ../lean-variationalsw found no replacement. This is a substantial classical finite harmonic-analysis theorem. Create exactly one independent module, TrilinearHT/Auto/ChangSpectrum.lean, using only Mathlib and local definitions for finite abelian groups, additive characters, and circle-valued homomorphisms. Reuse the existing randomisation and dissociation proofs. The source cyclic statement will be connected to the project's normalized Fourier transform in the main file. This is the reusable-prerequisite exception, not a blueprint-section split. Verified reference: blueprint lem:Chang, lines 730-764. Recorded before creation at 2026-10-09 15:25:46 ET.
+The finite inverse theorem and dense Bogolyubov argument need Chang's quantitative spectrum-generating theorem and the Bohr-set cardinality estimate. Pinned Mathlib has
+AddDissociated, maximal dissociated span, and AddDissociated.randomisation (the Riesz-product mean identity), but direct searches found no quantitative spectrum cardinality bound
+or Bohr-set pigeonhole estimate; searches of ../lean-spherical, ../lean-dfr and ../lean-variationalsw found no replacement. This is a substantial classical finite harmonic-analysis
+theorem. Create exactly one independent module, TrilinearHT/Auto/ChangSpectrum.lean, using only Mathlib and local definitions for finite abelian groups, additive characters, and
+circle-valued homomorphisms. Reuse the existing randomisation and dissociation proofs. The source cyclic statement will be connected to the project's normalized Fourier transform
+in the main file. This is the reusable-prerequisite exception, not a blueprint-section split. Verified reference: blueprint lem:Chang, lines 730-764. Recorded before creation at
+2026-10-09 15:25:46 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -64,7 +90,15 @@ complete | 2026-10-09 15:49:08 ET | lem:Chang, lines 739-764 | Spectrum generati
 
 # Khintchine and empirical sampling prerequisite
 
-The later almost-period and signed-stack arguments need the general Khintchine upper inequality and its empirical-sampling consequence. Searches of pinned Mathlib Probability and Analysis found no Khintchine or symmetrization/sampling moment theorem; the repository already contains a complete proof adapted from ../lean-variationalsw. Extract that substantial textbook probability prerequisite, unchanged, into TrilinearHT/Auto/KhintchineSampling.lean. Include all sign, independent-copy, finite-mean, finite-Lp and convolution definitions it uses. A declaration-reference scan found only finiteAverage and finiteConvolution as outside dependencies; move those definitions too, so all statements depend only on Mathlib and local definitions. This invokes the reusable-prerequisite exception, not a blueprint section split. Extend this same independent empirical-sampling module with the Croot-Sisask almost-period consequence, blueprint lem:almostperiods, lines 766-784, using its existing probability norms and sampling theorem. No additional module is needed. Verified reference: blueprint lem:finite-fourier, lines 177-209; preserve sibling attribution. Recorded before creation at 2026-10-09 13:58:52 ET. Consolidation recorded at 2026-10-09 21:22:18 ET: move the already-proved finite Fourier foundations from main into this module, beside their local finiteAverage, finiteConvolution and uniformMean primitives; add the trilinear Fourier selection estimate needed for finite-inverse lines 1148-1157. The unchanged foundation statements depend only on Mathlib and this module.
+The later almost-period and signed-stack arguments need the general Khintchine upper inequality and its empirical-sampling consequence. Searches of pinned Mathlib Probability and
+Analysis found no Khintchine or symmetrization/sampling moment theorem; the repository already contains a complete proof adapted from ../lean-variationalsw. Extract that
+substantial textbook probability prerequisite, unchanged, into TrilinearHT/Auto/KhintchineSampling.lean. Include all sign, independent-copy, finite-mean, finite-Lp and convolution
+definitions it uses. A declaration-reference scan found only finiteAverage and finiteConvolution as outside dependencies; move those definitions too, so all statements depend only
+on Mathlib and local definitions. This invokes the reusable-prerequisite exception, not a blueprint section split. Extend this same independent empirical-sampling module with the
+Croot-Sisask almost-period consequence, blueprint lem:almostperiods, lines 766-784, using its existing probability norms and sampling theorem. No additional module is needed.
+Verified reference: blueprint lem:finite-fourier, lines 177-209; preserve sibling attribution. Recorded before creation at 2026-10-09 13:58:52 ET. Consolidation recorded at
+2026-10-09 21:22:18 ET: move the already-proved finite Fourier foundations from main into this module, beside their local finiteAverage, finiteConvolution and uniformMean
+primitives; add the trilinear Fourier selection estimate needed for finite-inverse lines 1148-1157. The unchanged foundation statements depend only on Mathlib and this module.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -79,7 +113,13 @@ complete | 2026-10-09 16:10:28 ET | lem:almostperiods, lines 775 and 783 | Itera
 
 # Dense Bogolyubov prerequisite
 
-The finite inverse argument needs the classical quasipolynomial dense Bogolyubov theorem: for every nonempty subset A of a finite cyclic group, 2A-2A contains a Bohr set with rank O(log^4(1/alpha)), reciprocal radius O(alpha^(-1) log^4(1/alpha)), and density exp(-O(log^5(1/alpha))). Searches of pinned Mathlib additive combinatorics/Fourier and ../lean-spherical, ../lean-dfr and ../lean-variationalsw found no such theorem. This substantial named theorem qualifies for the reusable-prerequisite exception. Create exactly one module, TrilinearHT/Auto/DenseBogolyubov.lean, general over all positive cyclic moduli and arbitrary finite subsets. Its theorem statements and local definitions use Mathlib/local vocabulary; proofs may reuse the already-verified KhintchineSampling and ChangSpectrum modules, as explicitly permitted by the skill. Do not import the main proof module or create a cycle. The main module has 9489 lines, but mathematical substance, not file length, justifies this split. Verified reference: blueprint lem:dense-Bohr, lines 786-820. Recorded before creation at 2026-10-09 16:10:28 ET.
+The finite inverse argument needs the classical quasipolynomial dense Bogolyubov theorem: for every nonempty subset A of a finite cyclic group, 2A-2A contains a Bohr set with rank
+O(log^4(1/alpha)), reciprocal radius O(alpha^(-1) log^4(1/alpha)), and density exp(-O(log^5(1/alpha))). Searches of pinned Mathlib additive combinatorics/Fourier and
+../lean-spherical, ../lean-dfr and ../lean-variationalsw found no such theorem. This substantial named theorem qualifies for the reusable-prerequisite exception. Create exactly one
+module, TrilinearHT/Auto/DenseBogolyubov.lean, general over all positive cyclic moduli and arbitrary finite subsets. Its theorem statements and local definitions use Mathlib/local
+vocabulary; proofs may reuse the already-verified KhintchineSampling and ChangSpectrum modules, as explicitly permitted by the skill. Do not import the main proof module or create
+a cycle. The main module has 9489 lines, but mathematical substance, not file length, justifies this split. Verified reference: blueprint lem:dense-Bohr, lines 786-820. Recorded
+before creation at 2026-10-09 16:10:28 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -92,11 +132,23 @@ complete | 2026-10-09 16:47:09 ET | lem:dense-Bohr, lines 786-820 | Quasipolynom
 
 # Hilbert-space atomic decomposition prerequisite
 
-The decomposition in lem:inverse, lines 1218-1239, requires a substantial general Hilbert-space separation theorem for finite atomic sums and two seminorm balls, together with probability-L2 dual bounds. Mathlib supplies Hahn--Banach, Riesz representation and convex hulls but no matching quantitative atomic decomposition theorem; the sibling lean-spherical convex-duality module concerns scalar convex functions. Develop TrilinearHT/Auto/HilbertAtomicDecomposition.lean under the reusable-prerequisite exception, using only Mathlib and definitions local to that module in its statements. The general result will take an independently stated inverse-correlation hypothesis; the main file must discharge it using continuous_inverse. This is not a split along machine-blueprint sections. Recorded before creation at 2026-10-10 00:38:41 ET.
+The decomposition in lem:inverse, lines 1218-1239, requires a substantial general Hilbert-space separation theorem for finite atomic sums and two seminorm balls, together with
+probability-L2 dual bounds. Mathlib supplies Hahn--Banach, Riesz representation and convex hulls but no matching quantitative atomic decomposition theorem; the sibling
+lean-spherical convex-duality module concerns scalar convex functions. Develop TrilinearHT/Auto/HilbertAtomicDecomposition.lean under the reusable-prerequisite exception, using
+only Mathlib and definitions local to that module in its statements. The general result will take an independently stated inverse-correlation hypothesis; the main file must
+discharge it using continuous_inverse. This is not a split along machine-blueprint sections. Recorded before creation at 2026-10-10 00:38:41 ET.
 
 # Gowers–Cauchy–Schwarz and cube continuity prerequisite
 
-The mixed cube estimates used by lem:cube-foundation and later local von Neumann arguments require the classical Gowers–Cauchy–Schwarz inequality, its U3 seminorm, and eight-input L2 continuity. A search of pinned Mathlib found no Gowers development; Haar integration and Holder provide only its ingredients. Move the already-proved general Haar-probability construction and its supporting cube definitions, without duplication, into TrilinearHT/Auto/GowersCauchySchwarz.lean. The inspected statements use only Mathlib and local definitions, and a declaration-dependency scan found no remaining main-file dependencies. This substantial general additive-combinatorial theorem qualifies for the reusable-prerequisite exception; it is not a machine-blueprint section split. Verified source: blueprint cube-definition, lines 162–175, and lem:cube-foundation, lines 216–237. Recorded before creation at 2026-10-09 10:55:13 ET. Extension recorded at 2026-10-09 21:49:19 ET: the continuous inverse requires finite-to-continuous convergence of cell-averaged cube integrals (lines 1183-1189). Searches of pinned Mathlib and sibling repositories found no ready Gowers discretization theorem. Develop the general cube discretization in this existing module, using Mathlib integration and approximation. Move the normalized finite Haar definition and its two basic instances from main here so all new statements use Mathlib/local definitions; retain source-specific chart applications in main.
+The mixed cube estimates used by lem:cube-foundation and later local von Neumann arguments require the classical Gowers–Cauchy–Schwarz inequality, its U3 seminorm, and eight-input
+L2 continuity. A search of pinned Mathlib found no Gowers development; Haar integration and Holder provide only its ingredients. Move the already-proved general Haar-probability
+construction and its supporting cube definitions, without duplication, into TrilinearHT/Auto/GowersCauchySchwarz.lean. The inspected statements use only Mathlib and local
+definitions, and a declaration-dependency scan found no remaining main-file dependencies. This substantial general additive-combinatorial theorem qualifies for the
+reusable-prerequisite exception; it is not a machine-blueprint section split. Verified source: blueprint cube-definition, lines 162–175, and lem:cube-foundation, lines 216–237.
+Recorded before creation at 2026-10-09 10:55:13 ET. Extension recorded at 2026-10-09 21:49:19 ET: the continuous inverse requires finite-to-continuous convergence of cell-averaged
+cube integrals (lines 1183-1189). Searches of pinned Mathlib and sibling repositories found no ready Gowers discretization theorem. Develop the general cube discretization in this
+existing module, using Mathlib integration and approximation. Move the normalized finite Haar definition and its two basic instances from main here so all new statements use
+Mathlib/local definitions; retain source-specific chart applications in main.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -108,7 +160,9 @@ complete | 2026-10-09 00:24:23 ET | lem:cube-foundation, lines 227–237 | Conti
 
 # Fefferman–Stein maximal inequality prerequisite
 
-The mixed maximal estimate in lem:vector-maximal needs the general vector Hardy–Littlewood theorem, absent from pinned Mathlib; the textbook Fefferman–Stein theorem is a substantial reusable prerequisite, developed for general exponents and finite inner measure spaces in TrilinearHT/Auto/FeffermanStein.lean, adapting the finite Hilbert-family proof in ../lean-variationalsw.
+The mixed maximal estimate in lem:vector-maximal needs the general vector Hardy–Littlewood theorem, absent from pinned Mathlib; the textbook Fefferman–Stein theorem is a
+substantial reusable prerequisite, developed for general exponents and finite inner measure spaces in TrilinearHT/Auto/FeffermanStein.lean, adapting the finite Hilbert-family proof
+in ../lean-variationalsw.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -120,7 +174,12 @@ complete | 2026-10-09 00:48:15 ET | lem:vector-maximal, lines 248–250, permitt
 
 # Lattice transference principle prerequisite
 
-The successive-minima transference principle is needed by lem:transference and lem:lattice-box; pinned Mathlib supplies dual lattices and Minkowski's first theorem but no adequate successive-minima product bound. This is a substantial classical geometry-of-numbers theorem, here for arbitrary finite-dimensional real inner-product spaces, full lattices and compact symmetric convex bodies, with constants independent of the lattice and body. Its statement and all supporting definitions depend only on Mathlib and the dedicated TrilinearHT/Auto/LatticeTransference.lean. The already-proved integer-basis, reduced-basis and transference development is moved together before the main file reaches its 10000-line limit; the coefficient-box application remains in the main file. Verified references are blueprint lem:integer-basis, lem:reduced-basis and lem:transference, and pinned Mathlib.MeasureTheory.Group.GeometryOfNumbers and Mathlib.LinearAlgebra.BilinearForm.DualLattice.
+The successive-minima transference principle is needed by lem:transference and lem:lattice-box; pinned Mathlib supplies dual lattices and Minkowski's first theorem but no adequate
+successive-minima product bound. This is a substantial classical geometry-of-numbers theorem, here for arbitrary finite-dimensional real inner-product spaces, full lattices and
+compact symmetric convex bodies, with constants independent of the lattice and body. Its statement and all supporting definitions depend only on Mathlib and the dedicated
+TrilinearHT/Auto/LatticeTransference.lean. The already-proved integer-basis, reduced-basis and transference development is moved together before the main file reaches its
+10000-line limit; the coefficient-box application remains in the main file. Verified references are blueprint lem:integer-basis, lem:reduced-basis and lem:transference, and pinned
+Mathlib.MeasureTheory.Group.GeometryOfNumbers and Mathlib.LinearAlgebra.BilinearForm.DualLattice.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -146,7 +205,13 @@ complete | 2026-10-09 02:34:55 ET | lem:transference, line 314 | Linear transpor
 
 # Quantitative rational linear algebra prerequisite
 
-The rational height bounds needed throughout the finite coefficient constructions are absent from pinned Mathlib: its rational heights, determinants and projections do not provide the required uniform counting, inverse, pivot right-inverse and projection estimates. Effective rational linear algebra via common denominators and Cramer's rule is a substantial reusable development, including real scalar extension and operator norms. The complete development moves together to TrilinearHT/Auto/RationalLinearAlgebra.lean; all statements and local definitions depend only on Mathlib. This invokes the reusable-prerequisite exception, not a split along machine-generated blueprint sections. Verified references are blueprint lem:rational-linear, lines 416–420, and the pinned Mathlib rational, matrix adjugate, rank and orthogonal-projection developments. The independently reusable height-bin theorem (lem:height, lines 603–619) extends this same module using its local rationalHeight and sharp denominator/minor bounds; no project-specific operator data enter its statements.
+The rational height bounds needed throughout the finite coefficient constructions are absent from pinned Mathlib: its rational heights, determinants and projections do not provide
+the required uniform counting, inverse, pivot right-inverse and projection estimates. Effective rational linear algebra via common denominators and Cramer's rule is a substantial
+reusable development, including real scalar extension and operator norms. The complete development moves together to TrilinearHT/Auto/RationalLinearAlgebra.lean; all statements and
+local definitions depend only on Mathlib. This invokes the reusable-prerequisite exception, not a split along machine-generated blueprint sections. Verified references are
+blueprint lem:rational-linear, lines 416–420, and the pinned Mathlib rational, matrix adjugate, rank and orthogonal-projection developments. The independently reusable height-bin
+theorem (lem:height, lines 603–619) extends this same module using its local rationalHeight and sharp denominator/minor bounds; no project-specific operator data enter its
+statements.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -168,7 +233,10 @@ complete | 2026-10-09 13:27:14 ET | lem:height, lines 616-617 | Coordinate supre
 
 # Dyadic stopping and logarithmic hull maximal prerequisite
 
-The fixed-function hull cuts in lem:cuts need a general finite dyadic stopping theorem absent from pinned Mathlib; finite integration, Markov and layer-cake results supply its classical ingredients. The complete grid, path packing and first-crossing development in TrilinearHT/Auto/DyadicStopping.lean is independently stated for arbitrary real dyadic grids, finite families and normed-space-valued L2 functions, using only Mathlib and its own definitions. Its dedicated module is justified before creation at 2026-10-09 06:18:23 ET and serves later root-normalized attempts as well as path-packing and lem:cuts.
+The fixed-function hull cuts in lem:cuts need a general finite dyadic stopping theorem absent from pinned Mathlib; finite integration, Markov and layer-cake results supply its
+classical ingredients. The complete grid, path packing and first-crossing development in TrilinearHT/Auto/DyadicStopping.lean is independently stated for arbitrary real dyadic
+grids, finite families and normed-space-valued L2 functions, using only Mathlib and its own definitions. Its dedicated module is justified before creation at 2026-10-09 06:18:23 ET
+and serves later root-normalized attempts as well as path-packing and lem:cuts.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -206,7 +274,10 @@ complete | 2026-10-09 10:27:41 ET | lem:compression, lines 569–572 | Jump ance
 
 # Rademacher–Menshov and nested projection products prerequisite
 
-Justification: the dyadic-prefix row estimate and noncommuting nested-product consequences needed by lem:prefix (lines 508–535) are absent from pinned Mathlib and searched sibling repositories. The classical Rademacher–Menshov dyadic decomposition is a substantial general Hilbert-space theorem (Tao, 247A Lecture Notes 2, page 31, Q14–Q15); one independent Mathlib-only module, TrilinearHT/Auto/RademacherMenshov.lean, will contain the finite row version, nested projections and disjoint-interval jumps, with no project-specific column data. Recorded before creation at 2026-10-09 07:32:32 ET.
+Justification: the dyadic-prefix row estimate and noncommuting nested-product consequences needed by lem:prefix (lines 508–535) are absent from pinned Mathlib and searched sibling
+repositories. The classical Rademacher–Menshov dyadic decomposition is a substantial general Hilbert-space theorem (Tao, 247A Lecture Notes 2, page 31, Q14–Q15); one independent
+Mathlib-only module, TrilinearHT/Auto/RademacherMenshov.lean, will contain the finite row version, nested projections and disjoint-interval jumps, with no project-specific column
+data. Recorded before creation at 2026-10-09 07:32:32 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -224,7 +295,11 @@ complete | 2026-10-09 12:11:54 ET | lem:compression, lines 550 and 597 | Finite 
 
 # Minkowski integral inequality prerequisite
 
-Justification: lem:shortblock (lines 2328-2340: "Minkowski and the sign moments give (E‖F^σ(n,·)‖_2^a)^(1/a) ≤ C_a e_j(n)", and the deletion bound) needs Minkowski's integral inequality (L^p norm of an integral at most the integral of L^p norms). Searches of pinned Mathlib (MeasureTheory/Integral/MeanInequalities: only the two-function Minkowski inequality) and the repository found no integral version. It is a named textbook theorem (Stein, Singular Integrals, Appendix A.1; Hardy–Littlewood–Pólya, Inequalities, Thm 202). Stated for ℝ≥0∞-valued jointly measurable f, σ-finite μ, s-finite ν, p ≥ 1, depending only on Mathlib, in TrilinearHT/Auto/MinkowskiIntegralInequality.lean. Recorded before creation at 2026-10-11 14:44:15 ET.
+Justification: lem:shortblock (lines 2328-2340: "Minkowski and the sign moments give (E‖F^σ(n,·)‖_2^a)^(1/a) ≤ C_a e_j(n)", and the deletion bound) needs Minkowski's integral
+inequality (L^p norm of an integral at most the integral of L^p norms). Searches of pinned Mathlib (MeasureTheory/Integral/MeanInequalities: only the two-function Minkowski
+inequality) and the repository found no integral version. It is a named textbook theorem (Stein, Singular Integrals, Appendix A.1; Hardy–Littlewood–Pólya, Inequalities, Thm 202).
+Stated for ℝ≥0∞-valued jointly measurable f, σ-finite μ, s-finite ν, p ≥ 1, depending only on Mathlib, in TrilinearHT/Auto/MinkowskiIntegralInequality.lean. Recorded before
+creation at 2026-10-11 14:44:15 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -562,56 +637,113 @@ complete | 2026-10-11 23:21:26 ET | prop:normalized row 1, lines 1677-1686 | Act
 complete | 2026-10-11 23:46:19 ET | prop:normalized row 1, lines 1720-1734 | Colors on the admission tree: per-cell bound D = 4|L|+1, failed cells ≤ 100·2001⁷|R|/D (coloring)
 complete | 2026-10-11 23:47:54 ET | prop:normalized row 1, lines 1712-1760 | Color parameters b₁, b₂ and historical mask properties for the attempt (colorParams, masks)
 complete | 2026-10-12 00:31:50 ET | prop:normalized row 1, lines 1611-1613, 1859 | Basic args as differences of two current basic projections, root energy ≤ |R| (HasColumnRep)
-complete | 2026-10-12 00:40:15 ET | prop:normalized row 1, lines 1820-1831 | Local catalog closure: valid insertion sequences, cap argument, maximal sequence passes all tests (local_closure)
-complete | 2026-10-12 00:44:40 ET | prop:normalized row 1, lines 1805-1809, 1823-1825 | Catalog columns, rank/mask projections, nesting, fresh coordinates, insertion gain (catProj_gain)
-complete | 2026-10-12 00:52:12 ET | prop:normalized row 1, lines 1809-1831 | Catalog tests at a cell, same-tag repair of failed tests, per-cell closure with rank counts (cell_closure)
-complete | 2026-10-12 01:01:38 ET | prop:normalized row 1, lines 1820-1831 | Catalog over a finite tree: ancestors first, earlier tests preserved, per-cell rank counts (tree_closure)
-complete | 2026-10-12 01:05:18 ET | prop:normalized row 1, lines 488-497, 1835 | Catalog outputs as column combinations with private-coordinate coefficient bounds (catRange_expansion)
+complete | 2026-10-12 00:40:15 ET | prop:normalized row 1, lines 1820-1831 | Local catalog closure: valid insertion sequences, cap, maximal sequence passes (local_closure)
+complete | 2026-10-12 00:44:40 ET | prop:normalized row 1, lines 1805-1809, 1823-1825 | Catalog columns, rank/mask projections, nesting, fresh coordinates, gain (catProj_gain)
+complete | 2026-10-12 00:52:12 ET | prop:normalized row 1, lines 1809-1831 | Catalog tests at a cell, same-tag repair, per-cell closure with rank counts (cell_closure)
+complete | 2026-10-12 01:01:38 ET | prop:normalized row 1, lines 1820-1831 | Catalog over a finite tree: ancestors first, earlier tests kept, rank counts (tree_closure)
+complete | 2026-10-12 01:05:18 ET | prop:normalized row 1, lines 488-497, 1835 | Catalog outputs as column combinations with coefficient bounds (catRange_expansion)
 complete | 2026-10-12 01:12:07 ET | prop:normalized row 1, lines 418-420, 1845 | Local form a.e.-invariant in each slot; multilinear cell form on augmented inputs (cellForm)
-complete | 2026-10-12 01:17:53 ET | prop:normalized row 1, lines 1798-1803 | Inserted columns recorded as same-tag templates; templates are pure modulated charts (templateCol_chart)
-complete | 2026-10-12 01:25:10 ET | prop:normalized row 1, lines 1804-1813 | Cumulative masks (monotone, neighbor closure, old/current split, depth growth); averaged histories as choice averages
-complete | 2026-10-12 01:29:30 ET | prop:normalized row 1, lines 1809-1815, 1850-1852 | Form only sees the cell; a passing test bounds forms with a pure source and scaled spectators (CatTest.form_le)
+complete | 2026-10-12 01:17:53 ET | prop:normalized row 1, lines 1798-1803 | Inserted columns as same-tag templates; templates are modulated charts (templateCol_chart)
+complete | 2026-10-12 01:25:10 ET | prop:normalized row 1, lines 1804-1813 | Cumulative masks: monotone, neighbor closure, old/current split, depth growth; choice averages
+complete | 2026-10-12 01:29:30 ET | prop:normalized row 1, lines 1809-1815, 1850-1852 | Form sees only the cell; passing test bounds forms with pure source (CatTest.form_le)
 complete | 2026-10-12 01:36:12 ET | prop:normalized row 1, lines 1841-1849 | Guarded binary color search: exact leaf expansion, guard invariants, leaves = colors (searchLeaves)
-complete | 2026-10-12 01:46:24 ET | prop:normalized row 1, lines 1813, 1850-1852 | Averaged residual bound; leaf residuals as averages of single-choice test residuals (residual_layerOp_eq_avg)
-complete | 2026-10-12 01:51:07 ET | prop:normalized row 1, lines 1835, 1850 | Averaged catalog filter outputs as column combinations of the largest mask with coefficients ≤ ‖X‖/√|I|
-complete | 2026-10-12 01:53:38 ET | prop:normalized row 1, lines 1850-1852 | Spectator sizes ≤ ‖x‖/√|I|; pair separation bound for a source against separated columns (cellForm_pair_le)
-complete | 2026-10-12 01:58:24 ET | prop:normalized row 1, lines 1850-1855 | Source combinations against averaged residuals (CatTest.form_combo_le); contractions of averaged filters and layers
-complete | 2026-10-12 02:08:30 ET | prop:normalized row 1, lines 1850-1855 | Leaf filters; old-source, matching, separation and residual-insertion bounds at a leaf (LeafFilters.old_le, match_le, sep_le, res_le)
+complete | 2026-10-12 01:46:24 ET | prop:normalized row 1, lines 1813, 1850-1852 | Averaged residual bound; leaf residuals as single-choice averages (residual_layerOp_eq_avg)
+complete | 2026-10-12 01:51:07 ET | prop:normalized row 1, lines 1835, 1850 | Averaged filter outputs as column combinations, coefficients ≤ ‖X‖/√|I|
+complete | 2026-10-12 01:53:38 ET | prop:normalized row 1, lines 1850-1852 | Spectator sizes ≤ ‖x‖/√|I|; source vs separated columns (cellForm_pair_le)
+complete | 2026-10-12 01:58:24 ET | prop:normalized row 1, lines 1850-1855 | Sources against averaged residuals (CatTest.form_combo_le); filter/layer contractions
+complete | 2026-10-12 02:08:30 ET | prop:normalized row 1, lines 1850-1855 | Leaf filters; old-source, match, separation, residual bounds (LeafFilters.old_le … res_le)
 complete | 2026-10-12 02:12:28 ET | prop:normalized row 1, lines 1848-1856 | Leaf error of the localization from the catalog tests and separation (LeafFilters.leaf_error)
 complete | 2026-10-12 02:15:19 ET | prop:normalized row 1, lines 1838-1856 | Cell sums of the localization over the leaves of the guarded search (search_cell_min)
-complete | 2026-10-12 02:26:36 ET | prop:normalized row 1, lines 1835, 1850-1855 | ℓ² coefficient bounds (private recovery); separation and residual errors with √N; rank-split thresholds in leaf_error
-complete | 2026-10-12 02:37:43 ET | prop:normalized row 1, lines 1677-1680 | Base inputs as cell L² classes; dimension padding of charts; vertex charts of dimension ≥ 1 (vchart_spec)
-complete | 2026-10-12 02:40:25 ET | prop:normalized row 1, lines 1760-1762 | Attempt mask facts: pad monotonicity, current vertices in group masks, separation of distinct groups, no tag edges
+complete | 2026-10-12 02:26:36 ET | prop:normalized row 1, lines 1835, 1850-1855 | ℓ² coefficient bounds; separation/residual errors with √N; rank-split thresholds (leaf_error)
+complete | 2026-10-12 02:37:43 ET | prop:normalized row 1, lines 1677-1680 | Base inputs as cell L² classes; chart padding; vertex charts of dimension ≥ 1 (vchart_spec)
+complete | 2026-10-12 02:40:25 ET | prop:normalized row 1, lines 1760-1762 | Attempt masks: pad monotonicity, current vertices, distinct groups separated, no tag edges
 complete | 2026-10-12 02:46:32 ET | prop:normalized row 1, lines 1804-1853 | Attempt parameters; cell masks, filters, current groups, named tests of each slot (AttemptParams.tests)
 complete | 2026-10-12 02:51:11 ET | prop:normalized row 1, lines 1820-1831 | Attempt catalogs for the four slots passing all named tests (AttemptParams.catalogs_exist)
-complete | 2026-10-12 02:59:25 ET | prop:normalized row 1, lines 1798-1803, 1850 | Leaf layer lengths; Pass monotone; present vertices available; vertex charts and templates as sources of common complexity (templateCol_source)
+complete | 2026-10-12 02:59:25 ET | prop:normalized row 1, lines 1798-1803, 1850 | Leaf layer lengths; Pass monotone; vertex charts/templates as sources (templateCol_source)
 complete | 2026-10-12 03:03:18 ET | prop:normalized row 1, line 1798 | Mask vertices are present; selected catalog columns are pure sources of their tags (catColumn_source)
-complete | 2026-10-12 03:10:19 ET | prop:normalized row 1, lines 1835, 1858 | Upper guard expansions: catalog case (upper_expansion) and basic case in vertex charts (basic_expansion, basic_source)
-complete | 2026-10-12 03:16:00 ET | prop:normalized row 1, lines 1848-1851 | Complete-search leaves have one color in [1,L] (leafAt_facts); old/current classification of upper sources (classify)
-complete | 2026-10-12 03:20:41 ET | prop:normalized row 1, lines 1851-1853 | Ball pads restricted to Fin P in leaf_error; template atoms are bounded charts; current groups pair-separated (sep_pair)
-complete | 2026-10-12 03:27:53 ET | prop:normalized row 1, lines 1848-1856 | One leaf at one active cell from a bounded-chart expansion of the upper guard (AttemptParams.leaf_bound)
-complete | 2026-10-12 03:32:48 ET | prop:normalized row 1, lines 1850, 1858 | Leaf bound with both upper-guard cases: catalog filter with l2 coefficients, basic slot in vertex charts (leaf_main)
+complete | 2026-10-12 03:10:19 ET | prop:normalized row 1, lines 1835, 1858 | Upper guard expansions: catalog (upper_expansion) and basic (basic_expansion, basic_source)
+complete | 2026-10-12 03:16:00 ET | prop:normalized row 1, lines 1848-1851 | Search leaves have one color in [1,L] (leafAt_facts); old/current upper sources (classify)
+complete | 2026-10-12 03:20:41 ET | prop:normalized row 1, lines 1851-1853 | Ball pads in Fin P; template atoms bounded charts; current groups pair-separated (sep_pair)
+complete | 2026-10-12 03:27:53 ET | prop:normalized row 1, lines 1848-1856 | One leaf at one active cell from the upper-guard expansion (AttemptParams.leaf_bound)
+complete | 2026-10-12 03:32:48 ET | prop:normalized row 1, lines 1850, 1858 | Leaf bound, both upper-guard cases: catalog filter / basic slot (leaf_main)
 complete | 2026-10-12 03:37:53 ET | prop:normalized row 1, lines 1838-1856 | Localized sum of an attempt over successful cells and all leaves, rank-wise leaf errors (localized_sum)
-complete | 2026-10-12 03:45:34 ET | prop:normalized row 1, lines 1826-1831 | Label counts by birth and rank; thresholds τ_r from a count sequence give catalogs with ≤ n_r labels (catalogs_counted)
-complete | 2026-10-12 03:48:31 ET | prop:normalized row 1, lines 1834-1836, 1855 | Leaf error O(G_c τ₃) from rank-wise cancellation; √n_r τ_(r+1) ≤ τ₃ under the closure ratio (leafErr_le, catTau_ratio)
-complete | 2026-10-12 03:53:23 ET | prop:normalized row 1, lines 1820-1856 | Attempt localization with counted catalogs: error Σ|I|·#leaves·5(D+2)(S⁴+|L|D_c S³)τ₃ (attempt_localization)
+complete | 2026-10-12 03:45:34 ET | prop:normalized row 1, lines 1826-1831 | Label counts by birth and rank; thresholds τ_r give catalogs with ≤ n_r labels (catalogs_counted)
+complete | 2026-10-12 03:48:31 ET | prop:normalized row 1, lines 1834-1836, 1855 | Leaf error O(G_c τ₃); √n_r τ_(r+1) ≤ τ₃ under the closure ratio (leafErr_le, catTau_ratio)
+complete | 2026-10-12 03:53:23 ET | prop:normalized row 1, lines 1820-1856 | Attempt localization with counted catalogs (attempt_localization)
 complete | 2026-10-12 03:54:12 ET | prop:normalized, lines 2838-2840 | Attempt on an active setup: catalogs, colors, ball histories, leaf data (attempt_localization)
-complete | 2026-10-12 04:15:05 ET | prop:normalized row 2, lines 1684, 1704, 1903 | Short tag paths; equal tags joined; ball-mask primaries tag-joined to the group center (mask_tagEdge_center)
-complete | 2026-10-12 04:23:44 ET | prop:normalized row 2, lines 470-483, 1748, 1807 | Catalog projections as column-tree projections; attempt masks inherited in depth (catProj_eq_cellColumnProjection)
+complete | 2026-10-12 04:15:05 ET | prop:normalized row 2, lines 1684, 1704, 1903 | Short tag paths; equal tags joined; primaries tag-joined to center (mask_tagEdge_center)
+complete | 2026-10-12 04:23:44 ET | prop:normalized row 2, lines 470-483, 1748, 1807 | Catalog projections as column-tree projections (catProj_eq_cellColumnProjection)
 complete | 2026-10-12 04:41:28 ET | prop:normalized row 2, lines 1893-1922 | Branch-chart complexity; recentred first-match expansions on the first-match cell (firstMatch_attempt)
 complete | 2026-10-12 04:57:24 ET | prop:normalized row 2, lines 1907, 1932-1940 | First-match truncation; global mode lift, ‖R‖ ≤ √5, exact synthesis after the match (LiftData.op)
-complete | 2026-10-12 05:25:52 ET | prop:normalized row 2, lines 1891, 1913, 1924-1940 | First-match cells; counted finite expansions (box truncation); the mode lift R_(l,G) (attemptLift)
-complete | 2026-10-12 05:39:43 ET | prop:normalized row 2, lines 1913-1922, 1980-1988 | Mode curvature and rational differences of the lift; PRE/CURRENT edges and components (preCurrent)
-complete | 2026-10-12 05:52:57 ET | prop:normalized row 2, lines 1958, 2005-2012 | CURRENT paths sum their witnesses; bounded-denominator basis expansion (rational_span_expand_bounded)
-complete | 2026-10-12 06:07:56 ET | prop:normalized row 2, lines 1995-2029 | Tiny span closure; stabilization core; good heights give direct PRE adjacency on a pre-cell (stabilize_pre); bad-height count (bad_heights_card)
-complete | 2026-10-12 06:26:46 ET | prop:normalized row 2, lines 1893, 1913, 2031-2045 | Normalized vector Θ'=(θ_v,θ_z/Q₀); same-key differences; hstab from good primaries (hstab_of_primaryGood)
-in progress | 2026-10-12 03:57:21 ET | prop:normalized, lines 2838-2840 | Attempt: first-match modes, offsets, linear sides, helpers instantiated
-not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2840-2843 | Cuts, exceptional roots ≤ |R|/4, restarts, root packing 4|R|/3
-not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2845-2848 | Cores, three sides and transfer decomposition of the active form
-not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2850-2858 | eq:before-absorption for a retained attempt
-not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2860-2890 | Choice of q, α, P; eq:active-final
-not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2892-2900 | Summing the update levels
-not started | 2026-10-11 13:57:00 ET | prop:normalized, lines 2902-2904 | Cutoff limit; eq:normalized (NormalizedAbsorption)
+complete | 2026-10-12 05:25:52 ET | prop:normalized row 2, lines 1891, 1913, 1924-1940 | First-match cells; counted finite expansions; the mode lift R_(l,G) (attemptLift)
+complete | 2026-10-12 05:39:43 ET | prop:normalized row 2, lines 1913-1922, 1980-1988 | Mode curvature, rational differences; PRE/CURRENT edges and components (preCurrent)
+complete | 2026-10-12 05:52:57 ET | prop:normalized row 2, lines 1958, 2005-2012 | CURRENT paths sum witnesses; bounded-denominator expansion (rational_span_expand_bounded)
+complete | 2026-10-12 06:07:56 ET | prop:normalized row 2, lines 1995-2029 | Tiny span closure; stabilization; good heights give PRE adjacency (stabilize_pre, bad_heights_card)
+complete | 2026-10-12 06:26:46 ET | prop:normalized row 2, lines 1893, 1913, 2031-2045 | Θ'=(θ_v,θ_z/Q₀); same-key differences; hstab from good primaries (hstab_of_primaryGood)
+complete | 2026-10-12 07:00:28 ET | prop:normalized row 2, lines 2054-2056 | Fourier expansion of (ζ^ρ)²; cross pairing of two non-adjacent modes on a cell (modeWave_pair_le)
+complete | 2026-10-12 07:10:20 ET | prop:normalized row 2, lines 1928, 2049-2059 | Augmented modes in ColumnL2; separated mode rows from mode Gram bounds (aug_mode_rows)
+complete | 2026-10-12 07:17:34 ET | prop:normalized row 2, lines 2088-2099 | Bad incidences along a linked chain of side events (chain_bad_count); keyed hsame for alive modes
+complete | 2026-10-12 07:24:00 ET | prop:normalized row 2, lines 2049-2059, 2104 | Longest-chain levels; Bessel rows of concrete modes (modeWave_rows)
+complete | 2026-10-12 07:35:37 ET | prop:normalized row 2, lines 2068-2069, 2084-2086, 2112-2116 | Row locality; subtotal vs projection; almost orthogonality; CURRENT in later PRE
+complete | 2026-10-12 07:47:56 ET | prop:normalized row 2, lines 2104-2118 | One-block side subtotals over disjoint pre-cells (block_subtotals_le); real-valued linear-side assembly
+complete | 2026-10-12 08:00:09 ET | prop:normalized row 2, lines 1777-1789 | Whole endpoint ranges for attempt catalogs (attempt_wholeRanges; usableRangeBessel localized)
+complete | 2026-10-12 08:11:48 ET | prop:normalized row 2, lines 2068-2072 | Hetero joint Bessel; catalog outputs as group outputs; one-factor row compression; averages of rows
+complete | 2026-10-12 08:18:39 ET | prop:normalized row 2, lines 2066-2072 | Lift rows jointly Bessel over groups after the outer ball projection (lift_rows_joint)
+complete | 2026-10-12 08:28:19 ET | prop:normalized row 2, lines 2072-2075 | Averaged cumulative layers expanded over pad tuples; row compression through layer histories
+complete | 2026-10-12 08:35:00 ET | prop:normalized row 2, lines 2072-2075 | Catalog projections local to their cells; basic-history compression through the physical coordinate
+complete | 2026-10-12 08:39:09 ET | prop:normalized row 2, lines 2062-2077 | Lift composition, catalog part: ball + cumulative histories inserted jointly (lift_composition_catalog)
+complete | 2026-10-12 08:50:00 ET | prop:normalized row 2, lines 1971-1975 | Frozen-mode data interface (ModeSystem) and its construction from the attempt lift (exists_modeSystem)
+complete | 2026-10-12 08:59:19 ET | prop:normalized row 2, lines 1980-1988, 2082-2110 | Pre-cell graphs of frozen modes; side events, linking; Bessel rows of one level (level_rows)
+complete | 2026-10-12 09:03:02 ET | prop:normalized row 2, lines 2088-2102 | Linked chains of side events: bad-incidence bound on component structures (chain_side_bound)
+complete | 2026-10-12 09:11:17 ET | prop:normalized row 2, lines 2084-2088 | Blocks, goodness, side modes/events of a frozen mode system; links feed CURRENT into later PRE labels
+complete | 2026-10-12 09:14:02 ET | prop:normalized row 2, lines 2088-2102 | Chain length of linked side events in one class (chain_events_bound)
+complete | 2026-10-12 09:18:02 ET | prop:normalized row 2, lines 2104-2108 | Side-event rows per class: levels, unlinked same-level events, Bessel bound (class_rows)
+complete | 2026-10-12 09:23:39 ET | prop:normalized row 2, lines 1934-1937, 1959 | Frozen evaluation on a pre-cell = exact mode synthesis (op_synthesis)
+complete | 2026-10-12 09:31:31 ET | prop:normalized row 2, lines 2112-2118 | Side subtotals: event subtotal vs row projection, block side subtotal almost orthogonality (blockSide)
+complete | 2026-10-12 09:33:30 ET | prop:normalized row 2, lines 2104-2118 | Linear-side energy of one group via side-event rows and complementary errors (group_side_energy)
+complete | 2026-10-12 09:37:08 ET | prop:normalized row 2, lines 2131-2134 | Physical error of the frozen lift on its decision cell and its pointwise majorant (physical_error_le)
+complete | 2026-10-12 09:41:00 ET | prop:normalized row 2, lines 2135-2140 | Selection of branch offsets in the unit cubes by the first moment (exists_offsets_le)
+complete | 2026-10-12 09:44:00 ET | prop:normalized row 2, lines 2135-2147 | Offsets with small total physical-error majorant (exists_offsets_physical)
+complete | 2026-10-12 10:37:52 ET | prop:normalized row 2, lines 1861-1890, 2149 | Certified variation on the attempt: complete catalog tree, global histories (attempt_variation)
+complete | 2026-10-12 10:59:45 ET | prop:normalized row 2, lines 2080-2118 | Linear-side energy on the attempt: event rows, frozen = lifted outputs, chains (attempt_linear_side)
+complete | 2026-10-12 10:59:45 ET | prop:normalized row 2, line 2149 | Rolling sides: integrated square budget from eq:variation by residue classes (attempt_rolling_variation)
+complete | 2026-10-12 11:08:28 ET | prop:normalized row 2, lines 2159-2166 | eq:side-cap: rolling and fixed side budgets, one first-crossing cut (attempt_side_caps)
+complete | 2026-10-12 11:14:49 ET | prop:normalized row 2, lines 2167-2169 | Helper catalog on fixed vector bases at the reserved rank; main tests kept (helper_instantiation)
+complete | 2026-10-12 11:26:33 ET | prop:normalized row 2, lines 2172-2191 | Hereditary representatives: chronological choice, inheritance (attempt_representatives)
+complete | 2026-10-12 11:32:38 ET | prop:normalized row 2, lines 2183-2192 | eq:representative-separation: distinct later CURRENT components (representative_separation)
+complete | 2026-10-12 11:37:57 ET | prop:normalized row 2, lines 2193-2209 | eq:size-comparison: two-sided almost orthogonality, sizes (component_sizes, side_subtotals_le)
+complete | 2026-10-12 11:52:43 ET | prop:normalized row 2, lines 2211-2231 | prop:tops: top rows, measure, top-count cuts (attempt_tops_rows, tops_measure_bound, tops_count_cut)
+complete | 2026-10-12 11:53:10 ET | prop:normalized, lines 2838-2840 | Attempt: first-match modes, offsets, linear sides, helpers instantiated
+complete | 2026-10-12 11:55:28 ET | prop:normalized, lines 2840-2843 | Exceptional roots ≤ |R|/4, restarts, root packing 4|R|/3 (exceptional_roots_le, restart_attempt_sum)
+complete | 2026-10-12 11:59:50 ET | prop:normalized, lines 2845-2848 | Core/side/error patterns, two-side restoration (form_pattern_split, form_restore_cores)
+complete | 2026-10-12 12:04:33 ET | side-estimate, lines 2370-2378 | Power costs: group Cauchy-Schwarz, path-integrated three-side powers (group_triple_le, power_cost_bound)
+complete | 2026-10-12 12:07:27 ET | side-estimate, lines 2380-2386 | Transferred main term ηP^C|R| (pair_small_main_bound, integrated_cap_le); frozen differences by variation
+complete | 2026-10-12 12:09:32 ET | side-estimate, lines 2388-2392 | Freeze flags: indicator by squared difference, block propagation cost K (freeze_flag_le, flag_propagation_le)
+complete | 2026-10-12 12:13:45 ET | fixed-stacks, lines 2394-2423 | eq:stack-energy for averaged histories (globHist_stack_linear, globHist_stack_rolling)
+complete | 2026-10-12 12:17:19 ET | fixed-stacks, lines 2421-2423 | Rademacher selection and moment hypothesis (rademacher_select_two, rademacher_moment_hyp)
+complete | 2026-10-12 12:20:01 ET | side-estimate, lines 2425-2433 | Joint hull caps of the two stacks by combined hull cuts (two_hull_caps)
+complete | 2026-10-12 12:28:11 ET | side-estimate, lines 2433-2445 | Sparse pieces as short-block trees, leaf bounds, eq:near-band (pieceTree, near_band_estimate)
+complete | 2026-10-12 12:29:49 ET | side-estimate, lines 2447-2456 | Exported side estimate in the active minimum: eq:min-power split (min_power_split)
+complete | 2026-10-12 12:31:36 ET | common-height, lines 2464-2476 | First-success identity and success proportion (first_success_identity, success_proportion_pos)
+complete | 2026-10-12 12:36:58 ET | frequency-tests, lines 2478-2520 | Torus norms: cell average vs Haar coset sum (cell_average_close, haar_norm_sq_eq)
+complete | 2026-10-12 13:11:51 ET | frequency-tests, lines 2466-2476 | Torus form of a selected component (component_torus_form, pre_component_shift)
+complete | 2026-10-12 13:11:51 ET | tested-counts, lines 2716-2717 | Pair determination: 2x2 systems (pair_role_of_diff, four_core_pair, three_core_pair)
+complete | 2026-10-12 13:11:51 ET | tested-counts, lines 2718-2724 | eq:triple-test and scale multiplicity by lem:height (four_core_ann, tested_scale_mult)
+complete | 2026-10-12 13:11:51 ET | tested-counts, lines 2724-2729 | Side windows disjoint, side incidence (sideWindow_disjoint, side_incidence_le)
+complete | 2026-10-12 13:11:51 ET | tested-counts, lines 2731-2741 | eq:applied-sparse (four_core_sparse_count, three_core_sparse_count, sep_of_scaled)
+complete | 2026-10-12 13:22:05 ET | core-estimate, lines 2771-2777 | Negligible amplitudes discarded before powers (negligible_amplitudes)
+complete | 2026-10-12 13:22:05 ET | core-estimate, lines 2783-2799 | Powered counts summed over groups, Hölder, amplitude factor (core_count_groups)
+complete | 2026-10-12 13:22:05 ET | core-estimate, lines 2800-2822 | Band sums and min step (band_sum_summable, min_sum_le_rpow, distribution_power)
+complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2843-2858 | eq:before-absorption: pattern classes and cell minima (before_absorption_combine)
+complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2860-2890 | Choice of q, α, P; eq:active-final arithmetic (eta_power_P_le, block_term_le, active_final_arith)
+complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2893-2899 | Level series Σ t e^(-c k_t^θ) small for large k₁ (update_levels_sum)
+complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2898-2904 | Initial/later level split and cutoff limit (levels_cutoff_sum)
+complete | 2026-10-12 14:08:38 ET | prop:base, lines 1643, 1655 | Initial levels: baseTuple for all u<t, general pair bound, trivial pair bound, setup totals
+complete | 2026-10-12 14:53:34 ET | prop:normalized, lines 2827-2833 | Base reduction with normalization only on the kernel hull (kernelHull, fits, setups)
+not started | 2026-10-12 13:35:25 ET | prop:normalized, lines 2838-2840 | Ancestor closure of attempt cells (AncClosed) for the setups of activeCellReduction
+not started | 2026-10-12 13:35:25 ET | prop:normalized, lines 2845-2846 | eq:core-final on attempt leaves: principal expansion, tests, counts (concrete)
+not started | 2026-10-12 13:35:25 ET | prop:normalized, lines 2845-2846 | eq:three-sides and transfer on attempt leaves (concrete side estimate)
+not started | 2026-10-12 13:35:25 ET | prop:normalized, lines 2827-2904 | NormalizedAbsorption from activeCellReduction, active-final and the level sums
 complete | 2026-10-11 11:20:02 ET | thm:uniform-local, lines 2926-2931 | Absorption C_N ≤ 2 + 2CA (uniform_constant_absorption)
 complete | 2026-10-11 11:48:20 ET | thm:uniform-local, lines 2906-2908 | prop:normalized as a hypothesis (Auto.NormalizedAbsorption)
 complete | 2026-10-11 12:01:34 ET | thm:uniform-local, lines 2910-2915 | Stopping generations, first stops of total length ≤ abs(J)/4 (stops_measure_le)

@@ -1646,27 +1646,36 @@ open scoped Classical in
 /-- The coefficients of a fit at a cell. -/
 noncomputable def fitCoef (hF : IsAdaptiveFit c₂ B G J N w j q f k M roots seg n a g)
     (I : ℤ × ℤ) : Fin M → ℂ :=
-  if h : I ∈ dyadicFiniteTree G J N then Classical.choose ((hF.2.2.2.2 I h).2.2.2.2.2.1) else 0
+  if h : I ∈ dyadicFiniteTree G J N ∧ kernelHull G J N w I then
+    Classical.choose ((hF.2.2.2.2 I h.1).2.2.2.2.2.1 h.2) else 0
 
 theorem fitCoef_spec (hF : IsAdaptiveFit c₂ B G J N w j q f k M roots seg n a g) {I : ℤ × ℤ}
-    (hI : I ∈ dyadicFiniteTree G J N) :
+    (hI : I ∈ dyadicFiniteTree G J N) (hIT : kernelHull G J N w I) :
     ∑ m, ‖fitCoef hF I m‖ ^ 2 ≤ 1 ∧ (∀ m : Fin M, n I ≤ m → fitCoef hF I m = 0) ∧
       ∀ y, g I y = ∑ m, fitCoef hF I m * a I m y := by
   classical
   unfold fitCoef
-  simp only [hI, ↓reduceDIte]
-  exact Classical.choose_spec ((hF.2.2.2.2 I hI).2.2.2.2.2.1)
+  simp only [hI, hIT, and_self, ↓reduceDIte]
+  exact Classical.choose_spec ((hF.2.2.2.2 I hI).2.2.2.2.2.1 hIT)
 
 theorem fitCoef_le (hF : IsAdaptiveFit c₂ B G J N w j q f k M roots seg n a g) (I : ℤ × ℤ)
     (m : Fin M) : ‖fitCoef hF I m‖ ≤ 1 := by
   classical
-  by_cases hI : I ∈ dyadicFiniteTree G J N
-  · have h := (fitCoef_spec hF hI).1
+  by_cases hI : I ∈ dyadicFiniteTree G J N ∧ kernelHull G J N w I
+  · have h := (fitCoef_spec hF hI.1 hI.2).1
     have h1 : ‖fitCoef hF I m‖ ^ 2 ≤ 1 :=
       (Finset.single_le_sum (f := fun m => ‖fitCoef hF I m‖ ^ 2) (fun _ _ => by positivity)
         (Finset.mem_univ m)).trans h
     nlinarith [norm_nonneg (fitCoef hF I m)]
   · unfold fitCoef; simp [hI]
+
+theorem kernelHull_of_fitCoef_ne (hF : IsAdaptiveFit c₂ B G J N w j q f k M roots seg n a g)
+    {I : ℤ × ℤ} {m : Fin M} (h : fitCoef hF I m ≠ 0) : kernelHull G J N w I := by
+  classical
+  by_contra hT
+  apply h
+  unfold fitCoef
+  simp [hT]
 
 variable (hF : IsAdaptiveFit c₂ B G J N w j q f k M roots seg n a g)
   (hA : IsAttemptData c₂ B G J N M roots seg n a cnt atm)
@@ -1806,7 +1815,7 @@ noncomputable def fitLowList : LowList G J N R c₀ H where
   coef_avail := fun I m hc => by
     split_ifs at hc with hs
     · refine ⟨hs.1, hs.2.1, ?_⟩
-      have hn := (fitCoef_spec hF hs.1).2.1 m
+      have hn := (fitCoef_spec hF hs.1 (kernelHull_of_fitCoef_ne hF hc)).2.1 m
       have : (m : ℕ) < n I := by
         by_contra hlt; exact hc (hn (by omega))
       rw [← hs.2.2, (hA.1 I hs.1).1]; exact this
@@ -1826,10 +1835,11 @@ noncomputable def fitLowList : LowList G J N R c₀ H where
 
 /-- On the cells of the segment of `K` below `R`, the low list is the fit. -/
 theorem fitLowList_val {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree G J N)
-    (hIR : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2) (hseg : seg I = K) (y : ℝ) :
+    (hIR : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2) (hseg : seg I = K)
+    (hIT : kernelHull G J N w I) (y : ℝ) :
     (fitLowList hF hA hR hK hRK hpad hdef).val I y = g I y := by
   classical
-  rw [(fitCoef_spec hF hI).2.2 y]
+  rw [(fitCoef_spec hF hI hIT).2.2 y]
   unfold LowList.val LowList.atom
   change ∑ m : Fin M, _ = ∑ m : Fin M, _
   refine Finset.sum_congr rfl fun m _ => ?_
@@ -1837,7 +1847,7 @@ theorem fitLowList_val {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree G J N)
   by_cases hc : fitCoef hF I m = 0
   · rw [hc, zero_mul, zero_mul]
   · have hav : fitAvail cnt G J N R K I m := by
-      have hn := (fitCoef_spec hF hI).2.1 m
+      have hn := (fitCoef_spec hF hI hIT).2.1 m
       have : (m : ℕ) < n I := by by_contra hlt; exact hc (hn (by omega))
       refine ⟨hI, hIR, ?_⟩
       rw [← hseg, (hA.1 I hI).1]; exact this
@@ -2646,7 +2656,9 @@ noncomputable def tree : GreedyTree := ⟨S.G, S.J, S.Nc, S.M, S.P, S.O, 4 * S.B
 /-- Hypotheses on the data. -/
 structure Hyp : Prop where
   f_meas : Measurable S.f
-  f_norm : ∀ c ∈ dyadicFiniteTree S.G S.J S.N, eLpNorm S.f 2
+  f_norm_root : eLpNorm S.f 2
+    (normalizedIntervalMeasure (dyadicGridLeft S.G S.J.1 S.J.2) (dyadicGridLength S.G S.J.1)) ≤ 1
+  f_norm : ∀ c ∈ dyadicFiniteTree S.G S.J S.N, kernelHull S.G S.J S.N S.w c → eLpNorm S.f 2
     (normalizedIntervalMeasure (dyadicGridLeft S.G c.1 c.2) (dyadicGridLength S.G c.1)) ≤ 1
   B_pos : 0 < S.B
   K₀_le : S.K₀ ≤ S.N
@@ -2752,7 +2764,7 @@ variable {S : AccSetup}
 theorem Hyp.memLp (h : S.Hyp) : MemLp ((S.cell S.J).indicator S.f) 2 volume := by
   refine (memLp_indicator_iff_restrict (dyadicGridCell_measurable _ _ _).nullMeasurableSet).mpr ?_
   exact memLp_Ico_of_normalized (dyadicGridLength_pos S.G S.J.1)
-    (ne_top_of_le_ne_top ENNReal.one_ne_top (h.f_norm S.J (dyadicFiniteTree_root_mem _ _ _)))
+    (ne_top_of_le_ne_top ENNReal.one_ne_top h.f_norm_root)
 
 theorem Hyp.input_ae (h : S.Hyp) :
     (S.input : ℝ → ℂ) =ᵐ[volume] (S.cell S.J).indicator S.f := by
@@ -2780,7 +2792,8 @@ theorem Hyp.Z_none_cell (h : S.Hyp) {c : ℤ × ℤ} (hc : c ∈ dyadicFiniteTre
   rw [h1, h2, Set.indicator_of_mem (hcJ hy)]
 
 /-- The input energy on a fine-tree cell is at most its length. -/
-theorem Hyp.energy_cell_le (h : S.Hyp) {c : ℤ × ℤ} (hc : c ∈ dyadicFiniteTree S.G S.J S.N) :
+theorem Hyp.energy_cell_le (h : S.Hyp) {c : ℤ × ℤ} (hc : c ∈ dyadicFiniteTree S.G S.J S.N)
+    (hT : kernelHull S.G S.J S.N S.w c) :
     ∫ y in S.cell c, ‖(S.Z : ℝ → ColumnHilbert S.W) y‖ ^ 2 ≤ dyadicGridLength S.G c.1 := by
   have hs := dyadicGridCell_measurable S.G c.1 c.2
   have hr := dyadicGridLength_pos S.G c.1
@@ -2791,7 +2804,7 @@ theorem Hyp.energy_cell_le (h : S.Hyp) {c : ℤ × ℤ} (hc : c ∈ dyadicFinite
     filter_upwards [physicalColumnInput_coeFn (V := S.W) S.input, h.input_ae] with y h1 h2 hy
     rw [Z, h1, h2, Set.indicator_of_mem (hcJ hy)]
     simp [norm_smul]
-  have hn := h.f_norm c hc
+  have hn := h.f_norm c hc hT
   rw [← ENNReal.ofReal_one] at hn
   have hsq := sqrt_normalized_le_of_eLpNorm hr zero_le_one hn
   rw [Real.sqrt_le_iff] at hsq
@@ -2860,6 +2873,7 @@ theorem phys_bound (I : ℤ × ℤ) (a : ℕ → ℝ → ℂ) (n : ℕ) :
 
 /-- The fine projections on a coarse cell have physical `L²(I)` energy at most `|I|`. -/
 theorem Hyp.phys_sq_le (h : S.Hyp) {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree S.G S.J S.Nc)
+    (hT : kernelHull S.G S.J S.N S.w I)
     (a : ℕ → ℝ → ℂ) (n : ℕ) :
     ∫ y in S.cell I, ‖S.phys I a n y‖ ^ 2 ≤ dyadicGridLength S.G I.1 := by
   obtain ⟨C, hC⟩ := phys_bound (S := S) I a n
@@ -2891,17 +2905,17 @@ theorem Hyp.phys_sq_le (h : S.Hyp) {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree
           _ ≤ _ := colRange_energy_le hs _ _ _ _
     _ = ∫ y in S.cell I, ‖(S.Z : ℝ → ColumnHilbert S.W) y‖ ^ 2 :=
         (setIntegral_cell_eq_sum_generation_real S.G I S.K₀ (integrableOn_norm_sq_Lp _ _)).symm
-    _ ≤ _ := h.energy_cell_le (coarse_tree h hI)
+    _ ≤ _ := h.energy_cell_le (coarse_tree h hI) hT
 
 /-- The coarse residual has normalized `L²` norm at most two. -/
 theorem Hyp.res_eLpNorm_le (h : S.Hyp) {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree S.G S.J S.Nc)
-    (a : ℕ → ℝ → ℂ) (n : ℕ) :
+    (hT : kernelHull S.G S.J S.N S.w I) (a : ℕ → ℝ → ℂ) (n : ℕ) :
     eLpNorm (S.res I a n) 2 (normalizedIntervalMeasure (dyadicGridLeft S.G I.1 I.2)
       (dyadicGridLength S.G I.1)) ≤ ENNReal.ofReal 2 := by
   have hr := dyadicGridLength_pos S.G I.1
   have h1 : eLpNorm S.f 2 (normalizedIntervalMeasure (dyadicGridLeft S.G I.1 I.2)
       (dyadicGridLength S.G I.1)) ≤ ENNReal.ofReal 1 := by
-    rw [ENNReal.ofReal_one]; exact h.f_norm I (coarse_tree h hI)
+    rw [ENNReal.ofReal_one]; exact h.f_norm I (coarse_tree h hI) hT
   obtain ⟨C, hC⟩ := phys_bound (S := S) I a n
   have hmem : MemLp (S.phys I a n) 2 (volume.restrict (Set.Ico (dyadicGridLeft S.G I.1 I.2)
       (dyadicGridLeft S.G I.1 I.2 + dyadicGridLength S.G I.1))) := by
@@ -2911,7 +2925,7 @@ theorem Hyp.res_eLpNorm_le (h : S.Hyp) {I : ℤ × ℤ} (hI : I ∈ dyadicFinite
   have h2 : eLpNorm (S.phys I a n) 2 (normalizedIntervalMeasure (dyadicGridLeft S.G I.1 I.2)
       (dyadicGridLength S.G I.1)) ≤ ENNReal.ofReal 1 :=
     eLpNorm_normalized_le_of_integral hr hmem zero_le_one (by
-      have := h.phys_sq_le hI a n
+      have := h.phys_sq_le hI hT a n
       simpa only [one_pow, one_mul, cell, dyadicGridCell] using this)
   calc eLpNorm (S.res I a n) 2 _ ≤ eLpNorm S.f 2 _ + eLpNorm (S.phys I a n) 2 _ :=
         eLpNorm_sub_le (by norm_num)
@@ -2942,8 +2956,10 @@ theorem Hyp.gain (h : S.Hyp) {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree S.G S
   classical
   simp only [P, not_or, not_not] at hP
   obtain ⟨hIt, hns⟩ := hP
+  have hIT := kernelHull_of_not_formSmall (coarse_tree h hIt) hns
   obtain ⟨p, hgood, hO⟩ := fitOracleAtom_good
-    (h.detect I a n hIt (h.res_measurable I a n) (h.res_eLpNorm_le hIt a n) hns)
+    (h.detect I a n hIt (h.res_measurable I a n)
+      (h.res_eLpNorm_le hIt hIT a n) hns)
   set φ := S.O I a n with hφdef
   have hφe : φ = quadraticChartAtom p.2 := hO
   have hφm : Measurable φ := fitOracleAtom_measurable _ _ _ _ _
@@ -3003,7 +3019,7 @@ theorem Hyp.gain (h : S.Hyp) {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree S.G S
     obtain ⟨C, hC⟩ := phys_bound (S := S) I a n
     have hf : MemLp S.f 2 (volume.restrict (S.cell I)) :=
       memLp_Ico_of_normalized hr (ne_top_of_le_ne_top ENNReal.one_ne_top
-        (h.f_norm I (coarse_tree h hI)))
+        (h.f_norm I (coarse_tree h hI) hIT))
     have hph : MemLp (S.phys I a n) 2 (volume.restrict (S.cell I)) :=
       MemLp.of_bound (phys_measurable I a n).aestronglyMeasurable C
         (Filter.Eventually.of_forall hC)
@@ -3249,6 +3265,21 @@ theorem Hyp.telescope (h : S.Hyp) {K : ℤ × ℤ} (hK : K ∈ dyadicFiniteTree 
 theorem Hyp.mass_le (h : S.Hyp) {K : ℤ × ℤ} (hK : K ∈ dyadicFiniteTree S.G S.J S.Nc) :
     dyadicWeightedMass S.G (S.tree.sub K) (S.tree.newAt K) ≤
       4 * S.B ^ 2 * dyadicGridLength S.G K.1 := by
+  by_cases hKT : ¬ kernelHull S.G S.J S.N S.w K
+  · have h0 : dyadicWeightedMass S.G (S.tree.sub K) (S.tree.newAt K) = 0 := by
+      unfold dyadicWeightedMass
+      refine Finset.sum_eq_zero fun c hc => ?_
+      have hc' := (GreedyTree.sub_mem_iff (S := S.tree) hK c).mp hc
+      have hP : ∀ a n, S.P c a n := fun a n => by
+        by_cases hct : c ∈ dyadicFiniteTree S.G S.J S.Nc
+        · refine Or.inr ?_
+          rw [eq_zero_of_not_kernelHull (coarse_tree h hct) fun hc'' => hKT (hc''.mono hc'.2)]
+          exact formSmall_zero_kernel (Real.exp_pos _).le
+        · exact Or.inl hct
+      simp only [GreedyTree.newAt, tree]
+      rw [fitNew_eq_zero_of_P S.G S.M S.P S.O _ c hP]; simp
+    rw [h0]; have := dyadicGridLength_pos S.G K.1; have := h.B_pos; positivity
+  push Not at hKT
   set L := dyadicRemainingDepth S.J S.Nc K
   have hend := dyadicRemainingDepth_endpoint S.G S.J S.Nc hK
   have hdisj : ((Finset.range (L + 1) : Finset ℕ) : Set ℕ).PairwiseDisjoint
@@ -3280,7 +3311,7 @@ theorem Hyp.mass_le (h : S.Hyp) {K : ℤ × ℤ} (hK : K ∈ dyadicFiniteTree S.
           Finset.sum_le_sum fun c _ => energy_le c _ _
       _ = ∫ y in S.cell K, ‖(S.Z : ℝ → ColumnHilbert S.W) y‖ ^ 2 :=
           (setIntegral_cell_eq_sum_generation_real S.G K L (integrableOn_norm_sq_Lp _ _)).symm
-      _ ≤ _ := h.energy_cell_le (coarse_tree h hK)
+      _ ≤ _ := h.energy_cell_le (coarse_tree h hK) hKT
   have hB := h.B_pos
   set W := dyadicWeightedMass S.G (S.tree.sub K) (S.tree.newAt K)
   have h1 : (S.B⁻¹) ^ 2 / 4 * W ≤ dyadicGridLength S.G K.1 := by linarith
@@ -3476,8 +3507,8 @@ theorem Hyp.system_delayed_ae (h : S.Hyp) {K R I : ℤ × ℤ}
 cell (blueprint prop:base, line 1641). -/
 theorem Hyp.phys_sup (h : S.Hyp) {ε : ℝ} (hε : 0 < ε) (hε1 : ε ≤ 1)
     (hwε : ∀ v, ε ≤ S.P₀.weight v)
-    {I : ℤ × ℤ} (hIc : I ∈ dyadicFiniteTree S.G S.J S.Nc) {a : ℕ → ℝ → ℂ}
-    (ha : ∀ i, Measurable (a i) ∧ ∀ y, ‖a i y‖ ≤ 1) (n : ℕ) (y : ℝ) :
+    {I : ℤ × ℤ} (hIc : I ∈ dyadicFiniteTree S.G S.J S.Nc) (hIT : kernelHull S.G S.J S.N S.w I)
+    {a : ℕ → ℝ → ℂ} (ha : ∀ i, Measurable (a i) ∧ ∀ y, ‖a i y‖ ≤ 1) (n : ℕ) (y : ℝ) :
     ‖S.phys I a n y‖ ≤ Fintype.card S.W * Real.sqrt (2 ^ S.K₀ / ε) := by
   classical
   have hX : 0 ≤ (Fintype.card S.W : ℝ) * Real.sqrt (2 ^ S.K₀ / ε) := by positivity
@@ -3507,7 +3538,7 @@ theorem Hyp.phys_sup (h : S.Hyp) {ε : ℝ} (hε : 0 < ε) (hε1 : ε ≤ 1)
               setIntegral_mono_set (integrableOn_norm_sq_Lp _ _)
                 (Filter.Eventually.of_forall fun _ => by positivity)
                 (Filter.Eventually.of_forall (dyadicGeneration_subset S.G I S.K₀ hQ))
-          _ ≤ _ := h.energy_cell_le (coarse_tree h hIc)
+          _ ≤ _ := h.energy_cell_le (coarse_tree h hIc) hIT
       rw [volume_real_cell] at hrec
       have hw : ε ≤ S.wt v := by
         cases v with
@@ -6593,8 +6624,10 @@ theorem accurateFit (κ : LocalKernelClass) :
     ∃ (c₂ C : ℕ), 1 ≤ c₂ ∧ 1 ≤ C ∧ ∀ q : ℝ, 2 < q → ∃ Cq : ℝ, 0 < Cq ∧
     ∀ S : AccSetup, S.c₂ = c₂ → S.q = q → S.B = fitBudget Cq C S.k → 1 ≤ S.k →
       Measurable S.f →
-      (∀ c ∈ dyadicFiniteTree S.G S.J S.N, eLpNorm S.f 2
-        (normalizedIntervalMeasure (dyadicGridLeft S.G c.1 c.2) (dyadicGridLength S.G c.1)) ≤ 1) →
+      (∀ c ∈ dyadicFiniteTree S.G S.J S.N, (c = S.J ∨ kernelHull S.G S.J S.N S.w c) →
+        eLpNorm S.f 2
+          (normalizedIntervalMeasure (dyadicGridLeft S.G c.1 c.2) (dyadicGridLength S.G c.1)) ≤
+            1) →
       S.K₀ ≤ S.N →
       (∀ I, IsAdmissibleLocalKernel κ (dyadicGridLeft S.G I.1 I.2) (dyadicGridLength S.G I.1)
         (S.w I)) →
@@ -6611,7 +6644,8 @@ theorem accurateFit (κ : LocalKernelClass) :
   have hB1 : 1 ≤ S.B := hSB ▸ one_le_fitBudget hCq C S.k
   have h : S.Hyp := {
     f_meas := hfm
-    f_norm := hfn
+    f_norm_root := hfn S.J (dyadicFiniteTree_root_mem _ _ _) (Or.inl rfl)
+    f_norm := fun c hc hcT => hfn c hc (Or.inr hcT)
     B_pos := by linarith
     K₀_le := hK₀
     detect := fun I a n _ hm h2 hns => by
