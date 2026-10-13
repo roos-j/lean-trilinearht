@@ -5259,14 +5259,14 @@ theorem attempt_localization (L : List (ℤ × ℤ)) (hL : ∀ I ∈ L, I ∈ A.
     (hPH : ap.bbase 1 + ap.P ≤ ap.Hmax) {Sz η : ℝ} (hη : 0 ≤ η) (hSz0 : 0 < Sz)
     (hSz : ∀ I ∈ cs, ∀ l, ‖physicalColumnInput (V := Fin ap.Mc) (ap.base I l)‖ /
       Real.sqrt (dyadicGridLength A.G I.1) ≤ Sz) :
-    ∃ cat : Fin 4 → List (CatCol A.Vtx),
-      ∑ I ∈ cs, dyadicGridLength A.G I.1 * min η ‖A.Hf I (ap.z I)‖ ≤
-        ∑ s ∈ Finset.range ap.leaves.length, ∑ I ∈ cs, dyadicGridLength A.G I.1 *
+    ∃ cat : Fin 4 → List (CatCol A.Vtx), ∀ cs' ⊆ cs,
+      ∑ I ∈ cs', dyadicGridLength A.G I.1 * min η ‖A.Hf I (ap.z I)‖ ≤
+        ∑ s ∈ Finset.range ap.leaves.length, ∑ I ∈ cs', dyadicGridLength A.G I.1 *
             min η ‖∑ G ∈ ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k,
               ap.Λc I (fun l => (ap.filters cat I).ball G
                 ((leafAt ap.fuel ap.Lc ap.up₀ s).role l) l
                 ((ap.filters cat I).input (leafAt ap.fuel ap.Lc ap.up₀ s).layers l))‖ +
-          (∑ I ∈ cs, dyadicGridLength A.G I.1) * (ap.leaves.length *
+          (∑ I ∈ cs', dyadicGridLength A.G I.1) * (ap.leaves.length *
             (5 * (A.vtxBound + 2) * (Sz ^ 4 + Fintype.card A.L * A.Dc * Sz ^ 3) * τ₃)) := by
   set Q : ℝ := 4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH) with hQ
   set E : ℝ := 2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D) with hE
@@ -5284,17 +5284,18 @@ theorem attempt_localization (L : List (ℤ × ℤ)) (hL : ∀ I ∈ L, I ∈ A.
   set τ₂ := τ₃ / n (ap.Lc + 1)
   have hτ₂ : 0 < τ₂ := div_pos hτ₃ (hn0 _)
   have hτ₂1 : τ₂ ≤ 1 := (div_le_one (hn0 _)).mpr (hτ₃1.trans (hn1 _))
-  refine ⟨cat, ?_⟩
-  have h := ap.localized_sum cat (fun l => (hcat l).2.1) (τ := τ) cs
-    (fun I hI => hL I (hcsL I hI)) (fun I hI l w => (hcat l).1 I (hcsL I hI) w) hsucc hLcol hzB
-    hz hL1 hfuel hmH hPH (τo := fun k => τ (ap.Lc - (k - 1) + 1))
+  refine ⟨cat, fun cs' hcs' => ?_⟩
+  have h := ap.localized_sum cat (fun l => (hcat l).2.1) (τ := τ) cs'
+    (fun I hI => hL I (hcsL I (hcs' hI))) (fun I hI l w => (hcat l).1 I (hcsL I (hcs' hI)) w)
+    (fun I hI => hsucc I (hcs' hI)) (fun I hI => hLcol I (hcs' hI)) (fun I hI => hzB I (hcs' hI))
+    (fun I hI => hz I (hcs' hI)) hL1 hfuel hmH hPH (τo := fun k => τ (ap.Lc - (k - 1) + 1))
     (Nu := fun k => n (ap.Lc - k + 1)) (τm := τ (ap.Lc + 1)) (τr := τ (ap.Lc + 2)) (τ₂ := τ₂)
     (Nt := n (ap.Lc + 1)) hη (fun k => hτ0 _) (hτ0 _) (hτ0 _) hτ₂ hτ₂1 hHed
     (fun k _ _ => le_rfl) le_rfl
-    (fun j hj2 hj4 => ap.catTau_anti hn0 hnm hQ0 (by omega)) hSz0 hSz
-    (fun I hI s => (hcat _).2.2 I (hMp I hI) _ (by omega) _)
-    (fun I hI s G _ => (hcat _).2.2 I (hMp I hI) _ (by omega) _)
-  have hcs0 : 0 ≤ ∑ I ∈ cs, dyadicGridLength A.G I.1 :=
+    (fun j hj2 hj4 => ap.catTau_anti hn0 hnm hQ0 (by omega)) hSz0 (fun I hI => hSz I (hcs' hI))
+    (fun I hI s => (hcat _).2.2 I (hMp I (hcs' hI)) _ (by omega) _)
+    (fun I hI s G _ => (hcat _).2.2 I (hMp I (hcs' hI)) _ (by omega) _)
+  have hcs0 : 0 ≤ ∑ I ∈ cs', dyadicGridLength A.G I.1 :=
     Finset.sum_nonneg fun I _ => (dyadicGridLength_pos A.G I.1).le
   refine h.trans (add_le_add (le_refl _) (mul_le_mul_of_nonneg_left ?_ hcs0))
   refine (Finset.sum_le_card_nsmul _ _ _ fun s hs => ?_).trans

@@ -2,7 +2,7 @@
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-not started | 2026-10-11 13:53:48 ET | thm:main, lines 2934–2941 | Uniform L3 THT estimate: proved given prop:normalized (tht_main_of_uniform); prop:normalized open
+not started | 2026-10-12 15:40:04 ET | thm:main, lines 2934–2941 | Uniform L3 THT estimate: proved given RetainedMin (activeMin_of_retainedMin, activeFinal_of_activeMin)
 complete | 2026-10-11 11:29:42 ET | thm:main, lines 2984–2992 | Pointwise principal value on Schwartz inputs (Auto.thtTruncated_tendsto)
 complete | 2026-10-11 11:35:58 ET | thm:main, lines 2999–3009 | Unique bounded L3 extension given the bound (Auto.schwartz_L3_unique_extension)
 
@@ -740,10 +740,67 @@ complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2893-2899 | Level ser
 complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2898-2904 | Initial/later level split and cutoff limit (levels_cutoff_sum)
 complete | 2026-10-12 14:08:38 ET | prop:base, lines 1643, 1655 | Initial levels: baseTuple for all u<t, general pair bound, trivial pair bound, setup totals
 complete | 2026-10-12 14:53:34 ET | prop:normalized, lines 2827-2833 | Base reduction with normalization only on the kernel hull (kernelHull, fits, setups)
-not started | 2026-10-12 13:35:25 ET | prop:normalized, lines 2838-2840 | Ancestor closure of attempt cells (AncClosed) for the setups of activeCellReduction
-not started | 2026-10-12 13:35:25 ET | prop:normalized, lines 2845-2846 | eq:core-final on attempt leaves: principal expansion, tests, counts (concrete)
-not started | 2026-10-12 13:35:25 ET | prop:normalized, lines 2845-2846 | eq:three-sides and transfer on attempt leaves (concrete side estimate)
-not started | 2026-10-12 13:35:25 ET | prop:normalized, lines 2827-2904 | NormalizedAbsorption from activeCellReduction, active-final and the level sums
+complete | 2026-10-12 15:10:17 ET | prop:normalized, lines 2838-2840 | Ancestor closure of the setup cells below their roots (firstRoot_between, seg_between)
+complete | 2026-10-12 16:04:38 ET | prop:base, lines 1611-1622 | Sub-root sides, two-U, column reps below every sub-root (SubRootProps, LevelProps)
+complete | 2026-10-12 19:32:37 ET | prop:normalized, lines 2838-2840 | Attempt instantiation on (B,p): params, ordered cell list, sizes, leaf error <= eps|R| (attempt_instance)
+complete | 2026-10-12 16:31:10 ET | prop:normalized, lines 2838-2840 | Marking-failure cut: maximal failed cells, length <= 100*2001^7|R|/D, padding (failure_cut, pad)
+complete | 2026-10-12 17:20:45 ET | prop:normalized, lines 1859-2166 | Basic inputs: variation, rolling, event rows, linear side, side caps (attempt_*_basic)
+complete | 2026-10-12 17:31:15 ET | prop:normalized, lines 2128-2154 | Offsets for all groups, mode systems, eq:physical-error (group_modes_physical, ballAt_physical_error)
+complete | 2026-10-12 17:54:59 ET | prop:normalized, lines 1955-1960 | Frozen coefficients of ball outputs at decision cells (ballAt_frozen, opAvg_catProj_l2, bmask_pad_mono)
+complete | 2026-10-12 17:54:59 ET | prop:normalized, line 2100 | Exceptional blocks and bad heights per key (exceptional_card_le, badHeights_card_le; hAe for 3K-separated blocks)
+complete | 2026-10-12 20:19:02 ET | prop:normalized, lines 2120-2154, 2838-2840 | Packaged leaf split: modes, frozen coefficients, lift errors per slot/group (exists_leafSplit)
+complete | 2026-10-12 20:30:29 ET | prop:normalized, lines 2155-2166 | Packaged sides: eq:side-cap from rolling/linear budgets, piece sizes (leaf_side_caps, piece_sizes_le)
+complete | 2026-10-12 18:07:34 ET | prop:normalized, lines 2461, 2845-2848 | Abstract error, three-side, 2+2 pattern bounds (error_patterns_le, three_side_patterns_le)
+complete | 2026-10-12 18:07:34 ET | sec:sides, line 2252 | Four-linear transfer step (bilinTwo, transfer_step)
+complete | 2026-10-12 18:34:35 ET | sec:core, lines 2461-2462 | Concrete leaf split Z = A + S + E (LeafSplit, core_add_side_add_err)
+complete | 2026-10-12 18:34:35 ET | sec:sides, lines 2241-2268 | Transfer chains and complement expansion (transfer_chain, layerOp_eq_posExpand)
+complete | 2026-10-12 18:34:35 ET | sec:sides, lines 2421-2445 | Randomized selected stacks on short-block pieces (piece_select_bound, form_sign_avg)
+complete | 2026-10-12 18:45:15 ET | sec:sides, lines 2430-2436 | Sparse roots of a hull, remainders, owners, piece leaf energies (sparseRoots, sparse_owner, piece_leaf_energy)
+complete | 2026-10-12 19:24:09 ET | sec:sides, lines 2421-2445 | eq:near-band over sparse pieces, three sign families (piece_band_bound, sparse_root_sum, near_band_bound)
+complete | 2026-10-12 20:19:02 ET | prop:normalized, lines 2845-2848 | Error-pattern bound (eq:physical-error, absolute) on one leaf (leaf_error_bound)
+complete | 2026-10-12 20:55:00 ET | prop:normalized, lines 2838-2839 | Attempt fuel = ceil(log2 Lc)+1: layer lists <= fuel, #leaves <= 4Lc (leafAt_layers_length_le)
+complete | 2026-10-12 21:00:15 ET | prop:normalized, lines 2838-2840 | attempt_instance on arbitrary subsets of retained cells, one catalog, any eps > 0 (attempt_instance)
+complete | 2026-10-12 21:03:57 ET | prop:base, lines 1655, 2839 | Active path multiplicity <= exp(C k^(3Cb+2)) at delta_k = e^-k^(Cb+2) (active_mult_bound)
+complete | 2026-10-12 21:35:09 ET | mode-schedule, lines 1944-1966 | Schedule, K last at packet width W(H); SideParams from S; logs poly(Lambda) (exists_attempt_schedule)
+complete | 2026-10-12 22:08:54 ET | first-match, lines 1938-1944 | eq:gauge-cancel multiplier: smooth, periodic, offset-uniform Fourier truncation (gaugeMult_truncate)
+not started | 2026-10-12 20:49:39 ET | mode-schedule, lines 1962-1972 | LeafSplit on the concrete schedule; D.c = exact frozen synthesis; eq:slope-variation
+not started | 2026-10-12 20:49:39 ET | side-caps, lines 2155-2166 | leaf_side_caps instantiated: B_var from rolling variation, B_lin from linear side; U slots; no-decision cells
+not started | 2026-10-12 20:49:39 ET | side-caps, lines 2163-2164 | Size cut on Z_s, Z_{u_b}, basic inputs <= P^C on retained cells; B_s, K_x; delta, delta_c => errors <= e^-k|R|
+not started | 2026-10-12 20:49:39 ET | helpers, lines 2167-2169, 2237 | Helper catalog on whole side states (helper_instantiation); helper counts; main tests preserved
+not started | 2026-10-12 20:49:39 ET | representatives, lines 2171-2192 | Representatives on LeafSplit block components per role/height/type; eq:representative-separation
+not started | 2026-10-12 20:49:39 ET | component-sizes, lines 2196-2209 | eq:component-size and eq:size-comparison on the LeafSplit components
+not started | 2026-10-12 20:49:39 ET | prop:tops, lines 2212-2231 | eq:top-count on retained paths: sigma-tops, Markov first crossings over polynomially many choices
+not started | 2026-10-12 20:49:39 ET | transfer, lines 2240-2241 | 2+2 restored leaf pattern: sides a,b; layered histories c,d; positive-chain expansion; distinct ranks
+not started | 2026-10-12 20:49:39 ET | transfer, lines 2242-2252 | Pad band families Q_{c,p} and helper Q_{a,p} on the same masks/pads; transfer_chain on the forms Lambda_c
+not started | 2026-10-12 20:49:39 ET | transfer, lines 2254-2256 | Far bands |p-q|>2: helper test, main test with neighbor closure, different-tag pairs <= D^-C3 |S_a||S_b|
+not started | 2026-10-12 20:49:39 ET | transfer, lines 2256-2263 | eq:transferred-main; restoration B -> Y by PairSmall; U-slot corrections; terminal-band convention
+not started | 2026-10-12 20:49:39 ET | power-costs, lines 2372-2384 | eq:three-sides on leaves (p = 1-1/1200, T = P^C); transferred main <= eta P^C |R|
+not started | 2026-10-12 20:49:39 ET | power-costs, lines 2386-2390 | Frozen complements at b: bounded sizes, variation budgets, freeze flags as strong factors, caps
+not started | 2026-10-12 20:49:39 ET | fixed-stacks, lines 2393-2413 | Binary prefix positions; linear-side and basic-U stacks; banded side with P+1 indices
+not started | 2026-10-12 20:49:39 ET | fixed-stacks, lines 2415-2419 | Rolling stacks with fixed inputs 1_Omega(Z_v - Z_a); eq:stack-energy PG0|R|, G0|R|; #configurations <= G0
+not started | 2026-10-12 20:49:39 ET | fixed-stacks, lines 2421-2423 | Randomization of the concrete stacks; selection of positions and bands (Khintchine)
+not started | 2026-10-12 20:49:39 ET | side-estimate, lines 2425-2428 | Hulls Omega_nu with M0 <= exp(k^C); two_hull_caps on the concrete stacks, merged with power-cost cuts
+not started | 2026-10-12 20:49:39 ET | side-estimate, lines 2430-2444 | near_band_bound on concrete stacks via Lambda_c_phys; eq:near-band C_q(1+C_N)P^-1/2 G0 (K+2)^e |R|
+not started | 2026-10-12 20:49:39 ET | side-estimate, lines 2446-2456 | Exported side estimate on a leaf: the >=3-side (hS) and 2+2 (hT) bounds of leaf_before_absorption
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2124, 2460-2462 | Core A = Z~ - V as sum of minimal-CURRENT subtotals A_D on attempt cells
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2463-2467 | First-success heights on attempt cores: finite words, failure assignment, product masks
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2468-2479 | eq:core-torus-form with cutoffs g_j and multiplier R_z, eq:frequency-box, offset S'
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2482-2504 | eq:torus-size and eq:Haar-four for selected attempt components
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2530-2534 | Kernel decay |W_s(rq',rt')| <= C_J mu nu^-J and W_beta derivatives from the admissible marginals
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2506-2529 | Four-core tests eq:four-tests: mask-independent references, coset reduction
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2536-2565 | Three-core tests: D_m Parseval, eq:side-windows with fresh offset S'
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2566-2585 | eq:core-numerical, moment bound over failure assignments, eq:principal-core
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2707-2742 | Counting hypotheses on attempts: labels, E_s, M_i^G, side weights, gap, L_0 <= P^C
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2772-2800 | Negligible amplitudes, amplitude bins, eq:powered-count per group, Hoelder over groups
+not started | 2026-10-12 20:49:39 ET | sec:core, lines 2802-2816 | Band sums, x* path integration (eq:path), minimum step: eq:core-final (hC)
+not started | 2026-10-12 20:49:39 ET | prop:normalized, lines 2839-2841 | Union of failure, size, side-cap, top, power-cost and hull cuts <= |R|/4
+not started | 2026-10-12 20:49:39 ET | prop:normalized, lines 2843-2852 | eq:before-absorption on one attempt: attempt_instance + leaf_before_absorption, leaves <= G0
+not started | 2026-10-12 20:49:39 ET | prop:normalized, lines 2853-2866 | Attempt inputs d_max,D*,B*,D_m,Q0 with Lambda<=P^C; K<=P^C5; G0<=exp(C(1+log 2k)^C); compressionC<=G0
+not started | 2026-10-12 20:49:39 ET | prop:normalized, lines 2868-2888 | RetainedMin: q, alpha, P = ceil(eta_0^-alpha); e^-k and eps absorbed in eta_0^c*
+not started | 2026-10-12 20:49:39 ET | thm:main, lines 2934-2941 | Unconditional thm:main: full build and axiom audit
+complete | 2026-10-12 15:33:25 ET | prop:normalized, lines 2827-2904 | NormalizedAbsorption and thm:main from ActiveFinal (normalizedAbsorption_of_activeFinal)
+complete | 2026-10-12 15:40:04 ET | prop:base, lines 1655-1660 | ActiveFinal from ActiveMin: reduction, two-U term, inactive error (activeFinal_of_activeMin)
+complete | 2026-10-12 16:24:12 ET | prop:normalized, lines 2840-2843 | ActiveMin from RetainedMin: restart recursion, LevelProps below sub-roots, label padding
 complete | 2026-10-11 11:20:02 ET | thm:uniform-local, lines 2926-2931 | Absorption C_N ≤ 2 + 2CA (uniform_constant_absorption)
 complete | 2026-10-11 11:48:20 ET | thm:uniform-local, lines 2906-2908 | prop:normalized as a hypothesis (Auto.NormalizedAbsorption)
 complete | 2026-10-11 12:01:34 ET | thm:uniform-local, lines 2910-2915 | Stopping generations, first stops of total length ≤ abs(J)/4 (stops_measure_le)

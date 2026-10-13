@@ -965,17 +965,19 @@ set_option maxHeartbeats 1000000 in
 -- budget
 /-- Blueprint `mode-schedule` (line 1976, `THT.Modes.chooseSchedule`): given the main budget
 `D_m`, the dimension bound `d_max`, the mode budget `D_*`, the cutoff `B_*`, the clearing
-integer `Q₀` and the packet width `W`, the parameters of `eq:mode-parameters` can be chosen in
-the displayed order, and all their logarithms are polynomial in
+integer `Q₀` and the packet width `W(H)` as a function of the height `H` (lem:height), the
+parameters of `eq:mode-parameters` can be chosen in the displayed order (`K` last, using
+`W(H)` at the chosen `H`), and all their logarithms are polynomial in
 `Λ = d_max + log D_* + log B_* + log D_m + log Q₀ + 1`: `log H ≤ M Λ^{12}`,
-`log T ≤ M Λ^{16}`, `K ≤ 2 W + M Λ^{16}`, with `M` depending only on the absolute constants. -/
+`log T ≤ M Λ^{16}`, `K ≤ 2 W(H) + M Λ^{16}`, with `M` depending only on the absolute constants. -/
 theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 : δs ≤ 1) :
-    ∃ M : ℝ, 0 < M ∧ ∀ (dmax : ℕ) (Dstar Bstar Dm W : ℝ) (Q0 : ℕ), 2 ≤ dmax → 2 ≤ Dstar →
-      2 ≤ Bstar → 2 ≤ Dm → 1 ≤ Q0 → 0 ≤ W →
+    ∃ M : ℝ, 0 < M ∧ ∀ (dmax : ℕ) (Dstar Bstar Dm : ℝ) (Wf : ℝ → ℝ) (Q0 : ℕ), 2 ≤ dmax →
+      2 ≤ Dstar → 2 ≤ Bstar → 2 ≤ Dm → 1 ≤ Q0 → (∀ y, 0 ≤ Wf y) →
       let Λ := (dmax : ℝ) + Real.log Dstar + Real.log Bstar + Real.log Dm + Real.log Q0 + 1
       ∃ S : ModeSchedule, S.dmax = dmax ∧ S.Dstar = Dstar ∧ S.Bstar = Bstar ∧ S.Dm = Dm ∧
-        S.Q0 = Q0 ∧ S.Valid Cj CA CT CK δs W ∧
-        Real.log S.H ≤ M * Λ ^ 12 ∧ Real.log S.T ≤ M * Λ ^ 16 ∧ (S.K : ℝ) ≤ 2 * W + M * Λ ^ 16 := by
+        S.Q0 = Q0 ∧ S.Valid Cj CA CT CK δs (Wf S.H) ∧
+        Real.log S.H ≤ M * Λ ^ 12 ∧ Real.log S.T ≤ M * Λ ^ 16 ∧
+        (S.K : ℝ) ≤ 2 * Wf S.H + M * Λ ^ 16 := by
   -- the constants
   set cJ : ℝ := 1262 * Cj * (δs⁻¹) ^ 2 + 1 with hcJ
   set cA : ℝ := 1564 * CA + 1 with hcA
@@ -990,7 +992,7 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
   have hcH0 : 0 ≤ cH := by rw [hcH]; positivity
   have hcT0 : 0 ≤ cT := by rw [hcT]; positivity
   refine ⟨cH + cT + (8 * cT + 4 * CK + 2), by positivity, ?_⟩
-  intro dmax Dstar Bstar Dm W Q0 hd hD hB hM hQ hW Λ
+  intro dmax Dstar Bstar Dm Wf Q0 hd hD hB hM hQ hWf Λ
   set d : ℝ := ((dmax : ℕ) : ℝ) with hdd
   have hd2 : (2 : ℝ) ≤ d := by rw [hdd]; exact_mod_cast hd
   have hl2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
@@ -1180,7 +1182,8 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
     rw [hcT, hsplitT]
     linarith
   clear_value Tv
-  set x : ℝ := W + 2 * Real.logb 2 Tv + CK * Real.logb 2 Dstar + 1 with hx
+  have hW := hWf Hv
+  set x : ℝ := Wf Hv + 2 * Real.logb 2 Tv + CK * Real.logb 2 Dstar + 1 with hx
   have hx1 : 1 ≤ x := by
     have := Real.logb_nonneg (by norm_num : (1 : ℝ) < 2) hTv1
     have := Real.logb_nonneg (by norm_num : (1 : ℝ) < 2) (by linarith : (1 : ℝ) ≤ Dstar)

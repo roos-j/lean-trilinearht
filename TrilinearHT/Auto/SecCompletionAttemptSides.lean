@@ -2030,7 +2030,8 @@ Bessel with constant `3 (L + 1) (1 + η D³)`. -/
 theorem group_event_rows (Bs : Finset ℤ) (cells : ℤ → Finset (ℤ × ℤ))
     (hdepth : ∀ b ∈ Bs, ∀ J ∈ cells b, J.1 = b - 2 * S.K) (cls : ℤ → Fin 3)
     (hsep : ∀ b ∈ Bs, ∀ b' ∈ Bs, cls b = cls b' → b < b' → b + 3 * S.K ≤ b') {Ae Ah : ℕ}
-    (hAe : ∀ (p : Ms.Key) (T : Finset ℤ), (T.filter fun b => ¬ Ms.nonexcAt S SP b p).card ≤ Ae)
+    (hAe : ∀ (p : Ms.Key) (T : Finset ℤ), (∀ b ∈ T, ∀ b' ∈ T, b < b' → b + 3 * S.K ≤ b') →
+      (T.filter fun b => ¬ Ms.nonexcAt S SP b p).card ≤ Ae)
     (hAh : ∀ (b : ℤ) (p : Ms.Key), Ms.nonexcAt S SP b p →
       ((Finset.range (SP.Jst + 1)).filter fun h => ¬ Ms.goodP S SP b h p).card ≤ Ah)
     (hδs : 0 < SP.δs)
@@ -4467,10 +4468,11 @@ terms bounded by `C |Q| a_Q b_Q` with the root sizes `a_Q² = ⨍_Q g_a`, `b_Q²
 joint caps `Σ_ν m_{a,ν} ≤ A`, `Σ_ν m_{b,ν} ≤ B` on `R`. -/
 theorem near_band_estimate (G : RealDyadicGrid) {N : Type*} (Ns : Finset N)
     (Hs : N → Finset (ℤ × ℤ)) (Qs : N → Finset (ℤ × ℤ)) (hQH : ∀ ν ∈ Ns, Qs ν ⊆ Hs ν)
-    (E : ℤ × ℤ → Set ℝ) (hEm : ∀ Q, MeasurableSet (E Q)) {R : Set ℝ} (hRm : MeasurableSet R)
-    (hdis : ∀ ν ∈ Ns, (Qs ν : Set (ℤ × ℤ)).PairwiseDisjoint E)
-    (hEQ : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, E Q ⊆ dyadicGridCell G Q.1 Q.2 ∩ R)
-    (hvol : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, 7 * ENNReal.ofReal (dyadicGridLength G Q.1) ≤ 8 * volume (E Q))
+    (E : N → ℤ × ℤ → Set ℝ) (hEm : ∀ ν Q, MeasurableSet (E ν Q)) {R : Set ℝ}
+    (hRm : MeasurableSet R)
+    (hdis : ∀ ν ∈ Ns, (Qs ν : Set (ℤ × ℤ)).PairwiseDisjoint (E ν))
+    (hEQ : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, E ν Q ⊆ dyadicGridCell G Q.1 Q.2 ∩ R)
+    (hvol : ∀ ν ∈ Ns, ∀ Q ∈ Qs ν, 7 * ENNReal.ofReal (dyadicGridLength G Q.1) ≤ 8 * volume (E ν Q))
     (ga gb : N → ℝ → ℝ≥0∞) {A B : ℝ≥0∞}
     (hA : ∀ x ∈ R, ∑ ν ∈ Ns, dyadicHullMax G (Hs ν) (ga ν) x ≤ A)
     (hB : ∀ x ∈ R, ∑ ν ∈ Ns, dyadicHullMax G (Hs ν) (gb ν) x ≤ B)
@@ -4488,8 +4490,8 @@ theorem near_band_estimate (G : RealDyadicGrid) {N : Type*} (Ns : Finset N)
     Finset.sum_congr rfl fun ν _ => Finset.sum_map _ _ _
   have h := near_band_total Ns Qs' (fun q => ENNReal.ofReal (dyadicGridLength G q.2.1))
     (fun q => (dyadicEnergyAverage G (ga q.1) q.2) ^ (1 / 2 : ℝ))
-    (fun q => (dyadicEnergyAverage G (gb q.1) q.2) ^ (1 / 2 : ℝ)) (fun q => E q.2)
-    (fun q => hEm q.2) hRm ?_ ?_ ?_ (fun ν x => dyadicHullMax G (Hs ν) (ga ν) x)
+    (fun q => (dyadicEnergyAverage G (gb q.1) q.2) ^ (1 / 2 : ℝ)) (fun q => E q.1 q.2)
+    (fun q => hEm q.1 q.2) hRm ?_ ?_ ?_ (fun ν x => dyadicHullMax G (Hs ν) (ga ν) x)
     (fun ν x => dyadicHullMax G (Hs ν) (gb ν) x) ?_ hA hB (fun q => term q.1 q.2) C ?_
   · rwa [hsum] at h
   · intro ν hν q₁ hq₁ q₂ hq₂ hne
@@ -6200,5 +6202,64 @@ theorem levels_cutoff_sum {X A₀ : ℝ} (E : ℕ → ℝ) (hE : Filter.Tendsto 
     hE.add tendsto_const_nhds
   rw [zero_add] at hlim
   exact ge_of_tendsto hlim (Filter.Eventually.of_forall hle)
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ}
+
+/-- The restriction of an active setup to a sub-root `R'` and a subfamily `C` of its cells below
+`R'` (blueprint prop:normalized, lines 2840-2842: restarts act on the original base summands with
+unchanged basic arguments and inherited lists). -/
+def restrictTo (A : ActiveSetup κ c₀) (R' : ℤ × ℤ) (C : Finset (ℤ × ℤ))
+    (hC : ∀ I ∈ C, I ∈ A.cells ∧ dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2) :
+    ActiveSetup κ c₀ where
+  G := A.G
+  R := R'
+  cells := C
+  sub := fun I hI => (hC I hI).2
+  w := A.w
+  adm := fun I hI => A.adm I (hC I hI).1
+  L := A.L
+  fin := A.fin
+  φ := A.φ
+  φ_meas := A.φ_meas
+  φ_bound := A.φ_bound
+  H := A.H
+  coef := A.coef
+  path_chart := fun y v => by
+    obtain ⟨d, B, h1, h2, h3⟩ := A.path_chart y v
+    exact ⟨d, B, h1, h2, fun I hI => h3 I (hC I hI).1⟩
+  nested_chart := fun I hI => A.nested_chart I (hC I hI).1
+  nested_cons := fun I hI I' hI' => A.nested_cons I (hC I hI).1 I' (hC I' hI').1
+  Dc := A.Dc
+  Dc_nonneg := A.Dc_nonneg
+  coef_le := A.coef_le
+  a := A.a
+  b := A.b
+  hab := A.hab
+  U := A.U
+  U_meas := A.U_meas
+  S := A.S
+  U_L2 := A.U_L2
+  U_le := A.U_le
+  η := A.η
+  small := fun I hI => A.small I (hC I hI).1
+
+variable (A : ActiveSetup κ c₀) (R' : ℤ × ℤ) (C : Finset (ℤ × ℤ))
+  (hC : ∀ I ∈ C, I ∈ A.cells ∧ dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2)
+
+@[simp] theorem restrictTo_cells : (A.restrictTo R' C hC).cells = C := rfl
+@[simp] theorem restrictTo_R : (A.restrictTo R' C hC).R = R' := rfl
+@[simp] theorem restrictTo_G : (A.restrictTo R' C hC).G = A.G := rfl
+@[simp] theorem restrictTo_w : (A.restrictTo R' C hC).w = A.w := rfl
+
+theorem restrictTo_Hf (I : ℤ × ℤ) (F : Fin 4 → ℝ → ℂ) : (A.restrictTo R' C hC).Hf I F = A.Hf I F :=
+  rfl
+
+theorem restrictTo_z (p : Fin 4) (I : ℤ × ℤ) : (A.restrictTo R' C hC).z p I = A.z p I := rfl
+
+theorem restrictTo_Y (I : ℤ × ℤ) : (A.restrictTo R' C hC).Y I = A.Y I := rfl
+
+end ActiveSetup
 
 end Auto

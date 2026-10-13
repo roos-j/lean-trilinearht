@@ -2568,6 +2568,23 @@ end GreedyTree
 
 /-! ### Tuple-specific accurate high fits -/
 
+namespace GreedyTree
+
+variable {S : GreedyTree}
+
+/-- A cell between a tree cell and its segment root has the same segment root. -/
+theorem Hyp.seg_between (h : S.Hyp) {u v : ℤ × ℤ} (hu : u ∈ dyadicFiniteTree S.G S.J S.N)
+    (hv : v ∈ dyadicFiniteTree S.G S.J S.N) (huv : S.cell u ⊆ S.cell v)
+    (hvs : S.cell v ⊆ S.cell (S.seg u)) : S.seg v = S.seg u := by
+  obtain ⟨hr, hus, -, hmax⟩ := h.seg_spec hu
+  obtain ⟨hr', hvs', -, hmax'⟩ := h.seg_spec hv
+  have h1 := hmax' _ hr hvs
+  have h2 := hmax _ hr' (huv.trans hvs')
+  have hx := dyadicGridCell_left_mem S.G u.1 u.2
+  exact (dyadicGridCell_eq_of_common_point S.G (hus hx) (hvs' (huv hx)) (by omega)).symm
+
+end GreedyTree
+
 /-- The data of the accurate high fits of one input (blueprint prop:base, proof lines
 1634-1641): a predictor system, the delay `K₀`, coarse cells tested at depth `+K₀`, fit labels
 `Fin M` with private weight one, the input `f` in slot `e` at accuracy `e^{-k}`. -/

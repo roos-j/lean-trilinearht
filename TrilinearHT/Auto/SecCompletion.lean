@@ -5,7 +5,7 @@ Authors: Claude
 -/
 module
 
-public import TrilinearHT.Auto.SecCompletionAttemptSides
+public import TrilinearHT.Auto.SecCompletionQuantitative
 
 /-!
 # Normalized absorption and the operator estimate
@@ -4179,5 +4179,1749 @@ theorem uniform_of_normalized
   intro κ
   obtain ⟨q, hq, hq3, A, c, hA, hc, hsmall, hN⟩ := hnorm κ
   exact ⟨q, hq, hq3, _, uniform_local_of_normalized κ hq hA hc hsmall hN⟩
+
+/-! ### Normalized absorption from the active-final estimate (prop:normalized, lines 2827-2904) -/
+
+/-- For `θ > 0`, eventually in `k`, `k^{C} e^{-2 k^θ} ≤ e^{-k^θ}`. -/
+theorem eventually_pow_mul_exp_le (C : ℕ) {θ : ℝ} (hθ : 0 < θ) :
+    ∃ K : ℕ, ∀ k : ℕ, K ≤ k → (k : ℝ) ^ C * Real.exp (-2 * (k : ℝ) ^ θ) ≤
+      Real.exp (-(k : ℝ) ^ θ) := by
+  have ho := _root_.isLittleO_log_rpow_atTop hθ
+  have hev := ho.bound (show (0 : ℝ) < 1 / ((C : ℝ) + 1) by positivity)
+  have hev' := (tendsto_natCast_atTop_atTop (R := ℝ)).eventually
+    (hev.and (Filter.eventually_ge_atTop 1))
+  obtain ⟨K, hK⟩ := Filter.eventually_atTop.mp hev'
+  refine ⟨K, fun k hk => ?_⟩
+  obtain ⟨hb, hk1⟩ := hK k hk
+  have hkpos : (0 : ℝ) < k := by linarith
+  have hlog0 : 0 ≤ Real.log k := Real.log_nonneg hk1
+  have hθpos : 0 ≤ (k : ℝ) ^ θ := Real.rpow_nonneg hkpos.le θ
+  rw [Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg hlog0, abs_of_nonneg hθpos] at hb
+  have hC : (C : ℝ) * Real.log k ≤ (k : ℝ) ^ θ := by
+    have h1 : ((C : ℝ) + 1) * Real.log k ≤ (k : ℝ) ^ θ := by
+      have := mul_le_mul_of_nonneg_left hb (show (0 : ℝ) ≤ (C : ℝ) + 1 by positivity)
+      rwa [← mul_assoc, mul_one_div_cancel (by positivity), one_mul] at this
+    nlinarith
+  have hpow : (k : ℝ) ^ C = Real.exp ((C : ℝ) * Real.log k) := by
+    rw [← Real.exp_log (pow_pos hkpos C), Real.log_pow]
+  rw [hpow, ← Real.exp_add, Real.exp_le_exp]
+  linarith
+
+/-- The zero kernel is admissible (it carries the unused cells of a finite tree). -/
+theorem isAdmissibleLocalKernel_zero (κ : LocalKernelClass) (a : ℝ) {r : ℝ} (hr : 0 < r) :
+    IsAdmissibleLocalKernel κ a r 0 where
+  smooth := contDiff_const
+  support := fun z hz => absurd rfl hz
+  marginal := fun u j => by simp
+  derivativeBound := fun m n z => by
+    have h0 : localKernelPartial m n (0 : ℝ × ℝ → ℂ) z = 0 := by
+      unfold localKernelPartial
+      simp
+    rw [h0, norm_zero]
+    have h1 : (1 : ℝ) ≤ κ.derivativeConstant * ((m + n : ℕ) + 2) := by
+      have := κ.one_le_derivativeConstant
+      have : (2 : ℝ) ≤ ((m + n : ℕ) : ℝ) + 2 := by linarith [Nat.cast_nonneg (α := ℝ) (m + n)]
+      nlinarith
+    exact mul_nonneg (pow_nonneg (inv_nonneg.mpr hr.le) _) (Real.rpow_nonneg (by linarith) _)
+
+/-- Blueprint lines 2893-2904 (the expansion at a finite cutoff `T`): on a finite tree whose
+kernel-hull cells carry stagger cells, the length-weighted sum of `|H_I(f)|` is at most the
+remainders `(T+1) 32 e^{-k_{T-3}}` per unit length plus the tuple sums over the update pairs
+`1 ≤ u < t ≤ T` in distinct positions. -/
+theorem tree_expansion_bound {κ : LocalKernelClass} {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ}
+    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {f : Fin 4 → ℝ → ℂ} {g : ℕ → ℤ × ℤ → ℝ → ℂ} {kk : ℕ → ℕ}
+    (hcells : ∀ I ∈ dyadicFiniteTree G J N, kernelHull G J N w I → ∃ D : StaggerCell κ,
+      D.r = dyadicGridLength G I.1 ∧ D.w = w I ∧ D.f = f ∧ (∀ t, D.g t = g t I) ∧
+      (∀ T, D.H D.f = D.H (D.tail T) + ∑ u ∈ Finset.Icc 1 T,
+        (D.H (Function.update (D.tail T) (stagPos u) (D.incr u)) +
+          ∑ t ∈ Finset.Ioc u T, if stagPos t ≠ stagPos u then D.H (D.tuple u t) else 0)) ∧
+      (∀ T, 4 ≤ T → ‖D.H (D.tail T)‖ ≤ 32 * Real.exp (-(kk (T - 3) : ℝ)) ∧
+        ∀ u, ‖D.H (Function.update (D.tail T) (stagPos u) (D.incr u))‖ ≤
+          32 * Real.exp (-(kk (T - 3) : ℝ))))
+    (T : ℕ) (hT : 4 ≤ T) :
+    ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
+        ‖localProgressionForm (dyadicGridLength G I.1) (w I) f‖ ≤
+      ((T : ℝ) + 1) * (32 * Real.exp (-(kk (T - 3) : ℝ))) *
+          ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 +
+        ∑ u ∈ Finset.Icc 1 T, ∑ t ∈ Finset.Ioc u T, (if stagPos t ≠ stagPos u then
+          ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
+            ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖
+          else 0) := by
+  classical
+  set e := 32 * Real.exp (-(kk (T - 3) : ℝ)) with he
+  have he0 : 0 ≤ e := by positivity
+  -- the per-cell bound
+  have hcell : ∀ I ∈ dyadicFiniteTree G J N,
+      ‖localProgressionForm (dyadicGridLength G I.1) (w I) f‖ ≤
+        ((T : ℝ) + 1) * e + ∑ u ∈ Finset.Icc 1 T, ∑ t ∈ Finset.Ioc u T,
+          (if stagPos t ≠ stagPos u then
+            ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖
+            else 0) := by
+    intro I hI
+    have hrhs : 0 ≤ ((T : ℝ) + 1) * e + ∑ u ∈ Finset.Icc 1 T, ∑ t ∈ Finset.Ioc u T,
+        (if stagPos t ≠ stagPos u then
+          ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖ else 0) := by
+      refine add_nonneg (by positivity) (Finset.sum_nonneg fun u _ =>
+        Finset.sum_nonneg fun t _ => ?_)
+      split_ifs <;> positivity
+    by_cases hH : kernelHull G J N w I
+    · obtain ⟨D, hr, hw, hf, hg, hexp, hbd⟩ := hcells I hI hH
+      have hD : ∀ u t, D.H (D.tuple u t) =
+          localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I) := by
+        intro u t
+        rw [StaggerCell.tuple_eq_stagTuple D hf hg]
+        simp only [StaggerCell.H, hr, hw]
+      have hDf : D.H D.f = localProgressionForm (dyadicGridLength G I.1) (w I) f := by
+        simp only [StaggerCell.H, hr, hw, hf]
+      rw [← hDf, hexp T]
+      obtain ⟨htail, hupd⟩ := hbd T hT
+      calc ‖D.H (D.tail T) + ∑ u ∈ Finset.Icc 1 T,
+            (D.H (Function.update (D.tail T) (stagPos u) (D.incr u)) +
+              ∑ t ∈ Finset.Ioc u T, if stagPos t ≠ stagPos u then D.H (D.tuple u t) else 0)‖
+          ≤ e + ∑ u ∈ Finset.Icc 1 T, (e + ∑ t ∈ Finset.Ioc u T,
+              (if stagPos t ≠ stagPos u then
+                ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖
+                else 0)) := by
+            refine (norm_add_le _ _).trans (add_le_add htail ((norm_sum_le _ _).trans
+              (Finset.sum_le_sum fun u _ => (norm_add_le _ _).trans
+                (add_le_add (hupd u) ((norm_sum_le _ _).trans
+                  (Finset.sum_le_sum fun t _ => ?_))))))
+            split_ifs
+            · rw [hD]
+            · simp
+        _ = ((T : ℝ) + 1) * e + ∑ u ∈ Finset.Icc 1 T, ∑ t ∈ Finset.Ioc u T,
+              (if stagPos t ≠ stagPos u then
+                ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖
+                else 0) := by
+            rw [Finset.sum_add_distrib, Finset.sum_const, Nat.card_Icc, nsmul_eq_mul]
+            push_cast; ring
+    · have h0 : localProgressionForm (dyadicGridLength G I.1) (w I) f = 0 := by
+        rw [eq_zero_of_not_kernelHull hI hH, localProgressionForm_zero_kernel]
+      rw [h0, norm_zero]
+      exact hrhs
+  calc ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
+        ‖localProgressionForm (dyadicGridLength G I.1) (w I) f‖
+      ≤ ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
+          (((T : ℝ) + 1) * e + ∑ u ∈ Finset.Icc 1 T, ∑ t ∈ Finset.Ioc u T,
+            (if stagPos t ≠ stagPos u then
+              ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖
+              else 0)) :=
+        Finset.sum_le_sum fun I hI =>
+          mul_le_mul_of_nonneg_left (hcell I hI) (dyadicGridLength_pos G I.1).le
+    _ = _ := by
+        simp only [mul_add, Finset.sum_add_distrib, Finset.mul_sum]
+        congr 1
+        · exact Finset.sum_congr rfl fun I _ => by ring
+        · rw [Finset.sum_comm]
+          refine Finset.sum_congr rfl fun u _ => ?_
+          rw [Finset.sum_comm]
+          refine Finset.sum_congr rfl fun t _ => ?_
+          split_ifs
+          · rfl
+          · simp
+
+/-- The properties of the active setups of a noninitial level produced by
+`activeCellReduction`, at accuracy `k`, complexity exponent `C_b` and pair bound `η₀`, including
+the sub-root properties used by restarts. -/
+def ActiveSetup.LevelProps {κ : LocalKernelClass} {c₀ : ℕ} (B : ActiveSetup κ c₀) (k Cb : ℕ)
+    (η₀ : ℝ) : Prop :=
+  (∀ I ∈ B.cells, ∀ J' : ℤ × ℤ, dyadicGridCell B.G I.1 I.2 ⊆ dyadicGridCell B.G J'.1 J'.2 →
+    dyadicGridCell B.G J'.1 J'.2 ⊆ dyadicGridCell B.G B.R.1 B.R.2 → J' ∈ B.cells) ∧
+  1 ≤ B.H ∧ B.H ≤ Real.exp ((k : ℝ) ^ Cb) ∧ B.Dc ≤ Real.exp ((k : ℝ) ^ Cb) ∧
+  (Fintype.card B.L : ℝ) ≤ Real.exp ((k : ℝ) ^ Cb) ∧ B.S = 2 ∧ B.η = 4 * η₀ ∧
+  (∀ I ∈ B.cells, ∀ s s', s ≠ s' → PairSmall (dyadicGridLeft B.G I.1 I.2)
+    (dyadicGridLength B.G I.1) (B.w I) s s' (B.Y I s) (B.Y I s') (2 * η₀)) ∧
+  (∀ I ∈ B.cells, ∀ l, (eLpNorm (B.Y I l) 2 (B.μ I)).toReal ≤ 2) ∧
+  (∀ l, ∑ I ∈ B.cells, dyadicGridLength B.G I.1 * (eLpNorm (B.U l I) 2 (B.μ I)).toReal ^ 2 ≤
+    (k : ℝ) ^ Cb * dyadicGridLength B.G B.R.1) ∧
+  ∑ I ∈ B.cells, dyadicGridLength B.G I.1 * ‖B.Hf I (B.z 3 I)‖ ≤
+    η₀ * ((k : ℝ) ^ Cb * dyadicGridLength B.G B.R.1) ∧
+  B.HasColumnRep 1 ∧ B.SubRootProps η₀ ((k : ℝ) ^ Cb)
+
+/-- Blueprint `eq:active-final` (prop:normalized, lines 2885-2888) as a statement about the
+active setups of the base reduction: for every complexity order `c'`, exponent `C_b` and pair
+exponent `θ₀`, there are `q ∈ (2, 3)`, `c_* > 0` and `C` such that, at every large accuracy `k`,
+every active setup with the level properties at `η₀ = e^{-2 k^{θ₀}}` whose nonzero kernels lie in
+`N` consecutive depths satisfies
+`Σ_I |I| |H_I(Y)| ≤ (C η₀^{c_*} (1 + C_N(q)) + e^{-k}) |R|`. -/
+def ActiveFinal (κ : LocalKernelClass) : Prop :=
+  ∀ (c' Cb : ℕ) (θ₀ : ℝ), 1 ≤ c' → 0 < θ₀ → θ₀ ≤ 1 → ∃ q : ℝ, 2 < q ∧ q < 3 ∧
+    ∃ cs Cfin : ℝ, 0 < cs ∧ 0 ≤ Cfin ∧ ∃ K : ℕ, ∀ k : ℕ, K ≤ k → ∀ (N : ℕ) (d₀ : ℤ)
+      (B : ActiveSetup κ c'), (∀ I ∈ B.cells, B.w I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + N) →
+      B.LevelProps k Cb (Real.exp (-2 * (k : ℝ) ^ θ₀)) →
+      ∑ I ∈ B.cells, dyadicGridLength B.G I.1 * ‖B.Hf I (B.Y I)‖ ≤
+        (Cfin * Real.exp (-2 * (k : ℝ) ^ θ₀) ^ cs * (1 + finiteDepthConstant κ q N) +
+          Real.exp (-(k : ℝ))) * dyadicGridLength B.G B.R.1
+
+theorem StaggerCell.tuple_measurable {κ : LocalKernelClass} (C : StaggerCell κ) (u t : ℕ)
+    (l : Fin 4) : Measurable (C.tuple u t l) := by
+  have hg : ∀ s, Measurable (C.g s) := C.g_meas
+  have hprev : ∀ s, Measurable (C.prevProj s) := fun s => by
+    unfold StaggerCell.prevProj; split_ifs
+    · exact measurable_const
+    · exact hg _
+  have hlast : ∀ l s, Measurable (C.lastProj l s) := fun l s => by
+    unfold StaggerCell.lastProj; split_ifs
+    · exact hg _
+    · exact measurable_const
+  unfold StaggerCell.tuple StaggerCell.incr
+  split_ifs
+  · exact (hg u).sub (hprev u)
+  · exact (hg t).sub (hprev t)
+  · exact (C.f_meas l).sub (hlast l t)
+
+/-- The cutoff remainders vanish: if `k_t ≥ t` for `t ≥ 1`, then `(T+1) e^{-k_{T-3}} → 0`. -/
+theorem tendsto_cutoff_remainder {kk : ℕ → ℕ} (hkk : ∀ t : ℕ, 1 ≤ t → (t : ℝ) ≤ kk t) (S : ℝ) :
+    Filter.Tendsto (fun T : ℕ => ((T : ℝ) + 1) * (32 * Real.exp (-(kk (T - 3) : ℝ))) * S)
+      Filter.atTop (nhds 0) := by
+  have h1 : Filter.Tendsto (fun T : ℕ => ((T : ℝ) + 1) * Real.exp (-(T : ℝ))) Filter.atTop
+      (nhds 0) := by
+    have ha := (Real.tendsto_pow_mul_exp_neg_atTop_nhds_zero 1).comp
+      tendsto_natCast_atTop_atTop
+    have hb := Real.tendsto_exp_neg_atTop_nhds_zero.comp
+      (tendsto_natCast_atTop_atTop (R := ℝ))
+    have := ha.add hb
+    simp only [pow_one, add_zero] at this
+    refine this.congr fun T => ?_
+    simp only [Function.comp_apply]; ring
+  have h2 : Filter.Tendsto (fun T : ℕ => ((T : ℝ) + 1) * Real.exp (-(T : ℝ)) *
+      (32 * Real.exp 4 * |S|)) Filter.atTop (nhds 0) := by
+    simpa using h1.mul_const (32 * Real.exp 4 * |S|)
+  refine squeeze_zero_norm' ?_ h2
+  filter_upwards [Filter.eventually_ge_atTop 4] with T hT
+  have hk : ((T : ℝ) - 4) ≤ (kk (T - 3) : ℝ) := by
+    have := hkk (T - 3) (by omega)
+    have e : ((T - 3 : ℕ) : ℝ) = (T : ℝ) - 3 := by
+      rw [Nat.cast_sub (by omega : 3 ≤ T)]; norm_num
+    rw [e] at this; linarith
+  have hexp : Real.exp (-(kk (T - 3) : ℝ)) ≤ Real.exp 4 * Real.exp (-(T : ℝ)) := by
+    rw [← Real.exp_add, Real.exp_le_exp]; linarith
+  rw [norm_mul, norm_mul, Real.norm_eq_abs, Real.norm_eq_abs, Real.norm_eq_abs,
+    abs_of_nonneg (by positivity : (0 : ℝ) ≤ (T : ℝ) + 1),
+    abs_of_nonneg (by positivity : (0 : ℝ) ≤ 32 * Real.exp (-(kk (T - 3) : ℝ)))]
+  have hT0 : (0 : ℝ) ≤ (T : ℝ) + 1 := by positivity
+  calc ((T : ℝ) + 1) * (32 * Real.exp (-(kk (T - 3) : ℝ))) * |S|
+      ≤ ((T : ℝ) + 1) * (32 * (Real.exp 4 * Real.exp (-(T : ℝ)))) * |S| := by gcongr
+    _ = ((T : ℝ) + 1) * Real.exp (-(T : ℝ)) * (32 * Real.exp 4 * |S|) := by ring
+
+/-- The length-weighted sum of the forms of one level, over a finite tree with kernels `w`. -/
+noncomputable def levelSum (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (w : ℤ × ℤ → ℝ × ℝ → ℂ)
+    (f : Fin 4 → ℝ → ℂ) (g : ℕ → ℤ × ℤ → ℝ → ℂ) (u t : ℕ) : ℝ := by
+  classical
+  exact if 1 ≤ u ∧ u < t ∧ stagPos t ≠ stagPos u then
+    ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
+      ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖ else 0
+
+theorem levelSum_nonneg (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (w : ℤ × ℤ → ℝ × ℝ → ℂ)
+    (f : Fin 4 → ℝ → ℂ) (g : ℕ → ℤ × ℤ → ℝ → ℂ) (u t : ℕ) : 0 ≤ levelSum G J N w f g u t := by
+  unfold levelSum
+  split_ifs
+  · exact Finset.sum_nonneg fun I _ =>
+      mul_nonneg (dyadicGridLength_pos G I.1).le (norm_nonneg _)
+  · exact le_rfl
+
+/-- Over the update pairs of a cutoff, the tuple sums are the level sums. -/
+theorem sum_levelSum (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (w : ℤ × ℤ → ℝ × ℝ → ℂ)
+    (f : Fin 4 → ℝ → ℂ) (g : ℕ → ℤ × ℤ → ℝ → ℂ) (T : ℕ) :
+    ∑ u ∈ Finset.Icc 1 T, ∑ t ∈ Finset.Ioc u T, (if stagPos t ≠ stagPos u then
+      ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
+        ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖ else 0) =
+      ∑ u ∈ Finset.Icc 1 T, ∑ t ∈ Finset.Ioc u T, levelSum G J N w f g u t := by
+  classical
+  refine Finset.sum_congr rfl fun u hu => Finset.sum_congr rfl fun t ht => ?_
+  have hu1 := (Finset.mem_Icc.mp hu).1
+  have hut := (Finset.mem_Ioc.mp ht).1
+  unfold levelSum
+  by_cases hp : stagPos t ≠ stagPos u
+  · simp only [hp, hu1, hut, ne_eq, not_false_eq_true, and_self, ↓reduceIte]
+  · simp only [hp, ↓reduceIte, and_false]
+
+open Classical in
+/-- Blueprint prop:normalized (lines 2827-2904) from `eq:active-final`: the base reduction
+(`activeCellReduction`, every level), the depth-independent initial levels
+(`setups_total_le`), the active-final bound for the later levels, the level sums
+(`update_levels_sum`) and the cutoff limit (`levels_cutoff_sum`) give `eq:normalized` with an
+arbitrarily small coefficient of `C_N`. -/
+theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : ActiveFinal κ) :
+    ∃ q : ℝ, 2 < q ∧ q < 3 ∧ ∀ c : ℝ, 0 < c → ∃ A : ℝ, 0 ≤ A ∧
+      ∀ N, NormalizedAbsorption κ q N A c := by
+  obtain ⟨c₂, Cc, Aa, θ₀, c', Cb, hc₂, hCc, hAa, hθ₀, hθ₁, hc', hred⟩ := activeCellReduction κ
+  obtain ⟨q, hq2, hq3, cs, Cfin, hcs, hCfin, K, hK⟩ := hAF c' Cb θ₀ hc' hθ₀ hθ₁
+  obtain ⟨Ct, Ca, Cr, hCr, htot⟩ := setups_total_le κ c' hc'
+  refine ⟨q, hq2, hq3, fun c hc => ?_⟩
+  obtain ⟨Cq, K₁, hCq, hstep⟩ := hred q hq2
+  obtain ⟨K₂, hK₂⟩ := eventually_pow_mul_exp_le Cb hθ₀
+  set Λ : ℝ := 64 / 3 * Cfin + 1 with hΛ_def
+  have hΛ : 0 < Λ := by positivity
+  obtain ⟨K₃, hK₃⟩ := update_levels_sum (c := 2 * cs) (by positivity) hθ₀ hAa
+    (ε := c / Λ) (by positivity)
+  obtain ⟨K₄, hK₄⟩ := update_levels_sum (c := 1) one_pos hθ₀ hAa (ε := 1) one_pos
+  set k₁ := max (max K₁ K) (max K₂ (max K₃ (max K₄ 2))) with hk₁_def
+  have hk₁K₁ : K₁ ≤ k₁ := le_trans (le_max_left _ _) (le_max_left _ _)
+  have hk₁K : K ≤ k₁ := le_trans (le_max_right _ _) (le_max_left _ _)
+  have hk₁K₂ : K₂ ≤ k₁ := le_trans (le_max_left _ _) (le_max_right _ _)
+  have hk₁K₃ : K₃ ≤ k₁ := le_trans (le_trans (le_max_left _ _) (le_max_right _ _))
+    (le_max_right _ _)
+  have hk₁K₄ : K₄ ≤ k₁ := le_trans (le_trans (le_trans (le_max_left _ _) (le_max_right _ _))
+    (le_max_right _ _)) (le_max_right _ _)
+  have hk₁2 : 2 ≤ k₁ := le_trans (le_trans (le_trans (le_max_right _ _) (le_max_right _ _))
+    (le_max_right _ _)) (le_max_right _ _)
+  set kk : ℕ → ℕ := fun t => stagAcc k₁ Aa t with hkk_def
+  have hkk : ∀ t, k₁ ≤ kk t := fun t => le_stagAcc (by omega) (by omega) t
+  have hkk1 : ∀ t, (1 : ℝ) ≤ kk t := fun t => by exact_mod_cast le_trans (by omega) (hkk t)
+  -- the level constants
+  set E : ℕ → ℝ := fun t => Real.exp ((kk t : ℝ) ^ Cb) with hE_def
+  set η₁ : ℕ → ℝ := fun t =>
+    max (Real.exp (-2 * (kk t : ℝ) ^ θ₀)) (4 * localFormUniformConstant κ) with hη₁_def
+  set Φ : ℕ → ℝ := fun t => η₁ t * ((kk t : ℝ) ^ Cb) + 3 * (4 * η₁ t) * (4 * E t ^ 3 *
+      (Ca * (216 * (100 * (1 + Real.log (E t)) ^ 3) + Real.log (sliceConst κ) +
+        2 * Real.log 2) ^ Ca)) +
+      3 * E t ^ 3 * (E t ^ 3 * (2 + E t * E t)) *
+        (1 / 2 * Cr * (100 * (1 + Real.log (E t)) ^ 3 + Real.log 2 + 1) ^ Ct) with hΦ_def
+  set Init : ℕ → ℝ := fun t => 64 / 3 * Φ t + Real.exp (-(kk t : ℝ)) * (64 / 3) +
+    η₁ t * (kk t : ℝ) ^ Cb with hInit_def
+  have hE1 : ∀ t, 1 ≤ E t := fun t => Real.one_le_exp (by positivity)
+  have hη₁0 : ∀ t, 0 ≤ η₁ t := fun t => le_trans (Real.exp_pos _).le (le_max_left _ _)
+  have hΦ0 : ∀ t, 0 ≤ Φ t := by
+    intro t
+    have := hE1 t
+    have hl : 0 ≤ Real.log (E t) := Real.log_nonneg this
+    have hls : 0 ≤ Real.log (sliceConst κ) := Real.log_nonneg (one_le_sliceConst κ)
+    have hl2 : 0 ≤ Real.log 2 := Real.log_nonneg (by norm_num)
+    have := hη₁0 t
+    simp only [hΦ_def]
+    positivity
+  have hInit0 : ∀ t, 0 ≤ Init t := fun t => by
+    have := hΦ0 t; have := hη₁0 t; simp only [hInit_def]; positivity
+  set A₀c : ℝ := ∑ t ∈ Finset.range 12, Init t with hA₀c_def
+  have hA₀c : 0 ≤ A₀c := Finset.sum_nonneg fun t _ => hInit0 t
+  set bn : ℕ → ℝ := fun t => 64 / 3 * (Cfin * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) +
+      Real.exp (-(kk t : ℝ))) + Real.exp (-(kk t : ℝ)) * (64 / 3) +
+      Real.exp (-2 * (kk t : ℝ) ^ θ₀) * (kk t : ℝ) ^ Cb with hbn_def
+  set bc : ℕ → ℝ := fun t => 64 / 3 * Cfin * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) with hbc_def
+  have hbn0 : ∀ t, 0 ≤ bn t := fun t => by simp only [hbn_def]; positivity
+  have hbc0 : ∀ t, 0 ≤ bc t := fun t => by simp only [hbc_def]; positivity
+  -- summability of the later levels
+  obtain ⟨hs3, hs3'⟩ := hK₃ k₁ hk₁K₃
+  obtain ⟨hs4, -⟩ := hK₄ k₁ hk₁K₄
+  have hexpk : ∀ t, Real.exp (-(kk t : ℝ)) ≤ Real.exp (-1 * (kk t : ℝ) ^ θ₀) := fun t => by
+    rw [Real.exp_le_exp]
+    have : (kk t : ℝ) ^ θ₀ ≤ (kk t : ℝ) := by
+      have := Real.rpow_le_rpow_of_exponent_le (hkk1 t) hθ₁
+      rwa [Real.rpow_one] at this
+    linarith
+  have hpowk : ∀ t, Real.exp (-2 * (kk t : ℝ) ^ θ₀) * (kk t : ℝ) ^ Cb ≤
+      Real.exp (-1 * (kk t : ℝ) ^ θ₀) := fun t => by
+    rw [mul_comm, neg_one_mul]
+    exact hK₂ (kk t) (le_trans hk₁K₂ (hkk t))
+  have hbn_le : ∀ t : ℕ, (t : ℝ) * bn t ≤ 64 / 3 * Cfin * (((t : ℝ) + 1) *
+      Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀)) +
+      (128 / 3 + 1) * (((t : ℝ) + 1) * Real.exp (-1 * (kk t : ℝ) ^ θ₀)) := fun t => by
+    have h1 := hexpk t
+    have h2 := hpowk t
+    have ht0 : (0 : ℝ) ≤ t := Nat.cast_nonneg t
+    have he := (Real.exp_pos (-(2 * cs) * (kk t : ℝ) ^ θ₀)).le
+    have he' := (Real.exp_pos (-1 * (kk t : ℝ) ^ θ₀)).le
+    simp only [hbn_def]
+    nlinarith [mul_le_mul_of_nonneg_left h1 ht0, mul_le_mul_of_nonneg_left h2 ht0,
+      mul_nonneg ht0 he, mul_nonneg hCfin he]
+  have hsum_bn : Summable fun t : ℕ => (t : ℝ) * bn t :=
+    Summable.of_nonneg_of_le (fun t => mul_nonneg (Nat.cast_nonneg t) (hbn0 t)) hbn_le
+      ((hs3.mul_left _).add (hs4.mul_left _))
+  have hbc_le : ∀ t : ℕ, (t : ℝ) * bc t ≤ 64 / 3 * Cfin * (((t : ℝ) + 1) *
+      Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀)) := fun t => by
+    simp only [hbc_def]
+    have := (Real.exp_pos (-(2 * cs) * (kk t : ℝ) ^ θ₀)).le
+    nlinarith [mul_nonneg hCfin this]
+  have hsum_bc : Summable fun t : ℕ => (t : ℝ) * bc t :=
+    Summable.of_nonneg_of_le (fun t => mul_nonneg (Nat.cast_nonneg t) (hbc0 t)) hbc_le
+      (hs3.mul_left _)
+  have htsum_bc : ∑' t : ℕ, (t : ℝ) * bc t ≤ c := by
+    calc ∑' t : ℕ, (t : ℝ) * bc t ≤ ∑' t : ℕ, 64 / 3 * Cfin * (((t : ℝ) + 1) *
+          Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀)) :=
+          hsum_bc.tsum_le_tsum hbc_le (hs3.mul_left _)
+      _ = 64 / 3 * Cfin * ∑' t : ℕ, ((t : ℝ) + 1) * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) :=
+          tsum_mul_left
+      _ ≤ 64 / 3 * Cfin * (c / Λ) := mul_le_mul_of_nonneg_left hs3' (by positivity)
+      _ ≤ c := by
+          rw [mul_div, div_le_iff₀ hΛ]
+          nlinarith
+  set A : ℝ := 55 * A₀c + ∑' t : ℕ, (t : ℝ) * bn t with hA_def
+  have hA0 : 0 ≤ A := add_nonneg (by positivity)
+    (tsum_nonneg fun t => mul_nonneg (Nat.cast_nonneg t) (hbn0 t))
+  refine ⟨A, hA0, fun N => ?_⟩
+  intro D root hsub hnorm
+  set G := D.grid with hG_def
+  set f := D.input with hf_def
+  have hCN1 : 1 ≤ finiteDepthConstant κ q N := (finiteDepthConstant_bounds κ hq2.le N).1
+  have hroot0 := (dyadicGridLength_pos G root.1).le
+  -- the empty collection
+  by_cases hDe : D.cells = ∅
+  · unfold finiteDepthNumerator
+    rw [hDe, Finset.sum_empty]
+    exact mul_nonneg (by nlinarith) hroot0
+  obtain ⟨I₀, hI₀⟩ := Finset.nonempty_iff_ne_empty.mpr hDe
+  -- the finite tree below the root containing the used cells
+  set N' : ℕ := (D.firstDepth + N - root.1).toNat with hN'_def
+  have hmemT : ∀ I ∈ D.cells, I ∈ dyadicFiniteTree G root N' := fun I hI => by
+    refine (dyadicFiniteTree_mem_iff G root I N').mpr ⟨hsub I hI, ?_⟩
+    have h1 := (D.depths I hI).2
+    have h2 := dyadicGridCell_depth_le_of_subset G I root (hsub I hI)
+    omega
+  set w : ℤ × ℤ → ℝ × ℝ → ℂ := fun I => if I ∈ D.cells then D.kernel I else 0 with hw_def
+  have hw : ∀ I, IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)
+      (w I) := fun I => by
+    by_cases hI : I ∈ D.cells
+    · simp only [hw_def, hI, ↓reduceIte]; exact D.admissible I hI
+    · simp only [hw_def, hI, ↓reduceIte]
+      exact isAdmissibleLocalKernel_zero κ _ (dyadicGridLength_pos G I.1)
+  have hwne : ∀ I, w I ≠ 0 → I ∈ D.cells := fun I h => by
+    by_contra hI; exact h (by simp [hw_def, hI])
+  have hfq : ∀ p, ∀ I ∈ dyadicFiniteTree G root N', (I = root ∨ kernelHull G root N' w I) →
+      eLpNorm (f p) (ENNReal.ofReal q)
+        (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)) ≤ 1 := by
+    intro p I hI hIH
+    have hIr := ((dyadicFiniteTree_mem_iff G root I N').mp hI).1
+    have hhull : I ∈ dyadicHullCells G D.cells root := by
+      refine ⟨hIr, ?_⟩
+      rcases hIH with rfl | ⟨c₀', -, hc₀', hwc⟩
+      · exact ⟨I₀, hI₀, hsub I₀ hI₀⟩
+      · exact ⟨c₀', hwne c₀' hwc, hc₀'⟩
+    exact hnorm I hhull p
+  obtain ⟨M, roots, seg, n, a, g, cnt, atm, hfit, hroots, hcells, hlev⟩ :=
+    hstep k₁ hk₁K₁ G root N' w hw f D.measurable_input hfq
+  -- the numerator as a tree sum
+  have hnum : finiteDepthNumerator D = ∑ I ∈ dyadicFiniteTree G root N', dyadicGridLength G I.1 *
+      ‖localProgressionForm (dyadicGridLength G I.1) (w I) f‖ := by
+    unfold finiteDepthNumerator
+    rw [← Finset.sum_subset (fun I hI => hmemT I hI) (fun I _ hI => by
+      simp [hw_def, hI, localProgressionForm_zero_kernel])]
+    refine Finset.sum_congr rfl fun I hI => ?_
+    simp only [hw_def, hI, ↓reduceIte]
+    rfl
+  set JJ := dyadicGridLength G root.1 with hJJ
+  set CN := finiteDepthConstant κ q N with hCN_def
+  have hJJ0 : 0 ≤ JJ := hroot0
+  -- the initial levels
+  have hinit : ∀ u t, t < 12 → levelSum G root N' w f g u t ≤ A₀c * JJ := by
+    intro u t ht
+    unfold levelSum
+    split_ifs with hv
+    swap
+    · exact mul_nonneg hA₀c hJJ0
+    obtain ⟨hu, hut, hpos⟩ := hv
+    have hpair : ∀ I ∈ dyadicFiniteTree G root N', kernelHull G root N' w I → ∀ s s' : Fin 4,
+        s ≠ s' → PairSmall (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (w I) s s'
+          (stagTuple f g u t I s) (stagTuple f g u t I s') (η₁ t) := by
+      intro I hI hIH s s' hss
+      obtain ⟨Dc, ha₀, hr, -, -, hfD, hgD, -, -, -, -, hszD⟩ := hcells I hI hIH
+      have hT := StaggerCell.tuple_eq_stagTuple Dc hfD hgD u t
+      have hsz : ∀ l, eLpNorm (stagTuple f g u t I l) 2
+          (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)) ≤ 2 := by
+        intro l
+        have := hszD u t l
+        rw [hT] at this
+        change eLpNorm _ 2 (normalizedIntervalMeasure Dc.a₀ Dc.r) ≤ 2 at this
+        rwa [ha₀, hr] at this
+      have hm : ∀ l, Measurable (stagTuple f g u t I l) := fun l => by
+        rw [← hT]; exact Dc.tuple_measurable u t l
+      exact (pairSmall_trivial (dyadicGridLength_pos G I.1) (hw I) hss (hm s) (hm s') (hsz s)
+        (hsz s')).mono (le_max_right _ _)
+    obtain ⟨ι, hι, B, hpack, -, hB, hsum⟩ :=
+      hlev u t hu hut (Ne.symm hpos) (η₁ t) (le_max_left _ _) hpair
+    have hB' : ∀ p, 1 ≤ (B p).H ∧ (B p).H ≤ E t ∧ (B p).Dc ≤ E t ∧
+        (Fintype.card (B p).L : ℝ) ≤ E t ∧ (B p).S = 2 ∧ (B p).η = 4 * η₁ t ∧
+        ∑ I ∈ (B p).cells, dyadicGridLength (B p).G I.1 * ‖(B p).Hf I ((B p).z 3 I)‖ ≤
+          η₁ t * ((kk t : ℝ) ^ Cb * dyadicGridLength (B p).G (B p).R.1) := fun p => by
+      obtain ⟨-, -, -, hG', -, -, hH1, hHE, hDc, hL, hS, hη, -, -, -, htwo, -⟩ := hB p
+      rw [hG']
+      exact ⟨hH1, hHE, hDc, hL, hS, hη, htwo⟩
+    have hW : ∑ p, dyadicGridLength (B p).G (B p).R.1 ≤ 64 / 3 * JJ := by
+      refine le_trans (le_of_eq (Finset.sum_congr rfl fun p _ => ?_)) hpack
+      rw [(hB p).2.2.2.1]
+    have h := htot B (hE1 t) (hη₁0 t) (by positivity) hB' hW
+    have hconv : ∑ p, ∑ I ∈ (B p).cells, dyadicGridLength G I.1 * ‖(B p).Hf I ((B p).Y I)‖ =
+        ∑ p, ∑ I ∈ (B p).cells, dyadicGridLength (B p).G I.1 * ‖(B p).Hf I ((B p).Y I)‖ :=
+      Finset.sum_congr rfl fun p _ => by rw [(hB p).2.2.2.1]
+    rw [hconv] at hsum
+    have hle : Init t ≤ A₀c := Finset.single_le_sum (fun t _ => hInit0 t)
+      (Finset.mem_range.mpr ht)
+    calc _ ≤ _ := hsum
+      _ ≤ 64 / 3 * JJ * Φ t + Real.exp (-(kk t : ℝ)) * (64 / 3 * JJ) +
+          η₁ t * ((kk t : ℝ) ^ Cb * JJ) := by
+          gcongr
+      _ = Init t * JJ := by simp only [hInit_def]; ring
+      _ ≤ A₀c * JJ := mul_le_mul_of_nonneg_right hle hJJ0
+  -- the later levels
+  have hlate : ∀ u t, 12 ≤ t → u < t → levelSum G root N' w f g u t ≤
+      JJ * (bn t + CN * bc t) := by
+    intro u t ht _
+    unfold levelSum
+    split_ifs with hv
+    swap
+    · have := hbn0 t; have := hbc0 t; positivity
+    obtain ⟨hu, hut, hpos⟩ := hv
+    set η := Real.exp (-2 * (kk t : ℝ) ^ θ₀) with hη_def
+    have hpair : ∀ I ∈ dyadicFiniteTree G root N', kernelHull G root N' w I → ∀ s s' : Fin 4,
+        s ≠ s' → PairSmall (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (w I) s s'
+          (stagTuple f g u t I s) (stagTuple f g u t I s') η := by
+      intro I hI hIH s s' hss
+      obtain ⟨Dc, ha₀, hr, hwD, -, hfD, hgD, -, hpairD, -, -, -⟩ := hcells I hI hIH
+      have := hpairD u t ht hu hut (Ne.symm hpos) s s' hss
+      rw [StaggerCell.tuple_eq_stagTuple Dc hfD hgD, ha₀, hr, hwD] at this
+      exact this
+    obtain ⟨ι, hι, B, hpack, -, hB, hsum⟩ := hlev u t hu hut (Ne.symm hpos) η le_rfl hpair
+    have hp : ∀ p, ∑ I ∈ (B p).cells, dyadicGridLength G I.1 * ‖(B p).Hf I ((B p).Y I)‖ ≤
+        (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) * dyadicGridLength G (B p).R.1 := by
+      intro p
+      obtain ⟨-, -, hanc, hG', hw', -, hH1, hHE, hDc, hL, hS, hη', hpairs, hsize, hside, htwo,
+        hcol⟩ := hB p
+      have hwin : ∀ I ∈ (B p).cells, (B p).w I ≠ 0 →
+          D.firstDepth ≤ I.1 ∧ I.1 < D.firstDepth + N := fun I _ hI => by
+        rw [hw'] at hI
+        exact D.depths I (hwne I hI)
+      have hprops : (B p).LevelProps (kk t) Cb η := by
+        unfold ActiveSetup.LevelProps
+        rw [hG', hw']
+        exact ⟨hanc, hH1, hHE, hDc, hL, hS, hη', hpairs, hsize, hside, htwo, hcol⟩
+      have h := hK (kk t) (le_trans hk₁K (hkk t)) N D.firstDepth (B p) hwin hprops
+      rw [hG'] at h
+      exact h
+    have hcoef0 : 0 ≤ Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ)) := by positivity
+    have hsetups : ∑ p, ∑ I ∈ (B p).cells, dyadicGridLength G I.1 * ‖(B p).Hf I ((B p).Y I)‖ ≤
+        (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) * (64 / 3 * JJ) := by
+      calc _ ≤ ∑ p, (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) *
+            dyadicGridLength G (B p).R.1 := Finset.sum_le_sum fun p _ => hp p
+        _ = (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) *
+            ∑ p, dyadicGridLength G (B p).R.1 := by rw [Finset.mul_sum]
+        _ ≤ _ := mul_le_mul_of_nonneg_left hpack hcoef0
+    have hηcs : η ^ cs = Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) := by
+      rw [hη_def, ← Real.exp_mul]; ring_nf
+    calc _ ≤ _ := hsum
+      _ ≤ (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) * (64 / 3 * JJ) +
+          Real.exp (-(kk t : ℝ)) * (64 / 3 * JJ) + η * ((kk t : ℝ) ^ Cb * JJ) := by
+          gcongr
+      _ = JJ * (bn t + CN * bc t) := by
+          rw [hηcs]; simp only [hbn_def, hbc_def, hη_def]; ring
+  -- the cutoff remainders
+  set S0 := ∑ I ∈ dyadicFiniteTree G root N', dyadicGridLength G I.1 with hS0_def
+  set X := ∑ I ∈ dyadicFiniteTree G root N', dyadicGridLength G I.1 *
+      ‖localProgressionForm (dyadicGridLength G I.1) (w I) f‖ with hX_def
+  set Er : ℕ → ℝ := fun T => if 4 ≤ T then ((T : ℝ) + 1) * (32 * Real.exp (-(kk (T - 3) : ℝ))) * S0
+    else X with hEr_def
+  have hkkt : ∀ t : ℕ, 1 ≤ t → (t : ℝ) ≤ kk t := fun t ht => by
+    have h1 := le_stagAcc_pow (k₁ := k₁) (A := Aa) (by omega) hAa ht
+    have h2 : t < 2 ^ t := Nat.lt_two_pow_self
+    have h3 : 2 ^ t ≤ k₁ ^ t := Nat.pow_le_pow_left hk₁2 t
+    exact_mod_cast (h2.le.trans (h3.trans h1))
+  have hEr : Filter.Tendsto Er Filter.atTop (nhds 0) := by
+    refine (tendsto_cutoff_remainder hkkt S0).congr' ?_
+    filter_upwards [Filter.eventually_ge_atTop 4] with T hT
+    simp only [hEr_def, hT, ↓reduceIte]
+  have hXT : ∀ T, X ≤ Er T + ∑ u ∈ Finset.Icc 1 T, ∑ t ∈ Finset.Ioc u T,
+      levelSum G root N' w f g u t := by
+    intro T
+    by_cases hT : 4 ≤ T
+    · simp only [hEr_def, hT, ↓reduceIte]
+      rw [← sum_levelSum]
+      exact tree_expansion_bound (kk := kk) (fun I hI hIH => by
+        obtain ⟨Dc, -, hr, hwD, -, hfD, hgD, -, -, hexp, hbd, -⟩ := hcells I hI hIH
+        exact ⟨Dc, hr, hwD, hfD, hgD, hexp, hbd⟩) T hT
+    · simp only [hEr_def, hT, ↓reduceIte]
+      exact le_add_of_nonneg_right (Finset.sum_nonneg fun u _ => Finset.sum_nonneg fun t _ =>
+        levelSum_nonneg _ _ _ _ _ _ _ _)
+  -- the summation over the levels
+  have hb0 : ∀ t, 0 ≤ JJ * (bn t + CN * bc t) := fun t => by
+    have := hbn0 t; have := hbc0 t; positivity
+  have hbsum : Summable fun t : ℕ => (t : ℝ) * (JJ * (bn t + CN * bc t)) := by
+    have := (hsum_bn.mul_left JJ).add (hsum_bc.mul_left (JJ * CN))
+    refine this.congr fun t => ?_
+    ring
+  have hfinal := levels_cutoff_sum Er hEr (levelSum G root N' w f g)
+    (fun u t => levelSum_nonneg _ _ _ _ _ _ _ _) hXT hinit (fun t => JJ * (bn t + CN * bc t)) hb0
+    hlate hbsum
+  have htsum : ∑' t : ℕ, (t : ℝ) * (JJ * (bn t + CN * bc t)) =
+      JJ * ∑' t : ℕ, (t : ℝ) * bn t + JJ * CN * ∑' t : ℕ, (t : ℝ) * bc t := by
+    rw [← tsum_mul_left, ← tsum_mul_left, ← Summable.tsum_add (hsum_bn.mul_left _)
+      (hsum_bc.mul_left _)]
+    exact tsum_congr fun t => by ring
+  rw [hnum]
+  change X ≤ (A + c * CN) * JJ
+  rw [htsum] at hfinal
+  have hc' : JJ * CN * ∑' t : ℕ, (t : ℝ) * bc t ≤ JJ * CN * c :=
+    mul_le_mul_of_nonneg_left htsum_bc (by positivity)
+  calc X ≤ 55 * (A₀c * JJ) + (JJ * ∑' t : ℕ, (t : ℝ) * bn t +
+        JJ * CN * ∑' t : ℕ, (t : ℝ) * bc t) := hfinal
+    _ ≤ 55 * (A₀c * JJ) + (JJ * ∑' t : ℕ, (t : ℝ) * bn t + JJ * CN * c) := by linarith
+    _ = (A + c * CN) * JJ := by simp only [hA_def]; ring
+
+/-- Blueprint thm:uniform-local from `eq:active-final`: every admissible class has `q ∈ (2, 3)`
+with `sup_N C_N(q) < ∞`. -/
+theorem uniform_of_activeFinal (hAF : ∀ κ : LocalKernelClass, ActiveFinal κ) :
+    ∀ κ : LocalKernelClass, ∃ q, 2 ≤ q ∧ q < 3 ∧ ∃ Cst : ℝ,
+      ∀ N, finiteDepthConstant κ q N ≤ Cst := by
+  refine uniform_of_normalized fun κ => ?_
+  obtain ⟨q, hq2, hq3, h⟩ := normalizedAbsorption_of_activeFinal κ (hAF κ)
+  have hK : 0 < 4 / 3 * (16 : ℝ) ^ (4 / q) := by positivity
+  obtain ⟨A, hA, hN⟩ := h (1 / 2 / (4 / 3 * (16 : ℝ) ^ (4 / q))) (by positivity)
+  refine ⟨q, hq2.le, hq3, A, _, hA, by positivity, ?_, hN⟩
+  rw [mul_div_cancel₀ _ hK.ne']
+
+/-- Blueprint thm:main from `eq:active-final` for every admissible class: the trilinear Hilbert
+transform principal value is bounded `L³ × L³ × L³ → L¹` on Schwartz functions and extends
+uniquely. -/
+theorem tht_main_of_activeFinal (hAF : ∀ κ : LocalKernelClass, ActiveFinal κ) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      (∀ f₁ f₂ f₃ : SchwartzMap ℝ ℂ,
+        (∀ x, Filter.Tendsto (fun ε => thtTruncated f₁ f₂ f₃ x ε)
+          (nhdsWithin 0 (Set.Ioi 0)) (nhds (thtPV f₁ f₂ f₃ x))) ∧
+        MemLp (thtPV f₁ f₂ f₃) 1 volume ∧
+        ∫⁻ x, ‖thtPV f₁ f₂ f₃ x‖ₑ ≤
+          ENNReal.ofReal C * (eLpNorm f₁ 3 volume * eLpNorm f₂ 3 volume * eLpNorm f₃ 3 volume)) ∧
+      ∃ T' : Lp ℂ 3 (volume : Measure ℝ) →L[ℂ] Lp ℂ 3 (volume : Measure ℝ) →L[ℂ]
+          Lp ℂ 3 (volume : Measure ℝ) →L[ℂ] Lp ℂ 1 (volume : Measure ℝ),
+        (∀ f₁ f₂ f₃ : SchwartzMap ℝ ℂ, ⇑(T' (f₁.toLp 3 (volume : Measure ℝ))
+          (f₂.toLp 3 (volume : Measure ℝ)) (f₃.toLp 3 (volume : Measure ℝ))) =ᵐ[volume]
+            thtPV f₁ f₂ f₃) ∧
+        (∀ x y z, ‖T' x y z‖ ≤ C * ‖x‖ * ‖y‖ * ‖z‖) ∧
+        ∀ S : Lp ℂ 3 (volume : Measure ℝ) →L[ℂ] Lp ℂ 3 (volume : Measure ℝ) →L[ℂ]
+            Lp ℂ 3 (volume : Measure ℝ) →L[ℂ] Lp ℂ 1 (volume : Measure ℝ),
+          (∀ f₁ f₂ f₃ : SchwartzMap ℝ ℂ, ⇑(S (f₁.toLp 3 (volume : Measure ℝ))
+            (f₂.toLp 3 (volume : Measure ℝ)) (f₃.toLp 3 (volume : Measure ℝ))) =ᵐ[volume]
+              thtPV f₁ f₂ f₃) → S = T' :=
+  tht_main_of_uniform (uniform_of_activeFinal hAF)
+
+open Classical in
+/-- Blueprint `eq:active-min` and `eq:active-final` (prop:base line 1622, prop:normalized lines
+2885-2888) on the active cells: for every pattern with at least three basic arguments, the
+weighted minima over the cells active at `δ_k = e^{-k^{C_b+2}}` are at most
+`C η₀^{c_*} (1 + C_N) |R|`. -/
+def ActiveMin (κ : LocalKernelClass) : Prop :=
+  ∀ (c' Cb : ℕ) (θ₀ : ℝ), 1 ≤ c' → 0 < θ₀ → θ₀ ≤ 1 → ∃ q : ℝ, 2 < q ∧ q < 3 ∧
+    ∃ cs Cfin : ℝ, 0 < cs ∧ 0 ≤ Cfin ∧ ∃ K : ℕ, ∀ k : ℕ, K ≤ k → ∀ (N : ℕ) (d₀ : ℤ)
+      (B : ActiveSetup κ c'), (∀ I ∈ B.cells, B.w I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + N) →
+      B.LevelProps k Cb (Real.exp (-2 * (k : ℝ) ^ θ₀)) → ∀ p : Fin 3,
+      ∑ I ∈ B.cells with B.active (Real.exp (-(k : ℝ) ^ (Cb + 2))) I,
+          dyadicGridLength B.G I.1 * min B.η ‖B.Hf I (B.z (Fin.castSucc p) I)‖ ≤
+        Cfin * Real.exp (-2 * (k : ℝ) ^ θ₀) ^ cs * (1 + finiteDepthConstant κ q N) *
+          dyadicGridLength B.G B.R.1
+
+/-- The inactive error of the base reduction at `δ_k = e^{-k^{C_b+2}}` is eventually at most
+`e^{-k}` per unit length, uniformly over setups with budgets `exp(k^{C_b})`. -/
+theorem inactive_error_small (Cb C : ℕ) (Cr : ℝ) (hCr : 0 ≤ Cr) :
+    ∃ K : ℕ, ∀ k : ℕ, K ≤ k → ∀ {H Dc Lc : ℝ}, 1 ≤ H → H ≤ Real.exp ((k : ℝ) ^ Cb) →
+      0 ≤ Dc → Dc ≤ Real.exp ((k : ℝ) ^ Cb) → 0 ≤ Lc → Lc ≤ Real.exp ((k : ℝ) ^ Cb) →
+      3 * Lc ^ 3 * (Dc ^ 3 * (2 + Lc * Dc)) *
+        (Real.exp (-(k : ℝ) ^ (Cb + 2)) * Cr * (Real.log (chartTranslationBudget H) +
+          Real.log (Real.exp (-(k : ℝ) ^ (Cb + 2)))⁻¹ + 1) ^ C) ≤ Real.exp (-(k : ℝ)) := by
+  have hev := ev_mul_pow_le_exp ((Cr + 1) * 802 ^ C) (C * (3 * Cb + 2))
+  obtain ⟨L₀, hL₀⟩ := Filter.eventually_atTop.mp hev
+  refine ⟨max 13 ⌈L₀⌉₊, fun k hk H Dc Lc hH1 hHE hDc0 hDcE hL0 hLE => ?_⟩
+  set x : ℝ := (k : ℝ) with hx
+  have hx13 : (13 : ℝ) ≤ x := by
+    have : 13 ≤ k := le_trans (le_max_left _ _) hk
+    rw [hx]; exact_mod_cast this
+  have hx1 : (1 : ℝ) ≤ x := by linarith
+  have hkL : ⌈L₀⌉₊ ≤ k := le_trans (le_max_right _ _) hk
+  have hxL : L₀ ≤ x := (Nat.le_ceil L₀).trans (by rw [hx]; exact_mod_cast hkL)
+  set E := Real.exp (x ^ Cb) with hE
+  have hE1 : 1 ≤ E := Real.one_le_exp (by positivity)
+  -- the budget factor
+  have hfac : 3 * Lc ^ 3 * (Dc ^ 3 * (2 + Lc * Dc)) ≤ 9 * E ^ 8 := by
+    have h1 : Lc ^ 3 ≤ E ^ 3 := pow_le_pow_left₀ hL0 hLE 3
+    have h2 : Dc ^ 3 ≤ E ^ 3 := pow_le_pow_left₀ hDc0 hDcE 3
+    have h3 : Lc * Dc ≤ E * E := mul_le_mul hLE hDcE hDc0 (by linarith)
+    have hE2 : (1 : ℝ) ≤ E * E := by nlinarith
+    calc 3 * Lc ^ 3 * (Dc ^ 3 * (2 + Lc * Dc)) ≤ 3 * E ^ 3 * (E ^ 3 * (2 + E * E)) := by
+          gcongr
+      _ ≤ 3 * E ^ 3 * (E ^ 3 * (3 * (E * E))) := by gcongr; linarith
+      _ = 9 * E ^ 8 := by ring
+  -- the logarithmic factor
+  have hlogH : Real.log (chartTranslationBudget H) ≤ 100 * (1 + x ^ Cb) ^ 3 := by
+    have := (log_chartTranslationBudget_le hH1 hHE).2
+    rwa [Real.log_exp] at this
+  have hlog0 : 0 ≤ Real.log (chartTranslationBudget H) :=
+    (log_chartTranslationBudget_le hH1 hHE).1
+  have hlogδ : Real.log (Real.exp (-x ^ (Cb + 2)))⁻¹ = x ^ (Cb + 2) := by
+    rw [Real.log_inv, Real.log_exp, neg_neg]
+  have hxp : ∀ n : ℕ, 1 ≤ x ^ n := fun n => one_le_pow₀ hx1
+  have hpoly : Real.log (chartTranslationBudget H) + Real.log (Real.exp (-x ^ (Cb + 2)))⁻¹ + 1 ≤
+      802 * x ^ (3 * Cb + 2) := by
+    rw [hlogδ]
+    have h1 : (1 + x ^ Cb) ^ 3 ≤ 8 * x ^ (3 * Cb) := by
+      have : 1 + x ^ Cb ≤ 2 * x ^ Cb := by linarith [hxp Cb]
+      calc (1 + x ^ Cb) ^ 3 ≤ (2 * x ^ Cb) ^ 3 := pow_le_pow_left₀ (by positivity) this 3
+        _ = 8 * x ^ (3 * Cb) := by rw [mul_pow, ← pow_mul]; ring_nf
+    have h2 : x ^ (3 * Cb) ≤ x ^ (3 * Cb + 2) := pow_le_pow_right₀ hx1 (by omega)
+    have h3 : x ^ (Cb + 2) ≤ x ^ (3 * Cb + 2) := pow_le_pow_right₀ hx1 (by omega)
+    have h4 := hxp (3 * Cb + 2)
+    nlinarith
+  have hpow : (Real.log (chartTranslationBudget H) + Real.log (Real.exp (-x ^ (Cb + 2)))⁻¹ + 1) ^
+      C ≤ 802 ^ C * x ^ (C * (3 * Cb + 2)) := by
+    calc _ ≤ (802 * x ^ (3 * Cb + 2)) ^ C := pow_le_pow_left₀ (by
+          rw [hlogδ]; have := hxp (Cb + 2); linarith) hpoly C
+      _ = 802 ^ C * x ^ (C * (3 * Cb + 2)) := by rw [mul_pow, ← pow_mul, mul_comm (3 * Cb + 2)]
+  have hpexp : Cr * (802 ^ C * x ^ (C * (3 * Cb + 2))) ≤ Real.exp x := by
+    have := hL₀ x hxL
+    have hc : Cr * (802 ^ C * x ^ (C * (3 * Cb + 2))) ≤
+        (Cr + 1) * 802 ^ C * x ^ (C * (3 * Cb + 2)) := by
+      have : 0 ≤ 802 ^ C * x ^ (C * (3 * Cb + 2)) := by positivity
+      nlinarith
+    linarith
+  -- the exponent comparison
+  have hexpo : 8 * x ^ Cb + x + Real.log 9 + x ≤ x ^ (Cb + 2) := by
+    have hl9 : Real.log 9 ≤ 8 := by
+      have := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 9 by norm_num); linarith
+    have h1 : x ^ (Cb + 2) = x ^ Cb * x * x := by ring
+    have h2 := hxp Cb
+    have hx0 : (0 : ℝ) ≤ x := by linarith
+    have hc1 : x ^ Cb * 13 ≤ x ^ Cb * x := mul_le_mul_of_nonneg_left hx13 (by positivity)
+    have hc2 : x ^ Cb * x * 13 ≤ x ^ Cb * x * x :=
+      mul_le_mul_of_nonneg_left hx13 (by positivity)
+    have hc3 : 1 * x ≤ x ^ Cb * x := mul_le_mul_of_nonneg_right h2 hx0
+    have hA : 169 * x ^ Cb ≤ x ^ Cb * x * x := by linarith
+    have hB : 13 * x ≤ x ^ Cb * x * x := by linarith
+    rw [h1]; linarith
+  have hpos9 : (0 : ℝ) < 9 := by norm_num
+  calc 3 * Lc ^ 3 * (Dc ^ 3 * (2 + Lc * Dc)) *
+        (Real.exp (-x ^ (Cb + 2)) * Cr * (Real.log (chartTranslationBudget H) +
+          Real.log (Real.exp (-x ^ (Cb + 2)))⁻¹ + 1) ^ C)
+      ≤ 9 * E ^ 8 * (Real.exp (-x ^ (Cb + 2)) * (Cr * (802 ^ C * x ^ (C * (3 * Cb + 2))))) := by
+        have h0 : 0 ≤ Real.exp (-x ^ (Cb + 2)) * Cr * (Real.log (chartTranslationBudget H) +
+            Real.log (Real.exp (-x ^ (Cb + 2)))⁻¹ + 1) ^ C := by
+          rw [hlogδ]; positivity
+        refine (mul_le_mul_of_nonneg_right hfac h0).trans ?_
+        refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+        rw [mul_assoc]
+        exact mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hpow hCr) (by positivity)
+    _ ≤ 9 * E ^ 8 * (Real.exp (-x ^ (Cb + 2)) * Real.exp x) := by gcongr
+    _ = Real.exp (Real.log 9 + 8 * x ^ Cb - x ^ (Cb + 2) + x) := by
+        rw [hE, ← Real.exp_nat_mul, Real.exp_add, Real.exp_sub, Real.exp_add,
+          Real.exp_log hpos9, Real.exp_neg]
+        push_cast; ring
+    _ ≤ Real.exp (-x) := Real.exp_le_exp.mpr (by linarith)
+
+/-- Blueprint prop:base (lines 1655-1660) with `eq:active-final`: the active-cell minima of the
+three patterns, the two-`U` term `η₀ k^{C_b} |R|` and the inactive error `e^{-k} |R|` give the
+active-final bound for the whole setup. -/
+theorem activeFinal_of_activeMin {κ : LocalKernelClass} (hAM : ActiveMin κ) : ActiveFinal κ := by
+  classical
+  intro c' Cb θ₀ hc' hθ₀ hθ₁
+  obtain ⟨q, hq2, hq3, cs, Cfin, hcs, hCfin, K, hK⟩ := hAM c' Cb θ₀ hc' hθ₀ hθ₁
+  obtain ⟨Cred, Crr, hCrr, hred⟩ := ActiveSetup.reduction κ c' hc'
+  obtain ⟨Kin, hKin⟩ := inactive_error_small Cb Cred Crr hCrr
+  obtain ⟨K₂, hK₂⟩ := eventually_pow_mul_exp_le Cb hθ₀
+  refine ⟨q, hq2, hq3, min cs (1 / 2), 3 * Cfin + 1, lt_min hcs (by norm_num), by positivity,
+    max K (max Kin (max K₂ 1)), fun k hk N d₀ B hwin hprops => ?_⟩
+  have hkK : K ≤ k := le_trans (le_max_left _ _) hk
+  have hkKin : Kin ≤ k := le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) hk
+  have hkK₂ : K₂ ≤ k := le_trans (le_trans (le_trans (le_max_left _ _) (le_max_right _ _))
+    (le_max_right _ _)) hk
+  set η := Real.exp (-2 * (k : ℝ) ^ θ₀) with hη_def
+  set δ := Real.exp (-(k : ℝ) ^ (Cb + 2)) with hδ_def
+  set CN := finiteDepthConstant κ q N with hCN_def
+  have hCN : 1 ≤ CN := (finiteDepthConstant_bounds κ hq2.le N).1
+  have hR0 := (dyadicGridLength_pos B.G B.R.1).le
+  have hprops' := hprops
+  obtain ⟨-, hH1, hHE, hDc, hL, hS, hηB, -, -, -, htwo, -⟩ := hprops'
+  have hη0 : 0 ≤ η := (Real.exp_pos _).le
+  have hη1 : η ≤ 1 := Real.exp_le_one_iff.mpr (by
+    have : 0 ≤ (k : ℝ) ^ θ₀ := by positivity
+    linarith)
+  have h := hred B δ (Real.exp_pos _) (Real.exp_le_one_iff.mpr (by
+    have : 0 ≤ (k : ℝ) ^ (Cb + 2) := by positivity
+    linarith)) (by rw [hηB]; positivity)
+  -- the active minima
+  have hact : ∑ p : Fin 3, ∑ I ∈ B.cells with B.active δ I,
+      dyadicGridLength B.G I.1 * min B.η ‖B.Hf I (B.z (Fin.castSucc p) I)‖ ≤
+        3 * (Cfin * η ^ cs * (1 + CN) * dyadicGridLength B.G B.R.1) := by
+    refine (Finset.sum_le_sum fun p _ => hK k hkK N d₀ B hwin hprops p).trans (le_of_eq ?_)
+    rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]; push_cast; ring
+  -- the two-U term
+  have htwo' : ∑ I ∈ B.cells, dyadicGridLength B.G I.1 * ‖B.Hf I (B.z 3 I)‖ ≤
+      η ^ (1 / 2 : ℝ) * dyadicGridLength B.G B.R.1 := by
+    refine htwo.trans ?_
+    have h1 := hK₂ k hkK₂
+    have h2 : η ^ (1 / 2 : ℝ) = Real.exp (-(k : ℝ) ^ θ₀) := by
+      rw [hη_def, ← Real.exp_mul]; ring_nf
+    rw [h2, ← mul_assoc]
+    refine mul_le_mul_of_nonneg_right ?_ hR0
+    linarith [mul_comm η ((k : ℝ) ^ Cb)]
+  -- the inactive error
+  have hin := hKin k hkKin hH1 hHE B.Dc_nonneg hDc (Nat.cast_nonneg _) hL
+  rw [hS] at h
+  have hinact : 3 * (Fintype.card B.L : ℝ) ^ 3 * (B.Dc ^ 3 * (2 + Fintype.card B.L * B.Dc)) *
+      (dyadicGridLength B.G B.R.1 *
+        (δ * Crr * (Real.log (chartTranslationBudget B.H) + Real.log δ⁻¹ + 1) ^ Cred)) ≤
+      Real.exp (-(k : ℝ)) * dyadicGridLength B.G B.R.1 := by
+    have e : 3 * (Fintype.card B.L : ℝ) ^ 3 * (B.Dc ^ 3 * (2 + Fintype.card B.L * B.Dc)) *
+        (dyadicGridLength B.G B.R.1 *
+          (δ * Crr * (Real.log (chartTranslationBudget B.H) + Real.log δ⁻¹ + 1) ^ Cred)) =
+        3 * (Fintype.card B.L : ℝ) ^ 3 * (B.Dc ^ 3 * (2 + Fintype.card B.L * B.Dc)) *
+          (δ * Crr * (Real.log (chartTranslationBudget B.H) + Real.log δ⁻¹ + 1) ^ Cred) *
+          dyadicGridLength B.G B.R.1 := by ring
+    rw [e]
+    exact mul_le_mul_of_nonneg_right hin hR0
+  -- the exponents
+  set cs' := min cs (1 / 2 : ℝ)
+  have hcs1 : η ^ cs ≤ η ^ cs' :=
+    Real.rpow_le_rpow_of_exponent_ge (Real.exp_pos _) hη1 (min_le_left _ _)
+  have hcs2 : η ^ (1 / 2 : ℝ) ≤ η ^ cs' :=
+    Real.rpow_le_rpow_of_exponent_ge (Real.exp_pos _) hη1 (min_le_right _ _)
+  have hηcs : 0 ≤ η ^ cs' := Real.rpow_nonneg hη0 _
+  have hηcs0 : 0 ≤ η ^ cs := Real.rpow_nonneg hη0 _
+  calc ∑ I ∈ B.cells, dyadicGridLength B.G I.1 * ‖B.Hf I (B.Y I)‖
+      ≤ 3 * (Cfin * η ^ cs * (1 + CN) * dyadicGridLength B.G B.R.1) +
+          η ^ (1 / 2 : ℝ) * dyadicGridLength B.G B.R.1 +
+          Real.exp (-(k : ℝ)) * dyadicGridLength B.G B.R.1 := by linarith
+    _ ≤ ((3 * Cfin + 1) * η ^ cs' * (1 + CN) + Real.exp (-(k : ℝ))) *
+          dyadicGridLength B.G B.R.1 := by
+        have k1 : 3 * (Cfin * η ^ cs * (1 + CN)) ≤ 3 * Cfin * η ^ cs' * (1 + CN) := by
+          have := mul_le_mul_of_nonneg_left hcs1 hCfin
+          nlinarith
+        have k2 : η ^ (1 / 2 : ℝ) ≤ η ^ cs' * (1 + CN) := by nlinarith
+        nlinarith
+
+/-- Blueprint prop:localize (the cell order of the search): every finite family of dyadic cells
+has a duplicate-free enumeration in which no cell is contained in a later one (coarser cells
+first, by depth). -/
+theorem exists_coarse_first_list (G : RealDyadicGrid) (cs : Finset (ℤ × ℤ)) :
+    ∃ L : List (ℤ × ℤ), L.toFinset = cs ∧ L.Nodup ∧
+      ∀ i j (hi : i < L.length) (hj : j < L.length), i < j →
+        ¬ dyadicGridCell G L[i].1 L[i].2 ⊆ dyadicGridCell G L[j].1 L[j].2 := by
+  classical
+  set le : ℤ × ℤ → ℤ × ℤ → Bool := fun a b => decide (a.1 ≤ b.1)
+  set L := cs.toList.mergeSort le
+  have hperm : L.Perm cs.toList := List.mergeSort_perm _ _
+  have hsorted : L.Pairwise (fun a b => le a b) := List.pairwise_mergeSort
+    (fun {a b c} hab hbc => by simp only [le, decide_eq_true_eq] at hab hbc ⊢; omega)
+    (fun a b => by simp only [le, Bool.or_eq_true, decide_eq_true_eq]; omega) _
+  have hnd : L.Nodup := hperm.nodup_iff.mpr cs.nodup_toList
+  refine ⟨L, by rw [List.toFinset_eq_of_perm _ _ hperm, Finset.toList_toFinset], hnd,
+    fun i j hi hj hij hsub => ?_⟩
+  have hle : L[i].1 ≤ L[j].1 := by
+    have := List.pairwise_iff_getElem.mp hsorted i j hi hj hij
+    simpa [le] using this
+  have hge := dyadicGridCell_depth_le_of_subset G L[i] L[j] hsub
+  have heq : L[i] = L[j] :=
+    anc_eq_of_depth (G := G) (I := L[i]) subset_rfl hsub (by omega)
+  exact absurd (List.Nodup.getElem_inj_iff hnd |>.mp heq) (by omega)
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ}
+
+/-- Padding an active setup by `m` unused labels with zero coefficients, carrying the atom of a
+fixed label `v₀` (blueprint lines 1741-1745: the vertex bound `D` of the coloring may be taken as
+large as required, so that marking failures have an arbitrarily small root fraction). -/
+noncomputable def pad (A : ActiveSetup κ c₀) (v₀ : A.L) (m : ℕ) : ActiveSetup κ c₀ where
+  G := A.G
+  R := A.R
+  cells := A.cells
+  sub := A.sub
+  w := A.w
+  adm := A.adm
+  L := A.L ⊕ Fin m
+  φ := fun I v => Sum.elim (A.φ I) (fun _ => A.φ I v₀) v
+  φ_meas := fun I v => by cases v <;> exact A.φ_meas I _
+  φ_bound := fun I v x => by cases v <;> exact A.φ_bound I _ x
+  H := A.H
+  coef := fun l I v => Sum.elim (A.coef l I) (fun _ => 0) v
+  path_chart := fun y v => by
+    cases v with
+    | inl v => exact A.path_chart y v
+    | inr j =>
+      obtain ⟨d, B, h1, h2, -⟩ := A.path_chart y v₀
+      exact ⟨d, B, h1, h2, fun I _ _ hl => absurd hl (by simp)⟩
+  nested_chart := fun I hI v hv => by
+    cases v with
+    | inl v => exact A.nested_chart I hI v hv
+    | inr j => exact absurd hv (by simp)
+  nested_cons := fun I hI I' hI' hII v hv hv' => by
+    cases v with
+    | inl v => exact A.nested_cons I hI I' hI' hII v hv hv'
+    | inr j => exact absurd hv (by simp)
+  Dc := A.Dc
+  Dc_nonneg := A.Dc_nonneg
+  coef_le := fun l I v => by
+    cases v with
+    | inl v => exact A.coef_le l I v
+    | inr j => simpa using A.Dc_nonneg
+  a := A.a
+  b := A.b
+  hab := A.hab
+  U := A.U
+  U_meas := A.U_meas
+  S := A.S
+  U_L2 := A.U_L2
+  U_le := A.U_le
+  η := A.η
+  small := fun I hI => by
+    have h := A.small I hI
+    convert h using 4 with l x
+    simp [Fintype.sum_sum_type]
+
+variable (A : ActiveSetup κ c₀) (v₀ : A.L) (m : ℕ)
+
+@[simp] theorem pad_G : (A.pad v₀ m).G = A.G := rfl
+@[simp] theorem pad_R : (A.pad v₀ m).R = A.R := rfl
+@[simp] theorem pad_cells : (A.pad v₀ m).cells = A.cells := rfl
+@[simp] theorem pad_w : (A.pad v₀ m).w = A.w := rfl
+@[simp] theorem pad_η : (A.pad v₀ m).η = A.η := rfl
+@[simp] theorem pad_H : (A.pad v₀ m).H = A.H := rfl
+@[simp] theorem pad_Dc : (A.pad v₀ m).Dc = A.Dc := rfl
+@[simp] theorem pad_S : (A.pad v₀ m).S = A.S := rfl
+@[simp] theorem pad_a : (A.pad v₀ m).a = A.a := rfl
+@[simp] theorem pad_b : (A.pad v₀ m).b = A.b := rfl
+@[simp] theorem pad_U : (A.pad v₀ m).U = A.U := rfl
+
+theorem pad_card : Fintype.card (A.pad v₀ m).L = Fintype.card A.L + m := by
+  change Fintype.card (A.L ⊕ Fin m) = _
+  simp
+
+theorem pad_B : (A.pad v₀ m).B = A.B := by
+  funext l I x
+  change ∑ v : A.L ⊕ Fin m, _ = _
+  rw [Fintype.sum_sum_type]
+  change ∑ v, A.coef l I v * A.φ I v x + ∑ _j : Fin m, (0 : ℂ) * A.φ I v₀ x = _
+  simp [B]
+
+theorem pad_z : (A.pad v₀ m).z = A.z := by
+  funext p I
+  match p with
+  | 0 => simp only [z, pad_B]
+  | 1 => simp only [z, pad_B]; rfl
+  | 2 => simp only [z, pad_B]; rfl
+  | 3 => simp only [z, pad_B]; rfl
+
+theorem pad_Y : (A.pad v₀ m).Y = A.Y := by
+  funext I
+  rw [Y_eq, Y_eq, pad_B]
+  rfl
+
+theorem pad_active (δ : ℝ) (I : ℤ × ℤ) : (A.pad v₀ m).active δ I ↔ A.active δ I := by
+  constructor
+  · rintro ⟨n, w₀, w₁, w₂, ⟨h₀, h₁, h₂⟩, hδ⟩
+    cases w₀ with
+    | inr j => exact absurd h₀ (by simp [pad])
+    | inl w₀ =>
+    cases w₁ with
+    | inr j => exact absurd h₁ (by simp [pad])
+    | inl w₁ =>
+    cases w₂ with
+    | inr j => exact absurd h₂ (by simp [pad])
+    | inl w₂ => exact ⟨n, w₀, w₁, w₂, ⟨h₀, h₁, h₂⟩, hδ⟩
+  · rintro ⟨n, w₀, w₁, w₂, ⟨h₀, h₁, h₂⟩, hδ⟩
+    exact ⟨n, Sum.inl w₀, Sum.inl w₁, Sum.inl w₂, ⟨h₀, h₁, h₂⟩, hδ⟩
+
+end ActiveSetup
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀) (v₀ : A.L) (m : ℕ)
+
+theorem pad_columnRepBelow {R' : ℤ × ℤ} {CF : ℝ} (h : A.ColumnRepBelow R' CF) :
+    (A.pad v₀ m).ColumnRepBelow R' CF := by
+  intro l
+  obtain ⟨P₁, P₂, hP⟩ := h l
+  refine ⟨P₁, P₂, fun I hI hIR => ?_⟩
+  rw [pad_B]
+  exact hP I hI hIR
+
+theorem pad_subRootProps {η₀ E : ℝ} (h : A.SubRootProps η₀ E) :
+    (A.pad v₀ m).SubRootProps η₀ E := by
+  intro R' hR'
+  obtain ⟨h1, h2, h3⟩ := h R' hR'
+  refine ⟨h1, ?_, A.pad_columnRepBelow v₀ m h3⟩
+  rw [pad_z]
+  exact h2
+
+theorem LevelProps.pad {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀)
+    (hm : (Fintype.card A.L : ℝ) + m ≤ Real.exp ((k : ℝ) ^ Cb)) :
+    (A.pad v₀ m).LevelProps k Cb η₀ := by
+  obtain ⟨h1, h2, h3, h4, -, h6, h7, h8, h9, h10, h11, h12, h13⟩ := h
+  refine ⟨h1, h2, h3, h4, ?_, h6, h7, ?_, ?_, h10, ?_, ?_, A.pad_subRootProps v₀ m h13⟩
+  · rw [pad_card]; push_cast; exact hm
+  · rw [pad_Y]; exact h8
+  · rw [pad_Y]; exact h9
+  · rw [pad_z]; exact h11
+  · exact hasColumnRep_of_below _ (A.pad_columnRepBelow v₀ m
+      (fun l => by
+        obtain ⟨P₁, P₂, hP⟩ := h12 l
+        exact ⟨P₁, P₂, fun I hI _ => hP I hI⟩))
+
+end ActiveSetup
+
+namespace ActiveSetup
+
+
+variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
+
+open Classical in
+/-- The restriction of an active setup to all of its cells below a sub-root `R'`. -/
+noncomputable def below (R' : ℤ × ℤ) : ActiveSetup κ c₀ :=
+  A.restrictTo R' (A.cells.filter fun I =>
+      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2)
+    (fun _ hI => Finset.mem_filter.mp hI)
+
+variable (R' : ℤ × ℤ)
+
+open Classical in
+@[simp] theorem below_cells : (A.below R').cells = A.cells.filter fun I =>
+    dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2 := rfl
+@[simp] theorem below_R : (A.below R').R = R' := rfl
+@[simp] theorem below_G : (A.below R').G = A.G := rfl
+@[simp] theorem below_w : (A.below R').w = A.w := rfl
+@[simp] theorem below_η : (A.below R').η = A.η := rfl
+@[simp] theorem below_U : (A.below R').U = A.U := rfl
+@[simp] theorem below_L : (A.below R').L = A.L := rfl
+theorem below_B : (A.below R').B = A.B := rfl
+theorem below_z : (A.below R').z = A.z := rfl
+theorem below_Y : (A.below R').Y = A.Y := rfl
+theorem below_μ : (A.below R').μ = A.μ := rfl
+theorem below_active (δ : ℝ) : (A.below R').active δ = A.active δ := rfl
+
+open Classical in
+/-- Blueprint prop:normalized, lines 2840-2842 ("at each such root restart on the original base
+summands ... their normalized sizes and rolling bounds hold there"): the level properties pass to
+the cells below every dyadic sub-root of the root. -/
+theorem LevelProps.below {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀)
+    (hR' : dyadicGridCell A.G R'.1 R'.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2) :
+    (A.below R').LevelProps k Cb η₀ := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, -, -, -, h13⟩ := h
+  obtain ⟨hs, ht, hc⟩ := h13 R' hR'
+  refine ⟨fun I hI J' hIJ hJR => ?_, h2, h3, h4, h5, h6, h7,
+    fun I hI => h8 I (Finset.mem_filter.mp hI).1, fun I hI => h9 I (Finset.mem_filter.mp hI).1,
+    hs, ht, ?_, fun R'' hR'' => ?_⟩
+  · have hI' := Finset.mem_filter.mp hI
+    exact Finset.mem_filter.mpr ⟨h1 I hI'.1 J' hIJ (hJR.trans hR'), hJR⟩
+  · intro l
+    obtain ⟨P₁, P₂, hP⟩ := hc l
+    exact ⟨P₁, P₂, fun I hI => hP I (Finset.mem_filter.mp hI).1 (Finset.mem_filter.mp hI).2⟩
+  · change dyadicGridCell A.G R''.1 R''.2 ⊆ dyadicGridCell A.G R'.1 R'.2 at hR''
+    obtain ⟨hs', ht', hc'⟩ := h13 R'' (hR''.trans hR')
+    have hf : ((A.cells.filter fun I => dyadicGridCell A.G I.1 I.2 ⊆
+        dyadicGridCell A.G R'.1 R'.2).filter fun I =>
+          dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R''.1 R''.2) =
+        A.cells.filter fun I => dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R''.1 R''.2 := by
+      rw [Finset.filter_filter]
+      exact Finset.filter_congr fun I _ => ⟨fun h => h.2, fun h => ⟨h.trans hR'', h⟩⟩
+    refine ⟨fun l => ?_, ?_, fun l => ?_⟩
+    · change ∑ I ∈ (A.cells.filter fun I => dyadicGridCell A.G I.1 I.2 ⊆
+          dyadicGridCell A.G R'.1 R'.2).filter fun I =>
+            dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R''.1 R''.2, _ ≤ _
+      rw [hf]; exact hs' l
+    · change ∑ I ∈ (A.cells.filter fun I => dyadicGridCell A.G I.1 I.2 ⊆
+          dyadicGridCell A.G R'.1 R'.2).filter fun I =>
+            dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R''.1 R''.2, _ ≤ _
+      rw [hf]; exact ht'
+    · obtain ⟨P₁, P₂, hP⟩ := hc' l
+      exact ⟨P₁, P₂, fun I hI hIR => hP I (Finset.mem_filter.mp hI).1 hIR⟩
+
+end ActiveSetup
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ}
+
+open Classical in
+/-- The depth weight of a setup: the sum of the depths of its cells below the root plus their
+number; it strictly decreases on passing to a nonempty proper restart root. -/
+noncomputable def depthWeight (B : ActiveSetup κ c₀) : ℕ :=
+  ∑ I ∈ B.cells, ((I.1 - B.R.1).toNat + 1)
+
+open Classical in
+theorem depthWeight_below_lt (B : ActiveSetup κ c₀) {R' : ℤ × ℤ}
+    (hR' : dyadicGridCell B.G R'.1 R'.2 ⊆ dyadicGridCell B.G B.R.1 B.R.2) (hne : R' ≠ B.R)
+    (hcells : (B.below R').cells.Nonempty) : (B.below R').depthWeight < B.depthWeight := by
+  have hlt := dyadicGridCell_depth_lt_of_subset_ne B.G R' B.R hR' hne
+  unfold depthWeight
+  rw [below_cells, below_R]
+  obtain ⟨I₀, hI₀⟩ := hcells
+  rw [below_cells] at hI₀
+  calc ∑ I ∈ B.cells.filter (fun I => dyadicGridCell B.G I.1 I.2 ⊆
+        dyadicGridCell B.G R'.1 R'.2), ((I.1 - R'.1).toNat + 1)
+      < ∑ I ∈ B.cells.filter (fun I => dyadicGridCell B.G I.1 I.2 ⊆
+        dyadicGridCell B.G R'.1 R'.2), ((I.1 - B.R.1).toNat + 1) := by
+        refine Finset.sum_lt_sum (fun I hI => ?_) ⟨I₀, hI₀, ?_⟩
+        · have := dyadicGridCell_depth_le_of_subset B.G I R' (Finset.mem_filter.mp hI).2
+          omega
+        · have := dyadicGridCell_depth_le_of_subset B.G I₀ R' (Finset.mem_filter.mp hI₀).2
+          omega
+    _ ≤ ∑ I ∈ B.cells, ((I.1 - B.R.1).toNat + 1) :=
+        Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _) fun _ _ _ => by omega
+
+open Classical in
+/-- Blueprint prop:normalized, lines 2840-2843 ("restart there ... the root packing gives total
+length at most `4|R|/3`; on a finite tree this recursion terminates, so a retained-attempt
+estimate sums with this fixed factor"): if every setup with a property `Pr` inherited by restarts
+has pairwise disjoint exceptional roots of total length at most `|R|/4` and its retained cells
+(those below no exceptional root) contribute at most `A |R|`, then all cells contribute at most
+`(4/3) A |R|`. -/
+theorem restart_recursion (Pr : ActiveSetup κ c₀ → Prop)
+    (hPr : ∀ B R', Pr B → dyadicGridCell B.G R'.1 R'.2 ⊆ dyadicGridCell B.G B.R.1 B.R.2 →
+      Pr (B.below R'))
+    (f : ActiveSetup κ c₀ → ℤ × ℤ → ℝ) (hf : ∀ B R' I, f (B.below R') I = f B I)
+    {A : ℝ} (hA : 0 ≤ A)
+    (hret : ∀ B, Pr B → ∃ X : Finset (ℤ × ℤ),
+      (∀ c ∈ X, dyadicGridCell B.G c.1 c.2 ⊆ dyadicGridCell B.G B.R.1 B.R.2) ∧
+      (∀ c ∈ X, ∀ c' ∈ X, c ≠ c' →
+        Disjoint (dyadicGridCell B.G c.1 c.2) (dyadicGridCell B.G c'.1 c'.2)) ∧
+      ∑ c ∈ X, dyadicGridLength B.G c.1 ≤ 1 / 4 * dyadicGridLength B.G B.R.1 ∧
+      ∑ I ∈ B.cells.filter (fun I => ¬ ∃ c ∈ X,
+          dyadicGridCell B.G I.1 I.2 ⊆ dyadicGridCell B.G c.1 c.2), f B I ≤
+        A * dyadicGridLength B.G B.R.1) :
+    ∀ B, Pr B → ∑ I ∈ B.cells, f B I ≤ 4 / 3 * A * dyadicGridLength B.G B.R.1 := by
+  suffices h : ∀ n, ∀ B, B.depthWeight ≤ n → Pr B →
+      ∑ I ∈ B.cells, f B I ≤ 4 / 3 * A * dyadicGridLength B.G B.R.1 from
+    fun B hB => h _ B le_rfl hB
+  intro n
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+  intro B hBn hB
+  obtain ⟨X, hXsub, hXdis, hXlen, hXret⟩ := hret B hB
+  have hRpos := dyadicGridLength_pos B.G B.R.1
+  -- the exceptional roots are proper
+  have hXne : ∀ c ∈ X, c ≠ B.R := by
+    intro c hc hcR
+    have h1 : dyadicGridLength B.G c.1 ≤ ∑ c ∈ X, dyadicGridLength B.G c.1 :=
+      Finset.single_le_sum (fun c _ => (dyadicGridLength_pos B.G c.1).le) hc
+    rw [hcR] at h1
+    linarith
+  -- each cell lies below at most one exceptional root
+  have huniq : ∀ I ∈ B.cells, ∀ c ∈ X, ∀ c' ∈ X,
+      dyadicGridCell B.G I.1 I.2 ⊆ dyadicGridCell B.G c.1 c.2 →
+      dyadicGridCell B.G I.1 I.2 ⊆ dyadicGridCell B.G c'.1 c'.2 → c = c' := by
+    intro I _ c hc c' hc' h h'
+    by_contra hne
+    have hx := dyadicGridCell_left_mem B.G I.1 I.2
+    exact Set.disjoint_left.mp (hXdis c hc c' hc' hne) (h hx) (h' hx)
+  have hsplit : ∑ I ∈ B.cells, f B I = ∑ I ∈ B.cells.filter (fun I => ¬ ∃ c ∈ X,
+        dyadicGridCell B.G I.1 I.2 ⊆ dyadicGridCell B.G c.1 c.2), f B I +
+      ∑ c ∈ X, ∑ I ∈ (B.below c).cells, f (B.below c) I := by
+    rw [← Finset.sum_filter_add_sum_filter_not B.cells (fun I => ¬ ∃ c ∈ X,
+      dyadicGridCell B.G I.1 I.2 ⊆ dyadicGridCell B.G c.1 c.2)]
+    congr 1
+    simp only [not_not, below_cells, hf]
+    rw [← Finset.sum_biUnion]
+    · refine Finset.sum_congr ?_ fun _ _ => rfl
+      ext I
+      simp only [Finset.mem_filter, Finset.mem_biUnion]
+      constructor
+      · rintro ⟨hI, c, hc, hIc⟩; exact ⟨c, hc, hI, hIc⟩
+      · rintro ⟨c, hc, hI, hIc⟩; exact ⟨hI, c, hc, hIc⟩
+    · intro c hc c' hc' hne
+      simp only [Function.onFun]
+      rw [Finset.disjoint_left]
+      intro I hI hI'
+      exact hne (huniq I (Finset.mem_filter.mp hI).1 c hc c' hc' (Finset.mem_filter.mp hI).2
+        (Finset.mem_filter.mp hI').2)
+  have hchild : ∀ c ∈ X, ∑ I ∈ (B.below c).cells, f (B.below c) I ≤
+      4 / 3 * A * dyadicGridLength B.G c.1 := by
+    intro c hc
+    by_cases hne : (B.below c).cells.Nonempty
+    · exact ih _ (lt_of_lt_of_le (depthWeight_below_lt B (hXsub c hc) (hXne c hc) hne) hBn)
+        (B.below c) le_rfl (hPr B c hB (hXsub c hc))
+    · rw [Finset.not_nonempty_iff_eq_empty.mp hne, Finset.sum_empty]
+      exact mul_nonneg (by positivity) (dyadicGridLength_pos B.G c.1).le
+  rw [hsplit]
+  calc _ ≤ A * dyadicGridLength B.G B.R.1 + ∑ c ∈ X, 4 / 3 * A * dyadicGridLength B.G c.1 :=
+        add_le_add hXret (Finset.sum_le_sum hchild)
+    _ = A * dyadicGridLength B.G B.R.1 + 4 / 3 * A * ∑ c ∈ X, dyadicGridLength B.G c.1 := by
+        rw [Finset.mul_sum]
+    _ ≤ A * dyadicGridLength B.G B.R.1 + 4 / 3 * A * (1 / 4 * dyadicGridLength B.G B.R.1) := by
+        gcongr
+    _ = 4 / 3 * A * dyadicGridLength B.G B.R.1 := by ring
+
+end ActiveSetup
+
+open Classical in
+/-- Blueprint `eq:before-absorption` on one root, after the choice of `q, α, P` (prop:normalized,
+lines 2838-2888): the retained-attempt estimate. For every active setup with the level
+properties there are pairwise disjoint exceptional roots of total length at most `|R|/4` such that
+the active-cell minima of each pattern over the cells below no exceptional root are at most
+`C η₀^{c_*} (1 + C_N) |R|`. -/
+def RetainedMin (κ : LocalKernelClass) : Prop :=
+  ∀ (c' Cb : ℕ) (θ₀ : ℝ), 1 ≤ c' → 0 < θ₀ → θ₀ ≤ 1 → ∃ q : ℝ, 2 < q ∧ q < 3 ∧
+    ∃ cs Cfin : ℝ, 0 < cs ∧ 0 ≤ Cfin ∧ ∃ K : ℕ, ∀ k : ℕ, K ≤ k → ∀ (N : ℕ) (d₀ : ℤ)
+      (B : ActiveSetup κ c'), (∀ I ∈ B.cells, B.w I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + N) →
+      B.LevelProps k Cb (Real.exp (-2 * (k : ℝ) ^ θ₀)) → ∀ p : Fin 3,
+      ∃ X : Finset (ℤ × ℤ),
+        (∀ c ∈ X, dyadicGridCell B.G c.1 c.2 ⊆ dyadicGridCell B.G B.R.1 B.R.2) ∧
+        (∀ c ∈ X, ∀ c' ∈ X, c ≠ c' →
+          Disjoint (dyadicGridCell B.G c.1 c.2) (dyadicGridCell B.G c'.1 c'.2)) ∧
+        ∑ c ∈ X, dyadicGridLength B.G c.1 ≤ 1 / 4 * dyadicGridLength B.G B.R.1 ∧
+        ∑ I ∈ (B.cells.filter (fun I => ¬ ∃ c ∈ X,
+            dyadicGridCell B.G I.1 I.2 ⊆ dyadicGridCell B.G c.1 c.2)).filter
+            (B.active (Real.exp (-(k : ℝ) ^ (Cb + 2)))),
+          dyadicGridLength B.G I.1 * min B.η ‖B.Hf I (B.z (Fin.castSucc p) I)‖ ≤
+        Cfin * Real.exp (-2 * (k : ℝ) ^ θ₀) ^ cs * (1 + finiteDepthConstant κ q N) *
+          dyadicGridLength B.G B.R.1
+
+open Classical in
+/-- Blueprint prop:normalized, lines 2840-2843 and 2885-2888: restarting the retained-attempt
+estimate at the exceptional roots, whose root packing has factor `4/3`, gives `eq:active-final`
+on all active cells. -/
+theorem activeMin_of_retainedMin {κ : LocalKernelClass} (h : RetainedMin κ) : ActiveMin κ := by
+  intro c' Cb θ₀ hc' hθ₀ hθ₁
+  obtain ⟨q, hq2, hq3, cs, Cfin, hcs, hCfin, K, hK⟩ := h c' Cb θ₀ hc' hθ₀ hθ₁
+  refine ⟨q, hq2, hq3, cs, 4 / 3 * Cfin, hcs, by positivity, K,
+    fun k hk N d₀ B hwin hprops p => ?_⟩
+  set δ := Real.exp (-(k : ℝ) ^ (Cb + 2))
+  set A := Cfin * Real.exp (-2 * (k : ℝ) ^ θ₀) ^ cs * (1 + finiteDepthConstant κ q N)
+  have hA : 0 ≤ A := by
+    have := (finiteDepthConstant_bounds κ hq2.le N).1
+    have : 0 ≤ Real.exp (-2 * (k : ℝ) ^ θ₀) ^ cs := Real.rpow_nonneg (Real.exp_pos _).le _
+    positivity
+  set f : ActiveSetup κ c' → ℤ × ℤ → ℝ := fun B' I => if B'.active δ I then
+    dyadicGridLength B'.G I.1 * min B'.η ‖B'.Hf I (B'.z (Fin.castSucc p) I)‖ else 0
+  have hrec := ActiveSetup.restart_recursion
+    (fun B' => (∀ I ∈ B'.cells, B'.w I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + N) ∧
+      B'.LevelProps k Cb (Real.exp (-2 * (k : ℝ) ^ θ₀)))
+    (fun B' R' hB' hR' => ⟨fun I hI hw => hB'.1 I (Finset.mem_filter.mp hI).1 hw,
+      ActiveSetup.LevelProps.below B' R' hB'.2 hR'⟩)
+    f (fun _ _ _ => rfl) hA (fun B' hB' => by
+      obtain ⟨X, h1, h2, h3, h4⟩ := hK k hk N d₀ B' hB'.1 hB'.2 p
+      refine ⟨X, h1, h2, h3, ?_⟩
+      rw [← Finset.sum_filter]
+      exact h4) B ⟨hwin, hprops⟩
+  rw [← Finset.sum_filter] at hrec
+  calc _ ≤ 4 / 3 * A * dyadicGridLength B.G B.R.1 := hrec
+    _ = _ := by simp only [A]; ring
+
+/-- The guarded binary search has at most `2^fuel` leaves. -/
+theorem searchLeaves_length_le :
+    ∀ (fuel ℓ h : ℕ) (up : Fin 4) (low : Option (Fin 4)) (ls : Fin 4 → List (ℕ × Bool)),
+      (searchLeaves fuel ℓ h up low ls).length ≤ 2 ^ fuel := by
+  intro fuel
+  induction fuel with
+  | zero => intro ℓ h up low ls; simp [searchLeaves]
+  | succ fuel ih =>
+    intro ℓ h up low ls
+    simp only [searchLeaves]
+    split_ifs
+    · rw [List.length_append, pow_succ]
+      have h1 := ih ℓ ((ℓ + h) / 2) (thirdSlot up low) low (Function.update ls (thirdSlot up low)
+        (ls (thirdSlot up low) ++ [((ℓ + h) / 2, false)]))
+      have h2 := ih ((ℓ + h) / 2 + 1) h up (some (thirdSlot up low))
+        (Function.update ls (thirdSlot up low) (ls (thirdSlot up low) ++ [((ℓ + h) / 2, true)]))
+      omega
+    · simp only [List.length_singleton]
+      exact Nat.one_le_two_pow
+
+namespace ActiveSetup
+
+namespace AttemptParams
+
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.AttemptParams)
+
+theorem leaves_length_le : ap.leaves.length ≤ 2 ^ ap.fuel :=
+  searchLeaves_length_le _ _ _ _ _ _
+
+/-- The number of named tests of one slot at one cell is at most
+`2^fuel (1 + D) P^{1 + fuel}`, uniformly in the cell. -/
+theorem card_TestIdx_le (I : ℤ × ℤ) (l : Fin 4) :
+    Fintype.card (ap.TestIdx I l) ≤ 2 ^ ap.fuel * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) := by
+  classical
+  have hP := ap.hP
+  have hlen : ∀ s : Fin ap.leaves.length,
+      ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length ≤ ap.fuel := fun s => by
+    have := searchLeaves_layers_length ap.fuel 1 ap.Lc ap.up₀ none (fun _ => [])
+      (leafAt ap.fuel ap.Lc ap.up₀ s) (leafAt_mem s.2) l
+    simpa using this
+  have hpow : ∀ n, n ≤ ap.fuel → ap.P ^ n ≤ ap.P ^ ap.fuel := fun n hn =>
+    Nat.pow_le_pow_right hP hn
+  rw [Fintype.card_sigma]
+  calc ∑ s : Fin ap.leaves.length, Fintype.card _
+      ≤ ∑ _s : Fin ap.leaves.length, (1 + A.vtxBound) * ap.P ^ (1 + ap.fuel) := by
+        refine Finset.sum_le_sum fun s _ => ?_
+        simp only [Fintype.card_sum, Fintype.card_prod, Fintype.card_fin, Fintype.card_pi,
+          Finset.prod_const, Finset.card_univ, Fintype.card_coe]
+        have h1 : ap.P ^ ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).dropLast.length ≤
+            ap.P ^ ap.fuel := hpow _ (by rw [List.length_dropLast]; have := hlen s; omega)
+        have h2 : ap.P ^ ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length ≤ ap.P ^ ap.fuel :=
+          hpow _ (hlen s)
+        have h3 := ap.card_groupsAt_le I (leafAt ap.fuel ap.Lc ap.up₀ s).k
+        calc ap.P * ap.P ^ ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).dropLast.length +
+              (ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k).card *
+                (ap.P * ap.P ^ ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length)
+            ≤ ap.P * ap.P ^ ap.fuel + A.vtxBound * (ap.P * ap.P ^ ap.fuel) := by gcongr
+          _ = (1 + A.vtxBound) * ap.P ^ (1 + ap.fuel) := by ring
+    _ = ap.leaves.length * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) := by
+        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
+    _ ≤ _ := Nat.mul_le_mul_right _ ap.leaves_length_le
+
+end AttemptParams
+
+end ActiveSetup
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
+
+/-- The slots of a pattern other than its marked slot carry the basic arguments. -/
+theorem z_slot_basic (p : Fin 3) (I : ℤ × ℤ) {l : Fin 4} (hl : l ≠ A.mslot p) :
+    A.z (Fin.castSucc p) I l = A.B l I := by
+  obtain ⟨i, rfl⟩ := Fin.exists_succAbove_eq hl
+  exact (A.pattern_data I p).2.2.2 i
+
+/-- Every slot of a pattern is square integrable on the cell with normalized size at most
+`S + |L| D_c`. -/
+theorem z_slot_size (p : Fin 3) (I : ℤ × ℤ) (l : Fin 4) :
+    MemLp (A.z (Fin.castSucc p) I l) 2 (A.μ I) ∧
+      (eLpNorm (A.z (Fin.castSucc p) I l) 2 (A.μ I)).toReal ≤ A.S + Fintype.card A.L * A.Dc := by
+  obtain ⟨-, h1, h2, -⟩ := A.pattern_data I p
+  by_cases hl : l = A.mslot p
+  · subst hl; exact ⟨h1, h2⟩
+  · rw [A.z_slot_basic p I hl]
+    exact ⟨A.B_memLp l I, (A.B_eLpNorm_le l I).trans (le_add_of_nonneg_left A.S_nonneg)⟩
+
+/-- A slot other than the marked slot of a pattern. -/
+def basicSlot (p : Fin 3) : Fin 4 := (A.mslot p).succAbove 0
+
+theorem basicSlot_ne (p : Fin 3) : A.basicSlot p ≠ A.mslot p := Fin.succAbove_ne _ _
+
+/-- The augmented sizes of the pattern inputs (the hypothesis `hSz` of the localization). -/
+theorem z_cellLp_size {Mc : ℕ} (p : Fin 3) (I : ℤ × ℤ) (l : Fin 4) :
+    ‖physicalColumnInput (V := Fin Mc) (cellLp A.G I (A.z (Fin.castSucc p) I l))‖ /
+      Real.sqrt (dyadicGridLength A.G I.1) ≤ A.S + Fintype.card A.L * A.Dc := by
+  have hc0 : 0 ≤ (Fintype.card A.L : ℝ) * A.Dc := (norm_nonneg _).trans (A.B_bound 0 I 0)
+  exact norm_cellLp_div_le (A.z_slot_size p I l).1 (add_nonneg A.S_nonneg hc0)
+    (A.z_slot_size p I l).2
+
+end ActiveSetup
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
+
+open Classical in
+/-- The cells of an active family containing a cell are among the active cells through its left
+endpoint (the path multiplicity `M_p` of the localization). -/
+theorem active_anc_card_le {δ : ℝ} (T : Finset (ℤ × ℤ)) (hT : ∀ I ∈ T, I ∈ A.cells ∧ A.active δ I)
+    (I : ℤ × ℤ) :
+    (T.filter fun I' => dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤
+      (A.cells.filter fun I' => dyadicGridLeft A.G I.1 I.2 ∈ dyadicGridCell A.G I'.1 I'.2 ∧
+        A.active δ I').card := by
+  refine Finset.card_le_card fun I' hI' => ?_
+  obtain ⟨hI'T, hsub⟩ := Finset.mem_filter.mp hI'
+  exact Finset.mem_filter.mpr ⟨(hT I' hI'T).1, hsub (dyadicGridCell_left_mem A.G I.1 I.2),
+    (hT I' hI'T).2⟩
+
+end ActiveSetup
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
+
+open Classical in
+/-- The failed cells of the admission tree for fixed delay arrays. -/
+noncomputable def failedCells (Hed : ℝ) (b1 b2 : ℕ)
+    (ωp ωh : Fin (colorDegree A.vtxBound) → A.Vtx → Fin (colorDegree A.vtxBound + 1)) :
+    Finset (ℤ × ℤ) :=
+  ((Finset.univ : Finset (AdmCell A.G A.R A.treeDepth)).filter fun c =>
+    ColorSetup.FailAt A.admT (A.tagDist Hed) (colorDegree A.vtxBound) b1 b2 ωp ωh
+      (some c : A.admT.Cell)).image Subtype.val
+
+open Classical in
+/-- Blueprint lines 1745 and 2839 ("marking failures have the length bound already proved ...
+restart there"): the maximal failed cells of a monotone coloring are pairwise disjoint cells below
+the root of total length at most `100 · 2001⁷ |R| / D`, and every cell of the setup below none of
+them succeeds. -/
+theorem failure_cut (Hed : ℝ) (b1 b2 : ℕ)
+    (ωp ωh : Fin (colorDegree A.vtxBound) → A.Vtx → Fin (colorDegree A.vtxBound + 1))
+    (hcol : IsMonotoneColoring A.admT (A.tagDist Hed) A.vtxBound b1 b2 Finset.univ
+      (admCellSet (G := A.G) (R := A.R) (N := A.treeDepth))
+      (dyadicGridCell A.G A.R.1 A.R.2) ωp ωh) :
+    let X := maximalDyadicCells A.G (A.failedCells Hed b1 b2 ωp ωh)
+    (∀ c ∈ X, dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2) ∧
+    (∀ c ∈ X, ∀ c' ∈ X, c ≠ c' →
+      Disjoint (dyadicGridCell A.G c.1 c.2) (dyadicGridCell A.G c'.1 c'.2)) ∧
+    ∑ c ∈ X, dyadicGridLength A.G c.1 ≤
+      100 * 2001 ^ 7 / A.vtxBound * dyadicGridLength A.G A.R.1 ∧
+    ∀ I ∈ A.cells, (¬ ∃ c ∈ X, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G c.1 c.2) →
+      ¬ ColorSetup.FailAt A.admT (A.tagDist Hed) (colorDegree A.vtxBound) b1 b2 ωp ωh
+        (A.admAt I) := by
+  intro X
+  have hXF : X ⊆ A.failedCells Hed b1 b2 ωp ωh := maximalDyadicCells_subset _ _
+  have hmemF : ∀ c ∈ A.failedCells Hed b1 b2 ωp ωh,
+      ∃ c' : AdmCell A.G A.R A.treeDepth, c'.1 = c ∧
+        ColorSetup.FailAt A.admT (A.tagDist Hed) (colorDegree A.vtxBound) b1 b2 ωp ωh
+          (some c' : A.admT.Cell) := by
+    intro c hc
+    obtain ⟨c', hc', rfl⟩ := Finset.mem_image.mp hc
+    exact ⟨c', rfl, (Finset.mem_filter.mp hc').2⟩
+  have hdis := maximalDyadicCells_pairwiseDisjoint A.G (A.failedCells Hed b1 b2 ωp ωh)
+  refine ⟨fun c hc => ?_, fun c hc c' hc' hne => hdis hc hc' hne, ?_, fun I hI hno hfail => ?_⟩
+  · obtain ⟨c', rfl, -⟩ := hmemF c (hXF hc)
+    exact admCell_sub c'
+  · have hlen := dyadicRootLength_eq_volume A.G X hdis
+    unfold dyadicRootLength at hlen
+    rw [hlen, maximalDyadicCells_union]
+    have hR := (dyadicGridCell_volume A.G A.R.1 A.R.2)
+    have h1 := hcol.1
+    rw [hR, ENNReal.toReal_ofReal (dyadicGridLength_pos A.G A.R.1).le] at h1
+    refine le_trans (le_of_eq ?_) h1
+    congr 2
+    ext x
+    simp only [Set.mem_iUnion, Finset.mem_filter, Finset.mem_univ, true_and, exists_prop]
+    constructor
+    · rintro ⟨c, hc, hx⟩
+      obtain ⟨c', rfl, hf⟩ := hmemF c hc
+      exact ⟨some c', hf, hx⟩
+    · rintro ⟨c, hf, hx⟩
+      cases c with
+      | none => exact absurd hx (Set.notMem_empty x)
+      | some c =>
+        exact ⟨c.1, Finset.mem_image.mpr ⟨c, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hf⟩, rfl⟩,
+          hx⟩
+  · rw [A.admAt_of_mem hI] at hfail
+    have hIF : I ∈ A.failedCells Hed b1 b2 ωp ωh :=
+      Finset.mem_image.mpr ⟨⟨I, A.cells_mem_tree hI⟩,
+        Finset.mem_filter.mpr ⟨Finset.mem_univ _, hfail⟩, rfl⟩
+    obtain ⟨d, hd, hId⟩ := maximalDyadicCells_covers A.G _ hIF
+    exact hno ⟨d, hd, hId⟩
+
+end ActiveSetup
+
+/-- The count bound of the attempt catalogs can be met: for constants `c ≥ 0` and exponents
+`a, b` there is `T` with `(max 1 (c · C_T^b))^a ≤ T`, where `C_T = ⌈log₂(T+1)⌉ + 1` is the
+prefix constant (it grows logarithmically). -/
+theorem exists_prefix_fixed {c : ℝ} (hc : 0 ≤ c) (b a : ℕ) :
+    ∃ T : ℕ, (max 1 (c * projectionPrefixConstant T ^ b)) ^ a ≤ (T : ℝ) := by
+  set k := a * b
+  have hpos : (0 : ℝ) < 1 / (4 * (1 + c) ^ a * 2 ^ k) := by positivity
+  have ht := (tendsto_pow_const_div_const_pow_of_one_lt k (r := 2) (by norm_num)).eventually
+    (gt_mem_nhds hpos)
+  obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp ht
+  set n := N + 1
+  have hn := (hN n (Nat.le_succ N)).le
+  refine ⟨2 ^ n - 1, ?_⟩
+  have h2n : (1 : ℕ) ≤ 2 ^ n := Nat.one_le_two_pow
+  have hT : ((2 ^ n - 1 : ℕ) : ℝ) = (2 : ℝ) ^ n - 1 := by
+    rw [Nat.cast_sub h2n]; push_cast; ring
+  have hP : projectionPrefixConstant (2 ^ n - 1) = (n : ℝ) + 1 := by
+    unfold projectionPrefixConstant
+    rw [Nat.sub_add_cancel h2n, Nat.clog_pow 2 n (by norm_num)]
+  rw [hT, hP]
+  have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast Nat.succ_pos N
+  have h2pos : (0 : ℝ) < 2 ^ n := by positivity
+  have hnk : (n : ℝ) ^ k ≤ 2 ^ n / (4 * (1 + c) ^ a * 2 ^ k) := by
+    rw [div_le_iff₀ h2pos] at hn
+    rw [le_div_iff₀ (by positivity)]
+    calc (n : ℝ) ^ k * (4 * (1 + c) ^ a * 2 ^ k) =
+        (1 / (4 * (1 + c) ^ a * 2 ^ k) * 2 ^ n) * (4 * (1 + c) ^ a * 2 ^ k) * ((n : ℝ) ^ k /
+          (1 / (4 * (1 + c) ^ a * 2 ^ k) * 2 ^ n)) := by
+          field_simp
+      _ ≤ (1 / (4 * (1 + c) ^ a * 2 ^ k) * 2 ^ n) * (4 * (1 + c) ^ a * 2 ^ k) * 1 := by
+          gcongr
+          rw [div_le_one (by positivity)]
+          exact hn
+      _ = 2 ^ n := by field_simp
+  have hb1 : (1 : ℝ) ≤ ((n : ℝ) + 1) ^ b := one_le_pow₀ (by linarith)
+  have hmax : max 1 (c * ((n : ℝ) + 1) ^ b) ≤ (1 + c) * ((n : ℝ) + 1) ^ b :=
+    max_le (by nlinarith) (by nlinarith)
+  have hsucc : (n : ℝ) + 1 ≤ 2 * n := by linarith
+  calc (max 1 (c * ((n : ℝ) + 1) ^ b)) ^ a ≤ ((1 + c) * ((n : ℝ) + 1) ^ b) ^ a :=
+        pow_le_pow_left₀ (le_trans zero_le_one (le_max_left _ _)) hmax a
+    _ = (1 + c) ^ a * ((n : ℝ) + 1) ^ k := by rw [mul_pow, ← pow_mul, mul_comm b a]
+    _ ≤ (1 + c) ^ a * (2 * n) ^ k := by gcongr
+    _ = (4 * (1 + c) ^ a * 2 ^ k) * (n : ℝ) ^ k / 4 := by rw [mul_pow]; ring
+    _ ≤ (4 * (1 + c) ^ a * 2 ^ k) * (2 ^ n / (4 * (1 + c) ^ a * 2 ^ k)) / 4 := by gcongr
+    _ = 2 ^ n / 4 := by field_simp
+    _ ≤ 2 ^ n - 1 := by
+        have : (2 : ℝ) ≤ 2 ^ n := by
+          calc (2 : ℝ) = 2 ^ 1 := by norm_num
+            _ ≤ 2 ^ n := pow_le_pow_right₀ (by norm_num) (Nat.succ_pos N)
+        linarith
+
+namespace ActiveSetup
+
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀}
+
+/-- The failure roots of an attempt: the maximal failed cells of its coloring. -/
+noncomputable def AttemptParams.failRoots (ap : A.AttemptParams) : Finset (ℤ × ℤ) :=
+  maximalDyadicCells A.G (A.failedCells ap.Hed (A.cb1 ap.Hmax) (cb2 ap.Hmax) ap.ωp ap.ωh)
+
+open Classical in
+/-- The retained active cells of an attempt: active cells below no failure root. -/
+noncomputable def AttemptParams.retained (ap : A.AttemptParams) (δ : ℝ) : Finset (ℤ × ℤ) :=
+  (A.cells.filter fun I => ¬ ∃ c ∈ ap.failRoots,
+    dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G c.1 c.2).filter (A.active δ)
+
+variable (A)
+
+open Classical in
+/-- Blueprint lines 2838-2840 with lines 1800-1882 (one attempt on an active pattern): for the
+basic tuple `z = B.z (p)` there are attempt parameters (pad `P`, colors at most `d₀^{30} + 1`,
+search fuel `⌈log₂ L⌉ + 1`, catalog counts and thresholds, edge scale `H_ed ≥ H_low`) and catalogs
+with a monotone coloring, such that on every subset of the retained cells (active, below no failure
+root) the active-cell minima are at most the sum over the search leaves of the localized group forms
+plus `ε |R|`. -/
+theorem attempt_instance (p : Fin 3) {D : ℕ} (hst : SameTagBound κ (A.csrc + 1) D)
+    (P : ℕ) (hP : 0 < P) {δ : ℝ} {Mp : ℕ} (hMp1 : 1 ≤ Mp)
+    (hMpb : ∀ y : ℝ, (A.cells.filter fun I =>
+      y ∈ dyadicGridCell A.G I.1 I.2 ∧ A.active δ I).card ≤ Mp)
+    (hη : 0 ≤ A.η) (Hlow : ℝ) {ε : ℝ} (hε : 0 < ε) :
+    ∃ (ap : A.AttemptParams) (cat : Fin 4 → List (CatCol A.Vtx)),
+      ap.z = A.z (Fin.castSucc p) ∧ ap.P = P ∧ Hlow ≤ ap.Hed ∧ ap.up₀ ≠ A.mslot p ∧
+      ap.Lc = A.cd0 ^ 30 + 1 ∧ ap.fuel = Nat.clog 2 ap.Lc + 1 ∧ ap.mH = ap.fuel ∧
+      IsMonotoneColoring A.admT (A.tagDist ap.Hed) A.vtxBound (A.cb1 ap.Hmax) (cb2 ap.Hmax)
+        Finset.univ (admCellSet (G := A.G) (R := A.R) (N := A.treeDepth))
+        (dyadicGridCell A.G A.R.1 A.R.2) ap.ωp ap.ωh ∧
+      ∀ S ⊆ ap.retained δ,
+      ∑ I ∈ S, dyadicGridLength A.G I.1 * min A.η ‖A.Hf I (A.z (Fin.castSucc p) I)‖ ≤
+        ∑ s ∈ Finset.range ap.leaves.length, ∑ I ∈ S, dyadicGridLength A.G I.1 *
+            min A.η ‖∑ G ∈ ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k,
+              ap.Λc I (fun l => (ap.filters cat I).ball G
+                ((leafAt ap.fuel ap.Lc ap.up₀ s).role l) l
+                ((ap.filters cat I).input (leafAt ap.fuel ap.Lc ap.up₀ s).layers l))‖ +
+          ε * dyadicGridLength A.G A.R.1 := by
+  -- a basic slot
+  obtain ⟨up, hup⟩ : ∃ l : Fin 4, l ≠ A.mslot p := by
+    by_cases h : A.mslot p = 0
+    · exact ⟨1, by rw [h]; decide⟩
+    · exact ⟨0, fun h' => h h'.symm⟩
+  -- the parameters
+  set Lc := A.cd0 ^ 30 + 1
+  set fuel := Nat.clog 2 Lc + 1
+  set Hmax := 20 * P * (Lc + 1) + P
+  set Kt := 2 ^ fuel * ((1 + A.vtxBound) * P ^ (1 + fuel))
+  have hDc := A.Dc_nonneg
+  set Sz : ℝ := |A.S| + Fintype.card A.L * A.Dc + 1
+  have hSz0 : 0 < Sz := by
+    have : 0 ≤ (Fintype.card A.L : ℝ) * A.Dc := mul_nonneg (Nat.cast_nonneg _) hDc
+    have := abs_nonneg A.S
+    linarith
+  set W : ℝ := 5 * (A.vtxBound + 2) * (Sz ^ 4 + Fintype.card A.L * A.Dc * Sz ^ 3)
+  have hW : 0 ≤ W := by
+    have : 0 ≤ (Fintype.card A.L : ℝ) * A.Dc * Sz ^ 3 := by positivity
+    positivity
+  set τ₃ : ℝ := min 1 (ε / (Mp * 2 ^ fuel * W + 1))
+  have hτ₃ : 0 < τ₃ := lt_min one_pos (div_pos hε (by positivity))
+  set E : ℝ := 2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)
+  set c0 : ℝ := Kt * 4 ^ fuel * E ^ 2 * Mp * (Lc + 6) / τ₃ ^ 2
+  obtain ⟨Tmax, hTmax⟩ := exists_prefix_fixed (c := c0) (by positivity) (2 * fuel) (Lc + 4)
+  set ρ : ℝ := max 1 (c0 * projectionPrefixConstant Tmax ^ (2 * fuel))
+  have hρ1 : 1 ≤ ρ := le_max_left _ _
+  set n : ℕ → ℝ := fun r => ρ ^ r
+  set Hed := max Hlow
+    (Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log (τ₃ / n (Lc + 1))⁻¹) ^ A.Dg))
+  obtain ⟨ωp, ωh, hcol⟩ := A.coloring Hed (A.cb1 Hmax) (cb2 Hmax)
+  -- the retained cells
+  set X := maximalDyadicCells A.G (A.failedCells Hed (A.cb1 Hmax) (cb2 Hmax) ωp ωh)
+  set cs := (A.cells.filter fun I => ¬ ∃ c ∈ X,
+    dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G c.1 c.2).filter (A.active δ)
+  have hcs : ∀ I ∈ cs, I ∈ A.cells ∧ A.active δ I := fun I hI =>
+    ⟨(Finset.mem_filter.mp (Finset.mem_filter.mp hI).1).1, (Finset.mem_filter.mp hI).2⟩
+  obtain ⟨L, hLcs, hnd, hord⟩ := exists_coarse_first_list A.G cs
+  let ap : A.AttemptParams :=
+    { Hed := Hed, Hmax := Hmax, ωp := ωp, ωh := ωh, P := P, hP := hP, Lc := Lc, fuel := fuel,
+      up₀ := up, Mc := L.length * Tmax, mH := fuel, z := A.z (Fin.castSucc p) }
+  have hret : ap.retained δ = cs := rfl
+  obtain ⟨-, -, -, hfc⟩ := A.failure_cut Hed (A.cb1 Hmax) (cb2 Hmax) ωp ωh hcol
+  have hcsL : ∀ I ∈ cs, I ∈ L := fun I hI => List.mem_toFinset.mp (hLcs ▸ hI)
+  have hL : ∀ I ∈ L, I ∈ A.cells := fun I hI =>
+    (hcs I (hLcs ▸ List.mem_toFinset.mpr hI)).1
+  have hKt1 : 1 ≤ Kt := Nat.mul_pos (Nat.two_pow_pos _) (Nat.mul_pos (by omega) (pow_pos hP _))
+  have hratio : ∀ r ≤ ap.Lc + 1, n r * (Kt * (4 ^ ap.mH * projectionPrefixConstant Tmax ^
+      (2 * ap.mH)) * (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) ^ 2 * Mp * (ap.Lc + 6)) /
+        τ₃ ^ 2 ≤ n (r + 1) := by
+    intro r _
+    have e : n r * (Kt * (4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH)) *
+        (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) ^ 2 * Mp * (ap.Lc + 6)) / τ₃ ^ 2 =
+        n r * (c0 * projectionPrefixConstant Tmax ^ (2 * fuel)) := by
+      simp only [c0, E, ap]; ring
+    rw [e]
+    calc n r * (c0 * projectionPrefixConstant Tmax ^ (2 * fuel)) ≤ n r * ρ :=
+          mul_le_mul_of_nonneg_left (le_max_right _ _) (by positivity)
+      _ = n (r + 1) := by simp only [n]; ring
+  have h := ap.attempt_localization L hL hnd hord hst hKt1 hMp1
+    (fun I l => ap.card_TestIdx_le I l) le_rfl n (fun r => one_le_pow₀ hρ1)
+    (pow_right_mono₀ hρ1) hTmax hτ₃ (min_le_left _ _) hratio (le_max_right _ _) cs hcsL
+    (fun I hI => by
+      rw [hLcs]
+      exact (A.active_anc_card_le cs hcs I).trans (hMpb _))
+    (fun I hI w hw => by
+      by_contra hns
+      exact hfc I (hcs I hI).1 (Finset.mem_filter.mp (Finset.mem_filter.mp hI).1).2
+        ⟨w, hw, hns⟩)
+    (fun I _ w hw => ((hcol.2.2.1 (A.admAt I) w hw).2.trans hcol.2.1).trans (Nat.le_succ _))
+    (fun I _ => A.z_slot_basic p I hup) (fun I _ l => (A.z_slot_size p I l).1)
+    (Nat.le_add_left _ _) ((Nat.sub_le _ _).trans_lt ((Nat.le_pow_clog one_lt_two Lc).trans_lt
+      (Nat.pow_lt_pow_right one_lt_two (Nat.lt_succ_self _)))) le_rfl
+    (by simp [AttemptParams.bbase, ap, Hmax])
+    hη hSz0 (fun I _ l => (A.z_cellLp_size p I l).trans (by linarith [le_abs_self A.S]))
+  obtain ⟨cat, hcat⟩ := h
+  refine ⟨ap, cat, rfl, rfl, le_max_left _ _, hup, rfl, rfl, rfl, hcol, fun S hS => ?_⟩
+  rw [hret] at hS
+  refine (hcat S hS).trans (add_le_add le_rfl ?_)
+  have hcsS : ∀ I ∈ S, I ∈ A.cells ∧ A.active δ I := fun I hI => hcs I (hS hI)
+  -- the localization error
+  have hsum : ∑ I ∈ S, dyadicGridLength A.G I.1 ≤ Mp * dyadicGridLength A.G A.R.1 := by
+    have := integrated_cap_le A.G S (fun _ => 1) A.R (fun I hI => A.sub I (hcsS I hI).1)
+      (C := Mp) (fun x => by
+        rw [Finset.sum_const, nsmul_eq_mul, mul_one]
+        refine le_trans (Nat.cast_le.mpr (Finset.card_le_card ?_)) (Nat.cast_le.mpr (hMpb x))
+        intro I hI
+        obtain ⟨hIcs, hx⟩ := Finset.mem_filter.mp hI
+        exact Finset.mem_filter.mpr ⟨(hcsS I hIcs).1, hx, (hcsS I hIcs).2⟩)
+    simpa using this
+  have hleaves : (ap.leaves.length : ℝ) ≤ 2 ^ fuel := by exact_mod_cast ap.leaves_length_le
+  have hR := (dyadicGridLength_pos A.G A.R.1).le
+  have hτε : (Mp * 2 ^ fuel * W) * τ₃ ≤ ε := by
+    have hd : 0 < (Mp : ℝ) * 2 ^ fuel * W + 1 := by positivity
+    calc (Mp * 2 ^ fuel * W) * τ₃ ≤ (Mp * 2 ^ fuel * W) * (ε / (Mp * 2 ^ fuel * W + 1)) :=
+          mul_le_mul_of_nonneg_left (min_le_right _ _) (by positivity)
+      _ ≤ (Mp * 2 ^ fuel * W + 1) * (ε / (Mp * 2 ^ fuel * W + 1)) :=
+          mul_le_mul_of_nonneg_right (by linarith) (div_pos hε hd).le
+      _ = ε := by field_simp
+  have hcs0 : 0 ≤ ∑ I ∈ S, dyadicGridLength A.G I.1 :=
+    Finset.sum_nonneg fun I _ => (dyadicGridLength_pos A.G I.1).le
+  calc (∑ I ∈ S, dyadicGridLength A.G I.1) * (ap.leaves.length * (W * τ₃))
+      ≤ (Mp * dyadicGridLength A.G A.R.1) * (2 ^ fuel * (W * τ₃)) := by
+        gcongr
+    _ = (Mp * 2 ^ fuel * W) * τ₃ * dyadicGridLength A.G A.R.1 := by ring
+    _ ≤ ε * dyadicGridLength A.G A.R.1 := mul_le_mul_of_nonneg_right hτε hR
+
+end ActiveSetup
+
+/-- Each search step appends at most one layer to one slot: the layer lists of the leaves of a
+search with fuel `f` are at most `f` longer than the initial ones. -/
+theorem searchLeaves_layers_length_le :
+    ∀ (fuel ℓ h : ℕ) (up : Fin 4) (low : Option (Fin 4)) (ls : Fin 4 → List (ℕ × Bool)),
+      ∀ L ∈ searchLeaves fuel ℓ h up low ls, ∀ l, (L.layers l).length ≤ (ls l).length + fuel := by
+  intro fuel
+  induction fuel with
+  | zero =>
+    intro ℓ h up low ls L hL l
+    simp only [searchLeaves, List.mem_singleton] at hL
+    subst hL; simp
+  | succ fuel ih =>
+    intro ℓ h up low ls L hL l
+    simp only [searchLeaves] at hL
+    split_ifs at hL with hlt
+    · rcases List.mem_append.mp hL with hL | hL
+      · refine (ih _ _ _ _ _ L hL l).trans ?_
+        by_cases hl : l = thirdSlot up low
+        · subst hl; simp; omega
+        · rw [Function.update_of_ne hl]; omega
+      · refine (ih _ _ _ _ _ L hL l).trans ?_
+        by_cases hl : l = thirdSlot up low
+        · subst hl; simp; omega
+        · rw [Function.update_of_ne hl]; omega
+    · simp only [List.mem_singleton] at hL
+      subst hL; simp
+
+/-- Blueprint lines 1841-1849 with the fuel `⌈log₂ L⌉ + 1` of the attempt: the leaf layer lists
+have length at most the fuel, logarithmic in the number of colors. -/
+theorem leafAt_layers_length_le (fuel Lc : ℕ) (up₀ : Fin 4) (s : ℕ) (l : Fin 4) :
+    ((leafAt fuel Lc up₀ s).layers l).length ≤ fuel := by
+  unfold leafAt
+  by_cases hs : s < (searchList fuel Lc up₀).length
+  · rw [List.getD_eq_getElem _ _ hs]
+    have := searchLeaves_layers_length_le fuel 1 Lc up₀ none (fun _ => []) _
+      (List.getElem_mem hs) l
+    simpa using this
+  · rw [List.getD_eq_default _ _ (by omega)]
+    simp [dfltLeaf]
+
+/-- With fuel `⌈log₂ n⌉ + 1` the search has at most `2^{fuel} ≤ 4n` leaves. -/
+theorem two_pow_clog_succ_le {n : ℕ} (hn : 1 ≤ n) : 2 ^ (Nat.clog 2 n + 1) ≤ 4 * n := by
+  rcases Nat.lt_or_ge 1 n with h | h
+  · have h1 := Nat.pow_pred_clog_lt_self one_lt_two h
+    rw [Nat.pred_eq_sub_one] at h1
+    have h2 := Nat.clog_pos one_lt_two h
+    have e : 2 ^ (Nat.clog 2 n + 1) = 4 * 2 ^ (Nat.clog 2 n - 1) := by
+      rw [show Nat.clog 2 n + 1 = (Nat.clog 2 n - 1) + 2 by omega, pow_add]; ring
+    rw [e]; omega
+  · have : n = 1 := by omega
+    subst this; simp
+
+open Classical in
+/-- Blueprint prop:base (line 1655) and line 2839 (the active path multiplicity for the attempt):
+at the activity threshold `δ_k = e^{-k^{C_b+2}}`, every point lies in at most
+`exp(C k^{3 C_b + 2})` active cells of a setup with the level properties. -/
+theorem active_mult_bound (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) (Cb : ℕ) :
+    ∃ C : ℝ, 0 < C ∧ ∀ k : ℕ, 1 ≤ k → ∀ (B : ActiveSetup κ c₀) (η₀ : ℝ),
+      B.LevelProps k Cb η₀ → ∀ y : ℝ,
+        ((B.cells.filter fun I => y ∈ dyadicGridCell B.G I.1 I.2 ∧
+          B.active (Real.exp (-(k : ℝ) ^ (Cb + 2))) I).card : ℝ) ≤
+          Real.exp (C * (k : ℝ) ^ (3 * Cb + 2)) := by
+  obtain ⟨C, hC1, hcount⟩ := ActiveSetup.active_count κ c₀ hc
+  set c1 : ℝ := 172802 + Real.log (sliceConst κ)
+  have hsl : 1 ≤ sliceConst κ := by
+    unfold sliceConst
+    have := localKernelSupBound_nonneg κ
+    have := kernelLipConst_nonneg κ
+    linarith
+  have hlogsl : 0 ≤ Real.log (sliceConst κ) := Real.log_nonneg hsl
+  refine ⟨5 + (C : ℝ) + (C : ℝ) * c1, by positivity, fun k hk B η₀ hB y => ?_⟩
+  obtain ⟨-, hH1, hHk, -, hLk, -⟩ := hB
+  have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast hk
+  set m := 3 * Cb + 2
+  have hkCb : (1 : ℝ) ≤ (k : ℝ) ^ Cb := one_le_pow₀ hk1
+  have hkm : (1 : ℝ) ≤ (k : ℝ) ^ m := one_le_pow₀ hk1
+  have hCbm : (k : ℝ) ^ Cb ≤ (k : ℝ) ^ m := pow_le_pow_right₀ hk1 (by omega)
+  have h3m : (k : ℝ) ^ (3 * Cb) ≤ (k : ℝ) ^ m := pow_le_pow_right₀ hk1 (by omega)
+  have h2m : (k : ℝ) ^ (Cb + 2) ≤ (k : ℝ) ^ m := pow_le_pow_right₀ hk1 (by omega)
+  set δ := Real.exp (-(k : ℝ) ^ (Cb + 2))
+  have hδ0 : 0 < δ := Real.exp_pos _
+  have hδ1 : δ ≤ 1 := by
+    have := pow_nonneg (Nat.cast_nonneg (α := ℝ) k) (Cb + 2)
+    exact Real.exp_le_one_iff.mpr (by linarith)
+  have h := hcount B δ hδ0 hδ1 y
+  -- the logarithmic terms
+  have hlogH0 : 0 ≤ Real.log B.H := Real.log_nonneg hH1
+  have hlogH : Real.log B.H ≤ (k : ℝ) ^ Cb := by
+    have := Real.log_le_log (by linarith) hHk
+    rwa [Real.log_exp] at this
+  have hbud : Real.log (chartTranslationBudget B.H) ≤ 800 * (k : ℝ) ^ (3 * Cb) := by
+    unfold chartTranslationBudget logarithmicSize
+    rw [Real.log_exp]
+    have h1 : 1 + Real.log B.H ≤ 2 * (k : ℝ) ^ Cb := by linarith
+    have h2 : (1 + Real.log B.H) ^ 3 ≤ (2 * (k : ℝ) ^ Cb) ^ 3 :=
+      pow_le_pow_left₀ (by linarith) h1 3
+    rw [mul_pow, ← pow_mul] at h2
+    rw [mul_comm Cb 3] at h2
+    nlinarith
+  have hbud0 : 0 ≤ Real.log (chartTranslationBudget B.H) := by
+    unfold chartTranslationBudget logarithmicSize
+    rw [Real.log_exp]; positivity
+  have hlogδ : Real.log δ⁻¹ = (k : ℝ) ^ (Cb + 2) := by
+    rw [Real.log_inv, Real.log_exp]; ring
+  set X := 216 * Real.log (chartTranslationBudget B.H) + Real.log (sliceConst κ) +
+    2 * Real.log δ⁻¹
+  have hX0 : 0 ≤ X := by
+    simp only [X, hlogδ]; positivity
+  have hX : X ≤ c1 * (k : ℝ) ^ m := by
+    simp only [X, hlogδ, c1]
+    nlinarith
+  -- the label factor
+  have hL3 : (Fintype.card B.L : ℝ) ^ 3 ≤ Real.exp (3 * (k : ℝ) ^ Cb) := by
+    have := pow_le_pow_left₀ (Nat.cast_nonneg _) hLk 3
+    rwa [← Real.exp_nat_mul] at this
+  have hpow : (C : ℝ) * X ^ C ≤ Real.exp ((C : ℝ) + (C : ℝ) * c1 * (k : ℝ) ^ m) := by
+    rw [Real.exp_add]
+    refine mul_le_mul (by linarith [Real.add_one_le_exp (C : ℝ)])
+      ((pow_le_exp_mul hX0 C).trans (Real.exp_le_exp.mpr ?_)) (by positivity) (by positivity)
+    have hC0 : (0 : ℝ) ≤ C := Nat.cast_nonneg C
+    calc (C : ℝ) * X ≤ (C : ℝ) * (c1 * (k : ℝ) ^ m) := by gcongr
+      _ = _ := by ring
+  refine h.trans ?_
+  have h4 : (4 : ℝ) ≤ Real.exp 2 := by
+    have := Real.add_one_le_exp 2
+    nlinarith [Real.add_one_le_exp (1 : ℝ), Real.exp_pos 1,
+      show Real.exp 2 = Real.exp 1 * Real.exp 1 by rw [← Real.exp_add]; norm_num]
+  calc 4 * (Fintype.card B.L : ℝ) ^ 3 * ((C : ℝ) * X ^ C)
+      ≤ Real.exp 2 * Real.exp (3 * (k : ℝ) ^ Cb) *
+          Real.exp ((C : ℝ) + (C : ℝ) * c1 * (k : ℝ) ^ m) := by
+        gcongr
+    _ = Real.exp (2 + 3 * (k : ℝ) ^ Cb + ((C : ℝ) + (C : ℝ) * c1 * (k : ℝ) ^ m)) := by
+        rw [← Real.exp_add, ← Real.exp_add]
+    _ ≤ Real.exp ((5 + (C : ℝ) + (C : ℝ) * c1) * (k : ℝ) ^ m) := by
+        refine Real.exp_le_exp.mpr ?_
+        have hC0 : (0 : ℝ) ≤ C := Nat.cast_nonneg C
+        nlinarith
 
 end Auto

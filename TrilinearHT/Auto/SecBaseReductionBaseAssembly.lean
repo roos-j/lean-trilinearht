@@ -1843,6 +1843,41 @@ theorem HasColumnRep.mono {A : ActiveSetup κ c₀} {CF CF' : ℝ} (h : A.HasCol
   obtain ⟨P₁, P₂, hP⟩ := h l
   exact ⟨P₁.mono hCF, P₂.mono hCF, hP⟩
 
+/-- The column representation below a sub-root `R'`: on every cell of the setup below `R'` each
+basic argument is the difference of two current basic projections below `R'` (blueprint
+prop:normalized, lines 2840-2842: restarts keep the basic arguments). -/
+def ColumnRepBelow (R' : ℤ × ℤ) (CF : ℝ) : Prop :=
+  ∀ l : Fin 4, ∃ P₁ P₂ : BasicProjection A.G R' CF, ∀ I ∈ A.cells,
+    dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2 →
+    ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 → A.B l I y = P₁.val I y - P₂.val I y
+
+theorem hasColumnRep_of_below {CF : ℝ} (h : A.ColumnRepBelow A.R CF) : A.HasColumnRep CF :=
+  fun l => by
+    obtain ⟨P₁, P₂, hP⟩ := h l
+    exact ⟨P₁, P₂, fun I hI => hP I hI (A.sub I hI)⟩
+
+open Classical in
+/-- The sub-root properties of an active setup (blueprint prop:base, lines 1611-1622, asserted on
+every normalized restart root): below every dyadic sub-root `R'` of the root, the basic-side
+energies are at most `E |R'|`, the two-`U` term is at most `η₀ E |R'|`, and the basic arguments
+have a column representation below `R'`. -/
+def SubRootProps (η₀ E : ℝ) : Prop :=
+  ∀ R' : ℤ × ℤ, dyadicGridCell A.G R'.1 R'.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2 →
+    (∀ l, ∑ I ∈ A.cells with dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2,
+      dyadicGridLength A.G I.1 * (eLpNorm (A.U l I) 2 (A.μ I)).toReal ^ 2 ≤
+        E * dyadicGridLength A.G R'.1) ∧
+    ∑ I ∈ A.cells with dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2,
+      dyadicGridLength A.G I.1 * ‖A.Hf I (A.z 3 I)‖ ≤ η₀ * (E * dyadicGridLength A.G R'.1) ∧
+    A.ColumnRepBelow R' 1
+
+theorem SubRootProps.mono {A : ActiveSetup κ c₀} {η₀ E E' : ℝ} (h : A.SubRootProps η₀ E)
+    (hη₀ : 0 ≤ η₀) (hE : E ≤ E') :
+    A.SubRootProps η₀ E' := fun R' hR' => by
+  obtain ⟨h1, h2, h3⟩ := h R' hR'
+  have hr := (dyadicGridLength_pos A.G R'.1).le
+  exact ⟨fun l => (h1 l).trans (mul_le_mul_of_nonneg_right hE hr),
+    h2.trans (mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right hE hr) hη₀), h3⟩
+
 end ActiveSetup
 
 namespace PathColumnSystem
@@ -2806,9 +2841,9 @@ theorem baseActiveSetup_z3 {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ �
     exact baseB_k Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hka hkb I y
   · rw [Function.update_self, slots4_b hab hib hkb]
 
-/-- The column representation of the base active setup from the representations of its four
-basic arguments (blueprint prop:base, lines 1611-1613). -/
-theorem baseActiveSetup_hasColumnRep {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ × ℤ))
+/-- The column representation below a sub-root `R'` of the base active setup from the
+representations of its four basic arguments below `R'` (blueprint prop:base, lines 1611-1613). -/
+theorem baseActiveSetup_columnRepBelow {c₀' : ℕ} (R : ℤ × ℤ) (cells : Finset (ℤ × ℤ))
     (hsub : ∀ I ∈ cells, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2)
     (w : ℤ × ℤ → ℝ × ℝ → ℂ)
     (hw : ∀ I ∈ cells, IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2)
@@ -2841,50 +2876,54 @@ theorem baseActiveSetup_hasColumnRep {c₀' : ℕ} (R : ℤ × ℤ) (cells : Fin
     (η : ℝ)
     (hsmall : ∀ I ∈ cells, ‖localProgressionForm (dyadicGridLength G I.1) (w I)
       (slots4 a i k (Ya I) (Xi.val I) (Xk.val I) (Yb I))‖ ≤ η)
-    {CF : ℝ}
-    (hri : ∃ P₁ P₂ : BasicProjection G R CF, ∀ I ∈ cells, ∀ᵐ y ∂volume,
+    {CF : ℝ} (R' : ℤ × ℤ)
+    (hri : ∃ P₁ P₂ : BasicProjection G R' CF, ∀ I ∈ cells,
+      dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
       y ∈ dyadicGridCell G I.1 I.2 → Xi.val I y = P₁.val I y - P₂.val I y)
-    (hrk : ∃ P₁ P₂ : BasicProjection G R CF, ∀ I ∈ cells, ∀ᵐ y ∂volume,
+    (hrk : ∃ P₁ P₂ : BasicProjection G R' CF, ∀ I ∈ cells,
+      dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
       y ∈ dyadicGridCell G I.1 I.2 → Xk.val I y = P₁.val I y - P₂.val I y)
-    (hra : ∃ P₁ P₂ : BasicProjection G R CF, ∀ I ∈ cells, ∀ᵐ y ∂volume,
+    (hra : ∃ P₁ P₂ : BasicProjection G R' CF, ∀ I ∈ cells,
+      dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
       y ∈ dyadicGridCell G I.1 I.2 → ∑ v, Pa.coef I Za v * Pa.scalarAt I v y -
         ∑ m, cga I m * aga I m y = P₁.val I y - P₂.val I y)
-    (hrb : ∃ P₁ P₂ : BasicProjection G R CF, ∀ I ∈ cells, ∀ᵐ y ∂volume,
+    (hrb : ∃ P₁ P₂ : BasicProjection G R' CF, ∀ I ∈ cells,
+      dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
       y ∈ dyadicGridCell G I.1 I.2 → ∑ v, Pb.coef I Zb v * Pb.scalarAt I v y -
         ∑ m, cgb I m * agb I m y = P₁.val I y - P₂.val I y) :
     (baseActiveSetup κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb hab
         hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
           hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam hYbm
-            S hS hUa hUb hUa' hUb' η hsmall).HasColumnRep CF := by
+            S hS hUa hUb hUa' hUb' η hsmall).ColumnRepBelow R' CF := by
   intro l
   rcases fin_four_cover hia.symm hka.symm hab hik hib hkb l with h | h | h | h <;> rw [h]
   · obtain ⟨P₁, P₂, hP⟩ := hra
-    refine ⟨P₁, P₂, fun I hI => ?_⟩
-    filter_upwards [hP I hI] with y hy hyI
+    refine ⟨P₁, P₂, fun I hI hIR => ?_⟩
+    filter_upwards [hP I hI hIR] with y hy hyI
     rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
           hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
             hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
               hYbm S hS hUa hUb hUa' hUb' η hsmall hI a)]
     exact (baseB_a Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hia hka hab I y).trans (hy hyI)
   · obtain ⟨P₁, P₂, hP⟩ := hri
-    refine ⟨P₁, P₂, fun I hI => ?_⟩
-    filter_upwards [hP I hI] with y hy hyI
+    refine ⟨P₁, P₂, fun I hI hIR => ?_⟩
+    filter_upwards [hP I hI hIR] with y hy hyI
     rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
           hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
             hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
               hYbm S hS hUa hUb hUa' hUb' η hsmall hI i)]
     exact (baseB_i Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hia hib I y).trans (hy hyI)
   · obtain ⟨P₁, P₂, hP⟩ := hrk
-    refine ⟨P₁, P₂, fun I hI => ?_⟩
-    filter_upwards [hP I hI] with y hy hyI
+    refine ⟨P₁, P₂, fun I hI hIR => ?_⟩
+    filter_upwards [hP I hI hIR] with y hy hyI
     rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
           hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
             hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
               hYbm S hS hUa hUb hUa' hUb' η hsmall hI k)]
     exact (baseB_k Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hka hkb I y).trans (hy hyI)
   · obtain ⟨P₁, P₂, hP⟩ := hrb
-    refine ⟨P₁, P₂, fun I hI => ?_⟩
-    filter_upwards [hP I hI] with y hy hyI
+    refine ⟨P₁, P₂, fun I hI hIR => ?_⟩
+    filter_upwards [hP I hI hIR] with y hy hyI
     rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
           hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
             hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
@@ -2973,6 +3012,59 @@ theorem LowList.eLpNorm_val_le {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {
 
 /-! ### The base data on one root -/
 
+/-- A family of cell functions that is a basic projection below every tree cell: the physical part
+of the current projections of one column depth family whose root contains `J`, applied to an
+augmented input of energy at most `CF |R|` on every tree cell `R`. -/
+def IsBasicOn (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (CF : ℝ) (w : ℤ × ℤ → ℝ × ℝ → ℂ)
+    (z : ℤ × ℤ → ℝ → ℂ) : Prop :=
+  ∃ (V : Type) (_ : Fintype V) (Ψ : ColumnDepthFamily V) (Z : ColumnL2 V), Ψ.D.grid = G ∧
+    dyadicGridCell G J.1 J.2 ⊆ dyadicGridCell G Ψ.D.root.1 Ψ.D.root.2 ∧
+    (∀ R ∈ dyadicFiniteTree G J N, kernelHull G J N w R → ∫ y in dyadicGridCell G R.1 R.2,
+      ‖(Z : ℝ → ColumnHilbert V) y‖ ^ 2 ≤ CF * dyadicGridLength G R.1) ∧
+    ∀ I, z I = Ψ.currentZ Z I
+
+/-- The kernel hull of a subtree is the kernel hull of the tree restricted to the subtree. -/
+theorem kernelHull_below_iff {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ}
+    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {R : ℤ × ℤ} (hR : R ∈ dyadicFiniteTree G J N) {c : ℤ × ℤ}
+    (hc : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G R.1 R.2) :
+    kernelHull G R (dyadicRemainingDepth J N R) w c ↔ kernelHull G J N w c := by
+  constructor
+  · rintro ⟨c', hc', hsub, hw⟩
+    exact ⟨c', ((dyadicFiniteTree_below_iff G J N hR c').mp hc').1, hsub, hw⟩
+  · rintro ⟨c', hc', hsub, hw⟩
+    exact ⟨c', (dyadicFiniteTree_below_iff G J N hR c').mpr ⟨hc', hsub.trans hc⟩, hsub, hw⟩
+
+theorem IsBasicOn.restrict {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ}
+    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF w z) {R : ℤ × ℤ}
+    (hR : R ∈ dyadicFiniteTree G J N) : IsBasicOn G R (dyadicRemainingDepth J N R) CF w z := by
+  obtain ⟨V, _, Ψ, Z, hG, hJ, hE, hz⟩ := h
+  refine ⟨V, inferInstance, Ψ, Z, hG, (((dyadicFiniteTree_mem_iff G J R N).mp hR).1).trans hJ,
+    fun R' hR' hR'H => ?_, hz⟩
+  have hb := (dyadicFiniteTree_below_iff G J N hR R').mp hR'
+  exact hE R' hb.1 ((kernelHull_below_iff hR hb.2).mp hR'H)
+
+theorem IsBasicOn.basicProjection {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ}
+    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF w z) {R : ℤ × ℤ}
+    (hR : R ∈ dyadicFiniteTree G J N) (hRH : kernelHull G J N w R) :
+    ∃ P : BasicProjection G R CF, ∀ I, z I = P.val I := by
+  obtain ⟨V, _, Ψ, Z, hG, hJ, hE, hz⟩ := h
+  exact ⟨⟨V, Ψ, Z, hG, (((dyadicFiniteTree_mem_iff G J R N).mp hR).1).trans hJ,
+    hE R hR hRH⟩, hz⟩
+
+/-- A basic projection with zero input below any sub-cell of the root of a basic family. -/
+theorem IsBasicOn.zeroProjection {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ}
+    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF w z) (hCF : 0 ≤ CF)
+    {R : ℤ × ℤ} (hR : dyadicGridCell G R.1 R.2 ⊆ dyadicGridCell G J.1 J.2) :
+    Nonempty (BasicProjection G R CF) := by
+  obtain ⟨V, _, Ψ, Z, hG, hJ, -, -⟩ := h
+  refine ⟨⟨V, Ψ, 0, hG, hR.trans hJ, ?_⟩⟩
+  have : ∫ y in dyadicGridCell G R.1 R.2, ‖((0 : ColumnL2 V) : ℝ → ColumnHilbert V) y‖ ^ 2
+      = 0 := by
+    refine integral_eq_zero_of_ae (Filter.Eventually.of_forall fun y => ?_)
+    simp
+  rw [this]
+  exact mul_nonneg hCF (dyadicGridLength_pos G R.1).le
+
 section BaseRoot
 
 variable (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {c₀ c₁ : ℕ} {H : ℝ}
@@ -3053,12 +3145,11 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
     (hDH : D ≤ H') (hBa : Ba ≤ H') (hBb : Bb ≤ H')
     (hdef₀ : ∃ (d : ℕ) (Φ : QuadraticChartData d), QuadraticChartComplexity c₀ H Φ ∧
       IsBoundedQuadraticChart Φ)
-    (hri : ∃ P₁ P₂ : BasicProjection G R 1, ∀ I ∈ T, ∀ᵐ y ∂volume,
-      y ∈ dyadicGridCell G I.1 I.2 → Xi.val I y = P₁.val I y - P₂.val I y)
-    (hrk : ∃ P₁ P₂ : BasicProjection G R 1, ∀ I ∈ T, ∀ᵐ y ∂volume,
-      y ∈ dyadicGridCell G I.1 I.2 → Xk.val I y = P₁.val I y - P₂.val I y)
-    (hrga : ∃ P : BasicProjection G R 1, ∀ I, zga I = P.val I)
-    (hrgb : ∃ P : BasicProjection G R 1, ∀ I, zgb I = P.val I) :
+    (hri : ∃ z₁ z₂, IsBasicOn G J N 1 w z₁ ∧ IsBasicOn G J N 1 w z₂ ∧ ∀ I ∈ T, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → Xi.val I y = z₁ I y - z₂ I y)
+    (hrk : ∃ z₁ z₂, IsBasicOn G J N 1 w z₁ ∧ IsBasicOn G J N 1 w z₂ ∧ ∀ I ∈ T, ∀ᵐ y ∂volume,
+      y ∈ dyadicGridCell G I.1 I.2 → Xk.val I y = z₁ I y - z₂ I y)
+    (hrga : IsBasicOn G J N 1 w zga) (hrgb : IsBasicOn G J N 1 w zgb) :
     let Sa := predAccSetup κ Xi Xk a i k b Bp D pkga hε0 hε1 K₀ Ma (f a) w q ka c₂ Ba
     let Sb := predAccSetup κ Xi Xk b i k a Bp D pkgb hε0 hε1 K₀ Mb (f b) w q kb c₂ Bb
     let Ea := 2 * Real.exp (-Bp) * (2 * (compressionOneConst ((Sa.system Ka).rooted R) + K₀) + 1)
@@ -3092,7 +3183,7 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
         (K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) ∧
       ∑ I ∈ T, dyadicGridLength G I.1 * ‖A.Hf I (A.z 3 I)‖ ≤
         η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) ∧
-      A.HasColumnRep 1 := by
+      A.HasColumnRep 1 ∧ A.SubRootProps η₀ ((K₀ : ℝ) ^ 2) := by
   intro Sa Sb Ea Eb S₀ Sp
   classical
   set Pa := Sa.system Ka with hPa_def
@@ -3297,21 +3388,144 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
     intro l I h1 h2
     change (if l = a then _ else if l = b then _ else 0) = 0
     simp only [h1, h2, ↓reduceIte]
-  -- the basic sides
-  have hside_a : ∑ I ∈ T, dyadicGridLength G I.1 * (eLpNorm (A.U a I) 2 (A.μ I)).toReal ^ 2 ≤
-      (K₀ : ℝ) ^ 2 * dyadicGridLength G R.1 := by
-    refine le_trans (le_of_eq (Finset.sum_congr rfl fun I hI => ?_))
-      (hSa.basicSide hR hRH T fun I hI => ⟨(hT I hI).1, (hT I hI).2.1, (hT I hI).2.2.2.1⟩)
-    rw [hUa_eq, hUaT I hI]
-    exact Sa.U_sq_eq Ka I
-  have hside_b : ∑ I ∈ T, dyadicGridLength G I.1 * (eLpNorm (A.U b I) 2 (A.μ I)).toReal ^ 2 ≤
-      (K₀ : ℝ) ^ 2 * dyadicGridLength G R.1 := by
-    refine le_trans (le_of_eq (Finset.sum_congr rfl fun I hI => ?_))
-      (hSb.basicSide hR hRH T fun I hI => ⟨(hT I hI).1, (hT I hI).2.2.1, (hT I hI).2.2.2.1⟩)
-    rw [hUb_eq, hUbT I hI]
-    exact Sb.U_sq_eq Kb I
+  have hRJ : dyadicGridCell G R.1 R.2 ⊆ dyadicGridCell G J.1 J.2 :=
+    ((dyadicFiniteTree_mem_iff G J R N).mp hR).1
+  -- the per-cell two-`U` bound
+  have hcell : ∀ I ∈ T, dyadicGridLength G I.1 * ‖A.Hf I (A.z 3 I)‖ ≤
+      η₀ / 2 * (dyadicGridLength G I.1 * (eLpNorm (A.U a I) 2 (A.μ I)).toReal ^ 2 +
+        dyadicGridLength G I.1 * (eLpNorm (A.U b I) 2 (A.μ I)).toReal ^ 2) := by
+    intro I hI
+    have hr := dyadicGridLength_pos G I.1
+    rw [hz3 I hI]
+    have h := hlowpair I hI (A.U a I) (A.U b I) (A.U_meas a I) (A.U_meas b I)
+      (A.U_L2 a I).eLpNorm_ne_top (A.U_L2 b I).eLpNorm_ne_top
+    set x := (eLpNorm (A.U a I) 2 (A.μ I)).toReal
+    set y := (eLpNorm (A.U b I) 2 (A.μ I)).toReal
+    have hxy : x * y ≤ (x ^ 2 + y ^ 2) / 2 := by nlinarith [sq_nonneg (x - y)]
+    calc dyadicGridLength G I.1 * ‖A.Hf I (slots4 a i k (A.U a I) (Xi.val I) (Xk.val I)
+          (A.U b I))‖ ≤ dyadicGridLength G I.1 * (x * y * η₀) :=
+          mul_le_mul_of_nonneg_left h hr.le
+      _ ≤ dyadicGridLength G I.1 * ((x ^ 2 + y ^ 2) / 2 * η₀) := by gcongr
+      _ = _ := by ring
+  -- the sub-root properties
+  have hsubroot : A.SubRootProps η₀ ((K₀ : ℝ) ^ 2) := by
+    intro R' hR'
+    change dyadicGridCell G R'.1 R'.2 ⊆ dyadicGridCell G R.1 R.2 at hR'
+    have hR'pos := dyadicGridLength_pos G R'.1
+    change (∀ l, ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2,
+        dyadicGridLength G I.1 * (eLpNorm (A.U l I) 2 (A.μ I)).toReal ^ 2 ≤
+          (K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1) ∧
+      ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2,
+        dyadicGridLength G I.1 * ‖A.Hf I (A.z 3 I)‖ ≤
+          η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1) ∧ A.ColumnRepBelow R' 1
+    by_cases hne : ∃ I ∈ T, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2
+    swap
+    · -- no cell below `R'`
+      simp only [not_exists, not_and] at hne
+      have hempty : T.filter (fun I => dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2) =
+          ∅ := Finset.filter_eq_empty_iff.mpr fun I hI => hne I hI
+      rw [hempty]
+      simp only [Finset.sum_empty]
+      refine ⟨fun l => by positivity, by positivity, fun l => ?_⟩
+      obtain ⟨P⟩ := hrga.zeroProjection zero_le_one (hR'.trans hRJ)
+      exact ⟨P, P, fun I hI hIR => absurd hIR (hne I hI)⟩
+    obtain ⟨I₀, hI₀, hI₀R'⟩ := hne
+    have hR'tree : R' ∈ dyadicFiniteTree G J N := (dyadicFiniteTree_mem_iff G J R' N).mpr
+      ⟨hR'.trans hRJ, (dyadicGridCell_depth_le_of_subset G I₀ R' hI₀R').trans
+        ((dyadicFiniteTree_mem_iff G J I₀ N).mp (hTtree I₀ hI₀)).2⟩
+    have hR'H : kernelHull G J N w R' := (hTH I₀ hI₀).mono hI₀R'
+    have hmem : ∀ I ∈ T.filter (fun I => dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2),
+        I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 := fun I hI =>
+      Finset.mem_filter.mp hI
+    have hside_a : ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2,
+        dyadicGridLength G I.1 * (eLpNorm (A.U a I) 2 (A.μ I)).toReal ^ 2 ≤
+          (K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1 := by
+      refine le_trans (le_of_eq (Finset.sum_congr rfl fun I hI => ?_))
+        (hSa.basicSide hR'tree hR'H _ fun I hI =>
+          ⟨(hT I (hmem I hI).1).1, (hT I (hmem I hI).1).2.1, (hmem I hI).2⟩)
+      rw [hUa_eq, hUaT I (hmem I hI).1]
+      exact Sa.U_sq_eq Ka I
+    have hside_b : ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2,
+        dyadicGridLength G I.1 * (eLpNorm (A.U b I) 2 (A.μ I)).toReal ^ 2 ≤
+          (K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1 := by
+      refine le_trans (le_of_eq (Finset.sum_congr rfl fun I hI => ?_))
+        (hSb.basicSide hR'tree hR'H _ fun I hI =>
+          ⟨(hT I (hmem I hI).1).1, (hT I (hmem I hI).1).2.2.1, (hmem I hI).2⟩)
+      rw [hUb_eq, hUbT I (hmem I hI).1]
+      exact Sb.U_sq_eq Kb I
+    refine ⟨fun l => ?_, ?_, ?_⟩
+    · -- the basic sides
+      by_cases hla : l = a
+      · rw [hla]; exact hside_a
+      by_cases hlb : l = b
+      · rw [hlb]; exact hside_b
+      refine le_trans (le_of_eq ?_) (mul_nonneg (by positivity) hR'pos.le)
+      refine Finset.sum_eq_zero fun I _ => ?_
+      rw [hU0 l I hla hlb]
+      simp
+    · -- the two-`U` term
+      calc ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2,
+            dyadicGridLength G I.1 * ‖A.Hf I (A.z 3 I)‖
+          ≤ ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2,
+            η₀ / 2 * (dyadicGridLength G I.1 * (eLpNorm (A.U a I) 2 (A.μ I)).toReal ^ 2 +
+              dyadicGridLength G I.1 * (eLpNorm (A.U b I) 2 (A.μ I)).toReal ^ 2) :=
+            Finset.sum_le_sum fun I hI => hcell I (hmem I hI).1
+        _ = η₀ / 2 * (∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2,
+              dyadicGridLength G I.1 * (eLpNorm (A.U a I) 2 (A.μ I)).toReal ^ 2 +
+            ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2,
+              dyadicGridLength G I.1 * (eLpNorm (A.U b I) 2 (A.μ I)).toReal ^ 2) := by
+            rw [← Finset.mul_sum, Finset.sum_add_distrib]
+        _ ≤ η₀ / 2 * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1 +
+            (K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1) := by gcongr
+        _ = _ := by ring
+    · -- the column representation below `R'`
+      have hEa : ∫ y in dyadicGridCell G R'.1 R'.2, ‖(Sa.Z : ℝ → ColumnHilbert Sa.W) y‖ ^ 2 ≤
+          1 * dyadicGridLength G R'.1 := by
+        rw [one_mul]
+        exact hSa.energy_cell_le hR'tree hR'H
+      have hEb : ∫ y in dyadicGridCell G R'.1 R'.2, ‖(Sb.Z : ℝ → ColumnHilbert Sb.W) y‖ ^ 2 ≤
+          1 * dyadicGridLength G R'.1 := by
+        rw [one_mul]
+        exact hSb.energy_cell_le hR'tree hR'H
+      obtain ⟨Pga, hPga⟩ := hrga.basicProjection hR'tree hR'H
+      obtain ⟨Pgb, hPgb⟩ := hrgb.basicProjection hR'tree hR'H
+      have hpair : ∀ {X : ℤ × ℤ → ℝ → ℂ}, (∃ z₁ z₂, IsBasicOn G J N 1 w z₁ ∧
+          IsBasicOn G J N 1 w z₂ ∧ ∀ I ∈ T, ∀ᵐ y ∂volume,
+            y ∈ dyadicGridCell G I.1 I.2 → X I y = z₁ I y - z₂ I y) →
+          ∃ P₁ P₂ : BasicProjection G R' 1, ∀ I ∈ T,
+            dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
+              y ∈ dyadicGridCell G I.1 I.2 → X I y = P₁.val I y - P₂.val I y := by
+        intro X hX
+        obtain ⟨z₁, z₂, h₁, h₂, h₃⟩ := hX
+        obtain ⟨P₁, hP₁⟩ := h₁.basicProjection hR'tree hR'H
+        obtain ⟨P₂, hP₂⟩ := h₂.basicProjection hR'tree hR'H
+        refine ⟨P₁, P₂, fun I hI _ => ?_⟩
+        filter_upwards [h₃ I hI] with y hy hyI
+        rw [hy hyI, hP₁ I, hP₂ I]
+      apply baseActiveSetup_columnRepBelow (hri := hpair hri) (hrk := hpair hrk)
+        (hra := ⟨Pa.basicProjection hR'tree Sa.Z hEa, Pga, fun I hI hIR => ?_⟩)
+        (hrb := ⟨Pb.basicProjection hR'tree Sb.Z hEb, Pgb, fun I hI hIR => ?_⟩)
+      · filter_upwards [Pa.basicProjection_val_ae hR'tree (hTtree I hI) hIR Sa.Z hEa,
+          (hT I hI).2.2.2.2.1] with y h1 h2 hyI
+        rw [← hPga I, h2 hyI]
+        exact congrArg (· - Xga.val I y) (h1 hyI).symm
+      · filter_upwards [Pb.basicProjection_val_ae hR'tree (hTtree I hI) hIR Sb.Z hEb,
+          (hT I hI).2.2.2.2.2] with y h1 h2 hyI
+        rw [← hPgb I, h2 hyI]
+        exact congrArg (· - Xgb.val I y) (h1 hyI).symm
   have hRpos := dyadicGridLength_pos G R.1
-  refine ⟨A, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  have hfilt : T.filter (fun I => dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2) = T :=
+    Finset.filter_true_of_mem hsub
+  obtain ⟨hsideR, htwoR, hcolR⟩ := hsubroot R subset_rfl
+  change (∀ l, ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2,
+      dyadicGridLength G I.1 * (eLpNorm (A.U l I) 2 (A.μ I)).toReal ^ 2 ≤
+        (K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) at hsideR
+  change ∑ I ∈ T with dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2,
+      dyadicGridLength G I.1 * ‖A.Hf I (A.z 3 I)‖ ≤
+        η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) at htwoR
+  rw [hfilt] at hsideR htwoR
+  refine ⟨A, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_, ?_, hsideR, htwoR,
+    A.hasColumnRep_of_below hcolR, hsubroot⟩
   · -- the label count
     change Fintype.card (Xi.Λ ⊕ Xk.Λ ⊕ (Sa.W ⊕ Xga.Λ) ⊕ (Sb.W ⊕ Xgb.Λ)) = _
     simp only [Fintype.card_sum]
@@ -3354,65 +3568,6 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
     · rw [slots4_i hai]; exact ENNReal.toReal_le_of_le_ofReal (by norm_num) (hLi I hI)
     · rw [slots4_k hak hik]; exact ENNReal.toReal_le_of_le_ofReal (by norm_num) (hLk I hI)
     · rw [slots4_b hab hib hkb]; exact ENNReal.toReal_le_of_le_ofReal (by norm_num) (hYbS I hI)
-  · -- the basic sides
-    intro l
-    by_cases hla : l = a
-    · rw [hla]; exact hside_a
-    by_cases hlb : l = b
-    · rw [hlb]; exact hside_b
-    refine le_trans (le_of_eq ?_) (mul_nonneg (by positivity) hRpos.le)
-    refine Finset.sum_eq_zero fun I _ => ?_
-    rw [hU0 l I hla hlb]
-    simp
-  · -- the two-`U` term
-    have hcell : ∀ I ∈ T, dyadicGridLength G I.1 * ‖A.Hf I (A.z 3 I)‖ ≤
-        η₀ / 2 * (dyadicGridLength G I.1 * (eLpNorm (A.U a I) 2 (A.μ I)).toReal ^ 2 +
-          dyadicGridLength G I.1 * (eLpNorm (A.U b I) 2 (A.μ I)).toReal ^ 2) := by
-      intro I hI
-      have hr := dyadicGridLength_pos G I.1
-      rw [hz3 I hI]
-      have h := hlowpair I hI (A.U a I) (A.U b I) (A.U_meas a I) (A.U_meas b I)
-        (A.U_L2 a I).eLpNorm_ne_top (A.U_L2 b I).eLpNorm_ne_top
-      set x := (eLpNorm (A.U a I) 2 (A.μ I)).toReal
-      set y := (eLpNorm (A.U b I) 2 (A.μ I)).toReal
-      have hxy : x * y ≤ (x ^ 2 + y ^ 2) / 2 := by nlinarith [sq_nonneg (x - y)]
-      calc dyadicGridLength G I.1 * ‖A.Hf I (slots4 a i k (A.U a I) (Xi.val I) (Xk.val I)
-            (A.U b I))‖ ≤ dyadicGridLength G I.1 * (x * y * η₀) :=
-            mul_le_mul_of_nonneg_left h hr.le
-        _ ≤ dyadicGridLength G I.1 * ((x ^ 2 + y ^ 2) / 2 * η₀) := by gcongr
-        _ = _ := by ring
-    calc ∑ I ∈ T, dyadicGridLength G I.1 * ‖A.Hf I (A.z 3 I)‖
-        ≤ ∑ I ∈ T, η₀ / 2 * (dyadicGridLength G I.1 * (eLpNorm (A.U a I) 2 (A.μ I)).toReal ^ 2 +
-          dyadicGridLength G I.1 * (eLpNorm (A.U b I) 2 (A.μ I)).toReal ^ 2) :=
-          Finset.sum_le_sum hcell
-      _ = η₀ / 2 * (∑ I ∈ T, dyadicGridLength G I.1 * (eLpNorm (A.U a I) 2 (A.μ I)).toReal ^ 2 +
-          ∑ I ∈ T, dyadicGridLength G I.1 * (eLpNorm (A.U b I) 2 (A.μ I)).toReal ^ 2) := by
-          rw [← Finset.mul_sum, Finset.sum_add_distrib]
-      _ ≤ η₀ / 2 * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R.1 +
-          (K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) := by gcongr
-      _ = _ := by ring
-  · -- the column representation
-    have hEa : ∫ y in dyadicGridCell G R.1 R.2, ‖(Sa.Z : ℝ → ColumnHilbert Sa.W) y‖ ^ 2 ≤
-        1 * dyadicGridLength G R.1 := by
-      rw [one_mul]
-      exact hSa.energy_cell_le hR hRH
-    have hEb : ∫ y in dyadicGridCell G R.1 R.2, ‖(Sb.Z : ℝ → ColumnHilbert Sb.W) y‖ ^ 2 ≤
-        1 * dyadicGridLength G R.1 := by
-      rw [one_mul]
-      exact hSb.energy_cell_le hR hRH
-    obtain ⟨Pga, hPga⟩ := hrga
-    obtain ⟨Pgb, hPgb⟩ := hrgb
-    apply baseActiveSetup_hasColumnRep (hri := hri) (hrk := hrk)
-      (hra := ⟨Pa.basicProjection hR Sa.Z hEa, Pga, fun I hI => ?_⟩)
-      (hrb := ⟨Pb.basicProjection hR Sb.Z hEb, Pgb, fun I hI => ?_⟩)
-    · filter_upwards [Pa.basicProjection_val_ae hR (hTtree I hI) (hT I hI).2.2.2.1 Sa.Z hEa,
-        (hT I hI).2.2.2.2.1] with y h1 h2 hyI
-      rw [← hPga I, h2 hyI]
-      exact congrArg (· - Xga.val I y) (h1 hyI).symm
-    · filter_upwards [Pb.basicProjection_val_ae hR (hTtree I hI) (hT I hI).2.2.2.1 Sb.Z hEb,
-        (hT I hI).2.2.2.2.2] with y h1 h2 hyI
-      rw [← hPgb I, h2 hyI]
-      exact congrArg (· - Xgb.val I y) (h1 hyI).symm
 
 end BaseRoot
 
@@ -3589,45 +3744,6 @@ theorem sqrt_mul_sqrt_le_of_le {x y r : ℝ} (hx : x ≤ r) (hy : y ≤ r) (hr :
           (Real.sqrt_nonneg _)
     _ = r := Real.mul_self_sqrt hr
 
-/-- A family of cell functions that is a basic projection below every tree cell: the physical part
-of the current projections of one column depth family whose root contains `J`, applied to an
-augmented input of energy at most `CF |R|` on every tree cell `R`. -/
-def IsBasicOn (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (CF : ℝ) (w : ℤ × ℤ → ℝ × ℝ → ℂ)
-    (z : ℤ × ℤ → ℝ → ℂ) : Prop :=
-  ∃ (V : Type) (_ : Fintype V) (Ψ : ColumnDepthFamily V) (Z : ColumnL2 V), Ψ.D.grid = G ∧
-    dyadicGridCell G J.1 J.2 ⊆ dyadicGridCell G Ψ.D.root.1 Ψ.D.root.2 ∧
-    (∀ R ∈ dyadicFiniteTree G J N, kernelHull G J N w R → ∫ y in dyadicGridCell G R.1 R.2,
-      ‖(Z : ℝ → ColumnHilbert V) y‖ ^ 2 ≤ CF * dyadicGridLength G R.1) ∧
-    ∀ I, z I = Ψ.currentZ Z I
-
-/-- The kernel hull of a subtree is the kernel hull of the tree restricted to the subtree. -/
-theorem kernelHull_below_iff {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ}
-    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {R : ℤ × ℤ} (hR : R ∈ dyadicFiniteTree G J N) {c : ℤ × ℤ}
-    (hc : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G R.1 R.2) :
-    kernelHull G R (dyadicRemainingDepth J N R) w c ↔ kernelHull G J N w c := by
-  constructor
-  · rintro ⟨c', hc', hsub, hw⟩
-    exact ⟨c', ((dyadicFiniteTree_below_iff G J N hR c').mp hc').1, hsub, hw⟩
-  · rintro ⟨c', hc', hsub, hw⟩
-    exact ⟨c', (dyadicFiniteTree_below_iff G J N hR c').mpr ⟨hc', hsub.trans hc⟩, hsub, hw⟩
-
-theorem IsBasicOn.restrict {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ}
-    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF w z) {R : ℤ × ℤ}
-    (hR : R ∈ dyadicFiniteTree G J N) : IsBasicOn G R (dyadicRemainingDepth J N R) CF w z := by
-  obtain ⟨V, _, Ψ, Z, hG, hJ, hE, hz⟩ := h
-  refine ⟨V, inferInstance, Ψ, Z, hG, (((dyadicFiniteTree_mem_iff G J R N).mp hR).1).trans hJ,
-    fun R' hR' hR'H => ?_, hz⟩
-  have hb := (dyadicFiniteTree_below_iff G J N hR R').mp hR'
-  exact hE R' hb.1 ((kernelHull_below_iff hR hb.2).mp hR'H)
-
-theorem IsBasicOn.basicProjection {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ}
-    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF w z) {R : ℤ × ℤ}
-    (hR : R ∈ dyadicFiniteTree G J N) (hRH : kernelHull G J N w R) :
-    ∃ P : BasicProjection G R CF, ∀ I, z I = P.val I := by
-  obtain ⟨V, _, Ψ, Z, hG, hJ, hE, hz⟩ := h
-  exact ⟨⟨V, Ψ, Z, hG, (((dyadicFiniteTree_mem_iff G J R N).mp hR).1).trans hJ,
-    hE R hR hRH⟩, hz⟩
-
 section BaseSegments
 
 theorem arith_two_terms {c Ea Eb X Y s1 s2 s3 s4 r : ℝ} (hc : 0 ≤ c) (hEa : 0 ≤ Ea)
@@ -3727,7 +3843,10 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
       ∑ p : P, dyadicGridLength G (A p).R.1 ≤ 8 / 3 * dyadicGridLength G J.1 ∧
       (∀ I ∈ Tc, ∃ p : P, I ∈ (A p).cells) ∧
       (∀ p p' : P, ∀ I, I ∈ (A p).cells → I ∈ (A p').cells → p = p') ∧
-      ∀ p : P, (A p).cells ⊆ Tc ∧ (A p).G = G ∧ (A p).w = w ∧ (A p).a = a ∧ (A p).b = b ∧
+      ∀ p : P, (A p).cells ⊆ Tc ∧
+        (∀ I ∈ (A p).cells, ∀ J' ∈ Tc, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J'.1 J'.2 →
+          dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G (A p).R.1 (A p).R.2 → J' ∈ (A p).cells) ∧
+        (A p).G = G ∧ (A p).w = w ∧ (A p).a = a ∧ (A p).b = b ∧
         (A p).R ∈ dyadicFiniteTree G J N ∧
         (A p).H = H' ∧ (A p).Dc = Real.sqrt ε⁻¹ ∧ (A p).S = 2 ∧ (A p).η = 4 * η₀ ∧
         Fintype.card (A p).L = Fintype.card Xi.Λ + Fintype.card Xk.Λ +
@@ -3745,7 +3864,7 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
             (K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
         ∑ I ∈ (A p).cells, dyadicGridLength G I.1 * ‖(A p).Hf I ((A p).z 3 I)‖ ≤
           η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
-        (A p).HasColumnRep 1 := by
+        (A p).HasColumnRep 1 ∧ (A p).SubRootProps η₀ ((K₀ : ℝ) ^ 2) := by
   intro Sa Sb Ea Eb E S₀ Sp
   classical
   have hthA := hSa.treeHyp
@@ -3807,19 +3926,11 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     (fun I hI => hsb I (hTmem p I hI).1) hc₀ hc₁ hc₂ hHH hDH hBa hBb hdef₀
     (by
       obtain ⟨z₁, z₂, h₁, h₂, h₃⟩ := hri
-      obtain ⟨P₁, hP₁⟩ := h₁.basicProjection (hRtree p) (hRH p)
-      obtain ⟨P₂, hP₂⟩ := h₂.basicProjection (hRtree p) (hRH p)
-      refine ⟨P₁, P₂, fun I hI => ?_⟩
-      filter_upwards [h₃ I (hTmem p I hI).1] with y hy hyI
-      rw [hy hyI, hP₁ I, hP₂ I])
+      exact ⟨z₁, z₂, h₁, h₂, fun I hI => h₃ I (hTmem p I hI).1⟩)
     (by
       obtain ⟨z₁, z₂, h₁, h₂, h₃⟩ := hrk
-      obtain ⟨P₁, hP₁⟩ := h₁.basicProjection (hRtree p) (hRH p)
-      obtain ⟨P₂, hP₂⟩ := h₂.basicProjection (hRtree p) (hRH p)
-      refine ⟨P₁, P₂, fun I hI => ?_⟩
-      filter_upwards [h₃ I (hTmem p I hI).1] with y hy hyI
-      rw [hy hyI, hP₁ I, hP₂ I])
-    (hrga.basicProjection (hRtree p) (hRH p)) (hrgb.basicProjection (hRtree p) (hRH p))
+      exact ⟨z₁, z₂, h₁, h₂, fun I hI => h₃ I (hTmem p I hI).1⟩)
+    hrga hrgb
   dsimp only at hex
   choose A hA using hex
   refine ⟨P, A, ?_, ?_, ?_, fun p => ?_⟩
@@ -3846,11 +3957,28 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     rw [(hA p').2.2.1] at hp'
     exact Subtype.ext ((Finset.mem_filter.mp hp).2.symm.trans (Finset.mem_filter.mp hp').2)
   · obtain ⟨hG, hR, hcells, hw', ha, hb, hH, hDc, hS, hη, hcard, hrep, hpair, hsize, hside,
-      htwo, hcol⟩ := hA p
+      htwo, hcol, hsr⟩ := hA p
     rw [← hR] at hside htwo hrep
+    have hclos : ∀ I ∈ T p, ∀ J' ∈ Tc, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J'.1 J'.2 →
+        dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G (A p).R.1 (A p).R.2 → J' ∈ T p := by
+      intro I hI J' hJ' hIJ hJR
+      obtain ⟨hI1, hIa, hIb⟩ := hTmem p I hI
+      rw [hR] at hJR
+      have hsa := (hspecA I hI1).2.1
+      have hsb := (hspecB I hI1).2.1
+      obtain ⟨hda, hdb⟩ := deeperRoot_subset G hsa hsb
+      rw [hIa, hIb] at hda hdb
+      have e1 : Sa.tree.seg J' = Sa.tree.seg I := hthA.seg_between (hTc I hI1).1 (hTc J' hJ').1
+        hIJ (by rw [hIa]; exact hJR.trans hda)
+      have e2 : Sb.tree.seg J' = Sb.tree.seg I := hthB.seg_between (hTc I hI1).1 (hTc J' hJ').1
+        hIJ (by rw [hIb]; exact hJR.trans hdb)
+      refine Finset.mem_filter.mpr ⟨hJ', ?_⟩
+      rw [e1, e2, hIa, hIb]
     rw [hcells]
-    refine ⟨Finset.filter_subset _ _, hG, hw', ha, hb, by rw [hR]; exact hRtree p, hH, hDc, hS,
-      hη, hcard, ?_, hpair, hsize, hside, htwo, hcol⟩
+    refine ⟨Finset.filter_subset _ _, fun I hI J' hJ' hIJ hJR => by
+      rw [← hcells] at hI ⊢; exact hcells ▸ hclos I (hcells ▸ hI) J' hJ' hIJ hJR, hG, hw', ha,
+      hb, by rw [hR]; exact hRtree p, hH, hDc, hS, hη, hcard, ?_, hpair, hsize, hside, htwo, hcol,
+      hsr⟩
     refine hrep.trans ?_
     have hRR := hRtree p
     have hRRH := hRH p
@@ -3991,6 +4119,32 @@ theorem firstRoot_mem (h : SegData G J N seg L) {I : ℤ × ℤ} (hI : I ∈ dya
   obtain ⟨⟨ℓ, hℓ, he⟩, -⟩ := firstRoot_spec seg L hL I
   rw [he]
   exact ⟨(h ℓ hℓ I hI).2.1, (h ℓ hℓ I hI).1⟩
+
+/-- A cell between a tree cell and its first-level root has the same first-level root. -/
+theorem firstRoot_between (h : SegData G J N seg L) {I I' : ℤ × ℤ}
+    (hI : I ∈ dyadicFiniteTree G J N) (hI' : I' ∈ dyadicFiniteTree G J N)
+    (hII' : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G I'.1 I'.2)
+    (hI'R : dyadicGridCell G I'.1 I'.2 ⊆
+      dyadicGridCell G (firstRoot seg L hL I).1 (firstRoot seg L hL I).2) :
+    firstRoot seg L hL I' = firstRoot seg L hL I := by
+  have hx := dyadicGridCell_left_mem G I.1 I.2
+  obtain ⟨hRT, hIR⟩ := firstRoot_mem (hL := hL) h hI
+  have hsame : ∀ ℓ ∈ L, seg ℓ I' = seg ℓ I := fun ℓ hℓ => by
+    have hRs : dyadicGridCell G (firstRoot seg L hL I).1 (firstRoot seg L hL I).2 ⊆
+        dyadicGridCell G (seg ℓ I).1 (seg ℓ I).2 :=
+      dyadicGridCell_subset_of_common_point G (hIR hx) ((h ℓ hℓ I hI).1 hx)
+        ((firstRoot_spec seg L hL I).2 ℓ hℓ)
+    exact (h ℓ hℓ I hI).2.2 I' hI' hII' (hI'R.trans hRs)
+  obtain ⟨⟨ℓ₁, hℓ₁, e₁⟩, hmax₁⟩ := firstRoot_spec seg L hL I'
+  obtain ⟨⟨ℓ₂, hℓ₂, e₂⟩, hmax₂⟩ := firstRoot_spec seg L hL I
+  rw [hsame ℓ₁ hℓ₁] at e₁
+  have d1 := hmax₁ ℓ₂ hℓ₂
+  rw [hsame ℓ₂ hℓ₂, e₁] at d1
+  have d2 := hmax₂ ℓ₁ hℓ₁
+  rw [e₂] at d2
+  rw [e₁, e₂]
+  exact dyadicGridCell_eq_of_common_point G ((h ℓ₁ hℓ₁ I hI).1 hx) ((h ℓ₂ hℓ₂ I hI).1 hx)
+    (by omega)
 
 /-- The segments of a cell are those of its first-level root. -/
 theorem seg_firstRoot (h : SegData G J N seg L) {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree G J N)
@@ -4262,7 +4416,10 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
       ∑ p : P, dyadicGridLength G (A p).R.1 ≤ 8 / 3 * dyadicGridLength G R.1 ∧
       (∀ I ∈ Tc, ∃ p : P, I ∈ (A p).cells) ∧
       (∀ p p' : P, ∀ I, I ∈ (A p).cells → I ∈ (A p').cells → p = p') ∧
-      ∀ p : P, (A p).cells ⊆ Tc ∧ (A p).G = G ∧ (A p).w = w ∧ (A p).a = a ∧ (A p).b = b ∧
+      ∀ p : P, (A p).cells ⊆ Tc ∧
+        (∀ I ∈ (A p).cells, ∀ J' ∈ Tc, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J'.1 J'.2 →
+          dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G (A p).R.1 (A p).R.2 → J' ∈ (A p).cells) ∧
+        (A p).G = G ∧ (A p).w = w ∧ (A p).a = a ∧ (A p).b = b ∧
         (A p).R ∈ dyadicFiniteTree G J N ∧
         dyadicGridCell G (A p).R.1 (A p).R.2 ⊆ dyadicGridCell G R.1 R.2 ∧
         (A p).H = max D (max (fitBudget Cqa Ca ka) (fitBudget Cqa Ca kb)) ∧
@@ -4285,7 +4442,7 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
             (K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
         ∑ I ∈ (A p).cells, dyadicGridLength G I.1 * ‖(A p).Hf I ((A p).z 3 I)‖ ≤
           η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
-        (A p).HasColumnRep 1 := by
+        (A p).HasColumnRep 1 ∧ (A p).SubRootProps η₀ ((K₀ : ℝ) ^ 2) := by
   obtain ⟨c₁, C₁, hc₁, hpkg⟩ := predictorPackage_nonempty c₀ hc₀ κ
   obtain ⟨c₂, Ca, hc₂, -, hacc⟩ := AccSetup.accurateFit κ
   refine ⟨c₁, C₁, c₂, Ca, hc₁, hc₂, fun q hq => ?_⟩
@@ -4383,10 +4540,11 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
     rw [mul_assoc]
     rfl
   refine ⟨P, A, hpack, hcover, hdisj, fun p => ?_⟩
-  obtain ⟨hcells, hG, hw', ha, hb, hRp, hH', hDc, hS, hη, hcard, hrep, hpair, hsize, hside,
-    htwo, hcol⟩ := hA p
-  refine ⟨hcells, hG, hw', ha, hb, ((hbelow _).mp hRp).1, ((hbelow _).mp hRp).2, hH', hDc, hS,
-    hη, ?_, ?_, ?_, hsize, hside, htwo, hcol⟩
+  obtain ⟨hcells, hclos, hG, hw', ha, hb, hRp, hH', hDc, hS, hη, hcard, hrep, hpair, hsize,
+    hside, htwo, hcol, hsr⟩ := hA p
+  refine ⟨hcells, hclos, hG, hw', ha, hb, ((hbelow _).mp hRp).1, ((hbelow _).mp hRp).2, hH',
+    hDc, hS,
+    hη, ?_, ?_, ?_, hsize, hside, htwo, hcol, hsr⟩
   · rw [hcard, hWa, hWb]; rfl
   · refine hrep.trans (mul_le_mul_of_nonneg_right ?_ (dyadicGridLength_pos G _).le)
     have hcomp : ∀ (V : Type) [Fintype V] (D' : ColumnTreeData V),
@@ -4745,6 +4903,8 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
       ∑ p, dyadicGridLength G (A p).R.1 ≤ 64 / 3 * dyadicGridLength G J.1 ∧
       (∀ p p' : ι, ∀ I, I ∈ (A p).cells → I ∈ (A p').cells → p = p') ∧
       (∀ p, (A p).cells ⊆ dyadicFiniteTree G J N ∧ (∀ I ∈ (A p).cells, kernelHull G J N w I) ∧
+        (∀ I ∈ (A p).cells, ∀ J' : ℤ × ℤ, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J'.1 J'.2 →
+          dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G (A p).R.1 (A p).R.2 → J' ∈ (A p).cells) ∧
         (A p).G = G ∧ (A p).w = w ∧
         (A p).R ∈ dyadicFiniteTree G J N ∧
         (A p).H = max D (max (fitBudget Cqa Ca ka) (fitBudget Cqa Ca kb)) ∧
@@ -4760,7 +4920,7 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
             (K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
         ∑ I ∈ (A p).cells, dyadicGridLength G I.1 * ‖(A p).Hf I ((A p).z 3 I)‖ ≤
           η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G (A p).R.1) ∧
-        (A p).HasColumnRep 1) ∧
+        (A p).HasColumnRep 1 ∧ (A p).SubRootProps η₀ ((K₀ : ℝ) ^ 2)) ∧
       ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
           ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖ ≤
         ∑ p, ∑ I ∈ (A p).cells, dyadicGridLength G I.1 * ‖(A p).Hf I ((A p).Y I)‖ +
@@ -5188,12 +5348,30 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
     rfl
   · -- the bounds of each setup
     rintro ⟨⟨R, hR⟩, p⟩
-    obtain ⟨hcells, hG, hw', -, -, hRp, -, hH', hDc, hS, hη, hcard, -, hpairs, hsize, hside,
-      htwo, hcol⟩ := (hPA R hR).2.2.2 p
+    obtain ⟨hcells, hclos, hG, hw', -, -, hRp, hRsub, hH', hDc, hS, hη, hcard, -, hpairs, hsize,
+      hside, htwo, hcol, hsr⟩ := (hPA R hR).2.2.2 p
     have hRT := hRsT R hR
     obtain ⟨hci, hck, hcga, hcgb, hWa, hWb⟩ := hcards R hRT
-    refine ⟨fun I hI => (hcellsT R hR p I hI).1, fun I hI => (hcellsT R hR p I hI).2.2.2, hG,
-      hw', hRp, hH', hDc, hS, hη, ?_, ?_, hsize, hside, htwo, hcol⟩
+    have hanc : ∀ I ∈ (A R hR p).cells, ∀ J' : ℤ × ℤ,
+        dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J'.1 J'.2 →
+        dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G (A R hR p).R.1 (A R hR p).R.2 →
+        J' ∈ (A R hR p).cells := by
+      intro I hI J' hIJ hJR
+      obtain ⟨hIt, hIK, hRI, hIH⟩ := hcellsT R hR p I hI
+      have hJR' := hJR.trans hRsub
+      have hRJ := (hRtree I hIt).1
+      have hdIJ := dyadicGridCell_depth_le_of_subset G I J' hIJ
+      have hJt : J' ∈ dyadicFiniteTree G J N := (dyadicFiniteTree_mem_iff G J J' N).mpr
+        ⟨hJR'.trans (((dyadicFiniteTree_mem_iff G J R N).mp (hRsT R hR)).1),
+          by have := ((dyadicFiniteTree_mem_iff G J I N).mp hIt).2; omega⟩
+      have hRf : Rf J' = R := by
+        rw [← hRI]
+        exact firstRoot_between (hL := hLne) hsegd hIt hJt hIJ
+          (by rw [show firstRoot seg Lset hLne I = R from hRI]; exact hJR')
+      refine hclos I hI J' (Finset.mem_filter.mpr ⟨Finset.mem_filter.mpr ⟨hJt, by omega,
+        hIH.mono hIJ⟩, hRf⟩) hIJ hJR
+    refine ⟨fun I hI => (hcellsT R hR p I hI).1, fun I hI => (hcellsT R hR p I hI).2.2.2, hanc,
+      hG, hw', hRp, hH', hDc, hS, hη, ?_, ?_, hsize, hside, htwo, hcol, hsr⟩
     · have hcard' : Fintype.card (A R hR p).L = Fintype.card (Xi R hRT).Λ +
           Fintype.card (Xk R hRT).Λ +
           ((Fintype.card (Xi R hRT).Λ * Fintype.card (Xk R hRT).Λ * ⌊D⌋₊ + Ma) +
@@ -5309,7 +5487,7 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
         exact Finset.disjoint_left.mpr fun I h1 h2 => hpp (hdisj p p' I h1 h2)
       rw [hunion, Finset.sum_biUnion hpd, Finset.mul_sum, ← Finset.sum_add_distrib]
       refine Finset.sum_le_sum fun p _ => ?_
-      obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, hrep, -⟩ := hAp p
+      obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, hrep, -⟩ := hAp p
       have hRT := hRsT R hR
       obtain ⟨hci, hck, hcga, hcgb, hWa, hWb⟩ := hcards R hRT
       have hrep' := hrep.trans (mul_le_mul_of_nonneg_right
@@ -5995,7 +6173,7 @@ difference of two current basic projections whose inputs have energy at most `|R
 `eq:active-min` with path multiplicity is `ActiveSetup.reduction` and `ActiveSetup.active_count`
 applied to each setup. -/
 theorem activeCellReduction (κ : LocalKernelClass) :
-    ∃ (c₂ C A : ℕ) (θ₀ : ℝ) (c' Cb : ℕ), 1 ≤ c₂ ∧ 1 ≤ C ∧ 2 ≤ A ∧ 0 < θ₀ ∧ θ₀ ≤ 1 ∧
+    ∃ (c₂ C A : ℕ) (θ₀ : ℝ) (c' Cb : ℕ), 1 ≤ c₂ ∧ 1 ≤ C ∧ 2 ≤ A ∧ 0 < θ₀ ∧ θ₀ ≤ 1 ∧ 1 ≤ c' ∧
     ∀ q : ℝ, 2 < q → ∃ (Cq : ℝ) (K₁ : ℕ), 0 < Cq ∧ ∀ k₁ : ℕ, K₁ ≤ k₁ →
     ∀ (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (w : ℤ × ℤ → ℝ × ℝ → ℂ),
     (∀ I, IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (w I)) →
@@ -6035,6 +6213,10 @@ theorem activeCellReduction (κ : LocalKernelClass) :
           ∑ p, dyadicGridLength G (B p).R.1 ≤ 64 / 3 * dyadicGridLength G J.1 ∧
           (∀ p p' : ι, ∀ I, I ∈ (B p).cells → I ∈ (B p').cells → p = p') ∧
           (∀ p, (B p).cells ⊆ dyadicFiniteTree G J N ∧ (∀ I ∈ (B p).cells, kernelHull G J N w I) ∧
+            (∀ I ∈ (B p).cells, ∀ J' : ℤ × ℤ,
+              dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J'.1 J'.2 →
+              dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G (B p).R.1 (B p).R.2 →
+                J' ∈ (B p).cells) ∧
             (B p).G = G ∧ (B p).w = w ∧
             (B p).R ∈ dyadicFiniteTree G J N ∧
             1 ≤ (B p).H ∧ (B p).H ≤ Real.exp ((stagAcc k₁ A t : ℝ) ^ Cb) ∧
@@ -6050,7 +6232,7 @@ theorem activeCellReduction (κ : LocalKernelClass) :
                 (stagAcc k₁ A t : ℝ) ^ Cb * dyadicGridLength G (B p).R.1) ∧
             ∑ I ∈ (B p).cells, dyadicGridLength G I.1 * ‖(B p).Hf I ((B p).z 3 I)‖ ≤
               η₀ * ((stagAcc k₁ A t : ℝ) ^ Cb * dyadicGridLength G (B p).R.1) ∧
-            (B p).HasColumnRep 1) ∧
+            (B p).HasColumnRep 1 ∧ (B p).SubRootProps η₀ ((stagAcc k₁ A t : ℝ) ^ Cb)) ∧
           ∑ I ∈ dyadicFiniteTree G J N, dyadicGridLength G I.1 *
               ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖ ≤
             ∑ p, ∑ I ∈ (B p).cells, dyadicGridLength G I.1 * ‖(B p).Hf I ((B p).Y I)‖ +
@@ -6060,7 +6242,8 @@ theorem activeCellReduction (κ : LocalKernelClass) :
   obtain ⟨cp, Wp, c₁, C₁, c₂a, Ca, hcp, hWp, hc₁, hc₂a, hbt⟩ := baseTuple κ c₂ hc₂
   obtain ⟨d, s, S, hpar⟩ := baseParams κ C₁ Ca
   refine ⟨c₂, C, A, θ₀, max (max c₁ (max c₂ cp)) c₂a, 2 * ((C + 2) * S) + 2, hc₂, hC, hA, hθ₀,
-    hθ₁, fun q hq => ?_⟩
+    hθ₁, le_trans hc₂ (le_trans (le_max_left _ _) (le_trans (le_max_right _ _) (le_max_left _ _))),
+    fun q hq => ?_⟩
   obtain ⟨Cq, K₁, hCq, hstag'⟩ := hstag q hq
   obtain ⟨Cqa, hCqa, hbt'⟩ := hbt q hq
   obtain ⟨L₀, hL₀⟩ := Filter.eventually_atTop.mp (hpar hCqa)
@@ -6230,11 +6413,12 @@ theorem activeCellReduction (κ : LocalKernelClass) :
   have hK2 : ((⌈L ^ (d + 1)⌉₊ : ℕ) : ℝ) ^ 2 ≤ x ^ (2 * ((C + 2) * S) + 2) :=
     (pow_le_pow_left₀ (Nat.cast_nonneg _) hKb 2).trans hLS2
   refine ⟨ι, hι, B, hpack, hdisj, fun p => ?_, ?_⟩
-  · obtain ⟨hcellsT, hcellsH, hG, hw', hR, hH', hDc, hS, hη, hcard, hpairs, hsize, hside,
+  · obtain ⟨hcellsT, hcellsH, hanc, hG, hw', hR, hH', hDc, hS, hη, hcard, hpairs, hsize, hside,
       htwo, hcol⟩ := hB p
     have hexp : Real.exp (L ^ S) ≤ Real.exp (x ^ (2 * ((C + 2) * S) + 2)) :=
       Real.exp_le_exp.mpr hLS
-    refine ⟨hcellsT, hcellsH, hG, hw', hR, ?_, ?_, ?_, ?_, hS, hη, ?_, hsize, ?_, ?_, hcol⟩
+    refine ⟨hcellsT, hcellsH, hanc, hG, hw', hR, ?_, ?_, ?_, ?_, hS, hη, ?_, hsize, ?_, ?_,
+      hcol.1, hcol.2.mono hη0 hK2⟩
     · rw [hH']; exact le_trans hH1 (le_trans (le_max_left _ _) (le_max_left _ _))
     · rw [hH']; exact (max_le hDb (max_le hBab hBbb)).trans hexp
     · rw [hDc]; exact hDcb.trans hexp

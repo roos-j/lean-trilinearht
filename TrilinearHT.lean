@@ -22,6 +22,7 @@ public import TrilinearHT.Auto.SecCoreTerms
 public import TrilinearHT.Auto.SecCompletionAttempt
 public import TrilinearHT.Auto.SecCompletionAttemptModes
 public import TrilinearHT.Auto.SecCompletionAttemptSides
+public import TrilinearHT.Auto.SecCompletionQuantitative
 public import TrilinearHT.Auto.SecCompletion
 public import TrilinearHT.Auto.FeffermanStein
 public import TrilinearHT.Auto.HilbertAtomicDecomposition

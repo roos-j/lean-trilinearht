@@ -1375,7 +1375,7 @@ theorem attemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
       let X := 1 + Real.log (chartTranslationBudget (H ^ 6)) +
         Real.log (3 * ap.ballEdgeH dB (ap.ballRadius g (ap.bbase j + p + 1)))
       ∃ (Md : Type) (_ : Fintype Md) (L : LiftData (Fin ap.Mc) Md) (ψ : Md → ℝ → ℂ),
-        (∀ Φ, L.εP Φ = 1) ∧ (∀ m, 0 < L.εM m) ∧
+        (∀ Φ, L.εP Φ = 1) ∧ L.δ = δc ∧ (∀ m, 0 < L.εM m) ∧
         (∀ y, L.s y = ((centerCut (A.vtag z) δ ρ y : ℝ) : ℂ) ^ 2) ∧
         (∀ m, Measurable (ψ m)) ∧
         (∀ n y, (∀ I ∈ FM n, y ∉ dyadicGridCell A.G I.1 I.2) →
@@ -1547,7 +1547,7 @@ theorem attemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
       δ_sum := by simpa using hδcM
       εM_nonneg := hεM0
       weights := fun n y => by simpa using hweights n y }, ψ,
-    fun _ => rfl, fun m => ?_, fun _ => rfl, hψm, ?_, ?_, ?_, fun y => ?_⟩
+    fun _ => rfl, rfl, fun m => ?_, fun _ => rfl, hψm, ?_, ?_, ?_, fun y => ?_⟩
   · have hN : (0 : ℝ) < Ncard := by
       have : 0 < Fintype.card (Σ k : {k // k ∈ K}, Ny k) := Fintype.card_pos_iff.mpr ⟨m⟩
       simp only [Ncard]; exact_mod_cast this
@@ -5249,7 +5249,8 @@ theorem exists_modeSystem (κ : LocalKernelClass) (c₀ : ℕ) :
         Ms.cl = slotCoeff l ∧ Ms.Λ = Real.exp (D * X ^ D) ∧
         Ms.Bσ = max 1 (Real.exp (D * X ^ D) *
           (1 + 4 * (2 * dB + 1) * max 1 (4 * Real.exp (D * X ^ D) / δc))) ∧
-        (∀ Φ, Ms.L.εP Φ = 1) ∧ (∀ y, Ms.L.s y = ((centerCut (A.vtag z) δ ρ y : ℝ) : ℂ) ^ 2) ∧
+        (∀ Φ, Ms.L.εP Φ = 1) ∧ Ms.L.δ = δc ∧
+        (∀ y, Ms.L.s y = ((centerCut (A.vtag z) δ ρ y : ℝ) : ℂ) ^ 2) ∧
         (∀ n y, (∀ I ∈ FM n, y ∉ dyadicGridCell A.G I.1 I.2) →
           ∀ m, Ms.L.own m = n → Ms.L.a m y = 0) ∧
         (∀ n y, (∃ I ∈ FM n, y ∈ dyadicGridCell A.G I.1 I.2) →
@@ -5263,7 +5264,7 @@ theorem exists_modeSystem (κ : LocalKernelClass) (c₀ : ℕ) :
   intro A ap cat hT cs hcs l G j p r ρ₀ z g hG hHed dB hdim hC δ hδ hδ' ρ hρ H hHs hdz hCz hHδ
     δc hδc hδcM FM X
   classical
-  obtain ⟨Md, hMd, L, ψ, hεP, hεMpos, hs, hψm, hazero, hq, ⟨cellOf, lamOf, γOf, hcell, Key,
+  obtain ⟨Md, hMd, L, ψ, hεP, hLδ, hεMpos, hs, hψm, hazero, hq, ⟨cellOf, lamOf, γOf, hcell, Key,
     keyOf, dvOf, θvOf, βOf, σOf, hkey, hlam, hdv, hσ, hγ, hkoc, hdiff⟩, hcount⟩ :=
     hlift A ap cat hT cs hcs l hG hHed hdim hC hδ hδ' ρ hρ hHs hdz hCz hHδ hδc hδcM
   have hψ : ∀ m y, ψ m y = modeWave (A.vtag z) δ ρ (slotCoeff l) (lamOf m)
@@ -5300,8 +5301,8 @@ theorem exists_modeSystem (κ : LocalKernelClass) (c₀ : ℕ) :
       lam_le := fun m => (hcell m).2.2.1
       εM_pos := hεMpos }
   refine ⟨Ms,
-    rfl, rfl, HEq.rfl, rfl, rfl, rfl, hεP, hs, hazero, fun n y hy => ?_, fun m => (hcell m).1, hdv,
-    hcount⟩
+    rfl, rfl, HEq.rfl, rfl, rfl, rfl, hεP, hLδ, hs, hazero, fun n y hy => ?_,
+    fun m => (hcell m).1, hdv, hcount⟩
   rw [hq n y hy]
   congr 1
   refine Finset.sum_congr rfl fun m _ => ?_
@@ -5884,7 +5885,8 @@ theorem chain_events_bound (s : Finset Ms.Event)
     (hev : ∀ e ∈ s, e.2.2 ∈ Ms.sideEvents S hA SP e.1 e.2.1)
     (hdepth : ∀ e ∈ s, e.2.1.1 = e.1 - 2 * S.K)
     (hsep : ∀ e ∈ s, ∀ e' ∈ s, e.1 < e'.1 → e.1 + 3 * S.K ≤ e'.1) {Ae Ah : ℕ}
-    (hAe : ∀ (p : Ms.Key) (T : Finset ℤ), (T.filter fun b => ¬ Ms.nonexcAt S SP b p).card ≤ Ae)
+    (hAe : ∀ (p : Ms.Key) (T : Finset ℤ), (∀ b ∈ T, ∀ b' ∈ T, b < b' → b + 3 * S.K ≤ b') →
+      (T.filter fun b => ¬ Ms.nonexcAt S SP b p).card ≤ Ae)
     (hAh : ∀ (b : ℤ) (p : Ms.Key), Ms.nonexcAt S SP b p →
       ((Finset.range (SP.Jst + 1)).filter fun h => ¬ Ms.goodP S SP b h p).card ≤ Ah)
     {k : ℕ} {e : Ms.Event} (hc : LinkedChain (s : Set Ms.Event) (Ms.Linked S) k e) :
@@ -5944,7 +5946,11 @@ theorem chain_events_bound (s : Finset Ms.Event)
     simp only [Fintype.card_coe]
     exact Finset.card_le_univ _
   · -- exceptional keys
-    refine le_trans ?_ (hAe p ((Finset.range (k + 1)).image fun i => (ev i).1))
+    refine le_trans ?_ (hAe p ((Finset.range (k + 1)).image fun i => (ev i).1) (by
+      intro b hb b' hb' hbb
+      obtain ⟨i, -, rfl⟩ := Finset.mem_image.mp hb
+      obtain ⟨i', -, rfl⟩ := Finset.mem_image.mp hb'
+      exact hsep _ (hevs i) _ (hevs i') hbb))
     rw [← Finset.card_image_of_injOn (hinj.mono (Finset.coe_subset.mpr
       (Finset.filter_subset _ _)))]
     refine Finset.card_le_card fun b hb => ?_
