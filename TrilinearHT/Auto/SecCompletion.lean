@@ -5,7 +5,7 @@ Authors: Claude
 -/
 module
 
-public import TrilinearHT.Auto.SecCompletionQuantitative
+public import TrilinearHT.Auto.SecCompletionQuantitativeCoreExport
 
 /-!
 # Normalized absorption and the operator estimate
@@ -5389,26 +5389,6 @@ theorem activeMin_of_retainedMin {κ : LocalKernelClass} (h : RetainedMin κ) : 
   calc _ ≤ 4 / 3 * A * dyadicGridLength B.G B.R.1 := hrec
     _ = _ := by simp only [A]; ring
 
-/-- The guarded binary search has at most `2^fuel` leaves. -/
-theorem searchLeaves_length_le :
-    ∀ (fuel ℓ h : ℕ) (up : Fin 4) (low : Option (Fin 4)) (ls : Fin 4 → List (ℕ × Bool)),
-      (searchLeaves fuel ℓ h up low ls).length ≤ 2 ^ fuel := by
-  intro fuel
-  induction fuel with
-  | zero => intro ℓ h up low ls; simp [searchLeaves]
-  | succ fuel ih =>
-    intro ℓ h up low ls
-    simp only [searchLeaves]
-    split_ifs
-    · rw [List.length_append, pow_succ]
-      have h1 := ih ℓ ((ℓ + h) / 2) (thirdSlot up low) low (Function.update ls (thirdSlot up low)
-        (ls (thirdSlot up low) ++ [((ℓ + h) / 2, false)]))
-      have h2 := ih ((ℓ + h) / 2 + 1) h up (some (thirdSlot up low))
-        (Function.update ls (thirdSlot up low) (ls (thirdSlot up low) ++ [((ℓ + h) / 2, true)]))
-      omega
-    · simp only [List.length_singleton]
-      exact Nat.one_le_two_pow
-
 namespace ActiveSetup
 
 namespace AttemptParams
@@ -5418,10 +5398,10 @@ variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.
 theorem leaves_length_le : ap.leaves.length ≤ 2 ^ ap.fuel :=
   searchLeaves_length_le _ _ _ _ _ _
 
-/-- The number of named tests of one slot at one cell is at most
+/-- The number of base tests of one slot at one cell is at most
 `2^fuel (1 + D) P^{1 + fuel}`, uniformly in the cell. -/
-theorem card_TestIdx_le (I : ℤ × ℤ) (l : Fin 4) :
-    Fintype.card (ap.TestIdx I l) ≤ 2 ^ ap.fuel * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) := by
+theorem card_BaseIdx_le (I : ℤ × ℤ) (l : Fin 4) :
+    Fintype.card (ap.BaseIdx I l) ≤ 2 ^ ap.fuel * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) := by
   classical
   have hP := ap.hP
   have hlen : ∀ s : Fin ap.leaves.length,
@@ -5450,6 +5430,81 @@ theorem card_TestIdx_le (I : ℤ × ℤ) (l : Fin 4) :
     _ = ap.leaves.length * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) := by
         rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
     _ ≤ _ := Nat.mul_le_mul_right _ ap.leaves_length_le
+
+/-- The number of chain tests of one slot at one cell is at most
+`2^fuel 2^fuel (D + fuel) P^{1 + fuel}`, uniformly in the cell. -/
+theorem card_ChainIdx_le (I : ℤ × ℤ) (l : Fin 4) :
+    Fintype.card (ap.ChainIdx I l) ≤
+      2 ^ ap.fuel * (2 ^ ap.fuel * ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel))) := by
+  classical
+  have hP := ap.hP
+  have hlen : ∀ s : Fin ap.leaves.length,
+      ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length ≤ ap.fuel := fun s => by
+    have := searchLeaves_layers_length ap.fuel 1 ap.Lc ap.up₀ none (fun _ => [])
+      (leafAt ap.fuel ap.Lc ap.up₀ s) (leafAt_mem s.2) l
+    simpa using this
+  have hpow : ∀ n, n ≤ ap.fuel → ap.P ^ n ≤ ap.P ^ ap.fuel := fun n hn =>
+    Nat.pow_le_pow_right hP hn
+  have hch : ∀ (s : Fin ap.leaves.length)
+      (i : Fin (posExpand ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).reverse).length),
+      (ap.chainOf s l i).length ≤ ap.fuel := fun s i => by
+    unfold chainOf
+    rw [List.getD_eq_getElem _ _ i.2]
+    refine (posExpand_mem_length _ _ (List.getElem_mem i.2)).trans ?_
+    rw [List.length_reverse]; exact hlen s
+  rw [Fintype.card_sigma]
+  calc ∑ s : Fin ap.leaves.length, Fintype.card _
+      ≤ ∑ _s : Fin ap.leaves.length, 2 ^ ap.fuel * ((A.vtxBound + ap.fuel) *
+          ap.P ^ (1 + ap.fuel)) := by
+        refine Finset.sum_le_sum fun s _ => ?_
+        rw [Fintype.card_sigma]
+        calc ∑ i, Fintype.card _ ≤ ∑ _i : Fin (posExpand
+              ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).reverse).length,
+              (A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel) := by
+              refine Finset.sum_le_sum fun i _ => ?_
+              simp only [Fintype.card_sum, Fintype.card_prod, Fintype.card_fin, Fintype.card_pi,
+                Finset.prod_const, Finset.card_univ, Fintype.card_coe, Fintype.card_sigma]
+              have h3 := ap.card_groupsAt_le I (leafAt ap.fuel ap.Lc ap.up₀ s).k
+              have h1 : ap.P ^ (chainHist (ap.chainOf s l i) 0).length ≤ ap.P ^ ap.fuel :=
+                hpow _ (by unfold chainHist; simpa using hch s i)
+              have h2 : ∀ k : Fin (ap.chainOf s l i).length,
+                  ap.P * ap.P ^ (chainHist (ap.chainOf s l i) (k + 1)).length ≤
+                    ap.P * ap.P ^ ap.fuel := fun k =>
+                Nat.mul_le_mul_left _ (hpow _ (by
+                  unfold chainHist; simp only [List.length_map, List.length_reverse,
+                    List.length_drop]; have := hch s i; omega))
+              calc (ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k).card *
+                    (ap.P * ap.P ^ (chainHist (ap.chainOf s l i) 0).length) +
+                    ∑ k : Fin (ap.chainOf s l i).length,
+                      ap.P * ap.P ^ (chainHist (ap.chainOf s l i) (k + 1)).length
+                  ≤ A.vtxBound * (ap.P * ap.P ^ ap.fuel) +
+                    ∑ _k : Fin (ap.chainOf s l i).length, ap.P * ap.P ^ ap.fuel := by
+                    gcongr with k
+                    unfold chainHist
+                    simp only [List.length_map, List.length_reverse, List.length_drop]
+                    have := hch s i; omega
+                _ = A.vtxBound * (ap.P * ap.P ^ ap.fuel) +
+                    (ap.chainOf s l i).length * (ap.P * ap.P ^ ap.fuel) := by
+                    rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
+                _ ≤ A.vtxBound * (ap.P * ap.P ^ ap.fuel) + ap.fuel * (ap.P * ap.P ^ ap.fuel) := by
+                    gcongr; exact hch s i
+                _ = (A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel) := by ring
+          _ = (posExpand ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).reverse).length *
+              ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel)) := by
+              rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
+          _ ≤ 2 ^ ap.fuel * ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel)) := by
+              refine Nat.mul_le_mul_right _ ((posExpand_length_le _).trans ?_)
+              rw [List.length_reverse]; exact Nat.pow_le_pow_right two_pos (hlen s)
+    _ = ap.leaves.length * (2 ^ ap.fuel * ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel))) := by
+        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
+    _ ≤ _ := Nat.mul_le_mul_right _ ap.leaves_length_le
+
+/-- The number of named tests of one slot at one cell. -/
+theorem card_TestIdx_le (I : ℤ × ℤ) (l : Fin 4) :
+    Fintype.card (ap.TestIdx I l) ≤ 2 ^ ap.fuel * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) +
+      2 ^ ap.fuel * (2 ^ ap.fuel * ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel))) := by
+  rw [Fintype.card_sum]
+  exact Nat.add_le_add (ap.card_BaseIdx_le I l) (ap.card_ChainIdx_le I l)
 
 end AttemptParams
 
@@ -5649,6 +5704,44 @@ noncomputable def AttemptParams.retained (ap : A.AttemptParams) (δ : ℝ) : Fin
   (A.cells.filter fun I => ¬ ∃ c ∈ ap.failRoots,
     dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G c.1 c.2).filter (A.active δ)
 
+open Classical in
+/-- The catalog certificate of an attempt (blueprint lines 1800-1831): the coarse-first list `L`
+of the retained cells with path multiplicity at most `M_p`, the count sequence `n` and threshold
+`τ₃` of the main closure (with the ratio condition and the edge scale), catalogs passing all named
+tests (base and chain tests) at the cells of `L` at the thresholds `catTau`, made of same-tag
+templates of their slot born in `L`, with rank counts at most `n r`; and label room in `M_c` for a
+helper closure of at most `W_H` helper tests per cell at threshold `τ_H` (blueprint lines
+1812-1817). -/
+def AttemptParams.AttemptCert (ap : A.AttemptParams) (cat : Fin 4 → List (CatCol A.Vtx))
+    (δ : ℝ) (Mp D WH : ℕ) (τH : ℝ) : Prop :=
+  ∃ (L : List (ℤ × ℤ)) (Tmax TmaxH Kt : ℕ) (n : ℕ → ℝ) (τ₃ : ℝ),
+    (∀ I ∈ L, I ∈ A.cells) ∧ L.Nodup ∧
+    (∀ i j (hi : i < L.length) (hj : j < L.length), i < j →
+      ¬ dyadicGridCell A.G L[i].1 L[i].2 ⊆ dyadicGridCell A.G L[j].1 L[j].2) ∧
+    (∀ I ∈ ap.retained δ, I ∈ L) ∧
+    (∀ I ∈ ap.retained δ, (L.toFinset.filter fun I' : ℤ × ℤ =>
+      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp) ∧
+    (∀ r, 1 ≤ n r) ∧ Monotone n ∧ 0 < τ₃ ∧ τ₃ ≤ 1 ∧
+    (∀ r ≤ ap.Lc + 1, n r * (Kt * (4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH)) *
+      (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) ^ 2 * Mp * (ap.Lc + 6)) / τ₃ ^ 2 ≤
+        n (r + 1)) ∧
+    Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log (τ₃ / n (ap.Lc + 1))⁻¹) ^ A.Dg) ≤
+      ap.Hed ∧
+    ap.Mc = L.length * (Tmax + TmaxH) ∧
+    (WH : ℝ) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
+      (τH / (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D))) ^ 2 < TmaxH ∧
+    ∀ l,
+      (∀ I ∈ L, ∀ w, (ap.tests (fun _ => []) I l w).Pass A.G ap.Mc I A.csrc A.Hsrc A.vtag (A.w I)
+        (ap.catTau Kt Mp (4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH))
+          (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) n (ap.tests (fun _ => []) I l w).r)
+        ap.mH (cat l)) ∧
+      (∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
+        d = templateCol (A.vtag d.tag) l R γ d.birth d.rank d.tag) ∧
+      (∀ I, (L.toFinset.filter fun I' : ℤ × ℤ =>
+          dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp →
+        ∀ r ≤ ap.Lc + 5, ∀ M, ((catLabels A.G ap.Mc (cat l) I r M).card : ℝ) ≤ n r) ∧
+      (∀ d ∈ cat l, d.birth ∈ L) ∧ (cat l).length ≤ L.length * Tmax
+
 variable (A)
 
 open Classical in
@@ -5662,10 +5755,11 @@ theorem attempt_instance (p : Fin 3) {D : ℕ} (hst : SameTagBound κ (A.csrc + 
     (P : ℕ) (hP : 0 < P) {δ : ℝ} {Mp : ℕ} (hMp1 : 1 ≤ Mp)
     (hMpb : ∀ y : ℝ, (A.cells.filter fun I =>
       y ∈ dyadicGridCell A.G I.1 I.2 ∧ A.active δ I).card ≤ Mp)
-    (hη : 0 ≤ A.η) (Hlow : ℝ) {ε : ℝ} (hε : 0 < ε) :
+    (hη : 0 ≤ A.η) (Hlow : ℝ) {ε : ℝ} (hε : 0 < ε) (WH : ℕ) {τH : ℝ} (hτH : 0 < τH) :
     ∃ (ap : A.AttemptParams) (cat : Fin 4 → List (CatCol A.Vtx)),
       ap.z = A.z (Fin.castSucc p) ∧ ap.P = P ∧ Hlow ≤ ap.Hed ∧ ap.up₀ ≠ A.mslot p ∧
-      ap.Lc = A.cd0 ^ 30 + 1 ∧ ap.fuel = Nat.clog 2 ap.Lc + 1 ∧ ap.mH = ap.fuel ∧
+      ap.Lc = A.cd0 ^ 30 + 1 ∧ ap.fuel = Nat.clog 2 ap.Lc + 1 ∧ ap.mH = 2 * ap.fuel + 2 ∧
+      ap.Hmax = 20 * ap.P * (ap.Lc + 1) + 40 * ap.P ∧ ap.AttemptCert cat δ Mp D WH τH ∧
       IsMonotoneColoring A.admT (A.tagDist ap.Hed) A.vtxBound (A.cb1 ap.Hmax) (cb2 ap.Hmax)
         Finset.univ (admCellSet (G := A.G) (R := A.R) (N := A.treeDepth))
         (dyadicGridCell A.G A.R.1 A.R.2) ap.ωp ap.ωh ∧
@@ -5685,8 +5779,10 @@ theorem attempt_instance (p : Fin 3) {D : ℕ} (hst : SameTagBound κ (A.csrc + 
   -- the parameters
   set Lc := A.cd0 ^ 30 + 1
   set fuel := Nat.clog 2 Lc + 1
-  set Hmax := 20 * P * (Lc + 1) + P
-  set Kt := 2 ^ fuel * ((1 + A.vtxBound) * P ^ (1 + fuel))
+  set Hmax := 20 * P * (Lc + 1) + 40 * P
+  set mH := 2 * fuel + 2
+  set Kt := 2 ^ fuel * ((1 + A.vtxBound) * P ^ (1 + fuel)) +
+    2 ^ fuel * (2 ^ fuel * ((A.vtxBound + fuel) * P ^ (1 + fuel)))
   have hDc := A.Dc_nonneg
   set Sz : ℝ := |A.S| + Fintype.card A.L * A.Dc + 1
   have hSz0 : 0 < Sz := by
@@ -5700,14 +5796,17 @@ theorem attempt_instance (p : Fin 3) {D : ℕ} (hst : SameTagBound κ (A.csrc + 
   set τ₃ : ℝ := min 1 (ε / (Mp * 2 ^ fuel * W + 1))
   have hτ₃ : 0 < τ₃ := lt_min one_pos (div_pos hε (by positivity))
   set E : ℝ := 2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)
-  set c0 : ℝ := Kt * 4 ^ fuel * E ^ 2 * Mp * (Lc + 6) / τ₃ ^ 2
-  obtain ⟨Tmax, hTmax⟩ := exists_prefix_fixed (c := c0) (by positivity) (2 * fuel) (Lc + 4)
-  set ρ : ℝ := max 1 (c0 * projectionPrefixConstant Tmax ^ (2 * fuel))
+  set c0 : ℝ := Kt * 4 ^ mH * E ^ 2 * Mp * (Lc + 6) / τ₃ ^ 2
+  obtain ⟨Tmax, hTmax⟩ := exists_prefix_fixed (c := c0) (by positivity) (2 * mH) (Lc + 4)
+  set ρ : ℝ := max 1 (c0 * projectionPrefixConstant Tmax ^ (2 * mH))
   have hρ1 : 1 ≤ ρ := le_max_left _ _
   set n : ℕ → ℝ := fun r => ρ ^ r
   set Hed := max Hlow
     (Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log (τ₃ / n (Lc + 1))⁻¹) ^ A.Dg))
   obtain ⟨ωp, ωh, hcol⟩ := A.coloring Hed (A.cb1 Hmax) (cb2 Hmax)
+  -- the helper room
+  set cH : ℝ := 2 * (WH * 4 ^ mH * E ^ 2 / τH ^ 2)
+  obtain ⟨TmaxH, hTmaxH⟩ := exists_prefix_fixed (c := cH) (by positivity) (2 * mH) 1
   -- the retained cells
   set X := maximalDyadicCells A.G (A.failedCells Hed (A.cb1 Hmax) (cb2 Hmax) ωp ωh)
   set cs := (A.cells.filter fun I => ¬ ∃ c ∈ X,
@@ -5717,27 +5816,29 @@ theorem attempt_instance (p : Fin 3) {D : ℕ} (hst : SameTagBound κ (A.csrc + 
   obtain ⟨L, hLcs, hnd, hord⟩ := exists_coarse_first_list A.G cs
   let ap : A.AttemptParams :=
     { Hed := Hed, Hmax := Hmax, ωp := ωp, ωh := ωh, P := P, hP := hP, Lc := Lc, fuel := fuel,
-      up₀ := up, Mc := L.length * Tmax, mH := fuel, z := A.z (Fin.castSucc p) }
+      up₀ := up, Mc := L.length * (Tmax + TmaxH), mH := mH, z := A.z (Fin.castSucc p) }
   have hret : ap.retained δ = cs := rfl
   obtain ⟨-, -, -, hfc⟩ := A.failure_cut Hed (A.cb1 Hmax) (cb2 Hmax) ωp ωh hcol
   have hcsL : ∀ I ∈ cs, I ∈ L := fun I hI => List.mem_toFinset.mp (hLcs ▸ hI)
   have hL : ∀ I ∈ L, I ∈ A.cells := fun I hI =>
     (hcs I (hLcs ▸ List.mem_toFinset.mpr hI)).1
-  have hKt1 : 1 ≤ Kt := Nat.mul_pos (Nat.two_pow_pos _) (Nat.mul_pos (by omega) (pow_pos hP _))
+  have hKt1 : 1 ≤ Kt := Nat.le_add_right_of_le
+    (Nat.mul_pos (Nat.two_pow_pos _) (Nat.mul_pos (by omega) (pow_pos hP _)))
   have hratio : ∀ r ≤ ap.Lc + 1, n r * (Kt * (4 ^ ap.mH * projectionPrefixConstant Tmax ^
       (2 * ap.mH)) * (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) ^ 2 * Mp * (ap.Lc + 6)) /
         τ₃ ^ 2 ≤ n (r + 1) := by
     intro r _
     have e : n r * (Kt * (4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH)) *
         (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) ^ 2 * Mp * (ap.Lc + 6)) / τ₃ ^ 2 =
-        n r * (c0 * projectionPrefixConstant Tmax ^ (2 * fuel)) := by
+        n r * (c0 * projectionPrefixConstant Tmax ^ (2 * mH)) := by
       simp only [c0, E, ap]; ring
     rw [e]
-    calc n r * (c0 * projectionPrefixConstant Tmax ^ (2 * fuel)) ≤ n r * ρ :=
+    calc n r * (c0 * projectionPrefixConstant Tmax ^ (2 * mH)) ≤ n r * ρ :=
           mul_le_mul_of_nonneg_left (le_max_right _ _) (by positivity)
       _ = n (r + 1) := by simp only [n]; ring
   have h := ap.attempt_localization L hL hnd hord hst hKt1 hMp1
-    (fun I l => ap.card_TestIdx_le I l) le_rfl n (fun r => one_le_pow₀ hρ1)
+    (fun I l => ap.card_TestIdx_le I l) (Nat.mul_le_mul_left _ (Nat.le_add_right _ _)) n
+    (fun r => one_le_pow₀ hρ1)
     (pow_right_mono₀ hρ1) hTmax hτ₃ (min_le_left _ _) hratio (le_max_right _ _) cs hcsL
     (fun I hI => by
       rw [hLcs]
@@ -5749,13 +5850,34 @@ theorem attempt_instance (p : Fin 3) {D : ℕ} (hst : SameTagBound κ (A.csrc + 
     (fun I _ w hw => ((hcol.2.2.1 (A.admAt I) w hw).2.trans hcol.2.1).trans (Nat.le_succ _))
     (fun I _ => A.z_slot_basic p I hup) (fun I _ l => (A.z_slot_size p I l).1)
     (Nat.le_add_left _ _) ((Nat.sub_le _ _).trans_lt ((Nat.le_pow_clog one_lt_two Lc).trans_lt
-      (Nat.pow_lt_pow_right one_lt_two (Nat.lt_succ_self _)))) le_rfl
-    (by simp [AttemptParams.bbase, ap, Hmax])
+      (Nat.pow_lt_pow_right one_lt_two (Nat.lt_succ_self _))))
+    (by change fuel ≤ 2 * fuel + 2; omega)
+    (by change 20 * P * (Lc + 1) + 10 * (1 - 1) * P + P ≤ 20 * P * (Lc + 1) + 40 * P; omega)
     hη hSz0 (fun I _ l => (A.z_cellLp_size p I l).trans (by linarith [le_abs_self A.S]))
   obtain ⟨cat, hcat⟩ := h
-  refine ⟨ap, cat, rfl, rfl, le_max_left _ _, hup, rfl, rfl, rfl, hcol, fun S hS => ?_⟩
+  have hMpcs : ∀ I ∈ cs, (L.toFinset.filter fun I' : ℤ × ℤ =>
+      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp := fun I hI => by
+    rw [hLcs]
+    exact (A.active_anc_card_le cs hcs I).trans (hMpb _)
+  have hH : (WH : ℝ) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
+      (τH / E) ^ 2 < TmaxH := by
+    have e : (WH : ℝ) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
+        (τH / E) ^ 2 = (cH * projectionPrefixConstant TmaxH ^ (2 * mH)) / 2 := by
+      simp only [cH, ap]; field_simp
+    rw [e]
+    have h1 := hTmaxH
+    rw [pow_one] at h1
+    refine lt_of_lt_of_le ?_ h1
+    rw [lt_max_iff]
+    by_cases h0 : cH * projectionPrefixConstant TmaxH ^ (2 * mH) ≤ 1
+    · left; linarith
+    · right; push Not at h0; linarith
+  refine ⟨ap, cat, rfl, rfl, le_max_left _ _, hup, rfl, rfl, rfl, rfl,
+    ⟨L, Tmax, TmaxH, Kt, n, τ₃, hL, hnd, hord, hcsL, hMpcs, fun r => one_le_pow₀ hρ1,
+      pow_right_mono₀ hρ1,
+      hτ₃, min_le_left _ _, hratio, le_max_right _ _, rfl, hH, hcat.1⟩, hcol, fun S hS => ?_⟩
   rw [hret] at hS
-  refine (hcat S hS).trans (add_le_add le_rfl ?_)
+  refine (hcat.2 S hS).trans (add_le_add le_rfl ?_)
   have hcsS : ∀ I ∈ S, I ∈ A.cells ∧ A.active δ I := fun I hI => hcs I (hS hI)
   -- the localization error
   have hsum : ∑ I ∈ S, dyadicGridLength A.G I.1 ≤ Mp * dyadicGridLength A.G A.R.1 := by
@@ -5923,5 +6045,90 @@ theorem active_mult_bound (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀)
         refine Real.exp_le_exp.mpr ?_
         have hC0 : (0 : ℝ) ≤ C := Nat.cast_nonneg C
         nlinarith
+
+/-! ### The helper catalog of an attempt (blueprint lines 1812-1817, 2236-2238) -/
+
+/-- Passing helper tests stay passing for a larger complexity order of the sources. -/
+theorem VTest.pass_mono_order {Tg : Type*} {Mc : ℕ} (w : VTest Tg Mc) {G : RealDyadicGrid}
+    {I : ℤ × ℤ} {c₀ c₁ : ℕ} {H : ℝ} {tagOf : Tg → ChartTag} {wI : ℝ × ℝ → ℂ} {τ : ℝ}
+    {mH : ℕ} {cat : List (CatCol Tg)} (h : w.Pass G I c₁ H tagOf wI τ mH cat) (hc : c₀ ≤ c₁) :
+    w.Pass G I c₀ H tagOf wI τ mH cat :=
+  fun x hx _ _ _ hut hua hub hta htb hab A hA hAθ hAM hAq z hzu hzt hza hzb hza2 hzb2 =>
+    h x hx hut hua hub hta htb hab A (quadraticChartComplexity_mono_order hA hc) hAθ hAM hAq z
+      hzu hzt hza hzb hza2 hzb2
+
+namespace ActiveSetup
+
+namespace AttemptParams
+
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {ap : A.AttemptParams}
+
+open Classical in
+/-- Blueprint lines 1812-1817 and 2236-2238 ("construct the helper rank reserved in
+Lemma closure, on these whole states and the specified histories"): with the catalog certificate
+of an attempt, any family of at most `W_H` helper tests per cell of a common rank, on fixed bases
+without private coordinates beyond the main catalog of slot `a`, admits a helper catalog of that
+rank, born at the cells of the attempt, after which all helper tests pass at the retained cells at
+threshold `τ_H`. -/
+theorem AttemptCert.helpers {cat : Fin 4 → List (CatCol A.Vtx)} {δ : ℝ} {Mp D WH : ℕ}
+    {τH : ℝ} (hcert : ap.AttemptCert cat δ Mp D WH τH) (hst : SameTagBound κ' (A.csrc + 1) D)
+    (hτH : 0 < τH) (a : Fin 4) (W : ℤ × ℤ → Type) [∀ I, Fintype (W I)]
+    (hW : ∀ I, Fintype.card (W I) ≤ WH) (tests : ∀ I, W I → VTest A.Vtx ap.Mc) (rH : ℕ)
+    (hrH : ∀ I w, (tests I w).r = rH) (htA : ∀ I w, (tests I w).t = a)
+    (hfresh : ∀ I w, FreshFrom ap.Mc (cat a).length (tests I w).base) :
+    ∃ hcat : List (CatCol A.Vtx),
+      (∀ I ∈ ap.retained δ, ∀ w, (tests I w).Pass A.G I A.csrc A.Hsrc A.vtag (A.w I) τH ap.mH
+        (cat a ++ hcat)) ∧
+      (∀ d ∈ hcat, d.birth ∈ A.cells ∧ d.rank = rH ∧ ∃ w, (tests d.birth w).M d.tag ∧
+        ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
+          d = templateCol (A.vtag d.tag) a R γ d.birth rH d.tag) := by
+  obtain ⟨L, Tmax, TmaxH, Kt, n, τ₃, hL, hnd, hord, hret, -, -, -, -, -, -, -, hMc, hH,
+    hcat⟩ := hcert
+  have hMcH : (cat a).length + L.length * TmaxH ≤ ap.Mc := by
+    rw [hMc, Nat.mul_add]
+    have := (hcat a).2.2.2.2
+    omega
+  set E : ℝ := 2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)
+  have hQ0 : 0 ≤ 4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH) := by
+    have := projectionPrefixConstant_one_le TmaxH; positivity
+  have hcap : ∀ I ∈ L, ∑ r ∈ Finset.univ.image (fun w => (tests I w).r),
+      Fintype.card (W I) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
+        ((fun _ : ℕ => τH) r / (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D))) ^ 2 <
+        (TmaxH : ℝ) := by
+    intro I _
+    have hsub : Finset.univ.image (fun w => (tests I w).r) ⊆ {rH} := fun r hr => by
+      obtain ⟨w, -, rfl⟩ := Finset.mem_image.mp hr
+      exact Finset.mem_singleton.mpr (hrH I w)
+    have hc1 : (Finset.univ.image (fun w => (tests I w).r)).card ≤ 1 :=
+      (Finset.card_le_card hsub).trans (by simp)
+    have hterm : (Fintype.card (W I) : ℝ) *
+        (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) / (τH / E) ^ 2 ≤
+        WH * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) / (τH / E) ^ 2 := by
+      have : (Fintype.card (W I) : ℝ) ≤ WH := by exact_mod_cast hW I
+      gcongr
+    have hpos : 0 ≤ (Fintype.card (W I) : ℝ) *
+        (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) / (τH / E) ^ 2 := by
+      positivity
+    rw [Finset.sum_const, nsmul_eq_mul]
+    calc ((Finset.univ.image (fun w => (tests I w).r)).card : ℝ) *
+          (Fintype.card (W I) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
+            (τH / E) ^ 2)
+        ≤ 1 * (Fintype.card (W I) *
+            (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) / (τH / E) ^ 2) := by
+          gcongr; exact_mod_cast hc1
+      _ < (TmaxH : ℝ) := by rw [one_mul]; exact lt_of_le_of_lt hterm hH
+  obtain ⟨hcat', hpass, -, hbr, -, -⟩ := helper_instantiation hst A.exp_two_le_Hsrc
+    (tagOf := A.vtag) (fun x => A.vchart_dim x) L hnd hord A.w (fun I hI => A.adm I (hL I hI)) W
+    tests ap.mH
+    (fun _ => τH) (fun _ _ => hτH) hrH (cat a) hMcH hfresh hcap (Wm := Empty)
+    (fun e => e.elim) (fun e => e.elim) (fun e => τH) (fun e => e.elim)
+  refine ⟨hcat', fun I hI w => VTest.pass_mono_order _ (hpass I (hret I hI) w) (Nat.le_succ _),
+    fun d hd => ?_⟩
+  obtain ⟨hdL, hdr, w, hM, R, hR, γ, hdt⟩ := hbr d hd
+  exact ⟨hL _ hdL, hdr, w, hM, R, hR, γ, by rw [← htA d.birth w]; exact hdt⟩
+
+end AttemptParams
+
+end ActiveSetup
 
 end Auto

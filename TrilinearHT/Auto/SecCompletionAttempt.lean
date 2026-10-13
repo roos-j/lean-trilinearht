@@ -3761,6 +3761,39 @@ theorem SearchLeaf.role_le (L : SearchLeaf) (l : Fin 4) : L.role l ≤ 4 := by
 
 /-! ### The parameters, masks, filters and tests of an attempt -/
 
+/-- The signed positive chains of a layer list given outermost first: each complement layer
+`1 - C` contributes either nothing or `-C`. -/
+def posExpand : List (ℕ × Bool) → List (ℤ × List ℕ)
+  | [] => [(1, [])]
+  | (m, false) :: rest => (posExpand rest).map fun t => (t.1, m :: t.2)
+  | (m, true) :: rest => posExpand rest ++ (posExpand rest).map fun t => (-t.1, m :: t.2)
+
+/-- The number of signed positive chains is at most `2^n`. -/
+theorem posExpand_length_le : ∀ ls : List (ℕ × Bool), (posExpand ls).length ≤ 2 ^ ls.length
+  | [] => by simp [posExpand]
+  | (m, false) :: rest => by
+    simp only [posExpand, List.length_map, List.length_cons, pow_succ]
+    have := posExpand_length_le rest; omega
+  | (m, true) :: rest => by
+    simp only [posExpand, List.length_append, List.length_map, List.length_cons, pow_succ]
+    have := posExpand_length_le rest; omega
+
+/-- The signed positive chains are no longer than the layer list. -/
+theorem posExpand_mem_length : ∀ (ls : List (ℕ × Bool)), ∀ t ∈ posExpand ls,
+    t.2.length ≤ ls.length
+  | [], t, ht => by simp only [posExpand, List.mem_singleton] at ht; subst ht; simp
+  | (m, false) :: rest, t, ht => by
+    simp only [posExpand, List.mem_map] at ht
+    obtain ⟨t', ht', rfl⟩ := ht
+    simp only [List.length_cons]
+    have := posExpand_mem_length rest t' ht'; omega
+  | (m, true) :: rest, t, ht => by
+    simp only [posExpand, List.mem_append, List.mem_map] at ht
+    rcases ht with ht | ⟨t', ht', rfl⟩
+    · have := posExpand_mem_length rest t ht; simp only [List.length_cons]; omega
+    · simp only [List.length_cons]
+      have := posExpand_mem_length rest t' ht'; omega
+
 namespace ActiveSetup
 
 variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
@@ -3843,17 +3876,17 @@ noncomputable def groupsAt (I : ℤ × ℤ) (k : ℕ) : Finset A.Grp :=
 /-- The leaves of the search of the attempt. -/
 def leaves : List SearchLeaf := searchList ap.fuel ap.Lc ap.up₀
 
-/-- The named tests of slot `l` at the cell `I`: for every leaf, the lower-guard tests and the
+/-- The base tests of slot `l` at the cell `I`: for every leaf, the lower-guard tests and the
 ball tests of every current group, at every pad and every pad choice of the history. -/
-abbrev TestIdx (I : ℤ × ℤ) (l : Fin 4) : Type :=
+abbrev BaseIdx (I : ℤ × ℤ) (l : Fin 4) : Type :=
   Σ s : Fin ap.leaves.length,
     (Fin ap.P × (Fin ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).dropLast.length → Fin ap.P)) ⊕
     ({G // G ∈ ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k} × Fin ap.P ×
       (Fin ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length → Fin ap.P))
 
-/-- The tests of slot `l` at the cell `I`. -/
-noncomputable def tests (cat : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) (l : Fin 4) :
-    ap.TestIdx I l → CatTest A.Vtx
+/-- The base tests of slot `l` at the cell `I`. -/
+noncomputable def baseTests (cat : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) (l : Fin 4) :
+    ap.BaseIdx I l → CatTest A.Vtx
   | ⟨s, Sum.inl (p, c)⟩ =>
       (ap.filters cat I).test l (ap.Lc - ((leafAt ap.fuel ap.Lc ap.up₀ s).k - 1) + 1)
         (ap.cmask I ((leafAt ap.fuel ap.Lc ap.up₀ s).k - 1) p)
@@ -3863,9 +3896,50 @@ noncomputable def tests (cat : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) (
         (ap.bmask I G.1 ((leafAt ap.fuel ap.Lc ap.up₀ s).role l) p)
         ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l) c
 
+/-- The inner history of a positive chain (outermost first) after removing its `k` outermost
+layers, as positive layers, innermost first. -/
+def chainHist (ch : List ℕ) (k : ℕ) : List (ℕ × Bool) :=
+  ((ch.drop k).reverse).map fun m => (m, false)
+
+/-- The `i`-th signed positive chain of slot `l` of the leaf `s` (blueprint line 2241). -/
+def chainOf (s : ℕ) (l : Fin 4) (i : ℕ) : List ℕ :=
+  ((posExpand ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).reverse).getD i (1, [])).2
+
+/-- The chain tests of slot `l` at the cell `I` (blueprint lines 1807-1812, the required
+histories of the transfer in lines 2240-2256): for every leaf and positive chain of its
+complement expansion, the ball tests of every current group on the whole chain and the tests of
+every cumulative layer of the chain on its inner part, at every pad and pad choice. -/
+abbrev ChainIdx (I : ℤ × ℤ) (l : Fin 4) : Type :=
+  Σ s : Fin ap.leaves.length,
+    Σ i : Fin (posExpand ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).reverse).length,
+      ({G // G ∈ ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k} × Fin ap.P ×
+        (Fin (chainHist (ap.chainOf s l i) 0).length → Fin ap.P)) ⊕
+      (Σ k : Fin (ap.chainOf s l i).length,
+        Fin ap.P × (Fin (chainHist (ap.chainOf s l i) (k + 1)).length → Fin ap.P))
+
+/-- The chain tests of slot `l` at the cell `I`. -/
+noncomputable def chainTests (cat : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) (l : Fin 4) :
+    ap.ChainIdx I l → CatTest A.Vtx
+  | ⟨s, i, Sum.inl (G, p, c)⟩ =>
+      (ap.filters cat I).test l (ap.Lc + (leafAt ap.fuel ap.Lc ap.up₀ s).role l)
+        (ap.bmask I G.1 ((leafAt ap.fuel ap.Lc ap.up₀ s).role l) p)
+        (chainHist (ap.chainOf s l i) 0) c
+  | ⟨s, i, Sum.inr ⟨k, p, c⟩⟩ =>
+      (ap.filters cat I).test l (ap.Lc - (ap.chainOf s l i).getD k 0 + 1)
+        (ap.cmask I ((ap.chainOf s l i).getD k 0) p)
+        (chainHist (ap.chainOf s l i) (k + 1)) c
+
+/-- The named tests of slot `l` at the cell `I`: the base tests and the chain tests. -/
+abbrev TestIdx (I : ℤ × ℤ) (l : Fin 4) : Type := ap.BaseIdx I l ⊕ ap.ChainIdx I l
+
+/-- The tests of slot `l` at the cell `I`. -/
+noncomputable def tests (cat : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) (l : Fin 4) :
+    ap.TestIdx I l → CatTest A.Vtx :=
+  Sum.elim (ap.baseTests cat I l) (ap.chainTests cat I l)
+
 theorem tests_t (cat : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) (l : Fin 4)
     (w : ap.TestIdx I l) : (ap.tests cat I l w).t = l := by
-  rcases w with ⟨s, (⟨p, c⟩ | ⟨G, p, c⟩)⟩ <;> rfl
+  rcases w with (⟨s, (⟨p, c⟩ | ⟨G, p, c⟩)⟩ | ⟨s, i, (⟨G, p, c⟩ | ⟨k, p, c⟩)⟩) <;> rfl
 
 end AttemptParams
 
@@ -3879,7 +3953,7 @@ variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.
 
 theorem tests_indep (cat cat' : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) (l : Fin 4)
     (w : ap.TestIdx I l) : ap.tests cat I l w = ap.tests cat' I l w := by
-  rcases w with ⟨s, (⟨p, c⟩ | ⟨G, p, c⟩)⟩ <;> rfl
+  rcases w with (⟨s, (⟨p, c⟩ | ⟨G, p, c⟩)⟩ | ⟨s, i, (⟨G, p, c⟩ | ⟨k, p, c⟩)⟩) <;> rfl
 
 /-- Blueprint lem:closure for an attempt: if the trial cap is not attained at any active cell,
 there are slot catalogs passing all named tests at all active cells, whose columns are same-tag
@@ -4633,7 +4707,7 @@ theorem leaf_bound (cat : Fin 4 → List (CatCol A.Vtx))
           refine ⟨g, b', hgu, hgt, hbu, hbt, hgb, L.k - 1, ?_, ?_, fun pc => ?_, hold⟩
           · rw [hlg, List.dropLast_concat]
           · rw [List.length_dropLast]; have := hlen g; omega
-          · exact CatTest.pass_mono _ (hpass g ⟨s, Sum.inl pc⟩) hτo'
+          · exact CatTest.pass_mono _ (hpass g (Sum.inl ⟨s, Sum.inl pc⟩)) hτo'
       · exact absurd hcur hnot)
     (fun v _ G₀ hg => hgrp v G₀ hg)
     (fun v _ G₀ hg G hG hne n hn => by
@@ -4641,11 +4715,11 @@ theorem leaf_bound (cat : Fin 4 → List (CatCol A.Vtx))
       exact ap.sep_pair hI hsucc hG₀ hG hne hPH hτ₂ hτ₂1 hHed hut (hxG₀ 0) (Ax v) (hAx v)
         (hAb v) (hθ v) (hM v) (hq v) (cat t) (hT t) hn (A.adm I hI))
     (fun G hG pc => by
-      refine CatTest.pass_mono _ (hpass t ⟨s, Sum.inr (⟨G, hG⟩, pc.1, pc.2)⟩) ?_
+      refine CatTest.pass_mono _ (hpass t (Sum.inl ⟨s, Sum.inr (⟨G, hG⟩, pc.1, pc.2)⟩)) ?_
       change τ (ap.Lc + L.role t) ≤ τm
       rw [L.role_t]; exact hτm')
     (fun G hG l hl pc => by
-      refine CatTest.pass_mono _ (hpass l ⟨s, Sum.inr (⟨G, hG⟩, pc.1, pc.2)⟩) ?_
+      refine CatTest.pass_mono _ (hpass l (Sum.inl ⟨s, Sum.inr (⟨G, hG⟩, pc.1, pc.2)⟩)) ?_
       exact hτr' _ (L.role_ge hl) (L.role_le l))
     (fun G _ n hn => by
       obtain ⟨x, ⟨p, hp⟩, hxs⟩ := ap.catColumn_source cat t (hT t) I
@@ -5004,10 +5078,13 @@ variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.
 
 theorem tests_r_le (cat : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) (l : Fin 4)
     (w : ap.TestIdx I l) : (ap.tests cat I l w).r ≤ ap.Lc + 4 := by
-  rcases w with ⟨s, (⟨p, c⟩ | ⟨G, p, c⟩)⟩
+  rcases w with (⟨s, (⟨p, c⟩ | ⟨G, p, c⟩)⟩ | ⟨s, i, (⟨G, p, c⟩ | ⟨k, p, c⟩)⟩)
   · change ap.Lc - ((leafAt ap.fuel ap.Lc ap.up₀ s).k - 1) + 1 ≤ _; omega
   · change ap.Lc + (leafAt ap.fuel ap.Lc ap.up₀ s).role l ≤ _
     have := (leafAt ap.fuel ap.Lc ap.up₀ s).role_le l; omega
+  · change ap.Lc + (leafAt ap.fuel ap.Lc ap.up₀ s).role l ≤ _
+    have := (leafAt ap.fuel ap.Lc ap.up₀ s).role_le l; omega
+  · change ap.Lc - (ap.chainOf s l i).getD k 0 + 1 ≤ _; omega
 
 /-- The catalog thresholds `τ_r = (K_t Q E² M_p (L+6) / n_r)^{1/2}` of the count sequence `n`. -/
 noncomputable def catTau (Kt Mp : ℕ) (Q E : ℝ) (n : ℕ → ℝ) (r : ℕ) : ℝ :=
@@ -5032,9 +5109,10 @@ theorem catalogs_counted (L : List (ℤ × ℤ)) (hL : ∀ I ∈ L, I ∈ A.cell
         ap.mH (cat l)) ∧
       (∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
         d = templateCol (A.vtag d.tag) l R γ d.birth d.rank d.tag) ∧
-      ∀ I, (L.toFinset.filter fun I' : ℤ × ℤ =>
+      (∀ I, (L.toFinset.filter fun I' : ℤ × ℤ =>
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp →
-        ∀ r ≤ ap.Lc + 5, ∀ M, ((catLabels A.G ap.Mc (cat l) I r M).card : ℝ) ≤ n r := by
+        ∀ r ≤ ap.Lc + 5, ∀ M, ((catLabels A.G ap.Mc (cat l) I r M).card : ℝ) ≤ n r) ∧
+      (∀ d ∈ cat l, d.birth ∈ L) ∧ (cat l).length ≤ L.length * Tmax := by
   classical
   set Q : ℝ := 4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH) with hQ
   set E : ℝ := 2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D) with hE
@@ -5094,9 +5172,9 @@ theorem catalogs_counted (L : List (ℤ × ℤ)) (hL : ∀ I ∈ L, I ∈ A.cell
             nlinarith
         _ ≤ Tmax := hT)
   refine ⟨cat, fun l => ?_⟩
-  obtain ⟨hpass, hbirth, hcount, -⟩ := hcat l
+  obtain ⟨hpass, hbirth, hcount, hlen⟩ := hcat l
   refine ⟨fun I hI w => CatTest.pass_mono_order _ (hpass I hI w) (Nat.le_succ _),
-    fun d hd => ?_, fun I hMpI r hr M => ?_⟩
+    fun d hd => ?_, fun I hMpI r hr M => ?_, fun d hd => (hbirth d hd).1, hlen⟩
   · obtain ⟨-, w, hr, -, R, hR, γ, hd'⟩ := hbirth d hd
     exact ⟨R, hR, γ, by rw [hr]; exact hd'⟩
   -- the per-rank counts
@@ -5259,7 +5337,17 @@ theorem attempt_localization (L : List (ℤ × ℤ)) (hL : ∀ I ∈ L, I ∈ A.
     (hPH : ap.bbase 1 + ap.P ≤ ap.Hmax) {Sz η : ℝ} (hη : 0 ≤ η) (hSz0 : 0 < Sz)
     (hSz : ∀ I ∈ cs, ∀ l, ‖physicalColumnInput (V := Fin ap.Mc) (ap.base I l)‖ /
       Real.sqrt (dyadicGridLength A.G I.1) ≤ Sz) :
-    ∃ cat : Fin 4 → List (CatCol A.Vtx), ∀ cs' ⊆ cs,
+    ∃ cat : Fin 4 → List (CatCol A.Vtx), (∀ l,
+      (∀ I ∈ L, ∀ w, (ap.tests (fun _ => []) I l w).Pass A.G ap.Mc I A.csrc A.Hsrc A.vtag (A.w I)
+        (ap.catTau Kt Mp (4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH))
+          (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) n (ap.tests (fun _ => []) I l w).r)
+        ap.mH (cat l)) ∧
+      (∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
+        d = templateCol (A.vtag d.tag) l R γ d.birth d.rank d.tag) ∧
+      (∀ I, (L.toFinset.filter fun I' : ℤ × ℤ =>
+          dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp →
+        ∀ r ≤ ap.Lc + 5, ∀ M, ((catLabels A.G ap.Mc (cat l) I r M).card : ℝ) ≤ n r) ∧
+      (∀ d ∈ cat l, d.birth ∈ L) ∧ (cat l).length ≤ L.length * Tmax) ∧ ∀ cs' ⊆ cs,
       ∑ I ∈ cs', dyadicGridLength A.G I.1 * min η ‖A.Hf I (ap.z I)‖ ≤
         ∑ s ∈ Finset.range ap.leaves.length, ∑ I ∈ cs', dyadicGridLength A.G I.1 *
             min η ‖∑ G ∈ ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k,
@@ -5284,7 +5372,8 @@ theorem attempt_localization (L : List (ℤ × ℤ)) (hL : ∀ I ∈ L, I ∈ A.
   set τ₂ := τ₃ / n (ap.Lc + 1)
   have hτ₂ : 0 < τ₂ := div_pos hτ₃ (hn0 _)
   have hτ₂1 : τ₂ ≤ 1 := (div_le_one (hn0 _)).mpr (hτ₃1.trans (hn1 _))
-  refine ⟨cat, fun cs' hcs' => ?_⟩
+  refine ⟨cat, fun l => ⟨(hcat l).1, (hcat l).2.1, (hcat l).2.2.1, (hcat l).2.2.2⟩,
+    fun cs' hcs' => ?_⟩
   have h := ap.localized_sum cat (fun l => (hcat l).2.1) (τ := τ) cs'
     (fun I hI => hL I (hcsL I (hcs' hI))) (fun I hI l w => (hcat l).1 I (hcsL I (hcs' hI)) w)
     (fun I hI => hsucc I (hcs' hI)) (fun I hI => hLcol I (hcs' hI)) (fun I hI => hzB I (hcs' hI))
@@ -5293,8 +5382,8 @@ theorem attempt_localization (L : List (ℤ × ℤ)) (hL : ∀ I ∈ L, I ∈ A.
     (Nt := n (ap.Lc + 1)) hη (fun k => hτ0 _) (hτ0 _) (hτ0 _) hτ₂ hτ₂1 hHed
     (fun k _ _ => le_rfl) le_rfl
     (fun j hj2 hj4 => ap.catTau_anti hn0 hnm hQ0 (by omega)) hSz0 (fun I hI => hSz I (hcs' hI))
-    (fun I hI s => (hcat _).2.2 I (hMp I (hcs' hI)) _ (by omega) _)
-    (fun I hI s G _ => (hcat _).2.2 I (hMp I (hcs' hI)) _ (by omega) _)
+    (fun I hI s => (hcat _).2.2.1 I (hMp I (hcs' hI)) _ (by omega) _)
+    (fun I hI s G _ => (hcat _).2.2.1 I (hMp I (hcs' hI)) _ (by omega) _)
   have hcs0 : 0 ≤ ∑ I ∈ cs', dyadicGridLength A.G I.1 :=
     Finset.sum_nonneg fun I _ => (dyadicGridLength_pos A.G I.1).le
   refine h.trans (add_le_add (le_refl _) (mul_le_mul_of_nonneg_left ?_ hcs0))

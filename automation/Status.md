@@ -763,41 +763,98 @@ complete | 2026-10-12 21:00:15 ET | prop:normalized, lines 2838-2840 | attempt_i
 complete | 2026-10-12 21:03:57 ET | prop:base, lines 1655, 2839 | Active path multiplicity <= exp(C k^(3Cb+2)) at delta_k = e^-k^(Cb+2) (active_mult_bound)
 complete | 2026-10-12 21:35:09 ET | mode-schedule, lines 1944-1966 | Schedule, K last at packet width W(H); SideParams from S; logs poly(Lambda) (exists_attempt_schedule)
 complete | 2026-10-12 22:08:54 ET | first-match, lines 1938-1944 | eq:gauge-cancel multiplier: smooth, periodic, offset-uniform Fourier truncation (gaugeMult_truncate)
-not started | 2026-10-12 20:49:39 ET | mode-schedule, lines 1962-1972 | LeafSplit on the concrete schedule; D.c = exact frozen synthesis; eq:slope-variation
-not started | 2026-10-12 20:49:39 ET | side-caps, lines 2155-2166 | leaf_side_caps instantiated: B_var from rolling variation, B_lin from linear side; U slots; no-decision cells
-not started | 2026-10-12 20:49:39 ET | side-caps, lines 2163-2164 | Size cut on Z_s, Z_{u_b}, basic inputs <= P^C on retained cells; B_s, K_x; delta, delta_c => errors <= e^-k|R|
-not started | 2026-10-12 20:49:39 ET | helpers, lines 2167-2169, 2237 | Helper catalog on whole side states (helper_instantiation); helper counts; main tests preserved
-not started | 2026-10-12 20:49:39 ET | representatives, lines 2171-2192 | Representatives on LeafSplit block components per role/height/type; eq:representative-separation
-not started | 2026-10-12 20:49:39 ET | component-sizes, lines 2196-2209 | eq:component-size and eq:size-comparison on the LeafSplit components
-not started | 2026-10-12 20:49:39 ET | prop:tops, lines 2212-2231 | eq:top-count on retained paths: sigma-tops, Markov first crossings over polynomially many choices
-not started | 2026-10-12 20:49:39 ET | transfer, lines 2240-2241 | 2+2 restored leaf pattern: sides a,b; layered histories c,d; positive-chain expansion; distinct ranks
-not started | 2026-10-12 20:49:39 ET | transfer, lines 2242-2252 | Pad band families Q_{c,p} and helper Q_{a,p} on the same masks/pads; transfer_chain on the forms Lambda_c
-not started | 2026-10-12 20:49:39 ET | transfer, lines 2254-2256 | Far bands |p-q|>2: helper test, main test with neighbor closure, different-tag pairs <= D^-C3 |S_a||S_b|
-not started | 2026-10-12 20:49:39 ET | transfer, lines 2256-2263 | eq:transferred-main; restoration B -> Y by PairSmall; U-slot corrections; terminal-band convention
-not started | 2026-10-12 20:49:39 ET | power-costs, lines 2372-2384 | eq:three-sides on leaves (p = 1-1/1200, T = P^C); transferred main <= eta P^C |R|
-not started | 2026-10-12 20:49:39 ET | power-costs, lines 2386-2390 | Frozen complements at b: bounded sizes, variation budgets, freeze flags as strong factors, caps
-not started | 2026-10-12 20:49:39 ET | fixed-stacks, lines 2393-2413 | Binary prefix positions; linear-side and basic-U stacks; banded side with P+1 indices
-not started | 2026-10-12 20:49:39 ET | fixed-stacks, lines 2415-2419 | Rolling stacks with fixed inputs 1_Omega(Z_v - Z_a); eq:stack-energy PG0|R|, G0|R|; #configurations <= G0
-not started | 2026-10-12 20:49:39 ET | fixed-stacks, lines 2421-2423 | Randomization of the concrete stacks; selection of positions and bands (Khintchine)
-not started | 2026-10-12 20:49:39 ET | side-estimate, lines 2425-2428 | Hulls Omega_nu with M0 <= exp(k^C); two_hull_caps on the concrete stacks, merged with power-cost cuts
-not started | 2026-10-12 20:49:39 ET | side-estimate, lines 2430-2444 | near_band_bound on concrete stacks via Lambda_c_phys; eq:near-band C_q(1+C_N)P^-1/2 G0 (K+2)^e |R|
-not started | 2026-10-12 20:49:39 ET | side-estimate, lines 2446-2456 | Exported side estimate on a leaf: the >=3-side (hS) and 2+2 (hT) bounds of leaf_before_absorption
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2124, 2460-2462 | Core A = Z~ - V as sum of minimal-CURRENT subtotals A_D on attempt cells
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2463-2467 | First-success heights on attempt cores: finite words, failure assignment, product masks
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2468-2479 | eq:core-torus-form with cutoffs g_j and multiplier R_z, eq:frequency-box, offset S'
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2482-2504 | eq:torus-size and eq:Haar-four for selected attempt components
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2530-2534 | Kernel decay |W_s(rq',rt')| <= C_J mu nu^-J and W_beta derivatives from the admissible marginals
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2506-2529 | Four-core tests eq:four-tests: mask-independent references, coset reduction
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2536-2565 | Three-core tests: D_m Parseval, eq:side-windows with fresh offset S'
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2566-2585 | eq:core-numerical, moment bound over failure assignments, eq:principal-core
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2707-2742 | Counting hypotheses on attempts: labels, E_s, M_i^G, side weights, gap, L_0 <= P^C
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2772-2800 | Negligible amplitudes, amplitude bins, eq:powered-count per group, Hoelder over groups
-not started | 2026-10-12 20:49:39 ET | sec:core, lines 2802-2816 | Band sums, x* path integration (eq:path), minimum step: eq:core-final (hC)
-not started | 2026-10-12 20:49:39 ET | prop:normalized, lines 2839-2841 | Union of failure, size, side-cap, top, power-cost and hull cuts <= |R|/4
-not started | 2026-10-12 20:49:39 ET | prop:normalized, lines 2843-2852 | eq:before-absorption on one attempt: attempt_instance + leaf_before_absorption, leaves <= G0
-not started | 2026-10-12 20:49:39 ET | prop:normalized, lines 2853-2866 | Attempt inputs d_max,D*,B*,D_m,Q0 with Lambda<=P^C; K<=P^C5; G0<=exp(C(1+log 2k)^C); compressionC<=G0
-not started | 2026-10-12 20:49:39 ET | prop:normalized, lines 2868-2888 | RetainedMin: q, alpha, P = ceil(eta_0^-alpha); e^-k and eps absorbed in eta_0^c*
-not started | 2026-10-12 20:49:39 ET | thm:main, lines 2934-2941 | Unconditional thm:main: full build and axiom audit
+complete | 2026-10-12 22:20:57 ET | mode-schedule, lines 1962-1972 | LeafSplit, exact frozen synthesis, any schedule; eq:slope-variation (exists_leafSplit, slope_variation_mode)
+complete | 2026-10-12 22:35:53 ET | side-caps, line 2160 | Rolling budget: B_var <= 5K C_comp C_F |R| from eq:variation on 1_R F, lags u_b (rolling_budget, lagU_le)
+complete | 2026-10-12 22:51:48 ET | side-caps, lines 2160-2161 | Linear budget B_lin: classes mod 3 (blockClass_sep), group_event_rows, restricted input (linear_budget)
+complete | 2026-10-12 23:03:45 ET | side-caps, lines 2161-2162 | U sides: cell_outputs_joint, uslot_budget, U_cells_energy_le; no-decision cells: noDecision_budget
+complete | 2026-10-12 23:07:40 ET | side-caps, lines 2162-2166 | eq:side-cap: side_mass_le per slot (rolling+linear+whole outputs), one cut for all slots (leaf_side_caps_all)
+complete | 2026-10-12 23:12:04 ET | side-caps, lines 2163-2164 | Sizes: leafOut_size_le, retained_cell_le, retained_piece_sizes; errors: error_bound_le_root
+complete | 2026-10-12 23:16:14 ET | helpers, lines 2167-2169, 2237 | Side states as helper bases (side_freshFrom); helper_trial_cap; helper_instantiation keeps main tests
+complete | 2026-10-12 23:20:04 ET | representatives, lines 2171-2192 | attempt_representatives per (D.Ms l G); alive_curvature_gap, alive_representative_separation
+complete | 2026-10-12 23:23:18 ET | component-sizes, lines 2196-2209 | cellMode_synthesis_ge, cell_component_sizes, cell_side_subtotals (pairConst pairing, private floors)
+complete | 2026-10-12 23:26:13 ET | prop:tops, lines 2212-2231 | eq:top-count: top_count (tops_measure_bound, tops_count_cut, reps_card_le_tops, min with D_*); attempt_tops_rows
+complete | 2026-10-12 23:30:59 ET | transfer, lines 2240-2241 | form_layer_chains (positive-chain products of c,d); leafAt_layers_distinct (distinct cumulative ranks across slots)
+complete | 2026-10-12 23:34:21 ET | transfer, lines 2242-2252 | padFam (Q_0=0, Q_{P+1}=1), ballAt_eq_filterAvg, helperAvg_eq_filterAvg, pad_transfer_chain on forms
+complete | 2026-10-12 23:39:01 ET | transfer, lines 2254-2256 | ResidPass (main/helper tests), form_band_le (band = difference of residuals), cellForm_pairs_le (far tags)
+complete | 2026-10-12 23:41:27 ET | transfer, lines 2256-2263 | eq:transferred-main (pad_transfer_chain main term); restore_two (B -> Y, U corrections); terminal_band
+complete | 2026-10-12 23:45:02 ET | power-costs, lines 2372-2384 | leaf_three_sides (eq:three-sides with side caps T); pair_small_main_le (transferred main <= eta T |R|)
+complete | 2026-10-12 23:48:06 ET | power-costs, lines 2386-2390 | bands_bessel (pad bands orthogonal), freeze_split (freeze errors), flag_le (flag indicator strong factor)
+complete | 2026-10-12 23:51:15 ET | fixed-stacks, lines 2393-2413 | binary_prefix_expansion; linear_stack_energy, uslot_stack_energy, banded_stack_energy (P+1 indices)
+complete | 2026-10-12 23:54:16 ET | fixed-stacks, lines 2415-2419 | restrict_local_input (fixed inputs 1_Omega), globHist_stack_rolling, rolling_stack_total, configurations_card
+complete | 2026-10-12 23:54:37 ET | fixed-stacks, lines 2421-2423 | double_khintchine, sign_select_three (bands), form_sign_avg3, piece_select_bound, piece_band_bound
+complete | 2026-10-13 00:01:59 ET | side-estimate, lines 2425-2428 | hull_mass_le (sum |Omega_nu| <= M |R|), two_hull_caps, exceptional_roots_le (merge with power-cost cuts)
+complete | 2026-10-13 00:05:27 ET | side-estimate, lines 2430-2444 | leaf_near_band (near_band_bound for Lambda_c on column stacks, kernel A.w), Lambda_c_eq_form
+complete | 2026-10-13 00:10:32 ET | side-estimate, lines 2446-2456 | hS: leaf_three_sides; hT: leaf_two_two (restored Er + 81 errors + 81 three_side_patterns_sum_le)
+complete | 2026-10-13 00:17:45 ET | sec:core, lines 2124, 2460-2462 | New file SecCompletionQuantitativeCore; frozenEval_eq_comps, LeafSplit.core_eq_comps
+complete | 2026-10-13 00:20:54 ET | sec:core, lines 2463-2467 | first_success_words_card, first_success_hasSum, failMask, failed_words_eq_biUnion; coherence core_good_iff
+complete | 2026-10-13 00:23:26 ET | sec:core, lines 2468-2479 | component_torus_form, gauge_factors_eq_mult/gaugeMult_truncate (g_j, R_z), frequency_box, offset_side_eLpNorm_le
+complete | 2026-10-13 00:28:22 ET | sec:core, lines 2482-2504 | torus_size_bound, cell_subtotals_upper, cell_average_close, haar_norm_sq_eq, haar_four
+complete | 2026-10-13 00:41:20 ET | sec:core, lines 2530-2534 | kernelFT, decay_q/decay_t/near_line/decay_lines, unitKernel_bounds/marginal, admissible_kernel_decay
+complete | 2026-10-13 00:55:08 ET | sec:core, lines 2506-2529 | form_linear_phase, coset_sum_eq_haar, coset_reference_bound, kernelFT_lipschitz, coset_haar_four_le
+complete | 2026-10-13 01:08:07 ET | sec:core, lines 2536-2565 | anchor_entry_bound, dual_slice_bound (D_m), shell_pairing_bound, side_windows (eq:side-windows), dyadic_majorant
+complete | 2026-10-13 01:10:49 ET | sec:core, lines 2566-2585 | first_success_error (core-numerical), core_moment_bound, assignments_total; principal-core assembled in core-final
+complete | 2026-10-13 01:15:02 ET | sec:core, lines 2707-2742 | representatives_separated, tested_mult_le; four/three_core_sparse_count, side_incidence_le, total_count_le
+complete | 2026-10-13 01:17:30 ET | sec:core, lines 2772-2800 | negligible_amplitudes, dyadic_bins_card, sum_bins_le, powered_count, core_count_groups (Hoelder over groups)
+complete | 2026-10-13 01:19:33 ET | sec:core, lines 2802-2816 | core_final_bound (min step + eq:path), band_sum_summable, min_sum_le_rpow
+complete | 2026-10-13 01:21:37 ET | prop:normalized, lines 2839-2841 | exceptional_union (maximal union cells: inside R, disjoint, <= |R|/4, covering)
+complete | 2026-10-13 02:04:00 ET | before-absorption 1/14, line 2838 | leafOut/leafIn, leafIn_eq_sub, leaf_sum_success (unsuccessful groups vanish), groupsAt_cert
+complete | 2026-10-13 02:04:00 ET | before-absorption 2/14, lines 2159-2162 | leaf_basic_side_mass, leaf_uslot_side_mass (rolling/linear/U/no-decision); cuts in 13/14
+complete | 2026-10-13 02:14:42 ET | before-absorption 3/14, lines 2163-2166 | cut_of_budget, regular_mass_le, cell_piece_sizes (B_s), leaf_error_attempt (hE via leaf_error_bound)
+complete | 2026-10-13 02:19:11 ET | before-absorption 4/14, line 2845 | usedCells_sum, leaf_side_paths (side-cap cut), leaf_three_sides_attempt (hS on retained cells)
+complete | 2026-10-13 02:48:25 ET | before-absorption 4a/14, lines 1807-1812 | TestIdx = BaseIdx ⊕ ChainIdx (chain tests), mH = 2 fuel + 2, Hmax = 20P(L+1) + 40P
+complete | 2026-10-13 02:48:25 ET | before-absorption 4b/14, lines 1807-1831 | AttemptCert exported by attempt_instance (passes, templates, births, counts, helper room)
+complete | 2026-10-13 02:57:36 ET | before-absorption 5/14, lines 2240-2262 | leaf_restored_transfer, AttemptCert.helpers, Λc_restore, Λc_pair_small_le; helper tests in 6/14
+complete | 2026-10-13 03:10:59 ET | before-absorption 6a/14, lines 2253-2256 | Cell far bands: far_helper_le (helper band higher), far_main_le (near tests, far pair estimate)
+complete | 2026-10-13 03:23:37 ET | before-absorption 6b/14, lines 1810-1811, 2253 | CellPass (avg, zero, band), chain_ball/cum_cellPass, VTest.ofSteps, helper_cellPass
+complete | 2026-10-13 03:26:55 ET | before-absorption 6c/14, lines 2254-2255 | outer_filter_sources (positive outer filter), basic_sources (unfiltered basic columns)
+complete | 2026-10-13 03:34:30 ET | before-absorption 6d/14, lines 1805, 2254-2256 | near_cmask, near_bmask (neighbor closure), far_pair (Dg_sep); helper templates exported
+complete | 2026-10-13 04:17:01 ET | before-absorption 6e/14, lines 2253-2258 | chainDefectSel split/bound, far_side_le, chainPair_far_le; HelperIdx, helper_steps_pass, card bound
+complete | 2026-10-13 04:46:23 ET | before-absorption 7a/14, lines 2386-2394 | gChain/gBall/gIn restrictions; chain, ball-pad and cum-pad variations; freeze_split, flag_le
+complete | 2026-10-13 04:54:00 ET | before-absorption 7b/14, lines 2400-2408 | Positions: bitPrefix/posInt, prefix_telescope, posInt_eq_or_disjoint, sum_posComp, bilinear_posComp
+complete | 2026-10-13 05:39:47 ET | before-absorption 7c/14, lines 2408-2411 | gluedStack_restrict, posVal/pos_rep configurations, Λc_stacks_expand; energies in 8c
+complete | 2026-10-13 05:39:47 ET | before-absorption 7d/14, lines 2425-2428 | Randomized stacks: internal to leaf_near_band (rademacher_moment_hyp in piece_band_bound)
+complete | 2026-10-13 05:39:47 ET | before-absorption 8a/14, lines 2430-2444 | useHull, two_hull_caps cuts, near_band_cut, near_band_stacks (eq:near-band on glued stacks)
+complete | 2026-10-13 06:25:26 ET | before-absorption 8b/14, lines 2386-2391 | gStep/StepRel, chainSteps_eq_desc, chainDefectSel_eq_sum, defTerm_intertwine (global steps)
+complete | 2026-10-13 06:57:13 ET | before-absorption 8c/14, lines 2408-2423 | VarCap, varCap_out, posAnc/posStack/bandStack/baseStack/depthStack energies, bandPads (jump, Bessel)
+complete | 2026-10-13 06:57:13 ET | before-absorption 8d/14, lines 2386-2394 | freeze_four, band_sum_le, nearForm_unflagged/current_le, flag_band_one, energyAverage bounds
+complete | 2026-10-13 08:10:09 ET | before-absorption 8e/14, lines 2446-2456 | Leaf 2+2 reduction: tuple_split, ucore_le, two_two_min, two_two_leaf (caps, data as hyps)
+complete | 2026-10-13 08:47:02 ET | before-absorption 8f/14, lines 2386, 2430-2456 | abs_sum_le (pair-small/far, side caps); near_triple(_U), near_cell_eq, near_sum (one union cut)
+complete | 2026-10-13 09:11:27 ET | before-absorption 8g/14, lines 2384-2394 | third_budget, strTh_sq, flag_budget (K propagation), caps_cut; freeze/restoration energies in 8h
+complete | 2026-10-13 09:19:24 ET | before-absorption 8h/14, lines 2458-2462 | leaf_two_two_bound (SidesExport): one cut 2ρ, caps, near_sum, abs; inputs as hypotheses
+complete | 2026-10-13 09:24:32 ET | before-absorption 8i/14, lines 2262, 2384 | restore_cell, restore_sizes (Cy = 4), restore_budget; pair-small and MemLp of A.Y from LevelProps
+complete | 2026-10-13 09:30:34 ET | before-absorption 8j/14, lines 2388-2389 | cur_bounds, cur_use (C₀ = 4 via base_size), compBand_bessel, norm_chainVal_cell_le
+complete | 2026-10-13 09:58:33 ET | before-absorption 8k/14, lines 2389-2394 | freeze_budget (17+K)C₀²·frzE; frz_bound via op_variation, histOp/bandDiff jumps, K offsets
+complete | 2026-10-13 10:03:53 ET | before-absorption 8l/14, lines 2253-2258 | far_cell: chainPair_far_le + helper_steps_pass (βH = τH n_a), ε → 0; farC
+complete | 2026-10-13 10:09:36 ET | before-absorption 8m/14, lines 2159-2166, 2412-2416 | block_start_energy, rolling_class (EWa); masses, certOK, list bounds in 13/14
+complete | 2026-10-13 10:15:06 ET | before-absorption 9a/14, lines 2463-2466 | pattern_comp_expand, patF_comp_expand (CoreExport); pre-cells and frozen synthesis at assembly
+complete | 2026-10-13 10:26:54 ET | before-absorption 9b/14, lines 2463-2469 | masked_count, first_success_masked, compGood, coreComp_bad_card, tuple_success, group_first_success
+complete | 2026-10-13 10:29:22 ET | before-absorption 9c/14, lines 2466-2479 | multilinear_regroup, gauge/wave_eq, group_torus_form; box, R_z, S' lemmas exist (790)
+complete | 2026-10-13 10:35:02 ET | before-absorption 10a/14, lines 2482-2497 | torus_size_haar, cell_average_of_approx; Haar-four coset_haar_four_le; gap/X hyps fed in 13/14
+complete | 2026-10-13 10:37:35 ET | before-absorption 10b/14, lines 2499-2534 | four_core_test, admissible_kernel_decay', moderate_same_coset; decay_lines, kernelFT_lipschitz exist
+complete | 2026-10-13 10:41:25 ET | before-absorption 10c/14, lines 2536-2565 | torus_bessel, dualSlice, three_core_windows; anchor_entry_bound, side_windows exist
+complete | 2026-10-13 10:44:14 ET | before-absorption 11/14, lines 2566-2585 | mask_second_moment, roleMask_fail, wordAvg, word_moment_bound; assignments_total; assembly in 13/14
+complete | 2026-10-13 10:54:57 ET | before-absorption 12a/14, lines 2522-2542 | form_exp_sums (four cores), planeShear, anchorFn, form_anchor_exp (three cores)
+complete | 2026-10-13 11:14:50 ET | before-absorption 12b/14, lines 2470-2479 | cutoffP_truncate, gauge_torus_approx, group_torus_char, four_inputs_approx, four_core_physical
+complete | 2026-10-13 11:34:17 ET | before-absorption 12c/14, lines 2482-2531 | Four cores: four_core_test', four_core_cell_bound, torus_size_cell, wave_sum_le_cellMode
+complete | 2026-10-13 11:53:59 ET | before-absorption 12c'/14, lines 2536-2569 | Three cores: three_core_cell_bound (anchor expansion, Fourier pairing, cosets, windows, tails)
+complete | 2026-10-13 12:06:16 ET | before-absorption 12b'/14, lines 2478-2480 | offset_average_form, offset_form_anchored, anchoredForm_phase_approx, reanchor_physical/torus
+complete | 2026-10-13 12:20:31 ET | before-absorption 12d/14, lines 2707-2741 | attempt_representatives3, attempt_label_sep', pure_shift_gap; FourRef/ThreeRef are bin definitions
+in progress | 2026-10-13 19:13:13 ET | core 12e-1, lines 2468-2531 | Four cores, one grouped class on a leaf cell: role inputs into four_core_uniform (four_class_bound)
+not started | 2026-10-13 19:13:13 ET | core 12e-2, lines 2536-2560 | Three cores, one grouped class on a leaf cell: role inputs into three_core_averaged
+not started | 2026-10-13 19:13:13 ET | core 12e-3, lines 2482-2486, 2519-2524, 2537-2539 | References p0 / m and near-far coset hypotheses from eq:gap on the leaf
+not started | 2026-10-13 19:13:13 ET | core 12e-4, lines 2487-2495 | eq:torus-size on the leaf: input torus norms <= a'_j from physical averages (eq:component-size)
+not started | 2026-10-13 19:13:13 ET | core 12e-5, lines 2566-2575 | Moments a'_j <= C sigma, E a'^2 <= C(2 delta)^n sigma^2 on the leaf; moment hypothesis of core_leaf_bound
+not started | 2026-10-13 19:13:13 ET | core 12e-6, lines 2566-2582 | eq:principal-core: core_leaf_bound per configuration, with eq:core-numerical errors absolute
+not started | 2026-10-13 19:13:13 ET | core 12f-1, lines 2717-2742 | Bins: E_s^G, M_i^G, M_l^G on the attempt; eq:total-count and eq:applied-sparse instantiated
+not started | 2026-10-13 19:13:13 ET | core 12f-2, lines 2766-2772 | Negligible amplitudes sigma_j < D*^-B removed absolutely before powers
+not started | 2026-10-13 19:13:13 ET | core 12f-3, lines 2774-2801 | eq:powered-count via distribution_power; Holder over groups; amplitude factor <= 1
+not started | 2026-10-13 19:13:13 ET | core 12f-4, lines 2803-2808 | Frequency band sums over mu, nu, Lambda (and J) finite
+not started | 2026-10-13 19:13:13 ET | core 12f-5, lines 2810-2816 | min-power and path integration: eq:core-final, i.e. hC of leaf_before_absorption
+not started | 2026-10-13 19:13:13 ET | before-absorption 13, lines 2839-2848 | Cut union (exceptional_union) and leaf_before_absorption summed over leaves
+not started | 2026-10-13 19:13:13 ET | before-absorption 14, lines 2845-2852 | eq:before-absorption on one attempt: hE, hC, hS (leaf_three_sides_attempt), hT (two_two_leaf)
+not started | 2026-10-13 19:13:13 ET | prop:normalized, lines 2853-2866 | Degree bounds: log D*, log H, log T <= C P^C; K <= C P^C5; G0 <= exp(C(1+log 2k)^C)
+not started | 2026-10-13 19:13:13 ET | prop:normalized, lines 2868-2888 | RetainedMin: q, alpha, P = ceil(eta^-alpha); eq:active-final from eq:before-absorption
+not started | 2026-10-13 19:13:13 ET | thm:main, lines 2934-2941 | Unconditional thm:main from RetainedMin; full build and axiom audit
 complete | 2026-10-12 15:33:25 ET | prop:normalized, lines 2827-2904 | NormalizedAbsorption and thm:main from ActiveFinal (normalizedAbsorption_of_activeFinal)
 complete | 2026-10-12 15:40:04 ET | prop:base, lines 1655-1660 | ActiveFinal from ActiveMin: reduction, two-U term, inactive error (activeFinal_of_activeMin)
 complete | 2026-10-12 16:24:12 ET | prop:normalized, lines 2840-2843 | ActiveMin from RetainedMin: restart recursion, LevelProps below sub-roots, label padding

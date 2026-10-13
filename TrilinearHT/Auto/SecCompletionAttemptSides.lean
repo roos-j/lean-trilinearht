@@ -2839,7 +2839,9 @@ theorem helper_instantiation {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameT
       (∀ I ∈ L, ∀ w, (tests I w).Pass G I c₀ H tagOf (wI I) (τ rH) mH (s₀ ++ hcat)) ∧
       (∀ i, (main i).2.2.Pass G Mc (main i).1 c₀ H tagOf (wI (main i).1) (τm i) mH
         (s₀ ++ hcat)) ∧
-      (∀ d ∈ hcat, d.birth ∈ L ∧ d.rank = rH) ∧
+      (∀ d ∈ hcat, d.birth ∈ L ∧ d.rank = rH ∧ ∃ w, (tests d.birth w).M d.tag ∧
+        ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
+          d = templateCol (tagOf d.tag) (tests d.birth w).t R γ d.birth rH d.tag) ∧
       (∀ I ∈ L, ((hcat.filter (fun d => decide (d.birth = I ∧ d.rank = rH))).length : ℝ) *
           (τ rH / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 ≤
         Fintype.card (W I) * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) ∨
@@ -2847,16 +2849,19 @@ theorem helper_instantiation {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameT
       hcat.length ≤ L.length * Tmax := by
   obtain ⟨hcat, hp, hb, hc, hl⟩ := vtree_closure hst hH hdim L hnd hord wI hwI W tests mH τ hτ
     s₀ hMc hfresh hcap
-  have hrank : ∀ d ∈ hcat, d.birth ∈ L ∧ d.rank = rH := by
+  have hrank : ∀ d ∈ hcat, d.birth ∈ L ∧ d.rank = rH ∧ ∃ w, (tests d.birth w).M d.tag ∧
+      ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
+        d = templateCol (tagOf d.tag) (tests d.birth w).t R γ d.birth rH d.tag := by
     intro d hd
-    obtain ⟨hdL, w, hdr, -⟩ := hb d hd
-    exact ⟨hdL, hdr.trans (hrH _ w)⟩
+    obtain ⟨hdL, w, hdr, hM, R, hR, γ, hdt⟩ := hb d hd
+    refine ⟨hdL, hdr.trans (hrH _ w), w, hM, R, hR, γ, ?_⟩
+    rw [← hrH _ w]; exact hdt
   refine ⟨hcat, fun I hI w => ?_, fun i => ?_, hrank, fun I hI => ?_, hl⟩
   · have := hp I hI w
     rwa [hrH I w] at this
   · refine ((main i).2.2.pass_append_highRank _ c₀ H tagOf _ _ mH s₀ hcat fun d hd => ?_).mpr
       (hpass i)
-    rw [(hrank d hd).2]
+    rw [(hrank d hd).2.1]
     exact hmain i
   · exact hc I hI rH
 
