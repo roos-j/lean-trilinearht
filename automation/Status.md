@@ -2,23 +2,9 @@
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-not started | 2026-10-12 15:40:04 ET | thm:main, lines 2934–2941 | Uniform L3 THT estimate: proved given RetainedMin (activeMin_of_retainedMin, activeFinal_of_activeMin)
-complete | 2026-10-11 11:29:42 ET | thm:main, lines 2984–2992 | Pointwise principal value on Schwartz inputs (Auto.thtTruncated_tendsto)
-complete | 2026-10-11 11:35:58 ET | thm:main, lines 2999–3009 | Unique bounded L3 extension given the bound (Auto.schwartz_L3_unique_extension)
-
-# Quantitative quadratic chart calculus prerequisite
-
-The locally quadratic chart lemma needs the substantial general calculus of compactly supported quadratic lattice-sum charts: finite summation, normalization, conjugation,
-products, affine changes and uniform Gevrey complexity. Pinned Mathlib has no matching quadratic chart theorem; its calculus and Fourier primitives underlie the already-proved
-general development. Extract that complete development into TrilinearHT/Auto/QuadraticCharts.lean under the reusable-prerequisite exception, not a machine-blueprint section split.
-Move the primitive logarithmic-size and quasipolynomial-bound definitions with it. Use a primitive local rational height definition, definitionally equal to the existing one, so
-every statement and local definition depends only on Mathlib and the same module. RationalLinearAlgebra may be imported for proof reuse only. A declaration-reference scan found no
-other external project dependencies. Verified source: def:chart, lines 625-637, lem:chart-operations, lines 642-660, and the several-variable chart formula. Recorded before
-creation at 2026-10-09 19:20:45 ET.
-
-status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
---- | --- | --- | ---
-complete | 2026-10-09 19:24:17 ET | def:chart and lem:chart-operations, lines 625-660 | Independent quantitative quadratic chart calculus
+old incomplete | 2026-10-14 03:49:26 ET | thm:main, lines 2934-2939 | Uniform L1 bound: statement exact (tht_main_of_activeFinal); proved only from RetainedMin, unproved
+complete | 2026-10-11 11:29:42 ET | thm:main, line 2940, proof 2985-2990 | Pointwise principal value on Schwartz inputs (thtTruncated_tendsto_thtPV)
+complete | 2026-10-11 11:35:58 ET | thm:main, line 2940, proof 2999-3008 | Unique bounded L3 extension given the bound (schwartz_L3_unique_extension)
 
 # Quantitative Gevrey cutoff prerequisite
 
@@ -49,7 +35,6 @@ status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief math
 complete | 2026-10-08 22:44:53 ET | lem:fourier-foundation, lines 130–146 | Coordinate Fourier coefficient decay
 complete | 2026-10-08 22:44:53 ET | lem:fourier-foundation, lines 134–146 | Nonzero shell counting, tails, and uniform convergence
 complete | 2026-10-09 13:30:19 ET | lem:fourier-foundation, lines 130-146 | Independent Fourier approximation module verification
-complete | 2026-10-10 11:41:13 ET | lem:separation, line 1409 | Convolution forms bounded by the kernel's Fourier supremum (Mathlib-only statement)
 
 # Balog-Szemeredi-Gowers prerequisite
 
@@ -98,7 +83,7 @@ on Mathlib and local definitions. This invokes the reusable-prerequisite excepti
 Croot-Sisask almost-period consequence, blueprint lem:almostperiods, lines 766-784, using its existing probability norms and sampling theorem. No additional module is needed.
 Verified reference: blueprint lem:finite-fourier, lines 177-209; preserve sibling attribution. Recorded before creation at 2026-10-09 13:58:52 ET. Consolidation recorded at
 2026-10-09 21:22:18 ET: move the already-proved finite Fourier foundations from main into this module, beside their local finiteAverage, finiteConvolution and uniformMean
-primitives; add the trilinear Fourier selection estimate needed for finite-inverse lines 1148-1157. The unchanged foundation statements depend only on Mathlib and this module.
+primitives (the finite-inverse trilinear selection, lines 1148-1157, is in Sec07FiniteInverse). The unchanged foundation statements depend only on Mathlib and this module.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -137,6 +122,11 @@ probability-L2 dual bounds. Mathlib supplies Hahn--Banach, Riesz representation 
 lean-spherical convex-duality module concerns scalar convex functions. Develop TrilinearHT/Auto/HilbertAtomicDecomposition.lean under the reusable-prerequisite exception, using
 only Mathlib and definitions local to that module in its statements. The general result will take an independently stated inverse-correlation hypothesis; the main file must
 discharge it using continuous_inverse. This is not a split along machine-blueprint sections. Recorded before creation at 2026-10-10 00:38:41 ET.
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-10 00:48:24 ET | lem:inverse proof, lines 1218-1237 | Separation of atomic hull and two seminorm balls; three dual bounds (probabilityL2_atomic_separation)
+complete | 2026-10-10 01:01:37 ET | lem:inverse proof, line 1239 | Closure and finite atomic decomposition (probabilityL2_atomic_decomposition)
 
 # Gowers–Cauchy–Schwarz and cube continuity prerequisite
 
@@ -178,7 +168,7 @@ The successive-minima transference principle is needed by lem:transference and l
 successive-minima product bound. This is a substantial classical geometry-of-numbers theorem, here for arbitrary finite-dimensional real inner-product spaces, full lattices and
 compact symmetric convex bodies, with constants independent of the lattice and body. Its statement and all supporting definitions depend only on Mathlib and the dedicated
 TrilinearHT/Auto/LatticeTransference.lean. The already-proved integer-basis, reduced-basis and transference development is moved together before the main file reaches its
-10000-line limit; the coefficient-box application remains in the main file. Verified references are blueprint lem:integer-basis, lem:reduced-basis and lem:transference, and pinned
+10000-line limit; the coefficient-box application is in Sec02. Verified references are blueprint lem:integer-basis, lem:reduced-basis and lem:transference, and pinned
 Mathlib.MeasureTheory.Group.GeometryOfNumbers and Mathlib.LinearAlgebra.BilinearForm.DualLattice.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
@@ -253,7 +243,6 @@ complete | 2026-10-09 05:59:06 ET | lem:cuts, lines 458–462 | Truncated hull m
 complete | 2026-10-09 06:04:06 ET | lem:cuts, line 463 | Partial hull maxima through the current depth and full-max domination
 complete | 2026-10-09 06:11:17 ET | lem:cuts, lines 458 and 463–465 | Individual and truncated-sum first-crossing costs and their combination
 complete | 2026-10-09 06:18:00 ET | eq:hull-cap, lines 444–448 and 464–465 | Everywhere whole-cell cap on retained hull maxima
-
 complete | 2026-10-09 08:14:25 ET | lem:compression, line 553 | Finite dyadic descendant generations and partition identities
 complete | 2026-10-09 08:18:00 ET | lem:compression, line 553 | Enclosing finite cell families in complete finite dyadic trees
 complete | 2026-10-09 08:28:30 ET | lem:compression, line 553 | Finite threshold stopping cuts and terminal partition identities
@@ -265,11 +254,8 @@ complete | 2026-10-09 09:18:35 ET | lem:compression, lines 561–565 | Finite dy
 complete | 2026-10-09 09:23:00 ET | lem:compression, lines 561–564 | Pointwise geometric square-average bound along stopping paths
 complete | 2026-10-09 09:34:12 ET | lem:compression, line 565 | Small-size geometric sums and logarithmic counts of large stopping sizes
 complete | 2026-10-09 09:42:35 ET | lem:compression, line 565 | Abstract logarithmic energy estimate for supported moment families
-
 complete | 2026-10-09 10:01:46 ET | lem:compression, line 567 | Norm-threshold anchor generations, finite termination and restart assignment
-
 complete | 2026-10-09 10:09:32 ET | lem:compression, line 569 | Completion of anchor generations to refining terminal partitions
-
 complete | 2026-10-09 10:27:41 ET | lem:compression, lines 569–572 | Jump ancestors and disjoint-cell L2 mass bounds
 
 # Rademacher–Menshov and nested projection products prerequisite
@@ -287,7 +273,6 @@ complete | 2026-10-09 07:49:01 ET | lem:prefix, lines 508–514 and 522–527 | 
 complete | 2026-10-09 07:53:09 ET | lem:prefix, lines 508–514 and 524–527 | Noncommuting products of nested projection layers
 complete | 2026-10-09 07:59:32 ET | eq:product-jump, lines 515–519 and 529–534 | Product telescoping and square-sum jump estimate
 complete | 2026-10-09 08:06:08 ET | lem:prefix, lines 519 and 534 | Disjoint-interval product jumps and empty products
-
 complete | 2026-10-09 10:45:41 ET | lem:compression, line 579 | Explicit logarithmic prefix count and numerical restart contraction
 complete | 2026-10-09 11:43:48 ET | lem:compression, line 597 | General cubic layer-count and logarithmic budget prefix bound
 complete | 2026-10-09 11:56:34 ET | lem:compression, line 597 | General complement-product expansion and finite row bound
@@ -307,574 +292,296 @@ complete | 2026-10-11 14:47:28 ET | lem:shortblock, line 2330 | Minkowski integr
 
 # Main proof ledger
 
+Rebuilt from scratch at 2026-10-14 03:49:26 ET by a line-by-line audit of the blueprint against the Lean code (user directive 2026-10-14 03:21 ET).
+A row is complete only when the claim at those lines is proved in Lean for the objects the blueprint uses, with no hypothesis beyond
+earlier blueprint results that the step itself invokes. Rows tagged with a prerequisite module are tracked in detail in its section above.
+Timestamps of this ledger are the audit time, not the original proof times. Gaps of in-progress rows are detailed in ErrorReport.md.
+
+## sec:foundations, lines 53-253
+
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-complete | 2026-10-08 21:53:39 ET | lem:budget-rules, lines 82–101 | Sums and products of quasipolynomial bounds
-complete | 2026-10-08 21:53:39 ET | lem:budget-rules, lines 82–101 | Positive fixed powers and compositions
-complete | 2026-10-08 21:58:59 ET | lem:budget-rules, lines 82–101 | Polynomial logarithmic bounds and parameter-uniform degrees
-complete | 2026-10-08 21:58:59 ET | lem:budget-rules, lines 82–101 | Compression overhead bound in logarithmic k
-complete | 2026-10-08 21:58:59 ET | lem:budget-rules, lines 82–101 | Domination by every positive power of P
-complete | 2026-10-08 23:05:08 ET | lem:fourier-foundation, lines 137–157 | Separated-frequency rows, multipliers, finite Schur test, and Hilbert duality
-complete | 2026-10-08 23:10:30 ET | lem:fourier-foundation, lines 143–158 | Quadratic oscillatory integral
-complete | 2026-10-08 23:24:00 ET | cube-definition, lines 162–175 | Probability counting measure and normalized finite convolution
-complete | 2026-10-08 23:48:00 ET | lem:finite-fourier, lines 190–213 | Finite cyclic Fourier inversion, Parseval, and convolution
-complete | 2026-10-08 23:48:00 ET | lem:finite-fourier, lines 192–213 | U2 Fourier identity and U3 recursion
-complete | 2026-10-09 00:53:14 ET | lem:vector-maximal, lines 240–251 | Real-line transport and Mq mixed norm power identities
-complete | 2026-10-09 04:03:13 ET | line 67 and lem:vector-maximal, lines 240–251 | Uncentered maximal comparison and source specialization
-complete | 2026-10-09 02:38:35 ET | lem:lattice-box, lines 329–331 | Reduced basis and uniform weighted coordinate bound
-complete | 2026-10-09 02:40:44 ET | lem:lattice-box, lines 332–336 | Integer side lengths, active basis subset, and norm budget
-complete | 2026-10-09 02:43:55 ET | lem:lattice-box, lines 337–342 | Explicit radius and containment of small lattice vectors
-complete | 2026-10-09 02:46:06 ET | lem:lattice-box, lines 325, 344 | Partial sums, empty box, and complete coefficient-box theorem
-complete | 2026-10-09 02:52:41 ET | lem:torus-annihilator, line 358 | Integer basis coordinate automorphism and annihilator model
-complete | 2026-10-09 02:57:38 ET | lem:torus-annihilator, line 358 | Coordinate torus homeomorphism and connectedness
-complete | 2026-10-09 03:02:30 ET | lem:torus-annihilator, lines 350–352, 358 | Haar character integral equals the lattice indicator
-complete | 2026-10-09 03:05:20 ET | lem:torus-annihilator, lines 354–358 | Nonzero integer multiplication and progression surjectivity
-complete | 2026-10-09 03:13:39 ET | lem:torus-annihilator, lines 358–360 | Progression map preserves Haar probability
-complete | 2026-10-09 03:19:36 ET | lem:absolute, line 390 | Reciprocal exponent polytope is the convex hull of Boolean endpoints
-complete | 2026-10-09 03:24:08 ET | lem:absolute, line 392 | Positive interpolation by finite Hölder
-complete | 2026-10-09 03:30:47 ET | eq:local and lem:absolute, lines 366–388 | Real local form and endpoint change of variables estimates
-complete | 2026-10-09 03:37:20 ET | lem:absolute, line 394 | Torus and integer lattice endpoint estimates
-complete | 2026-10-09 03:55:09 ET | eq:absolute, lines 378–396 | Full positive local form estimate in all three settings
-complete | 2026-10-09 04:11:38 ET | eq:local, eq:marginals and eq:CN, lines 364–403 | Dyadic grid and admissible kernel-family data
-complete | 2026-10-09 04:15:03 ET | lem:finite-CN, line 409 | Local norms bounded by uncentered maximal functions
-complete | 2026-10-09 04:22:34 ET | lem:finite-CN, line 409 | Disjoint depth summation gives linear depth bound
-complete | 2026-10-09 04:24:35 ET | eq:CN, lines 398–403 | Real supremum of positive finite-denominator ratios
-complete | 2026-10-09 04:26:36 ET | lem:finite-CN, lines 405–411 | Least constant, zero denominator and infinite denominator cases
-complete | 2026-10-09 06:26:52 ET | column-data, lines 470–481 | Finite private-coordinate column data and inherited masks
-complete | 2026-10-09 06:31:55 ET | column-data, lines 480–483 | Cell-supported L2 columns and finite-dimensional projection ranges
-complete | 2026-10-09 06:37:27 ET | column-data, lines 480–483 | Restriction to descendants preserves old column combinations
-complete | 2026-10-09 06:40:45 ET | column-data, lines 480–483 | Cell support and orthogonality of disjoint column ranges
-complete | 2026-10-09 06:43:15 ET | column-data, lines 480–483 | Finite stopping-partition ranges and direct-sum projections
-complete | 2026-10-09 06:47:42 ET | column-data, lines 480–483 | Refinement range inclusion and nested orthogonal projections
-complete | 2026-10-09 06:50:38 ET | column-data, line 483 | Row-family square bound and exact decision-cell locality interface
-complete | 2026-10-09 07:00:16 ET | lem:coeff, lines 487–491 and 503 | Private-coordinate lower bound and column-sum upper bound
-complete | 2026-10-09 07:11:31 ET | lem:coeff, line 503 | Positive averaged Gram operator and inverse bound
-complete | 2026-10-09 07:15:33 ET | lem:coeff, line 503 | Inverse-Gram formula for orthogonal projection coefficients
-complete | 2026-10-09 07:20:53 ET | lem:coeff, line 503 | Pointwise projection kernel formula and norm bound
-complete | 2026-10-09 07:23:24 ET | lem:coeff, lines 492–495 | D5 average-to-supremum projection bound
-complete | 2026-10-09 07:32:32 ET | eq:predictor-moment, lines 496–503 | Predictor moment identity and coefficient uniqueness
-complete | 2026-10-09 08:06:08 ET | lem:prefix, lines 508–535 | Nested-product row, successive-jump and disjoint-interval estimates
-complete | 2026-10-09 08:24:02 ET | lem:compression, lines 553 and 569 | Extend inherited masks to the completed tree while preserving original projections
-complete | 2026-10-09 08:47:11 ET | lem:compression, line 553 | Doubling-average stopping roots, size segments and terminal cut partitions
-complete | 2026-10-09 08:49:22 ET | lem:compression, line 553 | Cut-cell averages are at most four times the segment-root average
-complete | 2026-10-09 08:54:01 ET | eq:moment-representative, lines 555–556 | Cut-supported projections onto segment-ancestor columns
-complete | 2026-10-09 08:58:12 ET | eq:moment-representative, lines 558–559 | Uniform bound and projection energy identity for moment representatives
-complete | 2026-10-09 09:04:40 ET | eq:moment-representative, lines 559–561 | Preservation of every first-layer segment projection
-complete | 2026-10-09 09:27:18 ET | lem:compression, lines 561–564 | Dyadic maximal L2 bound and square-average stopping energy
-complete | 2026-10-09 09:52:57 ET | lem:compression, line 565 | Logarithmic aggregate energy of moment representatives
-complete | 2026-10-09 09:55:47 ET | lem:compression, line 567 | Common coefficient space and cell-product representation
-complete | 2026-10-09 10:05:12 ET | lem:compression, line 567 | Coefficient anchors and finite restart attempts
-complete | 2026-10-09 10:23:00 ET | lem:compression, lines 569–572 | Refining anchor partitions and private-coordinate jump lower bounds
-complete | 2026-10-09 10:30:10 ET | lem:compression, lines 570–572 | Integrated restart-length jump budget
-complete | 2026-10-09 10:39:00 ET | lem:compression, lines 573–578 | Restart length and energy contraction ratios
-complete | 2026-10-09 10:49:05 ET | lem:compression, line 579 | Specialize numerical contraction below one half
-complete | 2026-10-09 11:04:34 ET | lem:compression, line 579 | Total attempt length and energy packing
-complete | 2026-10-09 11:08:49 ET | lem:compression, line 581 | Finite attempt-root and last-anchor assignment
-complete | 2026-10-09 11:13:59 ET | lem:compression, line 581 | Anchor row control from the nested-product prefix theorem
-complete | 2026-10-09 11:17:53 ET | lem:compression, lines 587–589 | Birth-supported columns and integrated path-budget bound
-complete | 2026-10-09 11:21:52 ET | lem:compression, lines 581–584 | Exact local coefficient-error formula
-complete | 2026-10-09 11:29:19 ET | lem:compression, lines 585–589 | Coefficient-error row estimate from the original Bessel bound
-complete | 2026-10-09 11:32:01 ET | lem:compression, lines 592–595 | Combine anchor and error rows on a fixed attempt
-complete | 2026-10-09 11:35:05 ET | lem:compression, lines 591–595 | Sum attempt packing within each size segment
-complete | 2026-10-09 11:40:16 ET | lem:compression, lines 591–595 | Sum size segments using logarithmic moment energy
-complete | 2026-10-09 11:51:55 ET | eq:compression, line 597 | Polynomial prefix constant and final depth-independent estimate
-complete | 2026-10-09 12:04:59 ET | lem:compression, lines 548–550 and 597 | Spatial compression for projection complements
-complete | 2026-10-09 12:16:34 ET | lem:compression, lines 548–550 and 597 | Fixed averages with total-variation cost
-complete | 2026-10-09 13:37:25 ET | def:chart, lines 625-637 | Quadratic chart data, atom formula, Gevrey complexity and boundedness
-complete | 2026-10-09 13:43:28 ET | def:chart, lines 635-637 | Finite lattice summands and pointwise counting
-complete | 2026-10-09 13:55:36 ET | def:chart, lines 635-637 | Zero-dimensional phases and quasipolynomial normalization
-complete | 2026-10-09 13:58:52 ET | lem:chart-operations, lines 642-660 | Complex conjugation with unchanged complexity and boundedness
-complete | 2026-10-09 14:04:38 ET | lem:chart-operations, lines 642-660 | Real dilation with unchanged complexity and boundedness
-complete | 2026-10-09 14:10:13 ET | lem:chart-operations, lines 642-646 | Block-diagonal product chart and exact atom multiplication
-complete | 2026-10-09 14:17:27 ET | lem:chart-operations, lines 642-646 | Product cutoff derivative and complexity bounds
-complete | 2026-10-09 14:22:10 ET | lem:chart-operations, lines 642-646 | Fixed finite product closure and boundedness
-complete | 2026-10-09 14:25:21 ET | lem:chart-operations, lines 646-653 | Denominator clearing and uniformly bounded offset reduction
-complete | 2026-10-09 14:30:31 ET | lem:chart-operations, lines 646-653 | Translation phase identity and exact translated atom
-complete | 2026-10-09 14:35:07 ET | lem:chart-operations, lines 646-653 | Translated phase-modulated cutoff derivative bounds
-complete | 2026-10-09 14:38:17 ET | lem:chart-operations, lines 646-653 | Uniform translation complexity and quasipolynomial budget
-complete | 2026-10-09 14:40:59 ET | lem:chart-operations, lines 642-653 | Uniform affine closure and boundedness
-complete | 2026-10-09 14:47:46 ET | Chart formula and matrix decomposition, lines 656-660 | Several-variable atoms and symmetric/skew matrix parts
-complete | 2026-10-09 15:25:46 ET | lem:sumset-growth, lines 701-728 | Ruzsa triangle and minimal-growth iteration via Mathlib
-complete | 2026-10-09 16:50:36 ET | lem:derivative-graph, lines 829-835 | Large derivative Fourier coefficients and dense frequency selection
-complete | 2026-10-09 16:54:57 ET | lem:derivative-graph, lines 836-841 | Squared derivative correlation identity and positive lower bound
-complete | 2026-10-09 17:02:06 ET | lem:derivative-graph, lines 842-848 | First Cauchy-Schwarz step and translated square expansion
-complete | 2026-10-09 17:05:02 ET | lem:derivative-graph, lines 849-855 | Second Cauchy-Schwarz step and differenced character averages
-complete | 2026-10-09 17:11:29 ET | lem:derivative-graph, lines 856-861 | Character orthogonality and exact graph energy count
-complete | 2026-10-09 17:15:20 ET | lem:derivative-graph, lines 822-863 | Derivative graph with density, correlation and delta-to-the-64th energy
-complete | 2026-10-09 17:20:48 ET | lem:local-frequency, line 881 | Large small-difference subgraph retaining derivative correlations
-complete | 2026-10-09 17:25:04 ET | lem:local-frequency, lines 883-885 | Vertical obstruction set and K-to-the-seventeenth cardinality
-complete | 2026-10-09 17:33:29 ET | lem:local-frequency, line 887 | Half-density bound for nonzero character tests
-complete | 2026-10-09 17:38:11 ET | lem:local-frequency, line 887 | Logarithmic separating family of character tests
-complete | 2026-10-09 17:41:27 ET | lem:local-frequency, line 889 | Dense common torus cube for graph frequencies
-complete | 2026-10-09 17:45:57 ET | lem:local-frequency, line 889 | Elimination of vertical obstructions and iterated graph property
-complete | 2026-10-09 17:49:05 ET | lem:local-frequency, line 891 | Bohr domain with the unit frequency and small radius
-complete | 2026-10-09 17:53:21 ET | lem:local-frequency, line 891 | Unique Freiman frequency map and halving in odd modulus
-complete | 2026-10-09 17:59:03 ET | lem:local-frequency, lines 865-893 | Quantitative locally additive frequency with retained correlations
-complete | 2026-10-09 18:03:55 ET | lem:Bohr-weight, lines 895-914 | Centered-circle weights, support and mass bounds
-complete | 2026-10-09 18:09:54 ET | lem:Bohr-weight, lines 914-915 | Periodic cutoff Lipschitz and product translation bounds
-complete | 2026-10-09 18:14:35 ET | lem:Bohr-weight, lines 917-925 | Weighted local-character identity and Fourier decay
-complete | 2026-10-09 18:19:19 ET | lem:Bohr-weight, lines 895-926 | Complete smooth Bohr weight theorem
-complete | 2026-10-09 18:23:17 ET | lem:local-symmetry, lines 951-955 | Bohr calculus, weight interfaces and admissible inner radius
-complete | 2026-10-09 18:26:42 ET | lem:local-symmetry, lines 955-958 | Weighted translation localization of the initial correlation
-complete | 2026-10-09 18:30:22 ET | lem:local-symmetry, lines 959-964 | First weighted Cauchy-Schwarz and square expansion
-complete | 2026-10-09 18:34:35 ET | lem:local-symmetry, lines 965-973 | Alternating phase identity and change of variables
-complete | 2026-10-09 18:40:39 ET | lem:local-symmetry, lines 974-977 | Weight replacement and selection of one outer parameter
-complete | 2026-10-09 18:49:21 ET | lem:local-symmetry, lines 978-982 | Second Cauchy-Schwarz and averaged local Fourier correlation
-complete | 2026-10-09 18:53:35 ET | lem:local-symmetry, lines 983-989 | Large local spectrum set and ordinary density
-complete | 2026-10-09 18:58:12 ET | lem:local-symmetry, lines 990-999 | Local Fourier decay on the iterated spectrum difference set
-complete | 2026-10-09 19:02:00 ET | lem:local-symmetry, lines 1000-1007 | Dense Bohr subdomain and refined radius
-complete | 2026-10-09 19:06:12 ET | lem:local-symmetry, lines 1008-1013 | Doubling the Bohr domain and controlling the alternating phase
-complete | 2026-10-09 19:11:42 ET | lem:local-symmetry, lines 951-1015 | Correlation assembly with explicit complexity cost
-complete | 2026-10-09 19:16:27 ET | lem:local-symmetry, lines 1015-1016 | Logarithmic bounds for inner radius, mass and decay constant
-complete | 2026-10-09 19:20:45 ET | lem:local-symmetry, line 1017 | Polynomial complexity and complete local symmetry theorem
-complete | 2026-10-09 19:32:50 ET | lem:local-chart, lines 1035-1039 | Cyclic Bohr full lattice, integer sublattice and quotient map
-complete | 2026-10-09 19:40:07 ET | lem:local-chart, lines 1041 | Scaled coefficient box and injective Bohr projection
-complete | 2026-10-09 19:45:55 ET | lem:local-chart, lines 1043-1052 | Local additivity on coefficient paths and quadratic polynomial
-complete | 2026-10-09 19:53:23 ET | lem:local-chart, lines 1054-1057 | Integral dual basis and integer linear coordinate formula
-complete | 2026-10-09 19:58:25 ET | lem:local-chart, line 1054 | Supported centered lift and coefficient-box containment
-complete | 2026-10-09 20:06:09 ET | lem:local-chart, lines 1058-1067 | Coefficient reduction modulo one and phase substitution
-complete | 2026-10-09 20:16:55 ET | lem:local-chart, lines 1069-1076 | Rational block chart and partitioned lattice-sum formula
-complete | 2026-10-09 20:25:07 ET | lem:local-chart, line 1078 | Integer values and global boundedness of the constructed chart
-complete | 2026-10-09 20:31:36 ET | lem:local-chart, lines 1080-1082 | Tensor cutoff and bounded quadratic-phase derivative estimates
-complete | 2026-10-09 20:40:24 ET | lem:local-chart, line 1082 | Uniform Gevrey bound for the actual doubled amplitude
-complete | 2026-10-09 20:48:31 ET | lem:local-chart, line 1084 | Quasipolynomial complexity and complete local-chart theorem
-complete | 2026-10-09 20:54:41 ET | thm:finite-inverse, lines 1100-1104 | Weighted translate mass and supported basepoint selection
-complete | 2026-10-09 20:56:47 ET | thm:finite-inverse, lines 1104-1107 | Affine derivative frequency on the selected Bohr translate
-complete | 2026-10-09 21:05:49 ET | thm:finite-inverse, lines 1109-1114 | Phase alignment and the initial local correlation
-complete | 2026-10-09 21:09:38 ET | thm:finite-inverse, lines 1116-1120 | Symmetry refinement and quantitative final radius
-complete | 2026-10-09 21:15:18 ET | thm:finite-inverse, lines 1122-1127 | Shift averaging, weight error and supported translate selection
-complete | 2026-10-09 21:17:08 ET | thm:finite-inverse, lines 1128-1132 | Spatial localization to the two weighted variables
-complete | 2026-10-09 21:21:25 ET | thm:finite-inverse, lines 1133-1146 | Skew-phase replacement and exact local polarization
-complete | 2026-10-09 21:31:20 ET | thm:finite-inverse, lines 1148-1157 | Fourier extraction of weighted quadratic correlation
-complete | 2026-10-09 21:36:08 ET | thm:finite-inverse, line 1159 | Translated modulated bounded chart and exact input correlation
-complete | 2026-10-09 21:41:51 ET | thm:finite-inverse, lines 1114, 1120, 1159 | Common uniform quasipolynomial budget for all parameters
-complete | 2026-10-09 21:49:19 ET | thm:finite-inverse, lines 1088-1159 | Complete finite inverse theorem
-complete | 2026-10-09 21:57:25 ET | lem:inverse, lines 1183-1187 | Cell averages, boundedness and no-wraparound supported cubes
-complete | 2026-10-09 22:40:10 ET | lem:inverse, lines 1187-1189 | Continuous supported cube Riemann sums and torus Haar identification
-complete | 2026-10-09 22:46:03 ET | lem:inverse, line 1189 | Eight-factor L1 stability of bounded cube averages
-complete | 2026-10-09 22:50:58 ET | lem:inverse, line 1189 | L1 contraction of cell averaging with the cyclic normalization
-complete | 2026-10-09 22:58:58 ET | lem:inverse, line 1189 | Unit-bounded continuous interior approximation in L1
-complete | 2026-10-09 23:04:40 ET | lem:inverse, line 1189 | Uniform approximation and convergence for bounded measurable functions
-complete | 2026-10-09 23:13:58 ET | lem:inverse, lines 1191-1195 | Selection and normalization of the finite inverse witness
-complete | 2026-10-09 23:21:20 ET | lem:inverse, lines 1197 | Integer-preserving reduction of unrestricted chart parameters
-complete | 2026-10-09 23:34:58 ET | lem:inverse, lines 1199-1214 | Exact floor interpolation and global boundedness
-complete | 2026-10-09 23:56:35 ET | lem:inverse, lines 1214 | Uniform Gevrey complexity of the interpolated chart
-complete | 2026-10-10 00:18:30 ET | lem:inverse, lines 1216 | Cell integral identity and the continuous inverse witness on intervals
-complete | 2026-10-10 00:38:41 ET | lem:inverse, lines 1218 | L2 realization of the interval U3 seminorm
-complete | 2026-10-10 00:48:24 ET | lem:inverse, lines 1218-1237 | Balanced convex separation and the three dual bounds
-complete | 2026-10-10 01:01:37 ET | lem:inverse, line 1239 | Inverse contradiction and finite L2 decomposition
-complete | 2026-10-10 01:10:05 ET | lem:inverse, lines 1173-1183 and 1239 | Probability-L2 interval normalization and general-interval decomposition
-complete | 2026-10-10 01:15:13 ET | lem:inverse, line 1239 | One quasipolynomial chart and coefficient budget
-complete | 2026-10-10 01:15:13 ET | lem:inverse, lines 1173-1241 | Complete continuous inverse and decomposition theorem
-complete | 2026-10-10 01:24:38 ET | lem:return-splitting, lines 1265-1269 | Short-return bilinear identity, integer pairing and isotropy
-complete | 2026-10-10 01:30:55 ET | lem:return-splitting, lines 1271 | Zero-dimensional short-return bound
-complete | 2026-10-10 01:35:52 ET | lem:return-splitting, lines 1271-1275 | Symmetric convex return body with nonempty interior
-complete | 2026-10-10 01:40:59 ET | lem:return-splitting, lines 1275-1279 | An empty interval of successive minima
-complete | 2026-10-10 01:53:23 ET | lem:return-splitting, lines 1279-1281 | Isotropic span of short return lattice points
-complete | 2026-10-10 01:56:30 ET | lem:return-splitting, line 1281 | Rank gap and annihilation by short dual vectors
-complete | 2026-10-10 02:00:10 ET | lem:return-splitting, line 1281 | Transference dual basis spanning the orthogonal complement
-complete | 2026-10-10 02:03:22 ET | lem:return-splitting, line 1281 | Dual coordinate and velocity-pairing bounds
-complete | 2026-10-10 02:08:39 ET | lem:return-splitting, lines 1281-1285 | Rational slow projection with controlled height
-complete | 2026-10-10 02:15:13 ET | lem:return-splitting, lines 1281-1285 | Bounded slow velocity
-complete | 2026-10-10 02:19:35 ET | lem:return-splitting, lines 1287-1292 | Quantitative coordinate-axis returns by torus pigeonhole
-complete | 2026-10-10 02:30:17 ET | lem:return-splitting, lines 1293-1300 | Effective quadratic identity and column bounds
-complete | 2026-10-10 07:24:03 ET | lem:return-splitting, lines 1300 | Uniform quasipolynomial short-return budget
-complete | 2026-10-10 07:32:42 ET | Declaration return-splitting, line 1302 | THT.Chart.shortReturnSplitting
-complete | 2026-10-10 07:38:45 ET | lem:weyl, lines 1321-1331 | Exact quadratic lattice return phase and reindexing
-complete | 2026-10-10 07:48:44 ET | lem:weyl, lines 1321-1331 | Uniform amplitude and localized return-error estimates
-complete | 2026-10-10 07:56:49 ET | lem:weyl, line 1321 | Localized support, L1, L2 and first-moment bounds
-complete | 2026-10-10 08:01:13 ET | lem:weyl, line 1333 | Fourier Lipschitz bound from the first absolute moment
-complete | 2026-10-10 08:25:42 ET | lem:weyl, line 1333 | Quantitative propagation along return multiples
-complete | 2026-10-10 08:44:51 ET | lem:weyl, line 1333 | Disjoint frequency balls and Plancherel mass bound
-complete | 2026-10-10 08:44:51 ET | lem:weyl, line 1333 | Uniform return threshold and denominator budget
-complete | 2026-10-10 08:44:51 ET | Declaration weyl, line 1335 | THT.Chart.weylSplitting
-complete | 2026-10-10 08:51:14 ET | lem:chartfourier, lines 1349-1355 | Exact symmetric/skew phase extraction of the effective quadratic form
-complete | 2026-10-10 08:58:39 ET | lem:chartfourier, line 1355 | Smooth periodic functions on R^n have absolutely convergent Fourier series with derivative-controlled coefficients
-complete | 2026-10-10 09:08:31 ET | lem:chartfourier, line 1355 | Even clearing period, residue phase and slow lattice values with quasipolynomial count
-complete | 2026-10-10 09:08:31 ET | lem:chartfourier, lines 1357-1361 | Exact equality cutoff and periodic two-variable amplitude identity
-complete | 2026-10-10 09:13:30 ET | lem:chartfourier, lines 1361-1363 | Periodization in the slow variable and rescaling to unit periods
-complete | 2026-10-10 09:25:09 ET | lem:chartfourier, lines 1368-1372 | Uniform derivative bounds of the rescaled periodic amplitudes
-complete | 2026-10-10 10:20:52 ET | lem:chartfourier, lines 1363-1366 and 1372-1377 | Fourier substitution, rational heights, coefficient decay, shell bounds, family count
-complete | 2026-10-10 10:20:52 ET | Declaration chart-fourier, line 1379 | THT.Chart.splitFourierExpansion
-complete | 2026-10-10 10:24:56 ET | lem:separation, lines 1401-1405 | Fixed rational coefficients and the exact quadratic/lift phase identity
-complete | 2026-10-10 10:35:27 ET | lem:separation, lines 1402-1404 | Bounded carries, exact equality cutoff and the coupled amplitude for one atom
-complete | 2026-10-10 10:40:13 ET | lem:separation, line 1407 | Product-cutoff Fourier expansion of a compactly supported smooth amplitude
-complete | 2026-10-10 10:55:36 ET | lem:separation, line 1407 | Factorization into three chart amplitudes and exact one-atom separation
-complete | 2026-10-10 11:06:47 ET | lem:separation, line 1407 | Product of the two separated atoms and normalization to bounded atoms
-complete | 2026-10-10 11:32:21 ET | lem:separation, line 1407 | Shell mass, dimension and complexity bounds of the separated terms
-complete | 2026-10-10 12:00:35 ET | lem:separation, line 1409 | Single-scale two-slot form norm bound by the Fourier supremum A_r
-complete | 2026-10-10 12:17:26 ET | lem:separation, line 1411 | Separated phase eq:separated-phase from the Weyl splitting and Fourier expansion
-complete | 2026-10-10 12:53:29 ET | lem:separation, line 1411 | Uniform separated approximation of the two-variable kernel by bounded atoms
-complete | 2026-10-10 13:14:38 ET | Declaration separation, line 1413 | THT.Chart.progressionSeparation (progressionSeparation, separated_form_le)
-complete | 2026-10-10 13:41:06 ET | lem:von-neumann, lines 1431-1446 | Three Cauchy-Schwarz steps for the progression average on a compact abelian probability group
-complete | 2026-10-10 13:54:24 ET | lem:von-neumann, line 1447 | Integer dilations preserve Haar probability on the torus; identification with the U3 norm
-complete | 2026-10-10 14:30:12 ET | lem:von-neumann, lines 1427-1429 | Kernel Fourier expansion, characters to slots 0, 1, modulation invariance of norms
-complete | 2026-10-10 14:30:12 ET | lem:von-neumann, line 1429 | Identification of the real progression form with the torus average without wraparound
-complete | 2026-10-10 14:30:12 ET | lem:von-neumann, lines 1426, 1447 | L1 two-coordinate case and extension to L2 inputs by truncation
-complete | 2026-10-10 14:30:12 ET | Declaration von-neumann, line 1449 | THT.LocalForm.vonNeumannOneL2 (Lean: vonNeumannOneL2, vonNeumann_local_L2, vonNeumann_local_L1)
-complete | 2026-10-10 14:52:38 ET | lem:detection, lines 1465-1467 | Clipping of the three opponents and the clipped-form lower bound
-complete | 2026-10-10 15:34:52 ET | lem:detection, lines 1469-1471 | Two successive decompositions and a bounded atom pair with a large form
-complete | 2026-10-10 15:34:52 ET | lem:detection, line 1473 | Separation of the atom pair, shell truncation and the A_r lower bound
-complete | 2026-10-10 15:17:46 ET | lem:detection, line 1473 | Kernel separation and extraction of a large normalized moment of R (separated_moment_extraction)
-complete | 2026-10-10 15:34:52 ET | lem:detection, line 1473 | Quasipolynomial budget of the detection constant (detection_budget)
-complete | 2026-10-10 15:34:52 ET | Declaration detection, line 1475 | THT.LocalForm.detectResidual (Lean: detectResidual)
-complete | 2026-10-10 15:59:41 ET | lem:predictors, proof line 1531 | Single-scale square function for modulated mean-zero bumps on disjoint cells (cell_bump_square_function)
-complete | 2026-10-10 17:17:34 ET | lem:predictors, proof lines 1539-1541 | Multi-scale Bessel bound from band multiplicity, lem:height, center separation
-complete | 2026-10-10 17:17:34 ET | lem:predictors, proof lines 1521-1523 | L1 bound for time modifiers, depth energy, single-phase scale sums
-complete | 2026-10-10 16:32:50 ET | lem:predictors, proof line 1529 | Mean-zero tensor decomposition of the kernel in (y_a, y_b)
-complete | 2026-10-10 16:57:45 ET | lem:predictors, proof lines 1534-1542 | Linear-phase scale sum against admissible opponents, multiplicity M
-complete | 2026-10-10 17:41:50 ET | lem:predictors, proof lines 1517-1542 | Core band scale sum: exceptional depths, clumps, replacement errors, tails
-complete | 2026-10-10 18:28:58 ET | lem:predictors, lines 1489-1494 and proof lines 1517-1542 | eq:band-scale-sum for one separated chart time factor (band_scale_sum)
-complete | 2026-10-10 19:35:00 ET | lem:predictors, proof line 1533 | Square-energy and fixed opponents are admissible with depth energy
-complete | 2026-10-10 21:03:03 ET | lem:predictors, proof line 1532 | Current projection opponents are admissible via lem:compression
-complete | 2026-10-10 19:35:00 ET | lem:predictors, proof line 1535 | Finite predictor list eq:predictors with explicit parameters
-complete | 2026-10-10 19:35:00 ET | lem:predictors, line 1514 | Quasipolynomial budget log D_pred ≤ poly(1+B, log H) (qp_pdCard, qp_pdH0)
-complete | 2026-10-10 19:35:00 ET | Declaration predictors, line 1536 | THT.Base.finitePredictorList (Lean: finitePredictorList)
-complete | 2026-10-10 20:43:15 ET | lem:delay, lines 1549-1562 | eq:delay-telescope, chirp expansion and eq:delay-error for scalar delay data
-complete | 2026-10-10 20:57:05 ET | lem:delay, lines 1549-1553 | Column partition projections with predictor label give the delay data
-complete | 2026-10-10 20:57:05 ET | lem:delay, lines 1563-1565 | Rolling differences have square energy K₀²‖1_J F‖², hence admissible
-complete | 2026-10-10 20:57:05 ET | Declaration delay, line 1566 | THT.Base.delayedPredictorReplacement (Lean: delayedPredictorReplacement)
-complete | 2026-10-10 21:44:13 ET | adaptive-fit, lines 1572-1574 | Greedy insertion with detection oracle, energy gain ≥ ρ²|I|/4 per insertion
-complete | 2026-10-10 21:44:13 ET | adaptive-fit, line 1574 | Nested fit ranges: energy telescoping, insertion mass ≤ 4ρ⁻²|J|
-complete | 2026-10-10 21:44:13 ET | adaptive-fit, lines 1574-1575 | Stopped roots cost ≤ |J|/4, restarts with root length ≤ 4/3|J|, segments
-complete | 2026-10-10 21:44:13 ET | adaptive-fit, line 1575 | Coefficient ℓ² ≤ 1, |g_I| ≤ √M, ‖g_I‖_(2,I) ≤ 1, bounded chart atoms
-complete | 2026-10-10 21:44:13 ET | Declaration adaptive-fit, line 1579 | THT.Base.inheritedAdaptiveFit (Lean: inheritedAdaptiveFit)
-complete | 2026-10-10 22:07:40 ET | stagger, lines 1589-1594 | eq:stagger pair replacement against supremum, then the L^q input
-complete | 2026-10-10 22:07:40 ET | stagger, line 1596 | Index cases u < t-4 and u ≥ t-3: full pairs ≤ 8e^(-k_(t-7))
-complete | 2026-10-10 22:07:40 ET | stagger, line 1587 | Grouping into eq:base-tuple, single-increment, four-residual terms; remainders
-complete | 2026-10-10 22:07:40 ET | stagger, lines 1581, 1596 | Accuracy schedule k_(t+1) = k_t^A, cyclic adaptive fits, root-length bound
-complete | 2026-10-10 22:07:40 ET | Declaration stagger, line 1598 | THT.Base.twoEarliestIncrements (Lean: twoEarliestIncrements)
-complete | 2026-10-10 22:20:16 ET | prop:base, proof lines 1626-1631 (opponents) | Adaptive fits as ColumnDepthFamily per root; admissible opponents
-complete | 2026-10-10 22:53:07 ET | prop:base, proof lines 1626-1631 | Low-pair predictor expansion grouped by joint birth cells
-complete | 2026-10-11 04:33:37 ET | prop:base, proof lines 1626-1631 | High families, delayed replacement, base roots, stagger wrapper, baseParams
-complete | 2026-10-11 04:33:37 ET | prop:base, proof lines 1634-1641 | Tuple-specific accurate high fits and pair control (AccSetup.accurateFit)
-complete | 2026-10-11 02:47:00 ET | prop:base, proof line 1643 | Local sizes, eq:basic-side, the two-U term on one root
-complete | 2026-10-11 00:46:07 ET | prop:base, proof lines 1645-1653 | eq:triple-tail: transpose and Cauchy-Schwarz, six-atom chart, scale count
-complete | 2026-10-11 04:33:37 ET | prop:base, proof lines 1655-1660 | Active cells, path multiplicity, inactive error, eq:min-subadd reduction
-complete | 2026-10-11 04:33:37 ET | Declaration base, line 1662 | THT.Base.activeCellReduction (Lean: activeCellReduction in SecBaseReductionBaseAssembly.lean; standard axioms)
-complete | 2026-10-11 04:49:35 ET | lem:graph, lines 1680-1690 | Tags (ChartTag), edge relation tagEdge, slot multiplier invariance
-complete | 2026-10-11 04:49:35 ET | lem:graph, proof line 1692 | Same-slot separation (graph_sameSlot_tag)
-complete | 2026-10-11 05:07:11 ET | lem:graph, proof lines 1694-1702 | Distinct-slot separation via lem:separation (graph_distinctSlot_tag)
-complete | 2026-10-11 05:44:30 ET | lem:graph, proof line 1704 | Short paths with endpoint splitting (tagEdge_path, shortPath_budget)
-complete | 2026-10-11 05:44:30 ET | Declaration graph, line 1709 | THT.Localization.curvatureGraph (curvatureGraph; standard axioms)
-complete | 2026-10-11 07:18:05 ET | coloring, lines 1714-1727 | Rounds, cohorts, profiles, context pseudometrics, balls, color data
-complete | 2026-10-11 07:18:05 ET | coloring, lines 1728-1730 | Change counter and nonincreasing colors (potential_step, color_anti)
-complete | 2026-10-11 07:18:05 ET | coloring, lines 1732-1734 | Choice of the delays: marking probability, union bound, delays_exist
-complete | 2026-10-11 07:18:05 ET | Declaration coloring, line 1755 | THT.Localization.monotoneColoring (monotoneColoring)
-complete | 2026-10-11 07:18:05 ET | lem:masks, lines 1760-1762 | Use ball, eq:rival-bound, neighbor closure, short path, persistence
-complete | 2026-10-11 07:18:05 ET | lem:masks, lines 1767-1771 | Separation of distinct groups on overlapping endpoints (mask_separation)
-complete | 2026-10-11 07:18:05 ET | Declaration masks, line 1774 | THT.Localization.historicalMaskSeparation (Lean: historicalMaskSeparation; standard axioms)
-complete | 2026-10-11 07:43:32 ET | lem:whole-ranges, proof lines 1785-1788 | Analytic core wholeRanges_core: group outputs, pairings, Cauchy–Schwarz
-complete | 2026-10-11 07:43:32 ET | lem:whole-ranges, proof line 1785 | Combined coefficients constant on last separating depth cells
-complete | 2026-10-11 07:43:32 ET | Declaration whole-ranges, line 1791 | THT.Localization.usableRangeBessel (usableRangeBessel)
-complete | 2026-10-11 08:45:32 ET | same-tag, line 1813 | One-term bound: plane change of variables, slot triple as convolution form, kernel Fourier expansion (slotTriple_form_le)
-complete | 2026-10-11 08:45:32 ET | same-tag, lines 1800-1810 | Exact phase transfer and unit-piece decomposition (tag_transfer_pointwise)
-complete | 2026-10-11 09:15:54 ET | same-tag, line 1810 | Periodized source expansion, quasipolynomial mass, form assembly (tag_single_term_le)
-complete | 2026-10-11 09:16:02 ET | Declaration same-tag, line 1817 | THT.Localization.sameTagTemplateTest (sameTagTemplateTest, tagTemplate_column)
-complete | 2026-10-11 09:25:17 ET | lem:closure, lines 1825-1829 | Trial count via eq:prefix with complements expanded (catalog_trial_count, catalog_rank_count)
-complete | 2026-10-11 09:25:17 ET | lem:closure, lines 1829-1831 | Path counts n_r = exp(r k^C₂): caps not attained, log n_(L+5) ≤ k^O(1) (closure_parameters)
-complete | 2026-10-11 09:25:17 ET | Declaration closure, line 1832 | THT.Localization.catalogClosure (catalogClosure)
-complete | 2026-10-11 09:34:44 ET | prop:localize, lines 1841-1843 | Binary color search: exact split-tree expansion, L leaves, height O(log L) (SplitTree, colorSearch)
-complete | 2026-10-11 09:34:44 ET | prop:localize, lines 1845-1852 | Leaf expansion: old sources, matching difference, pair separation, residual tests (leaf_localization)
-complete | 2026-10-11 09:34:44 ET | prop:localize, line 1858 | Cell minima distributed over leaves via eq:min-subadd (cell_min_leaves)
-complete | 2026-10-11 09:34:44 ET | Declaration localize, line 1856 | THT.Localization.binaryGroupExpansion (binaryGroupExpansion)
-complete | 2026-10-11 09:41:08 ET | lem:variation, line 1867 | Joint Bessel across groups from eq:whole-ranges by duality (joint_bessel_of_wholeRanges)
-complete | 2026-10-11 09:41:08 ET | lem:variation, lines 1870-1871 | Product jumps with compressed right factors (product_jumps_compression)
-complete | 2026-10-11 09:41:08 ET | Declaration variation, line 1879 | THT.Localization.certifiedVariation (certifiedVariation)
-complete | 2026-10-11 09:59:21 ET | first-match, line 1908 | eq:offset-mean for the periodic Gevrey branch cutoff (offsetMean)
-complete | 2026-10-11 09:59:21 ET | first-match, lines 1913-1922 | eq:firstmatch, eq:mode-differences from tagEdge via chartfourier (splitPhase, firstMatchExpansion)
-complete | 2026-10-11 09:59:21 ET | first-match, lines 1932-1940 | Pointwise lift to modes: exact synthesis, absolute norm bound (modeLift_synthesis, modeLift_norm_sq_le)
-complete | 2026-10-11 09:59:21 ET | Declaration first-match, line 1936 | THT.Modes.firstMatchExpansionAndLift (firstMatchExpansionAndLift)
-complete | 2026-10-11 10:13:41 ET | mode-schedule, line 1942 | eq:gauge-cancel with integer carries for four offsets (gauge_cancel, gaugeCarry_int)
-complete | 2026-10-11 10:13:41 ET | mode-schedule, line 1966 | eq:slope-variation on frozen pre-cells (slope_variation)
-complete | 2026-10-11 10:13:41 ET | Declaration mode-schedule, line 1976 | THT.Modes.chooseSchedule: eq:mode-parameters, polynomial logarithms (chooseSchedule)
-complete | 2026-10-11 10:21:11 ET | Declaration tiny-space, line 2000 | Auto.exceptional_blocks_count, Auto.tiny_span_closed (FixedModes)
-complete | 2026-10-11 10:30:16 ET | Declaration stabilize, line 2029 | Auto.height_stabilization, Auto.stable_heights_card (FixedModes; see ErrorReport)
-complete | 2026-10-11 10:35:00 ET | Declaration coherence, line 2047 | Auto.ModeComponents.good_same_predecessor, core_good_iff, core_bad_proportion
-complete | 2026-10-11 10:40:28 ET | Declaration mode-rows, line 2059 | Auto.separated_projection_rows, Auto.cell_cross_pair_le (FixedModes; see ErrorReport)
-complete | 2026-10-11 10:48:10 ET | Declaration lift-composition, line 2077 | Auto.compose_lift_with_main_histories (FixedModes; see ErrorReport)
-complete | 2026-10-11 10:48:10 ET | Declaration linear-side, line 2120 | Auto.linear_side_square_energy, chain_length_bound, sum_frac_le_log (see ErrorReport)
-complete | 2026-10-11 10:51:29 ET | Declaration offset-selection, line 2157 | Auto.select_offsets_by_majorant, majorant_offset_mean (see ErrorReport)
-complete | 2026-10-11 10:51:29 ET | Declaration side-caps, line 2166 | Auto.rolling_side_budget; cuts from DyadicStopping (see ErrorReport)
-complete | 2026-10-11 10:51:29 ET | Declaration helpers, line 2169 | Auto.catalogClosure (universal helper part on fixed bases)
-complete | 2026-10-11 10:54:28 ET | Declaration representatives, line 2194 | Auto.early_predecessor_nested, affine_separation_on_cell (see ErrorReport)
-complete | 2026-10-11 10:54:28 ET | Declaration component-sizes, line 2210 | Auto.component_size_comparison (FixedModes)
-complete | 2026-10-11 10:54:28 ET | Declaration tops, line 2231 | Auto.top_measure_absorb (FixedModes; see ErrorReport)
-complete | 2026-10-11 10:57:42 ET | Declaration transfer, line 2265 | Auto.transfer_identity, Auto.transfer_near_bands (TwoSideEstimate; see ErrorReport)
-complete | 2026-10-11 11:02:45 ET | Declaration shortblock, line 2369 | components only: fourth_moment_pairing, position_holder_sum; assembly open (ErrorReport)
-complete | 2026-10-11 14:01:33 ET | lem:shortblock, lines 2290-2296 | Leaf-depth rectangles partition depth tuples (DepthRect.existsUnique_mem, uniq_disjoint)
-complete | 2026-10-11 14:16:46 ET | lem:shortblock, lines 2298-2312 | δ-lattice decomposition; first kernel-sampling error per cell (latticeSampled_form_error)
-complete | 2026-10-11 14:28:54 ET | lem:shortblock, lines 2302-2326 | Fast lift; U_(j,γ) invariance and eq:fourth-moment for finite Fourier sums
-complete | 2026-10-11 14:31:58 ET | lem:shortblock, lines 2328-2332 | eq:window-mass, local bound, regular-slot bound ℓ + 2r_t (leaf_window_mass_le, window sums)
-complete | 2026-10-11 15:35:41 ET | lem:shortblock, lines 2334-2340 | Per-cell deletion bound, exponents (1,3,3,3), Hölder in (γ,σ) (per_cell_deletion_bound)
-complete | 2026-10-11 15:41:56 ET | lem:shortblock, lines 2340-2343 | Deletion summed over cells, depths, positions (deletion_sum_bound, deletion_threshold_cost)
-complete | 2026-10-11 16:02:13 ET | lem:shortblock, lines 2345-2357 | Interval inputs, progression of centers, second sampling error, eq:CN (interval_form_identity)
-complete | 2026-10-11 16:21:03 ET | lem:shortblock, lines 2357-2369 | Mixed Hölder, interval-input norms, window powers, block factor (mixed_holder_four, block_factor_bound)
-complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2302-2325 | Fast lift on T₀², L² fast form and S_N limit, maximalQ measurable (fast_lift_form, fast_form_tendsto)
-complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2307-2312 | Sampled form as lattice sum of fast forms; summed first sampling error (BlockData.total_eq, err1_bound)
-complete | 2026-10-11 17:48:51 ET | lem:shortblock, lines 2314-2337 | Fatou over S_N, γ-invariance on T₀², heavy-slot split, window majorant (norm_latticeSum_le_windows)
-complete | 2026-10-11 18:43:03 ET | lem:shortblock, lines 2334-2369 | Per-rectangle bound: deletion, interval comparison, eq:CN main term, second error (BlockData.rect_bound)
-complete | 2026-10-11 19:43:38 ET | lem:shortblock, lines 2276-2369 | eq:shortblock: tree piece, leaf masks, level sums, normalization (short_block_comparison)
-complete | 2026-10-11 11:05:57 ET | Declaration power-costs, line 2390 | components: three_sides_power, min_le_rpow_mul (see ErrorReport)
-complete | 2026-10-11 11:05:57 ET | Declaration fixed-stacks, line 2423 | component: binary_prefix_expansion; eq:stack-energy open (ErrorReport)
-complete | 2026-10-11 19:49:35 ET | fixed-stacks, lines 2400-2423 | eq:stack-energy: stack_energy_linear, stack_energy_rolling (Hilbert-space core)
-complete | 2026-10-11 11:05:57 ET | Declaration side-estimate, line 2456 | component: hull_maxima_cauchy_schwarz; assembly open (ErrorReport)
-complete | 2026-10-11 19:59:04 ET | side-estimate, lines 2425-2456 | Flags, Rademacher selection, sparse split, eq:near-band (near_band_total, sparse_two_stacks_volume_le)
-complete | 2026-10-11 11:07:56 ET | Declaration common-height, line 2480 | components: first_success_weights_sum, all_good_proportion (see ErrorReport)
-complete | 2026-10-11 11:07:56 ET | Declaration frequency-tests, line 2585 | component: schur_test; Fourier tests open (ErrorReport)
-complete | 2026-10-11 20:17:35 ET | frequency-tests, lines 2482-2585 | eq:Haar-four, character averages, kernel decay, Hölder moments (haar_four, core_moment_bound)
-complete | 2026-10-11 11:17:15 ET | Declaration sparse-count, line 2705 | components: minimal_growth_iteration, packing_card_le, count_balance_bound
-complete | 2026-10-11 22:25:13 ET | lem:sparse-count, lines 2587-2705 | eq:sparse-count: four-step paths, covers, slab count, grid reduction (sparse_count)
-complete | 2026-10-11 11:23:11 ET | Declaration tested-counts, line 2744 | components: pair_difference_eq_zero, total_count_le (see ErrorReport)
-complete | 2026-10-11 22:27:54 ET | tested-counts, lines 2707-2744 | Pair determination, Parseval side incidence, eq:total-count (side_incidence_count)
-complete | 2026-10-11 11:17:15 ET | Declaration distribution, line 2769 | Auto.distribution_power (exact statement; CoreTerms)
-complete | 2026-10-11 11:17:15 ET | Declaration core-estimate, line 2822 | components: powered_count_exponents, amplitude_factor_le_one (ErrorReport)
-complete | 2026-10-11 22:33:40 ET | core-estimate, lines 2771-2822 | Powered count, Hölder over groups, band sums, minimum step (powered_count, sum_prod_rpow_le)
-complete | 2026-10-11 11:20:02 ET | Declaration normalized, line 2904 | components: exists_exponent_near_two, absorption_power_bound (ErrorReport)
-complete | 2026-10-11 23:15:34 ET | prop:normalized row 1, lines 1675-1686 | Nested charts of active setups; tag graph refinement, symmetry; graph distances (DepthDistance.ofEdges)
-complete | 2026-10-11 23:15:34 ET | prop:normalized row 1, lines 1677-1681 | Admission tree below a root: admission cells, positions, AdmTree (admTree)
-complete | 2026-10-11 23:21:26 ET | prop:normalized row 1, lines 1677-1686 | Active-setup vertices, charts, normalized tags, tag graph and its distances (vtag, tagDist)
-complete | 2026-10-11 23:46:19 ET | prop:normalized row 1, lines 1720-1734 | Colors on the admission tree: per-cell bound D = 4|L|+1, failed cells ≤ 100·2001⁷|R|/D (coloring)
-complete | 2026-10-11 23:47:54 ET | prop:normalized row 1, lines 1712-1760 | Color parameters b₁, b₂ and historical mask properties for the attempt (colorParams, masks)
-complete | 2026-10-12 00:31:50 ET | prop:normalized row 1, lines 1611-1613, 1859 | Basic args as differences of two current basic projections, root energy ≤ |R| (HasColumnRep)
-complete | 2026-10-12 00:40:15 ET | prop:normalized row 1, lines 1820-1831 | Local catalog closure: valid insertion sequences, cap, maximal sequence passes (local_closure)
-complete | 2026-10-12 00:44:40 ET | prop:normalized row 1, lines 1805-1809, 1823-1825 | Catalog columns, rank/mask projections, nesting, fresh coordinates, gain (catProj_gain)
-complete | 2026-10-12 00:52:12 ET | prop:normalized row 1, lines 1809-1831 | Catalog tests at a cell, same-tag repair, per-cell closure with rank counts (cell_closure)
-complete | 2026-10-12 01:01:38 ET | prop:normalized row 1, lines 1820-1831 | Catalog over a finite tree: ancestors first, earlier tests kept, rank counts (tree_closure)
-complete | 2026-10-12 01:05:18 ET | prop:normalized row 1, lines 488-497, 1835 | Catalog outputs as column combinations with coefficient bounds (catRange_expansion)
-complete | 2026-10-12 01:12:07 ET | prop:normalized row 1, lines 418-420, 1845 | Local form a.e.-invariant in each slot; multilinear cell form on augmented inputs (cellForm)
-complete | 2026-10-12 01:17:53 ET | prop:normalized row 1, lines 1798-1803 | Inserted columns as same-tag templates; templates are modulated charts (templateCol_chart)
-complete | 2026-10-12 01:25:10 ET | prop:normalized row 1, lines 1804-1813 | Cumulative masks: monotone, neighbor closure, old/current split, depth growth; choice averages
-complete | 2026-10-12 01:29:30 ET | prop:normalized row 1, lines 1809-1815, 1850-1852 | Form sees only the cell; passing test bounds forms with pure source (CatTest.form_le)
-complete | 2026-10-12 01:36:12 ET | prop:normalized row 1, lines 1841-1849 | Guarded binary color search: exact leaf expansion, guard invariants, leaves = colors (searchLeaves)
-complete | 2026-10-12 01:46:24 ET | prop:normalized row 1, lines 1813, 1850-1852 | Averaged residual bound; leaf residuals as single-choice averages (residual_layerOp_eq_avg)
-complete | 2026-10-12 01:51:07 ET | prop:normalized row 1, lines 1835, 1850 | Averaged filter outputs as column combinations, coefficients ≤ ‖X‖/√|I|
-complete | 2026-10-12 01:53:38 ET | prop:normalized row 1, lines 1850-1852 | Spectator sizes ≤ ‖x‖/√|I|; source vs separated columns (cellForm_pair_le)
-complete | 2026-10-12 01:58:24 ET | prop:normalized row 1, lines 1850-1855 | Sources against averaged residuals (CatTest.form_combo_le); filter/layer contractions
-complete | 2026-10-12 02:08:30 ET | prop:normalized row 1, lines 1850-1855 | Leaf filters; old-source, match, separation, residual bounds (LeafFilters.old_le … res_le)
-complete | 2026-10-12 02:12:28 ET | prop:normalized row 1, lines 1848-1856 | Leaf error of the localization from the catalog tests and separation (LeafFilters.leaf_error)
-complete | 2026-10-12 02:15:19 ET | prop:normalized row 1, lines 1838-1856 | Cell sums of the localization over the leaves of the guarded search (search_cell_min)
-complete | 2026-10-12 02:26:36 ET | prop:normalized row 1, lines 1835, 1850-1855 | ℓ² coefficient bounds; separation/residual errors with √N; rank-split thresholds (leaf_error)
-complete | 2026-10-12 02:37:43 ET | prop:normalized row 1, lines 1677-1680 | Base inputs as cell L² classes; chart padding; vertex charts of dimension ≥ 1 (vchart_spec)
-complete | 2026-10-12 02:40:25 ET | prop:normalized row 1, lines 1760-1762 | Attempt masks: pad monotonicity, current vertices, distinct groups separated, no tag edges
-complete | 2026-10-12 02:46:32 ET | prop:normalized row 1, lines 1804-1853 | Attempt parameters; cell masks, filters, current groups, named tests of each slot (AttemptParams.tests)
-complete | 2026-10-12 02:51:11 ET | prop:normalized row 1, lines 1820-1831 | Attempt catalogs for the four slots passing all named tests (AttemptParams.catalogs_exist)
-complete | 2026-10-12 02:59:25 ET | prop:normalized row 1, lines 1798-1803, 1850 | Leaf layer lengths; Pass monotone; vertex charts/templates as sources (templateCol_source)
-complete | 2026-10-12 03:03:18 ET | prop:normalized row 1, line 1798 | Mask vertices are present; selected catalog columns are pure sources of their tags (catColumn_source)
-complete | 2026-10-12 03:10:19 ET | prop:normalized row 1, lines 1835, 1858 | Upper guard expansions: catalog (upper_expansion) and basic (basic_expansion, basic_source)
-complete | 2026-10-12 03:16:00 ET | prop:normalized row 1, lines 1848-1851 | Search leaves have one color in [1,L] (leafAt_facts); old/current upper sources (classify)
-complete | 2026-10-12 03:20:41 ET | prop:normalized row 1, lines 1851-1853 | Ball pads in Fin P; template atoms bounded charts; current groups pair-separated (sep_pair)
-complete | 2026-10-12 03:27:53 ET | prop:normalized row 1, lines 1848-1856 | One leaf at one active cell from the upper-guard expansion (AttemptParams.leaf_bound)
-complete | 2026-10-12 03:32:48 ET | prop:normalized row 1, lines 1850, 1858 | Leaf bound, both upper-guard cases: catalog filter / basic slot (leaf_main)
-complete | 2026-10-12 03:37:53 ET | prop:normalized row 1, lines 1838-1856 | Localized sum of an attempt over successful cells and all leaves, rank-wise leaf errors (localized_sum)
-complete | 2026-10-12 03:45:34 ET | prop:normalized row 1, lines 1826-1831 | Label counts by birth and rank; thresholds τ_r give catalogs with ≤ n_r labels (catalogs_counted)
-complete | 2026-10-12 03:48:31 ET | prop:normalized row 1, lines 1834-1836, 1855 | Leaf error O(G_c τ₃); √n_r τ_(r+1) ≤ τ₃ under the closure ratio (leafErr_le, catTau_ratio)
-complete | 2026-10-12 03:53:23 ET | prop:normalized row 1, lines 1820-1856 | Attempt localization with counted catalogs (attempt_localization)
-complete | 2026-10-12 03:54:12 ET | prop:normalized, lines 2838-2840 | Attempt on an active setup: catalogs, colors, ball histories, leaf data (attempt_localization)
-complete | 2026-10-12 04:15:05 ET | prop:normalized row 2, lines 1684, 1704, 1903 | Short tag paths; equal tags joined; primaries tag-joined to center (mask_tagEdge_center)
-complete | 2026-10-12 04:23:44 ET | prop:normalized row 2, lines 470-483, 1748, 1807 | Catalog projections as column-tree projections (catProj_eq_cellColumnProjection)
-complete | 2026-10-12 04:41:28 ET | prop:normalized row 2, lines 1893-1922 | Branch-chart complexity; recentred first-match expansions on the first-match cell (firstMatch_attempt)
-complete | 2026-10-12 04:57:24 ET | prop:normalized row 2, lines 1907, 1932-1940 | First-match truncation; global mode lift, ‖R‖ ≤ √5, exact synthesis after the match (LiftData.op)
-complete | 2026-10-12 05:25:52 ET | prop:normalized row 2, lines 1891, 1913, 1924-1940 | First-match cells; counted finite expansions; the mode lift R_(l,G) (attemptLift)
-complete | 2026-10-12 05:39:43 ET | prop:normalized row 2, lines 1913-1922, 1980-1988 | Mode curvature, rational differences; PRE/CURRENT edges and components (preCurrent)
-complete | 2026-10-12 05:52:57 ET | prop:normalized row 2, lines 1958, 2005-2012 | CURRENT paths sum witnesses; bounded-denominator expansion (rational_span_expand_bounded)
-complete | 2026-10-12 06:07:56 ET | prop:normalized row 2, lines 1995-2029 | Tiny span closure; stabilization; good heights give PRE adjacency (stabilize_pre, bad_heights_card)
-complete | 2026-10-12 06:26:46 ET | prop:normalized row 2, lines 1893, 1913, 2031-2045 | Θ'=(θ_v,θ_z/Q₀); same-key differences; hstab from good primaries (hstab_of_primaryGood)
-complete | 2026-10-12 07:00:28 ET | prop:normalized row 2, lines 2054-2056 | Fourier expansion of (ζ^ρ)²; cross pairing of two non-adjacent modes on a cell (modeWave_pair_le)
-complete | 2026-10-12 07:10:20 ET | prop:normalized row 2, lines 1928, 2049-2059 | Augmented modes in ColumnL2; separated mode rows from mode Gram bounds (aug_mode_rows)
-complete | 2026-10-12 07:17:34 ET | prop:normalized row 2, lines 2088-2099 | Bad incidences along a linked chain of side events (chain_bad_count); keyed hsame for alive modes
-complete | 2026-10-12 07:24:00 ET | prop:normalized row 2, lines 2049-2059, 2104 | Longest-chain levels; Bessel rows of concrete modes (modeWave_rows)
-complete | 2026-10-12 07:35:37 ET | prop:normalized row 2, lines 2068-2069, 2084-2086, 2112-2116 | Row locality; subtotal vs projection; almost orthogonality; CURRENT in later PRE
-complete | 2026-10-12 07:47:56 ET | prop:normalized row 2, lines 2104-2118 | One-block side subtotals over disjoint pre-cells (block_subtotals_le); real-valued linear-side assembly
-complete | 2026-10-12 08:00:09 ET | prop:normalized row 2, lines 1777-1789 | Whole endpoint ranges for attempt catalogs (attempt_wholeRanges; usableRangeBessel localized)
-complete | 2026-10-12 08:11:48 ET | prop:normalized row 2, lines 2068-2072 | Hetero joint Bessel; catalog outputs as group outputs; one-factor row compression; averages of rows
-complete | 2026-10-12 08:18:39 ET | prop:normalized row 2, lines 2066-2072 | Lift rows jointly Bessel over groups after the outer ball projection (lift_rows_joint)
-complete | 2026-10-12 08:28:19 ET | prop:normalized row 2, lines 2072-2075 | Averaged cumulative layers expanded over pad tuples; row compression through layer histories
-complete | 2026-10-12 08:35:00 ET | prop:normalized row 2, lines 2072-2075 | Catalog projections local to their cells; basic-history compression through the physical coordinate
-complete | 2026-10-12 08:39:09 ET | prop:normalized row 2, lines 2062-2077 | Lift composition, catalog part: ball + cumulative histories inserted jointly (lift_composition_catalog)
-complete | 2026-10-12 08:50:00 ET | prop:normalized row 2, lines 1971-1975 | Frozen-mode data interface (ModeSystem) and its construction from the attempt lift (exists_modeSystem)
-complete | 2026-10-12 08:59:19 ET | prop:normalized row 2, lines 1980-1988, 2082-2110 | Pre-cell graphs of frozen modes; side events, linking; Bessel rows of one level (level_rows)
-complete | 2026-10-12 09:03:02 ET | prop:normalized row 2, lines 2088-2102 | Linked chains of side events: bad-incidence bound on component structures (chain_side_bound)
-complete | 2026-10-12 09:11:17 ET | prop:normalized row 2, lines 2084-2088 | Blocks, goodness, side modes/events of a frozen mode system; links feed CURRENT into later PRE labels
-complete | 2026-10-12 09:14:02 ET | prop:normalized row 2, lines 2088-2102 | Chain length of linked side events in one class (chain_events_bound)
-complete | 2026-10-12 09:18:02 ET | prop:normalized row 2, lines 2104-2108 | Side-event rows per class: levels, unlinked same-level events, Bessel bound (class_rows)
-complete | 2026-10-12 09:23:39 ET | prop:normalized row 2, lines 1934-1937, 1959 | Frozen evaluation on a pre-cell = exact mode synthesis (op_synthesis)
-complete | 2026-10-12 09:31:31 ET | prop:normalized row 2, lines 2112-2118 | Side subtotals: event subtotal vs row projection, block side subtotal almost orthogonality (blockSide)
-complete | 2026-10-12 09:33:30 ET | prop:normalized row 2, lines 2104-2118 | Linear-side energy of one group via side-event rows and complementary errors (group_side_energy)
-complete | 2026-10-12 09:37:08 ET | prop:normalized row 2, lines 2131-2134 | Physical error of the frozen lift on its decision cell and its pointwise majorant (physical_error_le)
-complete | 2026-10-12 09:41:00 ET | prop:normalized row 2, lines 2135-2140 | Selection of branch offsets in the unit cubes by the first moment (exists_offsets_le)
-complete | 2026-10-12 09:44:00 ET | prop:normalized row 2, lines 2135-2147 | Offsets with small total physical-error majorant (exists_offsets_physical)
-complete | 2026-10-12 10:37:52 ET | prop:normalized row 2, lines 1861-1890, 2149 | Certified variation on the attempt: complete catalog tree, global histories (attempt_variation)
-complete | 2026-10-12 10:59:45 ET | prop:normalized row 2, lines 2080-2118 | Linear-side energy on the attempt: event rows, frozen = lifted outputs, chains (attempt_linear_side)
-complete | 2026-10-12 10:59:45 ET | prop:normalized row 2, line 2149 | Rolling sides: integrated square budget from eq:variation by residue classes (attempt_rolling_variation)
-complete | 2026-10-12 11:08:28 ET | prop:normalized row 2, lines 2159-2166 | eq:side-cap: rolling and fixed side budgets, one first-crossing cut (attempt_side_caps)
-complete | 2026-10-12 11:14:49 ET | prop:normalized row 2, lines 2167-2169 | Helper catalog on fixed vector bases at the reserved rank; main tests kept (helper_instantiation)
-complete | 2026-10-12 11:26:33 ET | prop:normalized row 2, lines 2172-2191 | Hereditary representatives: chronological choice, inheritance (attempt_representatives)
-complete | 2026-10-12 11:32:38 ET | prop:normalized row 2, lines 2183-2192 | eq:representative-separation: distinct later CURRENT components (representative_separation)
-complete | 2026-10-12 11:37:57 ET | prop:normalized row 2, lines 2193-2209 | eq:size-comparison: two-sided almost orthogonality, sizes (component_sizes, side_subtotals_le)
-complete | 2026-10-12 11:52:43 ET | prop:normalized row 2, lines 2211-2231 | prop:tops: top rows, measure, top-count cuts (attempt_tops_rows, tops_measure_bound, tops_count_cut)
-complete | 2026-10-12 11:53:10 ET | prop:normalized, lines 2838-2840 | Attempt: first-match modes, offsets, linear sides, helpers instantiated
-complete | 2026-10-12 11:55:28 ET | prop:normalized, lines 2840-2843 | Exceptional roots ≤ |R|/4, restarts, root packing 4|R|/3 (exceptional_roots_le, restart_attempt_sum)
-complete | 2026-10-12 11:59:50 ET | prop:normalized, lines 2845-2848 | Core/side/error patterns, two-side restoration (form_pattern_split, form_restore_cores)
-complete | 2026-10-12 12:04:33 ET | side-estimate, lines 2370-2378 | Power costs: group Cauchy-Schwarz, path-integrated three-side powers (group_triple_le, power_cost_bound)
-complete | 2026-10-12 12:07:27 ET | side-estimate, lines 2380-2386 | Transferred main term ηP^C|R| (pair_small_main_bound, integrated_cap_le); frozen differences by variation
-complete | 2026-10-12 12:09:32 ET | side-estimate, lines 2388-2392 | Freeze flags: indicator by squared difference, block propagation cost K (freeze_flag_le, flag_propagation_le)
-complete | 2026-10-12 12:13:45 ET | fixed-stacks, lines 2394-2423 | eq:stack-energy for averaged histories (globHist_stack_linear, globHist_stack_rolling)
-complete | 2026-10-12 12:17:19 ET | fixed-stacks, lines 2421-2423 | Rademacher selection and moment hypothesis (rademacher_select_two, rademacher_moment_hyp)
-complete | 2026-10-12 12:20:01 ET | side-estimate, lines 2425-2433 | Joint hull caps of the two stacks by combined hull cuts (two_hull_caps)
-complete | 2026-10-12 12:28:11 ET | side-estimate, lines 2433-2445 | Sparse pieces as short-block trees, leaf bounds, eq:near-band (pieceTree, near_band_estimate)
-complete | 2026-10-12 12:29:49 ET | side-estimate, lines 2447-2456 | Exported side estimate in the active minimum: eq:min-power split (min_power_split)
-complete | 2026-10-12 12:31:36 ET | common-height, lines 2464-2476 | First-success identity and success proportion (first_success_identity, success_proportion_pos)
-complete | 2026-10-12 12:36:58 ET | frequency-tests, lines 2478-2520 | Torus norms: cell average vs Haar coset sum (cell_average_close, haar_norm_sq_eq)
-complete | 2026-10-12 13:11:51 ET | frequency-tests, lines 2466-2476 | Torus form of a selected component (component_torus_form, pre_component_shift)
-complete | 2026-10-12 13:11:51 ET | tested-counts, lines 2716-2717 | Pair determination: 2x2 systems (pair_role_of_diff, four_core_pair, three_core_pair)
-complete | 2026-10-12 13:11:51 ET | tested-counts, lines 2718-2724 | eq:triple-test and scale multiplicity by lem:height (four_core_ann, tested_scale_mult)
-complete | 2026-10-12 13:11:51 ET | tested-counts, lines 2724-2729 | Side windows disjoint, side incidence (sideWindow_disjoint, side_incidence_le)
-complete | 2026-10-12 13:11:51 ET | tested-counts, lines 2731-2741 | eq:applied-sparse (four_core_sparse_count, three_core_sparse_count, sep_of_scaled)
-complete | 2026-10-12 13:22:05 ET | core-estimate, lines 2771-2777 | Negligible amplitudes discarded before powers (negligible_amplitudes)
-complete | 2026-10-12 13:22:05 ET | core-estimate, lines 2783-2799 | Powered counts summed over groups, Hölder, amplitude factor (core_count_groups)
-complete | 2026-10-12 13:22:05 ET | core-estimate, lines 2800-2822 | Band sums and min step (band_sum_summable, min_sum_le_rpow, distribution_power)
-complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2843-2858 | eq:before-absorption: pattern classes and cell minima (before_absorption_combine)
-complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2860-2890 | Choice of q, α, P; eq:active-final arithmetic (eta_power_P_le, block_term_le, active_final_arith)
-complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2893-2899 | Level series Σ t e^(-c k_t^θ) small for large k₁ (update_levels_sum)
-complete | 2026-10-12 13:35:25 ET | prop:normalized, lines 2898-2904 | Initial/later level split and cutoff limit (levels_cutoff_sum)
-complete | 2026-10-12 14:08:38 ET | prop:base, lines 1643, 1655 | Initial levels: baseTuple for all u<t, general pair bound, trivial pair bound, setup totals
-complete | 2026-10-12 14:53:34 ET | prop:normalized, lines 2827-2833 | Base reduction with normalization only on the kernel hull (kernelHull, fits, setups)
-complete | 2026-10-12 15:10:17 ET | prop:normalized, lines 2838-2840 | Ancestor closure of the setup cells below their roots (firstRoot_between, seg_between)
-complete | 2026-10-12 16:04:38 ET | prop:base, lines 1611-1622 | Sub-root sides, two-U, column reps below every sub-root (SubRootProps, LevelProps)
-complete | 2026-10-12 19:32:37 ET | prop:normalized, lines 2838-2840 | Attempt instantiation on (B,p): params, ordered cell list, sizes, leaf error <= eps|R| (attempt_instance)
-complete | 2026-10-12 16:31:10 ET | prop:normalized, lines 2838-2840 | Marking-failure cut: maximal failed cells, length <= 100*2001^7|R|/D, padding (failure_cut, pad)
-complete | 2026-10-12 17:20:45 ET | prop:normalized, lines 1859-2166 | Basic inputs: variation, rolling, event rows, linear side, side caps (attempt_*_basic)
-complete | 2026-10-12 17:31:15 ET | prop:normalized, lines 2128-2154 | Offsets for all groups, mode systems, eq:physical-error (group_modes_physical, ballAt_physical_error)
-complete | 2026-10-12 17:54:59 ET | prop:normalized, lines 1955-1960 | Frozen coefficients of ball outputs at decision cells (ballAt_frozen, opAvg_catProj_l2, bmask_pad_mono)
-complete | 2026-10-12 17:54:59 ET | prop:normalized, line 2100 | Exceptional blocks and bad heights per key (exceptional_card_le, badHeights_card_le; hAe for 3K-separated blocks)
-complete | 2026-10-12 20:19:02 ET | prop:normalized, lines 2120-2154, 2838-2840 | Packaged leaf split: modes, frozen coefficients, lift errors per slot/group (exists_leafSplit)
-complete | 2026-10-12 20:30:29 ET | prop:normalized, lines 2155-2166 | Packaged sides: eq:side-cap from rolling/linear budgets, piece sizes (leaf_side_caps, piece_sizes_le)
-complete | 2026-10-12 18:07:34 ET | prop:normalized, lines 2461, 2845-2848 | Abstract error, three-side, 2+2 pattern bounds (error_patterns_le, three_side_patterns_le)
-complete | 2026-10-12 18:07:34 ET | sec:sides, line 2252 | Four-linear transfer step (bilinTwo, transfer_step)
-complete | 2026-10-12 18:34:35 ET | sec:core, lines 2461-2462 | Concrete leaf split Z = A + S + E (LeafSplit, core_add_side_add_err)
-complete | 2026-10-12 18:34:35 ET | sec:sides, lines 2241-2268 | Transfer chains and complement expansion (transfer_chain, layerOp_eq_posExpand)
-complete | 2026-10-12 18:34:35 ET | sec:sides, lines 2421-2445 | Randomized selected stacks on short-block pieces (piece_select_bound, form_sign_avg)
-complete | 2026-10-12 18:45:15 ET | sec:sides, lines 2430-2436 | Sparse roots of a hull, remainders, owners, piece leaf energies (sparseRoots, sparse_owner, piece_leaf_energy)
-complete | 2026-10-12 19:24:09 ET | sec:sides, lines 2421-2445 | eq:near-band over sparse pieces, three sign families (piece_band_bound, sparse_root_sum, near_band_bound)
-complete | 2026-10-12 20:19:02 ET | prop:normalized, lines 2845-2848 | Error-pattern bound (eq:physical-error, absolute) on one leaf (leaf_error_bound)
-complete | 2026-10-12 20:55:00 ET | prop:normalized, lines 2838-2839 | Attempt fuel = ceil(log2 Lc)+1: layer lists <= fuel, #leaves <= 4Lc (leafAt_layers_length_le)
-complete | 2026-10-12 21:00:15 ET | prop:normalized, lines 2838-2840 | attempt_instance on arbitrary subsets of retained cells, one catalog, any eps > 0 (attempt_instance)
-complete | 2026-10-12 21:03:57 ET | prop:base, lines 1655, 2839 | Active path multiplicity <= exp(C k^(3Cb+2)) at delta_k = e^-k^(Cb+2) (active_mult_bound)
-complete | 2026-10-12 21:35:09 ET | mode-schedule, lines 1944-1966 | Schedule, K last at packet width W(H); SideParams from S; logs poly(Lambda) (exists_attempt_schedule)
-complete | 2026-10-12 22:08:54 ET | first-match, lines 1938-1944 | eq:gauge-cancel multiplier: smooth, periodic, offset-uniform Fourier truncation (gaugeMult_truncate)
-complete | 2026-10-12 22:20:57 ET | mode-schedule, lines 1962-1972 | LeafSplit, exact frozen synthesis, any schedule; eq:slope-variation (exists_leafSplit, slope_variation_mode)
-complete | 2026-10-12 22:35:53 ET | side-caps, line 2160 | Rolling budget: B_var <= 5K C_comp C_F |R| from eq:variation on 1_R F, lags u_b (rolling_budget, lagU_le)
-complete | 2026-10-12 22:51:48 ET | side-caps, lines 2160-2161 | Linear budget B_lin: classes mod 3 (blockClass_sep), group_event_rows, restricted input (linear_budget)
-complete | 2026-10-12 23:03:45 ET | side-caps, lines 2161-2162 | U sides: cell_outputs_joint, uslot_budget, U_cells_energy_le; no-decision cells: noDecision_budget
-complete | 2026-10-12 23:07:40 ET | side-caps, lines 2162-2166 | eq:side-cap: side_mass_le per slot (rolling+linear+whole outputs), one cut for all slots (leaf_side_caps_all)
-complete | 2026-10-12 23:12:04 ET | side-caps, lines 2163-2164 | Sizes: leafOut_size_le, retained_cell_le, retained_piece_sizes; errors: error_bound_le_root
-complete | 2026-10-12 23:16:14 ET | helpers, lines 2167-2169, 2237 | Side states as helper bases (side_freshFrom); helper_trial_cap; helper_instantiation keeps main tests
-complete | 2026-10-12 23:20:04 ET | representatives, lines 2171-2192 | attempt_representatives per (D.Ms l G); alive_curvature_gap, alive_representative_separation
-complete | 2026-10-12 23:23:18 ET | component-sizes, lines 2196-2209 | cellMode_synthesis_ge, cell_component_sizes, cell_side_subtotals (pairConst pairing, private floors)
-complete | 2026-10-12 23:26:13 ET | prop:tops, lines 2212-2231 | eq:top-count: top_count (tops_measure_bound, tops_count_cut, reps_card_le_tops, min with D_*); attempt_tops_rows
-complete | 2026-10-12 23:30:59 ET | transfer, lines 2240-2241 | form_layer_chains (positive-chain products of c,d); leafAt_layers_distinct (distinct cumulative ranks across slots)
-complete | 2026-10-12 23:34:21 ET | transfer, lines 2242-2252 | padFam (Q_0=0, Q_{P+1}=1), ballAt_eq_filterAvg, helperAvg_eq_filterAvg, pad_transfer_chain on forms
-complete | 2026-10-12 23:39:01 ET | transfer, lines 2254-2256 | ResidPass (main/helper tests), form_band_le (band = difference of residuals), cellForm_pairs_le (far tags)
-complete | 2026-10-12 23:41:27 ET | transfer, lines 2256-2263 | eq:transferred-main (pad_transfer_chain main term); restore_two (B -> Y, U corrections); terminal_band
-complete | 2026-10-12 23:45:02 ET | power-costs, lines 2372-2384 | leaf_three_sides (eq:three-sides with side caps T); pair_small_main_le (transferred main <= eta T |R|)
-complete | 2026-10-12 23:48:06 ET | power-costs, lines 2386-2390 | bands_bessel (pad bands orthogonal), freeze_split (freeze errors), flag_le (flag indicator strong factor)
-complete | 2026-10-12 23:51:15 ET | fixed-stacks, lines 2393-2413 | binary_prefix_expansion; linear_stack_energy, uslot_stack_energy, banded_stack_energy (P+1 indices)
-complete | 2026-10-12 23:54:16 ET | fixed-stacks, lines 2415-2419 | restrict_local_input (fixed inputs 1_Omega), globHist_stack_rolling, rolling_stack_total, configurations_card
-complete | 2026-10-12 23:54:37 ET | fixed-stacks, lines 2421-2423 | double_khintchine, sign_select_three (bands), form_sign_avg3, piece_select_bound, piece_band_bound
-complete | 2026-10-13 00:01:59 ET | side-estimate, lines 2425-2428 | hull_mass_le (sum |Omega_nu| <= M |R|), two_hull_caps, exceptional_roots_le (merge with power-cost cuts)
-complete | 2026-10-13 00:05:27 ET | side-estimate, lines 2430-2444 | leaf_near_band (near_band_bound for Lambda_c on column stacks, kernel A.w), Lambda_c_eq_form
-complete | 2026-10-13 00:10:32 ET | side-estimate, lines 2446-2456 | hS: leaf_three_sides; hT: leaf_two_two (restored Er + 81 errors + 81 three_side_patterns_sum_le)
-complete | 2026-10-13 00:17:45 ET | sec:core, lines 2124, 2460-2462 | New file SecCompletionQuantitativeCore; frozenEval_eq_comps, LeafSplit.core_eq_comps
-complete | 2026-10-13 00:20:54 ET | sec:core, lines 2463-2467 | first_success_words_card, first_success_hasSum, failMask, failed_words_eq_biUnion; coherence core_good_iff
-complete | 2026-10-13 00:23:26 ET | sec:core, lines 2468-2479 | component_torus_form, gauge_factors_eq_mult/gaugeMult_truncate (g_j, R_z), frequency_box, offset_side_eLpNorm_le
-complete | 2026-10-13 00:28:22 ET | sec:core, lines 2482-2504 | torus_size_bound, cell_subtotals_upper, cell_average_close, haar_norm_sq_eq, haar_four
-complete | 2026-10-13 00:41:20 ET | sec:core, lines 2530-2534 | kernelFT, decay_q/decay_t/near_line/decay_lines, unitKernel_bounds/marginal, admissible_kernel_decay
-complete | 2026-10-13 00:55:08 ET | sec:core, lines 2506-2529 | form_linear_phase, coset_sum_eq_haar, coset_reference_bound, kernelFT_lipschitz, coset_haar_four_le
-complete | 2026-10-13 01:08:07 ET | sec:core, lines 2536-2565 | anchor_entry_bound, dual_slice_bound (D_m), shell_pairing_bound, side_windows (eq:side-windows), dyadic_majorant
-complete | 2026-10-13 01:10:49 ET | sec:core, lines 2566-2585 | first_success_error (core-numerical), core_moment_bound, assignments_total; principal-core assembled in core-final
-complete | 2026-10-13 01:15:02 ET | sec:core, lines 2707-2742 | representatives_separated, tested_mult_le; four/three_core_sparse_count, side_incidence_le, total_count_le
-complete | 2026-10-13 01:17:30 ET | sec:core, lines 2772-2800 | negligible_amplitudes, dyadic_bins_card, sum_bins_le, powered_count, core_count_groups (Hoelder over groups)
-complete | 2026-10-13 01:19:33 ET | sec:core, lines 2802-2816 | core_final_bound (min step + eq:path), band_sum_summable, min_sum_le_rpow
-complete | 2026-10-13 01:21:37 ET | prop:normalized, lines 2839-2841 | exceptional_union (maximal union cells: inside R, disjoint, <= |R|/4, covering)
-complete | 2026-10-13 02:04:00 ET | before-absorption 1/14, line 2838 | leafOut/leafIn, leafIn_eq_sub, leaf_sum_success (unsuccessful groups vanish), groupsAt_cert
-complete | 2026-10-13 02:04:00 ET | before-absorption 2/14, lines 2159-2162 | leaf_basic_side_mass, leaf_uslot_side_mass (rolling/linear/U/no-decision); cuts in 13/14
-complete | 2026-10-13 02:14:42 ET | before-absorption 3/14, lines 2163-2166 | cut_of_budget, regular_mass_le, cell_piece_sizes (B_s), leaf_error_attempt (hE via leaf_error_bound)
-complete | 2026-10-13 02:19:11 ET | before-absorption 4/14, line 2845 | usedCells_sum, leaf_side_paths (side-cap cut), leaf_three_sides_attempt (hS on retained cells)
-complete | 2026-10-13 02:48:25 ET | before-absorption 4a/14, lines 1807-1812 | TestIdx = BaseIdx ⊕ ChainIdx (chain tests), mH = 2 fuel + 2, Hmax = 20P(L+1) + 40P
-complete | 2026-10-13 02:48:25 ET | before-absorption 4b/14, lines 1807-1831 | AttemptCert exported by attempt_instance (passes, templates, births, counts, helper room)
-complete | 2026-10-13 02:57:36 ET | before-absorption 5/14, lines 2240-2262 | leaf_restored_transfer, AttemptCert.helpers, Λc_restore, Λc_pair_small_le; helper tests in 6/14
-complete | 2026-10-13 03:10:59 ET | before-absorption 6a/14, lines 2253-2256 | Cell far bands: far_helper_le (helper band higher), far_main_le (near tests, far pair estimate)
-complete | 2026-10-13 03:23:37 ET | before-absorption 6b/14, lines 1810-1811, 2253 | CellPass (avg, zero, band), chain_ball/cum_cellPass, VTest.ofSteps, helper_cellPass
-complete | 2026-10-13 03:26:55 ET | before-absorption 6c/14, lines 2254-2255 | outer_filter_sources (positive outer filter), basic_sources (unfiltered basic columns)
-complete | 2026-10-13 03:34:30 ET | before-absorption 6d/14, lines 1805, 2254-2256 | near_cmask, near_bmask (neighbor closure), far_pair (Dg_sep); helper templates exported
-complete | 2026-10-13 04:17:01 ET | before-absorption 6e/14, lines 2253-2258 | chainDefectSel split/bound, far_side_le, chainPair_far_le; HelperIdx, helper_steps_pass, card bound
-complete | 2026-10-13 04:46:23 ET | before-absorption 7a/14, lines 2386-2394 | gChain/gBall/gIn restrictions; chain, ball-pad and cum-pad variations; freeze_split, flag_le
-complete | 2026-10-13 04:54:00 ET | before-absorption 7b/14, lines 2400-2408 | Positions: bitPrefix/posInt, prefix_telescope, posInt_eq_or_disjoint, sum_posComp, bilinear_posComp
-complete | 2026-10-13 05:39:47 ET | before-absorption 7c/14, lines 2408-2411 | gluedStack_restrict, posVal/pos_rep configurations, Λc_stacks_expand; energies in 8c
-complete | 2026-10-13 05:39:47 ET | before-absorption 7d/14, lines 2425-2428 | Randomized stacks: internal to leaf_near_band (rademacher_moment_hyp in piece_band_bound)
-complete | 2026-10-13 05:39:47 ET | before-absorption 8a/14, lines 2430-2444 | useHull, two_hull_caps cuts, near_band_cut, near_band_stacks (eq:near-band on glued stacks)
-complete | 2026-10-13 06:25:26 ET | before-absorption 8b/14, lines 2386-2391 | gStep/StepRel, chainSteps_eq_desc, chainDefectSel_eq_sum, defTerm_intertwine (global steps)
-complete | 2026-10-13 06:57:13 ET | before-absorption 8c/14, lines 2408-2423 | VarCap, varCap_out, posAnc/posStack/bandStack/baseStack/depthStack energies, bandPads (jump, Bessel)
-complete | 2026-10-13 06:57:13 ET | before-absorption 8d/14, lines 2386-2394 | freeze_four, band_sum_le, nearForm_unflagged/current_le, flag_band_one, energyAverage bounds
-complete | 2026-10-13 08:10:09 ET | before-absorption 8e/14, lines 2446-2456 | Leaf 2+2 reduction: tuple_split, ucore_le, two_two_min, two_two_leaf (caps, data as hyps)
-complete | 2026-10-13 08:47:02 ET | before-absorption 8f/14, lines 2386, 2430-2456 | abs_sum_le (pair-small/far, side caps); near_triple(_U), near_cell_eq, near_sum (one union cut)
-complete | 2026-10-13 09:11:27 ET | before-absorption 8g/14, lines 2384-2394 | third_budget, strTh_sq, flag_budget (K propagation), caps_cut; freeze/restoration energies in 8h
-complete | 2026-10-13 09:19:24 ET | before-absorption 8h/14, lines 2458-2462 | leaf_two_two_bound (SidesExport): one cut 2ρ, caps, near_sum, abs; inputs as hypotheses
-complete | 2026-10-13 09:24:32 ET | before-absorption 8i/14, lines 2262, 2384 | restore_cell, restore_sizes (Cy = 4), restore_budget; pair-small and MemLp of A.Y from LevelProps
-complete | 2026-10-13 09:30:34 ET | before-absorption 8j/14, lines 2388-2389 | cur_bounds, cur_use (C₀ = 4 via base_size), compBand_bessel, norm_chainVal_cell_le
-complete | 2026-10-13 09:58:33 ET | before-absorption 8k/14, lines 2389-2394 | freeze_budget (17+K)C₀²·frzE; frz_bound via op_variation, histOp/bandDiff jumps, K offsets
-complete | 2026-10-13 10:03:53 ET | before-absorption 8l/14, lines 2253-2258 | far_cell: chainPair_far_le + helper_steps_pass (βH = τH n_a), ε → 0; farC
-complete | 2026-10-13 10:09:36 ET | before-absorption 8m/14, lines 2159-2166, 2412-2416 | block_start_energy, rolling_class (EWa); masses, certOK, list bounds in 13/14
-complete | 2026-10-13 10:15:06 ET | before-absorption 9a/14, lines 2463-2466 | pattern_comp_expand, patF_comp_expand (CoreExport); pre-cells and frozen synthesis at assembly
-complete | 2026-10-13 10:26:54 ET | before-absorption 9b/14, lines 2463-2469 | masked_count, first_success_masked, compGood, coreComp_bad_card, tuple_success, group_first_success
-complete | 2026-10-13 10:29:22 ET | before-absorption 9c/14, lines 2466-2479 | multilinear_regroup, gauge/wave_eq, group_torus_form; box, R_z, S' lemmas exist (790)
-complete | 2026-10-13 10:35:02 ET | before-absorption 10a/14, lines 2482-2497 | torus_size_haar, cell_average_of_approx; Haar-four coset_haar_four_le; gap/X hyps fed in 13/14
-complete | 2026-10-13 10:37:35 ET | before-absorption 10b/14, lines 2499-2534 | four_core_test, admissible_kernel_decay', moderate_same_coset; decay_lines, kernelFT_lipschitz exist
-complete | 2026-10-13 10:41:25 ET | before-absorption 10c/14, lines 2536-2565 | torus_bessel, dualSlice, three_core_windows; anchor_entry_bound, side_windows exist
-complete | 2026-10-13 10:44:14 ET | before-absorption 11/14, lines 2566-2585 | mask_second_moment, roleMask_fail, wordAvg, word_moment_bound; assignments_total; assembly in 13/14
-complete | 2026-10-13 10:54:57 ET | before-absorption 12a/14, lines 2522-2542 | form_exp_sums (four cores), planeShear, anchorFn, form_anchor_exp (three cores)
-complete | 2026-10-13 11:14:50 ET | before-absorption 12b/14, lines 2470-2479 | cutoffP_truncate, gauge_torus_approx, group_torus_char, four_inputs_approx, four_core_physical
-complete | 2026-10-13 11:34:17 ET | before-absorption 12c/14, lines 2482-2531 | Four cores: four_core_test', four_core_cell_bound, torus_size_cell, wave_sum_le_cellMode
-complete | 2026-10-13 11:53:59 ET | before-absorption 12c'/14, lines 2536-2569 | Three cores: three_core_cell_bound (anchor expansion, Fourier pairing, cosets, windows, tails)
-complete | 2026-10-13 12:06:16 ET | before-absorption 12b'/14, lines 2478-2480 | offset_average_form, offset_form_anchored, anchoredForm_phase_approx, reanchor_physical/torus
-complete | 2026-10-13 12:20:31 ET | before-absorption 12d/14, lines 2707-2741 | attempt_representatives3, attempt_label_sep', pure_shift_gap; FourRef/ThreeRef are bin definitions
-in progress | 2026-10-13 19:13:13 ET | core 12e-1, lines 2468-2531 | Four cores, one grouped class on a leaf cell: role inputs into four_core_uniform (four_class_bound)
-not started | 2026-10-13 19:13:13 ET | core 12e-2, lines 2536-2560 | Three cores, one grouped class on a leaf cell: role inputs into three_core_averaged
-not started | 2026-10-13 19:13:13 ET | core 12e-3, lines 2482-2486, 2519-2524, 2537-2539 | References p0 / m and near-far coset hypotheses from eq:gap on the leaf
-not started | 2026-10-13 19:13:13 ET | core 12e-4, lines 2487-2495 | eq:torus-size on the leaf: input torus norms <= a'_j from physical averages (eq:component-size)
-not started | 2026-10-13 19:13:13 ET | core 12e-5, lines 2566-2575 | Moments a'_j <= C sigma, E a'^2 <= C(2 delta)^n sigma^2 on the leaf; moment hypothesis of core_leaf_bound
-not started | 2026-10-13 19:13:13 ET | core 12e-6, lines 2566-2582 | eq:principal-core: core_leaf_bound per configuration, with eq:core-numerical errors absolute
-not started | 2026-10-13 19:13:13 ET | core 12f-1, lines 2717-2742 | Bins: E_s^G, M_i^G, M_l^G on the attempt; eq:total-count and eq:applied-sparse instantiated
-not started | 2026-10-13 19:13:13 ET | core 12f-2, lines 2766-2772 | Negligible amplitudes sigma_j < D*^-B removed absolutely before powers
-not started | 2026-10-13 19:13:13 ET | core 12f-3, lines 2774-2801 | eq:powered-count via distribution_power; Holder over groups; amplitude factor <= 1
-not started | 2026-10-13 19:13:13 ET | core 12f-4, lines 2803-2808 | Frequency band sums over mu, nu, Lambda (and J) finite
-not started | 2026-10-13 19:13:13 ET | core 12f-5, lines 2810-2816 | min-power and path integration: eq:core-final, i.e. hC of leaf_before_absorption
-not started | 2026-10-13 19:13:13 ET | before-absorption 13, lines 2839-2848 | Cut union (exceptional_union) and leaf_before_absorption summed over leaves
-not started | 2026-10-13 19:13:13 ET | before-absorption 14, lines 2845-2852 | eq:before-absorption on one attempt: hE, hC, hS (leaf_three_sides_attempt), hT (two_two_leaf)
-not started | 2026-10-13 19:13:13 ET | prop:normalized, lines 2853-2866 | Degree bounds: log D*, log H, log T <= C P^C; K <= C P^C5; G0 <= exp(C(1+log 2k)^C)
-not started | 2026-10-13 19:13:13 ET | prop:normalized, lines 2868-2888 | RetainedMin: q, alpha, P = ceil(eta^-alpha); eq:active-final from eq:before-absorption
-not started | 2026-10-13 19:13:13 ET | thm:main, lines 2934-2941 | Unconditional thm:main from RetainedMin; full build and axiom audit
-complete | 2026-10-12 15:33:25 ET | prop:normalized, lines 2827-2904 | NormalizedAbsorption and thm:main from ActiveFinal (normalizedAbsorption_of_activeFinal)
-complete | 2026-10-12 15:40:04 ET | prop:base, lines 1655-1660 | ActiveFinal from ActiveMin: reduction, two-U term, inactive error (activeFinal_of_activeMin)
-complete | 2026-10-12 16:24:12 ET | prop:normalized, lines 2840-2843 | ActiveMin from RetainedMin: restart recursion, LevelProps below sub-roots, label padding
-complete | 2026-10-11 11:20:02 ET | thm:uniform-local, lines 2926-2931 | Absorption C_N ≤ 2 + 2CA (uniform_constant_absorption)
-complete | 2026-10-11 11:48:20 ET | thm:uniform-local, lines 2906-2908 | prop:normalized as a hypothesis (Auto.NormalizedAbsorption)
-complete | 2026-10-11 12:01:34 ET | thm:uniform-local, lines 2910-2915 | Stopping generations, first stops of total length ≤ abs(J)/4 (stops_measure_le)
-complete | 2026-10-11 12:01:34 ET | thm:uniform-local, lines 2916-2918 | Piece bound from prop:normalized after rescaling (piece_bound_of_normalized)
-complete | 2026-10-11 12:01:34 ET | thm:uniform-local, lines 2919-2924 | Sparse sets E_J, sum abs(J) prod a ≤ (4/3) ∫ prod M_q f (stop_sparse_bound)
-complete | 2026-10-11 12:01:34 ET | thm:uniform-local, line 2931 | C_N ≤ 2 + 2CA for all N, given prop:normalized (uniform_local_of_normalized)
-complete | 2026-10-11 12:05:08 ET | thm:main, lines 2944-2950 | Kernel W = Π_j (∂_S - j∂_X) g has four zero marginals (fourMarginalKernel_marginal)
-complete | 2026-10-11 12:11:17 ET | thm:main, lines 2951-2955 | Partition sum of W equals φ''''; eq:kernel-reconstruction (gevrey_fourMarginalKernel_partition_sum)
-complete | 2026-10-11 12:11:12 ET | thm:main, lines 2963-2967 | Three nested lattices interlace; short intervals avoid two of them (interlacing_boundaries)
-complete | 2026-10-11 12:13:58 ET | thm:main, line 2944 | W for ω(X)φ(S) = ωφ'''' - 6ω'φ''' + 11ω''φ'' - 6ω'''φ' (fourMarginalKernel_tensor)
-complete | 2026-10-11 12:32:08 ET | thm:main, lines 2970-2974 | Rescaled W: derivative bound r^{-u}(C(u+2))^{C(u+2)} given Gevrey ω,φ (rescaledW_derivative_bound)
-complete | 2026-10-11 12:48:27 ET | thm:main, lines 2966-2970 | Rescaled translates admissible in a margin-r/24 lattice cell (rescaledW_admissible)
-complete | 2026-10-11 12:51:14 ET | thm:main, lines 2962-2965 | The three lattices r_s(ℤ + (-1)^s j/3) as nested dyadic grids (interlacedGrid)
-complete | 2026-10-11 12:51:14 ET | thm:main, lines 2968-2969 | A cell receives at most D + 1 translates (card_int_le_of_interval)
-complete | 2026-10-11 12:58:35 ET | thm:main, lines 2971-2976 | Scale-truncated form ≤ 3(D+1) C_N ∫ Π M_q f for each b (truncated_scale_sum_bound)
-complete | 2026-10-11 13:02:45 ET | thm:main, lines 2976-2980 | ∫ Π M_q f ≤ B Π C‖f_j‖_3 by Hölder and the maximal theorem (maximal_product_bound)
-complete | 2026-10-11 13:34:22 ET | thm:main, lines 2982-2995 | Scale limit to φ'''(0)·∫ f₀ p.v.; uniform bound (scale_fubini, integrated_scale_form_bound, pv_form_bound)
-complete | 2026-10-11 13:39:56 ET | thm:main, lines 2996-2999 | L1 bound by duality, thtPV bounded measurable (lintegral_enorm_le_of_duality, thtPV_lintegral_le)
-complete | 2026-10-11 13:53:48 ET | thm:main, lines 2934-2947 | ω, φ = S³χ chosen; L1 operator, L3 extension given uniform-local (tht_main_of_uniform)
-complete | 2026-10-11 13:53:48 ET | thm:main, line 2931 | uniform-local for every class from prop:normalized (uniform_of_normalized)
+complete | 2026-10-14 03:49:26 ET | lines 58-60 | Pinned Mathlib revision and toolchain (lakefile.toml, lake-manifest.json, lean-toolchain)
+complete | 2026-10-14 03:49:26 ET | lines 67-72 | Permitted vector maximal theorem, proved in-house (prerequisite FeffermanStein); uncentered M <= 2 centered M
+complete | 2026-10-14 03:49:26 ET | lines 75-80 | Local normalized norms with ess sup at p = infinity (normalizedIntervalMeasure)
+complete | 2026-10-14 03:49:26 ET | lem:budget-rules, line 83 | Quasipolynomial bounds closed under sums, products, fixed powers, compositions (QuasipolynomialBound_*)
+complete | 2026-10-14 03:49:26 ET | lem:budget-rules, line 83 | Polynomial-in-log bounds closed with explicit degrees (polynomial_majorant_add/_mul/_comp)
+complete | 2026-10-14 03:55:13 ET | lem:budget-rules, line 83 | q-uniform clause: degree-indexed closure, output degree depends only on input degrees (QuasipolynomialBoundOfDegree)
+complete | 2026-10-14 04:20:05 ET | lem:budget-rules, lines 85-98 | Overhead bound F <= exp(K(1+log 2k)^2), K from A, B, C, d (compression_overhead_bound)
+complete | 2026-10-14 04:20:05 ET | lem:budget-rules, lines 89, 99 | Quasipolynomial overheads and every real power k^p eventually below every power P^eps
+complete | 2026-10-14 03:49:26 ET | lem:gevrey, lines 107-126 | Gevrey glue derivatives, cutoffs, partition, rescaling, products (prerequisite GevreyCutoffs)
+complete | 2026-10-14 03:49:26 ET | lem:fourier-foundation, lines 130-146 | Decay, nonzero shells (n=0 excluded: source error), tails (prerequisite FourierApproximation)
+complete | 2026-10-14 03:49:26 ET | lem:fourier-foundation, lines 136-158 | Separated frequencies, Schur test, multipliers, duality, quadratic oscillatory integral
+complete | 2026-10-14 03:49:26 ET | cube forms, lines 163-174 | Cube forms, diagonal identity, U^j norms, finite expectation and convolution
+complete | 2026-10-14 03:49:26 ET | lem:finite-fourier, lines 178-212 | Khintchine, double signs, sampling (prerequisite KhintchineSampling); Z/qZ, U2 and U3 identities
+complete | 2026-10-14 03:49:26 ET | lem:cube-foundation, lines 216-236 | U3 seminorm, Gowers-Cauchy-Schwarz, eq:cube-L2, L2 extension (prerequisite GowersCauchySchwarz)
+complete | 2026-10-14 03:49:26 ET | lem:vector-maximal, lines 240-250 | Mixed maximal bound for 2<q<3, p>q on finite inner measure spaces (oneMixedNorm)
+
+## sec:lattices, lines 254-362
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | lem:integer-basis, lines 255-263 | Primitive vectors, saturated subgroups, rational intersections (prerequisite LatticeTransference)
+complete | 2026-10-14 03:49:26 ET | lem:reduced-basis, lines 268-292 | Reduced basis with adjacent, primal and dual bounds (prerequisite LatticeTransference)
+complete | 2026-10-14 03:49:26 ET | lem:transference, lines 296-314 | Successive minima products between 1 and (100d)^(10d) (prerequisite LatticeTransference)
+complete | 2026-10-14 03:49:26 ET | lem:lattice-box, lines 318-344 | Small lattice vectors in a coefficient box inside B(0,1/4) (smallBallCoefficientBox)
+complete | 2026-10-14 03:49:26 ET | lem:torus-annihilator, lines 347-358 | Annihilator torus, character integral, Haar-preserving progression map
+
+## sec:reduction, lines 363-468
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | line 364 | Real dyadic grids and finite trees (prerequisite DyadicStopping)
+complete | 2026-10-14 03:49:26 ET | eq:local, eq:marginals, lines 366-376 | Local progression forms and admissible kernels with four zero marginals
+complete | 2026-10-14 03:49:26 ET | lem:absolute, lines 380-394 | eq:absolute on the line, on connected tori and on Z; exponent polytope
+complete | 2026-10-14 03:49:26 ET | eq:CN, lem:finite-CN, lines 398-410 | C_N(q) defined; 1 <= C_N <= 1+CN, attained and least (finiteDepthConstant_finite)
+complete | 2026-10-14 03:49:26 ET | lem:rational-linear, lines 416-420 | Heights, inverses, right inverses, projections, bases (prerequisite RationalLinearAlgebra)
+complete | 2026-10-14 03:49:26 ET | eq:path, lines 425-429 | Path identity, restart packing, combined stop rules (prerequisite DyadicStopping)
+complete | 2026-10-14 03:49:26 ET | lem:cuts, lines 433-465 | First crossings, hull distribution, log integral, eq:hull-cap (prerequisite DyadicStopping)
+
+## sec:columns, lines 469-623
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | lines 470-484 | Column data, eq:columnbudget, inherited masks, nested projections, row interface
+complete | 2026-10-14 03:49:26 ET | lem:coeff, lines 487-503 | Two-sided coefficient bounds, sup bound D^5, eq:predictor-moment
+complete | 2026-10-14 03:49:26 ET | lem:prefix, lines 509-533 | eq:prefix, eq:product-jump, disjoint intervals (prerequisite RademacherMenshov)
+complete | 2026-10-14 03:49:26 ET | lem:compression, lines 539-550 | eq:compression with C=512, complements and averages (columnSpatialCompression)
+complete | 2026-10-14 03:49:26 ET | lem:compression proof, lines 553-597 | Stopping, moment representatives, anchors, restarts, error rows, summation
+complete | 2026-10-14 03:49:26 ET | lem:height, lines 603-617 | Log intervals, bins, scale counts, eq:tiny-sum (prerequisite RationalLinearAlgebra)
+
+## sec:chart-definitions, lines 624-663
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | def:chart, lines 626-637 | Quadratic charts, complexity, bounded atoms and remarks (Sec05QuadraticCharts)
+complete | 2026-10-14 03:49:26 ET | lem:chart-operations, lines 642-651 | Conjugation, finite products, affine changes of one variable (Sec05QuadraticCharts)
+not started | 2026-10-14 03:49:26 ET | lem:chart-operations, line 651 | Same translation calculation for several-variable charts with real linear V: R^k -> R^d
+complete | 2026-10-14 03:49:26 ET | several-variable charts, lines 656-660 | Q(z), symmetric and skew parts, A = C - C^T
+
+## sec:additive, lines 664-928
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | lem:four-paths, lem:BSG, lines 668-697 | Dense four paths and Balog-Szemeredi-Gowers (prerequisite BalogSzemerediGowers)
+complete | 2026-10-14 03:49:26 ET | lem:sumset-growth, lines 702-726 | |mA-nA| <= K^(m+n)|A| and Ruzsa triangle (finite_difference_growth)
+complete | 2026-10-14 03:49:26 ET | lem:Chang, lines 730-762 | Bohr sets, cardinality, spectrum generation (prerequisite ChangSpectrum)
+complete | 2026-10-14 03:49:26 ET | lem:almostperiods, lines 767-782 | Croot-Sisask almost periods (prerequisite KhintchineSampling)
+complete | 2026-10-14 03:49:26 ET | lem:dense-Bohr, lines 787-819 | Dense Bogolyubov theorem (prerequisite DenseBogolyubov)
+complete | 2026-10-14 03:49:26 ET | lem:derivative-graph, lines 823-861 | Derivative frequency selection and graph energy (derivative_graph_energy)
+complete | 2026-10-14 03:49:26 ET | lem:local-frequency, lines 866-891 | Locally additive derivative frequency (locally_additive_derivative_frequency)
+complete | 2026-10-14 03:49:26 ET | lem:Bohr-weight, lines 896-925 | Smooth Bohr weight: mass, translation, Fourier decay (smooth_bohr_weight)
+
+## sec:finite-inverse, lines 929-1163
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | lem:local-symmetry, lines 932-1015 | Local symmetry of the derivative frequency (local_symmetry)
+complete | 2026-10-14 03:49:26 ET | lem:local-chart, lines 1019-1084 | Locally quadratic chart on a Bohr set (locally_quadratic_chart)
+complete | 2026-10-14 03:49:26 ET | thm:finite-inverse, lines 1088-1159 | Finite U3 inverse theorem for every odd q (finite_inverse)
+
+## sec:continuous, lines 1164-1243
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | lines 1164-1170 | Interval Gowers norm U(I) on T16 and its L2 seminorm bound (intervalGowersNorm)
+complete | 2026-10-14 03:49:26 ET | lem:inverse, lines 1172-1216 | Continuous inverse with bounded atoms (continuous_inverse)
+complete | 2026-10-14 03:49:26 ET | lem:inverse, lines 1173-1239 | eq:decomp bounded atomic decomposition (continuous_decomposition; prerequisite HilbertAtomicDecomposition)
+
+## sec:charts, lines 1244-1417
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | lem:return-splitting, lines 1245-1300 | Isotropic rational return splitting (shortReturnSplitting)
+complete | 2026-10-14 03:49:26 ET | lem:weyl, lines 1304-1333 | eq:weyl-splitting and eq:effective (weylSplitting)
+complete | 2026-10-14 03:49:26 ET | lem:chartfourier, lines 1338-1377 | Chart Fourier expansion, envelope and shells for one splitting (splitFourierExpansion)
+old incomplete | 2026-10-14 03:49:26 ET | lem:chartfourier, lines 1349, 1377 | Envelope pooled over all splittings of height <= B: sum over Q and count B^(C(d+1)^2) missing
+complete | 2026-10-14 03:49:26 ET | lem:chartfourier, line 1349 | Uniform tail needs only quasipolynomial truncation (pooled_shell_tail_bound)
+old incomplete | 2026-10-14 03:49:26 ET | lem:separation, lines 1382-1388 | eq:separation proved only for chart dimensions d, e >= 1; def:chart allows d = 0
+complete | 2026-10-14 03:49:26 ET | lem:separation, lines 1390-1411 | Separated form norm, kernel approximation, eq:separated-phase and proof steps
+
+## sec:detection, lines 1418-1479
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | lem:von-neumann, lines 1419-1447 | Local von Neumann bound, L2 and L1 forms (vonNeumannOneL2)
+complete | 2026-10-14 03:49:26 ET | lem:detection, lines 1451-1473 | A large local form gives a bounded-atom moment of the residual (detectResidual)
+
+## sec:base, lines 1480-1666
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | lines 1482-1486 | Fixed, current-projection and square-energy opponents are admissible
+complete | 2026-10-14 03:49:26 ET | lem:predictors, lines 1489-1534 | eq:band-scale-sum, vanishing, finite predictor list eq:predictors (finitePredictorList)
+complete | 2026-10-14 03:49:26 ET | lem:delay, lines 1539-1564 | eq:delay-error and delayed admissible opponents (delayedPredictorReplacement)
+complete | 2026-10-14 03:49:26 ET | lines 1570-1579 | d_(j,I) and inherited adaptive fits eq:adaptive (inheritedAdaptiveFit)
+complete | 2026-10-14 03:49:26 ET | lines 1581-1596 | Stagger schedule, eq:base-tuple expansion, eq:stagger, pair bounds (twoEarliestIncrements)
+old incomplete | 2026-10-14 03:49:26 ET | prop:base, lines 1600-1607 | eq:Y error has extra eta0 k^Cb |J| (bottom K0 levels); inverse weights of basic families not exported
+complete | 2026-10-14 03:49:26 ET | prop:base, lines 1607-1616 | Sizes <= 2, pair smallness, Y = B + U, eq:basic-side on sub-roots (activeCellReduction)
+complete | 2026-10-14 03:49:26 ET | prop:base, lines 1618-1623 | eq:active-min reduction with path multiplicity (ActiveSetup.reduction, active_count)
+complete | 2026-10-14 03:49:26 ET | prop:base proof, lines 1626-1660 | Low pairs, accurate high fits, sizes, eq:triple-tail, eq:min-subadd
+
+## sec:localization, lines 1667-1883
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+old incomplete | 2026-10-14 03:49:26 ET | lines 1668-1673 | P and G0 = P^o(1) via lem:budget-rules; 2 <= P <= e^k for large k not stated
+complete | 2026-10-14 03:49:26 ET | lines 1676-1687 | Normalized tags, edge relation, depth distances (ChartTag, tagEdge, DepthDistance)
+complete | 2026-10-14 03:49:26 ET | lem:graph, lines 1689-1707 | Far tags separate; short paths give endpoint splittings (curvatureGraph)
+complete | 2026-10-14 03:49:26 ET | lines 1713-1745 | Decreasing colors and delays with small failure set for any D >= list size (monotoneColoring)
+complete | 2026-10-14 03:49:26 ET | lem:masks, lines 1747-1773 | Historical pad masks, usable endpoints, inclusion, closure, separation
+complete | 2026-10-14 03:49:26 ET | lem:whole-ranges, lines 1777-1794 | eq:whole-ranges and adjoint ranges (usableRangeBessel, attempt_wholeRanges)
+complete | 2026-10-14 03:49:26 ET | lines 1797-1801, 1817 | Same-tag template test (sameTagTemplateTest)
+old incomplete | 2026-10-14 03:49:26 ET | lines 1803-1815 | Catalogs, ranks, pads, eq:catalog-test; catProj omits the rank-0 original columns of line 1805
+complete | 2026-10-14 03:49:26 ET | lem:closure, lines 1819-1828 | Main tests close on every active cell with per-rank counts (tree_closure, catalogs_counted)
+old incomplete | 2026-10-14 03:49:26 ET | lem:closure, lines 1820, 1828-1830 | log n_(L+5) <= k^O(1) only abstractly; attempt counts from exists_prefix_fixed unbounded in k
+old incomplete | 2026-10-14 03:49:26 ET | line 1835 | Main budget D_m with log D_m <= k^O(1): catalog budget is max 2 M_c, a global count of cells
+complete | 2026-10-14 03:49:26 ET | prop:localize, lines 1838-1856 | eq:localized at each search leaf (binaryGroupExpansion, attempt_localization)
+old incomplete | 2026-10-14 03:49:26 ET | line 1859 | Basic-slot histories: structure proved; compression loss not shown <= G0
+complete | 2026-10-14 03:49:26 ET | lem:variation proof, lines 1871-1877 | Joint Bessel via whole ranges, product jumps, compression, averages (abstract)
+old incomplete | 2026-10-14 03:49:26 ET | lem:variation, lines 1861-1879 | eq:variation on the attempt: constant depends on global budgets, not shown <= G0
+
+## sec:modes, lines 1884-2235
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+complete | 2026-10-14 03:49:26 ET | line 1888 | Primaries, first-match cells, nested alive lists (attemptLift, exists_modeSystem)
+complete | 2026-10-14 03:49:26 ET | lines 1890-1893 | Branch lift d_rho, branch phase p_rho, theta_z/Q0 (branchLift, centerPhase)
+old incomplete | 2026-10-14 03:49:26 ET | eq:offset-mean, lines 1895-1901 | Proved for a cutoff positive on (0,1); blueprint cutoff vanishes within delta_c of the cuts
+complete | 2026-10-14 03:49:26 ET | eq:firstmatch, lines 1903-1910 | Finite first-match expansion with bounds D_1 (firstMatch_finite)
+complete | 2026-10-14 03:49:26 ET | eq:mode-differences, lines 1911-1916 | Same-primary mode differences a.(theta_v, theta_z/Q0), recentring (key_diff)
+complete | 2026-10-14 03:49:26 ET | eq:modes, lines 1918-1922 | Augmented modes with distinct private indices (augMode)
+complete | 2026-10-14 03:49:26 ET | lines 1923-1932 | Lift R_(l,G): bounded, |q_Phi| <= delta_c, exact synthesis (modeLift, LiftData)
+old incomplete | 2026-10-14 03:49:26 ET | line 1932 | log(1/eps_m) <= P^C fails: eps_m uses the global mode count of the whole tree
+not started | 2026-10-14 03:49:26 ET | line 1934 | Choice of D_* dominating counts, heights, weights, Q0, path uses, R_z sums
+complete | 2026-10-14 03:49:26 ET | eq:gauge-cancel, lines 1938-1944 | Product of demodulations is an integer-carry character (gauge_cancel)
+old incomplete | 2026-10-14 03:49:26 ET | line 1944 | Gauge multiplier: bounds proved; agreement only up to 8d delta R; B_* not chosen
+complete | 2026-10-14 03:49:26 ET | eq:mode-parameters, lines 1946-1962 | Mode schedule and choice of K (chooseSchedule, exists_attempt_schedule)
+complete | 2026-10-14 03:49:26 ET | eq:lags, line 1963-1966 | Blocks [b,b+K) and lags u_b, v_b, t_b (lagU, lagV, lagT)
+old incomplete | 2026-10-14 03:49:26 ET | line 1967 | Freezing proved (ballAt_frozen_exact); retention rule for v_b-cells not defined (cells are free)
+complete | 2026-10-14 03:49:26 ET | eq:slope-variation, lines 1968-1975 | Slope oscillation bound and frozen-mode interface (slope_variation_mode, ModeSystem)
+complete | 2026-10-14 03:49:26 ET | eq:PRE, eq:CURRENT, lines 1979-1989 | PRE and CURRENT graphs, components, monotonicity (preCurrent, blockComps)
+complete | 2026-10-14 03:49:26 ET | eq:gap, lines 1991-1995 | Nonexceptional primary at a block (nonexcAt)
+old incomplete | 2026-10-14 03:49:26 ET | line 1996 | Exceptional blocks: attempt bound about 2(3H^2)^d, not C d_max; lem:height not applied to Theta
+old incomplete | 2026-10-14 03:49:26 ET | lines 1997-1998 | Tiny span and K_B proved given hsmall; hsmall not derived from the schedule
+old incomplete | 2026-10-14 03:49:26 ET | lem:stabilize, lines 2002-2028 | Argument formalized; numeric side conditions not derived, hstab never instantiated
+complete | 2026-10-14 03:49:26 ET | eq:good, lines 2030-2037 | Good modes, core and side modes, using the stable heights of the stabilize proof
+old incomplete | 2026-10-14 03:49:26 ET | lines 2039-2044 | Same PRE predecessor, eq:upper-heights, core coherence: need hstab
+complete | 2026-10-14 03:49:26 ET | lines 2039, 2044 | Minimal-PRE invariance and core bad proportion <= 2 delta_* (good_iff_of_minimal_pre)
+complete | 2026-10-14 03:49:26 ET | lem:mode-rows, lines 2049-2057 | Separated mode rows and cross pairs (aug_mode_rows, modeWave_pair_le)
+old incomplete | 2026-10-14 03:49:26 ET | lem:lift-composition, lines 2062-2077 | Joint rows proved with a loss from global catalog budgets; loss G0 not shown
+old incomplete | 2026-10-14 03:49:26 ET | prop:linear-side, lines 2080-2087 | eq:linear-energy only conditional; event errors unbounded; uses global card Md
+complete | 2026-10-14 03:49:26 ET | lines 2088-2099 | Side events, classes, links; failed-test telescoping (sideEvents, chain_bad_count)
+old incomplete | 2026-10-14 03:49:26 ET | eq:bad-density, lines 2100-2112 | Chain bound uses log of global mode count and A_e as hypotheses; not free of H
+old incomplete | 2026-10-14 03:49:26 ET | lines 2114-2116 | Level rows use the global card Md instead of path counts <= D_*
+old incomplete | 2026-10-14 03:49:26 ET | line 2118 | Exact subtotals: per-event error proved; D_*^-190 bound and negligibility missing
+complete | 2026-10-14 03:49:26 ET | eq:sides, eq:core-side-error, lines 2124-2133 | Side states and Z = A + S + E (LeafSplit.side, core, err)
+complete | 2026-10-14 03:49:26 ET | lines 2135-2150 | Physical error identity, majorant, offset selection (physical_error_le, exists_offsets_physical)
+old incomplete | 2026-10-14 03:49:26 ET | eq:physical-error, lines 2151-2156 | Only decision-cell bound with K_x hypothesis; used-cell sum and |R| bound missing
+complete | 2026-10-14 03:49:26 ET | line 2159 | Rolling, linear and U side budgets from eq:variation, eq:linear-energy, eq:basic-side (overlap O(K))
+old incomplete | 2026-10-14 03:49:26 ET | eq:side-cap, lines 2160-2163 | Cut proved for given budgets; basic-slot budget conditional, no P^C form
+old incomplete | 2026-10-14 03:49:26 ET | line 2164 | Core and error sizes <= P^C and error patterns O(e^-k |R|) not derived
+complete | 2026-10-14 03:49:26 ET | lines 2167-2169 | Helper catalog at reserved rank on side states (helper_instantiation)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2172-2185 | Hereditary representatives and cross-mode non-adjacency: all versions assume hstab
+complete | 2026-10-14 03:49:26 ET | eq:representative-separation, lines 2186-2192 | Separation given CURRENT non-adjacency (representative_separation)
+complete | 2026-10-14 03:49:26 ET | eq:component-size, lines 2196-2201 | Component sizes sigma_F (component_sizes)
+old incomplete | 2026-10-14 03:49:26 ET | eq:size-comparison, lines 2202-2209 | Proved with eps_c, eta_f and count hypotheses that are not instantiated
+old incomplete | 2026-10-14 03:49:26 ET | prop:tops, lines 2212-2219 | eq:top-count abstract only; not instantiated on representatives and sizes
+old incomplete | 2026-10-14 03:49:26 ET | lines 2221-2228 | First tops, non-overlap, rows, side part and absorption: only abstract pieces
+old incomplete | 2026-10-14 03:49:26 ET | line 2229 | Single-choice cut only; union over choices, extreme bins, P^C sizes missing
+
+## sec:sides, lines 2236-2459
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+old incomplete | 2026-10-14 03:49:26 ET | lines 2236-2237 | Helpers not instantiated on side states; helper count bound missing
+complete | 2026-10-14 03:49:26 ET | line 2240 | Complement expansion into chain products; distinct ranks (form_layer_chains)
+complete | 2026-10-14 03:49:26 ET | eq:transfer, lines 2242-2251 | Pad bands and exact transfer identity (padFam, transfer_identity)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2252-2256 | Far bands: far_cell conditional on test-pass hypotheses; farC <= D^-C3 not shown
+complete | 2026-10-14 03:49:26 ET | eq:transferred-main, lines 2257-2263 | Chain-pair sum, restoring B to Y, fixed offsets, terminal band
+complete | 2026-10-14 03:49:26 ET | eq:mixed-Mq, lines 2267-2272 | Mixed maximal bound (oneMixedNorm)
+complete | 2026-10-14 03:49:26 ET | lem:shortblock, lines 2275-2367 | eq:shortblock and its proof (short_block_comparison)
+old incomplete | 2026-10-14 03:49:26 ET | line 2373 | Budgets to caps: cut abstract; P^C|R| size of the actual budgets missing
+complete | 2026-10-14 03:49:26 ET | eq:three-sides, lines 2375-2382 | Group Cauchy-Schwarz and eq:three-sides (group_triple_le, three_sides_power)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2382-2384 | Three-side cost, main term eta P^C |R|, restoration errors on the leaf: conditional
+old incomplete | 2026-10-14 03:49:26 ET | line 2386 | Frozen complements: slotVar <= P^C |R| not shown; shared terminal-band budgets missing
+complete | 2026-10-14 03:49:26 ET | line 2388 | Flag indicator inequality (freeze_flag_le)
+old incomplete | 2026-10-14 03:49:26 ET | line 2388 | Flags on the leaf need current bounds; ancestor certificates and AncClosed missing
+old incomplete | 2026-10-14 03:49:26 ET | eq:stack-energy, lines 2393-2399 | Attempt stack energies only from hypotheses; P G0 |R| and G0 |R| not derived
+complete | 2026-10-14 03:49:26 ET | lines 2401-2419 | Binary prefix expansion, linear-side product jumps, rolling split (abstract Hilbert space)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2415-2419 | Rolling base terms on the leaf conditional on VarCap, AncClosed, EL, EO
+old incomplete | 2026-10-14 03:49:26 ET | line 2419 | Configuration count: cardinality only, no bound by G0
+complete | 2026-10-14 03:49:26 ET | line 2421 | Rademacher selection identities (rademacher_select_two, piece_select_bound)
+old incomplete | 2026-10-14 03:49:26 ET | line 2426 | Hull mass: multiplicity M0 <= exp(k^O(1)) not proved
+complete | 2026-10-14 03:49:26 ET | line 2428 | Hull cuts for two energies (two_hull_caps)
+old incomplete | 2026-10-14 03:49:26 ET | line 2428 | Joint caps P G0 and G0 of the actual stacks: conditional
+complete | 2026-10-14 03:49:26 ET | lines 2430-2437 | Sparse decomposition into short-block pieces and hull-maxima summation
+old incomplete | 2026-10-14 03:49:26 ET | eq:near-band, lines 2438-2443 | Leaf bound in hypothesized budgets, not P^(-1/2) G0; uses C_K, not C_N
+complete | 2026-10-14 03:49:26 ET | eq:min-power, lines 2444-2449 | Signs to absolute sums; min(eta,x) <= eta^(1-p) x^p and split
+old incomplete | 2026-10-14 03:49:26 ET | lines 2446, 2451 | Restarts: hypotheses on subroots not connected to the side estimate
+old incomplete | 2026-10-14 03:49:26 ET | lines 2454-2456 | Exported side estimate: leaf_two_two_bound unused, inputs hypotheses, AncClosed unproved
+
+## sec:core, lines 2460-2825
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+old incomplete | 2026-10-14 03:49:26 ET | line 2461 | Core reduction conditional; three cores with a basic U side not covered
+complete | 2026-10-14 03:49:26 ET | line 2464 | Exact first-success identity (first_success_hasSum, group_first_success)
+old incomplete | 2026-10-14 03:49:26 ET | line 2466 | Failure masks select whole subtotals and representatives a_j: need hstab
+old incomplete | 2026-10-14 03:49:26 ET | eq:core-torus-form, lines 2466-2471 | Error eta <= D_*^-150 not shown; common chart data assumed
+old incomplete | 2026-10-14 03:49:26 ET | eq:frequency-box, lines 2471-2476 | Enlarged-cutoff error <= D_*^-300 not shown; box needs |alive| <= D_*
+old incomplete | 2026-10-14 03:49:26 ET | line 2478 | Offset S proved; R_z bound is hypothesis hRb, forcing W >= |box|
+not started | 2026-10-14 03:49:26 ET | line 2480 | Declaration common-height on a leaf cell
+old incomplete | 2026-10-14 03:49:26 ET | lines 2482-2487 | Tiny/huge dichotomy per good mode given hsmall; cell bounds assume the gap
+old incomplete | 2026-10-14 03:49:26 ET | eq:torus-size, lines 2489-2496 | Abstract bound proved; TorusData never constructed; floor differs
+complete | 2026-10-14 03:49:26 ET | eq:Haar-four, lines 2498-2504 | Four-function Haar bound on rational subtori (haar_four)
+complete | 2026-10-14 03:49:26 ET | eq:four-tests, lines 2506-2520 | Reference, mu and nu bands, discard rule (refQ, refT, fourMu, fourNu)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2522-2530 | Four-core coset reduction given undischarged gap fields; W >= |box| factor
+complete | 2026-10-14 03:49:26 ET | lines 2530-2540 | Kernel decay and three-core test pairing (admissible_kernel_decay, anchorK_entry)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2542-2547 | D_m Parseval abstract; separation and coset alternatives undischarged
+old incomplete | 2026-10-14 03:49:26 ET | eq:side-windows, lines 2549-2560 | Proved given ThreeData and CellCoreData; extra sqrt|N| W |box| factor
+old incomplete | 2026-10-14 03:49:26 ET | eq:core-numerical, lines 2562-2567 | Errors <= Cmax prod sum|alpha|; Cmax <= C D_*^-100 and O(e^-k |R|) missing
+old incomplete | 2026-10-14 03:49:26 ET | lines 2569-2577 | First-success moments abstract; cells need hstab, TorusData, delta_* conditions
+old incomplete | 2026-10-14 03:49:26 ET | eq:principal-core, lines 2577-2582 | Only for given CellCoreData, TorusData, ThreeData; W and |box| factors
+not started | 2026-10-14 03:49:26 ET | line 2585 | Declaration frequency-tests
+complete | 2026-10-14 03:49:26 ET | lem:sparse-count, lines 2587-2705 | Sparse progression mass count and its proof (sparse_count)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2709-2717 | Counting setup and pair determination: abstract; attempt hypotheses undischarged
+old incomplete | 2026-10-14 03:49:26 ET | eq:triple-test, lines 2718-2724 | L0 formula proved; L0 <= P^C (1+log nu/mu)^C not proved
+old incomplete | 2026-10-14 03:49:26 ET | eq:total-count, lines 2726-2729 | Side incidence abstract; attempt version only under hypotheses
+old incomplete | 2026-10-14 03:49:26 ET | eq:applied-sparse, lines 2731-2742 | Conditional on pure-shift, reserve and separation hypotheses
+not started | 2026-10-14 03:49:26 ET | line 2744 | Declaration tested-counts
+complete | 2026-10-14 03:49:26 ET | lem:distribution, lines 2747-2769 | Distribution power bound (distribution_power)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2772-2774 | Negligible amplitudes abstract; incidence and size bounds not instantiated
+complete | 2026-10-14 03:49:26 ET | eq:fixed-power, lines 2776-2779 | eps = 1/1200 and p = 1 - eps bookkeeping (powered_count_exponents)
+old incomplete | 2026-10-14 03:49:26 ET | eq:powered-count, lines 2781-2786 | Implication proved; inputs not established for the actual N_s^G
+complete | 2026-10-14 03:49:26 ET | lines 2788-2799 | Holder over groups and amplitude factor <= 1
+old incomplete | 2026-10-14 03:49:26 ET | lines 2783-2800 | Powered group sum on the attempt: path caps not provided
+complete | 2026-10-14 03:49:26 ET | lines 2802-2806 | Band series summable (band_sum_summable)
+not started | 2026-10-14 03:49:26 ET | lines 2802-2806 | Band coefficients <= P^C (1+log nu/mu)^C; heights, types, leaves polynomial
+old incomplete | 2026-10-14 03:49:26 ET | eq:core-final, lines 2808-2817 | Abstract min and path step only; no attempt assembly
+not started | 2026-10-14 03:49:26 ET | lines 2820-2822 | Exported core estimate with exponent 1/1200 and absolute degree C4
+
+## sec:completion, lines 2826-3010
+
+status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
+--- | --- | --- | ---
+old incomplete | 2026-10-14 03:49:26 ET | prop:normalized, lines 2827-2833 | Statement exact (NormalizedAbsorption); proved only from RetainedMin, unproved
+old incomplete | 2026-10-14 03:49:26 ET | line 2836 | Depth bookkeeping threaded; its use lies inside the unproved RetainedMin
+old incomplete | 2026-10-14 03:49:26 ET | line 2839 | One attempt: components proved under hypotheses; not built on a LevelProps setup
+old incomplete | 2026-10-14 03:49:26 ET | line 2839 | Exceptional roots <= |R|/4: union lemma proved; thresholds not chosen (coloring D = 4|L|+1)
+complete | 2026-10-14 03:49:26 ET | lines 2840-2841 | Restarts: retained estimate gives all active cells with factor 4/3 (activeMin_of_retainedMin)
+old incomplete | 2026-10-14 03:49:26 ET | line 2844 | Pattern split identities proved; per-leaf bounds conditional; nothing combined
+not started | 2026-10-14 03:49:26 ET | eq:before-absorption, lines 2846-2853 | Bound on a retained attempt
+not started | 2026-10-14 03:49:26 ET | lines 2854-2866 | Degree bounds for D_base, D_m, D_*, H, T, K, G0 with q-free degrees
+complete | 2026-10-14 03:49:26 ET | lines 2868-2870 | Choice of q with 2 C5 (q-2)/(q-1) < 1/8 (exists_exponent_near_two)
+old incomplete | 2026-10-14 03:49:26 ET | lines 2872-2876 | alpha and P defined; P >> k^C and G0 <= P^(1/8) only hypotheses
+complete | 2026-10-14 03:49:26 ET | lines 2876-2883 | Block term and power absorption (block_term_le, absorption_power_bound)
+old incomplete | 2026-10-14 03:49:26 ET | eq:active-final, lines 2884-2889 | ActiveMin from RetainedMin proved; RetainedMin (2839-2853 on one root) unproved
+old incomplete | 2026-10-14 03:49:26 ET | line 2891 | Minima on original cell sums: consistent so far; final assembly pending
+complete | 2026-10-14 03:49:26 ET | lines 2893-2900 | Update levels, choice of k_1, cutoff limit: prop:normalized from ActiveFinal
+old incomplete | 2026-10-14 03:49:26 ET | thm:uniform-local, lines 2906-2908 | Statement exact (uniform_of_activeFinal); proved only from RetainedMin
+complete | 2026-10-14 03:49:26 ET | thm:uniform-local proof, lines 2910-2930 | Stops, piece bound, sparse sum, absorption (uniform_local_of_normalized)
+complete | 2026-10-14 03:49:26 ET | thm:main proof, lines 2943-2983 | Kernel W, partition sum, reconstruction, lattices, scale form given thm:uniform-local
+complete | 2026-10-14 03:49:26 ET | thm:main proof, lines 2985-2990 | Odd-part bound and pointwise principal value (unconditional)
+complete | 2026-10-14 03:49:26 ET | thm:main proof, lines 2992-2997 | Principal-value form bound and L1 by duality given thm:uniform-local
+complete | 2026-10-14 03:49:26 ET | thm:main proof, lines 2999-3008 | Unique bounded L3 extension (schwartz_L3_unique_extension)

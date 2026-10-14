@@ -44,10 +44,12 @@ Chapter I, Theorem 2.3).
 
 @[expose] public section
 
-namespace Auto
+section
 
+namespace Auto
 open Filter Polynomial MeasureTheory
 open scoped Topology
+open AddCircle
 
 /-! ### Fourier coefficient estimates
 
@@ -57,8 +59,6 @@ The following one-dimensional integration-by-parts proofs are adapted from
 Apache 2.0. They implement the coordinate estimate in blueprint
 Lemma `lem:fourier-foundation`, lines 130–146.
 -/
-
-open AddCircle
 
 theorem fourierCoeffOn_of_hasDerivAt_zeroBoundary
     {a b : ℝ} (hab : a < b) {f f' : ℝ → ℂ} {n : ℤ} (hn : n ≠ 0)
@@ -751,52 +751,13 @@ theorem norm_mFourier_truncation_error {d m : ℕ} {A : ℝ} (hm : d + 1 < m)
 
 end TorusFourier
 
+end Auto
 
+namespace Auto
+open Filter Polynomial MeasureTheory
+open scoped Topology
+open AddCircle
 open scoped FourierTransform
-
-/-- A finite first absolute moment bounds the derivative of the Fourier
-integral, hence its global Lipschitz constant. Used in lem:weyl, line 1333. -/
-theorem fourier_first_moment_lipschitz {E : Type*}
-    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
-    [MeasurableSpace E] [BorelSpace E] {f : E → ℂ}
-    (hf : Integrable f) (hm : Integrable (fun x => ‖x‖ * ‖f x‖)) (ξ η : E) :
-    ‖𝓕 f ξ - 𝓕 f η‖ ≤ (2 * Real.pi * ∫ x, ‖x‖ * ‖f x‖) * ‖ξ - η‖ := by
-  have hd (x : E) : ‖fderiv ℝ (𝓕 f) x‖ ≤ 2 * Real.pi * ∫ y, ‖y‖ * ‖f y‖ := by
-    rw [Real.fderiv_fourier hf hm]
-    apply (Real.norm_fourier_le_integral_norm _ x).trans_eq
-    simp only [VectorFourier.norm_fourierSMulRight]
-    rw [← integral_const_mul]
-    congr 1
-    funext y
-    rw [innerSL_apply_norm]
-    ring
-  exact (convex_univ : Convex ℝ (Set.univ : Set E)).norm_image_sub_le_of_norm_fderiv_le
-    (fun x _ => Real.differentiable_fourier hf hm x) (fun x _ => hd x)
-    (Set.mem_univ η) (Set.mem_univ ξ)
-
-
-/-- The integral Fourier transform is L1-Lipschitz in its input. -/
-theorem fourier_sub_norm_le_integral {E : Type*}
-    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
-    [MeasurableSpace E] [BorelSpace E] {f g : E → ℂ}
-    (hf : Integrable f) (hg : Integrable g) (ξ : E) :
-    ‖𝓕 f ξ - 𝓕 g ξ‖ ≤ ∫ x, ‖f x - g x‖ := by
-  have he : 𝓕 (fun x => f x - g x) ξ = 𝓕 f ξ - 𝓕 g ξ := by
-    simp only [Real.fourier_eq, smul_sub]
-    exact integral_sub ((Real.fourierIntegral_convergent_iff ξ).mpr hf)
-      ((Real.fourierIntegral_convergent_iff ξ).mpr hg)
-  rw [← he]
-  exact Real.norm_fourier_le_integral_norm _ _
-
-/-- Translation of the argument changes only the Fourier phase. -/
-theorem fourier_translate_norm {E : Type*}
-    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
-    [MeasurableSpace E] [BorelSpace E] (f : E → ℂ) (h ξ : E) :
-    ‖𝓕 (fun x => f (x + h)) ξ‖ = ‖𝓕 f ξ‖ := by
-  have hh := congrFun (VectorFourier.fourierIntegral_comp_add_right
-    Real.fourierChar volume (innerₗ E) f h) ξ
-  change 𝓕 (fun x => f (x + h)) ξ = Real.fourierChar (inner ℝ h ξ) • 𝓕 f ξ at hh
-  rw [hh, Circle.norm_smul]
 
 /-- Multiplication by a linear phase translates the Fourier transform exactly. -/
 theorem fourier_modulation_eq {E : Type*}
@@ -815,25 +776,6 @@ theorem fourier_modulation_eq {E : Type*}
   simp only [AddChar.map_add_eq_mul, Circle.coe_mul] at hh ⊢
   linear_combination hh * f x
 
-/-- A translation-modulation error bounds the loss of Fourier magnitude along
-the corresponding frequency step. Source: lem:weyl, line 1333. -/
-theorem fourier_return_lower {E : Type*}
-    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
-    [MeasurableSpace E] [BorelSpace E] {f : E → ℂ} (hf : Integrable f)
-    (h ω ξ : E) (c : ℝ) :
-    ‖𝓕 f ξ‖ - (∫ x, ‖f (x + h) -
-      (Real.fourierChar (c + inner ℝ x ω) : ℂ) * f x‖) ≤ ‖𝓕 f (ξ - ω)‖ := by
-  have hmod : Integrable (fun x => (Real.fourierChar (c + inner ℝ x ω) : ℂ) * f x) :=
-    hf.bdd_mul (by fun_prop) (Filter.Eventually.of_forall fun x =>
-      (Circle.norm_coe (Real.fourierChar (c + inner ℝ x ω))).le)
-  have hb := fourier_sub_norm_le_integral (hf.comp_add_right h) hmod ξ
-  have hn := norm_sub_norm_le
-    (𝓕 (fun x => f (x + h)) ξ)
-    (𝓕 (fun x => (Real.fourierChar (c + inner ℝ x ω) : ℂ) * f x) ξ)
-  rw [fourier_translate_norm, fourier_modulation_eq, norm_mul, Circle.norm_coe, one_mul] at hn
-  rw [fourier_modulation_eq] at hb
-  linarith only [hn, hb]
-
 /-- Iterating a uniform one-step loss along an arithmetic progression. -/
 theorem fourier_progression_lower {E : Type*} [AddCommGroup E]
     (f : E → ℂ) (ω : E) (ε : ℝ)
@@ -848,6 +790,10 @@ theorem fourier_progression_lower {E : Type*} [AddCommGroup E]
     linarith only [ih, hh]
 
 section IntegralPlancherel
+open MeasureTheory SchwartzMap FourierTransform Complex
+open scoped ENNReal ComplexConjugate ContDiff
+variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace ℝ V] [FiniteDimensional ℝ V]
+  [MeasurableSpace V] [BorelSpace V]
 
 /-! ### Plancherel's theorem on `L¹ ∩ L²`
 
@@ -858,12 +804,6 @@ adapted with attribution from `../lean-dfr/DFR/Auto/IntegralPlancherel.lean`
 Apache-2.0). References: Stein–Weiss, *Introduction to Fourier Analysis on
 Euclidean Spaces*, Chapter I, Theorem 2.3; Grafakos, *Classical Fourier
 Analysis*, 3rd ed., Theorem 2.2.14. Used in lem:weyl, line 1333. -/
-
-open MeasureTheory SchwartzMap FourierTransform Complex
-open scoped ENNReal ComplexConjugate ContDiff
-
-variable {V : Type*} [NormedAddCommGroup V] [InnerProductSpace ℝ V] [FiniteDimensional ℝ V]
-  [MeasurableSpace V] [BorelSpace V]
 
 /-- The multiplication formula `∫ (𝓕 g) f = ∫ g (𝓕 f)` for Schwartz `g`
 and integrable `f`. -/
@@ -1068,146 +1008,13 @@ theorem norm_integral_convolution_form_le {F G K : ℝ → ℂ} (hF1 : Integrabl
 
 end IntegralPlancherel
 
-section DisjointBalls
-
-open MeasureTheory Metric
-
-/-- Square mass on separated balls: if a square-integrable function has size
-at least `c` on `M` balls of radius `ρ` whose centers are `2ρ`-separated, then
-its total square mass is at least `M` times the ball volume times `c²`.
-Used in lem:weyl, line 1333. -/
-theorem separated_balls_sq_mass {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
-    [FiniteDimensional ℝ E] [MeasurableSpace E] [BorelSpace E]
-    (μ : Measure E) [μ.IsAddHaarMeasure] {g : E → ℂ}
-    (hg : Integrable (fun x => ‖g x‖ ^ 2) μ) (M : ℕ) (p : ℕ → E) {ρ c : ℝ}
-    (hsep : ∀ i < M, ∀ j < M, i ≠ j → 2 * ρ ≤ dist (p i) (p j))
-    (hc : ∀ j < M, ∀ x ∈ ball (p j) ρ, c ≤ ‖g x‖) (hc0 : 0 ≤ c) :
-    (M : ℝ) * (μ.real (ball (0 : E) ρ) * c ^ 2) ≤ ∫ x, ‖g x‖ ^ 2 ∂μ := by
-  classical
-  let t := Finset.range M
-  have hdisj : Set.Pairwise (↑t) (Function.onFun Disjoint fun j => ball (p j) ρ) := by
-    intro i hi j hj hij
-    exact ball_disjoint_ball (by
-      have := hsep i (Finset.mem_range.mp hi) j (Finset.mem_range.mp hj) hij
-      linarith only [this])
-  have hU := integral_biUnion_finset (μ := μ) (f := fun x => ‖g x‖ ^ 2) t
-    (fun j _ => measurableSet_ball) hdisj (fun j _ => hg.integrableOn)
-  have hle : ∫ x in ⋃ j ∈ t, ball (p j) ρ, ‖g x‖ ^ 2 ∂μ ≤ ∫ x, ‖g x‖ ^ 2 ∂μ :=
-    setIntegral_le_integral hg (Filter.Eventually.of_forall fun x => by positivity)
-  have hball (j) (hj : j ∈ t) :
-      μ.real (ball (0 : E) ρ) * c ^ 2 ≤ ∫ x in ball (p j) ρ, ‖g x‖ ^ 2 ∂μ := by
-    have h := setIntegral_ge_of_const_le_real (μ := μ) (c := c ^ 2)
-      (f := fun x => ‖g x‖ ^ 2) measurableSet_ball measure_ball_lt_top.ne
-      (fun x hx => pow_le_pow_left₀ hc0 (hc j (Finset.mem_range.mp hj) x hx) 2)
-      hg.integrableOn
-    rw [Measure.addHaar_real_ball_center] at h
-    linarith only [h]
-  calc
-    _ = ∑ _j ∈ t, μ.real (ball (0 : E) ρ) * c ^ 2 := by simp [t]
-    _ ≤ ∑ j ∈ t, ∫ x in ball (p j) ρ, ‖g x‖ ^ 2 ∂μ := Finset.sum_le_sum hball
-    _ ≤ _ := hU ▸ hle
-
-end DisjointBalls
-
-section WeylFrequency
-
-open MeasureTheory Metric
-open scoped FourierTransform
-
-/-- Euclidean balls contain an explicit coordinate cube, giving the volume
-lower bound `(2ρ/(k+1))^k`. Used in lem:weyl, line 1333. -/
-theorem euclidean_ball_volume_lower {k : ℕ} {ρ : ℝ} (hρ : 0 < ρ) :
-    (2 * (ρ / (k + 1))) ^ k ≤ volume.real (ball (0 : EuclideanSpace ℝ (Fin k)) ρ) := by
-  set r := ρ / (k + 1) with hr
-  have hr0 : 0 ≤ r := by positivity
-  let Q : Set (Fin k → ℝ) := Set.Icc (fun _ => -r) (fun _ => r)
-  have hp : MeasurePreserving (fun x : EuclideanSpace ℝ (Fin k) => x.ofLp) := by
-    convert! PiLp.volume_preserving_ofLp (Fin k)
-  have hsub : (fun x : EuclideanSpace ℝ (Fin k) => x.ofLp) ⁻¹' Q ⊆ ball 0 ρ := by
-    intro x hx
-    rw [mem_ball_zero_iff]
-    have hsup : ‖x.ofLp‖ ≤ r := (pi_norm_le_iff_of_nonneg hr0).mpr fun i => by
-      rw [Real.norm_eq_abs, abs_le]
-      exact ⟨hx.1 i, hx.2 i⟩
-    have hsq : ‖x‖ ^ 2 ≤ (k : ℝ) * r ^ 2 := by
-      rw [EuclideanSpace.norm_sq_eq]
-      calc ∑ i, ‖x i‖ ^ 2 ≤ ∑ _i : Fin k, r ^ 2 := Finset.sum_le_sum fun i _ =>
-            pow_le_pow_left₀ (norm_nonneg _) ((norm_le_pi_norm x.ofLp i).trans hsup) 2
-        _ = _ := by simp
-    have hkr : (k : ℝ) * r ^ 2 < ρ ^ 2 := by
-      have hk1 : (0 : ℝ) < k + 1 := by positivity
-      have hρr : ρ = (k + 1) * r := by rw [hr]; field_simp
-      rw [hρr]
-      have hr' : 0 < r := by rw [hr]; positivity
-      nlinarith [sq_nonneg (k : ℝ), mul_pos hr' hr']
-    exact lt_of_pow_lt_pow_left₀ 2 hρ.le (hsq.trans_lt hkr)
-  have hvol : volume.real ((fun x : EuclideanSpace ℝ (Fin k) => x.ofLp) ⁻¹' Q) =
-      (2 * r) ^ k := by
-    rw [measureReal_def, hp.measure_preimage measurableSet_Icc.nullMeasurableSet]
-    change (volume Q).toReal = _
-    rw [Real.volume_Icc_pi_toReal (fun i => by linarith only [hr0])]
-    simp [sub_neg_eq_add, ← two_mul]
-  rw [← hvol]
-  exact measureReal_mono hsub measure_ball_lt_top.ne
-
-/-- The Fourier half of the Weyl alternative: a Lipschitz Fourier transform
-cannot stay large on `M` points of a progression with step of size at least
-one, once `M` balls of the explicit radius exceed the Plancherel mass.
-Source: lem:weyl, line 1333. -/
-theorem fourier_progression_step_small {E : Type*}
-    [NormedAddCommGroup E] [InnerProductSpace ℝ E] [FiniteDimensional ℝ E]
-    [MeasurableSpace E] [BorelSpace E] {f : E → ℂ}
-    (hf1 : Integrable f) (hf2 : MemLp f 2) {L δ S : ℝ} (hL : 0 < L) (hδ : 0 < δ)
-    (hLip : ∀ ξ η, ‖𝓕 f ξ - 𝓕 f η‖ ≤ L * ‖ξ - η‖)
-    (hS : ∫ x, ‖f x‖ ^ 2 ≤ S) (M : ℕ)
-    (hM : S < (M : ℝ) *
-      (volume.real (ball (0 : E) (min (1 / 2) (δ / (6 * L)))) * (δ / 3) ^ 2))
-    (ω ξ : E) (hlarge : ∀ j < M, δ / 2 ≤ ‖𝓕 f (ξ - j • ω)‖) : ‖ω‖ < 1 := by
-  by_contra hω
-  push Not at hω
-  set ρ := min (1 / 2) (δ / (6 * L))
-  have hρ1 : ρ ≤ 1 / 2 := min_le_left _ _
-  have hρ2 : ρ ≤ δ / (6 * L) := min_le_right _ _
-  have hLρ : L * ρ ≤ δ / 6 := by
-    have h := mul_le_mul_of_nonneg_left hρ2 hL.le
-    have he : L * (δ / (6 * L)) = δ / 6 := by field_simp
-    linarith only [h, he]
-  have hsq : Integrable (fun x => ‖𝓕 f x‖ ^ 2) :=
-    (memLp_two_iff_integrable_sq_norm
-      (continuous_fourier_of_integrable hf1).aestronglyMeasurable).mp
-      (memLp_two_fourier hf1 hf2)
-  have hmass := separated_balls_sq_mass (μ := volume) hsq M (fun j => ξ - j • ω)
-    (ρ := ρ) (c := δ / 3)
-    (fun i _ j _ hij => by
-      have he : (ξ - i • ω) - (ξ - j • ω) = (((j : ℤ) - i : ℤ) : ℝ) • ω := by
-        rw [Int.cast_smul_eq_zsmul, sub_zsmul, natCast_zsmul, natCast_zsmul]
-        abel
-      have hij' : (1 : ℝ) ≤ |(((j : ℤ) - i : ℤ) : ℝ)| := by
-        have h0 : ((j : ℤ) - i) ≠ 0 := sub_ne_zero.mpr (by exact_mod_cast (Ne.symm hij))
-        exact_mod_cast Int.one_le_abs h0
-      rw [dist_eq_norm, he, norm_smul, Real.norm_eq_abs]
-      nlinarith [norm_nonneg ω])
-    (fun j hj x hx => by
-      have h1 := hlarge j hj
-      have h2 := hLip x (ξ - j • ω)
-      have h3 : ‖x - (ξ - j • ω)‖ ≤ ρ := (mem_ball_iff_norm.mp hx).le
-      have h4 := norm_sub_norm_le (𝓕 f (ξ - j • ω)) (𝓕 f x)
-      rw [norm_sub_rev] at h4
-      nlinarith [mul_le_mul_of_nonneg_left h3 hL.le])
-    (by positivity)
-  rw [integral_norm_sq_fourier hf1 hf2] at hmass
-  linarith only [hmass, hS, hM]
-
-end WeylFrequency
-
 section PeriodicFourier
+open MeasureTheory
 
 /-! ### Fourier series of smooth periodic functions on `ℝⁿ`
 
 The torus results above are transported to `ℤⁿ`-periodic functions on `ℝⁿ`.
 Used in lem:chartfourier, lines 1361–1377. -/
-
-open MeasureTheory
 
 noncomputable local instance : MeasureSpace UnitAddCircle := ⟨AddCircle.haarAddCircle⟩
 
@@ -1421,3 +1228,5 @@ theorem periodic_fourier_expansion_of_fderiv {n m : ℕ} (hn : 1 ≤ n) (hm : n 
 end PeriodicFourier
 
 end Auto
+
+end

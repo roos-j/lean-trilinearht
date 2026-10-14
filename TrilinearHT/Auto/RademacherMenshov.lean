@@ -31,8 +31,9 @@ The explicit logarithmic horizon and numerical restart bounds implement
 
 @[expose] public section
 
-namespace Auto
+section
 
+namespace Auto
 open scoped BigOperators
 
 /-- The Hilbertian norm of a finite family of outputs, also for normed outputs. -/
@@ -296,7 +297,6 @@ theorem prefixRowLog_eq_ceil (N : ℕ) :
     Real.natCeil_logb_natCast]
 
 section NestedProjections
-
 variable {𝕜 H : Type*} [RCLike 𝕜] [NormedAddCommGroup H]
   [InnerProductSpace 𝕜 H] [CompleteSpace H]
 
@@ -848,7 +848,6 @@ theorem projectionRestartTime_prefix_polynomial {D : ℝ} {m : ℕ}
     _ = _ := by dsimp only [s]; ring
 
 section OperatorComplements
-
 variable {𝕜 H : Type*} [RCLike 𝕜] [NormedAddCommGroup H] [NormedSpace 𝕜 H]
 
 /-- An ordered subproduct, omitting the factors selected as false. -/
@@ -960,9 +959,7 @@ theorem operatorComplementProduct_norm_apply_le {𝕜 H : Type*} [RCLike 𝕜]
     exact (starProjection_norm_apply_le _ hlast _).trans hprev
 
 section ComplexMeasureAverages
-
 open MeasureTheory
-
 variable {Ω : Type*} [MeasurableSpace Ω]
 variable {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F] [NormedSpace ℂ F]
   [IsScalarTower ℝ ℂ F]
@@ -972,25 +969,9 @@ noncomputable def complexMeasurePairing (F : Type*) [NormedAddCommGroup F]
     [NormedSpace ℝ F] [NormedSpace ℂ F] [IsScalarTower ℝ ℂ F] : F →L[ℝ] ℂ →L[ℝ] F :=
   (ContinuousLinearMap.lsmul ℝ ℂ : ℂ →L[ℝ] F →L[ℝ] F).flip
 
-theorem complexMeasurePairing_norm_le : ‖complexMeasurePairing F‖ ≤ 1 := by
-  rw [complexMeasurePairing, ContinuousLinearMap.opNorm_flip]
-  exact ContinuousLinearMap.opNorm_lsmul_le
-
 /-- The ordinary scalar-valued vector-measure integral for a complex Banach space. -/
 noncomputable def complexMeasureIntegral (μ : VectorMeasure Ω ℂ) (f : Ω → F) : F :=
   μ.integral f (complexMeasurePairing F)
-
-theorem complexMeasureIntegral_norm_le [CompleteSpace F] (μ : VectorMeasure Ω ℂ)
-    [IsFiniteMeasure μ.variation] (f : Ω → F) {C : ℝ} (hC : 0 ≤ C)
-    (hf : ∀ᵐ ω ∂μ.variation, ‖f ω‖ ≤ C) :
-    ‖complexMeasureIntegral μ f‖ ≤ C * μ.variation.real Set.univ := by
-  have h := VectorMeasure.norm_integral_le_of_norm_le_const
-    (μ := μ) (B := complexMeasurePairing F) hf
-  calc
-    _ ≤ C * ‖complexMeasurePairing F‖ * μ.variation.real Set.univ := h
-    _ ≤ C * 1 * μ.variation.real Set.univ := mul_le_mul_of_nonneg_right
-      (mul_le_mul_of_nonneg_left complexMeasurePairing_norm_le hC) ENNReal.toReal_nonneg
-    _ = _ := by rw [mul_one]
 
 /-- Complex-linear maps commute with the complex-measure integral. -/
 theorem complexMeasureIntegral_map [CompleteSpace F]
@@ -1012,27 +993,8 @@ theorem complexMeasureIntegral_map [CompleteSpace F]
   rw [hpair] at hleft
   exact hleft.trans hright.symm
 
-/-- Blueprint `lem:compression`, lines 550 and 597: fixed averages of
-finite row families cost only the total variation of an arbitrary complex
-averaging measure. Coordinate integrability makes the averages genuine. -/
-theorem finiteRowNorm_complexMeasureIntegral_le {ι : Type*} [Fintype ι] [CompleteSpace F]
-    (μ : VectorMeasure Ω ℂ) [IsFiniteMeasure μ.variation] (f : Ω → ι → F)
-    (hf : ∀ i, Integrable (fun ω => f ω i) μ.variation)
-    {C : ℝ} (hC : 0 ≤ C) (hbound : ∀ᵐ ω ∂μ.variation, finiteRowNorm (f ω) ≤ C) :
-    finiteRowNorm (fun i => complexMeasureIntegral μ (fun ω => f ω i)) ≤
-      C * μ.variation.real Set.univ := by
-  let L : (ι → F) →L[ℂ] PiLp 2 (fun _ : ι => F) :=
-    (PiLp.continuousLinearEquiv 2 ℂ (fun _ : ι => F)).symm.toContinuousLinearMap
-  have hpi : Integrable f μ.variation := integrable_pi_iff.mpr hf
-  have hrow : Integrable (fun ω => WithLp.toLp 2 (f ω)) μ.variation := L.integrable_comp hpi
-  have he : WithLp.toLp 2 (fun i => complexMeasureIntegral μ (fun ω => f ω i)) =
-      complexMeasureIntegral μ (fun ω => WithLp.toLp 2 (f ω)) := by
-    ext i
-    exact (complexMeasureIntegral_map μ (PiLp.proj 2 (fun _ : ι => F) i) hrow).symm
-  change ‖WithLp.toLp 2 (fun i => complexMeasureIntegral μ (fun ω => f ω i))‖ ≤ _
-  rw [he]
-  exact complexMeasureIntegral_norm_le μ _ hC hbound
-
 end ComplexMeasureAverages
 
 end Auto
+
+end

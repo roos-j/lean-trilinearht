@@ -32,8 +32,9 @@ proof is adapted from ../lean-variationalsw as attributed below.
 
 @[expose] public section
 
-namespace Auto
+section
 
+namespace Auto
 open Filter Polynomial MeasureTheory
 open scoped Topology BigOperators ENNReal ComplexConjugate
 
@@ -45,14 +46,13 @@ noncomputable def finiteAverage {G : Type*} [Fintype G] (f : G → ℂ) : ℂ :=
 noncomputable def finiteConvolution {G : Type*} [Fintype G] [AddGroup G]
     (f g : G → ℂ) (x : G) : ℂ := finiteAverage (fun y => f y * g (x - y))
 
+section Signs
+variable {ι : Type*} [DecidableEq ι]
+
 /-! The following sign-moment helpers are adapted from
 `../lean-variationalsw/VariationalSW/Auto/KhintchineInequality.lean`
 (Copyright 2026 Joris Roos, Apache 2.0; original author Claude).
 Only the upper-moment argument is needed here. -/
-section Signs
-
-variable {ι : Type*} [DecidableEq ι]
-
 /-- The Rademacher signed sum `∑_{i ∈ s} ε_i v_i` attached to the sign pattern `u ⊆ s`:
 `ε_i = 1` if `i ∈ u` and `ε_i = -1` otherwise. -/
 def rademacherSum {G : Type*} [AddCommGroup G] (s u : Finset ι) (v : ι → G) : G :=
@@ -162,7 +162,6 @@ theorem two_point_pow_aux {P A w c : ℝ} (hP : 0 ≤ P) (hA : 0 ≤ A) (hw : w 
         _ = 2 * ((m + 1 : ℕ) : ℝ) * w ^ 2 * Q ^ (m + 1) := by push_cast; ring
 
 section Vectors
-
 variable {ι : Type*} [DecidableEq ι]
 variable (𝕜 : Type*) {H : Type*} [RCLike 𝕜] [NormedAddCommGroup H] [InnerProductSpace 𝕜 H]
 include 𝕜
@@ -284,7 +283,6 @@ theorem khintchineUpperConst_pos {p : ℝ} (hp : 0 < p) : 0 < khintchineUpperCon
   unfold khintchineUpperConst
   have : (0 : ℝ) < ⌈p / 2⌉₊ := by exact_mod_cast Nat.ceil_pos.mpr (half_pos hp)
   positivity
-
 
 /-- Upper Khintchine inequality, `p`-th power form:
 `2^{-|s|} ∑_{u ⊆ s} ‖∑ ε_i v_i‖^p ≤ (C_p (∑ ‖v_i‖²)^{1/2})^p` for `0 < p`. -/
@@ -1154,9 +1152,9 @@ theorem sampling_almost_periods {G : Type*} [AddCommGroup G] [Fintype G] [Decida
   intro t ht t' ht'
   exact diagonal_good_samples_almost_period A f (by linarith) z ht ht'
 
-/-! ### Telescoping over iterated sumsets -/
-
 open scoped Pointwise
+
+/-! ### Telescoping over iterated sumsets -/
 
 /-- The translation error is subadditive in its translation parameter. -/
 theorem finiteLpNorm_translation_add_le {G : Type*} [AddCommGroup G] [Fintype G]
@@ -1328,125 +1326,6 @@ theorem finiteFourier_convolution {q : ℕ} [NeZero q] (f g : ZMod q → ℂ) (�
     rw [finiteAverage_const_mul, ← finiteFourier_eq_average, finiteFourier_translate]
   simp only [hi, finiteAverage_mul_const, ← finiteFourier_eq_average]
 
-theorem finiteFourier_trilinear_identity {q : ℕ} [NeZero q]
-    (F B A : ZMod q → ℂ) :
-    finiteAverage (fun u => finiteAverage (fun t => F u * B t * A (u + t))) =
-      ∑ ξ, finiteFourier F (-ξ) * finiteFourier B (-ξ) * finiteFourier A ξ := by
-  have he (u t) : F u * B t * A (u + t) =
-      ∑ ξ, (F u * ZMod.stdAddChar (ξ * u)) *
-        ((B t * ZMod.stdAddChar (ξ * t)) * finiteFourier A ξ) := by
-    rw [finiteFourier_inversion A (u + t), Finset.mul_sum]
-    apply Finset.sum_congr rfl
-    intro ξ _
-    rw [mul_add, AddChar.map_add_eq_mul]
-    ring
-  simp only [he, finiteAverage_sum, finiteAverage_const_mul, finiteAverage_mul_const]
-  have hf (f : ZMod q → ℂ) (ξ : ZMod q) :
-      finiteAverage (fun x => f x * ZMod.stdAddChar (ξ * x)) = finiteFourier f (-ξ) := by
-    rw [finiteFourier_eq_average]
-    simp only [neg_mul, neg_neg]
-  simp only [hf, mul_assoc]
-theorem finiteFourier_trilinear_select {q : ℕ} [NeZero q]
-    (F B A : ZMod q → ℂ) :
-    ∃ ξ : ZMod q,
-      ‖finiteAverage (fun u => finiteAverage (fun t => F u * B t * A (u + t)))‖ ≤
-        ‖finiteFourier F ξ‖ *
-          Real.sqrt (uniformMean (fun t => ‖B t‖ ^ 2)) *
-          Real.sqrt (uniformMean (fun u => ‖A u‖ ^ 2)) := by
-  obtain ⟨ξ, _, hmax⟩ := Finset.exists_max_image Finset.univ
-    (fun ξ : ZMod q => ‖finiteFourier F ξ‖) Finset.univ_nonempty
-  refine ⟨ξ, ?_⟩
-  rw [finiteFourier_trilinear_identity]
-  have hB : (∑ k : ZMod q, ‖finiteFourier B (-k)‖ ^ 2) =
-      uniformMean (fun t => ‖B t‖ ^ 2) := by
-    rw [finiteFourier_parseval]
-    exact Fintype.sum_equiv (Equiv.neg (ZMod q)) _ _ (fun _ => rfl)
-  calc
-    _ ≤ ∑ k : ZMod q, ‖finiteFourier F (-k) * finiteFourier B (-k) * finiteFourier A k‖ :=
-      norm_sum_le _ _
-    _ ≤ ∑ k : ZMod q, ‖finiteFourier F ξ‖ *
-        (‖finiteFourier B (-k)‖ * ‖finiteFourier A k‖) := by
-      apply Finset.sum_le_sum
-      intro k _
-      simp only [norm_mul, mul_assoc]
-      exact mul_le_mul_of_nonneg_right (hmax (-k) (Finset.mem_univ _)) (by positivity)
-    _ = ‖finiteFourier F ξ‖ * ∑ k : ZMod q,
-        ‖finiteFourier B (-k)‖ * ‖finiteFourier A k‖ := (Finset.mul_sum _ _ _).symm
-    _ ≤ ‖finiteFourier F ξ‖ *
-        (Real.sqrt (∑ k : ZMod q, ‖finiteFourier B (-k)‖ ^ 2) *
-          Real.sqrt (∑ k : ZMod q, ‖finiteFourier A k‖ ^ 2)) :=
-      mul_le_mul_of_nonneg_left (Real.sum_mul_le_sqrt_mul_sqrt _ _ _) (norm_nonneg _)
-    _ = _ := by rw [hB, ← finiteFourier_parseval]; ring
-
-theorem finite_weighted_trilinear_extract {q : ℕ} [NeZero q]
-    (w : ZMod q → ℝ) (hw0 : ∀ u, 0 ≤ w u) (hw1 : ∀ u, w u ≤ 1)
-    {β η : ℝ} (hβ : 0 < β) (hmass : (𝔼 u, w u) = β)
-    (b c A : ZMod q → ℂ) (hc : ∀ u, ‖c u‖ ≤ 1) (hA : ∀ u, ‖A u‖ ≤ 1)
-    (hcorr : η ≤ ‖𝔼 u, 𝔼 t,
-      ((w u / β : ℝ) : ℂ) * b u * (((w t / β : ℝ) : ℂ) * c t) * A (u + t)‖) :
-    ∃ ξ : ZMod q, η * β * Real.sqrt β ≤
-      ‖𝔼 u, (w u : ℂ) * b u * ZMod.stdAddChar (-(ξ * u))‖ := by
-  let F := fun u => ((w u / β : ℝ) : ℂ) * b u
-  let B := fun u => ((w u / β : ℝ) : ℂ) * c u
-  have heC (f : ZMod q → ℂ) : finiteAverage f = 𝔼 u, f u := by
-    simp only [finiteAverage, Fintype.expect_eq_sum_div_card, div_eq_mul_inv, mul_comm]
-  have heR (f : ZMod q → ℝ) : uniformMean f = 𝔼 u, f u := by
-    simp only [uniformMean, Fintype.expect_eq_sum_div_card, smul_eq_mul, div_eq_mul_inv, mul_comm]
-  have hB : uniformMean (fun t => ‖B t‖ ^ 2) ≤ 1 / β := by
-    rw [heR]
-    calc
-      _ ≤ 𝔼 t, w t / β ^ 2 := by
-        apply Finset.expect_le_expect
-        intro t _
-        have hnorm : ‖B t‖ ≤ w t / β := by
-          dsimp [B]
-          rw [norm_mul, Complex.norm_real, Real.norm_of_nonneg (div_nonneg (hw0 t) hβ.le)]
-          simpa only [mul_one] using mul_le_mul_of_nonneg_left (hc t) (div_nonneg (hw0 t) hβ.le)
-        calc
-          _ ≤ (w t / β) ^ 2 := pow_le_pow_left₀ (norm_nonneg _) hnorm 2
-          _ = (w t) ^ 2 / β ^ 2 := div_pow _ _ _
-          _ ≤ _ := div_le_div_of_nonneg_right
-            (by nlinarith [hw0 t, hw1 t] : (w t) ^ 2 ≤ w t) (sq_nonneg β)
-      _ = β / β ^ 2 := by rw [← Finset.expect_div, hmass]
-      _ = 1 / β := by field_simp
-  have hAA : uniformMean (fun u => ‖A u‖ ^ 2) ≤ 1 := by
-    rw [heR]
-    apply Finset.expect_le Finset.univ_nonempty
-    intro u _
-    exact pow_le_one₀ (norm_nonneg _) (hA u)
-  obtain ⟨ξ, hξ⟩ := finiteFourier_trilinear_select F B A
-  have hη : η ≤ ‖finiteFourier F ξ‖ * (Real.sqrt β)⁻¹ := by
-    apply hcorr.trans
-    have he : (𝔼 u, 𝔼 t,
-        ((w u / β : ℝ) : ℂ) * b u * (((w t / β : ℝ) : ℂ) * c t) * A (u + t)) =
-        finiteAverage (fun u => finiteAverage (fun t => F u * B t * A (u + t))) := by
-      simp only [heC, F, B]
-    rw [he]
-    apply hξ.trans
-    have hsB : Real.sqrt (uniformMean (fun t => ‖B t‖ ^ 2)) ≤ (Real.sqrt β)⁻¹ := by
-      simpa only [one_div, Real.sqrt_inv] using Real.sqrt_le_sqrt hB
-    have hsA : Real.sqrt (uniformMean (fun u => ‖A u‖ ^ 2)) ≤ 1 := by
-      simpa only [Real.sqrt_one] using Real.sqrt_le_sqrt hAA
-    calc
-      _ ≤ ‖finiteFourier F ξ‖ * (Real.sqrt β)⁻¹ * 1 :=
-        mul_le_mul (mul_le_mul_of_nonneg_left hsB (norm_nonneg _)) hsA
-          (Real.sqrt_nonneg _) (by positivity)
-      _ = _ := mul_one _
-  have hspos : 0 < Real.sqrt β := Real.sqrt_pos.mpr hβ
-  have hη' : η * Real.sqrt β ≤ ‖finiteFourier F ξ‖ := by
-    have h := mul_le_mul_of_nonneg_right hη hspos.le
-    simpa only [mul_assoc, inv_mul_cancel₀ hspos.ne', mul_one] using h
-  have hval : (β : ℂ) * finiteFourier F ξ =
-      𝔼 u, (w u : ℂ) * b u * ZMod.stdAddChar (-(ξ * u)) := by
-    rw [finiteFourier_eq_average, heC, Finset.mul_expect]
-    apply Finset.expect_congr rfl
-    intro u _
-    dsimp [F]
-    push_cast
-    have hn : (β : ℂ) ≠ 0 := Complex.ofReal_ne_zero.mpr hβ.ne'
-    field_simp
-  refine ⟨ξ, ?_⟩
-  rw [← hval, norm_mul, Complex.norm_real, Real.norm_of_nonneg hβ.le]
-  nlinarith [mul_le_mul_of_nonneg_left hη' hβ.le]
-
 end Auto
+
+end

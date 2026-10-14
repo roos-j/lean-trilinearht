@@ -216,3 +216,50 @@ first-match / eq:gauge-cancel (blueprint lines 1938-1944), with sec:core line 24
 ## 2026-10-12T22:08:54-04:00
 
 Resolution of the eq:gauge-cancel cutoff entry above (blueprint lines 1938-1944, 2479): proved with the thin enlargement. gaugeMult (cutoff parameter δ'') is smooth (gaugeMult_contDiff), 1-periodic in (ϑ y_l', ϑ t) (gaugeMult_periodic), bounded by one, with offset-uniform derivative bounds (gaugeMult_deriv_le) and Fourier truncation (gaugeMult_truncate); gauge_factors_eq_mult shows the four true cutoffs times the gauge phases equal the true cutoffs times gaugeMult up to 8 d δ'' profR δ 1 (first-order layer bound from branchProfile_le_edge). The blueprint's exact identity on the true supports is replaced by this additive error, chosen negligible via δ''. Standard axioms only.
+- 2026-10-14T03:16:14-0400: LEDGER DISCREPANCY (not a source error): automation/Status.md overstated completion for 51 rows in lines 2464-2904 (components marked complete while their attempt-level hypotheses were unverified). Resolved by downgrading to in progress (PARTIAL); a full audit of the remaining complete rows is open.
+
+## 2026-10-14T03:50:08-04:00
+
+Full audit (Status.md rebuilt from scratch at 2026-10-14 03:49:26 ET). Formalization gaps that keep rows in progress or not started. These are Lean mismatches, not source errors, unless marked otherwise.
+
+1. lem:budget-rules, line 83. The q-uniform clause (coefficient C_q, exponent fixed independently of q) is not stated, because QuasipolynomialBound hides its degree under an existential.
+2. lem:chart-operations, line 651. The translation calculation for several-variable charts with real linear V: R^k -> R^d has no Lean counterpart.
+3. lem:chartfourier, lines 1349 and 1377. splitFourierExpansion gives the envelope for one splitting only. The sum over all splittings of height <= B and the count B^(C(d+1)^2) are missing.
+4. lem:separation, line 1383. progressionSeparation assumes chart dimensions d, e >= 1, but def:chart allows d = 0. The padding exists_pad_chart is applied only inside detection_atom_pair.
+5. prop:base, lines 1600-1607. activeCellReduction has the error e^-k (64/3)|J| + eta0 k^Cb |J|, because the bottom K0 levels are bounded by pair smallness, not replaced. The blueprint states C e^-k times the root length. The inverse private weights of the basic projection families are not exported.
+6. Global budgets (lines 1835, 1859, 1861-1879, 1932, 1934, 2062-2077, 2080-2118). The following are counts over the whole attempt tree, not the path counts of eq:columnbudget:
+   - catTree sets the catalog column budget to max 2 M_c, where M_c counts all retained cells;
+   - attemptLift sets eps_m from the global mode count;
+   - level_rows, class_rows, linear_budget and cell_component_sizes use card Md.
+   Every compression constant, and every bound depending on D_*, then grows with the size of the tree. This is the main structural blocker; see item 13.
+7. lem:closure, lines 1820 and 1828-1830. At attempt level, n_r and Tmax come from exists_prefix_fixed with no bound in k.
+8. Catalogs, line 1805. catProj contains only fresh same-tag templates. The rank-0 original columns of the blueprint catalogs are inserted separately by basic_insert. This is the deviation recorded at 2026-10-12T04:17, still open.
+9. eq:offset-mean, lines 1895-1901. branchProfile = gevreyIntervalCutoff 0 (2 delta) (1 - 2 delta) 1 is positive on (0,1). The blueprint cutoff vanishes within delta_c of each branch cut. This is why gauge_factors_eq_mult holds only up to 8 d delta R_delta (line 1944).
+10. Line 1967. The retention rule for v_b-cells ("retain only if a descendant actual use occurs in the block") is not defined: LeafSplit.cells is a free field.
+11. lem:stabilize, coherence and representatives (lines 1996-2044, 2172-2185, 2466).
+    - hstab_of_primaryGood is never instantiated, and its numeric conditions are never derived from ModeSchedule.Valid.
+    - The exceptional-block count is about 2(3H^2)^d, not C d_max.
+12. sec:sides and sec:core leaf statements (lines 2252-2456 and 2461-2822).
+    - Inputs are hypotheses (caps, budgets, test passes, AncClosed, CellCoreData, TorusData, ThreeData).
+    - CellCoreData.hRb bounds the truncated multiplier for every coefficient vector, which forces W >= |box|; the blueprint needs the uniform sup of the specific R_z.
+    - core_leaf_split excludes three-core patterns with a basic U side.
+    - near_sum uses C_K rather than C_N.
+13. sec:completion, lines 2839-2866. The coloring uses vertex bound 4|L|+1 (vtxBound) instead of D_base, so the failure fraction is not small. eq:before-absorption, the degree bounds and RetainedMin are unproved.
+
+## 2026-10-14T04:04:36-04:00
+
+lem:budget-rules, blueprint lines 82-99. Departures in TrilinearHT/Auto/QuadraticCharts.lean. All concern domains or edge cases; none is a source error.
+1. Line 82 says a "positive quantity". `QuasipolynomialBound` (:38) and `QuasipolynomialBoundOfDegree` (:200) require only `0 <= f t`.
+   Reason: this is more general; zero values (for example empty sums) are allowed.
+2. Line 83, "compositions preserve" the bound. `quasipolynomialBound_comp` (:169) and `QuasipolynomialBoundOfDegree.comp` (:302) assume the inner function takes values >= 2 for t >= 2.
+   Reason: the definition bounds the outer function only for arguments t >= 2. Without this domain condition the printed rule has no meaning and is false.
+3. Line 83, polynomial bounds in the logarithms. `polynomial_majorant_add/_mul/_comp` (:4699, :4710, :4720) are pointwise. They assume the logarithmic size u >= 1 (true for t >= 2), nonnegative coefficients, and nonnegative quantities.
+   Reason: these are the source's positivity conventions, made explicit.
+4. Lines 85-89. `compression_overhead_bound` (:4611) was restated at this time; its old hypotheses k >= 2, D >= 1, A >= 1 and C >= 1 are removed.
+   - k and the coefficient A are arbitrary reals.
+   - m is a natural count.
+   - The fixed constants are positive (0 < B, 0 < C). The source uses the same letter C for the bound on m and for the bound on F; Lean allows two separate constants, which is more general.
+   - The only added hypothesis is 1 <= 2D. Reason: this is exactly when the printed real power (C(m+1) log(2D))^(C(m+1)) has a nonnegative base. For 2D < 1 the source expression is undefined, and the Lean statement would be false.
+   - d' = 2, absolute.
+5. Line 89. `fixed_power_eventually_le_ceiling_power` (:4730) now allows every real power p; the old hypothesis 0 <= p is removed.
+   The parameter k ranges over the reals (atTop), which is more general than the source.
