@@ -263,3 +263,20 @@ lem:budget-rules, blueprint lines 82-99. Departures in TrilinearHT/Auto/Quadrati
    - d' = 2, absolute.
 5. Line 89. `fixed_power_eventually_le_ceiling_power` (:4730) now allows every real power p; the old hypothesis 0 <= p is removed.
    The parameter k ranges over the reals (atTop), which is more general than the source.
+
+## 2026-10-14T05:35:26-04:00
+
+Departures in complete rows before blueprint line 651 that were not yet logged. All are minor conventions or edge cases; Lean locations are in TrilinearHT/Auto after the 2026-10-14 file reorganization.
+1. lem:absolute, lines 384-385, torus variant: "a connected torus". `rationalTorus_absoluteBound` (Sec03LocalFormsFiniteConstants.lean:815) states it for rational annihilator subtori of (R/Z)^d with Haar probability measure.
+   Reason: these are exactly the closed connected subtori of the standard torus (lem:torus-annihilator, lines 347-358), the only tori on which the blueprint later uses the estimate (eq:Haar-four, line 2498).
+2. lem:absolute, line 385, lattice variant ("normalized at its scale, kernel bounded and supported in a fixed scale-sized box"). `integerProgression_absoluteBound` (Sec03LocalFormsFiniteConstants.lean:994) takes the scale N > 0, supports of cardinality at most B*N, the normalization N^-2, and constant B^2 W.
+   Reason: this is a precise reading of "a fixed scale-sized box".
+3. lem:chart-operations, lines 642-650.
+   - Affected declarations, all in Sec05QuadraticCharts.lean: `productQuadraticChart_complexity` (:827), `finiteQuadraticChartProduct_complexity` (:913), `translatedChartAmplitude_derivative_bound` (:1249), `quadraticChart_translation_closure` (:1418), `quadraticChart_affine_closure` (:1438).
+   - Departure: these assume the Gevrey order satisfies c0 >= 1.
+   - Reason: an unimportant edge case. For c0 = 0 the bound of def:chart (lines 633-635) is ||∂^α χ|| <= 1 for all α. A compactly supported smooth χ with this bound is analytic and hence zero, so the class is trivial.
+4. lem:compression, line 550, averages. `columnSpatialCompression_averages` (Sec04ColumnProjections.lean:4163) assumes AE strong measurability of the averaged integrand.
+   Reason: this is the well-definedness condition for the Bochner average that the source writes.
+5. Cube forms and lem:cube-foundation, lines 163-174 and 216-236.
+   - `cubeAverage` (GowersCauchySchwarz.lean:88) integrates h outside x. This equals the printed iterated expectation by Fubini for bounded measurable inputs.
+   - `gowersThreeSeminorm` (GowersCauchySchwarz.lean:732) is the U^3 seminorm on bounded measurable functions, the source's domain. It is extended to L^2 by the continuity statement eq:cube-L2.

@@ -33,51 +33,6 @@ open ClassicalMaximal
 theorem continuous_torusCharacter {d : ℕ} (n : Fin d → ℤ) : Continuous (torusCharacter n) :=
   (fourier 1).continuous.comp (continuous_torusPairing n)
 
-theorem rationalTorus_single_endpoint {d : ℕ} (V : Submodule ℚ (Fin d → ℚ))
-    {K : (torusAnnihilator (rationalIntegerIntersection V)) ×
-      (torusAnnihilator (rationalIntegerIntersection V)) → ℝ≥0∞}
-    {W : ℝ≥0∞} (hW : ∀ z, K z ≤ W)
-    (f : torusAnnihilator (rationalIntegerIntersection V) → ℝ≥0∞)
-    (hf : Measurable f) (i l : ℤ) :
-    (∫⁻ z, K z * f (z.1 + (i - l) • z.2)
-      ∂(torusAnnihilatorHaar (rationalIntegerIntersection V)).prod
-        (torusAnnihilatorHaar (rationalIntegerIntersection V))) ≤
-      W * ∫⁻ u, f u ∂torusAnnihilatorHaar (rationalIntegerIntersection V) := by
-  simpa using rationalTorus_pair_endpoint V hW f (fun _ => 1) hf measurable_const
-    (i := i) (j := i + 1) (by omega) l
-
-theorem rationalTorus_empty_endpoint {d : ℕ} (V : Submodule ℚ (Fin d → ℚ))
-    {K : (torusAnnihilator (rationalIntegerIntersection V)) ×
-      (torusAnnihilator (rationalIntegerIntersection V)) → ℝ≥0∞}
-    {W : ℝ≥0∞} (hW : ∀ z, K z ≤ W) :
-    (∫⁻ z, K z ∂(torusAnnihilatorHaar (rationalIntegerIntersection V)).prod
-      (torusAnnihilatorHaar (rationalIntegerIntersection V))) ≤ W := by
-  simpa using rationalTorus_single_endpoint V hW (fun _ => 1) measurable_const 0 0
-
-/-- Blueprint `eq:absolute` on every rational connected subtorus, with the
-exact multiplier constant and all exponents in `[1, ∞]`. -/
-theorem rationalTorus_absoluteBound {d : ℕ} (V : Submodule ℚ (Fin d → ℚ))
-    (K : (torusAnnihilator (rationalIntegerIntersection V)) ×
-      (torusAnnihilator (rationalIntegerIntersection V)) → ℝ≥0∞)
-    (hK : Measurable K) {W : ℝ≥0∞} (hW : ∀ z, K z ≤ W) (l : ℤ)
-    (f : Fin 4 → torusAnnihilator (rationalIntegerIntersection V) → ℝ≥0∞)
-    (hf : ∀ i, Measurable (f i)) (p : Fin 4 → ℝ≥0∞) (hp : ∀ i, 1 ≤ p i)
-    (hsum : ∑ i, (p i).toReal⁻¹ ≤ 2) :
-    (∫⁻ z, K z * ∏ i, f i (z.1 + ((i : ℤ) - l) • z.2)
-      ∂(torusAnnihilatorHaar (rationalIntegerIntersection V)).prod
-        (torusAnnihilatorHaar (rationalIntegerIntersection V))) ≤
-      W * ∏ i, eLpNorm (f i) (p i) (torusAnnihilatorHaar (rationalIntegerIntersection V)) := by
-  apply positiveWeightedPairwise_eLpNorm_bound _ _
-    (fun i z => z.1 + ((i : ℤ) - l) • z.2) ?_ K hK W
-    (rationalTorus_empty_endpoint V hW) ?_ ?_ f hf p hp hsum
-  · intro i
-    exact (continuous_fst.add (continuous_snd.zsmul ((i : ℤ) - l))).measurable
-  · intro i g hg
-    exact rationalTorus_single_endpoint V hW g hg (i : ℤ) l
-  · intro i j hij g h hg hh
-    exact rationalTorus_pair_endpoint V hW g h hg hh
-      (by exact_mod_cast (show i.val ≠ j.val from fun h => hij (Fin.ext h))) l
-
 end Auto
 
 end

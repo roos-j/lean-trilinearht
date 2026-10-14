@@ -3995,17 +3995,6 @@ theorem hist_freshFrom (mH : ℕ) (s : List (CatCol Tg)) :
 
 end CatTest
 
-/-- The physical coordinate of an augmented vector is measurable. -/
-theorem columnPhys_measurable {V : Type*} [Fintype V] (x : ColumnL2 V) :
-    Measurable fun y => (x : ℝ → ColumnHilbert V) y none := by
-  have hev : Continuous fun x : ColumnHilbert V => x.ofLp none :=
-    (continuous_apply none).comp (PiLp.continuous_ofLp 2 _)
-  exact hev.measurable.comp (Lp.stronglyMeasurable _).measurable
-
-theorem columnPhys_memLp_normalized {V : Type*} [Fintype V] (x : ColumnL2 V) (a₀ r : ℝ) :
-    MemLp (fun y => (x : ℝ → ColumnHilbert V) y none) 2 (normalizedIntervalMeasure a₀ r) :=
-  ((memLp_column_coord x none).restrict _).smul_measure ENNReal.ofReal_ne_top
-
 /-- Integrals against the normalized measure of a cell are averages over the cell. -/
 theorem integral_normalized_cell (G : RealDyadicGrid) (I : ℤ × ℤ) (f : ℝ → ℂ) :
     ∫ y, f y ∂(normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)) =
@@ -4562,112 +4551,6 @@ theorem catCombination_coeFn (s : List (CatCol Tg)) (I : ℤ × ℤ) (F : Finset
   exact Finset.sum_congr rfl fun n hn => hy n hn hys
 
 end CatalogExpansion
-
-/-! ### The cell form on augmented inputs -/
-
-/-- The progression coordinates pull null sets back to null sets of the plane. -/
-theorem realProgressionCoordinate_preimage_null (j : Fin 4) {N : Set ℝ} (hN : volume N = 0) :
-    (volume : Measure (ℝ × ℝ)) (realProgressionCoordinate j ⁻¹' N) = 0 := by
-  obtain ⟨N', hNN', hN'm, hN'0⟩ := exists_measurable_superset_of_null hN
-  refine measure_mono_null (Set.preimage_mono hNN') ?_
-  have hm : MeasurableSet (realProgressionCoordinate j ⁻¹' N') :=
-    (continuous_realProgressionCoordinate j).measurable hN'm
-  rw [Measure.volume_eq_prod, Measure.measure_prod_null hm]
-  by_cases hj : (j : ℝ) = 0
-  · -- the slice is all of `ℝ` over `N'` and empty elsewhere
-    filter_upwards [measure_eq_zero_iff_ae_notMem.mp hN'0] with x hx
-    have : Prod.mk x ⁻¹' (realProgressionCoordinate j ⁻¹' N') = ∅ := by
-      ext t
-      simp only [Set.mem_preimage, realProgressionCoordinate, hj, zero_mul, add_zero,
-        Set.mem_empty_iff_false, iff_false]
-      exact hx
-    simp only [this, measure_empty, Pi.zero_apply]
-  · refine Filter.Eventually.of_forall fun x => ?_
-    have : Prod.mk x ⁻¹' (realProgressionCoordinate j ⁻¹' N') =
-        (fun t => (j : ℝ) * t) ⁻¹' ((fun u => u + x) ⁻¹' N') := by
-      ext t
-      simp only [Set.mem_preimage, realProgressionCoordinate]
-      rw [add_comm]
-    change volume (Prod.mk x ⁻¹' (realProgressionCoordinate j ⁻¹' N')) = 0
-    rw [this, Real.volume_preimage_mul_left hj, measure_preimage_add_right]
-    simp [hN'0]
-
-/-- The local form depends only on the almost-everywhere classes of its inputs. -/
-theorem localProgressionForm_congr_ae (r : ℝ) (w : ℝ × ℝ → ℂ) {f g : Fin 4 → ℝ → ℂ}
-    (h : ∀ j, f j =ᵐ[volume] g j) : localProgressionForm r w f = localProgressionForm r w g := by
-  unfold localProgressionForm
-  congr 1
-  refine integral_congr_ae ?_
-  have hj : ∀ j, ∀ᵐ z : ℝ × ℝ ∂volume,
-      f j (realProgressionCoordinate j z) = g j (realProgressionCoordinate j z) := by
-    intro j
-    have hN := (h j)
-    rw [Filter.EventuallyEq, ae_iff] at hN
-    rw [ae_iff]
-    exact realProgressionCoordinate_preimage_null j hN
-  filter_upwards [ae_all_iff.mpr hj] with z hz
-  simp only [hz]
-
-/-- The physical coordinate of an augmented vector. -/
-noncomputable def augPhys {V : Type*} [Fintype V] (x : ColumnL2 V) : ℝ → ℂ :=
-  fun y => (x : ℝ → ColumnHilbert V) y none
-
-theorem augPhys_add {V : Type*} [Fintype V] (x x' : ColumnL2 V) :
-    augPhys (x + x') =ᵐ[volume] augPhys x + augPhys x' := by
-  filter_upwards [Lp.coeFn_add x x'] with y hy
-  simp only [augPhys, hy, Pi.add_apply, PiLp.add_apply]
-
-theorem augPhys_smul {V : Type*} [Fintype V] (c : ℂ) (x : ColumnL2 V) :
-    augPhys (c • x) =ᵐ[volume] c • augPhys x := by
-  filter_upwards [Lp.coeFn_smul c x] with y hy
-  simp only [augPhys, hy, Pi.smul_apply, PiLp.smul_apply]
-
-theorem apply_update_augPhys {V : Type*} [Fintype V] (x : Fin 4 → ColumnL2 V) (k : Fin 4)
-    (a : ColumnL2 V) (l : Fin 4) :
-    augPhys (Function.update x k a l) = Function.update (fun l => augPhys (x l)) k (augPhys a) l :=
-  by by_cases h : l = k <;> simp [Function.update, h]
-
-/-- Blueprint eq:local on a cell, as a multilinear form on augmented inputs (only physical
-coordinates enter). -/
-noncomputable def cellForm {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w : ℝ × ℝ → ℂ}
-    (hw : IsAdmissibleLocalKernel κ a₀ r w) (V : Type*) [Fintype V] :
-    MultilinearMap ℂ (fun _ : Fin 4 => ColumnL2 V) ℂ where
-  toFun x := localProgressionForm r w (fun l => augPhys (x l))
-  map_update_add' := by
-    intro inst x k a b
-    obtain rfl : inst = instDecidableEqFin 4 := Subsingleton.elim _ _
-    have hm : ∀ l, Measurable (augPhys (x l)) := fun l => columnPhys_measurable (x l)
-    have hfin : ∀ l, eLpNorm (augPhys (x l)) 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤ :=
-      fun l => (columnPhys_memLp_normalized (x l) a₀ r).eLpNorm_ne_top
-    have e : localProgressionForm r w (fun l => augPhys (Function.update x k (a + b) l)) =
-        localProgressionForm r w
-          (Function.update (fun l => augPhys (x l)) k (augPhys a + augPhys b)) := by
-      refine localProgressionForm_congr_ae r w fun l => ?_
-      rw [apply_update_augPhys]
-      by_cases h : l = k
-      · subst h; simp only [Function.update_self]; exact augPhys_add a b
-      · simp only [Function.update_of_ne h]; rfl
-    have hadd := localProgressionForm_update_add_two (g₁ := augPhys a) (g₂ := augPhys b) hr hw
-      hm hfin k (columnPhys_measurable a) (columnPhys_measurable b)
-      (columnPhys_memLp_normalized a a₀ r).eLpNorm_ne_top
-      (columnPhys_memLp_normalized b a₀ r).eLpNorm_ne_top
-    rw [e, hadd]
-    congr 1
-    · congr 1; funext l; rw [apply_update_augPhys]
-    · congr 1; funext l; rw [apply_update_augPhys]
-  map_update_smul' := by
-    intro inst x k c a
-    obtain rfl : inst = instDecidableEqFin 4 := Subsingleton.elim _ _
-    have e : localProgressionForm r w (fun l => augPhys (Function.update x k (c • a) l)) =
-        localProgressionForm r w (Function.update (fun l => augPhys (x l)) k (c • augPhys a)) := by
-      refine localProgressionForm_congr_ae r w fun l => ?_
-      rw [apply_update_augPhys]
-      by_cases h : l = k
-      · subst h; simp only [Function.update_self]; exact augPhys_smul c a
-      · simp only [Function.update_of_ne h]; rfl
-    rw [e, localProgressionForm_update_const_smul, smul_eq_mul]
-    congr 2
-    funext l; rw [apply_update_augPhys]
 
 /-! ### Template columns are pure sources (blueprint lines 1798-1803) -/
 

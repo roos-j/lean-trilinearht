@@ -25,20 +25,6 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
-section CoreSideDecomposition
-variable {V : Type*} [AddCommGroup V] [Module ℂ V]
-
-/-- Blueprint `eq:core-side-error` in a 4-linear form: with `Z_l = A_l + S_l + E_l`,
-`H(Z) = Σ_σ H(pieces σ)` over all core/side/error patterns. -/
-theorem form_pattern_expand (Λ : MultilinearMap ℂ (fun _ : Fin 4 => V) ℂ) (a s e : Fin 4 → V) :
-    Λ (fun l => a l + s l + e l) = ∑ σ : Fin 4 → Fin 3, Λ (patternPiece a s e σ) := by
-  have h : (fun l => a l + s l + e l) = fun l => ∑ j : Fin 3, ![a l, s l, e l] j := by
-    funext l; simp [Fin.sum_univ_three, add_assoc]
-  rw [h, MultilinearMap.map_sum]
-  rfl
-
-end CoreSideDecomposition
-
 open Classical in
 /-- Blueprint lines 2845-2848 (the decomposition of the leaf form): with
 `H_I = Σ_σ F_I(σ)` over the core/side/error patterns, the weighted cell minima are bounded by the
@@ -184,19 +170,6 @@ namespace AttemptParams
 namespace LeafSplit
 variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {ap : A.AttemptParams}
   (D : ap.LeafSplit)
-
-/-- Blueprint `eq:core-side-error` summed over the groups of a cell: the leaf form is the sum of
-the pattern forms over all core/side/error patterns. -/
-theorem leaf_pattern_identity (gs : Finset A.Grp) (I : ℤ × ℤ)
-    (Zout ZU : Fin 4 → A.Grp → ColumnL2 (Fin ap.Mc)) :
-    ∑ G ∈ gs, ap.Λc I (fun l => Zout l G) = ∑ σ, D.patF gs I Zout ZU σ := by
-  unfold patF
-  rw [Finset.sum_comm]
-  refine Finset.sum_congr rfl fun G _ => ?_
-  rw [← form_pattern_expand]
-  congr 1
-  funext l
-  exact (D.core_add_side_add_err l G I (Zout l G) (ZU l G)).symm
 
 open Classical in
 /-- Blueprint lines 2845-2848 on one search leaf: the weighted cell minima of the leaf forms are

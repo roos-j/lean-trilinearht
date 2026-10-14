@@ -1737,36 +1737,6 @@ theorem projection_subtotal_close {μ : Type*} [DecidableEq μ] (E A : Finset μ
 
 end SubtotalSynthesis
 
-/-- Column functions supported on pairwise disjoint sets are orthogonal: the squared norm of
-their sum is the sum of squared norms. -/
-theorem columnL2_norm_sq_sum_disjoint {V ι : Type*} [Fintype V] (s : Finset ι)
-    (v : ι → ColumnL2 V) (J : ι → Set ℝ) (hJ : Set.PairwiseDisjoint (s : Set ι) J)
-    (hv : ∀ i, ∀ᵐ y ∂volume, y ∉ J i → (v i : ℝ → ColumnHilbert V) y = 0) :
-    ‖∑ i ∈ s, v i‖ ^ 2 = ∑ i ∈ s, ‖v i‖ ^ 2 := by
-  classical
-  have horth : ∀ i ∈ s, ∀ j ∈ s, i ≠ j → inner ℂ (v i) (v j) = 0 := by
-    intro i hi j hj hij
-    rw [L2.inner_def]
-    refine integral_eq_zero_of_ae ?_
-    filter_upwards [hv i, hv j] with y h1 h2
-    by_cases hy : y ∈ J i
-    · have : y ∉ J j := fun hyj => Set.disjoint_left.mp (hJ hi hj hij) hy hyj
-      rw [h2 this, inner_zero_right]; rfl
-    · rw [h1 hy, inner_zero_left]; rfl
-  clear hv hJ
-  induction s using Finset.induction_on with
-  | empty => simp
-  | insert a s ha ih =>
-    rw [Finset.sum_insert ha, Finset.sum_insert ha]
-    have h0 : inner ℂ (v a) (∑ i ∈ s, v i) = 0 := by
-      rw [inner_sum]
-      exact Finset.sum_eq_zero fun j hj => horth a (Finset.mem_insert_self a s) j
-        (Finset.mem_insert_of_mem hj) (fun h => ha (h ▸ hj))
-    rw [← ih fun i hi j hj hij =>
-      horth i (Finset.mem_insert_of_mem hi) j (Finset.mem_insert_of_mem hj) hij]
-    simp only [sq]
-    exact norm_add_sq_eq_norm_sq_add_norm_sq_of_inner_eq_zero _ _ h0
-
 section AugModesL2
 variable {V : Type*} [Fintype V] [DecidableEq V]
 
@@ -4185,25 +4155,6 @@ theorem columnL2Restriction_comm {s t : Set ℝ} (hs : MeasurableSet s) (ht : Me
   by_cases hy : y ∈ s <;> by_cases hy' : y ∈ t <;>
     simp [Set.indicator_of_mem, Set.indicator_of_notMem, hy, hy', h2, h4]
 
-/-- The restriction to a finite disjoint union of cells is the sum of the cell restrictions. -/
-theorem columnL2Restriction_biUnion {κ : Type*} (S : Finset κ) (J : κ → Set ℝ)
-    (hJ : ∀ i, MeasurableSet (J i)) (hdis : Set.PairwiseDisjoint (S : Set κ) J) :
-    columnL2Restriction (V := V) (⋃ i ∈ S, J i)
-        (Finset.measurableSet_biUnion S fun i _ => hJ i) =
-      ∑ i ∈ S, columnL2Restriction (J i) (hJ i) := by
-  refine ContinuousLinearMap.ext fun w => Lp.ext ?_
-  rw [sum_apply]
-  change (columnL2Indicator _ (Finset.measurableSet_biUnion S fun i _ => hJ i) w :
-    ℝ → ColumnHilbert V) =ᵐ[volume] _
-  have hall : ∀ᵐ y ∂volume, ∀ i ∈ S, (columnL2Restriction (J i) (hJ i) w :
-      ℝ → ColumnHilbert V) y = (J i).indicator (w : ℝ → ColumnHilbert V) y := by
-    rw [Filter.eventually_all_finset]
-    exact fun i _ => columnL2Indicator_coeFn _ (hJ i) w
-  filter_upwards [columnL2Indicator_coeFn _ (Finset.measurableSet_biUnion S fun i _ => hJ i) w,
-    hall, Lp.coeFn_fun_finsetSum S (fun i => columnL2Restriction (J i) (hJ i) w)]
-    with y h1 h2 h3
-  rw [h1, h3, Finset.sum_congr rfl h2, Finset.indicator_biUnion_apply _ _ hdis]
-
 end RestrictionUnions
 
 namespace ActiveSetup
@@ -5863,85 +5814,6 @@ theorem badHeights_card_le (hEq : ∀ i, 6 * SP.Eq i ≤ SP.Eq (i + 1)) (hSk : M
 
 end ModeSystem
 
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
-
-/-- The data of the core-side-error split of the leaf outputs of an attempt (blueprint
-`eq:sides`, `eq:core-side-error`, lines 2120-2135): the block length `K`, the schedule and side
-parameters, the mode systems of the slots and groups, the pre-cells of the blocks and the frozen
-coefficients, and the slots carrying a basic `U` (whole sides). -/
-structure LeafSplit where
-  S : ModeSchedule
-  hA : 6 ≤ S.A0
-  SP : SideParams
-  Ms : Fin 4 → A.Grp → ModeSystem A.G ap.Mc
-  cells : Fin 4 → A.Grp → ℤ → Finset (ℤ × ℤ)
-  c : ∀ l G, ℤ → ℤ × ℤ → (Ms l G).Md → ℂ
-  usl : Fin 4 → Prop
-
-namespace LeafSplit
-variable {ap} (D : ap.LeafSplit)
-
-/-- The block start of a depth: the largest `R.1 + K β ≤ h`. -/
-noncomputable def blockOf (h : ℤ) : ℤ :=
-  A.R.1 + D.S.K * ((h - A.R.1) / D.S.K)
-
-end LeafSplit
-
-end AttemptParams
-
-end ActiveSetup
-
-/-- A depth projection at a depth `h ≥ R.1` (within the family's depth range) commutes with the
-restriction to the cell `R`. -/
-theorem ColumnDepthFamily.proj_restrict_below {V : Type*} [Fintype V] (Ψ : ColumnDepthFamily V)
-    {G : RealDyadicGrid} (hG : Ψ.D.grid = G) {R : ℤ × ℤ} (hRN : R.1 ≤ Ψ.N) {h : ℤ}
-    (hh : R.1 ≤ h) (z : ColumnL2 V) :
-    columnL2Restriction (dyadicGridCell G R.1 R.2) (dyadicGridCell_measurable G R.1 R.2)
-        (Ψ.proj h z) =
-      Ψ.proj h (columnL2Restriction (dyadicGridCell G R.1 R.2)
-        (dyadicGridCell_measurable G R.1 R.2) z) := by
-  subst hG
-  have hd : R.1 ≤ Ψ.depth h := by
-    unfold ColumnDepthFamily.depth
-    exact le_max_of_le_right (le_min hh hRN)
-  exact DFunLike.congr_fun (Ψ.proj_commute_restrict h hd) z
-
-namespace ActiveSetup
-
-namespace AttemptParams
-
-namespace LeafSplit
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {ap : A.AttemptParams}
-  (D : ap.LeafSplit)
-
-/-- The decision lag of the depth `R.1 + s`: the decision depth `u_b = b - 4K` relative to the
-root (zero above the root). -/
-noncomputable def lagU (s : ℕ) : ℕ := (D.blockOf (A.R.1 + s) - 4 * D.S.K - A.R.1).toNat
-
-/-- Blueprint `eq:lags` (line 1959): `u_b ≤ s < u_b + 5K`, so the rolling windows `[u_b, s]` have
-length below `5K` (line 2160, "overlap `O(K)`"). -/
-theorem lagU_le (hK : 1 ≤ D.S.K) (s : ℕ) : D.lagU s ≤ s ∧ s - D.lagU s < 5 * D.S.K := by
-  unfold lagU blockOf
-  have hKz : (0 : ℤ) < D.S.K := by exact_mod_cast hK
-  have e : A.R.1 + (s : ℤ) - A.R.1 = s := by ring
-  rw [e]
-  set q := (s : ℤ) / D.S.K
-  have h1 : (D.S.K : ℤ) * q ≤ s := by rw [mul_comm]; exact Int.ediv_mul_le (s : ℤ) hKz.ne'
-  have h2 : (s : ℤ) < D.S.K * q + D.S.K := by
-    have := Int.lt_ediv_add_one_mul_self (s : ℤ) hKz
-    rw [add_mul, one_mul, mul_comm] at this; exact this
-  set m := (D.S.K : ℤ) * q
-  constructor <;> omega
-
-end LeafSplit
-
-end AttemptParams
-
-end ActiveSetup
-
 /-- The class `β mod 3` of a block start `b = R₀ + K β` (blueprint lines 2084-2086). -/
 noncomputable def blockClass (R₀ : ℤ) (K : ℕ) (b : ℤ) : Fin 3 :=
   ⟨(((b - R₀) / K) % 3).toNat, by omega⟩
@@ -6016,39 +5888,6 @@ theorem eventErr_sq_le (Kf : ℕ) {ε : ℝ} (hε : 0 < ε) (b : ℤ) (J : ℤ �
     _ = P ^ 2 * r * D ^ 2 * B / ε := by ring
 
 end ModeSystem
-
-/-- The current value of a basic projection at a cell `I ⊆ R` (below the family root, at depth
-at least `R.1`) depends only on the restriction of the input to `R`. -/
-theorem ColumnDepthFamily.currentZ_restrict_root {V : Type*} [Fintype V]
-    (Ψ : ColumnDepthFamily V) {G : RealDyadicGrid} (hG : Ψ.D.grid = G) {R I : ℤ × ℤ}
-    (hR : dyadicGridCell G R.1 R.2 ⊆ dyadicGridCell G Ψ.D.root.1 Ψ.D.root.2)
-    (hRr : Ψ.D.root.1 ≤ R.1) (hRN : R.1 ≤ Ψ.N)
-    (hIR : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2) (Z : ColumnL2 V) :
-    physicalColumnInput (V := V) (cellLp G I (Ψ.currentZ Z I)) =
-      physicalColumnInput (cellLp G I (Ψ.currentZ (columnL2Restriction (dyadicGridCell G R.1 R.2)
-        (dyadicGridCell_measurable G R.1 R.2) Z) I)) := by
-  subst hG
-  have hIroot := hIR.trans hR
-  have hI1 : R.1 ≤ I.1 := dyadicGridCell_depth_le_of_subset _ I R hIR
-  rw [← Ψ.restrict_physEmbed_proj (W := V) hIroot (hRr.trans hI1),
-    ← Ψ.restrict_physEmbed_proj (W := V) hIroot (hRr.trans hI1),
-    ← Ψ.proj_restrict_below rfl hRN hI1, physEmbed_restrict]
-  have h := columnL2Restriction_comp_of_subset (V := V)
-    (dyadicGridCell_measurable Ψ.D.grid I.1 I.2) (dyadicGridCell_measurable Ψ.D.grid R.1 R.2) hIR
-  exact (DFunLike.congr_fun h _).symm
-
-/-- The physical column input is injective, so an identity of physical inputs does not depend on
-the column type. -/
-theorem physicalColumnInput_inj {V W : Type*} [Fintype V] [Fintype W]
-    {f g : Lp ℂ 2 (volume : Measure ℝ)}
-    (h : physicalColumnInput (V := V) f = physicalColumnInput (V := V) g) :
-    physicalColumnInput (V := W) f = physicalColumnInput (V := W) g := by
-  have hfg : f = g := by
-    refine Lp.ext ?_
-    filter_upwards [physicalColumnInput_ae (V := V) f, physicalColumnInput_ae (V := V) g]
-      with y hf hg
-    rw [← hf.2, ← hg.2, h]
-  rw [hfg]
 
 /-- Restriction to a set does not increase the squared norm. -/
 theorem columnL2Restriction_norm_sq_le {V : Type*} [Fintype V] (s : Set ℝ) (hs : MeasurableSet s)
@@ -6234,174 +6073,6 @@ theorem events_diff_bound (cat : List (CatCol A.Vtx)) (t₀ : Fin 4)
         gcongr
         · exact h1
         · exact h2
-
-/-! ### The linear sides of a basic leaf slot (blueprint lines 2104-2118, 2160) -/
-
-/-- The layered leaf input of a basic slot at a cell of the root, as the layered difference of the
-two root-restricted basic projections. -/
-theorem leafIn_eq_sub_root (cat : Fin 4 → List (CatCol A.Vtx)) (s : ℕ) (l : Fin 4) {U : ℤ × ℤ}
-    (hU : U ∈ A.cells) (hz : ap.z U l = A.B l U) {CF : ℝ} (P₁ P₂ : BasicProjection A.G A.R CF)
-    (hP : ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G U.1 U.2 → A.B l U y = P₁.val U y - P₂.val U y)
-    (hPN₁ : A.R.1 ≤ P₁.Ψ.N) (hPN₂ : A.R.1 ≤ P₂.Ψ.N) :
-    ap.leafIn cat s l U =
-      layerOp (ap.cumAt (cat l) U) ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l)
-        (physicalColumnInput (cellLp A.G U (P₁.Ψ.currentZ (columnL2Restriction
-            (dyadicGridCell A.G A.R.1 A.R.2) (dyadicGridCell_measurable A.G A.R.1 A.R.2) P₁.Z) U)) -
-          physicalColumnInput (cellLp A.G U (P₂.Ψ.currentZ (columnL2Restriction
-            (dyadicGridCell A.G A.R.1 A.R.2) (dyadicGridCell_measurable A.G A.R.1 A.R.2) P₂.Z) U)))
-    := by
-  have hr : ∀ P : BasicProjection A.G A.R CF, P.Ψ.D.root.1 ≤ A.R.1 := fun P =>
-    dyadicGridCell_depth_le_of_subset A.G A.R P.Ψ.D.root P.root_sub
-  rw [ap.leafIn_eq_sub cat s l U hz P₁ P₂ hP, ← map_sub,
-    physicalColumnInput_inj (P₁.Ψ.currentZ_restrict_root P₁.grid P₁.root_sub (hr P₁) hPN₁
-      (A.sub U hU) P₁.Z),
-    physicalColumnInput_inj (P₂.Ψ.currentZ_restrict_root P₂.grid P₂.root_sub (hr P₂) hPN₂
-      (A.sub U hU) P₂.Z)]
-
-namespace LeafSplit
-variable {ap} (D : ap.LeafSplit)
-
-open Classical in
-/-- Blueprint `eq:linear-energy` (lines 2104-2118, 2160) on a basic slot of a leaf: when the frozen
-event projections of the linear sides are those of the leaf outputs at the decision cells, the
-linear sides of all groups and blocks have total square at most
-`2 (1 + κ D³) (2 X(P₁) + 2 X(P₂) + Σ eventErr²)`, with `X(P)` the joint event-row bound of the
-root-restricted basic projection `P`. -/
-theorem leaf_linear_mass (hK1 : 1 ≤ D.S.K) (cat : Fin 4 → List (CatCol A.Vtx)) (s₀ : ℕ)
-    (l : Fin 4) (t₀ : Fin 4)
-    (hT : ∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-      d = templateCol (A.vtag d.tag) t₀ R γ d.birth d.rank d.tag)
-    (hR : A.R ∈ A.cells) (hb : ∀ d ∈ cat l, d.birth ∈ A.cells)
-    {ι : Type*} [Fintype ι] (grp : ι → A.Grp) (hgrp : Function.Injective grp) (k : ℕ)
-    (Bs : ι → Finset ℤ)
-    (hdepth : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ D.cells l (grp G) b, J.1 = b - 2 * D.S.K)
-    (hu : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ D.cells l (grp G) b, ancAt A.G J (b - 4 * D.S.K) ∈ A.cells)
-    (hBsK : ∀ G, ∀ b ∈ Bs G, (D.S.K : ℤ) ∣ b - A.R.1)
-    [inst : ∀ G (J : ℤ × ℤ) (E : Finset (D.Ms l (grp G)).Md),
-      (Submodule.span ℂ (((D.Ms l (grp G)).cellMode J) ''
-        (E : Set (D.Ms l (grp G)).Md))).HasOrthogonalProjection]
-    (hfrozen : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ D.cells l (grp G) b,
-      ∀ E ∈ (D.Ms l (grp G)).sideEvents D.S D.hA D.SP b J,
-      (Submodule.span ℂ (((D.Ms l (grp G)).cellMode J) ''
-        (E : Set (D.Ms l (grp G)).Md))).starProjection
-          ((D.Ms l (grp G)).frozenEval D.S b J (D.c l (grp G) b J)) =
-        (Submodule.span ℂ (((D.Ms l (grp G)).cellMode J) ''
-          (E : Set (D.Ms l (grp G)).Md))).starProjection
-          ((D.Ms l (grp G)).L.op (ap.leafOut cat s₀ (ancAt A.G J (b - 4 * D.S.K)) l (grp G))))
-    (hz : ∀ I ∈ A.cells, ap.z I l = A.B l I) {CF : ℝ} (P₁ P₂ : BasicProjection A.G A.R CF)
-    (hP : ∀ I ∈ A.cells, ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 →
-      A.B l I y = P₁.val I y - P₂.val I y)
-    (hPN₁ : A.R.1 ≤ P₁.Ψ.N) (hPN₂ : A.R.1 ≤ P₂.Ψ.N)
-    {Ae Ah : ℕ}
-    (hAe : ∀ G, ∀ (p : (D.Ms l (grp G)).Key) (T : Finset ℤ), (∀ b ∈ T, ∀ b' ∈ T, b < b' →
-      b + 3 * D.S.K ≤ b') → (T.filter fun b => ¬ (D.Ms l (grp G)).nonexcAt D.S D.SP b p).card ≤ Ae)
-    (hAh : ∀ G (b : ℤ) (p : (D.Ms l (grp G)).Key), (D.Ms l (grp G)).nonexcAt D.S D.SP b p →
-      ((Finset.range (D.SP.Jst + 1)).filter fun h => ¬ (D.Ms l (grp G)).goodP D.S D.SP b h p).card
-        ≤ Ah)
-    (hδs : 0 < D.SP.δs)
-    (hJ : ∀ G, 2 * (D.SP.Δ + 10 * D.SP.Δ * Real.log (Fintype.card (D.Ms l (grp G)).Md) +
-      10 * Ah * (1 + Real.log (Fintype.card (D.Ms l (grp G)).Md))) ≤ D.SP.δs * (D.SP.Jst + 1))
-    {Lmax : ℕ} (hL : ∀ G, ⌊20 * (Real.log (Fintype.card (D.Ms l (grp G)).Md) +
-      Ae * (1 + Real.log (Fintype.card (D.Ms l (grp G)).Md))) / D.SP.δs⌋₊ ≤ Lmax)
-    (hcert : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ D.cells l (grp G) b, ∃ u' ∈ A.cells,
-      dyadicGridCell A.G u'.1 u'.2 ⊆ dyadicGridCell A.G (ancAt A.G J (b - 4 * D.S.K)).1
-        (ancAt A.G J (b - 4 * D.S.K)).2 ∧
-      ∃ w ∈ A.admT.X (A.admAt u'), ap.K.Success (ap.K.colorData (A.admT.st (A.admAt u')) w) ∧
-        ap.K.color A.admT A.vtxBound (A.admAt u') w = k ∧
-        ap.K.grp A.admT A.vtxBound (A.admAt u') w = grp G)
-    (hPH : ap.bbase (ap.leafJ s₀ l) + ap.P ≤ ap.Hmax) {ra rb : ℝ}
-    (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
-    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
-    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ ap.Hed)
-    {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × Fin ap.Mc)).filter fun q => ∃ I ∈ A.cells,
-      ∃ p : Fin ap.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
-        q.2 ∈ catLabels A.G ap.Mc (cat l) I (ap.leafR s₀ l)
-          (ap.bmask I (grp q.1) (ap.leafJ s₀ l) p)).card ≤ N)
-    (hδ : ∀ G, 0 < (D.Ms l (grp G)).δc) (hΛ : ∀ G, 8 * (D.Ms l (grp G)).Λ ≤ D.S.Ξ)
-    (hΞ : 0 < D.S.Ξ) (hQ0 : 0 < D.S.Q0)
-    (Kf : ℕ) (hbox : (D.S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ D.S.Eh 0) {ε Dm κ : ℝ} (hε : 0 < ε)
-    (hεw : ∀ G m, ε ≤ (D.Ms l (grp G)).L.εM m) (hD0 : 0 ≤ Dm)
-    (hD1 : ∀ G, (Fintype.card (D.Ms l (grp G)).Md : ℝ) ≤ Dm)
-    (hD2 : ∀ G, (Fintype.card (D.Ms l (grp G)).Md : ℝ) ≤ ε * Dm ^ 2)
-    (hκ : ∀ G, pairConst (D.Ms l (grp G)).zc.dim (D.Ms l (grp G)).δc D.S.Ξ Kf ≤ κ)
-    (hκ0 : 0 ≤ κ) :
-    ∑ G, ∑ b ∈ Bs G, ‖(D.Ms l (grp G)).blockSide D.S D.hA D.SP b (D.cells l (grp G) b)
-        (D.c l (grp G) b)‖ ^ 2 ≤
-      2 * (1 + κ * Dm ^ 3) * (
-        2 * ((1 + τ * N * 1 ^ 2) * (3 * ((Lmax + 1) * (1 + κ * Dm ^ 3)) * 5 *
-          compression1 (ap.cumBase (cat l) hR hb).D ^ 2) *
-          compressionC (ap.cumBase (cat l) hR hb).D
-            ((leafAt ap.fuel ap.Lc ap.up₀ s₀).layers l).length ^ 2 * compressionC P₁.Ψ.D 1 ^ 2 *
-            ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
-              (dyadicGridCell_measurable A.G A.R.1 A.R.2) P₁.Z‖ ^ 2) +
-        2 * ((1 + τ * N * 1 ^ 2) * (3 * ((Lmax + 1) * (1 + κ * Dm ^ 3)) * 5 *
-          compression1 (ap.cumBase (cat l) hR hb).D ^ 2) *
-          compressionC (ap.cumBase (cat l) hR hb).D
-            ((leafAt ap.fuel ap.Lc ap.up₀ s₀).layers l).length ^ 2 * compressionC P₂.Ψ.D 1 ^ 2 *
-            ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
-              (dyadicGridCell_measurable A.G A.R.1 A.R.2) P₂.Z‖ ^ 2) +
-        ∑ G, ∑ b ∈ Bs G, ∑ J ∈ D.cells l (grp G) b,
-          ∑ E ∈ (D.Ms l (grp G)).sideEvents D.S D.hA D.SP b J,
-            (D.Ms l (grp G)).eventErr D.S Kf ε b J E (D.c l (grp G) b J) ^ 2) := by
-  set Ms : ι → ModeSystem A.G ap.Mc := fun G => D.Ms l (grp G)
-  have hr : ∀ P : BasicProjection A.G A.R CF, P.Ψ.D.root.1 ≤ A.R.1 := fun P =>
-    dyadicGridCell_depth_le_of_subset A.G A.R P.Ψ.D.root P.root_sub
-  -- the event rows of each group, uniformly
-  have hrows : ∀ G (F : ColumnL2 (Ms G).Md),
-      ∑ e ∈ (Ms G).events D.S D.hA D.SP (Bs G) (D.cells l (grp G)),
-      ‖(Submodule.span ℂ (((Ms G).cellMode e.2.1) '' (e.2.2 : Set (Ms G).Md))).starProjection
-        F‖ ^ 2 ≤ (3 * ((Lmax + 1) * (1 + κ * Dm ^ 3))) * ‖F‖ ^ 2 := by
-    intro G F
-    have h := (Ms G).group_event_rows D.S D.hA D.SP (Bs G) (D.cells l (grp G)) (hdepth G)
-      (blockClass A.R.1 D.S.K) (fun b hb b' hb' hc hlt => blockClass_sep hK1 (hBsK G b hb)
-        (hBsK G b' hb') hc hlt) (hAe G) (hAh G) hδs (hJ G) (hδ G) (hΛ G) hΞ hQ0 Kf hbox hε
-      (hεw G) hD0 (hD1 G) (hD2 G) (inst := inst G) F
-    refine h.trans ?_
-    have hLG : ((⌊20 * (Real.log (Fintype.card (Ms G).Md) +
-        Ae * (1 + Real.log (Fintype.card (Ms G).Md))) / D.SP.δs⌋₊ : ℕ) : ℝ) ≤ Lmax := by
-      exact_mod_cast hL G
-    have hP : pairConst (Ms G).zc.dim (Ms G).δc D.S.Ξ Kf * Dm ^ 3 ≤ κ * Dm ^ 3 :=
-      mul_le_mul_of_nonneg_right (hκ G) (by positivity)
-    have hF := sq_nonneg ‖F‖
-    calc 3 * ((((⌊20 * (Real.log (Fintype.card (Ms G).Md) +
-          Ae * (1 + Real.log (Fintype.card (Ms G).Md))) / D.SP.δs⌋₊ : ℕ) : ℝ) + 1) *
-          ((1 + pairConst (Ms G).zc.dim (Ms G).δc D.S.Ξ Kf * Dm ^ 3) * ‖F‖ ^ 2))
-        ≤ 3 * ((Lmax + 1 : ℝ) * ((1 + κ * Dm ^ 3) * ‖F‖ ^ 2)) := by
-          have hpc0 := pairConst_nonneg (Ms G).zc.dim (hδ G) hΞ Kf
-          gcongr
-      _ = (3 * ((Lmax + 1) * (1 + κ * Dm ^ 3))) * ‖F‖ ^ 2 := by ring
-  -- the frozen identity at the difference of the restricted inputs
-  have hfrozen' : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ D.cells l (grp G) b,
-      ∀ E ∈ (Ms G).sideEvents D.S D.hA D.SP b J,
-      (Submodule.span ℂ (((Ms G).cellMode J) '' (E : Set (Ms G).Md))).starProjection
-          ((Ms G).frozenEval D.S b J (D.c l (grp G) b J)) =
-        (Submodule.span ℂ (((Ms G).cellMode J) '' (E : Set (Ms G).Md))).starProjection
-          ((Ms G).L.op (ap.ballAt (cat l) (ap.leafR s₀ l) (ap.leafJ s₀ l) (grp G)
-            (ancAt A.G J (b - 4 * D.S.K))
-            (layerOp (ap.cumAt (cat l) (ancAt A.G J (b - 4 * D.S.K)))
-              ((leafAt ap.fuel ap.Lc ap.up₀ s₀).layers l)
-              (physicalColumnInput (cellLp A.G (ancAt A.G J (b - 4 * D.S.K))
-                (P₁.Ψ.currentZ (columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
-                  (dyadicGridCell_measurable A.G A.R.1 A.R.2) P₁.Z)
-                  (ancAt A.G J (b - 4 * D.S.K)))) -
-               physicalColumnInput (cellLp A.G (ancAt A.G J (b - 4 * D.S.K))
-                (P₂.Ψ.currentZ (columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
-                  (dyadicGridCell_measurable A.G A.R.1 A.R.2) P₂.Z)
-                  (ancAt A.G J (b - 4 * D.S.K)))))))) := by
-    intro G b hb J hJ E hE
-    have hU := hu G b hb J hJ
-    rw [hfrozen G b hb J hJ E hE]
-    unfold leafOut
-    rw [ap.leafIn_eq_sub_root cat s₀ l hU (hz _ hU) P₁ P₂ (hP _ hU) hPN₁ hPN₂]
-  have hev := ap.events_diff_bound (cat l) t₀ hT hR hb grp hgrp k (ap.leafR s₀ l) (ap.leafJ s₀ l)
-    D.S D.hA D.SP Ms Bs (fun G => D.cells l (grp G)) hdepth hu (fun G => D.c l (grp G))
-    ((leafAt ap.fuel ap.Lc ap.up₀ s₀).layers l) P₁.Ψ P₂.Ψ P₁.grid P₂.grid P₁.root_sub
-    P₂.root_sub (hr P₁) (hr P₂) _ _ (inst := inst) hfrozen' (by positivity) hrows hcert hPH
-    hroot hτ hτ1 hHed hN
-  exact linear_side_of_events Ms D.S D.hA D.SP Bs (fun G => D.cells l (grp G)) hdepth
-    (fun G => D.c l (grp G)) (inst := inst) hδ hΛ hΞ hQ0 Kf hbox hε hεw hD0 hD1 hD2 hκ hκ0 hev
-
-end LeafSplit
 
 /-! ### Global filters of the transfer steps (blueprint lines 2386-2391) -/
 
@@ -6712,33 +6383,6 @@ theorem op_variation {W : Type*} [Fintype W] {ι : Type*} [Fintype ι]
         (norm_physEmbed_apply_le _))
   exact basic_variation Ψ rE Op (fun i => A.R.1 + r i) (fun i => A.R.1 + t i) hB hrows hblk Z
     hjoint
-
-end ActiveSetup
-
-end Auto
-
-end
-
-section
-
-namespace Auto
-open MeasureTheory Metric
-open scoped FourierTransform ComplexConjugate ENNReal
-
-namespace ActiveSetup
-
-namespace AttemptParams
-
-namespace LeafSplit
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {ap : A.AttemptParams}
-  (D : ap.LeafSplit)
-
-/-- The pre-cell `J = anc_{b-2K}(I)` of a leaf cell `I` (blueprint line 1975). -/
-noncomputable def preCell (I : ℤ × ℤ) : ℤ × ℤ := ancAt A.G I (D.blockOf I.1 - 2 * D.S.K)
-
-end LeafSplit
-
-end AttemptParams
 
 end ActiveSetup
 

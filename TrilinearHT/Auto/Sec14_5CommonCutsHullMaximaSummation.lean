@@ -397,23 +397,6 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
-section CoreSideDecomposition
-variable {V : Type*} [AddCommGroup V] [Module ℂ V]
-
-/-! ### Cores, sides and errors in the active form (blueprint lines 2461-2462, 2845-2848) -/
-
-/-- The pattern piece: slot `l` takes the core part (`0`), the side part (`1`) or the physical
-error (`2`). -/
-def patternPiece (a s e : Fin 4 → V) (σ : Fin 4 → Fin 3) : Fin 4 → V :=
-  fun l => ![a l, s l, e l] (σ l)
-
-open Classical in
-/-- The number of slots of a pattern carrying a given part. -/
-noncomputable def patternCount (σ : Fin 4 → Fin 3) (j : Fin 3) : ℕ :=
-  (Finset.univ.filter fun l => σ l = j).card
-
-end CoreSideDecomposition
-
 section Randomization
 
 theorem card_signPattern {ι : Type*} (s : Finset ι) :
@@ -717,39 +700,6 @@ section PatternEstimates2
 variable {W : Type*} [NormedAddCommGroup W] [NormedSpace ℂ W]
 
 open Classical in
-/-- Four factors bounded by `B`, of which at least three are bounded by `√w`, have product at most
-`B w √w`. -/
-theorem prod_four_le_of_three (f : Fin 4 → ℝ) (hf0 : ∀ l, 0 ≤ f l) {B w : ℝ} (hB : ∀ l, f l ≤ B)
-    (Sd : Finset (Fin 4)) (hS : 3 ≤ Sd.card) (hw : ∀ l ∈ Sd, f l ≤ Real.sqrt w) :
-    ∏ l, f l ≤ B * (w * Real.sqrt w) := by
-  obtain ⟨T, hTS, hT3⟩ := Finset.exists_subset_card_eq hS
-  have hsq := Real.sqrt_nonneg w
-  rw [← Finset.prod_mul_prod_compl T]
-  have h1 : ∏ l ∈ T, f l ≤ Real.sqrt w ^ 3 := by
-    calc ∏ l ∈ T, f l ≤ ∏ _l ∈ T, Real.sqrt w :=
-          Finset.prod_le_prod₀ (fun l _ => hf0 l) fun l hl => hw l (hTS hl)
-      _ = Real.sqrt w ^ 3 := by rw [Finset.prod_const, hT3]
-  have hc : Tᶜ.card = 1 := by rw [Finset.card_compl, hT3]; rfl
-  have h2 : ∏ l ∈ Tᶜ, f l ≤ B := by
-    obtain ⟨m, hm⟩ := Finset.card_eq_one.mp hc
-    rw [hm, Finset.prod_singleton]; exact hB m
-  have hB0 : 0 ≤ B := (hf0 0).trans (hB 0)
-  have hw3 : Real.sqrt w ^ 3 = w * Real.sqrt w := by
-    rcases le_or_gt 0 w with h | h
-    · rw [pow_succ, Real.sq_sqrt h]
-    · rw [Real.sqrt_eq_zero_of_nonpos h.le]; ring
-  calc (∏ l ∈ T, f l) * ∏ l ∈ Tᶜ, f l ≤ Real.sqrt w ^ 3 * B :=
-        mul_le_mul h1 h2 (Finset.prod_nonneg fun l _ => hf0 l) (by positivity)
-    _ = B * (w * Real.sqrt w) := by rw [hw3]; ring
-
-/-- `Σ w_i √w_i ≤ (Σ w_i) √(Σ w_i)` for nonnegative `w`. -/
-theorem sum_mul_sqrt_le {γ : Type*} (s : Finset γ) (w : γ → ℝ) (hw : ∀ i ∈ s, 0 ≤ w i) :
-    ∑ i ∈ s, w i * Real.sqrt (w i) ≤ (∑ i ∈ s, w i) * Real.sqrt (∑ i ∈ s, w i) := by
-  rw [Finset.sum_mul]
-  exact Finset.sum_le_sum fun i hi => mul_le_mul_of_nonneg_left
-    (Real.sqrt_le_sqrt (Finset.single_le_sum hw hi)) (hw i hi)
-
-open Classical in
 /-- Blueprint `eq:three-sides` with `eq:min-power` (lines 2372-2390, 2447-2456): patterns
 without errors and with at least three sides, with every piece of normalized size at most `B` and
 the side weights `u_I = Σ_{G,l} ‖S_{G,l}‖² / |I|` having path sums at most `T`, contribute in the
@@ -922,30 +872,6 @@ theorem power_min_sum_le (Gd : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (root :
     _ ≤ _ := mul_le_mul_of_nonneg_left hpc (by positivity)
 
 end PatternEstimates3
-
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
-
-namespace LeafSplit
-variable {ap} (D : ap.LeafSplit)
-
-/-- Blueprint `eq:core-side-error`: the leaf output is the sum of its core, side and error
-parts. -/
-theorem core_add_side_add_err (l : Fin 4) (G : A.Grp) (I : ℤ × ℤ)
-    (Zout ZU : ColumnL2 (Fin ap.Mc)) :
-    D.core l G I ZU + D.side l G I Zout ZU + D.err l G I ZU = Zout := by
-  unfold core side err
-  split_ifs
-  · simp
-  · abel
-
-end LeafSplit
-
-end AttemptParams
-
-end ActiveSetup
 
 section PieceSelection
 
@@ -2795,28 +2721,6 @@ theorem near_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q
 
 end NearBandBound
 
-namespace ActiveSetup
-
-namespace AttemptParams
-
-namespace LeafSplit
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {ap : A.AttemptParams}
-  (D : ap.LeafSplit)
-
-/-- The pattern form of a leaf at a cell: the sum over the groups of the cell form of the
-pattern pieces of the core/side/error split of the outputs `Zout` (with decision-cell outputs
-`ZU`). -/
-noncomputable def patF (gs : Finset A.Grp) (I : ℤ × ℤ)
-    (Zout ZU : Fin 4 → A.Grp → ColumnL2 (Fin ap.Mc)) (σ : Fin 4 → Fin 3) : ℂ :=
-  ∑ G ∈ gs, ap.Λc I (patternPiece (fun l => D.core l G I (ZU l G))
-    (fun l => D.side l G I (Zout l G) (ZU l G)) (fun l => D.err l G I (ZU l G)) σ)
-
-end LeafSplit
-
-end AttemptParams
-
-end ActiveSetup
-
 section PhysicalPart
 variable {V V' W : Type*} [Fintype V] [Fintype V'] [Fintype W]
 
@@ -3179,72 +3083,6 @@ theorem leaf_near_band (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q 
 
 section ExportedSide
 variable {W : Type*} [NormedAddCommGroup W] [NormedSpace ℂ W]
-
-open Classical in
-/-- One error-free pattern with at least three sides at one cell, summed over the groups:
-`‖Σ_G Λ(pattern)‖ ≤ C B u √u` with `u = Σ_{G,l} ‖S_{G,l}‖² / |I|` (blueprint `eq:three-sides`,
-Cauchy-Schwarz in the groups). -/
-theorem three_side_pattern_cell (Gd : RealDyadicGrid) {γ : Type*} (I : ℤ × ℤ) (Gs : Finset γ)
-    (Λ : MultilinearMap ℂ (fun _ : Fin 4 => W) ℂ) {C Bs : ℝ} (hC : 0 ≤ C)
-    (hΛ : ∀ x : Fin 4 → W, ‖Λ x‖ ≤ C * ∏ l, (‖x l‖ / Real.sqrt (dyadicGridLength Gd I.1)))
-    (a s e : γ → Fin 4 → W)
-    (hsize : ∀ G ∈ Gs, ∀ l, ‖a G l‖ ≤ Bs * Real.sqrt (dyadicGridLength Gd I.1) ∧
-      ‖s G l‖ ≤ Bs * Real.sqrt (dyadicGridLength Gd I.1))
-    {σ : Fin 4 → Fin 3} (hσ : (∀ l, σ l ≠ 2) ∧ 3 ≤ patternCount σ 1) :
-    ‖∑ G ∈ Gs, Λ (patternPiece (a G) (s G) (e G) σ)‖ ≤
-      C * Bs * ((∑ G ∈ Gs, ∑ l, ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1) *
-        Real.sqrt (∑ G ∈ Gs, ∑ l, ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1)) := by
-  obtain ⟨hnoerr, hcnt⟩ := hσ
-  have hr := dyadicGridLength_pos Gd I.1
-  have hsr := Real.sqrt_pos.mpr hr
-  set wG : γ → ℝ := fun G => ∑ l, ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1
-  have hwG0 : ∀ G, 0 ≤ wG G := fun G => Finset.sum_nonneg fun l _ =>
-    div_nonneg (sq_nonneg _) hr.le
-  have hBs : 0 ≤ Bs ∨ Gs = ∅ := by
-    by_cases h : Gs.Nonempty
-    · obtain ⟨G, hG⟩ := h
-      left
-      have := (hsize G hG 0).1
-      have h0 := norm_nonneg (a G 0)
-      by_contra hneg
-      push Not at hneg
-      nlinarith
-    · right; exact Finset.not_nonempty_iff_eq_empty.mp h
-  have hG : ∀ G ∈ Gs, ‖Λ (patternPiece (a G) (s G) (e G) σ)‖ ≤
-      C * (Bs * (wG G * Real.sqrt (wG G))) := by
-    intro G hG
-    refine (hΛ _).trans (mul_le_mul_of_nonneg_left ?_ hC)
-    refine prod_four_le_of_three _ (fun l => by positivity) (fun l => ?_)
-      (Finset.univ.filter fun l => σ l = 1) hcnt (fun l hl => ?_)
-    · rw [div_le_iff₀ hsr]
-      unfold patternPiece
-      have h := hsize G hG l
-      have hσl := hnoerr l
-      match hm : σ l with
-      | 0 => simpa [hm] using h.1
-      | 1 => simpa [hm] using h.2
-      | 2 => exact absurd hm hσl
-    · have hσl := (Finset.mem_filter.mp hl).2
-      unfold patternPiece
-      rw [hσl]
-      change ‖s G l‖ / Real.sqrt (dyadicGridLength Gd I.1) ≤ Real.sqrt (wG G)
-      rw [div_le_iff₀ hsr, ← Real.sqrt_mul (hwG0 G)]
-      have h1 : ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1 ≤ wG G :=
-        Finset.single_le_sum (f := fun l => ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1)
-          (fun l _ => div_nonneg (sq_nonneg _) hr.le) (Finset.mem_univ l)
-      rw [← Real.sqrt_sq (norm_nonneg (s G l))]
-      refine Real.sqrt_le_sqrt ?_
-      rw [div_le_iff₀ hr] at h1
-      exact h1
-  rcases hBs with hBs | hGs
-  · calc ‖∑ G ∈ Gs, Λ (patternPiece (a G) (s G) (e G) σ)‖
-        ≤ ∑ G ∈ Gs, C * (Bs * (wG G * Real.sqrt (wG G))) :=
-          (norm_sum_le _ _).trans (Finset.sum_le_sum hG)
-      _ = C * Bs * ∑ G ∈ Gs, wG G * Real.sqrt (wG G) := by
-          rw [Finset.mul_sum]; refine Finset.sum_congr rfl fun G _ => by ring
-      _ ≤ C * Bs * ((∑ G ∈ Gs, wG G) * Real.sqrt (∑ G ∈ Gs, wG G)) :=
-          mul_le_mul_of_nonneg_left (sum_mul_sqrt_le _ wG fun G _ => hwG0 G) (by positivity)
-  · subst hGs; simp
 
 open Classical in
 /-- Blueprint `eq:three-sides` with `eq:min-power`, for the sum of the norms of the error-free

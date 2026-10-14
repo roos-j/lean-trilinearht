@@ -674,6 +674,88 @@ theorem intervalIntegral_quad_sum {x₀ x₁ : ℝ} (s : Finset ℤ) (F : ℤ �
   refine Finset.sum_congr rfl fun k _ => ?_
   exact intervalIntegral.integral_finsetSum fun l _ => (hF i j k l).intervalIntegrable _ _
 
+/-- Blueprint `eq:fourth-moment` (lines 2318-2322) for finite Fourier sums: when `c ∣ 3`,
+the average over `γ ∈ ℝ/3ℤ` of the normalized `L⁴` norm on the circle of length `16` satisfies
+`E_γ ∫ |U_γ F|⁴ ≤ 2 (Σ |a_m|²)² = 2 ‖F‖₂⁴`. -/
+theorem fast_fourth_moment (s : Finset ℤ) (a : ℤ → ℂ) {c : ℤ} (hc0 : c ≠ 0) (hc : c ∣ 3) :
+    (1 / 3) * ∫ γ in (0 : ℝ)..3, (1 / 16) * ∫ w in (0 : ℝ)..16, ‖fastMultiplied s a c γ w‖ ^ 4 ≤
+      2 * (∑ m ∈ s, ‖a m‖ ^ 2) ^ 2 := by
+  classical
+  obtain ⟨b, hb⟩ := hc
+  have hcR : (c : ℝ) ≠ 0 := by exact_mod_cast hc0
+  -- integration in `w`
+  have hw : ∀ γ : ℝ, ((∫ w in (0 : ℝ)..16, ‖fastMultiplied s a c γ w‖ ^ 4 : ℝ) : ℂ) =
+      16 * ∑ m₁ ∈ s, ∑ m₂ ∈ s, ∑ m₃ ∈ s, ∑ m₄ ∈ s,
+        if m₁ + m₂ - m₃ - m₄ = 0 then
+          a m₁ * a m₂ * (starRingEnd ℂ) (a m₃) * (starRingEnd ℂ) (a m₄) *
+            ePhase (γ * ((m₁ : ℝ) ^ 2 + (m₂ : ℝ) ^ 2 - (m₃ : ℝ) ^ 2 - (m₄ : ℝ) ^ 2) / c)
+        else 0 := by
+    intro γ
+    rw [← intervalIntegral.integral_ofReal]
+    simp_rw [fastMultiplied_norm_pow_four]
+    rw [intervalIntegral_quad_sum s _ fun m₁ m₂ m₃ m₄ => by
+      have := continuous_ePhase; fun_prop]
+    simp_rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun m₁ _ => Finset.sum_congr rfl fun m₂ _ =>
+      Finset.sum_congr rfl fun m₃ _ => Finset.sum_congr rfl fun m₄ _ => ?_
+    rw [intervalIntegral.integral_const_mul, intervalIntegral.integral_const_mul,
+      integral_ePhase_int _ (by norm_num : (0 : ℝ) < 16)]
+    split_ifs <;> push_cast <;> ring
+  -- integration in `γ`
+  have hγ : ∀ q : ℤ, ∫ γ in (0 : ℝ)..3, ePhase (γ * q / c) = if q = 0 then (3 : ℂ) else 0 := by
+    intro q
+    have h := integral_ePhase_int (q * b) (L := 3) (by norm_num)
+    have hq : ∀ γ : ℝ, ePhase (γ * q / c) = ePhase (((q * b : ℤ) : ℝ) * γ / 3) := by
+      intro γ; congr 1
+      have : (3 : ℝ) = c * b := by exact_mod_cast hb
+      have hbR : (b : ℝ) ≠ 0 := by
+        rintro h; rw [h, mul_zero] at this; norm_num at this
+      rw [this]; push_cast; field_simp
+    simp_rw [hq]
+    rw [h]
+    have hb0 : b ≠ 0 := by rintro rfl; simp at hb
+    simp [hb0]
+  set P : ℂ := ∑ m₁ ∈ s, ∑ m₂ ∈ s, ∑ m₃ ∈ s, ∑ m₄ ∈ s,
+    (if m₁ + m₂ = m₃ + m₄ ∧ m₁ ^ 2 + m₂ ^ 2 = m₃ ^ 2 + m₄ ^ 2 then
+      a m₁ * a m₂ * (starRingEnd ℂ) (a m₃) * (starRingEnd ℂ) (a m₄) else 0)
+  have htotal : ((((1 / 3) * ∫ γ in (0 : ℝ)..3, (1 / 16) *
+      ∫ w in (0 : ℝ)..16, ‖fastMultiplied s a c γ w‖ ^ 4) : ℝ) : ℂ) = P := by
+    push_cast
+    rw [← intervalIntegral.integral_ofReal]
+    simp_rw [Complex.ofReal_mul, hw]
+    simp_rw [Finset.mul_sum]
+    rw [intervalIntegral_quad_sum s _ fun m₁ m₂ m₃ m₄ => by
+      have := continuous_ePhase; split_ifs <;> fun_prop, Finset.mul_sum]
+    refine Finset.sum_congr rfl fun m₁ _ => ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun m₂ _ => ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun m₃ _ => ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun m₄ _ => ?_
+    by_cases hd : m₁ + m₂ - m₃ - m₄ = 0
+    · have hγq := hγ (m₁ ^ 2 + m₂ ^ 2 - m₃ ^ 2 - m₄ ^ 2)
+      have hcast : ∀ γ : ℝ, γ * (((m₁ ^ 2 + m₂ ^ 2 - m₃ ^ 2 - m₄ ^ 2 : ℤ) : ℝ)) / c =
+          γ * ((m₁ : ℝ) ^ 2 + (m₂ : ℝ) ^ 2 - (m₃ : ℝ) ^ 2 - (m₄ : ℝ) ^ 2) / c := by
+        intro γ; push_cast; ring
+      simp_rw [hcast] at hγq
+      simp only [hd, ite_true]
+      rw [intervalIntegral.integral_const_mul, intervalIntegral.integral_const_mul,
+        intervalIntegral.integral_const_mul, hγq]
+      have hd' : m₁ + m₂ = m₃ + m₄ := by omega
+      by_cases hq : m₁ ^ 2 + m₂ ^ 2 - m₃ ^ 2 - m₄ ^ 2 = 0
+      · have hq' : m₁ ^ 2 + m₂ ^ 2 = m₃ ^ 2 + m₄ ^ 2 := by omega
+        rw [ite_eq_left hq, ite_eq_left ⟨hd', hq'⟩]
+        push_cast; ring
+      · have hq' : ¬ m₁ ^ 2 + m₂ ^ 2 = m₃ ^ 2 + m₄ ^ 2 := by omega
+        simp [hq, hq']
+    · have hd' : ¬ m₁ + m₂ = m₃ + m₄ := by omega
+      simp [hd, hd']
+  have hreal := congrArg (‖·‖) htotal
+  simp only [Complex.norm_real, Real.norm_eq_abs] at hreal
+  refine (le_abs_self _).trans (hreal.le.trans ?_)
+  exact fourth_moment_pairing s a
+
 /-- The fast multiplier coefficients `c = (-1, 3, -3, 1)` (blueprint line 2314). -/
 def fastSlotC : Fin 4 → ℤ := ![-1, 3, -3, 1]
 

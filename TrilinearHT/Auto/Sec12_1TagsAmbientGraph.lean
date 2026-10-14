@@ -2488,10 +2488,336 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
+/-- The physical coordinate of an augmented vector is measurable. -/
+theorem columnPhys_measurable {V : Type*} [Fintype V] (x : ColumnL2 V) :
+    Measurable fun y => (x : ℝ → ColumnHilbert V) y none := by
+  have hev : Continuous fun x : ColumnHilbert V => x.ofLp none :=
+    (continuous_apply none).comp (PiLp.continuous_ofLp 2 _)
+  exact hev.measurable.comp (Lp.stronglyMeasurable _).measurable
+
+theorem columnPhys_memLp_normalized {V : Type*} [Fintype V] (x : ColumnL2 V) (a₀ r : ℝ) :
+    MemLp (fun y => (x : ℝ → ColumnHilbert V) y none) 2 (normalizedIntervalMeasure a₀ r) :=
+  ((memLp_column_coord x none).restrict _).smul_measure ENNReal.ofReal_ne_top
+
+/-! ### The cell form on augmented inputs -/
+
+/-- The progression coordinates pull null sets back to null sets of the plane. -/
+theorem realProgressionCoordinate_preimage_null (j : Fin 4) {N : Set ℝ} (hN : volume N = 0) :
+    (volume : Measure (ℝ × ℝ)) (realProgressionCoordinate j ⁻¹' N) = 0 := by
+  obtain ⟨N', hNN', hN'm, hN'0⟩ := exists_measurable_superset_of_null hN
+  refine measure_mono_null (Set.preimage_mono hNN') ?_
+  have hm : MeasurableSet (realProgressionCoordinate j ⁻¹' N') :=
+    (continuous_realProgressionCoordinate j).measurable hN'm
+  rw [Measure.volume_eq_prod, Measure.measure_prod_null hm]
+  by_cases hj : (j : ℝ) = 0
+  · -- the slice is all of `ℝ` over `N'` and empty elsewhere
+    filter_upwards [measure_eq_zero_iff_ae_notMem.mp hN'0] with x hx
+    have : Prod.mk x ⁻¹' (realProgressionCoordinate j ⁻¹' N') = ∅ := by
+      ext t
+      simp only [Set.mem_preimage, realProgressionCoordinate, hj, zero_mul, add_zero,
+        Set.mem_empty_iff_false, iff_false]
+      exact hx
+    simp only [this, measure_empty, Pi.zero_apply]
+  · refine Filter.Eventually.of_forall fun x => ?_
+    have : Prod.mk x ⁻¹' (realProgressionCoordinate j ⁻¹' N') =
+        (fun t => (j : ℝ) * t) ⁻¹' ((fun u => u + x) ⁻¹' N') := by
+      ext t
+      simp only [Set.mem_preimage, realProgressionCoordinate]
+      rw [add_comm]
+    change volume (Prod.mk x ⁻¹' (realProgressionCoordinate j ⁻¹' N')) = 0
+    rw [this, Real.volume_preimage_mul_left hj, measure_preimage_add_right]
+    simp [hN'0]
+
+/-- The local form depends only on the almost-everywhere classes of its inputs. -/
+theorem localProgressionForm_congr_ae (r : ℝ) (w : ℝ × ℝ → ℂ) {f g : Fin 4 → ℝ → ℂ}
+    (h : ∀ j, f j =ᵐ[volume] g j) : localProgressionForm r w f = localProgressionForm r w g := by
+  unfold localProgressionForm
+  congr 1
+  refine integral_congr_ae ?_
+  have hj : ∀ j, ∀ᵐ z : ℝ × ℝ ∂volume,
+      f j (realProgressionCoordinate j z) = g j (realProgressionCoordinate j z) := by
+    intro j
+    have hN := (h j)
+    rw [Filter.EventuallyEq, ae_iff] at hN
+    rw [ae_iff]
+    exact realProgressionCoordinate_preimage_null j hN
+  filter_upwards [ae_all_iff.mpr hj] with z hz
+  simp only [hz]
+
+/-- The physical coordinate of an augmented vector. -/
+noncomputable def augPhys {V : Type*} [Fintype V] (x : ColumnL2 V) : ℝ → ℂ :=
+  fun y => (x : ℝ → ColumnHilbert V) y none
+
+theorem augPhys_add {V : Type*} [Fintype V] (x x' : ColumnL2 V) :
+    augPhys (x + x') =ᵐ[volume] augPhys x + augPhys x' := by
+  filter_upwards [Lp.coeFn_add x x'] with y hy
+  simp only [augPhys, hy, Pi.add_apply, PiLp.add_apply]
+
+theorem augPhys_smul {V : Type*} [Fintype V] (c : ℂ) (x : ColumnL2 V) :
+    augPhys (c • x) =ᵐ[volume] c • augPhys x := by
+  filter_upwards [Lp.coeFn_smul c x] with y hy
+  simp only [augPhys, hy, Pi.smul_apply, PiLp.smul_apply]
+
+theorem apply_update_augPhys {V : Type*} [Fintype V] (x : Fin 4 → ColumnL2 V) (k : Fin 4)
+    (a : ColumnL2 V) (l : Fin 4) :
+    augPhys (Function.update x k a l) = Function.update (fun l => augPhys (x l)) k (augPhys a) l :=
+  by by_cases h : l = k <;> simp [Function.update, h]
+
+/-- Blueprint eq:local on a cell, as a multilinear form on augmented inputs (only physical
+coordinates enter). -/
+noncomputable def cellForm {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w : ℝ × ℝ → ℂ}
+    (hw : IsAdmissibleLocalKernel κ a₀ r w) (V : Type*) [Fintype V] :
+    MultilinearMap ℂ (fun _ : Fin 4 => ColumnL2 V) ℂ where
+  toFun x := localProgressionForm r w (fun l => augPhys (x l))
+  map_update_add' := by
+    intro inst x k a b
+    obtain rfl : inst = instDecidableEqFin 4 := Subsingleton.elim _ _
+    have hm : ∀ l, Measurable (augPhys (x l)) := fun l => columnPhys_measurable (x l)
+    have hfin : ∀ l, eLpNorm (augPhys (x l)) 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤ :=
+      fun l => (columnPhys_memLp_normalized (x l) a₀ r).eLpNorm_ne_top
+    have e : localProgressionForm r w (fun l => augPhys (Function.update x k (a + b) l)) =
+        localProgressionForm r w
+          (Function.update (fun l => augPhys (x l)) k (augPhys a + augPhys b)) := by
+      refine localProgressionForm_congr_ae r w fun l => ?_
+      rw [apply_update_augPhys]
+      by_cases h : l = k
+      · subst h; simp only [Function.update_self]; exact augPhys_add a b
+      · simp only [Function.update_of_ne h]; rfl
+    have hadd := localProgressionForm_update_add_two (g₁ := augPhys a) (g₂ := augPhys b) hr hw
+      hm hfin k (columnPhys_measurable a) (columnPhys_measurable b)
+      (columnPhys_memLp_normalized a a₀ r).eLpNorm_ne_top
+      (columnPhys_memLp_normalized b a₀ r).eLpNorm_ne_top
+    rw [e, hadd]
+    congr 1
+    · congr 1; funext l; rw [apply_update_augPhys]
+    · congr 1; funext l; rw [apply_update_augPhys]
+  map_update_smul' := by
+    intro inst x k c a
+    obtain rfl : inst = instDecidableEqFin 4 := Subsingleton.elim _ _
+    have e : localProgressionForm r w (fun l => augPhys (Function.update x k (c • a) l)) =
+        localProgressionForm r w (Function.update (fun l => augPhys (x l)) k (c • augPhys a)) := by
+      refine localProgressionForm_congr_ae r w fun l => ?_
+      rw [apply_update_augPhys]
+      by_cases h : l = k
+      · subst h; simp only [Function.update_self]; exact augPhys_smul c a
+      · simp only [Function.update_of_ne h]; rfl
+    rw [e, localProgressionForm_update_const_smul, smul_eq_mul]
+    congr 2
+    funext l; rw [apply_update_augPhys]
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
 /-! ### Equal tags are joined (blueprint line 1684: the tag graph contains equal tags) -/
 
 /-- The folding of the doubled coordinates. -/
 def foldIdx (d : ℕ) : Fin (d + d) → Fin d := Fin.addCases (motive := fun _ => Fin d) id id
+
+/-- Column functions supported on pairwise disjoint sets are orthogonal: the squared norm of
+their sum is the sum of squared norms. -/
+theorem columnL2_norm_sq_sum_disjoint {V ι : Type*} [Fintype V] (s : Finset ι)
+    (v : ι → ColumnL2 V) (J : ι → Set ℝ) (hJ : Set.PairwiseDisjoint (s : Set ι) J)
+    (hv : ∀ i, ∀ᵐ y ∂volume, y ∉ J i → (v i : ℝ → ColumnHilbert V) y = 0) :
+    ‖∑ i ∈ s, v i‖ ^ 2 = ∑ i ∈ s, ‖v i‖ ^ 2 := by
+  classical
+  have horth : ∀ i ∈ s, ∀ j ∈ s, i ≠ j → inner ℂ (v i) (v j) = 0 := by
+    intro i hi j hj hij
+    rw [L2.inner_def]
+    refine integral_eq_zero_of_ae ?_
+    filter_upwards [hv i, hv j] with y h1 h2
+    by_cases hy : y ∈ J i
+    · have : y ∉ J j := fun hyj => Set.disjoint_left.mp (hJ hi hj hij) hy hyj
+      rw [h2 this, inner_zero_right]; rfl
+    · rw [h1 hy, inner_zero_left]; rfl
+  clear hv hJ
+  induction s using Finset.induction_on with
+  | empty => simp
+  | insert a s ha ih =>
+    rw [Finset.sum_insert ha, Finset.sum_insert ha]
+    have h0 : inner ℂ (v a) (∑ i ∈ s, v i) = 0 := by
+      rw [inner_sum]
+      exact Finset.sum_eq_zero fun j hj => horth a (Finset.mem_insert_self a s) j
+        (Finset.mem_insert_of_mem hj) (fun h => ha (h ▸ hj))
+    rw [← ih fun i hi j hj hij =>
+      horth i (Finset.mem_insert_of_mem hi) j (Finset.mem_insert_of_mem hj) hij]
+    simp only [sq]
+    exact norm_add_sq_eq_norm_sq_add_norm_sq_of_inner_eq_zero _ _ h0
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+section RestrictionUnions
+variable {V : Type*} [Fintype V]
+
+/-- The restriction to a finite disjoint union of cells is the sum of the cell restrictions. -/
+theorem columnL2Restriction_biUnion {κ : Type*} (S : Finset κ) (J : κ → Set ℝ)
+    (hJ : ∀ i, MeasurableSet (J i)) (hdis : Set.PairwiseDisjoint (S : Set κ) J) :
+    columnL2Restriction (V := V) (⋃ i ∈ S, J i)
+        (Finset.measurableSet_biUnion S fun i _ => hJ i) =
+      ∑ i ∈ S, columnL2Restriction (J i) (hJ i) := by
+  refine ContinuousLinearMap.ext fun w => Lp.ext ?_
+  rw [sum_apply]
+  change (columnL2Indicator _ (Finset.measurableSet_biUnion S fun i _ => hJ i) w :
+    ℝ → ColumnHilbert V) =ᵐ[volume] _
+  have hall : ∀ᵐ y ∂volume, ∀ i ∈ S, (columnL2Restriction (J i) (hJ i) w :
+      ℝ → ColumnHilbert V) y = (J i).indicator (w : ℝ → ColumnHilbert V) y := by
+    rw [Filter.eventually_all_finset]
+    exact fun i _ => columnL2Indicator_coeFn _ (hJ i) w
+  filter_upwards [columnL2Indicator_coeFn _ (Finset.measurableSet_biUnion S fun i _ => hJ i) w,
+    hall, Lp.coeFn_fun_finsetSum S (fun i => columnL2Restriction (J i) (hJ i) w)]
+    with y h1 h2 h3
+  rw [h1, h3, Finset.sum_congr rfl h2, Finset.indicator_biUnion_apply _ _ hdis]
+
+end RestrictionUnions
+
+/-- Squared restrictions to disjoint cells add up to at most the squared norm. -/
+theorem sum_norm_sq_restrict_le {V : Type*} [Fintype V] (Gd : RealDyadicGrid)
+    (C : Finset (ℤ × ℤ))
+    (hC : Set.PairwiseDisjoint (C : Set (ℤ × ℤ)) fun I => dyadicGridCell Gd I.1 I.2)
+    (v : ColumnL2 V) :
+    ∑ I ∈ C, ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2)
+      (dyadicGridCell_measurable Gd I.1 I.2) v‖ ^ 2 =
+      ‖columnL2Restriction (⋃ I ∈ C, dyadicGridCell Gd I.1 I.2)
+        (Finset.measurableSet_biUnion C fun I _ => dyadicGridCell_measurable Gd I.1 I.2) v‖ ^ 2 :=
+      by
+  rw [columnL2Restriction_biUnion C (fun I => dyadicGridCell Gd I.1 I.2)
+    (fun I => dyadicGridCell_measurable Gd I.1 I.2) hC, sum_apply]
+  refine (columnL2_norm_sq_sum_disjoint C _ (fun I => dyadicGridCell Gd I.1 I.2) hC
+    fun I => ?_).symm
+  filter_upwards [columnL2Indicator_coeFn _ (dyadicGridCell_measurable Gd I.1 I.2) v]
+    with y hy hyI
+  change (columnL2Indicator _ (dyadicGridCell_measurable Gd I.1 I.2) v :
+    ℝ → ColumnHilbert V) y = 0
+  rw [hy, Set.indicator_of_notMem hyI]
+
+open Classical in
+/-- The cell weights `a_I = Σ_G Σ_s 1_{I ∈ E_{G,s}} ‖1_I D_{G,s}‖² / |I|` of finitely many vectors
+measured on unions of disjoint cells: their integrated mass is the total squared restricted norm
+(`eq:path` for the side states). -/
+theorem cell_weights_mass (Gd : RealDyadicGrid) (Sc : Finset (ℤ × ℤ)) {ι : Type*} [Fintype ι]
+    {V : ι → Type*} [∀ G, Fintype (V G)] (Sd : Finset ℕ) (Ec : ι → ℕ → Finset (ℤ × ℤ))
+    (hsub : ∀ G s, Ec G s ⊆ Sc)
+    (hdis : ∀ G s, Set.PairwiseDisjoint (Ec G s : Set (ℤ × ℤ)) fun I => dyadicGridCell Gd I.1 I.2)
+    (D : ∀ G, ℕ → ColumnL2 (V G)) :
+    dyadicWeightedMass Gd Sc (fun I => ∑ G, ∑ s ∈ Sd, if I ∈ Ec G s then
+        ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+          (D G s)‖ ^ 2 / dyadicGridLength Gd I.1 else 0) =
+      ∑ G, ∑ s ∈ Sd, ‖columnL2Restriction (⋃ I ∈ Ec G s, dyadicGridCell Gd I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable Gd I.1 I.2)
+          (D G s)‖ ^ 2 := by
+  unfold dyadicWeightedMass
+  have hcell : ∀ I : ℤ × ℤ, dyadicGridLength Gd I.1 * (∑ G, ∑ s ∈ Sd, if I ∈ Ec G s then
+      ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+        (D G s)‖ ^ 2 / dyadicGridLength Gd I.1 else 0) =
+      ∑ G, ∑ s ∈ Sd, if I ∈ Ec G s then ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2)
+        (dyadicGridCell_measurable Gd I.1 I.2) (D G s)‖ ^ 2 else 0 := by
+    intro I
+    have hI := (dyadicGridLength_pos Gd I.1).ne'
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun G _ => ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun s _ => ?_
+    split_ifs
+    · field_simp
+    · simp
+  simp_rw [hcell]
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl fun G _ => ?_
+  rw [Finset.sum_comm]
+  refine Finset.sum_congr rfl fun s _ => ?_
+  rw [← Finset.sum_filter, ← sum_norm_sq_restrict_le Gd (Ec G s) (hdis G s) (D G s)]
+  congr 1
+  ext I
+  simp only [Finset.mem_filter, and_iff_right_iff_imp]
+  exact fun h => hsub G s h
+
+open Classical in
+/-- Path caps integrate to square budgets: `Σ_{I ∋ x} a_I ≤ C` everywhere gives
+`Σ_I |I| a_I ≤ C |R|` (blueprint `eq:path`). -/
+theorem integrated_cap_le (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (a : ℤ × ℤ → ℝ)
+    (root : ℤ × ℤ) (hR : ∀ I ∈ S, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G root.1 root.2)
+    {C : ℝ} (hC : ∀ x, ∑ I ∈ S.filter (fun I => x ∈ dyadicGridCell G I.1 I.2), a I ≤ C) :
+    ∑ I ∈ S, dyadicGridLength G I.1 * a I ≤ C * dyadicGridLength G root.1 := by
+  set f : ℝ → ℝ := fun x => ∑ I ∈ S, (dyadicGridCell G I.1 I.2).indicator (fun _ => a I) x
+  rw [dyadicPathIntegral_real G S _ (dyadicGridCell G root.1 root.2) hR]
+  have hpt : ∀ x, f x ≤ C := by
+    intro x
+    have hfx : f x = ∑ I ∈ S.filter (fun I => x ∈ dyadicGridCell G I.1 I.2), a I := by
+      simp only [f, Finset.sum_filter, Set.indicator_apply]
+    rw [hfx]; exact hC x
+  have hint : IntegrableOn f (dyadicGridCell G root.1 root.2) := by
+    refine integrable_finsetSum _ fun I hI => ?_
+    apply (integrable_indicator_iff (dyadicGridCell_measurable G I.1 I.2)).mpr
+    change Integrable _ ((volume.restrict _).restrict (dyadicGridCell G I.1 I.2))
+    rw [Measure.restrict_restrict_of_subset (hR I hI)]
+    exact integrableOn_const (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
+  calc ∫ x in dyadicGridCell G root.1 root.2, f x ≤ ∫ _x in dyadicGridCell G root.1 root.2, C :=
+        setIntegral_mono_on hint (integrableOn_const (by
+          rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top))
+          (dyadicGridCell_measurable G root.1 root.2) fun x _ => hpt x
+    _ = _ := by
+        rw [setIntegral_const, smul_eq_mul, Measure.real, dyadicGridCell_volume,
+          ENNReal.toReal_ofReal (dyadicGridLength_pos G root.1).le]
+        ring
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+namespace ActiveSetup
+variable {κ' : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ' c₀)
+
+/-- The `L²` energy of a basic side on a cell is its length times its normalized square norm. -/
+theorem U_cell_energy (l : Fin 4) (I : ℤ × ℤ) :
+    ∫ y in dyadicGridCell A.G I.1 I.2, ‖A.U l I y‖ ^ 2 =
+      dyadicGridLength A.G I.1 * (eLpNorm (A.U l I) 2 (A.μ I)).toReal ^ 2 := by
+  have hr := dyadicGridLength_pos A.G I.1
+  rw [eLpNorm_normalized_toReal_sq hr (A.U_L2 l I), ← mul_assoc, mul_inv_cancel₀ hr.ne',
+    one_mul]
+  rfl
+
+open Classical in
+/-- Blueprint `eq:basic-side` on the root: the basic sides of one slot on cell families of
+distinct depths (pairwise disjoint as families) have total `L²` energy at most `E |R|`. -/
+theorem U_cells_energy_le {η₀ E : ℝ} (h : A.SubRootProps η₀ E) (l : Fin 4) (Sd : Finset ℕ)
+    (Tc : ℕ → Finset (ℤ × ℤ)) (hTc : ∀ s ∈ Sd, Tc s ⊆ A.cells)
+    (hdis : Set.PairwiseDisjoint (Sd : Set ℕ) Tc) :
+    ∑ s ∈ Sd, ∑ I ∈ Tc s, ∫ y in dyadicGridCell A.G I.1 I.2, ‖A.U l I y‖ ^ 2 ≤
+      E * dyadicGridLength A.G A.R.1 := by
+  have h1 := (h A.R subset_rfl).1 l
+  rw [← Finset.sum_biUnion hdis]
+  refine le_trans ?_ h1
+  have hsub : Sd.biUnion Tc ⊆ A.cells.filter fun I =>
+      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2 := by
+    intro I hI
+    obtain ⟨s, hs, hIs⟩ := Finset.mem_biUnion.mp hI
+    have hIc := hTc s hs hIs
+    exact Finset.mem_filter.mpr ⟨hIc, A.sub I hIc⟩
+  refine le_trans (le_of_eq (Finset.sum_congr rfl fun I _ => A.U_cell_energy l I)) ?_
+  exact Finset.sum_le_sum_of_subset_of_nonneg hsub fun I _ _ =>
+    mul_nonneg (dyadicGridLength_pos A.G I.1).le (sq_nonneg _)
+
+end ActiveSetup
 
 end Auto
 

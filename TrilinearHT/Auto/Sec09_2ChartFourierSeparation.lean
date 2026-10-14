@@ -69,28 +69,6 @@ theorem chart_phase_split {d : ℕ} (C Pf Ps : Matrix (Fin d) (Fin d) ℝ)
   change dotProduct a (C.mulVec c) = dotProduct c (C.mulVec a) at hac
   linear_combination (-1 / 2 : ℝ) * hac
 
-/-- The quadratic form of the effective matrix `Λ_*` in eq:effective. -/
-theorem effectiveReturnQuadratic_form {d k : ℕ} (C : Matrix (Fin d) (Fin d) ℝ)
-    (Λ : Matrix (Fin k) (Fin k) ℝ) (V F S : Matrix (Fin d) (Fin k) ℝ) (z : Fin k → ℝ) :
-    dotProduct z ((effectiveReturnQuadratic C Λ V F S).mulVec z) =
-      dotProduct z (Λ.mulVec z) +
-        (1 / 2) * dotProduct (V.mulVec z) ((realSymmetricPart C).mulVec (V.mulVec z)) +
-        dotProduct (F.mulVec z) ((realSkewPart C).mulVec (S.mulVec z)) := by
-  have hT (X : Matrix (Fin d) (Fin k) ℝ) (Y : Matrix (Fin d) (Fin d) ℝ)
-      (W : Matrix (Fin d) (Fin k) ℝ) :
-      dotProduct z ((X.transpose * Y * W).mulVec z) =
-        dotProduct (X.mulVec z) (Y.mulVec (W.mulVec z)) := by
-    rw [← Matrix.mulVec_mulVec, ← Matrix.mulVec_mulVec, Matrix.dotProduct_mulVec,
-      Matrix.vecMul_transpose]
-  simp only [effectiveReturnQuadratic, Matrix.add_mulVec, dotProduct_add,
-    Matrix.smul_mulVec, dotProduct_smul, smul_eq_mul, hT]
-  have hsym : dotProduct z ((realSymmetricPart (F.transpose * realSkewPart C * S)).mulVec z) =
-      dotProduct (F.mulVec z) ((realSkewPart C).mulVec (S.mulVec z)) := by
-    simp only [realSymmetricPart, Matrix.smul_mulVec, Matrix.add_mulVec, dotProduct_smul,
-      dotProduct_add, smul_eq_mul, dotProduct_transpose_mulVec_comm, hT]
-    ring
-  rw [hsym]
-
 /-- The phase of one chart lattice summand after extracting `Λ_*`
 (lem:chartfourier, lines 1349–1355). -/
 theorem multivariableChartPhase_split {k d : ℕ} (A : MultivariableQuadraticChartData k d)

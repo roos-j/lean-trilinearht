@@ -142,6 +142,16 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
+section CoreSideDecomposition
+variable {V : Type*} [AddCommGroup V] [Module ℂ V]
+
+open Classical in
+/-- The number of slots of a pattern carrying a given part. -/
+noncomputable def patternCount (σ : Fin 4 → Fin 3) (j : Fin 3) : ℕ :=
+  (Finset.univ.filter fun l => σ l = j).card
+
+end CoreSideDecomposition
+
 /-! ### Power costs of three strong factors (side-estimate, blueprint lines 2370-2378) -/
 
 open Classical in
@@ -220,35 +230,6 @@ theorem group_triple_le {ι : Type*} (s : Finset ι) (x y z : ι → ℝ) :
         Finset.sum_le_sum fun G hG => mul_le_mul_of_nonneg_left (hz G hG) (by positivity)
     _ = (∑ G ∈ s, |x G| * |y G|) * Real.sqrt (∑ G ∈ s, z G ^ 2) := by rw [Finset.sum_mul]
     _ ≤ _ := mul_le_mul_of_nonneg_right hcs (Real.sqrt_nonneg _)
-
-open Classical in
-/-- Path caps integrate to square budgets: `Σ_{I ∋ x} a_I ≤ C` everywhere gives
-`Σ_I |I| a_I ≤ C |R|` (blueprint `eq:path`). -/
-theorem integrated_cap_le (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (a : ℤ × ℤ → ℝ)
-    (root : ℤ × ℤ) (hR : ∀ I ∈ S, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G root.1 root.2)
-    {C : ℝ} (hC : ∀ x, ∑ I ∈ S.filter (fun I => x ∈ dyadicGridCell G I.1 I.2), a I ≤ C) :
-    ∑ I ∈ S, dyadicGridLength G I.1 * a I ≤ C * dyadicGridLength G root.1 := by
-  set f : ℝ → ℝ := fun x => ∑ I ∈ S, (dyadicGridCell G I.1 I.2).indicator (fun _ => a I) x
-  rw [dyadicPathIntegral_real G S _ (dyadicGridCell G root.1 root.2) hR]
-  have hpt : ∀ x, f x ≤ C := by
-    intro x
-    have hfx : f x = ∑ I ∈ S.filter (fun I => x ∈ dyadicGridCell G I.1 I.2), a I := by
-      simp only [f, Finset.sum_filter, Set.indicator_apply]
-    rw [hfx]; exact hC x
-  have hint : IntegrableOn f (dyadicGridCell G root.1 root.2) := by
-    refine integrable_finsetSum _ fun I hI => ?_
-    apply (integrable_indicator_iff (dyadicGridCell_measurable G I.1 I.2)).mpr
-    change Integrable _ ((volume.restrict _).restrict (dyadicGridCell G I.1 I.2))
-    rw [Measure.restrict_restrict_of_subset (hR I hI)]
-    exact integrableOn_const (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
-  calc ∫ x in dyadicGridCell G root.1 root.2, f x ≤ ∫ _x in dyadicGridCell G root.1 root.2, C :=
-        setIntegral_mono_on hint (integrableOn_const (by
-          rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top))
-          (dyadicGridCell_measurable G root.1 root.2) fun x _ => hpt x
-    _ = _ := by
-        rw [setIntegral_const, smul_eq_mul, Measure.real, dyadicGridCell_volume,
-          ENNReal.toReal_ofReal (dyadicGridLength_pos G root.1).le]
-        ring
 
 open Classical in
 /-- Blueprint lines 2380-2381 (the transferred main term with restored complements): terms
@@ -379,6 +360,44 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
+section PatternEstimates2
+variable {W : Type*} [NormedAddCommGroup W] [NormedSpace ℂ W]
+
+open Classical in
+/-- Four factors bounded by `B`, of which at least three are bounded by `√w`, have product at most
+`B w √w`. -/
+theorem prod_four_le_of_three (f : Fin 4 → ℝ) (hf0 : ∀ l, 0 ≤ f l) {B w : ℝ} (hB : ∀ l, f l ≤ B)
+    (Sd : Finset (Fin 4)) (hS : 3 ≤ Sd.card) (hw : ∀ l ∈ Sd, f l ≤ Real.sqrt w) :
+    ∏ l, f l ≤ B * (w * Real.sqrt w) := by
+  obtain ⟨T, hTS, hT3⟩ := Finset.exists_subset_card_eq hS
+  have hsq := Real.sqrt_nonneg w
+  rw [← Finset.prod_mul_prod_compl T]
+  have h1 : ∏ l ∈ T, f l ≤ Real.sqrt w ^ 3 := by
+    calc ∏ l ∈ T, f l ≤ ∏ _l ∈ T, Real.sqrt w :=
+          Finset.prod_le_prod₀ (fun l _ => hf0 l) fun l hl => hw l (hTS hl)
+      _ = Real.sqrt w ^ 3 := by rw [Finset.prod_const, hT3]
+  have hc : Tᶜ.card = 1 := by rw [Finset.card_compl, hT3]; rfl
+  have h2 : ∏ l ∈ Tᶜ, f l ≤ B := by
+    obtain ⟨m, hm⟩ := Finset.card_eq_one.mp hc
+    rw [hm, Finset.prod_singleton]; exact hB m
+  have hB0 : 0 ≤ B := (hf0 0).trans (hB 0)
+  have hw3 : Real.sqrt w ^ 3 = w * Real.sqrt w := by
+    rcases le_or_gt 0 w with h | h
+    · rw [pow_succ, Real.sq_sqrt h]
+    · rw [Real.sqrt_eq_zero_of_nonpos h.le]; ring
+  calc (∏ l ∈ T, f l) * ∏ l ∈ Tᶜ, f l ≤ Real.sqrt w ^ 3 * B :=
+        mul_le_mul h1 h2 (Finset.prod_nonneg fun l _ => hf0 l) (by positivity)
+    _ = B * (w * Real.sqrt w) := by rw [hw3]; ring
+
+/-- `Σ w_i √w_i ≤ (Σ w_i) √(Σ w_i)` for nonnegative `w`. -/
+theorem sum_mul_sqrt_le {γ : Type*} (s : Finset γ) (w : γ → ℝ) (hw : ∀ i ∈ s, 0 ≤ w i) :
+    ∑ i ∈ s, w i * Real.sqrt (w i) ≤ (∑ i ∈ s, w i) * Real.sqrt (∑ i ∈ s, w i) := by
+  rw [Finset.sum_mul]
+  exact Finset.sum_le_sum fun i hi => mul_le_mul_of_nonneg_left
+    (Real.sqrt_le_sqrt (Finset.single_le_sum hw hi)) (hw i hi)
+
+end PatternEstimates2
+
 namespace ActiveSetup
 
 namespace AttemptParams
@@ -489,6 +508,77 @@ theorem Λc_eq_form {I : ℤ × ℤ} (hI : I ∈ A.cells) (x : Fin 4 → ColumnL
 end AttemptParams
 
 end ActiveSetup
+
+section ExportedSide
+variable {W : Type*} [NormedAddCommGroup W] [NormedSpace ℂ W]
+
+open Classical in
+/-- One error-free pattern with at least three sides at one cell, summed over the groups:
+`‖Σ_G Λ(pattern)‖ ≤ C B u √u` with `u = Σ_{G,l} ‖S_{G,l}‖² / |I|` (blueprint `eq:three-sides`,
+Cauchy-Schwarz in the groups). -/
+theorem three_side_pattern_cell (Gd : RealDyadicGrid) {γ : Type*} (I : ℤ × ℤ) (Gs : Finset γ)
+    (Λ : MultilinearMap ℂ (fun _ : Fin 4 => W) ℂ) {C Bs : ℝ} (hC : 0 ≤ C)
+    (hΛ : ∀ x : Fin 4 → W, ‖Λ x‖ ≤ C * ∏ l, (‖x l‖ / Real.sqrt (dyadicGridLength Gd I.1)))
+    (a s e : γ → Fin 4 → W)
+    (hsize : ∀ G ∈ Gs, ∀ l, ‖a G l‖ ≤ Bs * Real.sqrt (dyadicGridLength Gd I.1) ∧
+      ‖s G l‖ ≤ Bs * Real.sqrt (dyadicGridLength Gd I.1))
+    {σ : Fin 4 → Fin 3} (hσ : (∀ l, σ l ≠ 2) ∧ 3 ≤ patternCount σ 1) :
+    ‖∑ G ∈ Gs, Λ (patternPiece (a G) (s G) (e G) σ)‖ ≤
+      C * Bs * ((∑ G ∈ Gs, ∑ l, ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1) *
+        Real.sqrt (∑ G ∈ Gs, ∑ l, ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1)) := by
+  obtain ⟨hnoerr, hcnt⟩ := hσ
+  have hr := dyadicGridLength_pos Gd I.1
+  have hsr := Real.sqrt_pos.mpr hr
+  set wG : γ → ℝ := fun G => ∑ l, ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1
+  have hwG0 : ∀ G, 0 ≤ wG G := fun G => Finset.sum_nonneg fun l _ =>
+    div_nonneg (sq_nonneg _) hr.le
+  have hBs : 0 ≤ Bs ∨ Gs = ∅ := by
+    by_cases h : Gs.Nonempty
+    · obtain ⟨G, hG⟩ := h
+      left
+      have := (hsize G hG 0).1
+      have h0 := norm_nonneg (a G 0)
+      by_contra hneg
+      push Not at hneg
+      nlinarith
+    · right; exact Finset.not_nonempty_iff_eq_empty.mp h
+  have hG : ∀ G ∈ Gs, ‖Λ (patternPiece (a G) (s G) (e G) σ)‖ ≤
+      C * (Bs * (wG G * Real.sqrt (wG G))) := by
+    intro G hG
+    refine (hΛ _).trans (mul_le_mul_of_nonneg_left ?_ hC)
+    refine prod_four_le_of_three _ (fun l => by positivity) (fun l => ?_)
+      (Finset.univ.filter fun l => σ l = 1) hcnt (fun l hl => ?_)
+    · rw [div_le_iff₀ hsr]
+      unfold patternPiece
+      have h := hsize G hG l
+      have hσl := hnoerr l
+      match hm : σ l with
+      | 0 => simpa [hm] using h.1
+      | 1 => simpa [hm] using h.2
+      | 2 => exact absurd hm hσl
+    · have hσl := (Finset.mem_filter.mp hl).2
+      unfold patternPiece
+      rw [hσl]
+      change ‖s G l‖ / Real.sqrt (dyadicGridLength Gd I.1) ≤ Real.sqrt (wG G)
+      rw [div_le_iff₀ hsr, ← Real.sqrt_mul (hwG0 G)]
+      have h1 : ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1 ≤ wG G :=
+        Finset.single_le_sum (f := fun l => ‖s G l‖ ^ 2 / dyadicGridLength Gd I.1)
+          (fun l _ => div_nonneg (sq_nonneg _) hr.le) (Finset.mem_univ l)
+      rw [← Real.sqrt_sq (norm_nonneg (s G l))]
+      refine Real.sqrt_le_sqrt ?_
+      rw [div_le_iff₀ hr] at h1
+      exact h1
+  rcases hBs with hBs | hGs
+  · calc ‖∑ G ∈ Gs, Λ (patternPiece (a G) (s G) (e G) σ)‖
+        ≤ ∑ G ∈ Gs, C * (Bs * (wG G * Real.sqrt (wG G))) :=
+          (norm_sum_le _ _).trans (Finset.sum_le_sum hG)
+      _ = C * Bs * ∑ G ∈ Gs, wG G * Real.sqrt (wG G) := by
+          rw [Finset.mul_sum]; refine Finset.sum_congr rfl fun G _ => by ring
+      _ ≤ C * Bs * ((∑ G ∈ Gs, wG G) * Real.sqrt (∑ G ∈ Gs, wG G)) :=
+          mul_le_mul_of_nonneg_left (sum_mul_sqrt_le _ wG fun G _ => hwG0 G) (by positivity)
+  · subst hGs; simp
+
+end ExportedSide
 
 end Auto
 

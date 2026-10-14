@@ -32,6 +32,13 @@ Formalization of blueprint Section 1, "Foundations, conventions, and proof inter
 
 @[expose] public section
 
+namespace Auto
+
+/-- The period `16` of the Gowers-norm circle is positive. -/
+instance fact_zero_lt_sixteen : Fact (0 < (16 : ℝ)) := ⟨by norm_num⟩
+
+end Auto
+
 section
 
 namespace Auto

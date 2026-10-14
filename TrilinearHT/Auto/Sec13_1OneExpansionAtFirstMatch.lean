@@ -1252,27 +1252,6 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
-namespace ColorSetup
-variable {V : Type*} [DecidableEq V] (K : ColorSetup V) (T : AdmTree V)
-
-/-- A vertex of the ball mask of a group lies within the winner bound of the group's center
-(blueprint eq:ball-mask, first clause): with the group's primary winner `(ρ, z, g)`, its graph
-distance `k` from `z` obeys `(g - 1) b₁ - h ≤ b₁ D_ρ(z) - k`. -/
-theorem mask_center_dist (Nv : ℕ)
-    {G : ℕ × (Option (Fin K.d0 × V × ℤ) × ℕ × (ℕ × ℕ) × Option (Fin K.d0 × V × ℤ))} {h : ℕ}
-    {I : T.Cell} {b : V} (hb : b ∈ K.mask T Nv G h I) {ρ : Fin K.d0} {z : V} {g : ℤ}
-    (hG : G.2.1 = some (ρ, z, g)) :
-    ∃ k : ℕ, K.dist.d (T.depth I) z b = k ∧ (g - 1) * K.b1 - h ≤ K.b1 * K.Dp ρ z - k := by
-  obtain ⟨-, I₀, -, v₀, -, hgrp, ρ', z', g', m, l, n, ρ'', a, g₂, hc, -, hk, -⟩ := hb
-  have e : (K.colorData (T.st I₀) v₀).1 = some (ρ', z', g') := by rw [hc]
-  have e' : (K.colorData (T.st I₀) v₀).1 = G.2.1 := by rw [← hgrp]; rfl
-  rw [e', hG] at e
-  simp only [Option.some.injEq, Prod.mk.injEq] at e
-  obtain ⟨rfl, rfl, rfl⟩ := e
-  exact hk
-
-end ColorSetup
-
 @[simp] theorem foldIdx_castAdd {d : ℕ} (a : Fin d) : foldIdx d (Fin.castAdd d a) = a :=
   Fin.addCases_left (motive := fun _ => Fin d) a
 
@@ -3026,24 +3005,6 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
-namespace ColorSetup
-variable {V : Type*} [DecidableEq V] (K : ColorSetup V) (T : AdmTree V)
-
-/-- Masks increase with the pad (blueprint eq:ball-mask). -/
-theorem mask_pad_mono (Nv : ℕ) {G : ℕ × (Option (Fin K.d0 × V × ℤ) × ℕ × (ℕ × ℕ) ×
-    Option (Fin K.d0 × V × ℤ))} {h h' : ℕ} (hh : h ≤ h') {I : T.Cell} {b : V}
-    (hb : b ∈ K.mask T Nv G h I) : b ∈ K.mask T Nv G h' I := by
-  obtain ⟨hbI, I₀, hI₀, v₀, hv₀, hgrp, hpred⟩ := hb
-  refine ⟨hbI, I₀, hI₀, v₀, hv₀, hgrp, ?_⟩
-  obtain ⟨ρ, z, g, m, l, n, ρ', a, g₂, hc, hl, ⟨k, hk, hkg⟩, h2, h3⟩ := hpred
-  have hR : 0 ≤ K.Rl l := by unfold Rl; positivity
-  have hhr : (h : ℝ) ≤ h' := by exact_mod_cast hh
-  refine ⟨ρ, z, g, m, l, n, ρ', a, g₂, hc, hl, ⟨k, hk, by omega⟩,
-    h2.trans hhr, h3.trans ?_⟩
-  exact mul_le_mul_of_nonneg_left hhr (by positivity)
-
-end ColorSetup
-
 namespace ActiveSetup
 
 namespace AttemptParams
@@ -3897,6 +3858,37 @@ theorem slope_variation_mode (m : Ms.Md) {J : ℤ × ℤ} {y y' : ℝ}
     _ = 2 * Ms.Λ * (r / R) ^ 2 := by field_simp
 
 end ModeSystem
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+theorem fourierChar_sum_coe {ι : Type*} (s : Finset ι) (a : ι → ℝ) :
+    (Real.fourierChar (∑ i ∈ s, a i) : ℂ) = ∏ i ∈ s, (Real.fourierChar (a i) : ℂ) := by
+  classical
+  induction s using Finset.induction_on with
+  | empty => simp
+  | insert i s hi ih =>
+    rw [Finset.sum_insert hi, Finset.prod_insert hi, AddChar.map_add_eq_mul, Circle.coe_mul, ih]
+
+/-- The four gauge factors of a common chart tag at the progression points
+`y_j = x + j t` are the four true cutoffs times the gauge phase of `eq:gauge-cancel`. -/
+theorem gauge_prod_eq (z : ChartTag) (δ : ℝ) (ρ : Fin 4 → Fin z.dim → ℝ) (x t : ℝ) :
+    ∏ j : Fin 4, ((centerCut z δ (ρ j) (x + ((j : ℕ) : ℝ) * t) : ℂ) *
+      (Real.fourierChar (((slotCoeff j : ℤ) : ℝ) * centerPhase z (ρ j) (x + ((j : ℕ) : ℝ) * t)) :
+        ℂ)) =
+    (∏ j : Fin 4, (branchCutoffValue δ (ρ j) (fun a => z.θ a * (x + ((j : ℕ) : ℝ) * t)) : ℂ)) *
+      (Real.fourierChar (∑ j : Fin 4, (slotCoeff j : ℝ) * (z.lam * (x + ((j : ℕ) : ℝ) * t) ^ 2 +
+        chartMatrixPhase z.C (fun a => z.θ a * (x + ((j : ℕ) : ℝ) * t))
+          (branchLift (ρ j) (fun a => z.θ a * (x + ((j : ℕ) : ℝ) * t))))) : ℂ) := by
+  rw [Finset.prod_mul_distrib, fourierChar_sum_coe]
+  rfl
 
 end Auto
 

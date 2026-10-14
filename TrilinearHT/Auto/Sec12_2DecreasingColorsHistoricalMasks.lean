@@ -4180,6 +4180,27 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
+namespace ColorSetup
+variable {V : Type*} [DecidableEq V] (K : ColorSetup V) (T : AdmTree V)
+
+/-- A vertex of the ball mask of a group lies within the winner bound of the group's center
+(blueprint eq:ball-mask, first clause): with the group's primary winner `(ρ, z, g)`, its graph
+distance `k` from `z` obeys `(g - 1) b₁ - h ≤ b₁ D_ρ(z) - k`. -/
+theorem mask_center_dist (Nv : ℕ)
+    {G : ℕ × (Option (Fin K.d0 × V × ℤ) × ℕ × (ℕ × ℕ) × Option (Fin K.d0 × V × ℤ))} {h : ℕ}
+    {I : T.Cell} {b : V} (hb : b ∈ K.mask T Nv G h I) {ρ : Fin K.d0} {z : V} {g : ℤ}
+    (hG : G.2.1 = some (ρ, z, g)) :
+    ∃ k : ℕ, K.dist.d (T.depth I) z b = k ∧ (g - 1) * K.b1 - h ≤ K.b1 * K.Dp ρ z - k := by
+  obtain ⟨-, I₀, -, v₀, -, hgrp, ρ', z', g', m, l, n, ρ'', a, g₂, hc, -, hk, -⟩ := hb
+  have e : (K.colorData (T.st I₀) v₀).1 = some (ρ', z', g') := by rw [hc]
+  have e' : (K.colorData (T.st I₀) v₀).1 = G.2.1 := by rw [← hgrp]; rfl
+  rw [e', hG] at e
+  simp only [Option.some.injEq, Prod.mk.injEq] at e
+  obtain ⟨rfl, rfl, rfl⟩ := e
+  exact hk
+
+end ColorSetup
+
 /-! ### Whole endpoint ranges for the attempt (lem:whole-ranges, blueprint lines 1777-1789) -/
 
 /-- An unnormalized cell pairing from a normalized interval average. -/
@@ -4198,6 +4219,34 @@ theorem norm_setIntegral_Ico_conj_le {f g : ℝ → ℂ} {a r τ : ℝ} (hr : 0 
   rw [e1, norm_smul, Real.norm_eq_abs, abs_of_pos (inv_pos.mpr hr)] at h
   rw [e2, RCLike.norm_conj]
   rwa [inv_mul_le_iff₀ hr, mul_comm] at h
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+namespace ColorSetup
+variable {V : Type*} [DecidableEq V] (K : ColorSetup V) (T : AdmTree V)
+
+/-- Masks increase with the pad (blueprint eq:ball-mask). -/
+theorem mask_pad_mono (Nv : ℕ) {G : ℕ × (Option (Fin K.d0 × V × ℤ) × ℕ × (ℕ × ℕ) ×
+    Option (Fin K.d0 × V × ℤ))} {h h' : ℕ} (hh : h ≤ h') {I : T.Cell} {b : V}
+    (hb : b ∈ K.mask T Nv G h I) : b ∈ K.mask T Nv G h' I := by
+  obtain ⟨hbI, I₀, hI₀, v₀, hv₀, hgrp, hpred⟩ := hb
+  refine ⟨hbI, I₀, hI₀, v₀, hv₀, hgrp, ?_⟩
+  obtain ⟨ρ, z, g, m, l, n, ρ', a, g₂, hc, hl, ⟨k, hk, hkg⟩, h2, h3⟩ := hpred
+  have hR : 0 ≤ K.Rl l := by unfold Rl; positivity
+  have hhr : (h : ℝ) ≤ h' := by exact_mod_cast hh
+  refine ⟨ρ, z, g, m, l, n, ρ', a, g₂, hc, hl, ⟨k, hk, by omega⟩,
+    h2.trans hhr, h3.trans ?_⟩
+  exact mul_le_mul_of_nonneg_left hhr (by positivity)
+
+end ColorSetup
 
 end Auto
 

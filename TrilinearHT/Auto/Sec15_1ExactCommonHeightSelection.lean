@@ -1614,14 +1614,6 @@ theorem group_torus_form {b : ℤ} {J : ℤ × ℤ} (hJ : J.1 ≤ b + S.K) {h : 
 
 end ModeSystem
 
-theorem fourierChar_sum_coe {ι : Type*} (s : Finset ι) (a : ι → ℝ) :
-    (Real.fourierChar (∑ i ∈ s, a i) : ℂ) = ∏ i ∈ s, (Real.fourierChar (a i) : ℂ) := by
-  classical
-  induction s using Finset.induction_on with
-  | empty => simp
-  | insert i s hi ih =>
-    rw [Finset.sum_insert hi, Finset.prod_insert hi, AddChar.map_add_eq_mul, Circle.coe_mul, ih]
-
 /-- The periodic cutoff `w ↦ Π_i b({w_i - ρ_i})` on `ℝ^d` (the true cutoff `ζ^ρ`). -/
 noncomputable def cutoffP {d : ℕ} (δ : ℝ) (ρ : Fin d → ℝ) (w : Fin d → ℝ) : ℂ :=
   chartCoordinateProduct (fractProfile δ) (w - ρ)
@@ -1757,19 +1749,6 @@ noncomputable def multTail (d : ℕ) (δ : ℝ) (Q0 : ℕ) (Cm : ℝ) (K : ℕ) 
 
 theorem cutTail_nonneg (d : ℕ) {δ : ℝ} (hδ : 0 < δ) (K : ℕ) : 0 ≤ cutTail d δ K := by
   unfold cutTail; have := one_le_bumpConst; positivity
-
-/-- The four gauge factors of a common chart tag at the progression points
-`y_j = x + j t` are the four true cutoffs times the gauge phase of `eq:gauge-cancel`. -/
-theorem gauge_prod_eq (z : ChartTag) (δ : ℝ) (ρ : Fin 4 → Fin z.dim → ℝ) (x t : ℝ) :
-    ∏ j : Fin 4, ((centerCut z δ (ρ j) (x + ((j : ℕ) : ℝ) * t) : ℂ) *
-      (Real.fourierChar (((slotCoeff j : ℤ) : ℝ) * centerPhase z (ρ j) (x + ((j : ℕ) : ℝ) * t)) :
-        ℂ)) =
-    (∏ j : Fin 4, (branchCutoffValue δ (ρ j) (fun a => z.θ a * (x + ((j : ℕ) : ℝ) * t)) : ℂ)) *
-      (Real.fourierChar (∑ j : Fin 4, (slotCoeff j : ℝ) * (z.lam * (x + ((j : ℕ) : ℝ) * t) ^ 2 +
-        chartMatrixPhase z.C (fun a => z.θ a * (x + ((j : ℕ) : ℝ) * t))
-          (branchLift (ρ j) (fun a => z.θ a * (x + ((j : ℕ) : ℝ) * t))))) : ℂ) := by
-  rw [Finset.prod_mul_distrib, fourierChar_sum_coe]
-  rfl
 
 /-- Blueprint lines 2470-2476 (the truncated cutoff of a slot along the cell line): with
 `QL ξ = θ`, the re-centered truncated cutoff at the torus point `ξ (y - x*)` approximates the true

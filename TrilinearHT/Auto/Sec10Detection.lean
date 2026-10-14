@@ -816,9 +816,6 @@ theorem addCircle_zsmul_measurePreserving {T : ℝ} [Fact (0 < T)] {n : ℤ} (hn
 
 section TorusSixteen
 
-/-! ### The real progression form as a torus average (lem:von-neumann, line 1429) -/
-
-
 /-- Lifting a function supported in `[0,1)` to the torus of length `16`. -/
 noncomputable def torusLift (F : ℝ → ℂ) : AddCircle (16 : ℝ) → ℂ := AddCircle.liftIoc 16 (-8) F
 
@@ -972,7 +969,6 @@ theorem prod_fin_four_perm {M : Type*} [CommMonoid M] (φ : Fin 4 → M) {a b c 
   simp only [mul_assoc]
 
 section TorusSixteenBound
-
 
 theorem measurable_torusLift {F : ℝ → ℂ} (hF : Measurable F) : Measurable (torusLift F) :=
   hF.comp (measurable_subtype_coe.comp (AddCircle.measurableEquivIoc (16 : ℝ) (-8)).measurable)

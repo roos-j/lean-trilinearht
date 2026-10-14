@@ -4585,22 +4585,6 @@ theorem sum_bottom_length_le (G : RealDyadicGrid) (J : ℤ × ℤ) (N K₀ : ℕ
     _ ≤ K₀ * dyadicGridLength G J.1 :=
         mul_le_mul_of_nonneg_right hQ (dyadicGridLength_pos G J.1).le
 
-/-- The tuple `eq:base-tuple` of the two earliest increments at a cell, from the stagger fits. -/
-noncomputable def stagTuple (f : Fin 4 → ℝ → ℂ) (g : ℕ → ℤ × ℤ → ℝ → ℂ) (u t : ℕ)
-    (I : ℤ × ℤ) (l : Fin 4) : ℝ → ℂ := by
-  classical
-  exact if l = stagPos u then g u I - (if u ≤ 4 then 0 else g (u - 4) I)
-    else if l = stagPos t then g t I - (if t ≤ 4 then 0 else g (t - 4) I)
-    else f l - (if 1 ≤ StaggerCell.lastLevel l t then g (StaggerCell.lastLevel l t) I else 0)
-
-theorem StaggerCell.tuple_eq_stagTuple {κ : LocalKernelClass} (D : StaggerCell κ)
-    {f : Fin 4 → ℝ → ℂ} {g : ℕ → ℤ × ℤ → ℝ → ℂ} {I : ℤ × ℤ} (hf : D.f = f)
-    (hg : ∀ t, D.g t = g t I) (u t : ℕ) : D.tuple u t = stagTuple f g u t I := by
-  classical
-  funext l
-  simp only [StaggerCell.tuple, StaggerCell.incr, StaggerCell.prevProj, StaggerCell.lastProj,
-    stagTuple, hf, hg]
-
 theorem compBound_nonneg (n : ℕ) (ε : ℝ) : 0 ≤ compBound n ε := by
   unfold compBound
   have : (1 : ℝ) ≤ 2 * (2 + n + n * (Real.sqrt ε)⁻¹) := by
@@ -4621,44 +4605,6 @@ theorem compBound_mono {n n' : ℕ} (h : n ≤ n') (ε : ℝ) : compBound n ε �
     Real.log_le_log (by linarith) (by nlinarith)
   have := Real.log_nonneg h1
   gcongr
-
-theorem fitOpponentConst_mono {M M' : ℕ} (h : M ≤ M') : fitOpponentConst M ≤ fitOpponentConst
-    M' := by
-  unfold fitOpponentConst
-  have hM : (M : ℝ) ≤ M' := by exact_mod_cast h
-  have h2 : (2 : ℝ) ≤ max 2 (M : ℝ) := le_max_left _ _
-  have hlog : Real.log (2 * max 2 (M : ℝ)) ≤ Real.log (2 * max 2 (M' : ℝ)) :=
-    Real.log_le_log (by linarith) (by gcongr)
-  have := Real.log_nonneg (show (1 : ℝ) ≤ 2 * max 2 (M : ℝ) by linarith)
-  gcongr
-
-theorem err_mono_real {c c' e T K xa xa' xb xb' Cga Cga' Cgb Cgb' : ℝ} (hc : 0 ≤ c)
-    (hcc : c ≤ c') (he : 0 ≤ e) (hT : 0 ≤ T) (hK : 0 ≤ K) (hxa : 0 ≤ xa) (hxb : 0 ≤ xb)
-    (ha : xa ≤ xa') (hb : xb ≤ xb') (hCga : 0 ≤ Cga) (hCgb : 0 ≤ Cgb) (hCa : Cga ≤ Cga')
-    (hCb : Cgb ≤ Cgb') :
-    c * ((2 * e * (2 * (xa + K) + 1) + T) * (2 * (1 + Cgb) + 4) +
-      (2 * e * (2 * (xb + K) + 1) + T) * (2 * (2 * (xa + K) + Cga) + 4)) ≤
-    c' * ((2 * e * (2 * (xa' + K) + 1) + T) * (2 * (1 + Cgb') + 4) +
-      (2 * e * (2 * (xb' + K) + 1) + T) * (2 * (2 * (xa' + K) + Cga') + 4)) := by
-  have h1 : 2 * e * (2 * (xa + K) + 1) + T ≤ 2 * e * (2 * (xa' + K) + 1) + T := by
-    have := mul_le_mul_of_nonneg_left (show 2 * (xa + K) + 1 ≤ 2 * (xa' + K) + 1 by linarith)
-      (mul_nonneg zero_le_two he)
-    linarith
-  have h2 : 2 * e * (2 * (xb + K) + 1) + T ≤ 2 * e * (2 * (xb' + K) + 1) + T := by
-    have := mul_le_mul_of_nonneg_left (show 2 * (xb + K) + 1 ≤ 2 * (xb' + K) + 1 by linarith)
-      (mul_nonneg zero_le_two he)
-    linarith
-  have p1 : 0 ≤ 2 * e * (2 * (xa + K) + 1) + T := by positivity
-  have p2 : 0 ≤ 2 * e * (2 * (xb + K) + 1) + T := by positivity
-  have inner : (2 * e * (2 * (xa + K) + 1) + T) * (2 * (1 + Cgb) + 4) +
-      (2 * e * (2 * (xb + K) + 1) + T) * (2 * (2 * (xa + K) + Cga) + 4) ≤
-      (2 * e * (2 * (xa' + K) + 1) + T) * (2 * (1 + Cgb') + 4) +
-      (2 * e * (2 * (xb' + K) + 1) + T) * (2 * (2 * (xa' + K) + Cga') + 4) :=
-    add_le_add (mul_le_mul h1 (by linarith) (by linarith) (p1.trans h1))
-      (mul_le_mul h2 (by linarith) (by positivity) (p2.trans h2))
-  have hin0 : 0 ≤ (2 * e * (2 * (xa + K) + 1) + T) * (2 * (1 + Cgb) + 4) +
-      (2 * e * (2 * (xb + K) + 1) + T) * (2 * (2 * (xa + K) + Cga) + 4) := by positivity
-  exact mul_le_mul hcc inner hin0 (hc.trans hcc)
 
 theorem baseErr_mono (κ : LocalKernelClass) {ci ck ci' ck' : ℕ} {D Bp ε : ℝ} {K₀ Wa Wb Wa' Wb' : ℕ}
     {Cga Cgb Cga' Cgb' : ℝ} (hci : ci ≤ ci') (hck : ck ≤ ck') (hWa : Wa ≤ Wa') (hWb : Wb ≤ Wb')
@@ -4727,38 +4673,6 @@ theorem ColumnDepthFamily.currentZ_measurable {V : Type*} [Fintype V] (Ψ : Colu
   · have hm := (Lp.stronglyMeasurable (cellColumnProjection Ψ.D Ψ.A h Z)).measurable
     exact (EuclideanSpace.proj (𝕜 := ℂ) (none : Option V)).continuous.measurable.comp hm
   · exact measurable_const
-
-/-- The last update level of a slot other than the current one, for every `t ≥ 1`: it is below
-`t`, and when it is positive it is a level of that slot. -/
-theorem StaggerCell.lastLevel_spec' {l : Fin 4} {t : ℕ} (hl : l ≠ stagPos t) (ht : 1 ≤ t) :
-    StaggerCell.lastLevel l t < t ∧
-      (1 ≤ StaggerCell.lastLevel l t → stagPos (StaggerCell.lastLevel l t) = l) := by
-  have hl' : (l : ℕ) ≠ t % 4 := fun h => hl (Fin.ext (by simp [stagPos, h]))
-  have hl4 := l.isLt
-  refine ⟨?_, fun h1 => (stagPos_eq_iff _ _).mpr ?_⟩ <;> unfold StaggerCell.lastLevel at * <;>
-    omega
-
-/-- An a.e. zero opponent is admissible with any nonnegative constant. -/
-theorem isAdmissibleOpponent_of_ae_zero {G : RealDyadicGrid} {J : ℤ × ℤ} {F : ℝ → ℂ}
-    {z : ℤ × ℤ → ℝ → ℂ} (hz : ∀ I, ∀ᵐ y ∂volume, z I y = 0) (K : ℝ) :
-    IsAdmissibleOpponent G J F z K := by
-  intro ι Rr _
-  have h0 : ∀ i, ∫ y, conj (Rr.test i y) * z (Rr.cell i) y = 0 := fun i =>
-    integral_eq_zero_of_ae (by filter_upwards [hz (Rr.cell i)] with y hy; simp [hy])
-  simp only [h0, norm_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow,
-    Finset.sum_const_zero]
-  exact mul_nonneg (by positivity) (integral_nonneg fun y => by positivity)
-
-/-- An a.e. zero opponent has depth energy with constant one. -/
-theorem hasDepthEnergy_of_ae_zero {G : RealDyadicGrid} {J : ℤ × ℤ} {F : ℝ → ℂ}
-    {z : ℤ × ℤ → ℝ → ℂ} (hz : ∀ I, ∀ᵐ y ∂volume, z I y = 0) :
-    HasDepthEnergy G J F z 1 := by
-  intro s S _
-  have h0 : ∀ I, ∫ y in dyadicGridCell G I.1 I.2, ‖z I y‖ ^ 2 = 0 := fun I =>
-    integral_eq_zero_of_ae (by
-      filter_upwards [ae_restrict_of_ae (hz I)] with y hy; simp [hy])
-  simp only [h0, Finset.sum_const_zero, one_pow, one_mul]
-  exact integral_nonneg fun y => by positivity
 
 theorem IsBasicOn.measurable {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF : ℝ}
     {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF w z) (I : ℤ × ℤ) :

@@ -24,9 +24,6 @@ namespace Auto
 open Filter MeasureTheory
 open scoped Topology BigOperators ENNReal ComplexConjugate
 
-/-- The period `16` of the Gowers-norm circle is positive. -/
-instance fact_zero_lt_sixteen : Fact (0 < (16 : ℝ)) := ⟨by norm_num⟩
-
 theorem l2CubeContinuous_toLp {G : Type*} [AddCommGroup G] [MeasurableSpace G]
     [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
     [μ.IsAddLeftInvariant] [μ.IsNegInvariant] (f : (Fin 3 → Bool) → G → ℂ)
@@ -438,7 +435,6 @@ theorem unitIntervalL2Extension_support (f : Lp ℂ 2 unitIntervalMeasure)
     (x : ℝ) (hx : unitIntervalL2Extension f x ≠ 0) : x ∈ Set.Ico (0 : ℝ) 1 := by
   by_contra hn
   exact hx (Set.indicator_of_notMem hn _)
-
 
 theorem circle_lift_ae_congr {f g : ℝ → ℂ} (hfg : f =ᵐ[volume] g) :
     AddCircle.liftIoc (16 : ℝ) (-8) f =ᵐ[AddCircle.haarAddCircle]
@@ -2212,7 +2208,6 @@ open scoped ENNReal
 open ClassicalMaximal
 open scoped Pointwise
 open scoped BigOperators
-
 
 /-- Blueprint `lem:inverse`, lines 1191–1195: after choosing a sufficiently fine
 cyclic discretization, a globally bounded quadratic chart correlates with the
