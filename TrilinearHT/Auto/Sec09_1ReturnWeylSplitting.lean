@@ -1253,21 +1253,6 @@ namespace Auto
 open Filter Polynomial MeasureTheory AddCircle
 open scoped Topology ComplexConjugate FourierTransform ENNReal BigOperators
 
-/-- The same dimension, rational height and cutoff bounds as the one-variable
-definition. Evaluation on the zero line retains precisely this charged data. -/
-def MultivariableQuadraticChartComplexity {k d : ℕ} (c₀ : ℕ) (H : ℝ)
-    (A : MultivariableQuadraticChartData k d) : Prop :=
-  QuadraticChartComplexity c₀ H (multivariableChartAlongLine A 0)
-
-theorem multivariableChartAlongLine_complexity {k d c₀ : ℕ} {H : ℝ}
-    {A : MultivariableQuadraticChartData k d} (hA : MultivariableQuadraticChartComplexity c₀ H A)
-    (v : Fin k → ℝ) : QuadraticChartComplexity c₀ H (multivariableChartAlongLine A v) where
-  lower := hA.lower
-  dimension := hA.dimension
-  height := hA.height
-  support := hA.support
-  derivative := hA.derivative
-
 theorem shortReturnSplittingBudget_quasipolynomial :
     QuasipolynomialBound shortReturnSplittingBudget :=
   quasipolynomialBound_add

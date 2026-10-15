@@ -4651,3 +4651,740 @@ end ActiveSetup
 end Auto
 
 end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## Global helper projections in the main column space (blueprint lines 2393-2420) -/
+
+section ConjProj
+variable {V W : Type*} [Fintype V] [Fintype W]
+
+open scoped Classical in
+/-- Relabeling a physical vector keeps it physical. -/
+theorem colRelabel_physEmbed (f : V → W) {U : Type*} [Fintype U] (x : ColumnL2 U) :
+    colRelabel f (physEmbed U V x) = physEmbed U W x := by
+  refine Lp.ext ?_
+  filter_upwards [colRelabel_coeFn f (physEmbed U V x), physEmbed_coeFn (W := V) x,
+    physEmbed_coeFn (W := W) x] with y h1 h2 h3
+  rw [h1, h2, h3, relabelCLM_apply]
+  rw [Finset.sum_eq_single (none : Option V)]
+  · simp
+  · intro o _ ho
+    simp [ho]
+  · simp
+
+/-- A conjugated projection by an isometric relabeling is a projection. -/
+theorem isStarProjection_conj {f : V → W} (hf : Function.Injective f)
+    {T : ColumnL2 V →L[ℂ] ColumnL2 V} (hT : IsStarProjection T) :
+    IsStarProjection ((colRelabel f).comp (T.comp
+      (ContinuousLinearMap.adjoint (colRelabel f)))) := by
+  refine ⟨?_, ?_⟩
+  · change _ * _ = _
+    rw [ContinuousLinearMap.mul_def]
+    refine ContinuousLinearMap.ext fun z => ?_
+    simp only [ContinuousLinearMap.comp_apply]
+    rw [colRelabel_adjoint_apply_relabel hf]
+    have hTT := hT.isIdempotentElem
+    change T * T = T at hTT
+    rw [ContinuousLinearMap.mul_def] at hTT
+    have h := DFunLike.congr_fun hTT (ContinuousLinearMap.adjoint (colRelabel f) z)
+    rw [ContinuousLinearMap.comp_apply] at h
+    rw [h]
+  · have hTs : ContinuousLinearMap.adjoint T = T := hT.isSelfAdjoint
+    change ContinuousLinearMap.adjoint _ = _
+    rw [ContinuousLinearMap.adjoint_comp, ContinuousLinearMap.adjoint_comp,
+      ContinuousLinearMap.adjoint_adjoint, hTs, ContinuousLinearMap.comp_assoc]
+
+end ConjProj
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- A global depth projection of the main base of the catalog `s` with an inherited mask at the
+depth `h`, conjugated to the main column space by the relabeling of the relevant labels. -/
+noncomputable def gProjC (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (h : ℤ) :
+    ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+  (colRelabel (bf.rv fp.Mc s)).comp ((((bf.mainBase fp.Mc s mb).withMask M).proj h).comp
+    (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s))))
+
+theorem gProjC_isStarProjection (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (h : ℤ) :
+    IsStarProjection (fp.gProjC s mb M h) :=
+  isStarProjection_conj (bf.rv_injective fp.Mc s)
+    (((bf.mainBase fp.Mc s mb).withMask M).isStarProjection_proj h)
+
+/-- Conjugation preserves the composition of global projections. -/
+theorem gProjC_comp (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M M' : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (h h' : ℤ) :
+    (fp.gProjC s mb M h).comp (fp.gProjC s mb M' h') =
+      (colRelabel (bf.rv fp.Mc s)).comp
+        (((((bf.mainBase fp.Mc s mb).withMask M).proj h).comp
+          (((bf.mainBase fp.Mc s mb).withMask M').proj h')).comp
+          (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s)))) := by
+  refine ContinuousLinearMap.ext fun z => ?_
+  unfold gProjC
+  simp only [ContinuousLinearMap.comp_apply]
+  rw [colRelabel_adjoint_apply_relabel (bf.rv_injective fp.Mc s)]
+
+/-- Global projections with nested masks at one depth are nested. -/
+theorem gProjC_mask_nested (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    {M M' : InheritedColumnMask (bf.mainTree fp.Mc s mb)}
+    (hM : ∀ c ∈ (bf.mainTree fp.Mc s mb).cells, M.labels c ⊆ M'.labels c) (h : ℤ) :
+    (fp.gProjC s mb M h).comp (fp.gProjC s mb M' h) = fp.gProjC s mb M h := by
+  rw [fp.gProjC_comp]
+  rw [(bf.mainBase fp.Mc s mb).proj_mask_nested hM h]
+  rfl
+
+/-- The global projections commute with the restriction to every cell of depth at most the
+clamped depth. -/
+theorem gProjC_commute (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (h : ℤ) {Q : ℤ × ℤ}
+    (hQ : Q.1 ≤ (bf.mainBase fp.Mc s mb).depth h) :
+    (columnL2Restriction (dyadicGridCell A.G Q.1 Q.2)
+      (dyadicGridCell_measurable A.G Q.1 Q.2)).comp (fp.gProjC s mb M h) =
+    (fp.gProjC s mb M h).comp (columnL2Restriction (dyadicGridCell A.G Q.1 Q.2)
+      (dyadicGridCell_measurable A.G Q.1 Q.2)) := by
+  have h1 := ((bf.mainBase fp.Mc s mb).withMask M).proj_commute_restrict h (Q := Q) hQ
+  refine ContinuousLinearMap.ext fun z => ?_
+  have e := DFunLike.congr_fun h1 (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s)) z)
+  simp only [ContinuousLinearMap.comp_apply] at e
+  unfold gProjC
+  simp only [ContinuousLinearMap.comp_apply]
+  rw [← colRelabel_restrict, colRelabel_adjoint_restrict]
+  exact congrArg (colRelabel (bf.rv fp.Mc s)) e
+
+/-- On an active cell of the depth, the global projection with the inherited mask of a main
+mask agrees with the cell main projection, on inputs in the range of the relabeling. -/
+theorem gProjC_bridge (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s) (r : ℕ)
+    (M : ℤ × ℤ → bf.Vtx → Prop)
+    (hM : ∀ c ∈ A.cells, ∀ d ∈ A.cells, dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+      ∀ x, M d x → M c x) {I : ℤ × ℤ} (hI : I ∈ A.cells) {y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)}
+    (hy : y ∈ LinearMap.range (colRelabel (bf.rv fp.Mc s)).toLinearMap) :
+    columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.gProjC s mb (bf.mainMaskT l fp.Mc s mb r M hM) I.1 y) =
+      mainProj A.G fp.Mc (bf.origCols l) s I r (M I)
+        (columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+          y) := by
+  unfold gProjC
+  simp only [ContinuousLinearMap.comp_apply]
+  rw [bf.proj_bridge l fp.Mc s mb r M hM hI,
+    colRelabel_adjoint_of_mem_range (bf.rv_injective fp.Mc s) hy]
+
+/-- The global projections stay in the range of the relabeling. -/
+theorem gProjC_mem_range (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (h : ℤ) (y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    fp.gProjC s mb M h y ∈ LinearMap.range (colRelabel (bf.rv fp.Mc s)).toLinearMap :=
+  ⟨_, rfl⟩
+
+/-- Physical vectors lie in the range of the relabeling. -/
+theorem physMain_mem_range (s : List (CatCol bf.Vtx)) {U : Type*} [Fintype U] (x : ColumnL2 U) :
+    fp.physMain U x ∈ LinearMap.range (colRelabel (bf.rv fp.Mc s)).toLinearMap :=
+  ⟨physEmbed U (bf.RLab fp.Mc s) x, colRelabel_physEmbed _ x⟩
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (bf : A.BasicFamilies)
+
+open scoped Classical in
+/-- The inherited main masks are monotone in the vertex masks. -/
+theorem mainMaskT_labels_mono (l : Fin 4) (Mc : ℕ) (s : List (CatCol bf.Vtx))
+    (mb : bf.MainBudget s) (r : ℕ) {M M' : ℤ × ℤ → bf.Vtx → Prop}
+    (hM : ∀ c ∈ A.cells, ∀ d ∈ A.cells, dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+      ∀ x, M d x → M c x)
+    (hM' : ∀ c ∈ A.cells, ∀ d ∈ A.cells, dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+      ∀ x, M' d x → M' c x)
+    (hMM : ∀ c x, M c x → M' c x) :
+    ∀ c ∈ (bf.mainTree Mc s mb).cells,
+      (bf.mainMaskT l Mc s mb r M hM).labels c ⊆ (bf.mainMaskT l Mc s mb r M' hM').labels c := by
+  intro c _ v hv
+  change v ∈ (match deepAnc (A := A) c with
+    | none => ∅
+    | some a => Finset.univ.filter fun v : bf.RLab Mc s => bf.mainPred l s a r (M a) v.1) at hv
+  change v ∈ (match deepAnc (A := A) c with
+    | none => ∅
+    | some a => Finset.univ.filter fun v : bf.RLab Mc s => bf.mainPred l s a r (M' a) v.1)
+  revert hv
+  generalize deepAnc (A := A) c = o
+  intro hv
+  cases o with
+  | none => exact absurd hv (Finset.notMem_empty _)
+  | some a =>
+    have hv' := (Finset.mem_filter.mp hv).2
+    refine Finset.mem_filter.mpr ⟨Finset.mem_univ _, ?_⟩
+    obtain ⟨x | n, hrel⟩ := v
+    · exact ⟨hv'.1, hMM _ _ hv'.2⟩
+    · obtain ⟨hn, hab, hr, hMn⟩ := hv'
+      exact ⟨hn, hab, hr, hMM _ _ hMn⟩
+
+end ActiveSetup.BasicFamilies
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The cell-independent descriptors of the positive filters of a slot along a positive chain:
+the ball filter of the level `j`, then the cumulative layers, each with its rank. -/
+def slotDescM (j : ℕ) (t : List ℕ) : List (ℕ × Option ℕ) :=
+  (fp.brank j, none) :: t.map fun m => (fp.crank m, some m)
+
+open Classical in
+/-- The pad mask of a descriptor at a cell: the ball mask of the group or the cumulative mask. -/
+def stepMaskM (G : bf.Grp) (j : ℕ) : Option ℕ → Fin fp.P → ℤ × ℤ → bf.Vtx → Prop
+  | none, p, I => fp.bmask I G j (p + 1)
+  | some m, p, I => fp.cmask I m (p + 1)
+
+open Classical in
+theorem stepMaskM_mono (G : bf.Grp) (j : ℕ) (o : Option ℕ) (p : Fin fp.P) :
+    ∀ c ∈ A.cells, ∀ d ∈ A.cells, dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+      ∀ x, fp.stepMaskM G j o p d x → fp.stepMaskM G j o p c x := by
+  intro c hc d hd hcd x hx
+  cases o with
+  | none => exact fp.bmask_mono hc hd hcd G j (p + 1) x hx
+  | some m => exact fp.cmask_mono hc hd hcd m (p + 1) x hx
+
+open Classical in
+theorem stepMaskM_pad_mono (G : bf.Grp) (j : ℕ) (o : Option ℕ) {p p' : Fin fp.P}
+    (hpp : p ≤ p') (I : ℤ × ℤ) (x : bf.Vtx) :
+    fp.stepMaskM G j o p I x → fp.stepMaskM G j o p' I x := by
+  have h : (p : ℕ) + 1 ≤ (p' : ℕ) + 1 := by have : (p : ℕ) ≤ p' := hpp; omega
+  cases o with
+  | none => exact fp.bmask_pad_mono I G j h x
+  | some m => exact fp.cmask_pad_mono I m h x
+
+theorem slotFiltM_eq (G : bf.Grp) (j : ℕ) (I : ℤ × ℤ) (t : List ℕ) :
+    fp.slotFiltM G j I t = (fp.slotDescM j t).map fun e =>
+      (e.1, fun p : Fin fp.P => fp.stepMaskM G j e.2 p I) := by
+  unfold slotFiltM slotDescM
+  simp only [List.map_cons, List.map_map]
+  rfl
+
+/-- The merged descriptors of a pair of positive chains of the complement slots. -/
+def mergeDescM (jc jd : ℕ) (t t' : List ℕ) : List (Bool × ℕ × Option ℕ) :=
+  rankMerge Prod.fst (fp.slotDescM jc t) (fp.slotDescM jd t')
+
+/-- The rank merge of the slot filters of a cell is the list of the merged descriptors with their
+cell masks. -/
+theorem rankMerge_slotFiltM (G : bf.Grp) (jc jd : ℕ) (I : ℤ × ℤ) (t t' : List ℕ) :
+    rankMerge Prod.fst (fp.slotFiltM G jc I t) (fp.slotFiltM G jd I t') =
+      (fp.mergeDescM jc jd t t').map fun e =>
+        (e.1, e.2.1, fun p : Fin fp.P => fp.stepMaskM G (if e.1 then jc else jd) e.2.2 p I) := by
+  rw [fp.slotFiltM_eq, fp.slotFiltM_eq, rankMerge_map Prod.fst Prod.fst
+    (fun e => (e.1, fun p : Fin fp.P => fp.stepMaskM G jc e.2 p I))
+    (fun e => (e.1, fun p : Fin fp.P => fp.stepMaskM G jd e.2 p I)) (fun _ => rfl) (fun _ => rfl)]
+  unfold mergeDescM
+  refine List.map_congr_left fun e _ => ?_
+  obtain ⟨b, x⟩ := e
+  cases b <;> rfl
+
+/-- The inherited helper mask (rank `L + 5`) of a descriptor at a pad, on the main tree of the
+side slot `a` with its catalog `s_a`. -/
+noncomputable def hMaskM (a : Fin 4) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) (p : Fin fp.P) :
+    InheritedColumnMask (bf.mainTree fp.Mc sA mbA) :=
+  bf.mainMaskT a fp.Mc sA mbA (fp.Lc + 5)
+    (fun c => fp.stepMaskM G (if e.1 then jc else jd) e.2.2 p c)
+    (fp.stepMaskM_mono G _ e.2.2 p)
+
+/-- The layers `(0, false), …, (n - 1, false)`. -/
+def lsOf (n : ℕ) : List (ℕ × Bool) := (List.range n).map fun k => (k, false)
+
+theorem lsOf_length (n : ℕ) : (lsOf n).length = n := by simp [lsOf]
+
+theorem lsOf_succ (n : ℕ) : lsOf (n + 1) = lsOf n ++ [(n, false)] := by
+  simp [lsOf, List.range_succ]
+
+/-- The global helper prefix of the descriptors `D` at the depth `h` on the relevant labels of
+the side slot: the averaged global helper projections of the steps, in step order. -/
+noncomputable def gPreR (a : Fin 4) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ)) (h : ℤ) :
+    ColumnL2 (bf.RLab fp.Mc sA) →L[ℂ] ColumnL2 (bf.RLab fp.Mc sA) :=
+  globHist (bf.mainBase fp.Mc sA mbA)
+    (fun k p => fp.hMaskM a sA mbA G jc jd (D.getD k (true, 0, none)) p) (lsOf D.length) h
+
+/-- The global band pad family of the step `e` after the prefix `D`, on the relevant labels. -/
+noncomputable def gBandR (a : Fin 4) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (n : ℕ) (h : ℤ) : ColumnL2 (bf.RLab fp.Mc sA) →L[ℂ] ColumnL2 (bf.RLab fp.Mc sA) :=
+  (padFamC (fun p => ((bf.mainBase fp.Mc sA mbA).withMask
+    (fp.hMaskM a sA mbA G jc jd e p)).proj h) n).comp (fp.gPreR a sA mbA G jc jd D h)
+
+/-- The global band pad family of a step after its prefix, conjugated to the main column space
+(the operators `A_{p}` of the banded side, blueprint line 2411). -/
+noncomputable def gBandC (a : Fin 4) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (n : ℕ) (h : ℤ) : ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+  (colRelabel (bf.rv fp.Mc sA)).comp ((fp.gBandR a sA mbA G jc jd e D n h).comp
+    (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc sA))))
+
+/-- Blueprint lines 2411-2413 ("on the banded side pay at most `P + 1` indices"): the bands of the
+global pad family after the prefix are Bessel. -/
+theorem gBandC_bessel (a : Fin 4) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (h : ℤ) (y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    ∑ p ∈ Finset.range (fp.P + 1), ‖(fp.gBandC a sA mbA G jc jd e D (p + 1) h -
+      fp.gBandC a sA mbA G jc jd e D p h) y‖ ^ 2 ≤ ‖y‖ ^ 2 := by
+  set Q := fun p : Fin fp.P => ((bf.mainBase fp.Mc sA mbA).withMask
+    (fp.hMaskM a sA mbA G jc jd e p)).proj h
+  set z := fp.gPreR a sA mbA G jc jd D h
+    (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc sA)) y)
+  have hb := padFamC_bessel Q (fun p => ((bf.mainBase fp.Mc sA mbA).withMask
+      (fp.hMaskM a sA mbA G jc jd e p)).isStarProjection_proj h)
+    (fun p p' hpp => (bf.mainBase fp.Mc sA mbA).proj_mask_nested
+      (bf.mainMaskT_labels_mono a fp.Mc sA mbA (fp.Lc + 5) _ _
+        fun c x hx => fp.stepMaskM_pad_mono G _ e.2.2 hpp c x hx) h) z
+  have hz : ‖z‖ ≤ ‖y‖ := (globHist_norm_le _ fp.hP _ _ h _).trans
+    (norm_colRelabel_adjoint_le (bf.rv_injective fp.Mc sA) y)
+  refine le_trans (le_of_eq ?_) (hb.trans (pow_le_pow_left₀ (norm_nonneg _) hz 2))
+  refine Finset.sum_congr rfl fun p _ => ?_
+  congr 1
+  unfold gBandC gBandR
+  simp only [sub_apply, ContinuousLinearMap.comp_apply]
+  rw [← map_sub, norm_colRelabel (bf.rv_injective fp.Mc sA)]
+
+/-- The global band pad family commutes with the restriction to every cell of depth at most the
+clamped depth. -/
+theorem gBandC_commute (a : Fin 4) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (n : ℕ) (h : ℤ) {Q : ℤ × ℤ} (hQ : Q.1 ≤ (bf.mainBase fp.Mc sA mbA).depth h) :
+    (columnL2Restriction (dyadicGridCell A.G Q.1 Q.2)
+      (dyadicGridCell_measurable A.G Q.1 Q.2)).comp (fp.gBandC a sA mbA G jc jd e D n h) =
+    (fp.gBandC a sA mbA G jc jd e D n h).comp (columnL2Restriction (dyadicGridCell A.G Q.1 Q.2)
+      (dyadicGridCell_measurable A.G Q.1 Q.2)) := by
+  set rQ := columnL2Restriction (V := bf.RLab fp.Mc sA) (dyadicGridCell A.G Q.1 Q.2)
+    (dyadicGridCell_measurable A.G Q.1 Q.2)
+  have hproj : ∀ (M : InheritedColumnMask (bf.mainTree fp.Mc sA mbA)),
+      (((bf.mainBase fp.Mc sA mbA).withMask M).proj h).comp rQ =
+        rQ.comp (((bf.mainBase fp.Mc sA mbA).withMask M).proj h) := fun M =>
+    (((bf.mainBase fp.Mc sA mbA).withMask M).proj_commute_restrict h hQ).symm
+  have hpre : (fp.gPreR a sA mbA G jc jd D h).comp rQ =
+      rQ.comp (fp.gPreR a sA mbA G jc jd D h) := by
+    unfold gPreR globHist
+    exact layerOp_commute _ rQ (fun m => opAvg_commute _ _ fun p => hproj _) _
+  have hpad : (padFamC (fun p => ((bf.mainBase fp.Mc sA mbA).withMask
+      (fp.hMaskM a sA mbA G jc jd e p)).proj h) n).comp rQ =
+      rQ.comp (padFamC (fun p => ((bf.mainBase fp.Mc sA mbA).withMask
+        (fp.hMaskM a sA mbA G jc jd e p)).proj h) n) := by
+    unfold padFamC
+    split_ifs
+    · simp
+    · exact hproj _
+    · rfl
+  have hR : (fp.gBandR a sA mbA G jc jd e D n h).comp rQ =
+      rQ.comp (fp.gBandR a sA mbA G jc jd e D n h) := by
+    unfold gBandR
+    rw [ContinuousLinearMap.comp_assoc, hpre, ← ContinuousLinearMap.comp_assoc, hpad,
+      ContinuousLinearMap.comp_assoc]
+  refine ContinuousLinearMap.ext fun z => ?_
+  have e1 := DFunLike.congr_fun hR (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc sA)) z)
+  simp only [ContinuousLinearMap.comp_apply] at e1
+  unfold gBandC
+  simp only [ContinuousLinearMap.comp_apply]
+  rw [← colRelabel_restrict, colRelabel_adjoint_restrict]
+  exact congrArg (colRelabel (bf.rv fp.Mc sA)) e1.symm
+
+end ActiveSetup.BasicFamilies.FamParams
+
+section LayerCongr
+variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H]
+
+/-- A layer product depends only on the layers used. -/
+theorem layerOp_congr {C C' : ℕ → H →L[ℂ] H} :
+    ∀ (ls : List (ℕ × Bool)), (∀ x ∈ ls, C x.1 = C' x.1) → layerOp C ls = layerOp C' ls := by
+  intro ls
+  induction ls using List.reverseRecOn with
+  | nil => intro _; rfl
+  | append_singleton l x ih =>
+    intro h
+    rw [layerOp_append, layerOp_append, ih fun y hy => h y (List.mem_append_left _ hy),
+      h x (List.mem_append_right _ (List.mem_singleton_self x))]
+
+end LayerCongr
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+theorem mem_lsOf {n : ℕ} {x : ℕ × Bool} (hx : x ∈ lsOf n) : x.1 < n ∧ x.2 = false := by
+  simp only [lsOf, List.mem_map, List.mem_range] at hx
+  obtain ⟨k, hk, rfl⟩ := hx
+  exact ⟨hk, rfl⟩
+
+/-- The jump constant of a helper product with one more layer. -/
+noncomputable def bandJumpM (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s) (n : ℕ) : ℝ :=
+  (n + 1) * ∑ m ∈ Finset.range (n + 1), compressionC (bf.mainTree fp.Mc s mb) m ^ 2
+
+theorem bandJumpM_nonneg (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s) (n : ℕ) :
+    0 ≤ fp.bandJumpM s mb n := by
+  unfold bandJumpM
+  have := Finset.sum_nonneg fun m (_ : m ∈ Finset.range (n + 1)) =>
+    sq_nonneg (compressionC (bf.mainTree fp.Mc s mb) m)
+  positivity
+
+open Classical in
+/-- Blueprint lines 2411-2413 (the outer bands of a fixed input under the subsequent product,
+`lem:prefix`): over disjoint depth intervals, the jumps of the global band pad family of a step
+after its prefix, on any restrictions, have total square at most `(|D| + 1) Σ_{m ≤ |D|} C_m²`
+times the square of the fixed input. -/
+theorem gBandC_jump (a : Fin 4) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (n : ℕ) {ι : Type*} [Fintype ι] (r t : ι → ℕ) (hrt : ∀ i, r i ≤ t i)
+    (hdis : ∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
+    (E : ι → Set ℝ) (hE : ∀ i, MeasurableSet (E i)) (x : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    ∑ i, ‖columnL2Restriction (E i) (hE i)
+        ((fp.gBandC a sA mbA G jc jd e D n (A.R.1 + t i) -
+          fp.gBandC a sA mbA G jc jd e D n (A.R.1 + r i)) x)‖ ^ 2 ≤
+      fp.bandJumpM sA mbA D.length * ‖x‖ ^ 2 := by
+  set Ψ := bf.mainBase fp.Mc sA mbA
+  set Am : ℕ → Fin fp.P → InheritedColumnMask Ψ.D := fun k p =>
+    fp.hMaskM a sA mbA G jc jd (D.getD k (true, 0, none)) p
+  set z := ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc sA)) x
+  have hz : ‖z‖ ≤ ‖x‖ := norm_colRelabel_adjoint_le (bf.rv_injective fp.Mc sA) x
+  have hroot : Ψ.D.root.1 = A.R.1 := rfl
+  have hD : Ψ.D = bf.mainTree fp.Mc sA mbA := rfl
+  -- reduction to the relevant labels
+  have hred : ∀ i, ‖columnL2Restriction (E i) (hE i)
+      ((fp.gBandC a sA mbA G jc jd e D n (A.R.1 + t i) -
+        fp.gBandC a sA mbA G jc jd e D n (A.R.1 + r i)) x)‖ ≤
+      ‖fp.gBandR a sA mbA G jc jd e D n (A.R.1 + t i) z -
+        fp.gBandR a sA mbA G jc jd e D n (A.R.1 + r i) z‖ := by
+    intro i
+    refine (columnL2Indicator_norm_le _ (hE i) _).trans (le_of_eq ?_)
+    unfold gBandC
+    simp only [sub_apply, ContinuousLinearMap.comp_apply]
+    rw [← map_sub, norm_colRelabel (bf.rv_injective fp.Mc sA)]
+  have hlen := lsOf_length D.length
+  have hbase : ∑ i, ‖fp.gPreR a sA mbA G jc jd D (A.R.1 + t i) z -
+      fp.gPreR a sA mbA G jc jd D (A.R.1 + r i) z‖ ^ 2 ≤
+      fp.bandJumpM sA mbA D.length * ‖z‖ ^ 2 := by
+    have h := globHist_jump Ψ fp.hP Am (lsOf D.length) r t hrt hdis z
+    rw [hlen, hroot, hD] at h
+    refine le_trans (le_of_eq rfl) (h.trans ?_)
+    unfold bandJumpM
+    have hS : ∑ m ∈ Finset.range D.length, compressionC (bf.mainTree fp.Mc sA mbA) m ^ 2 ≤
+        ∑ m ∈ Finset.range (D.length + 1), compressionC (bf.mainTree fp.Mc sA mbA) m ^ 2 :=
+      Finset.sum_le_sum_of_subset_of_nonneg (Finset.range_mono (Nat.le_succ _))
+        fun m _ _ => sq_nonneg _
+    have hS0 : 0 ≤ ∑ m ∈ Finset.range D.length, compressionC (bf.mainTree fp.Mc sA mbA) m ^ 2 :=
+      Finset.sum_nonneg fun m _ => sq_nonneg _
+    have hl : (D.length : ℝ) ≤ D.length + 1 := by linarith
+    have hz2 := sq_nonneg ‖z‖
+    have h1 := mul_le_mul hl hS hS0 (by positivity)
+    nlinarith
+  refine le_trans (Finset.sum_le_sum fun i _ => pow_le_pow_left₀ (norm_nonneg _) (hred i) 2) ?_
+  refine le_trans ?_ (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (norm_nonneg _) hz 2)
+    (fp.bandJumpM_nonneg sA mbA D.length))
+  by_cases hn0 : n = 0
+  · subst hn0
+    have h0 : ∀ h, fp.gBandR a sA mbA G jc jd e D 0 h = 0 := fun h => by
+      unfold gBandR padFamC; simp
+    simp only [h0, zero_apply, sub_self, norm_zero]
+    simp only [ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, Finset.sum_const_zero]
+    exact mul_nonneg (fp.bandJumpM_nonneg sA mbA D.length) (sq_nonneg _)
+  by_cases hnP : n - 1 < fp.P
+  · -- a single pad on top of the prefix
+    set q : Fin fp.P := ⟨n - 1, hnP⟩
+    set Am' : ℕ → Fin fp.P → InheritedColumnMask Ψ.D := fun k p =>
+      if k < D.length then Am k p else fp.hMaskM a sA mbA G jc jd e q
+    have hband : ∀ h, fp.gBandR a sA mbA G jc jd e D n h =
+        globHist Ψ Am' (lsOf (D.length + 1)) h := by
+      intro h
+      unfold gBandR gPreR globHist
+      rw [lsOf_succ, layerOp_append]
+      simp only [Bool.false_eq_true, ite_false]
+      have hlay : layerOp (fun m => opAvg fun p : Fin fp.P => (Ψ.withMask (Am' m p)).proj h)
+          (lsOf D.length) =
+          layerOp (fun m => opAvg fun p : Fin fp.P => (Ψ.withMask (Am m p)).proj h)
+            (lsOf D.length) := by
+        refine layerOp_congr _ fun y hy => ?_
+        have hy1 := (mem_lsOf hy).1
+        simp only [Am', hy1, ↓reduceIte]
+      rw [hlay]
+      congr 1
+      have htop : (fun p : Fin fp.P => (Ψ.withMask (Am' D.length p)).proj h) =
+          fun _ => (Ψ.withMask (fp.hMaskM a sA mbA G jc jd e q)).proj h := by
+        funext p
+        simp only [Am', lt_irrefl, ↓reduceIte]
+      rw [htop, opAvg_const fp.hP]
+      unfold padFamC
+      simp only [hn0, hnP, ↓reduceIte, ↓reduceDIte]
+      rfl
+    have h := globHist_jump Ψ fp.hP Am' (lsOf (D.length + 1)) r t hrt hdis z
+    rw [lsOf_length, hroot, hD] at h
+    refine le_trans (le_of_eq ?_) (h.trans (le_of_eq ?_))
+    · refine Finset.sum_congr rfl fun i _ => ?_
+      rw [hband, hband]
+    · unfold bandJumpM
+      push_cast
+      ring
+  · -- the identity on top of the prefix
+    have hband : ∀ h, fp.gBandR a sA mbA G jc jd e D n h = fp.gPreR a sA mbA G jc jd D h := by
+      intro h
+      unfold gBandR padFamC
+      simp only [hn0, hnP, ↓reduceIte, ↓reduceDIte, ContinuousLinearMap.id_comp]
+    simp only [hband]
+    exact hbase
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- On an active cell of its depth, the global band pad family of a step after its prefix acts
+as the cell helper pads of the step after the cell helper prefix, on inputs in the range of the
+relabeling (blueprint line 2411: the stacks are built from the actual transfer values). -/
+theorem gBandC_bridge (a : Fin 4) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (n : ℕ) {I : ℤ × ℤ} (hI : I ∈ A.cells) {y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)}
+    (hy : y ∈ LinearMap.range (colRelabel (bf.rv fp.Mc sA)).toLinearMap) :
+    columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.gBandC a sA mbA G jc jd e D n I.1 y) =
+      padFam (fun p => mainProj A.G fp.Mc (bf.origCols a) sA I (fp.Lc + 5)
+          (fp.stepMaskM G (if e.1 then jc else jd) e.2.2 p I)) n
+        (operatorComplementProduct (fun k => opAvg fun p =>
+            mainProj A.G fp.Mc (bf.origCols a) sA I (fp.Lc + 5)
+              (fp.stepMaskM G (if (D.getD k (true, 0, none)).1 then jc else jd)
+                (D.getD k (true, 0, none)).2.2 p I)) (fun _ => false) D.length
+          (columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+            (dyadicGridCell_measurable A.G I.1 I.2) y)) := by
+  set rI := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
+    (dyadicGridCell_measurable A.G I.1 I.2)
+  obtain ⟨R, hR⟩ : ∃ R : ColumnL2 (bf.RLab fp.Mc sA) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc),
+      R = rI.comp (colRelabel (bf.rv fp.Mc sA)) := ⟨_, rfl⟩
+  set cellQ : (Bool × ℕ × Option ℕ) → Fin fp.P →
+      ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun e' p =>
+    mainProj A.G fp.Mc (bf.origCols a) sA I (fp.Lc + 5)
+      (fp.stepMaskM G (if e'.1 then jc else jd) e'.2.2 p I)
+  -- the restricted relabeling intertwines the global and the cell helper projections
+  have hfac : ∀ e' p, R.comp (((bf.mainBase fp.Mc sA mbA).withMask
+      (fp.hMaskM a sA mbA G jc jd e' p)).proj I.1) = (cellQ e' p).comp R := by
+    intro e' p
+    rw [hR]
+    refine ContinuousLinearMap.ext fun z => ?_
+    exact bf.proj_bridge a fp.Mc sA mbA (fp.Lc + 5)
+      (fun c => fp.stepMaskM G (if e'.1 then jc else jd) e'.2.2 p c) _ hI z
+  -- the prefix
+  have hpre : R.comp (fp.gPreR a sA mbA G jc jd D I.1) =
+      (operatorComplementProduct (fun k => opAvg fun p => cellQ (D.getD k (true, 0, none)) p)
+        (fun _ => false) D.length).comp R := by
+    unfold gPreR globHist
+    rw [layerOp_intertwine₂ _ (fun k => opAvg fun p => cellQ (D.getD k (true, 0, none)) p) R
+      (fun k => opAvg_intertwine₂ _ _ R fun p => hfac _ p), layerOp_eq_complementProduct,
+      lsOf_length]
+    congr 1
+    refine operatorComplementProduct_congr₂ D.length fun k hk => ⟨?_, ?_⟩
+    · have hg : (lsOf D.length).getD k (0, false) = (k, false) := by
+        unfold lsOf
+        rw [List.getD_eq_getElem _ _ (by simp; omega)]
+        simp
+      rw [hg]
+    · have hg : (lsOf D.length).getD k (0, false) = (k, false) := by
+        unfold lsOf
+        rw [List.getD_eq_getElem _ _ (by simp; omega)]
+        simp
+      rw [hg]
+  -- the pad family
+  have hpad : R.comp (padFamC (fun p => ((bf.mainBase fp.Mc sA mbA).withMask
+      (fp.hMaskM a sA mbA G jc jd e p)).proj I.1) n) =
+      (padFamC (cellQ e) n).comp R := by
+    unfold padFamC
+    split_ifs
+    · simp
+    · exact hfac e _
+    · simp
+  have hy' : R (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc sA)) y) = rI y := by
+    rw [hR, ContinuousLinearMap.comp_apply,
+      colRelabel_adjoint_of_mem_range (bf.rv_injective fp.Mc sA) hy]
+  have key : rI (fp.gBandC a sA mbA G jc jd e D n I.1 y) =
+      padFamC (cellQ e) n (operatorComplementProduct
+        (fun k => opAvg fun p => cellQ (D.getD k (true, 0, none)) p) (fun _ => false) D.length
+        (rI y)) := by
+    have hc : rI (fp.gBandC a sA mbA G jc jd e D n I.1 y) = R (fp.gBandR a sA mbA G jc jd e D n I.1
+        (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc sA)) y)) := by
+      rw [hR]; rfl
+    rw [hc]
+    unfold gBandR
+    rw [ContinuousLinearMap.comp_apply, ← ContinuousLinearMap.comp_apply R, hpad,
+      ContinuousLinearMap.comp_apply, ← ContinuousLinearMap.comp_apply R, hpre,
+      ContinuousLinearMap.comp_apply, hy']
+  rw [key, ← padFam_apply_eq]
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- Blueprint lem:variation as a variation capacity (`VarCap`) of the physical global coarse
+outputs of a basic slot for a set of groups of one color: over any disjoint depth intervals and
+unions of certified active cells at the right endpoints, the restricted jumps have total square at
+most `G₀ · 4 |R|`. -/
+theorem varCap_basicOut (l : Fin 4) (s : List (CatCol bf.Vtx))
+    (hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
+      e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
+    (htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx) (mb : bf.MainBudget s)
+    (hanc : A.AncClosed) (hne : A.cells.Nonempty) (Gs : Finset bf.Grp) (k j : ℕ)
+    (hPH : fp.bbase j + fp.P ≤ fp.Hmax) (ls : List (ℕ × Bool))
+    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
+    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
+    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
+    {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset ({G // G ∈ Gs} × (bf.Lab ⊕ Fin fp.Mc))).filter
+      fun q => ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
+          (fp.bmask I q.1.1 j (p + 1)) d).card ≤ N)
+    (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)
+    (hDm : Real.log (2 * mb.B) ≤ kk ^ c) (hDb : Real.log (2 * A.colBudget) ≤ kk ^ c)
+    (hn : (ls.length : ℝ) ≤ c * (Real.log kk + 1)) :
+    A.VarCap Gs (fun G h => fp.physMain (bf.Lab ⊕ Fin fp.Mc) (fp.basicOut l s mb G j ls h))
+      (fun G J => fp.Cert k G J)
+      (Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
+        (1 + Real.log (2 * kk)) ^ 2) * (4 * dyadicGridLength A.G A.R.1)) := by
+  intro ι _ r t hrt hdis htd Ec hEc
+  have h := fp.basic_variation_G0 l s hT htag d mb hanc hne (ι := {G // G ∈ Gs}) (ι' := ι)
+    Subtype.val Subtype.val_injective k j hPH ls r t hrt hdis htd (fun G i => Ec G.1 i)
+    (fun G i J hJ => ⟨(hEc G.1 i J hJ).1, (hEc G.1 i J hJ).2.1⟩)
+    (fun G i J hJ => (hEc G.1 i J hJ).2.2) hroot hτ hτ1 hHed hN hτN c hc hk hDm hDb hn
+  refine le_trans ?_ h
+  rw [Fintype.sum_prod_type, ← Finset.sum_coe_sort Gs]
+  refine Finset.sum_le_sum fun G _ => Finset.sum_le_sum fun i _ => ?_
+  refine pow_le_pow_left₀ (norm_nonneg _) ?_ 2
+  rw [← map_sub, ← physEmbed_restrict]
+  exact norm_physEmbed_apply_le _
+
+open Classical in
+/-- Blueprint `eq:stack-energy` (lines 2393-2423) for the banded side of one transfer step on the
+main columns, over all binary levels: for a side `S_h = Z_h - Z_b + W` with the rolling outputs
+`Z` of variation capacity `B` and block inputs `W` of energy `E_W`, the glued position stacks of
+the bands `(A_{p+1} - A_p) S` of the global helper pads of the step after its helper prefix have
+total square at most `N (2B + 16 (P+2) C_j E_W + 16 (P+2) N C_j N B) + E_W`, with the product-jump
+constant `C_j = (|D| + 1) Σ_{m ≤ |D|} C_m²` of the helper prefix (`bandJumpM`). -/
+theorem bandStackM_all (hanc : A.AncClosed) (a : Fin 4) (sA : List (CatCol bf.Vtx))
+    (mbA : bf.MainBudget sA) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ)
+    (D : List (Bool × ℕ × Option ℕ)) (Gs : Finset bf.Grp)
+    (Z : bf.Grp → ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (ok : bf.Grp → ℤ × ℤ → Prop) {B : ℝ}
+    (hcap : A.VarCap Gs Z ok B) {K N : ℕ} (hKN : K ≤ 2 ^ N)
+    (Bs : Finset ℕ) (U : bf.Grp → ℕ → Finset (ℤ × ℤ)) (off : ℤ × ℤ → ℕ)
+    (hoff : ∀ (J : ℤ × ℤ) (β m : ℕ), m < K → J.1 = A.R.1 + ((K * β + m : ℕ) : ℤ) → off J = m)
+    (hU : ∀ g β, ∀ I ∈ U g β, I ∈ A.cells ∧ I.1 = A.R.1 + (K * β + off I : ℕ) ∧ off I < K)
+    (hok : ∀ g ∈ Gs, ∀ β, ∀ I ∈ U g β, ∀ J ∈ A.cells,
+      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2 → ok g J)
+    (W : bf.Grp → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {EW : ℝ}
+    (hEW : ∑ g ∈ Gs, ∑ β ∈ Bs, ‖columnL2Restriction
+      (⋃ J ∈ (U g β).image (fun I => ancAt A.G I (A.R.1 + ((K * β : ℕ) : ℤ))),
+        dyadicGridCell A.G J.1 J.2)
+      (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
+      (W g β)‖ ^ 2 ≤ EW)
+    (Sa : bf.Grp → ℕ → ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (hSa : ∀ g β h, Sa g β h = Z g h - Z g (A.R.1 + ((K * β : ℕ) : ℤ)) + W g β) :
+    ∑ k : Fin (N + 1), ∑ g ∈ Gs, ∑ β ∈ Bs, ∑ q ∈ ((U g β).filter fun I => posAct N k (off I)).image
+        (fun I => off I / 2 ^ ((k : ℕ) + 1)), ∑ p ∈ Finset.range (fp.P + 1),
+      ‖gluedStack A.G ((U g β).filter fun I => posAct N k (off I))
+        (fun I => off I / 2 ^ ((k : ℕ) + 1))
+        (fun q => posVal (fun n => (fp.gBandC a sA mbA g jc jd e D (p + 1)
+            (A.R.1 + (K * β + n : ℕ)) -
+          fp.gBandC a sA mbA g jc jd e D p (A.R.1 + (K * β + n : ℕ)))
+          (Sa g β (A.R.1 + (K * β + n : ℕ)))) N k q) q‖ ^ 2 ≤
+      N * (2 * B + 16 * (fp.P + 2) * (fp.bandJumpM sA mbA D.length * EW) +
+        16 * (fp.P + 2) * (N * (fp.bandJumpM sA mbA D.length * (N * B)))) + EW := by
+  refine A.bandStack_all hanc Gs Z ok hcap hKN Bs U off hoff hU hok
+    (fun g n h => fp.gBandC a sA mbA g jc jd e D n h)
+    (fun g h y => fp.gBandC_bessel a sA mbA g jc jd e D h y)
+    (fun g n h J hJh hJN => fp.gBandC_commute a sA mbA g jc jd e D n h (Q := J) ?_)
+    (fp.bandJumpM_nonneg sA mbA D.length)
+    (fun g _ n ι _ r t hrt hdis Ec _ x => fp.gBandC_jump a sA mbA g jc jd e D n r t hrt hdis
+      (fun i => ⋃ J ∈ Ec i, dyadicGridCell A.G J.1 J.2)
+      (fun i => Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2) x)
+    W hEW Sa hSa
+  change J.1 ≤ max A.R.1 (min h (A.R.1 + A.treeDepth))
+  exact le_trans (le_min hJh hJN) (le_max_right _ _)
+
+end ActiveSetup.BasicFamilies.FamParams
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## The number of configurations (blueprint line 2419) -/
+
+/-- Blueprint line 2419 ("search leaves, transfer steps, side-component choices, and length
+configurations have total cost `G₀`"), numerically: with the search depth `fuel` and the number of
+binary lengths `N` at most `c X`, `X = 1 + log 2k ≥ 1`, the product of the number of leaves
+(`≤ 2^fuel`), of chain pairs (`≤ 4^fuel`), of transfer steps (`≤ 2 fuel + 2`), of near offsets and
+side components (`≤ 30`) and of pairs of binary lengths (`≤ (N + 1)²`) is at most
+`exp((7c + 6) X²)`, a compression-loss type constant `G₀`. -/
+theorem config_count_le {c fuel N : ℕ} {X : ℝ} (hX : 1 ≤ X) (hf : (fuel : ℝ) ≤ c * X)
+    (hN : (N : ℝ) ≤ c * X) :
+    (2 : ℝ) ^ fuel * 4 ^ fuel * 30 * (2 * fuel + 2) * ((N : ℝ) + 1) ^ 2 ≤
+      Real.exp ((7 * c + 6) * X ^ 2) := by
+  have hf0 : (0 : ℝ) ≤ fuel := Nat.cast_nonneg _
+  have hN0 : (0 : ℝ) ≤ N := Nat.cast_nonneg _
+  have he1 : (2.7 : ℝ) ≤ Real.exp 1 := by have := Real.exp_one_gt_d9; linarith
+  have he3 : (8 : ℝ) ≤ Real.exp 3 := by
+    have h3 : Real.exp 3 = Real.exp 1 ^ 3 := by rw [← Real.exp_nat_mul]; norm_num
+    rw [h3]
+    calc (8 : ℝ) ≤ 2.7 ^ 3 := by norm_num
+      _ ≤ Real.exp 1 ^ 3 := pow_le_pow_left₀ (by norm_num) he1 3
+  have h8 : (2 : ℝ) ^ fuel * 4 ^ fuel ≤ Real.exp (3 * fuel) := by
+    have e : (2 : ℝ) ^ fuel * 4 ^ fuel = 8 ^ fuel := by rw [← mul_pow]; norm_num
+    rw [e, show Real.exp (3 * fuel) = Real.exp 3 ^ fuel by
+      rw [← Real.exp_nat_mul]; ring_nf]
+    exact pow_le_pow_left₀ (by norm_num) he3 fuel
+  have h30 : (30 : ℝ) ≤ Real.exp 4 := by
+    have h4 : Real.exp 4 = Real.exp 1 ^ 4 := by rw [← Real.exp_nat_mul]; norm_num
+    rw [h4]
+    calc (30 : ℝ) ≤ 2.7 ^ 4 := by norm_num
+      _ ≤ Real.exp 1 ^ 4 := pow_le_pow_left₀ (by norm_num) he1 4
+  have hs : (2 * fuel + 2 : ℝ) ≤ Real.exp (2 * fuel + 1) := by
+    have := Real.add_one_le_exp (2 * (fuel : ℝ) + 1)
+    linarith
+  have hn : ((N : ℝ) + 1) ^ 2 ≤ Real.exp (2 * N) := by
+    have h1 : (N : ℝ) + 1 ≤ Real.exp N := by have := Real.add_one_le_exp (N : ℝ); linarith
+    calc ((N : ℝ) + 1) ^ 2 ≤ Real.exp N ^ 2 := pow_le_pow_left₀ (by positivity) h1 2
+      _ = Real.exp (2 * N) := by rw [← Real.exp_nat_mul]; ring_nf
+  have hprod : (2 : ℝ) ^ fuel * 4 ^ fuel * 30 * (2 * fuel + 2) * ((N : ℝ) + 1) ^ 2 ≤
+      Real.exp (3 * fuel) * Real.exp 4 * Real.exp (2 * fuel + 1) * Real.exp (2 * N) := by
+    gcongr
+  refine hprod.trans ?_
+  rw [← Real.exp_add, ← Real.exp_add, ← Real.exp_add]
+  refine Real.exp_le_exp.mpr ?_
+  have hX2 : X ≤ X ^ 2 := by nlinarith
+  have hc0 : (0 : ℝ) ≤ c := Nat.cast_nonneg _
+  have h1 : (fuel : ℝ) ≤ c * X ^ 2 := hf.trans (mul_le_mul_of_nonneg_left hX2 hc0)
+  have h2 : (N : ℝ) ≤ c * X ^ 2 := hN.trans (mul_le_mul_of_nonneg_left hX2 hc0)
+  have h3 : (1 : ℝ) ≤ X ^ 2 := by nlinarith
+  nlinarith
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The leaves of the guarded search number at most `2^fuel`, and the signed positive chains of a
+slot of a leaf at most `2^fuel` (blueprint lines 2241 and 2419). -/
+theorem leaf_chain_counts (fuel : ℕ) (up₀ : Fin 4) (s : ℕ) (l : Fin 4) :
+    (searchList fuel fp.Lc up₀).length ≤ 2 ^ fuel ∧
+      (posExpand ((leafAt fuel fp.Lc up₀ s).layers l).reverse).length ≤ 2 ^ fuel := by
+  refine ⟨searchLeaves_length_le fuel 1 fp.Lc up₀ none _, ?_⟩
+  refine (posExpand_length_le _).trans ?_
+  rw [List.length_reverse]
+  exact Nat.pow_le_pow_right (by norm_num) (leafAt_layers_length_le fuel fp.Lc up₀ s l)
+
+end ActiveSetup.BasicFamilies.FamParams
+
+end Auto
+
+end

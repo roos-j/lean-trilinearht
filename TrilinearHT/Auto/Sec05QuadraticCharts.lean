@@ -1487,6 +1487,21 @@ def IsBoundedMultivariableQuadraticChart {k d : ℕ}
     (A : MultivariableQuadraticChartData k d) : Prop :=
   ∀ z, ‖multivariableQuadraticChartAtom A z‖ ≤ 1
 
+/-- The same dimension, rational height and cutoff bounds as the one-variable
+definition. Evaluation on the zero line retains precisely this charged data. -/
+def MultivariableQuadraticChartComplexity {k d : ℕ} (c₀ : ℕ) (H : ℝ)
+    (A : MultivariableQuadraticChartData k d) : Prop :=
+  QuadraticChartComplexity c₀ H (multivariableChartAlongLine A 0)
+
+theorem multivariableChartAlongLine_complexity {k d c₀ : ℕ} {H : ℝ}
+    {A : MultivariableQuadraticChartData k d} (hA : MultivariableQuadraticChartComplexity c₀ H A)
+    (v : Fin k → ℝ) : QuadraticChartComplexity c₀ H (multivariableChartAlongLine A v) where
+  lower := hA.lower
+  dimension := hA.dimension
+  height := hA.height
+  support := hA.support
+  derivative := hA.derivative
+
 /-- Exact line restriction of the source several-variable formula. -/
 theorem multivariableChartAlongLine_atom {k d : ℕ}
     (A : MultivariableQuadraticChartData k d) (v : Fin k → ℝ) (y : ℝ) :
@@ -1534,6 +1549,232 @@ theorem multivariableChartAlongLine_bounded {k d : ℕ}
   intro y
   rw [multivariableChartAlongLine_atom]
   exact hA (y • v)
+
+/-! ### Affine substitution in several-variable charts -/
+
+section MultivariableAffine
+
+open Matrix
+
+/-- The source translation calculation of `lem:chart-operations` (lines 646-650) at an arbitrary
+horizontal position `x`: an offset `m + a`, with `m` pairing integrally with `C`, moves into the
+cutoff `χ(w + a) e(aᵀ C (w + a))` and the two linear phases and one constant phase. -/
+theorem chart_lattice_sum_translate {d : ℕ} (χ : (Fin d → ℝ) → ℂ)
+    (C : Matrix (Fin d) (Fin d) ℚ) (x a : Fin d → ℝ) (m : Fin d → ℤ)
+    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (C i j : ℝ)) :
+    (∑' n : Fin d → ℤ, χ (x + (fun i => (m i : ℝ)) + a - (fun i => (n i : ℝ))) *
+        (Real.fourierChar (chartMatrixPhase C (x + (fun i => (m i : ℝ)) + a)
+          (x + (fun i => (m i : ℝ)) + a - (fun i => (n i : ℝ)))) : ℂ)) =
+      (Real.fourierChar (chartMatrixPhase C x a + chartMatrixPhase C (fun i => (m i : ℝ)) x +
+          chartMatrixPhase C (fun i => (m i : ℝ)) a) : ℂ) *
+        ∑' n : Fin d → ℤ, (χ (x - (fun i => (n i : ℝ)) + a) *
+          (Real.fourierChar (chartMatrixPhase C a (x - (fun i => (n i : ℝ)) + a)) : ℂ)) *
+          (Real.fourierChar (chartMatrixPhase C x (x - (fun i => (n i : ℝ)))) : ℂ) := by
+  rw [← ((Equiv.addRight m).tsum_eq _), ← tsum_mul_left]
+  apply tsum_congr
+  intro n
+  obtain ⟨k, hk⟩ := chartMatrixPhase_integer_of_coefficients C m n hint
+  have hp := chartMatrixPhase_translation_identity C x a (fun i => (m i : ℝ)) (fun i => (n i : ℝ))
+  have hw : x + (fun i => (m i : ℝ)) + a - (fun i => (((Equiv.addRight m) n) i : ℝ)) =
+      x - (fun i => (n i : ℝ)) + a := by
+    funext i
+    simp only [Equiv.coe_addRight, Pi.add_apply, Pi.sub_apply, Int.cast_add]
+    ring
+  rw [hw]
+  have he : (Real.fourierChar (chartMatrixPhase C (x + (fun i => (m i : ℝ)) + a)
+      (x - (fun i => (n i : ℝ)) + a)) : ℂ) =
+      Real.fourierChar (chartMatrixPhase C x (x - (fun i => (n i : ℝ))) + chartMatrixPhase C x a +
+        chartMatrixPhase C (fun i => (m i : ℝ)) x +
+        chartMatrixPhase C a (x - (fun i => (n i : ℝ)) + a) +
+        chartMatrixPhase C (fun i => (m i : ℝ)) a) := by
+    rw [hp, ← chart_fourierChar_add_int _ k, hk]
+    congr 1
+    congr 1
+    ring
+  rw [he]
+  simp only [AddChar.map_add_eq_mul, Circle.coe_mul]
+  ring
+
+theorem chart_quadratic_sum_eq_dotProduct {k : ℕ} (Q : Matrix (Fin k) (Fin k) ℝ)
+    (z : Fin k → ℝ) : (∑ i, ∑ j, z i * Q i j * z j) = z ⬝ᵥ (Q *ᵥ z) := by
+  simp [dotProduct, Matrix.mulVec, Finset.mul_sum, mul_assoc]
+
+theorem chart_linear_sum_eq_dotProduct {k : ℕ} (b z : Fin k → ℝ) :
+    (∑ i, b i * z i) = z ⬝ᵥ b := by
+  simp [dotProduct, mul_comm]
+
+/-- The real matrix of a rational chart matrix. -/
+noncomputable def chartRealMatrix {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
+    Matrix (Fin d) (Fin d) ℝ := C.map (fun q => (q : ℝ))
+
+theorem chartMatrixPhase_eq_real {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (u w : Fin d → ℝ) :
+    chartMatrixPhase C u w = u ⬝ᵥ (chartRealMatrix C *ᵥ w) := by
+  simp [chartMatrixPhase, chartRealMatrix, dotProduct, Matrix.mulVec, Finset.mul_sum, mul_assoc]
+
+theorem chart_dotProduct_mulVec_right {d e : ℕ} (u : Fin d → ℝ) (M : Matrix (Fin d) (Fin e) ℝ)
+    (w : Fin e → ℝ) : u ⬝ᵥ (M *ᵥ w) = (Mᵀ *ᵥ u) ⬝ᵥ w := by
+  rw [Matrix.dotProduct_mulVec, Matrix.mulVec_transpose]
+
+theorem chart_dotProduct_mulVec_left {d k : ℕ} (V : Matrix (Fin d) (Fin k) ℝ)
+    (z : Fin k → ℝ) (w : Fin d → ℝ) : (V *ᵥ z) ⬝ᵥ w = z ⬝ᵥ (Vᵀ *ᵥ w) := by
+  rw [dotProduct_comm, Matrix.dotProduct_mulVec, Matrix.mulVec_transpose, dotProduct_comm]
+
+/-- Translation `z ↦ z + z₀` of a several-variable chart: the new linear coefficient. -/
+noncomputable def mvTranslateLinear {k d : ℕ} (A : MultivariableQuadraticChartData k d)
+    (z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : Fin k → ℝ :=
+  A.linear + A.quadratic *ᵥ z₀ + A.quadraticᵀ *ᵥ z₀ +
+    A.horizontalᵀ *ᵥ (chartRealMatrix A.matrix *ᵥ a) +
+    A.horizontalᵀ *ᵥ ((chartRealMatrix A.matrix)ᵀ *ᵥ (fun i => (m i : ℝ)))
+
+/-- Translation of a several-variable chart: the constant phase. -/
+noncomputable def mvTranslateConstant {k d : ℕ} (A : MultivariableQuadraticChartData k d)
+    (z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : ℝ :=
+  z₀ ⬝ᵥ (A.quadratic *ᵥ z₀) + z₀ ⬝ᵥ A.linear + chartMatrixPhase A.matrix (fun i => (m i : ℝ)) a
+
+/-- Blueprint `lem:chart-operations`, line 651: the translated several-variable chart, with the
+same horizontal map `V`, the same quadratic and rational matrices, and the translated cutoff of
+the one-variable calculation. -/
+noncomputable def mvTranslateChart {k d : ℕ} (A : MultivariableQuadraticChartData k d)
+    (z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : MultivariableQuadraticChartData k d where
+  horizontal := A.horizontal
+  quadratic := A.quadratic
+  symmetric := A.symmetric
+  linear := mvTranslateLinear A z₀ m a
+  matrix := A.matrix
+  amplitude := (scaleQuadraticChartAmplitude (Real.fourierChar (z₀ ⬝ᵥ (A.quadratic *ᵥ z₀) +
+    z₀ ⬝ᵥ A.linear)) (translateQuadraticChart (multivariableChartAlongLine A 0) 0 m a)).amplitude
+  smooth := (scaleQuadraticChartAmplitude _ _).smooth
+  compact := (scaleQuadraticChartAmplitude _ _).compact
+
+theorem mvTranslate_phase_identity {k d : ℕ} (A : MultivariableQuadraticChartData k d)
+    (z z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) :
+    (z + z₀) ⬝ᵥ (A.quadratic *ᵥ (z + z₀)) + (z + z₀) ⬝ᵥ A.linear +
+      (chartMatrixPhase A.matrix (A.horizontal *ᵥ z) a +
+        chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (A.horizontal *ᵥ z) +
+        chartMatrixPhase A.matrix (fun i => (m i : ℝ)) a) =
+    mvTranslateConstant A z₀ m a +
+      (z ⬝ᵥ (A.quadratic *ᵥ z) + z ⬝ᵥ mvTranslateLinear A z₀ m a) := by
+  have h1 : z₀ ⬝ᵥ (A.quadratic *ᵥ z) = z ⬝ᵥ (A.quadraticᵀ *ᵥ z₀) := by
+    rw [Matrix.dotProduct_mulVec, Matrix.mulVec_transpose, dotProduct_comm]
+  have h2 : chartMatrixPhase A.matrix (A.horizontal *ᵥ z) a =
+      z ⬝ᵥ (A.horizontalᵀ *ᵥ (chartRealMatrix A.matrix *ᵥ a)) := by
+    rw [chartMatrixPhase_eq_real, chart_dotProduct_mulVec_left]
+  have h3 : chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (A.horizontal *ᵥ z) =
+      z ⬝ᵥ (A.horizontalᵀ *ᵥ ((chartRealMatrix A.matrix)ᵀ *ᵥ (fun i => (m i : ℝ)))) := by
+    rw [chartMatrixPhase_eq_real, chart_dotProduct_mulVec_right, dotProduct_comm,
+      chart_dotProduct_mulVec_left]
+  rw [h2, h3]
+  unfold mvTranslateConstant mvTranslateLinear
+  simp only [Matrix.mulVec_add, dotProduct_add, add_dotProduct, h1]
+  ring
+
+theorem chart_tsum_const_mul {ι : Type*} (c₁ c₂ : ℂ) (F G : ι → ℂ) :
+    (∑' n, c₁ * (c₂ * F n) * G n) = c₁ * c₂ * ∑' n, F n * G n := by
+  rw [← tsum_mul_left]
+  congr 1
+  funext n
+  ring
+
+/-- Blueprint `lem:chart-operations`, line 651: the translated several-variable chart is exactly
+the translate of the original one. -/
+theorem mvTranslateChart_atom {k d : ℕ} (A : MultivariableQuadraticChartData k d)
+    (z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ)
+    (hoff : ∀ i, (A.horizontal *ᵥ z₀) i = (m i : ℝ) + a i)
+    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) (z : Fin k → ℝ) :
+    multivariableQuadraticChartAtom (mvTranslateChart A z₀ m a) z =
+      multivariableQuadraticChartAtom A (z + z₀) := by
+  have hx : A.horizontal *ᵥ (z + z₀) = A.horizontal *ᵥ z + (fun i => (m i : ℝ)) + a := by
+    rw [Matrix.mulVec_add]
+    funext i
+    simp only [Pi.add_apply, hoff i]
+    ring
+  have hph := congrArg (fun t => (Real.fourierChar t : ℂ)) (mvTranslate_phase_identity A z z₀ m a)
+  simp only [AddChar.map_add_eq_mul, Circle.coe_mul, mvTranslateConstant] at hph
+  unfold multivariableQuadraticChartAtom
+  simp only [chart_quadratic_sum_eq_dotProduct]
+  simp only [chart_linear_sum_eq_dotProduct]
+  rw [hx, chart_lattice_sum_translate A.amplitude A.matrix _ a m hint]
+  simp only [mvTranslateChart, scaleQuadraticChartAmplitude, translateQuadraticChart,
+    shiftedQuadraticChart, translatedChartAmplitude, chartTranslationConstant,
+    multivariableChartAlongLine, mul_zero, add_zero, zero_add, ne_eq, OfNat.ofNat_ne_zero,
+    not_false_eq_true, zero_pow]
+  rw [chart_tsum_const_mul]
+  simp only [AddChar.map_add_eq_mul, Circle.coe_mul]
+  linear_combination (-∑' n : Fin d → ℤ,
+      A.amplitude (A.horizontal *ᵥ z - (fun i => (n i : ℝ)) + a) *
+      (Real.fourierChar
+        (chartMatrixPhase A.matrix a (A.horizontal *ᵥ z - (fun i => (n i : ℝ)) + a)) : ℂ) *
+      (Real.fourierChar (chartMatrixPhase A.matrix (A.horizontal *ᵥ z)
+        (A.horizontal *ᵥ z - (fun i => (n i : ℝ)))) : ℂ)) * hph
+
+/-- Linear substitution `z ↦ M z` of a several-variable chart changes only the unrestricted
+horizontal map, quadratic matrix and linear coefficient. -/
+noncomputable def mvLinearChart {k k' d : ℕ} (A : MultivariableQuadraticChartData k d)
+    (M : Matrix (Fin k) (Fin k') ℝ) : MultivariableQuadraticChartData k' d where
+  horizontal := A.horizontal * M
+  quadratic := Mᵀ * A.quadratic * M
+  symmetric := by
+    unfold Matrix.IsSymm
+    rw [Matrix.transpose_mul, Matrix.transpose_mul, Matrix.transpose_transpose, A.symmetric.eq,
+      Matrix.mul_assoc]
+  linear := Mᵀ *ᵥ A.linear
+  matrix := A.matrix
+  amplitude := A.amplitude
+  smooth := A.smooth
+  compact := A.compact
+
+theorem mvLinearChart_atom {k k' d : ℕ} (A : MultivariableQuadraticChartData k d)
+    (M : Matrix (Fin k) (Fin k') ℝ) (z : Fin k' → ℝ) :
+    multivariableQuadraticChartAtom (mvLinearChart A M) z =
+      multivariableQuadraticChartAtom A (M *ᵥ z) := by
+  have hq : z ⬝ᵥ ((Mᵀ * A.quadratic * M) *ᵥ z) = (M *ᵥ z) ⬝ᵥ (A.quadratic *ᵥ (M *ᵥ z)) := by
+    rw [chart_dotProduct_mulVec_left, Matrix.mulVec_mulVec, Matrix.mulVec_mulVec,
+      Matrix.mul_assoc]
+  have hl : z ⬝ᵥ (Mᵀ *ᵥ A.linear) = (M *ᵥ z) ⬝ᵥ A.linear := by
+    rw [chart_dotProduct_mulVec_left]
+  have hh : (A.horizontal * M) *ᵥ z = A.horizontal *ᵥ (M *ᵥ z) :=
+    (Matrix.mulVec_mulVec _ _ _).symm
+  unfold multivariableQuadraticChartAtom
+  simp only [chart_quadratic_sum_eq_dotProduct]
+  simp only [chart_linear_sum_eq_dotProduct]
+  change (Real.fourierChar (z ⬝ᵥ ((Mᵀ * A.quadratic * M) *ᵥ z) + z ⬝ᵥ (Mᵀ *ᵥ A.linear)) : ℂ) *
+      ∑' n : Fin d → ℤ, A.amplitude ((A.horizontal * M) *ᵥ z - fun i => (n i : ℝ)) *
+        (Real.fourierChar (chartMatrixPhase A.matrix ((A.horizontal * M) *ᵥ z)
+          ((A.horizontal * M) *ᵥ z - fun i => (n i : ℝ))) : ℂ) = _
+  rw [hq, hl, hh]
+
+/-- Blueprint `lem:chart-operations`, line 651 ("the same calculation works with any real linear
+map `V : ℝ^k → ℝ^d` in place of `y ↦ θ y`"): every real affine substitution `z ↦ M z + z₀` of a
+several-variable chart is again such a chart, with the same Gevrey order and a quasipolynomial
+complexity bound independent of `M` and `z₀`; boundedness is preserved. -/
+theorem multivariableQuadraticChart_affine_closure {k k' d c₀ : ℕ} {H : ℝ}
+    {A : MultivariableQuadraticChartData k d} (hA : MultivariableQuadraticChartComplexity c₀ H A)
+    (hc : 1 ≤ c₀) (M : Matrix (Fin k) (Fin k') ℝ) (z₀ : Fin k → ℝ) :
+    ∃ A' : MultivariableQuadraticChartData k' d,
+      MultivariableQuadraticChartComplexity c₀ (chartTranslationBudget H) A' ∧
+      (IsBoundedMultivariableQuadraticChart A → IsBoundedMultivariableQuadraticChart A') ∧
+      ∀ z, multivariableQuadraticChartAtom A' z =
+        multivariableQuadraticChartAtom A (M *ᵥ z + z₀) := by
+  have hA' : QuadraticChartComplexity c₀ H (multivariableChartAlongLine A 0) := hA
+  obtain ⟨P, m, a, hP, hPH, hoff, ha, hint⟩ := chart_translation_offset_reduction
+    (quadraticChartComplexity_parameter_pos hA').le A.matrix hA'.height (A.horizontal *ᵥ z₀)
+  have hT : QuadraticChartComplexity c₀ (chartTranslationBudget H)
+      (multivariableChartAlongLine (mvTranslateChart A z₀ m a) 0) := by
+    have h := scaleQuadraticChartAmplitude_complexity (a := (Real.fourierChar
+      (z₀ ⬝ᵥ (A.quadratic *ᵥ z₀) + z₀ ⬝ᵥ A.linear) : ℂ))
+      (quadraticChartComplexity_mono (translateQuadraticChart_complexity hA' hc
+        (Nat.cast_nonneg P) hPH 0 m a ha) (chartTranslationBase_le_budget hA')) (by simp)
+    exact ⟨h.lower, h.dimension, h.height, h.support, h.derivative⟩
+  have hatom := mvTranslateChart_atom A z₀ m a hoff hint
+  refine ⟨mvLinearChart (mvTranslateChart A z₀ m a) M, ?_, ?_, ?_⟩
+  · exact ⟨hT.lower, hT.dimension, hT.height, hT.support, hT.derivative⟩
+  · intro hb z
+    rw [mvLinearChart_atom, hatom]
+    exact hb _
+  · intro z
+    rw [mvLinearChart_atom, hatom]
+
+end MultivariableAffine
 
 /-- Symmetric part of the rational chart matrix, as in source line 660. -/
 def chartSymmetricPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :

@@ -4527,22 +4527,19 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
   obtain ⟨Ct, Ca, Cr, hCr, htot⟩ := setups_total_le κ c' hc'
   refine ⟨q, hq2, hq3, fun c hc => ?_⟩
   obtain ⟨Cq, K₁, hCq, hstep⟩ := hred q hq2
-  obtain ⟨K₂, hK₂⟩ := eventually_pow_mul_exp_le Cb hθ₀
-  set Λ : ℝ := 64 / 3 * Cfin + 1 with hΛ_def
+  set Λ : ℝ := 91 / 3 * Cfin + 1 with hΛ_def
   have hΛ : 0 < Λ := by positivity
   obtain ⟨K₃, hK₃⟩ := update_levels_sum (c := 2 * cs) (by positivity) hθ₀ hAa
     (ε := c / Λ) (by positivity)
   obtain ⟨K₄, hK₄⟩ := update_levels_sum (c := 1) one_pos hθ₀ hAa (ε := 1) one_pos
-  set k₁ := max (max K₁ K) (max K₂ (max K₃ (max K₄ 2))) with hk₁_def
+  set k₁ := max (max K₁ K) (max K₃ (max K₄ 2)) with hk₁_def
   have hk₁K₁ : K₁ ≤ k₁ := le_trans (le_max_left _ _) (le_max_left _ _)
   have hk₁K : K ≤ k₁ := le_trans (le_max_right _ _) (le_max_left _ _)
-  have hk₁K₂ : K₂ ≤ k₁ := le_trans (le_max_left _ _) (le_max_right _ _)
-  have hk₁K₃ : K₃ ≤ k₁ := le_trans (le_trans (le_max_left _ _) (le_max_right _ _))
+  have hk₁K₃ : K₃ ≤ k₁ := le_trans (le_max_left _ _) (le_max_right _ _)
+  have hk₁K₄ : K₄ ≤ k₁ := le_trans (le_trans (le_max_left _ _) (le_max_right _ _))
     (le_max_right _ _)
-  have hk₁K₄ : K₄ ≤ k₁ := le_trans (le_trans (le_trans (le_max_left _ _) (le_max_right _ _))
-    (le_max_right _ _)) (le_max_right _ _)
-  have hk₁2 : 2 ≤ k₁ := le_trans (le_trans (le_trans (le_max_right _ _) (le_max_right _ _))
-    (le_max_right _ _)) (le_max_right _ _)
+  have hk₁2 : 2 ≤ k₁ := le_trans (le_trans (le_max_right _ _) (le_max_right _ _))
+    (le_max_right _ _)
   set kk : ℕ → ℕ := fun t => stagAcc k₁ Aa t with hkk_def
   have hkk : ∀ t, k₁ ≤ kk t := fun t => le_stagAcc (by omega) (by omega) t
   have hkk1 : ∀ t, (1 : ℝ) ≤ kk t := fun t => by exact_mod_cast le_trans (by omega) (hkk t)
@@ -4555,8 +4552,7 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
         2 * Real.log 2) ^ Ca)) +
       3 * E t ^ 3 * (E t ^ 3 * (2 + E t * E t)) *
         (1 / 2 * Cr * (100 * (1 + Real.log (E t)) ^ 3 + Real.log 2 + 1) ^ Ct) with hΦ_def
-  set Init : ℕ → ℝ := fun t => 64 / 3 * Φ t + Real.exp (-(kk t : ℝ)) * (64 / 3) +
-    η₁ t * (kk t : ℝ) ^ Cb with hInit_def
+  set Init : ℕ → ℝ := fun t => 91 / 3 * Φ t + Real.exp (-(kk t : ℝ)) * (91 / 3) with hInit_def
   have hE1 : ∀ t, 1 ≤ E t := fun t => Real.one_le_exp (by positivity)
   have hη₁0 : ∀ t, 0 ≤ η₁ t := fun t => le_trans (Real.exp_pos _).le (le_max_left _ _)
   have hΦ0 : ∀ t, 0 ≤ Φ t := by
@@ -4572,10 +4568,9 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
     have := hΦ0 t; have := hη₁0 t; simp only [hInit_def]; positivity
   set A₀c : ℝ := ∑ t ∈ Finset.range 12, Init t with hA₀c_def
   have hA₀c : 0 ≤ A₀c := Finset.sum_nonneg fun t _ => hInit0 t
-  set bn : ℕ → ℝ := fun t => 64 / 3 * (Cfin * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) +
-      Real.exp (-(kk t : ℝ))) + Real.exp (-(kk t : ℝ)) * (64 / 3) +
-      Real.exp (-2 * (kk t : ℝ) ^ θ₀) * (kk t : ℝ) ^ Cb with hbn_def
-  set bc : ℕ → ℝ := fun t => 64 / 3 * Cfin * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) with hbc_def
+  set bn : ℕ → ℝ := fun t => 91 / 3 * (Cfin * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) +
+      Real.exp (-(kk t : ℝ))) + Real.exp (-(kk t : ℝ)) * (91 / 3) with hbn_def
+  set bc : ℕ → ℝ := fun t => 91 / 3 * Cfin * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) with hbc_def
   have hbn0 : ∀ t, 0 ≤ bn t := fun t => by simp only [hbn_def]; positivity
   have hbc0 : ∀ t, 0 ≤ bc t := fun t => by simp only [hbc_def]; positivity
   -- summability of the later levels
@@ -4587,25 +4582,19 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
       have := Real.rpow_le_rpow_of_exponent_le (hkk1 t) hθ₁
       rwa [Real.rpow_one] at this
     linarith
-  have hpowk : ∀ t, Real.exp (-2 * (kk t : ℝ) ^ θ₀) * (kk t : ℝ) ^ Cb ≤
-      Real.exp (-1 * (kk t : ℝ) ^ θ₀) := fun t => by
-    rw [mul_comm, neg_one_mul]
-    exact hK₂ (kk t) (le_trans hk₁K₂ (hkk t))
-  have hbn_le : ∀ t : ℕ, (t : ℝ) * bn t ≤ 64 / 3 * Cfin * (((t : ℝ) + 1) *
+  have hbn_le : ∀ t : ℕ, (t : ℝ) * bn t ≤ 91 / 3 * Cfin * (((t : ℝ) + 1) *
       Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀)) +
-      (128 / 3 + 1) * (((t : ℝ) + 1) * Real.exp (-1 * (kk t : ℝ) ^ θ₀)) := fun t => by
+      182 / 3 * (((t : ℝ) + 1) * Real.exp (-1 * (kk t : ℝ) ^ θ₀)) := fun t => by
     have h1 := hexpk t
-    have h2 := hpowk t
     have ht0 : (0 : ℝ) ≤ t := Nat.cast_nonneg t
     have he := (Real.exp_pos (-(2 * cs) * (kk t : ℝ) ^ θ₀)).le
     have he' := (Real.exp_pos (-1 * (kk t : ℝ) ^ θ₀)).le
     simp only [hbn_def]
-    nlinarith [mul_le_mul_of_nonneg_left h1 ht0, mul_le_mul_of_nonneg_left h2 ht0,
-      mul_nonneg ht0 he, mul_nonneg hCfin he]
+    nlinarith [mul_le_mul_of_nonneg_left h1 ht0, mul_nonneg ht0 he, mul_nonneg hCfin he]
   have hsum_bn : Summable fun t : ℕ => (t : ℝ) * bn t :=
     Summable.of_nonneg_of_le (fun t => mul_nonneg (Nat.cast_nonneg t) (hbn0 t)) hbn_le
       ((hs3.mul_left _).add (hs4.mul_left _))
-  have hbc_le : ∀ t : ℕ, (t : ℝ) * bc t ≤ 64 / 3 * Cfin * (((t : ℝ) + 1) *
+  have hbc_le : ∀ t : ℕ, (t : ℝ) * bc t ≤ 91 / 3 * Cfin * (((t : ℝ) + 1) *
       Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀)) := fun t => by
     simp only [hbc_def]
     have := (Real.exp_pos (-(2 * cs) * (kk t : ℝ) ^ θ₀)).le
@@ -4614,12 +4603,12 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
     Summable.of_nonneg_of_le (fun t => mul_nonneg (Nat.cast_nonneg t) (hbc0 t)) hbc_le
       (hs3.mul_left _)
   have htsum_bc : ∑' t : ℕ, (t : ℝ) * bc t ≤ c := by
-    calc ∑' t : ℕ, (t : ℝ) * bc t ≤ ∑' t : ℕ, 64 / 3 * Cfin * (((t : ℝ) + 1) *
+    calc ∑' t : ℕ, (t : ℝ) * bc t ≤ ∑' t : ℕ, 91 / 3 * Cfin * (((t : ℝ) + 1) *
           Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀)) :=
           hsum_bc.tsum_le_tsum hbc_le (hs3.mul_left _)
-      _ = 64 / 3 * Cfin * ∑' t : ℕ, ((t : ℝ) + 1) * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) :=
+      _ = 91 / 3 * Cfin * ∑' t : ℕ, ((t : ℝ) + 1) * Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) :=
           tsum_mul_left
-      _ ≤ 64 / 3 * Cfin * (c / Λ) := mul_le_mul_of_nonneg_left hs3' (by positivity)
+      _ ≤ 91 / 3 * Cfin * (c / Λ) := mul_le_mul_of_nonneg_left hs3' (by positivity)
       _ ≤ c := by
           rw [mul_div, div_le_iff₀ hΛ]
           nlinarith
@@ -4713,7 +4702,7 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
       obtain ⟨-, -, -, hG', -, -, hH1, hHE, hDc, hL, hS, hη, -, -, -, htwo, -⟩ := hB p
       rw [hG']
       exact ⟨hH1, hHE, hDc, hL, hS, hη, htwo⟩
-    have hW : ∑ p, dyadicGridLength (B p).G (B p).R.1 ≤ 64 / 3 * JJ := by
+    have hW : ∑ p, dyadicGridLength (B p).G (B p).R.1 ≤ 91 / 3 * JJ := by
       refine le_trans (le_of_eq (Finset.sum_congr rfl fun p _ => ?_)) hpack
       rw [(hB p).2.2.2.1]
     have h := htot B (hE1 t) (hη₁0 t) (by positivity) hB' hW
@@ -4724,8 +4713,7 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
     have hle : Init t ≤ A₀c := Finset.single_le_sum (fun t _ => hInit0 t)
       (Finset.mem_range.mpr ht)
     calc _ ≤ _ := hsum
-      _ ≤ 64 / 3 * JJ * Φ t + Real.exp (-(kk t : ℝ)) * (64 / 3 * JJ) +
-          η₁ t * ((kk t : ℝ) ^ Cb * JJ) := by
+      _ ≤ 91 / 3 * JJ * Φ t + Real.exp (-(kk t : ℝ)) * (91 / 3 * JJ) := by
           gcongr
       _ = Init t * JJ := by simp only [hInit_def]; ring
       _ ≤ A₀c * JJ := mul_le_mul_of_nonneg_right hle hJJ0
@@ -4766,7 +4754,7 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
       exact h
     have hcoef0 : 0 ≤ Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ)) := by positivity
     have hsetups : ∑ p, ∑ I ∈ (B p).cells, dyadicGridLength G I.1 * ‖(B p).Hf I ((B p).Y I)‖ ≤
-        (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) * (64 / 3 * JJ) := by
+        (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) * (91 / 3 * JJ) := by
       calc _ ≤ ∑ p, (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) *
             dyadicGridLength G (B p).R.1 := Finset.sum_le_sum fun p _ => hp p
         _ = (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) *
@@ -4775,11 +4763,11 @@ theorem normalizedAbsorption_of_activeFinal (κ : LocalKernelClass) (hAF : Activ
     have hηcs : η ^ cs = Real.exp (-(2 * cs) * (kk t : ℝ) ^ θ₀) := by
       rw [hη_def, ← Real.exp_mul]; ring_nf
     calc _ ≤ _ := hsum
-      _ ≤ (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) * (64 / 3 * JJ) +
-          Real.exp (-(kk t : ℝ)) * (64 / 3 * JJ) + η * ((kk t : ℝ) ^ Cb * JJ) := by
+      _ ≤ (Cfin * η ^ cs * (1 + CN) + Real.exp (-(kk t : ℝ))) * (91 / 3 * JJ) +
+          Real.exp (-(kk t : ℝ)) * (91 / 3 * JJ) := by
           gcongr
       _ = JJ * (bn t + CN * bc t) := by
-          rw [hηcs]; simp only [hbn_def, hbc_def, hη_def]; ring
+          rw [hηcs]; simp only [hbn_def, hbc_def]; ring
   -- the cutoff remainders
   set S0 := ∑ I ∈ dyadicFiniteTree G root N', dyadicGridLength G I.1 with hS0_def
   set X := ∑ I ∈ dyadicFiniteTree G root N', dyadicGridLength G I.1 *
@@ -5092,11 +5080,19 @@ end ActiveSetup
 namespace ActiveSetup
 variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀) (v₀ : A.L) (m : ℕ)
 
+theorem colBudget_le_pad : A.colBudget ≤ (A.pad v₀ m).colBudget := by
+  unfold ActiveSetup.colBudget
+  rw [pad_card]
+  change _ ≤ 2 + ((Fintype.card A.L + m : ℕ) : ℝ) * (1 + A.Dc)
+  push_cast
+  nlinarith [A.Dc_nonneg, (Nat.cast_nonneg m : (0 : ℝ) ≤ m)]
+
 theorem pad_columnRepBelow {R' : ℤ × ℤ} {CF : ℝ} (h : A.ColumnRepBelow R' CF) :
     (A.pad v₀ m).ColumnRepBelow R' CF := by
   intro l
-  obtain ⟨P₁, P₂, hP⟩ := h l
-  refine ⟨P₁, P₂, fun I hI hIR => ?_⟩
+  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := h l
+  refine ⟨P₁, P₂, h₁.trans (A.colBudget_le_pad v₀ m), h₂.trans (A.colBudget_le_pad v₀ m), c₁,
+    c₂, fun I hI hIR => ?_⟩
   rw [pad_B]
   exact hP I hI hIR
 
@@ -5119,8 +5115,9 @@ theorem LevelProps.pad {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀)
   · rw [pad_z]; exact h11
   · exact hasColumnRep_of_below _ (A.pad_columnRepBelow v₀ m
       (fun l => by
-        obtain ⟨P₁, P₂, hP⟩ := h12 l
-        exact ⟨P₁, P₂, fun I hI _ => hP I hI⟩))
+        obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := h12 l
+        exact ⟨P₁, P₂, h₁, h₂, c₁.mono (fun I hI => hI.1) le_rfl le_rfl,
+          c₂.mono (fun I hI => hI.1) le_rfl le_rfl, fun I hI _ => hP I hI⟩))
 
 end ActiveSetup
 
@@ -5143,8 +5140,10 @@ theorem LevelProps.below {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀
   · have hI' := Finset.mem_filter.mp hI
     exact Finset.mem_filter.mpr ⟨h1 I hI'.1 J' hIJ (hJR.trans hR'), hJR⟩
   · intro l
-    obtain ⟨P₁, P₂, hP⟩ := hc l
-    exact ⟨P₁, P₂, fun I hI => hP I (Finset.mem_filter.mp hI).1 (Finset.mem_filter.mp hI).2⟩
+    obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := hc l
+    exact ⟨P₁, P₂, h₁, h₂, c₁.mono (fun I hI => Finset.mem_filter.mp hI) le_rfl le_rfl,
+      c₂.mono (fun I hI => Finset.mem_filter.mp hI) le_rfl le_rfl,
+      fun I hI => hP I (Finset.mem_filter.mp hI).1 (Finset.mem_filter.mp hI).2⟩
   · change dyadicGridCell A.G R''.1 R''.2 ⊆ dyadicGridCell A.G R'.1 R'.2 at hR''
     obtain ⟨hs', ht', hc'⟩ := h13 R'' (hR''.trans hR')
     have hf : ((A.cells.filter fun I => dyadicGridCell A.G I.1 I.2 ⊆
@@ -5162,8 +5161,11 @@ theorem LevelProps.below {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀
           dyadicGridCell A.G R'.1 R'.2).filter fun I =>
             dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R''.1 R''.2, _ ≤ _
       rw [hf]; exact ht'
-    · obtain ⟨P₁, P₂, hP⟩ := hc' l
-      exact ⟨P₁, P₂, fun I hI hIR => hP I (Finset.mem_filter.mp hI).1 hIR⟩
+    · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := hc' l
+      exact ⟨P₁, P₂, h₁, h₂,
+        c₁.mono (fun I hI => ⟨(Finset.mem_filter.mp hI.1).1, hI.2⟩) le_rfl le_rfl,
+        c₂.mono (fun I hI => ⟨(Finset.mem_filter.mp hI.1).1, hI.2⟩) le_rfl le_rfl,
+        fun I hI hIR => hP I (Finset.mem_filter.mp hI).1 hIR⟩
 
 end ActiveSetup
 

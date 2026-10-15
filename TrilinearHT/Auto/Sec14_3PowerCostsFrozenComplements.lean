@@ -1778,3 +1778,1069 @@ end ActiveSetup
 end Auto
 
 end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## Budgets to caps (blueprint line 2373) -/
+
+/-- Blueprint line 2373 ("all additional integrated square budgets below are `P^C|R|`; Lemma
+lem:cuts converts their sum into simultaneous path caps at an arbitrarily small fixed root-length
+cost. Polynomially many such budgets are absorbed by increasing `C`"): at most `P^{C₁}` families
+of nonnegative cell weights, each with integrated budget at most `P^{C₂} |R|`, are capped
+simultaneously at `P^{C₁ + C₂} / ρ` by one first-crossing cut of total length at most `ρ |R|`. -/
+theorem poly_budget_caps (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) {ν : Type*} [Fintype ν]
+    (a : ν → ℤ × ℤ → ℝ) (ha : ∀ v, ∀ c ∈ S, 0 ≤ a v c) (root : ℤ × ℤ)
+    (hroot : ∀ c ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G root.1 root.2)
+    {P : ℝ} (hP : 1 ≤ P) {C₁ C₂ : ℕ} (hν : (Fintype.card ν : ℝ) ≤ P ^ C₁)
+    (hW : ∀ v, dyadicWeightedMass G S (a v) ≤ P ^ C₂ * dyadicGridLength G root.1)
+    {ρ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ < 1) :
+    dyadicRootLength G (dyadicFirstCrossings G S (fun c => ∑ v, a v c)
+        ((∑ _v : ν, P ^ C₂) / ρ)) ≤ ρ * dyadicGridLength G root.1 ∧
+      ∀ x : ℝ, dyadicRealPathSum G (dyadicRetainedCells G S (fun c => ∑ v, a v c)
+        ((∑ _v : ν, P ^ C₂) / ρ)) (fun c => ∑ v, a v c) x ≤ P ^ (C₁ + C₂) / ρ := by
+  obtain ⟨h1, h2⟩ := side_caps_of_budgets G S a ha root hroot (fun _ => P ^ C₂) hW hρ hρ1
+  refine ⟨h1, fun x => (h2 x).trans ?_⟩
+  rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul, pow_add]
+  have hP0 : 0 ≤ P ^ C₂ := by positivity
+  gcongr
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## The transferred main term and the restoration errors on the main columns (lines 2382-2384) -/
+
+/-- Blueprint line 2384 ("Cauchy-Schwarz in the two side sizes"): group terms bounded by
+`η a_G b_G` sum to at most `η √(Σ a_G²) √(Σ b_G²)`. -/
+theorem group_pair_le {ι : Type*} (s : Finset ι) (t : ι → ℂ) (a b : ι → ℝ) {η : ℝ}
+    (hη : 0 ≤ η) (ht : ∀ G ∈ s, ‖t G‖ ≤ η * a G * b G) :
+    ‖∑ G ∈ s, t G‖ ≤ η * Real.sqrt (∑ G ∈ s, a G ^ 2) * Real.sqrt (∑ G ∈ s, b G ^ 2) := by
+  refine (norm_sum_le _ _).trans ?_
+  calc ∑ G ∈ s, ‖t G‖ ≤ ∑ G ∈ s, η * (|a G| * |b G|) := Finset.sum_le_sum fun G hG => by
+        refine (ht G hG).trans ?_
+        rw [mul_assoc]
+        exact mul_le_mul_of_nonneg_left (by
+          rw [← abs_mul]; exact le_abs_self _) hη
+    _ = η * ∑ G ∈ s, |a G| * |b G| := by rw [Finset.mul_sum]
+    _ ≤ η * (Real.sqrt (∑ G ∈ s, a G ^ 2) * Real.sqrt (∑ G ∈ s, b G ^ 2)) := by
+        refine mul_le_mul_of_nonneg_left ?_ hη
+        have := sum_mul_le_sqrt_mul_sqrt s (fun G => |a G|) (fun G => |b G|)
+        simpa only [sq_abs] using this
+    _ = _ := by ring
+
+/-- Blueprint line 2384 ("restoration errors have a third basic side"): group terms bounded by
+`C a_G b_G u` with a shared third factor `u` sum to at most `C √(Σ a_G²) √(Σ b_G²) u`. -/
+theorem group_triple_shared_le {ι : Type*} (s : Finset ι) (t : ι → ℂ) (a b : ι → ℝ) {C u : ℝ}
+    (hC : 0 ≤ C) (hu : 0 ≤ u) (ht : ∀ G ∈ s, ‖t G‖ ≤ C * (a G * b G * u)) :
+    ‖∑ G ∈ s, t G‖ ≤
+      C * Real.sqrt (∑ G ∈ s, a G ^ 2) * Real.sqrt (∑ G ∈ s, b G ^ 2) * u := by
+  have h := group_pair_le s t a b (η := C * u) (by positivity) fun G hG => by
+    refine (ht G hG).trans (le_of_eq ?_)
+    ring
+  refine h.trans (le_of_eq ?_)
+  ring
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The cell form on the main columns is bounded by the product of the normalized `L²` sizes of
+the physical parts (`localFormUniformConstant`; zero off the active cells). -/
+theorem norm_Λc_le_sizes (I : ℤ × ℤ) (x : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (n : Fin 4 → ℝ) (hn0 : ∀ j, 0 ≤ n j)
+    (hn : ∀ j, eLpNorm (augPhys (x j)) 2 (normalizedIntervalMeasure (dyadicGridLeft A.G I.1 I.2)
+      (dyadicGridLength A.G I.1)) ≤ ENNReal.ofReal (n j)) :
+    ‖fp.Λc I x‖ ≤ localFormUniformConstant κ * (n 0 * n 1 * n 2 * n 3) := by
+  by_cases hI : I ∈ A.cells
+  · rw [fp.Λc_of_mem hI]
+    exact cellForm_norm_le_L2 (dyadicGridLength_pos A.G I.1) (A.adm I hI) x n hn0 hn
+  · have h0 : fp.Λc I = 0 := dite_eq_right_of_eq_false (eq_false hI)
+    have hz : fp.Λc I x = 0 := by rw [h0]; rfl
+    rw [hz, norm_zero]
+    have := localFormUniformConstant_nonneg κ
+    have := hn0 0; have := hn0 1; have := hn0 2; have := hn0 3
+    positivity
+
+/-- Blueprint line 2384 ("by pair-smallness"), at one cell on the main columns: with the
+physical parts of a pair-small pair in the slots `c, d` and inputs of normalized sizes at most
+`S_a, S_b` in the other slots, the cell form is at most `τ S_a S_b`. -/
+theorem Λc_pair_smallM {I : ℤ × ℤ} (hI : I ∈ A.cells) {c d a b : Fin 4} (hcd : c ≠ d)
+    (hca : c ≠ a) (hcb : c ≠ b) (hda : d ≠ a) (hdb : d ≠ b) (hab : a ≠ b)
+    (X : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {Yc Yd : ℝ → ℂ} {τ : ℝ} (hτ : 0 ≤ τ)
+    (hpair : PairSmall (dyadicGridLeft A.G I.1 I.2) (dyadicGridLength A.G I.1) (A.w I) c d Yc Yd
+      τ)
+    (hXc : ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 → augPhys (X c) y = Yc y)
+    (hXd : ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 → augPhys (X d) y = Yd y)
+    {Sa Sb : ℝ} (hSa : 0 ≤ Sa) (hSb : 0 ≤ Sb)
+    (hXa : eLpNorm (augPhys (X a)) 2 (normalizedIntervalMeasure (dyadicGridLeft A.G I.1 I.2)
+      (dyadicGridLength A.G I.1)) ≤ ENNReal.ofReal Sa)
+    (hXb : eLpNorm (augPhys (X b)) 2 (normalizedIntervalMeasure (dyadicGridLeft A.G I.1 I.2)
+      (dyadicGridLength A.G I.1)) ≤ ENNReal.ofReal Sb) :
+    ‖fp.Λc I X‖ ≤ τ * Sa * Sb := by
+  have hpos : ∀ {Sa' Sb' : ℝ}, 0 < Sa' → 0 < Sb' →
+      eLpNorm (augPhys (X a)) 2 (normalizedIntervalMeasure (dyadicGridLeft A.G I.1 I.2)
+        (dyadicGridLength A.G I.1)) ≤ ENNReal.ofReal Sa' →
+      eLpNorm (augPhys (X b)) 2 (normalizedIntervalMeasure (dyadicGridLeft A.G I.1 I.2)
+        (dyadicGridLength A.G I.1)) ≤ ENNReal.ofReal Sb' → ‖fp.Λc I X‖ ≤ τ * Sa' * Sb' := by
+    intro Sa' Sb' hSa' hSb' hXa' hXb'
+    rw [fp.Λc_of_mem hI]
+    have h := cellForm_pair_le (A.adm I hI) hcd hca hcb hda hdb hab ({()} : Finset Unit)
+      (fun _ => 1) (fun _ => X d) (fun _ => Yd) (fun _ _ => hXd) Yc (fun _ _ => hpair) X hXc
+      (by simp) hSa' hSb' hXa' hXb'
+    simpa using h
+  have hε : ∀ ε > 0, ‖fp.Λc I X‖ ≤ τ * (Sa + ε) * (Sb + ε) := fun ε hε =>
+    hpos (by positivity) (by positivity) (hXa.trans (ENNReal.ofReal_le_ofReal (by linarith)))
+      (hXb.trans (ENNReal.ofReal_le_ofReal (by linarith)))
+  refine le_of_forall_pos_le_add fun δ hδ => ?_
+  set ε := min 1 (δ / (τ * (Sa + Sb + 1) + 1))
+  have hε0 : 0 < ε := lt_min one_pos (div_pos hδ (by positivity))
+  have hε1 : ε ≤ 1 := min_le_left _ _
+  have hε2 : ε * (τ * (Sa + Sb + 1) + 1) ≤ δ := by
+    have := min_le_right 1 (δ / (τ * (Sa + Sb + 1) + 1))
+    rw [le_div_iff₀ (by positivity)] at this
+    exact this
+  refine (hε ε hε0).trans ?_
+  have e : τ * (Sa + ε) * (Sb + ε) = τ * Sa * Sb + ε * (τ * (Sa + Sb + ε)) := by ring
+  rw [e]
+  have h2 : ε * (τ * (Sa + Sb + ε)) ≤ ε * (τ * (Sa + Sb + 1) + 1) := by
+    apply mul_le_mul_of_nonneg_left _ hε0.le
+    nlinarith
+  linarith
+
+/-- Blueprint line 2384 ("the main term eq:transferred-main, with complements restored to their
+full `Y` arguments, costs `η ...` by pair-smallness, contractions"), at one cell, group and chain
+pair: the transferred main term with the full arguments `Y_c = B_c + U_c`, `Y_d = B_d + U_d` is
+at most `η S_a S_b`, where `(Y_c, Y_d)` is `η`-pair-small and `S_a, S_b` bound the normalized
+sizes of the transferred side and of the other side. -/
+theorem main_restoredM {I : ℤ × ℤ} (hI : I ∈ A.cells) {a b c d : Fin 4} (hab : a ≠ b)
+    (hac : a ≠ c) (had : a ≠ d) (hbc : b ≠ c) (hbd : b ≠ d) (hcd : c ≠ d)
+    (x : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (D : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {η : ℝ}
+    (hη : 0 ≤ η)
+    (hpair : PairSmall (dyadicGridLeft A.G I.1 I.2) (dyadicGridLength A.G I.1) (A.w I) c d
+      (A.Y I c) (A.Y I d) η)
+    {Sa Sb : ℝ} (hDa : ‖D‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ Sa)
+    (hxb : ‖x b‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ Sb) :
+    ‖fp.Λc I (Function.update (Function.update (Function.update x a D) c
+      (bf.basicIn fp.Mc c I + bf.Ucol fp.Mc c I)) d
+        (bf.basicIn fp.Mc d I + bf.Ucol fp.Mc d I))‖ ≤ η * Sa * Sb := by
+  have hSa : 0 ≤ Sa := le_trans (by positivity) hDa
+  have hSb : 0 ≤ Sb := le_trans (by positivity) hxb
+  refine fp.Λc_pair_smallM hI hcd hac.symm hbc.symm had.symm hbd.symm hab _ hη hpair ?_ ?_ hSa
+    hSb ?_ ?_
+  · rw [Function.update_of_ne hcd, Function.update_self]
+    exact bf.basicIn_add_Ucol fp.Mc c hI
+  · rw [Function.update_self]
+    exact bf.basicIn_add_Ucol fp.Mc d hI
+  · rw [Function.update_of_ne had, Function.update_of_ne hac, Function.update_self]
+    exact (augPhys_normalized_le A.G I D).trans (ENNReal.ofReal_le_ofReal hDa)
+  · rw [Function.update_of_ne hbd, Function.update_of_ne hbc, Function.update_of_ne hab.symm]
+    exact (augPhys_normalized_le A.G I (x b)).trans (ENNReal.ofReal_le_ofReal hxb)
+
+/-- Blueprint line 2384 ("restoration errors have a third basic side"), at one cell, group and
+chain pair: a restoration correction with values `u, v` in the slots `c, d` is at most
+`C_κ S_a S_b S_u S_v` (one of `u, v` is a basic side `U`). -/
+theorem restore_corrM (I : ℤ × ℤ) {a b c d : Fin 4} (hab : a ≠ b) (hac : a ≠ c) (had : a ≠ d)
+    (hbc : b ≠ c) (hbd : b ≠ d) (hcd : c ≠ d) (x : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (D u v : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {Sa Sb Su Sv : ℝ}
+    (hDa : ‖D‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ Sa)
+    (hxb : ‖x b‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ Sb)
+    (hu : ‖u‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ Su)
+    (hv : ‖v‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ Sv) :
+    ‖fp.Λc I (Function.update (Function.update (Function.update x a D) c u) d v)‖ ≤
+      localFormUniformConstant κ * (Sa * Sb * (Su * Sv)) := by
+  set X := Function.update (Function.update (Function.update x a D) c u) d v
+  set s := Real.sqrt (dyadicGridLength A.G I.1)
+  have hC := localFormUniformConstant_nonneg κ
+  have h := fp.norm_Λc_le_sizes I X (fun l => ‖X l‖ / s) (fun l => by positivity)
+    (fun l => augPhys_normalized_le A.G I (X l))
+  have hp : (‖X 0‖ / s) * (‖X 1‖ / s) * (‖X 2‖ / s) * (‖X 3‖ / s) =
+      (‖X a‖ / s) * (‖X b‖ / s) * (‖X c‖ / s) * (‖X d‖ / s) := by
+    have e := prod_fin4_distinct hab hac had hbc hbd hcd (fun l => ‖X l‖ / s)
+    rw [Fin.prod_univ_four] at e
+    exact e
+  rw [hp] at h
+  have hXa : X a = D := by
+    simp only [X]
+    rw [Function.update_of_ne had, Function.update_of_ne hac, Function.update_self]
+  have hXb : X b = x b := by
+    simp only [X]
+    rw [Function.update_of_ne hbd, Function.update_of_ne hbc, Function.update_of_ne hab.symm]
+  have hXc : X c = u := by
+    simp only [X]
+    rw [Function.update_of_ne hcd, Function.update_self]
+  have hXd : X d = v := by simp only [X]; rw [Function.update_self]
+  rw [hXa, hXb, hXc, hXd] at h
+  refine h.trans (mul_le_mul_of_nonneg_left ?_ hC)
+  have h1 : 0 ≤ ‖D‖ / s := by positivity
+  have h2 : 0 ≤ ‖x b‖ / s := by positivity
+  have h3 : 0 ≤ ‖u‖ / s := by positivity
+  have h4 : 0 ≤ ‖v‖ / s := by positivity
+  calc ‖D‖ / s * (‖x b‖ / s) * (‖u‖ / s) * (‖v‖ / s)
+      = (‖D‖ / s * (‖x b‖ / s)) * ((‖u‖ / s) * (‖v‖ / s)) := by ring
+    _ ≤ (Sa * Sb) * (Su * Sv) := by
+        apply mul_le_mul (mul_le_mul hDa hxb h2 (h1.trans hDa)) (mul_le_mul hu hv h4
+          (h3.trans hu)) (by positivity) (by nlinarith)
+
+/-- The side value after merged steps is a contraction of the side. -/
+theorem norm_chainSide_mergeStepsM (cat : Fin 4 → List (CatCol bf.Vtx)) (a c d : Fin 4)
+    (rH : ℕ) (I : ℤ × ℤ) (xs ys : List (ℕ × (Fin fp.P → bf.Vtx → Prop)))
+    (x : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    ‖chainSide fp.P (fp.mergeStepsM cat a c d rH I xs ys) x‖ ≤ ‖x‖ :=
+  fp.norm_chainSide_mergeStepsM_le cat a c d rH I (rankMerge Prod.fst xs ys) x
+
+open Classical in
+/-- Blueprint line 2384 ("the main term ... costs `η P^C |R|` absolutely, by pair-smallness,
+contractions, and Cauchy-Schwarz in the two side sizes"), at one cell and chain pair of a leaf on
+the main columns: the restored transferred main terms of the current groups `G` (side values
+`x_G a, x_G b`, helper product of the steps of `G`) sum to at most
+`η √(Σ_G ‖x_G a‖²_{2,I}) √(Σ_G ‖x_G b‖²_{2,I})`. -/
+theorem leaf_main_groupsM {I : ℤ × ℤ} (hI : I ∈ A.cells) {a b c d : Fin 4} (hab : a ≠ b)
+    (hac : a ≠ c) (had : a ≠ d) (hbc : b ≠ c) (hbd : b ≠ d) (hcd : c ≠ d)
+    (cat : Fin 4 → List (CatCol bf.Vtx)) (Lf : SearchLeaf) (gs : Finset bf.Grp)
+    (xg : bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (t t' : ℤ × List ℕ) {η : ℝ}
+    (hη : 0 ≤ η)
+    (hpair : PairSmall (dyadicGridLeft A.G I.1 I.2) (dyadicGridLength A.G I.1) (A.w I) c d
+      (A.Y I c) (A.Y I d) η) :
+    ‖∑ G ∈ gs, fp.Λc I (Function.update (Function.update (Function.update (xg G) a
+        (chainSide fp.P (fp.mergeStepsM cat a c d (fp.Lc + 5) I
+          (fp.slotFiltM G (Lf.role c) I t.2) (fp.slotFiltM G (Lf.role d) I t'.2)) (xg G a))) c
+          (bf.basicIn fp.Mc c I + bf.Ucol fp.Mc c I)) d
+          (bf.basicIn fp.Mc d I + bf.Ucol fp.Mc d I))‖ ≤
+      η * Real.sqrt (∑ G ∈ gs, (‖xg G a‖ / Real.sqrt (dyadicGridLength A.G I.1)) ^ 2) *
+        Real.sqrt (∑ G ∈ gs, (‖xg G b‖ / Real.sqrt (dyadicGridLength A.G I.1)) ^ 2) := by
+  have hsq := Real.sqrt_pos.mpr (dyadicGridLength_pos A.G I.1)
+  refine group_pair_le gs _ _ _ hη fun G _ => ?_
+  exact fp.main_restoredM hI hab hac had hbc hbd hcd (xg G) _ hη hpair
+    (div_le_div_of_nonneg_right (fp.norm_chainSide_mergeStepsM _ _ _ _ _ _ _ _ _) hsq.le) le_rfl
+
+open Classical in
+/-- Blueprint line 2384 ("restoration errors have a third basic side and obey eq:three-sides"), at
+one cell and chain pair of a leaf on the main columns: the restoration corrections of the current
+groups with the values `u, v` in the slots `c, d` (one of them a basic side `U`) sum to at most
+`C_κ √(Σ_G ‖x_G a‖²_{2,I}) √(Σ_G ‖x_G b‖²_{2,I}) S_u S_v`: three strong factors, the group sum
+taken first. -/
+theorem leaf_corr_groupsM (I : ℤ × ℤ) {a b c d : Fin 4} (hab : a ≠ b) (hac : a ≠ c)
+    (had : a ≠ d) (hbc : b ≠ c) (hbd : b ≠ d) (hcd : c ≠ d) (cat : Fin 4 → List (CatCol bf.Vtx))
+    (Lf : SearchLeaf) (gs : Finset bf.Grp) (xg : bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (t t' : ℤ × List ℕ) (u v : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {Su Sv : ℝ}
+    (hu : ‖u‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ Su)
+    (hv : ‖v‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ Sv) :
+    ‖∑ G ∈ gs, fp.Λc I (Function.update (Function.update (Function.update (xg G) a
+        (chainSide fp.P (fp.mergeStepsM cat a c d (fp.Lc + 5) I
+          (fp.slotFiltM G (Lf.role c) I t.2) (fp.slotFiltM G (Lf.role d) I t'.2)) (xg G a))) c
+          u) d v)‖ ≤
+      localFormUniformConstant κ *
+        Real.sqrt (∑ G ∈ gs, (‖xg G a‖ / Real.sqrt (dyadicGridLength A.G I.1)) ^ 2) *
+        Real.sqrt (∑ G ∈ gs, (‖xg G b‖ / Real.sqrt (dyadicGridLength A.G I.1)) ^ 2) *
+        (Su * Sv) := by
+  have hsq := Real.sqrt_pos.mpr (dyadicGridLength_pos A.G I.1)
+  have hSu : 0 ≤ Su := le_trans (by positivity) hu
+  have hSv : 0 ≤ Sv := le_trans (by positivity) hv
+  refine group_triple_shared_le gs _ _ _ (localFormUniformConstant_nonneg κ) (by positivity)
+    fun G _ => ?_
+  exact fp.restore_corrM I hab hac had hbc hbd hcd (xg G) _ u v
+    (div_le_div_of_nonneg_right (fp.norm_chainSide_mergeStepsM _ _ _ _ _ _ _ _ _) hsq.le) le_rfl
+    hu hv
+
+end ActiveSetup.BasicFamilies.FamParams
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## Certified variation of single masked outputs (blueprint lem:variation, lines 1871, 2386) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The global output of a single outer main projection with the inherited mask `M` after the
+shared history `ls` at the depth `h` (an individual pad choice of a filter, blueprint line 1871:
+"couple individual pad choices across times"). -/
+noncomputable def gOutM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (ls : List (ℕ × Bool)) (h : ℤ) :
+    ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) :=
+  (((bf.mainBase fp.Mc s mb).withMask M).proj h).comp (fp.gHist l s mb ls h)
+
+/-- The single masked global outputs at depth `h` commute with the restriction to every dyadic
+cell of depth at most the clamped depth `h`. -/
+theorem gOutM_commute (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (ls : List (ℕ × Bool)) (h : ℤ)
+    {Q : ℤ × ℤ} (hQ : Q.1 ≤ (bf.mainBase fp.Mc s mb).depth h) :
+    (columnL2Restriction (dyadicGridCell A.G Q.1 Q.2)
+      (dyadicGridCell_measurable A.G Q.1 Q.2)).comp (fp.gOutM l s mb M ls h) =
+    (fp.gOutM l s mb M ls h).comp (columnL2Restriction (dyadicGridCell A.G Q.1 Q.2)
+      (dyadicGridCell_measurable A.G Q.1 Q.2)) := by
+  set rQ := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G Q.1 Q.2)
+    (dyadicGridCell_measurable A.G Q.1 Q.2)
+  have hout : (((bf.mainBase fp.Mc s mb).withMask M).proj h).comp rQ =
+      rQ.comp (((bf.mainBase fp.Mc s mb).withMask M).proj h) :=
+    (((bf.mainBase fp.Mc s mb).withMask M).proj_commute_restrict h hQ).symm
+  have hcum : ∀ m, (opAvg fun p : Fin fp.P =>
+      ((bf.mainBase fp.Mc s mb).withMask (fp.cumMaskT l s mb m p)).proj h).comp rQ =
+      rQ.comp (opAvg fun p : Fin fp.P =>
+        ((bf.mainBase fp.Mc s mb).withMask (fp.cumMaskT l s mb m p)).proj h) := fun m =>
+    opAvg_commute _ _ fun p =>
+      (((bf.mainBase fp.Mc s mb).withMask (fp.cumMaskT l s mb m p)).proj_commute_restrict h
+        hQ).symm
+  have hhist := layerOp_commute _ rQ hcum ls
+  unfold gOutM gHist globHist
+  refine ContinuousLinearMap.ext fun x => ?_
+  simp only [ContinuousLinearMap.comp_apply]
+  have e1 := DFunLike.congr_fun hhist x
+  simp only [ContinuousLinearMap.comp_apply] at e1
+  rw [e1]
+  have e2 := DFunLike.congr_fun hout (layerOp (fun m => opAvg fun p : Fin fp.P =>
+    ((bf.mainBase fp.Mc s mb).withMask (fp.cumMaskT l s mb m p)).proj h) ls x)
+  simp only [ContinuousLinearMap.comp_apply] at e2
+  exact e2.symm ▸ rfl
+
+/-- The restricted jump rows of the single masked global outputs between two depths split
+orthogonally over the depth partition of a basic family at the left depth. -/
+theorem gOutM_rows_blk (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (ls : List (ℕ × Bool)) {hr ht : ℤ}
+    (hrt : hr ≤ ht) (htd : ht ≤ A.R.1 + A.treeDepth) (E : Finset (ℤ × ℤ))
+    (hE : ∀ I ∈ E, I ∈ A.cells) {V : Type*} [Fintype V] (Ψ : ColumnDepthFamily V)
+    (hΨG : Ψ.D.grid = A.G)
+    (hΨR : dyadicGridCell A.G A.R.1 A.R.2 ⊆ dyadicGridCell A.G Ψ.D.root.1 Ψ.D.root.2)
+    (hΨr : Ψ.D.root.1 ≤ A.R.1) (hRr : A.R.1 ≤ hr) (x : ColumnL2 (bf.RLab fp.Mc s)) :
+    ‖((columnL2Restriction (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+        (fp.gOutM l s mb M ls ht - fp.gOutM l s mb M ls hr)) x‖ ^ 2 =
+      ∑ Q : {Q // Q ∈ (Ψ.partition hr).cells},
+        ‖((columnL2Restriction (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (fp.gOutM l s mb M ls ht - fp.gOutM l s mb M ls hr))
+          (columnL2Restriction (dyadicGridCell Ψ.D.grid Q.1.1 Q.1.2)
+            (dyadicGridCell_measurable Ψ.D.grid Q.1.1 Q.1.2) x)‖ ^ 2 := by
+  have hEm : MeasurableSet (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2) :=
+    Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2
+  have hdepth : ∀ Q ∈ (Ψ.partition hr).cells, ∀ h : ℤ, hr ≤ h → h ≤ ht →
+      Q.1 ≤ (bf.mainBase fp.Mc s mb).depth h := by
+    intro Q hQ h h1 h2
+    have hQ1 := ((Ψ.mem_partition _ Q).mp hQ).1
+    have hle : Ψ.depth hr ≤ hr := by
+      unfold ColumnDepthFamily.depth
+      exact max_le (by omega) (min_le_left _ _)
+    change Q.1 ≤ max A.R.1 (min h (A.R.1 + A.treeDepth))
+    rw [hQ1]
+    exact le_trans hle (le_trans (le_min h1 (by omega)) (le_max_right _ _))
+  refine Ψ.blk_of_commute hr _ (fun y => ?_) (fun Q hQ => ?_) x
+  · filter_upwards [columnL2Restriction_vanish _ hEm
+      ((fp.gOutM l s mb M ls ht - fp.gOutM l s mb M ls hr) y)] with z hz hzR
+    refine hz fun hzE => hzR ?_
+    rw [Set.mem_iUnion₂] at hzE
+    obtain ⟨I, hI, hzI⟩ := hzE
+    rw [hΨG]
+    exact hΨR (A.sub I (hE I hI) hzI)
+  · have h1 := fp.gOutM_commute l s mb M ls ht (Q := Q) (hdepth Q hQ ht hrt le_rfl)
+    have h2 := fp.gOutM_commute l s mb M ls hr (Q := Q) (hdepth Q hQ hr le_rfl hrt)
+    have hc := columnL2Restriction_comm (V := bf.RLab fp.Mc s) hEm
+      (dyadicGridCell_measurable A.G Q.1 Q.2)
+    rw [hΨG, ContinuousLinearMap.comp_assoc, ContinuousLinearMap.sub_comp, ← h1, ← h2,
+      ← ContinuousLinearMap.comp_sub,
+      ← ContinuousLinearMap.comp_assoc, ← ContinuousLinearMap.comp_assoc, hc]
+
+/-- The restricted jump rows of a single masked main depth family split orthogonally over the
+main partition at the left depth (`main_blk` for any inherited mask). -/
+theorem main_blkM (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) {hr ht : ℤ} (hrt : hr ≤ ht)
+    (Ec : Finset (ℤ × ℤ)) (hEc : ∀ I ∈ Ec, I ∈ A.cells) (x : ColumnL2 (bf.RLab fp.Mc s)) :
+    ‖((columnL2Restriction (⋃ I ∈ Ec, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+        (((bf.mainBase fp.Mc s mb).withMask M).proj ht -
+          ((bf.mainBase fp.Mc s mb).withMask M).proj hr)) x‖ ^ 2
+      = ∑ Q : {Q // Q ∈ ((bf.mainBase fp.Mc s mb).partition hr).cells},
+        ‖((columnL2Restriction (⋃ I ∈ Ec, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (((bf.mainBase fp.Mc s mb).withMask M).proj ht -
+            ((bf.mainBase fp.Mc s mb).withMask M).proj hr))
+          (columnL2Restriction (dyadicGridCell A.G Q.1.1 Q.1.2)
+            (dyadicGridCell_measurable A.G Q.1.1 Q.1.2) x)‖ ^ 2 := by
+  set Ψ := (bf.mainBase fp.Mc s mb).withMask M
+  set Ψ0 := bf.mainBase fp.Mc s mb
+  set E := columnL2Restriction (V := bf.RLab fp.Mc s) (⋃ I ∈ Ec, dyadicGridCell A.G I.1 I.2)
+    (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+  have hv := A.restrict_union_vanish' Ec hEc ((Ψ.proj ht - Ψ.proj hr) x)
+  rw [ContinuousLinearMap.comp_apply, Ψ0.norm_sq_partition hr _ hv]
+  refine Finset.sum_congr rfl fun Q _ => ?_
+  have h1 := Ψ.proj_comm_restrict (h' := hr) (h := ht) hrt Q.2
+  have h2 := Ψ.proj_comm_restrict (h' := hr) (h := hr) le_rfl Q.2
+  have h3 := columnL2Restriction_comm (V := bf.RLab fp.Mc s)
+    (dyadicGridCell_measurable A.G Q.1.1 Q.1.2)
+    (Finset.measurableSet_biUnion Ec fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+  congr 2
+  rw [ContinuousLinearMap.comp_apply, sub_apply, sub_apply, map_sub, map_sub]
+  change (columnL2Restriction _ (dyadicGridCell_measurable A.G Q.1.1 Q.1.2)).comp E
+      (Ψ.proj ht x) - (columnL2Restriction _ (dyadicGridCell_measurable A.G Q.1.1 Q.1.2)).comp E
+      (Ψ.proj hr x) = _
+  rw [h3, ContinuousLinearMap.comp_apply, ContinuousLinearMap.comp_apply,
+    ← ContinuousLinearMap.comp_apply _ (Ψ.proj ht), ← ContinuousLinearMap.comp_apply _ (Ψ.proj hr)]
+  change E (((columnL2Restriction _ (dyadicGridCell_measurable Ψ.D.grid Q.1.1 Q.1.2)).comp
+    (Ψ.proj ht)) x) - E (((columnL2Restriction _
+      (dyadicGridCell_measurable Ψ.D.grid Q.1.1 Q.1.2)).comp (Ψ.proj hr)) x) = _
+  rw [← h1, ← h2, ← map_sub]
+  rfl
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- Blueprint lem:variation (lines 1871-1877) for single masked outputs with a common input `z`:
+if the restricted interval rows of the outer masks `M_G` are jointly Bessel with constant `C_w`
+across groups (`hwr1`, `hwr2`: the whole-range conditions), the outputs
+`M_{G,s} B'_s z` have square-summable certified variation over disjoint depth intervals,
+`Σ ‖1_E (Z_{G,t} - Z_{G,r})‖² ≤ 2 C_w (C_{|ls|}² + |ls| Σ_m C_m²) ‖z‖²`. -/
+theorem main_variationM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    {ι ι' : Type*} [Fintype ι] [Fintype ι'] (Mk : ι → InheritedColumnMask (bf.mainTree fp.Mc s mb))
+    (ls : List (ℕ × Bool)) (r t : ι' → ℕ) (hrt : ∀ i, r i ≤ t i)
+    (hdis : ∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
+    (Ec : ι → ι' → Finset (ℤ × ℤ)) (hEc : ∀ G i, ∀ I ∈ Ec G i, I ∈ A.cells) {Cw : ℝ}
+    (hCw : 0 ≤ Cw)
+    (hwr1 : ∀ x : ι × ι' → ColumnL2 (bf.RLab fp.Mc s), ‖∑ q : ι × ι', ContinuousLinearMap.adjoint
+        ((columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + t q.2) -
+            ((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + r q.2))) (x q)‖ ^ 2 ≤
+      Cw * ∑ G, ‖∑ q ∈ (Finset.univ : Finset (ι × ι')).filter (fun q => q.1 = G),
+        ContinuousLinearMap.adjoint
+          ((columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+            (Finset.measurableSet_biUnion _ fun I _ =>
+              dyadicGridCell_measurable A.G I.1 I.2)).comp
+            (((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + t q.2) -
+              ((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + r q.2))) (x q)‖ ^ 2)
+    (hwr2 : ∀ i, ∀ x : ι → ColumnL2 (bf.RLab fp.Mc s), ‖∑ G, ContinuousLinearMap.adjoint
+        ((columnL2Restriction (⋃ I ∈ Ec G i, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (((bf.mainBase fp.Mc s mb).withMask (Mk G)).proj (A.R.1 + t i))) (x G)‖ ^ 2 ≤
+      Cw * ∑ G, ‖∑ G' ∈ (Finset.univ : Finset ι).filter (fun G' => G' = G),
+        ContinuousLinearMap.adjoint
+          ((columnL2Restriction (⋃ I ∈ Ec G' i, dyadicGridCell A.G I.1 I.2)
+            (Finset.measurableSet_biUnion _ fun I _ =>
+              dyadicGridCell_measurable A.G I.1 I.2)).comp
+            (((bf.mainBase fp.Mc s mb).withMask (Mk G')).proj (A.R.1 + t i))) (x G')‖ ^ 2)
+    (z : ColumnL2 (bf.RLab fp.Mc s)) :
+    ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.gOutM l s mb (Mk q.1) ls (A.R.1 + t q.2) z -
+          fp.gOutM l s mb (Mk q.1) ls (A.R.1 + r q.2) z)‖ ^ 2
+      ≤ 2 * Cw * (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 * ‖z‖ ^ 2 +
+          ls.length * (∑ m ∈ Finset.range ls.length,
+            compressionC (bf.mainTree fp.Mc s mb) m ^ 2) * ‖z‖ ^ 2) := by
+  set Ψ0 := bf.mainBase fp.Mc s mb
+  set Am := fp.cumMaskT l s mb
+  set T := Finset.univ.sup t
+  have ht : ∀ i, t i ≤ T := fun i => Finset.le_sup (f := t) (Finset.mem_univ i)
+  have key := certifiedVariation_gen T
+    (fun G n => (Ψ0.withMask (Mk G)).proj (A.R.1 + n))
+    (fun G n _ => ColumnDepthFamily.isStarProjection_proj _ _)
+    (fun G a _ b _ hab => ColumnDepthFamily.proj_nested _ (by omega))
+    (fun G i => columnL2Restriction (⋃ I ∈ Ec G i, dyadicGridCell A.G I.1 I.2)
+      (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2))
+    (fun G i y => columnL2Indicator_norm_le _ (Finset.measurableSet_biUnion _ fun I _ =>
+      dyadicGridCell_measurable A.G I.1 I.2) y) r t hrt ht hdis
+    (fun i => globHist Ψ0 Am ls (A.R.1 + t i) z) (fun i => globHist Ψ0 Am ls (A.R.1 + r i) z) z
+    (G₀ := compressionC Ψ0.D ls.length ^ 2)
+    (J := ls.length * (∑ m ∈ Finset.range ls.length, compressionC Ψ0.D m ^ 2) * ‖z‖ ^ 2) hCw
+    hwr1 ?_ hwr2 (globHist_jump Ψ0 fp.hP Am ls r t hrt hdis z)
+  · have hD : Ψ0.D = bf.mainTree fp.Mc s mb := rfl
+    rw [hD] at key
+    refine le_trans (le_of_eq ?_) (key.trans (le_of_eq (by ring)))
+    rfl
+  · intro c hc hB
+    have h := globHist_compression Ψ0 fp.hP Am ls (fun q : ι × ι' => A.R.1 + r q.2)
+      (fun q => (columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+        ((Ψ0.withMask (Mk q.1)).proj (A.R.1 + t q.2) -
+          (Ψ0.withMask (Mk q.1)).proj (A.R.1 + r q.2))) hc hB
+      (fun q x => fp.main_blkM s mb (Mk q.1) (by have := hrt q.2; omega)
+        (Ec q.1 q.2) (fun I hI => hEc q.1 q.2 I hI) x) z
+    refine h.trans (le_of_eq ?_)
+    ring
+
+open Classical in
+/-- `eq:whole-ranges` for single masked outputs at one depth: with the whole-range condition the
+outputs of the groups on unions of cells of that depth are jointly Bessel with constant `C_w`. -/
+theorem main_jointM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    {ι : Type*} [Fintype ι] (Mk : ι → InheritedColumnMask (bf.mainTree fp.Mc s mb))
+    (ls : List (ℕ × Bool)) (ht : ℤ) (Ec : ι → Finset (ℤ × ℤ)) {Cw : ℝ} (hCw : 0 ≤ Cw)
+    (hwr2 : ∀ x : ι → ColumnL2 (bf.RLab fp.Mc s), ‖∑ G, ContinuousLinearMap.adjoint
+        ((columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (((bf.mainBase fp.Mc s mb).withMask (Mk G)).proj ht)) (x G)‖ ^ 2 ≤
+      Cw * ∑ G, ‖∑ G' ∈ (Finset.univ : Finset ι).filter (fun G' => G' = G),
+        ContinuousLinearMap.adjoint
+          ((columnL2Restriction (⋃ I ∈ Ec G', dyadicGridCell A.G I.1 I.2)
+            (Finset.measurableSet_biUnion _ fun I _ =>
+              dyadicGridCell_measurable A.G I.1 I.2)).comp
+            (((bf.mainBase fp.Mc s mb).withMask (Mk G')).proj ht)) (x G')‖ ^ 2)
+    (w : ColumnL2 (bf.RLab fp.Mc s)) :
+    ∑ G, ‖columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.gOutM l s mb (Mk G) ls ht w)‖ ^ 2 ≤ Cw * ‖w‖ ^ 2 := by
+  set H := fp.gHist l s mb ls ht w
+  set rE : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun G =>
+    columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
+      (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+  have hj := joint_bessel_of_wholeRanges (Finset.univ : Finset ι) (fun G => G)
+    (fun G => (rE G).comp (((bf.mainBase fp.Mc s mb).withMask (Mk G)).proj ht))
+    (fun G h' => by
+      rw [Finset.sum_eq_single_of_mem G (by simp) (fun b hb hne => by
+        exact absurd (Finset.mem_filter.mp hb).2 hne)]
+      have h1 : ‖((rE G).comp (((bf.mainBase fp.Mc s mb).withMask (Mk G)).proj ht)) h'‖ ≤
+          ‖h'‖ := by
+        simp only [ContinuousLinearMap.comp_apply, rE]
+        exact (columnL2Indicator_norm_le _ (Finset.measurableSet_biUnion _ fun I _ =>
+          dyadicGridCell_measurable A.G I.1 I.2) _).trans (starProjection_norm_apply_le _
+            (((bf.mainBase fp.Mc s mb).withMask (Mk G)).isStarProjection_proj ht) h')
+      exact pow_le_pow_left₀ (norm_nonneg _) h1 2)
+    hCw hwr2 H
+  refine le_trans (le_of_eq ?_) (hj.trans (mul_le_mul_of_nonneg_left ?_ hCw))
+  · rfl
+  · exact pow_le_pow_left₀ (norm_nonneg _) (globHist_norm_le _ fp.hP _ ls ht w) 2
+
+open Classical in
+/-- Blueprint lem:variation (lines 1861-1877) for single masked outputs of a basic slot and one of
+its basic families `j_b`: the histories act on the basic depth projection `P_{l,j_b,h} F`, and
+the certified variation over disjoint depth intervals is at most
+`2 (B C₁² ‖F‖²) + 2 C_w ‖F‖²`, with `B` the constant of `main_variationM`. -/
+theorem main_variation_basicM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    {ι ι' : Type*} [Fintype ι] [Fintype ι'] (Mk : ι → InheritedColumnMask (bf.mainTree fp.Mc s mb))
+    (ls : List (ℕ × Bool)) (r t : ι' → ℕ) (hrt : ∀ i, r i ≤ t i)
+    (hdis : ∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
+    (htd : ∀ i, t i ≤ A.treeDepth) (Ec : ι → ι' → Finset (ℤ × ℤ))
+    (hEc : ∀ G i, ∀ I ∈ Ec G i, I ∈ A.cells) {Cw : ℝ} (hCw : 0 ≤ Cw)
+    (hwr1 : ∀ x : ι × ι' → ColumnL2 (bf.RLab fp.Mc s), ‖∑ q : ι × ι', ContinuousLinearMap.adjoint
+        ((columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + t q.2) -
+            ((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + r q.2))) (x q)‖ ^ 2 ≤
+      Cw * ∑ G, ‖∑ q ∈ (Finset.univ : Finset (ι × ι')).filter (fun q => q.1 = G),
+        ContinuousLinearMap.adjoint
+          ((columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+            (Finset.measurableSet_biUnion _ fun I _ =>
+              dyadicGridCell_measurable A.G I.1 I.2)).comp
+            (((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + t q.2) -
+              ((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + r q.2))) (x q)‖ ^ 2)
+    (hwr2 : ∀ i, ∀ x : ι → ColumnL2 (bf.RLab fp.Mc s), ‖∑ G, ContinuousLinearMap.adjoint
+        ((columnL2Restriction (⋃ I ∈ Ec G i, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (((bf.mainBase fp.Mc s mb).withMask (Mk G)).proj (A.R.1 + t i))) (x G)‖ ^ 2 ≤
+      Cw * ∑ G, ‖∑ G' ∈ (Finset.univ : Finset ι).filter (fun G' => G' = G),
+        ContinuousLinearMap.adjoint
+          ((columnL2Restriction (⋃ I ∈ Ec G' i, dyadicGridCell A.G I.1 I.2)
+            (Finset.measurableSet_biUnion _ fun I _ =>
+              dyadicGridCell_measurable A.G I.1 I.2)).comp
+            (((bf.mainBase fp.Mc s mb).withMask (Mk G')).proj (A.R.1 + t i))) (x G')‖ ^ 2)
+    (jb : Fin 2) (Z : ColumnL2 (bf.P l jb).V) :
+    ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.gOutM l s mb (Mk q.1) ls (A.R.1 + t q.2)
+            (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj (A.R.1 + t q.2) Z)) -
+          fp.gOutM l s mb (Mk q.1) ls (A.R.1 + r q.2)
+            (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj (A.R.1 + r q.2) Z)))‖ ^ 2 ≤
+      2 * ((2 * Cw * (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
+            ls.length * (∑ m ∈ Finset.range ls.length,
+              compressionC (bf.mainTree fp.Mc s mb) m ^ 2))) *
+          compressionC (bf.P l jb).Ψ.D 1 ^ 2 * ‖Z‖ ^ 2) + 2 * (Cw * ‖Z‖ ^ 2) := by
+  set Ψ := (bf.P l jb).Ψ
+  have hΨG : Ψ.D.grid = A.G := (bf.P l jb).grid
+  have hΨR : dyadicGridCell A.G A.R.1 A.R.2 ⊆ dyadicGridCell A.G Ψ.D.root.1 Ψ.D.root.2 :=
+    (bf.P l jb).root_sub
+  have hΨr : Ψ.D.root.1 ≤ A.R.1 := dyadicGridCell_depth_le_of_subset A.G A.R Ψ.D.root hΨR
+  have hBv : 0 ≤ 2 * Cw * (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
+      ls.length * (∑ m ∈ Finset.range ls.length,
+        compressionC (bf.mainTree fp.Mc s mb) m ^ 2)) := by
+    have : 0 ≤ ∑ m ∈ Finset.range ls.length, compressionC (bf.mainTree fp.Mc s mb) m ^ 2 :=
+      Finset.sum_nonneg fun _ _ => sq_nonneg _
+    positivity
+  have hrows : ∀ x, ∑ q : ι × ι', ‖((columnL2Restriction (⋃ I ∈ Ec q.1 q.2,
+      dyadicGridCell A.G I.1 I.2) (Finset.measurableSet_biUnion _ fun I _ =>
+        dyadicGridCell_measurable A.G I.1 I.2)).comp
+      (fp.gOutM l s mb (Mk q.1) ls (A.R.1 + t q.2) -
+        fp.gOutM l s mb (Mk q.1) ls (A.R.1 + r q.2))) x‖ ^ 2 ≤
+      (2 * Cw * (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
+          ls.length * (∑ m ∈ Finset.range ls.length,
+            compressionC (bf.mainTree fp.Mc s mb) m ^ 2))) * ‖x‖ ^ 2 := by
+    intro x
+    have h := fp.main_variationM l s mb Mk ls r t hrt hdis Ec hEc hCw hwr1 hwr2 x
+    exact le_trans (le_of_eq rfl) (h.trans (le_of_eq (by ring)))
+  have hjoint : ∑ q : ι × ι', ‖((columnL2Restriction (⋃ I ∈ Ec q.1 q.2,
+      dyadicGridCell A.G I.1 I.2) (Finset.measurableSet_biUnion _ fun I _ =>
+        dyadicGridCell_measurable A.G I.1 I.2)))
+      (fp.gOutM l s mb (Mk q.1) ls (A.R.1 + t q.2) (bf.famEmbR fp.Mc s l jb
+        ((Ψ.proj (A.R.1 + t q.2) - Ψ.proj (A.R.1 + r q.2)) Z)))‖ ^ 2 ≤ Cw * ‖Z‖ ^ 2 := by
+    rw [Fintype.sum_prod_type, Finset.sum_comm]
+    calc _ ≤ ∑ i : ι', Cw *
+            ‖bf.famEmbR fp.Mc s l jb ((Ψ.proj (A.R.1 + t i) - Ψ.proj (A.R.1 + r i)) Z)‖ ^ 2 :=
+          Finset.sum_le_sum fun i _ => fp.main_jointM l s mb Mk ls (A.R.1 + t i)
+            (fun G => Ec G i) hCw (hwr2 i) _
+      _ ≤ ∑ i : ι', Cw * ‖(Ψ.proj (A.R.1 + t i) - Ψ.proj (A.R.1 + r i)) Z‖ ^ 2 :=
+          Finset.sum_le_sum fun i _ => mul_le_mul_of_nonneg_left
+            (pow_le_pow_left₀ (norm_nonneg _) (bf.norm_famEmbR_le fp.Mc s l jb _) 2) hCw
+      _ ≤ _ := by
+          rw [← Finset.mul_sum]
+          exact mul_le_mul_of_nonneg_left (Ψ.jumps_from_le hΨr r t hrt hdis Z) hCw
+  have h := emb_variation Ψ (bf.famEmbR fp.Mc s l jb) (bf.norm_famEmbR_le fp.Mc s l jb)
+    (bf.famEmbR_restrict fp.Mc s l jb)
+    (fun q : ι × ι' => columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+      (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2))
+    (fun q h => fp.gOutM l s mb (Mk q.1) ls h)
+    (fun q => A.R.1 + r q.2) (fun q => A.R.1 + t q.2) hBv (fun x => hrows x)
+    (fun q x => fp.gOutM_rows_blk l s mb (Mk q.1) ls (by have := hrt q.2; omega)
+      (by have := htd q.2; omega) (Ec q.1 q.2) (fun I hI => hEc q.1 q.2 I hI) Ψ hΨG hΨR
+      hΨr (by omega) x) Z hjoint
+  exact h
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The global single masked output of a basic slot: the outer main projection with mask `M`
+after the shared history `ls`, acting on the global basic input at the depth `h`. -/
+noncomputable def basicOutM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (ls : List (ℕ × Bool)) (h : ℤ) :
+    ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+  colRelabel (bf.rv fp.Mc s) (fp.gOutM l s mb M ls h
+    (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s)) (bf.gBasic fp.Mc l h)))
+
+theorem basicOutM_eq (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (M : InheritedColumnMask (bf.mainTree fp.Mc s mb)) (ls : List (ℕ × Bool)) (h : ℤ) :
+    fp.basicOutM l s mb M ls h = colRelabel (bf.rv fp.Mc s)
+      (fp.gOutM l s mb M ls h (bf.famEmbR fp.Mc s l 0 ((bf.P l 0).Ψ.proj h (bf.P l 0).Z)) -
+        fp.gOutM l s mb M ls h (bf.famEmbR fp.Mc s l 1 ((bf.P l 1).Ψ.proj h (bf.P l 1).Z))) := by
+  unfold basicOutM ActiveSetup.BasicFamilies.gBasic ActiveSetup.BasicFamilies.famEmbR
+  rw [map_sub, map_sub]
+  rfl
+
+/-- On unions of active cells, the single masked outputs of a basic family depend only on the
+restriction of the family input to the attempt root. -/
+theorem out_restrictRM (hne : A.cells.Nonempty) (l : Fin 4) (s : List (CatCol bf.Vtx))
+    (mb : bf.MainBudget s) (M : InheritedColumnMask (bf.mainTree fp.Mc s mb))
+    (ls : List (ℕ × Bool)) (jb : Fin 2) {h : ℤ} (hRh : A.R.1 ≤ h) (E : Finset (ℤ × ℤ))
+    (hE : ∀ I ∈ E, I ∈ A.cells) (Z : ColumnL2 (bf.P l jb).V) :
+    columnL2Restriction (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.gOutM l s mb M ls h (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj h Z))) =
+      columnL2Restriction (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.gOutM l s mb M ls h (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj h
+          (columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+            (dyadicGridCell_measurable A.G A.R.1 A.R.2) Z)))) := by
+  set Ψ := (bf.P l jb).Ψ
+  have hΨG : Ψ.D.grid = A.G := (bf.P l jb).grid
+  have hN := famN_ge (bf := bf) hne l jb
+  set rR := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G A.R.1 A.R.2)
+    (dyadicGridCell_measurable A.G A.R.1 A.R.2)
+  set rE := columnL2Restriction (V := bf.RLab fp.Mc s) (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2)
+    (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+  have h1 : Ψ.proj h (columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+      (dyadicGridCell_measurable A.G A.R.1 A.R.2) Z) =
+      columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+        (dyadicGridCell_measurable A.G A.R.1 A.R.2) (Ψ.proj h Z) := by
+    have hd : A.R.1 ≤ Ψ.depth h := by
+      unfold ColumnDepthFamily.depth
+      exact le_trans (le_min hRh hN) (le_max_right _ _)
+    have h' := Ψ.proj_commute_restrict h (Q := A.R) hd
+    rw [hΨG] at h'
+    exact (DFunLike.congr_fun h' Z).symm
+  have h2 : (fp.gOutM l s mb M ls h).comp rR = rR.comp (fp.gOutM l s mb M ls h) :=
+    (fp.gOutM_commute l s mb M ls h (Q := A.R) (by
+      change A.R.1 ≤ max A.R.1 (min h (A.R.1 + A.treeDepth)); exact le_max_left _ _)).symm
+  have h3 : rE.comp rR = rE := by
+    refine columnL2Restriction_comp_of_subset _ _ ?_
+    intro y hy
+    obtain ⟨I, hI, hyI⟩ := Set.mem_iUnion₂.mp hy
+    exact A.sub I (hE I hI) hyI
+  rw [h1, bf.famEmbR_restrict]
+  change rE _ = rE (fp.gOutM l s mb M ls h (rR _))
+  rw [← ContinuousLinearMap.comp_apply (fp.gOutM l s mb M ls h) rR, h2,
+    ContinuousLinearMap.comp_apply, ← ContinuousLinearMap.comp_apply rE rR, h3]
+
+open Classical in
+/-- Blueprint lem:variation (`eq:variation`) for single masked basic outputs: with the
+whole-range conditions at constant `C_w`,
+`Σ_{G,i} ‖1_E (Z_{G,t_i} - Z_{G,r_i})‖² ≤ Σ_{j_b} 2 V_{j_b} ‖1_R F_{l,j_b}‖²`,
+`V_{j_b} = 2 (2 C_w S) C_{1,j_b}² + 2 C_w`. -/
+theorem basic_variationM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (hne : A.cells.Nonempty) {ι ι' : Type*} [Fintype ι] [Fintype ι']
+    (Mk : ι → InheritedColumnMask (bf.mainTree fp.Mc s mb))
+    (ls : List (ℕ × Bool)) (r t : ι' → ℕ) (hrt : ∀ i, r i ≤ t i)
+    (hdis : ∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
+    (htd : ∀ i, t i ≤ A.treeDepth) (Ec : ι → ι' → Finset (ℤ × ℤ))
+    (hEc : ∀ G i, ∀ I ∈ Ec G i, I ∈ A.cells) {Cw : ℝ} (hCw : 0 ≤ Cw)
+    (hwr1 : ∀ x : ι × ι' → ColumnL2 (bf.RLab fp.Mc s), ‖∑ q : ι × ι', ContinuousLinearMap.adjoint
+        ((columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + t q.2) -
+            ((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + r q.2))) (x q)‖ ^ 2 ≤
+      Cw * ∑ G, ‖∑ q ∈ (Finset.univ : Finset (ι × ι')).filter (fun q => q.1 = G),
+        ContinuousLinearMap.adjoint
+          ((columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+            (Finset.measurableSet_biUnion _ fun I _ =>
+              dyadicGridCell_measurable A.G I.1 I.2)).comp
+            (((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + t q.2) -
+              ((bf.mainBase fp.Mc s mb).withMask (Mk q.1)).proj (A.R.1 + r q.2))) (x q)‖ ^ 2)
+    (hwr2 : ∀ i, ∀ x : ι → ColumnL2 (bf.RLab fp.Mc s), ‖∑ G, ContinuousLinearMap.adjoint
+        ((columnL2Restriction (⋃ I ∈ Ec G i, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)).comp
+          (((bf.mainBase fp.Mc s mb).withMask (Mk G)).proj (A.R.1 + t i))) (x G)‖ ^ 2 ≤
+      Cw * ∑ G, ‖∑ G' ∈ (Finset.univ : Finset ι).filter (fun G' => G' = G),
+        ContinuousLinearMap.adjoint
+          ((columnL2Restriction (⋃ I ∈ Ec G' i, dyadicGridCell A.G I.1 I.2)
+            (Finset.measurableSet_biUnion _ fun I _ =>
+              dyadicGridCell_measurable A.G I.1 I.2)).comp
+            (((bf.mainBase fp.Mc s mb).withMask (Mk G')).proj (A.R.1 + t i))) (x G')‖ ^ 2) :
+    ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOutM l s mb (Mk q.1) ls (A.R.1 + t q.2) -
+          fp.basicOutM l s mb (Mk q.1) ls (A.R.1 + r q.2))‖ ^ 2 ≤
+      ∑ jb : Fin 2, 2 * (2 * ((2 * Cw *
+          (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
+            ls.length * (∑ m ∈ Finset.range ls.length,
+              compressionC (bf.mainTree fp.Mc s mb) m ^ 2))) *
+          compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2 * Cw) *
+        ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+          (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 := by
+  have hfam0 : ∀ jb : Fin 2, ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2,
+      dyadicGridCell A.G I.1 I.2) (Finset.measurableSet_biUnion _ fun I _ =>
+        dyadicGridCell_measurable A.G I.1 I.2)
+      (fp.gOutM l s mb (Mk q.1) ls (A.R.1 + t q.2) (bf.famEmbR fp.Mc s l jb
+        ((bf.P l jb).Ψ.proj (A.R.1 + t q.2) (columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+          (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z))) -
+        fp.gOutM l s mb (Mk q.1) ls (A.R.1 + r q.2) (bf.famEmbR fp.Mc s l jb
+          ((bf.P l jb).Ψ.proj (A.R.1 + r q.2) (columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+            (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z))))‖ ^ 2 ≤
+      (2 * ((2 * Cw * (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
+            ls.length * (∑ m ∈ Finset.range ls.length,
+              compressionC (bf.mainTree fp.Mc s mb) m ^ 2))) *
+          compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2 * Cw) *
+        ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+          (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 := fun jb =>
+    (fp.main_variation_basicM l s mb Mk ls r t hrt hdis htd Ec hEc hCw hwr1 hwr2 jb _).trans
+      (le_of_eq (by ring))
+  clear hwr1 hwr2
+  set rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
+    (dyadicGridCell A.G A.R.1 A.R.2) (dyadicGridCell_measurable A.G A.R.1 A.R.2)
+  set X : Fin 2 → ι × ι' → ℤ → ColumnL2 (bf.RLab fp.Mc s) := fun jb q h =>
+    fp.gOutM l s mb (Mk q.1) ls h (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj h
+      (rR jb (bf.P l jb).Z)))
+  set rE : ι × ι' → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun q =>
+    columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+      (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+  have hsplit : ∀ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+      (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+      (fp.basicOutM l s mb (Mk q.1) ls (A.R.1 + t q.2) -
+        fp.basicOutM l s mb (Mk q.1) ls (A.R.1 + r q.2))‖ =
+      ‖rE q (X 0 q (A.R.1 + t q.2) - X 0 q (A.R.1 + r q.2)) -
+        rE q (X 1 q (A.R.1 + t q.2) - X 1 q (A.R.1 + r q.2))‖ := by
+    intro q
+    rw [fp.basicOutM_eq, fp.basicOutM_eq, ← map_sub, ← colRelabel_restrict,
+      norm_colRelabel (bf.rv_injective fp.Mc s)]
+    have e : ∀ (jb : Fin 2) (h : ℤ), A.R.1 ≤ h → rE q (fp.gOutM l s mb (Mk q.1) ls h
+        (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj h (bf.P l jb).Z))) = rE q (X jb q h) :=
+      fun jb h hh => fp.out_restrictRM hne l s mb (Mk q.1) ls jb hh (Ec q.1 q.2) (hEc q.1 q.2) _
+    simp only [map_sub]
+    rw [e 0 _ (by omega), e 1 _ (by omega), e 0 _ (by omega), e 1 _ (by omega),
+      sub_sub_sub_comm]
+  have hfam : ∀ jb : Fin 2, ∑ q : ι × ι', ‖rE q (X jb q (A.R.1 + t q.2) -
+      X jb q (A.R.1 + r q.2))‖ ^ 2 ≤ (2 * ((2 * Cw *
+          (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
+            ls.length * (∑ m ∈ Finset.range ls.length,
+              compressionC (bf.mainTree fp.Mc s mb) m ^ 2))) *
+          compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2 * Cw) * ‖rR jb (bf.P l jb).Z‖ ^ 2 := fun jb =>
+    hfam0 jb
+  calc ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOutM l s mb (Mk q.1) ls (A.R.1 + t q.2) -
+          fp.basicOutM l s mb (Mk q.1) ls (A.R.1 + r q.2))‖ ^ 2
+      ≤ ∑ q : ι × ι', (2 * ‖rE q (X 0 q (A.R.1 + t q.2) - X 0 q (A.R.1 + r q.2))‖ ^ 2 +
+          2 * ‖rE q (X 1 q (A.R.1 + t q.2) - X 1 q (A.R.1 + r q.2))‖ ^ 2) := by
+        refine Finset.sum_le_sum fun q _ => ?_
+        rw [hsplit q]
+        set a := rE q (X 0 q (A.R.1 + t q.2) - X 0 q (A.R.1 + r q.2))
+        set b := rE q (X 1 q (A.R.1 + t q.2) - X 1 q (A.R.1 + r q.2))
+        calc ‖a - b‖ ^ 2 ≤ (‖a‖ + ‖b‖) ^ 2 :=
+              pow_le_pow_left₀ (norm_nonneg _) (norm_sub_le a b) 2
+          _ ≤ 2 * ‖a‖ ^ 2 + 2 * ‖b‖ ^ 2 := by nlinarith [sq_nonneg (‖a‖ - ‖b‖)]
+    _ = 2 * ∑ q : ι × ι', ‖rE q (X 0 q (A.R.1 + t q.2) - X 0 q (A.R.1 + r q.2))‖ ^ 2 +
+          2 * ∑ q : ι × ι', ‖rE q (X 1 q (A.R.1 + t q.2) - X 1 q (A.R.1 + r q.2))‖ ^ 2 := by
+        rw [Finset.sum_add_distrib, Finset.mul_sum, Finset.mul_sum]
+    _ ≤ _ := by
+        rw [Fin.sum_univ_two]
+        have h0 := hfam 0
+        have h1 := hfam 1
+        nlinarith
+
+/-- The variation constants of `basic_variationM` with `C_w ≤ 2` are at most the compression
+loss `G₀` (blueprint line 1877), giving the bound `G₀ · 4 |R|`. -/
+theorem basic_variationM_le (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (ls : List (ℕ × Bool)) {Cw : ℝ} (hCw : Cw ≤ 2) (c : ℕ) (hc : 1 ≤ c)
+    {kk : ℝ} (hk : 1 ≤ kk) (hDm : Real.log (2 * mb.B) ≤ kk ^ c)
+    (hDb : Real.log (2 * A.colBudget) ≤ kk ^ c) (hn : (ls.length : ℝ) ≤ c * (Real.log kk + 1)) :
+    ∑ jb : Fin 2, 2 * (2 * ((2 * Cw *
+          (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
+            ls.length * (∑ m ∈ Finset.range ls.length,
+              compressionC (bf.mainTree fp.Mc s mb) m ^ 2))) *
+          compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2 * Cw) *
+        ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+          (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 ≤
+      Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
+        (1 + Real.log (2 * kk)) ^ 2) * (4 * dyadicGridLength A.G A.R.1) := by
+  set G0 := Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
+    (1 + Real.log (2 * kk)) ^ 2)
+  have hV : ∀ jb : Fin 2, 2 * ((2 * Cw * (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
+        ls.length * (∑ m ∈ Finset.range ls.length,
+          compressionC (bf.mainTree fp.Mc s mb) m ^ 2))) *
+      compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2 * Cw ≤ G0 := by
+    intro jb
+    have hDb' : Real.log (2 * (bf.P l jb).Ψ.D.budget) ≤ kk ^ c := by
+      have hb := (bf.P l jb).Ψ.D.two_le_budget
+      refine le_trans (Real.log_le_log (by linarith) ?_) hDb
+      have := bf.budget l jb
+      linarith
+    have h := variation_loss_le (bf.mainTree fp.Mc s mb) (bf.P l jb).Ψ.D ls.length c hc hk hDm
+      hDb' hn hCw
+    refine le_trans (le_of_eq ?_) h
+    ring
+  have hE : ∀ jb : Fin 2, ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+      (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 ≤
+      dyadicGridLength A.G A.R.1 := fun jb => famInput_energy (bf := bf) l jb
+  have hG0 : 0 ≤ G0 := (Real.exp_pos _).le
+  rw [Fin.sum_univ_two]
+  have hV0 := hV 0
+  have hV1 := hV 1
+  have hE0 := hE 0
+  have hE1 := hE 1
+  have hn0 := sq_nonneg ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+    (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l 0).Z‖
+  have hn1 := sq_nonneg ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
+    (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l 1).Z‖
+  have hS : 0 ≤ ∑ m ∈ Finset.range ls.length, compressionC (bf.mainTree fp.Mc s mb) m ^ 2 :=
+    Finset.sum_nonneg fun _ _ => sq_nonneg _
+  have h0 := mul_le_mul hV0 hE0 hn0 hG0
+  have h1 := mul_le_mul hV1 hE1 hn1 hG0
+  nlinarith
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## Frozen complements on the main columns (blueprint line 2386) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- Blueprint lines 1861-1877 and 2386 for an individual pad of a ball filter ("joint group budgets
+for positive ball ranges"): the global outputs of the pad-`p` ball projections of the groups after
+the shared history of the basic input have certified variation at most `G₀ · 4 |R|` over disjoint
+depth intervals. -/
+theorem basic_variation_ballP (l : Fin 4) (s : List (CatCol bf.Vtx))
+    (hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
+      e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
+    (htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx) (mb : bf.MainBudget s)
+    (hanc : A.AncClosed) (hne : A.cells.Nonempty) {ι ι' : Type*} [Fintype ι] [Fintype ι']
+    (grp : ι → bf.Grp) (hgrp : Function.Injective grp) (k j : ℕ)
+    (hPH : fp.bbase j + fp.P ≤ fp.Hmax) (ls : List (ℕ × Bool)) (r t : ι' → ℕ)
+    (hrt : ∀ i, r i ≤ t i)
+    (hdis : ∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
+    (htd : ∀ i, t i ≤ A.treeDepth) (Ec : ι → ι' → Finset (ℤ × ℤ))
+    (hEc : ∀ G i, ∀ I ∈ Ec G i, I ∈ A.cells ∧ I.1 = A.R.1 + t i)
+    (hcert : ∀ G i, ∀ I ∈ Ec G i, fp.Cert k (grp G) I)
+    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
+    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
+    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
+    {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
+      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
+          (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
+    (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)
+    (hDm : Real.log (2 * mb.B) ≤ kk ^ c) (hDb : Real.log (2 * A.colBudget) ≤ kk ^ c)
+    (hn : (ls.length : ℝ) ≤ c * (Real.log kk + 1)) (p : Fin fp.P) :
+    ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOutM l s mb (fp.ballMaskT l s mb (grp q.1) j p) ls (A.R.1 + t q.2) -
+          fp.basicOutM l s mb (fp.ballMaskT l s mb (grp q.1) j p) ls (A.R.1 + r q.2))‖ ^ 2 ≤
+      Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
+        (1 + Real.log (2 * kk)) ^ 2) * (4 * dyadicGridLength A.G A.R.1) := by
+  have hCw : (0 : ℝ) ≤ 1 + τ * N * A.colBudget ^ 2 := by positivity
+  refine (fp.basic_variationM l s mb hne (fun G => fp.ballMaskT l s mb (grp G) j p) ls r t hrt
+    hdis htd Ec (fun G i I hI => (hEc G i I hI).1) hCw
+    (fun x => fp.main_wr1 l s hT htag d mb hanc grp hgrp k j hPH r t hrt Ec hEc hcert hroot hτ
+      hτ1 hHed hN p x)
+    (fun i x => fp.main_wr2 l s hT htag d mb grp hgrp k j hPH (A.R.1 + t i) (fun G => Ec G i)
+      (fun G => hEc G i) (fun G => hcert G i) hroot hτ hτ1 hHed hN p x)).trans ?_
+  exact fp.basic_variationM_le l s mb ls (by linarith) c hc hk hDm hDb hn
+
+open Classical in
+/-- Blueprint lines 1868 and 2386 for an individual pad of a cumulative filter ("shared budgets
+for group-independent histories"): the global outputs of the pad-`p` cumulative projection of the
+split `m` after the shared history of the basic input have certified variation at most
+`G₀ · 4 |R|` over disjoint depth intervals, without a sum over groups. -/
+theorem basic_variation_cumP (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (hne : A.cells.Nonempty) {ι' : Type*} [Fintype ι'] (m : ℕ) (p : Fin fp.P)
+    (ls : List (ℕ × Bool)) (r t : ι' → ℕ) (hrt : ∀ i, r i ≤ t i)
+    (hdis : ∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
+    (htd : ∀ i, t i ≤ A.treeDepth) (Ec : ι' → Finset (ℤ × ℤ))
+    (hEc : ∀ i, ∀ I ∈ Ec i, I ∈ A.cells) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)
+    (hDm : Real.log (2 * mb.B) ≤ kk ^ c) (hDb : Real.log (2 * A.colBudget) ≤ kk ^ c)
+    (hn : (ls.length : ℝ) ≤ c * (Real.log kk + 1)) :
+    ∑ i, ‖columnL2Restriction (⋃ I ∈ Ec i, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOutM l s mb (fp.cumMaskT l s mb m p) ls (A.R.1 + t i) -
+          fp.basicOutM l s mb (fp.cumMaskT l s mb m p) ls (A.R.1 + r i))‖ ^ 2 ≤
+      Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
+        (1 + Real.log (2 * kk)) ^ 2) * (4 * dyadicGridLength A.G A.R.1) := by
+  have h := fp.basic_variationM l s mb hne (ι := Unit) (fun _ => fp.cumMaskT l s mb m p) ls r t
+    hrt hdis htd (fun _ i => Ec i) (fun _ i => hEc i) zero_le_one
+    (fun x => le_of_eq (by simp))
+    (fun i x => le_of_eq (by simp))
+  rw [Fintype.sum_prod_type, Fintype.sum_unique] at h
+  exact h.trans (fp.basic_variationM_le l s mb ls (Cw := 1) (by norm_num) c hc hk hDm hDb hn)
+
+/-- The restriction of a single ball pad output to an active cell of its depth is the cell ball
+pad projection of the layered history of the basic input (blueprint line 1859). -/
+theorem basicOutM_ball_restrict (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (G : bf.Grp) (j : ℕ) (p : Fin fp.P) (ls : List (ℕ × Bool)) {I : ℤ × ℤ} (hI : I ∈ A.cells) :
+    columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOutM l s mb (fp.ballMaskT l s mb G j p) ls I.1) =
+      mainProj A.G fp.Mc (bf.origCols l) s I (fp.brank j) (fp.bmask I G j (p + 1))
+        (layerOp (fun m => fp.cumFilt l s I m) ls (bf.basicIn fp.Mc l I)) := by
+  rw [fp.basic_history l s mb ls hI]
+  exact bf.proj_bridge l fp.Mc s mb (fp.brank j) (fun c => fp.bmask c G j (p + 1)) _ hI _
+
+/-- The restriction of a single cumulative pad output to an active cell of its depth is the cell
+cumulative pad projection of the layered history of the basic input (blueprint line 1859). -/
+theorem basicOutM_cum_restrict (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
+    (m : ℕ) (p : Fin fp.P) (ls : List (ℕ × Bool)) {I : ℤ × ℤ} (hI : I ∈ A.cells) :
+    columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOutM l s mb (fp.cumMaskT l s mb m p) ls I.1) =
+      mainProj A.G fp.Mc (bf.origCols l) s I (fp.crank m) (fp.cmask I m (p + 1))
+        (layerOp (fun m => fp.cumFilt l s I m) ls (bf.basicIn fp.Mc l I)) := by
+  rw [fp.basic_history l s mb ls hI]
+  exact bf.proj_bridge l fp.Mc s mb (fp.crank m) (fun c => fp.cmask c m (p + 1)) _ hI _
+
+/-- Blueprint line 2386 ("their current local `L²` norms are bounded: pad bands are orthogonal at
+one cell, and all inner histories are contractions on bounded basic inputs"): the complementary
+band stack of a removed filter with nested pad masks, on the inner value of the basic input after
+any averaged main filters, has total square at most the square of the basic input. -/
+theorem band_stack_le (l : Fin 4) (s : List (CatCol bf.Vtx)) (I : ℤ × ℤ)
+    (f : ℕ × (Fin fp.P → bf.Vtx → Prop))
+    (hf : ∀ i j : Fin fp.P, i ≤ j → ∀ x, f.2 i x → f.2 j x)
+    (xs' : List (ℕ × (Fin fp.P → bf.Vtx → Prop))) (y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    ∑ q ∈ Finset.range (fp.P + 1),
+        ‖(padFam (fun p => mainProj A.G fp.Mc (bf.origCols l) s I f.1 (f.2 p)) (q + 1) -
+          padFam (fun p => mainProj A.G fp.Mc (bf.origCols l) s I f.1 (f.2 p)) q)
+          (applyAll (xs'.map (fp.filtAvgM l s I)) y)‖ ^ 2 ≤ ‖y‖ ^ 2 := by
+  have h := padFamC_bessel (fun p => mainProj A.G fp.Mc (bf.origCols l) s I f.1 (f.2 p))
+    (fun p => mainProj_isStarProjection _ _ _ _ _ _ _)
+    (fun p p' hpp' => mainProj_nest_mono _ _ _ s I le_rfl fun x hx => hf p p' hpp' x hx)
+    (applyAll (xs'.map (fp.filtAvgM l s I)) y)
+  refine le_trans (le_of_eq ?_) (h.trans (pow_le_pow_left₀ (norm_nonneg _)
+    (fp.norm_applyAll_filtAvgM_le l s I xs' y) 2))
+  refine Finset.sum_congr rfl fun q _ => ?_
+  rw [LinearMap.sub_apply, sub_apply, padFam_apply_eq, padFam_apply_eq]
+
+end ActiveSetup.BasicFamilies.FamParams
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## Flags of large frozen complements (blueprint line 2388) -/
+
+/-- Blueprint line 2388 ("if that uniform bound is `C₀`, the event indicator is bounded by
+`C₀^{-2}` times the squared difference size"), for vectors on a cell of length `L`: if the current
+value `v` has normalized size at most `C₀`, the length-weighted indicator of the frozen value `u`
+having normalized size above `2 C₀` is at most `‖u - v‖² / C₀²`. -/
+theorem flag_ind_le {E : Type*} [NormedAddCommGroup E] {C0 L : ℝ} (hC0 : 0 < C0) (hL : 0 < L)
+    (u v : E) (hv : ‖v‖ ≤ C0 * Real.sqrt L) :
+    (if 2 * C0 * Real.sqrt L < ‖u‖ then L else 0) ≤ ‖u - v‖ ^ 2 / C0 ^ 2 := by
+  split_ifs with h
+  · rw [le_div_iff₀ (by positivity)]
+    have h1 : C0 * Real.sqrt L ≤ ‖u - v‖ := by
+      have := norm_sub_norm_le u v
+      linarith
+    have h2 := pow_le_pow_left₀ (by positivity) h1 2
+    rw [mul_pow, Real.sq_sqrt hL.le] at h2
+    linarith
+  · positivity
+
+open Classical in
+/-- Blueprint line 2388 ("we can also discard a use whenever a frozen complement has local size
+greater than twice its current uniform bound at that use or at an ancestor in its block ...
+propagating the event through its block costs at most `K` in integrated square energy"): if at
+every cell `J` the current value `v_J` has normalized size at most `C₀`, the cells `I` flagged by
+an event (frozen value `u_J` of normalized size above `2 C₀`) at themselves or at an ancestor at
+most `K` depths above have total length at most `K C₀^{-2} Σ_J ‖u_J - v_J‖²`. -/
+theorem flag_energy_le {E : Type*} [NormedAddCommGroup E] (G : RealDyadicGrid)
+    (S : Finset (ℤ × ℤ)) (K : ℕ) {C0 : ℝ} (hC0 : 0 < C0) (u v : ℤ × ℤ → E)
+    (hv : ∀ J ∈ S, ‖v J‖ ≤ C0 * Real.sqrt (dyadicGridLength G J.1)) :
+    ∑ I ∈ S, dyadicGridLength G I.1 * (if ∃ J ∈ S, dyadicGridCell G I.1 I.2 ⊆
+        dyadicGridCell G J.1 J.2 ∧ I.1 < J.1 + K ∧
+        2 * C0 * Real.sqrt (dyadicGridLength G J.1) < ‖u J‖ then 1 else 0) ≤
+      K * ∑ J ∈ S, ‖u J - v J‖ ^ 2 / C0 ^ 2 := by
+  set ev : ℤ × ℤ → ℝ := fun J =>
+    if 2 * C0 * Real.sqrt (dyadicGridLength G J.1) < ‖u J‖ then 1 else 0
+  have hev0 : ∀ J, 0 ≤ ev J := fun J => by simp only [ev]; split_ifs <;> norm_num
+  -- the flag of a cell is at most the sum of the events above it
+  have hflag : ∀ I ∈ S, (if ∃ J ∈ S, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J.1 J.2 ∧
+      I.1 < J.1 + K ∧ 2 * C0 * Real.sqrt (dyadicGridLength G J.1) < ‖u J‖ then (1 : ℝ) else 0) ≤
+      ∑ J ∈ S.filter (fun J => dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J.1 J.2 ∧
+        I.1 < J.1 + K), ev J := by
+    intro I _
+    split_ifs with h
+    · obtain ⟨J, hJ, hIJ, hK, he⟩ := h
+      have hJm : J ∈ S.filter (fun J => dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J.1 J.2 ∧
+          I.1 < J.1 + K) := Finset.mem_filter.mpr ⟨hJ, hIJ, hK⟩
+      have h1 : ev J = 1 := by simp only [ev]; rw [ite_eq_left_of_eq_true _ _ (eq_true he)]
+      calc (1 : ℝ) = ev J := h1.symm
+        _ ≤ _ := Finset.single_le_sum (fun J _ => hev0 J) hJm
+    · exact Finset.sum_nonneg fun J _ => hev0 J
+  have hprop := flag_propagation_le G S ev (fun J _ => hev0 J) K
+  calc ∑ I ∈ S, dyadicGridLength G I.1 * (if ∃ J ∈ S, dyadicGridCell G I.1 I.2 ⊆
+        dyadicGridCell G J.1 J.2 ∧ I.1 < J.1 + K ∧
+        2 * C0 * Real.sqrt (dyadicGridLength G J.1) < ‖u J‖ then 1 else 0)
+      ≤ ∑ I ∈ S, dyadicGridLength G I.1 * ∑ J ∈ S.filter (fun J =>
+          dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J.1 J.2 ∧ I.1 < J.1 + K), ev J :=
+        Finset.sum_le_sum fun I hI => mul_le_mul_of_nonneg_left (hflag I hI)
+          (dyadicGridLength_pos G I.1).le
+    _ ≤ K * ∑ J ∈ S, dyadicGridLength G J.1 * ev J := hprop
+    _ ≤ K * ∑ J ∈ S, ‖u J - v J‖ ^ 2 / C0 ^ 2 := by
+        refine mul_le_mul_of_nonneg_left (Finset.sum_le_sum fun J hJ => ?_) (Nat.cast_nonneg K)
+        have h := flag_ind_le hC0 (dyadicGridLength_pos G J.1) (u J) (v J) (hv J hJ)
+        simp only [ev]
+        split_ifs with he
+        · rw [mul_one]; rw [ite_eq_left_of_eq_true _ _ (eq_true he)] at h; exact h
+        · rw [mul_zero]; positivity
+
+end Auto
+
+end

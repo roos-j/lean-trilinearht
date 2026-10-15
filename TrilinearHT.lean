@@ -38,6 +38,7 @@ public import TrilinearHT.Auto.Sec11_2cFiniteBaseDataAssembly
 public import TrilinearHT.Auto.Sec12_1TagsAmbientGraph
 public import TrilinearHT.Auto.Sec12_2DecreasingColorsHistoricalMasks
 public import TrilinearHT.Auto.Sec12_3FiniteSameTagCatalogs
+public import TrilinearHT.Auto.Sec12_3bCatalogsMainColumns
 public import TrilinearHT.Auto.Sec12_4BinaryLocalizationVariation
 public import TrilinearHT.Auto.Sec13_1OneExpansionAtFirstMatch
 public import TrilinearHT.Auto.Sec13_2TwoGraphsHeightStabilization
@@ -50,8 +51,10 @@ public import TrilinearHT.Auto.Sec14_2bShortBlockSummation
 public import TrilinearHT.Auto.Sec14_3PowerCostsFrozenComplements
 public import TrilinearHT.Auto.Sec14_4FixedStacksTwoVaryingSides
 public import TrilinearHT.Auto.Sec14_5CommonCutsHullMaximaSummation
+public import TrilinearHT.Auto.Sec14_5bExportedSideEstimate
 public import TrilinearHT.Auto.Sec15_1ExactCommonHeightSelection
 public import TrilinearHT.Auto.Sec15_2TorusNormsFourierTests
+public import TrilinearHT.Auto.Sec15_2bTorusSizeFourierTests
 public import TrilinearHT.Auto.Sec15_3FiniteSparseCountLemma
 public import TrilinearHT.Auto.Sec15_4VerificationCountingHypotheses
 public import TrilinearHT.Auto.Sec15_5OneDistributionCalculationFinalSums

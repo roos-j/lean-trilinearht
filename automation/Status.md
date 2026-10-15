@@ -356,7 +356,7 @@ status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief math
 --- | --- | --- | ---
 complete | 2026-10-14 03:49:26 ET | def:chart, lines 626-637 | Quadratic charts, complexity, bounded atoms and remarks (Sec05QuadraticCharts)
 complete | 2026-10-14 03:49:26 ET | lem:chart-operations, lines 642-651 | Conjugation, finite products, affine changes of one variable (Sec05QuadraticCharts)
-not started | 2026-10-14 03:49:26 ET | lem:chart-operations, line 651 | Same translation calculation for several-variable charts with real linear V: R^k -> R^d
+complete | 2026-10-14 05:58:38 ET | lem:chart-operations, line 651 | Affine substitutions of several-variable charts (multivariableQuadraticChart_affine_closure)
 complete | 2026-10-14 03:49:26 ET | several-variable charts, lines 656-660 | Q(z), symmetric and skew parts, A = C - C^T
 
 ## sec:additive, lines 664-928
@@ -395,16 +395,16 @@ status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief math
 complete | 2026-10-14 03:49:26 ET | lem:return-splitting, lines 1245-1300 | Isotropic rational return splitting (shortReturnSplitting)
 complete | 2026-10-14 03:49:26 ET | lem:weyl, lines 1304-1333 | eq:weyl-splitting and eq:effective (weylSplitting)
 complete | 2026-10-14 03:49:26 ET | lem:chartfourier, lines 1338-1377 | Chart Fourier expansion, envelope and shells for one splitting (splitFourierExpansion)
-old incomplete | 2026-10-14 03:49:26 ET | lem:chartfourier, lines 1349, 1377 | Envelope pooled over all splittings of height <= B: sum over Q and count B^(C(d+1)^2) missing
+complete | 2026-10-14 06:20:38 ET | lem:chartfourier, lines 1349, 1377 | Envelope pooled over all splittings of height <= B, shells and tail (splitFourierExpansion_pooled)
 complete | 2026-10-14 03:49:26 ET | lem:chartfourier, line 1349 | Uniform tail needs only quasipolynomial truncation (pooled_shell_tail_bound)
-old incomplete | 2026-10-14 03:49:26 ET | lem:separation, lines 1382-1388 | eq:separation proved only for chart dimensions d, e >= 1; def:chart allows d = 0
+complete | 2026-10-14 06:42:24 ET | lem:separation, lines 1382-1388 | eq:separation for charts of every dimension, padding d = 0 (progressionSeparation_all)
 complete | 2026-10-14 03:49:26 ET | lem:separation, lines 1390-1411 | Separated form norm, kernel approximation, eq:separated-phase and proof steps
 
 ## sec:detection, lines 1418-1479
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-complete | 2026-10-14 03:49:26 ET | lem:von-neumann, lines 1419-1447 | Local von Neumann bound, L2 and L1 forms (vonNeumannOneL2)
+complete | 2026-10-14 07:02:47 ET | lem:von-neumann, lines 1419-1447 | Local von Neumann bound with b, c in L^inf(I) (vonNeumann_essSup) and the L1 form (vonNeumannOneL2)
 complete | 2026-10-14 03:49:26 ET | lem:detection, lines 1451-1473 | A large local form gives a bounded-atom moment of the residual (detectResidual)
 
 ## sec:base, lines 1480-1666
@@ -416,7 +416,7 @@ complete | 2026-10-14 03:49:26 ET | lem:predictors, lines 1489-1534 | eq:band-sc
 complete | 2026-10-14 03:49:26 ET | lem:delay, lines 1539-1564 | eq:delay-error and delayed admissible opponents (delayedPredictorReplacement)
 complete | 2026-10-14 03:49:26 ET | lines 1570-1579 | d_(j,I) and inherited adaptive fits eq:adaptive (inheritedAdaptiveFit)
 complete | 2026-10-14 03:49:26 ET | lines 1581-1596 | Stagger schedule, eq:base-tuple expansion, eq:stagger, pair bounds (twoEarliestIncrements)
-old incomplete | 2026-10-14 03:49:26 ET | prop:base, lines 1600-1607 | eq:Y error has extra eta0 k^Cb |J| (bottom K0 levels); inverse weights of basic families not exported
+complete | 2026-10-14 08:55:24 ET | prop:base, lines 1600-1607 | eq:Y error e^-k |R| (baseTuple, baseBottom); basic projections: budgets, charts <= H, inverse weights exp(k^Cb)
 complete | 2026-10-14 03:49:26 ET | prop:base, lines 1607-1616 | Sizes <= 2, pair smallness, Y = B + U, eq:basic-side on sub-roots (activeCellReduction)
 complete | 2026-10-14 03:49:26 ET | prop:base, lines 1618-1623 | eq:active-min reduction with path multiplicity (ActiveSetup.reduction, active_count)
 complete | 2026-10-14 03:49:26 ET | prop:base proof, lines 1626-1660 | Low pairs, accurate high fits, sizes, eq:triple-tail, eq:min-subadd
@@ -425,127 +425,127 @@ complete | 2026-10-14 03:49:26 ET | prop:base proof, lines 1626-1660 | Low pairs
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-old incomplete | 2026-10-14 03:49:26 ET | lines 1668-1673 | P and G0 = P^o(1) via lem:budget-rules; 2 <= P <= e^k for large k not stated
+complete | 2026-10-14 08:19:15 ET | lines 1668-1673 | P = ceil(eta^-alpha): 2 <= P <= e^k, G0 <= P^eps, k^p <= P^eps for large k (localization_largeParameter)
 complete | 2026-10-14 03:49:26 ET | lines 1676-1687 | Normalized tags, edge relation, depth distances (ChartTag, tagEdge, DepthDistance)
 complete | 2026-10-14 03:49:26 ET | lem:graph, lines 1689-1707 | Far tags separate; short paths give endpoint splittings (curvatureGraph)
 complete | 2026-10-14 03:49:26 ET | lines 1713-1745 | Decreasing colors and delays with small failure set for any D >= list size (monotoneColoring)
 complete | 2026-10-14 03:49:26 ET | lem:masks, lines 1747-1773 | Historical pad masks, usable endpoints, inclusion, closure, separation
 complete | 2026-10-14 03:49:26 ET | lem:whole-ranges, lines 1777-1794 | eq:whole-ranges and adjoint ranges (usableRangeBessel, attempt_wholeRanges)
 complete | 2026-10-14 03:49:26 ET | lines 1797-1801, 1817 | Same-tag template test (sameTagTemplateTest)
-old incomplete | 2026-10-14 03:49:26 ET | lines 1803-1815 | Catalogs, ranks, pads, eq:catalog-test; catProj omits the rank-0 original columns of line 1805
-complete | 2026-10-14 03:49:26 ET | lem:closure, lines 1819-1828 | Main tests close on every active cell with per-rank counts (tree_closure, catalogs_counted)
-old incomplete | 2026-10-14 03:49:26 ET | lem:closure, lines 1820, 1828-1830 | log n_(L+5) <= k^O(1) only abstractly; attempt counts from exists_prefix_fixed unbounded in k
-old incomplete | 2026-10-14 03:49:26 ET | line 1835 | Main budget D_m with log D_m <= k^O(1): catalog budget is max 2 M_c, a global count of cells
-complete | 2026-10-14 03:49:26 ET | prop:localize, lines 1838-1856 | eq:localized at each search leaf (binaryGroupExpansion, attempt_localization)
-old incomplete | 2026-10-14 03:49:26 ET | line 1859 | Basic-slot histories: structure proved; compression loss not shown <= G0
+complete | 2026-10-14 09:39:07 ET | lines 1803-1815 | Main columns (originals rank 0, own weights; templates weight 1), masks, ranks, pads, filters, eq:catalog-test (Sec12_3b)
+complete | 2026-10-14 10:20:26 ET | lem:closure, lines 1819-1828 | Main and helper closure on all active cells with rank and path counts (main_closure, helper_closure)
+complete | 2026-10-14 10:44:02 ET | lem:closure, lines 1820, 1823, 1828-1830 | Names exp(k^O(1)), log n_(L+5), log T <= k^C, no cap attained (closure_poly, colorSizes_poly)
+complete | 2026-10-14 11:05:35 ET | line 1835 | D_m = colBudget^2 T U, log D_m <= k^O(1); rank-r primal costs D sqrt(n_r) (mainBudget, primal_expansion_count)
+complete | 2026-10-14 12:04:51 ET | prop:localize, lines 1838-1856 | Current-group decomposition on the main columns, error 9(D+1)tau_3 S^4 per leaf (attempt_localization)
+complete | 2026-10-14 13:13:32 ET | line 1859 | B_(l,s)B_l = signed sum of averaged main products on F_l (basic_history_expand); loss G0 (basic_compression); zero/retained masks
 complete | 2026-10-14 03:49:26 ET | lem:variation proof, lines 1871-1877 | Joint Bessel via whole ranges, product jumps, compression, averages (abstract)
-old incomplete | 2026-10-14 03:49:26 ET | lem:variation, lines 1861-1879 | eq:variation on the attempt: constant depends on global budgets, not shown <= G0
+complete | 2026-10-14 14:17:36 ET | lem:variation, lines 1861-1879 | eq:variation on main columns (basic_variation_G0), shared history, overlap, one-time; whole ranges on vertices
 
 ## sec:modes, lines 1884-2235
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-complete | 2026-10-14 03:49:26 ET | line 1888 | Primaries, first-match cells, nested alive lists (attemptLift, exists_modeSystem)
+complete | 2026-10-14 14:32:19 ET | line 1888 | Primaries = main columns of the outer ball at max pad/rank; first-match cells, branches disjoint, nested (primaries, firstCells)
 complete | 2026-10-14 03:49:26 ET | lines 1890-1893 | Branch lift d_rho, branch phase p_rho, theta_z/Q0 (branchLift, centerPhase)
-old incomplete | 2026-10-14 03:49:26 ET | eq:offset-mean, lines 1895-1901 | Proved for a cutoff positive on (0,1); blueprint cutoff vanishes within delta_c of the cuts
-complete | 2026-10-14 03:49:26 ET | eq:firstmatch, lines 1903-1910 | Finite first-match expansion with bounds D_1 (firstMatch_finite)
+complete | 2026-10-14 14:43:37 ET | eq:offset-mean, lines 1895-1901 | zeta in [0,1], 0 within delta of cuts, 1 beyond 2 delta; E zeta >= 1/2, E|1-zeta^2|^2 <= 4 d delta
+complete | 2026-10-14 14:54:29 ET | eq:firstmatch, lines 1888, 1903-1910 | Finite first-match expansion of main primaries, kept on descendants (mainFirstMatch_kept)
 complete | 2026-10-14 03:49:26 ET | eq:mode-differences, lines 1911-1916 | Same-primary mode differences a.(theta_v, theta_z/Q0), recentring (key_diff)
 complete | 2026-10-14 03:49:26 ET | eq:modes, lines 1918-1922 | Augmented modes with distinct private indices (augMode)
 complete | 2026-10-14 03:49:26 ET | lines 1923-1932 | Lift R_(l,G): bounded, |q_Phi| <= delta_c, exact synthesis (modeLift, LiftData)
-old incomplete | 2026-10-14 03:49:26 ET | line 1932 | log(1/eps_m) <= P^C fails: eps_m uses the global mode count of the whole tree
-not started | 2026-10-14 03:49:26 ET | line 1934 | Choice of D_* dominating counts, heights, weights, Q0, path uses, R_z sums
+complete | 2026-10-14 15:17:43 ET | line 1932 | Main-column lift (mainAttemptLift): private eps_Phi, local eps_m, 1/eps_m <= cB^2(e^(2DX^D)+1), sum|q|^2/eps <= dc^2 N cB^2, synth
+complete | 2026-10-14 16:07:04 ET | line 1934 | D_* = modeStar >= e^k, mode counts and uses on paths across groups, heights, weights, Q0, R Z sums on cells; log D_* <= C(kP)^C
 complete | 2026-10-14 03:49:26 ET | eq:gauge-cancel, lines 1938-1944 | Product of demodulations is an integer-carry character (gauge_cancel)
-old incomplete | 2026-10-14 03:49:26 ET | line 1944 | Gauge multiplier: bounds proved; agreement only up to 8d delta R; B_* not chosen
+complete | 2026-10-14 16:53:10 ET | line 1944 | Multiplier exact on true supports (cutoff delta/2); Fourier norms of M, zeta^2 in D_*; tails <= D_*^-300 at B_*; log B_* <= P^C
 complete | 2026-10-14 03:49:26 ET | eq:mode-parameters, lines 1946-1962 | Mode schedule and choice of K (chooseSchedule, exists_attempt_schedule)
 complete | 2026-10-14 03:49:26 ET | eq:lags, line 1963-1966 | Blocks [b,b+K) and lags u_b, v_b, t_b (lagU, lagV, lagT)
-old incomplete | 2026-10-14 03:49:26 ET | line 1967 | Freezing proved (ballAt_frozen_exact); retention rule for v_b-cells not defined (cells are free)
+complete | 2026-10-14 17:19:22 ET | line 1967 | Z frozen at u_b (zero before attempt); retained v_b-cells (actual uses); Z~ = R Z_(u_b), coefficients constant on u_b-cells
 complete | 2026-10-14 03:49:26 ET | eq:slope-variation, lines 1968-1975 | Slope oscillation bound and frozen-mode interface (slope_variation_mode, ModeSystem)
 complete | 2026-10-14 03:49:26 ET | eq:PRE, eq:CURRENT, lines 1979-1989 | PRE and CURRENT graphs, components, monotonicity (preCurrent, blockComps)
 complete | 2026-10-14 03:49:26 ET | eq:gap, lines 1991-1995 | Nonexceptional primary at a block (nonexcAt)
-old incomplete | 2026-10-14 03:49:26 ET | line 1996 | Exceptional blocks: attempt bound about 2(3H^2)^d, not C d_max; lem:height not applied to Theta
-old incomplete | 2026-10-14 03:49:26 ET | lines 1997-1998 | Tiny span and K_B proved given hsmall; hsmall not derived from the schedule
-old incomplete | 2026-10-14 03:49:26 ET | lem:stabilize, lines 2002-2028 | Argument formalized; numeric side conditions not derived, hstab never instantiated
+complete | 2026-10-14 17:34:32 ET | line 1996 | Each primary exceptional in at most 4 dim Theta blocks (lem:height packets); zero evaluations tiny (exceptional_blocks_le)
+complete | 2026-10-14 17:48:30 ET | lines 1997-1998 | Height-H vectors of K_rat tiny at a nonexceptional block, spanning constant below T^2 2^(3K) from T_gt; K_B = tinyKB
+complete | 2026-10-14 18:09:51 ET | lem:stabilize, lines 2002-2028 | Nonexceptional primary: all but 3 d_max R heights <= J_* give direct PRE edges at h-10 (Valid.stabilize)
 complete | 2026-10-14 03:49:26 ET | eq:good, lines 2030-2037 | Good modes, core and side modes, using the stable heights of the stabilize proof
-old incomplete | 2026-10-14 03:49:26 ET | lines 2039-2044 | Same PRE predecessor, eq:upper-heights, core coherence: need hstab
+complete | 2026-10-14 18:20:32 ET | lines 2039-2044 | Same PRE predecessor and core coherence on eq:upper-heights at the schedule, hstab from lem:stabilize
 complete | 2026-10-14 03:49:26 ET | lines 2039, 2044 | Minimal-PRE invariance and core bad proportion <= 2 delta_* (good_iff_of_minimal_pre)
 complete | 2026-10-14 03:49:26 ET | lem:mode-rows, lines 2049-2057 | Separated mode rows and cross pairs (aug_mode_rows, modeWave_pair_le)
-old incomplete | 2026-10-14 03:49:26 ET | lem:lift-composition, lines 2062-2077 | Joint rows proved with a loss from global catalog budgets; loss G0 not shown
-old incomplete | 2026-10-14 03:49:26 ET | prop:linear-side, lines 2080-2087 | eq:linear-energy only conditional; event errors unbounded; uses global card Md
+complete | 2026-10-14 19:20:23 ET | lem:lift-composition, lines 2062-2077 | Main-column lift rows jointly Bessel, histories and basic inputs added: c G0 |R| (lift_composition_G0)
+complete | 2026-10-14 21:00:38 ET | prop:linear-side, lines 2080-2087 | eq:linear-energy: sum ||V||^2 <= 24(L+1)(G0+2C_F/D_*^394)|R| with frozen coefficients (linear_energy)
 complete | 2026-10-14 03:49:26 ET | lines 2088-2099 | Side events, classes, links; failed-test telescoping (sideEvents, chain_bad_count)
-old incomplete | 2026-10-14 03:49:26 ET | eq:bad-density, lines 2100-2112 | Chain bound uses log of global mode count and A_e as hypotheses; not free of H
-old incomplete | 2026-10-14 03:49:26 ET | lines 2114-2116 | Level rows use the global card Md instead of path counts <= D_*
-old incomplete | 2026-10-14 03:49:26 ET | line 2118 | Exact subtotals: per-event error proved; D_*^-190 bound and negligibility missing
-complete | 2026-10-14 03:49:26 ET | eq:sides, eq:core-side-error, lines 2124-2133 | Side states and Z = A + S + E (LeafSplit.side, core, err)
-complete | 2026-10-14 03:49:26 ET | lines 2135-2150 | Physical error identity, majorant, offset selection (physical_error_le, exists_offsets_physical)
-old incomplete | 2026-10-14 03:49:26 ET | eq:physical-error, lines 2151-2156 | Only decision-cell bound with K_x hypothesis; used-cell sum and |R| bound missing
-complete | 2026-10-14 03:49:26 ET | line 2159 | Rolling, linear and U side budgets from eq:variation, eq:linear-energy, eq:basic-side (overlap O(K))
-old incomplete | 2026-10-14 03:49:26 ET | eq:side-cap, lines 2160-2163 | Cut proved for given budgets; basic-slot budget conditional, no P^C form
-old incomplete | 2026-10-14 03:49:26 ET | line 2164 | Core and error sizes <= P^C and error patterns O(e^-k |R|) not derived
-complete | 2026-10-14 03:49:26 ET | lines 2167-2169 | Helper catalog at reserved rank on side states (helper_instantiation)
-old incomplete | 2026-10-14 03:49:26 ET | lines 2172-2185 | Hereditary representatives and cross-mode non-adjacency: all versions assume hstab
+complete | 2026-10-14 19:38:43 ET | eq:bad-density, lines 2100-2112 | One-class chains: N <= 180 d_max log(2D_m)/delta_*, path labels, A_e, A_h derived (chain_length_schedule)
+complete | 2026-10-14 19:55:46 ET | lines 2114-2116 | Level rows with path counts <= D_*, pairings <= D_*^-200; group rows Bessel 6(L+1) (group_event_rows_schedule)
+complete | 2026-10-14 20:12:36 ET | line 2118 | Per-event error^2 <= B_c|J|/D_*^397; total over groups <= 3(L+1)B_c|R|/D_*^396 by path counts (side_errors_negligible)
+complete | 2026-10-14 21:13:02 ET | eq:sides, eq:core-side-error, lines 2124-2133 | Z~ = A + V (full core subtotal); S = Z_s - Z_u + V; Z_s = A + S + E (core_side_error)
+complete | 2026-10-14 21:50:07 ET | lines 2135-2150 | |E|^2 <= 2|1-zeta^2|^2|Z|^2 + 2dc^2(sum|beta|)^2, sup <= sum|beta|; mean, path count, offsets (exists_offsets_used)
+complete | 2026-10-14 21:50:07 ET | eq:physical-error, lines 2151-2156 | Used cells: sum int |E|^2 <= (8 d_max delta + 2dc^2) 4N colBudget^2 C_F N_use |R| (physical_error_used)
+complete | 2026-10-14 22:04:18 ET | line 2159 | Main columns: rolling <= K(20G0+32)|R|; V counted <= K times; U side <= 2C_U|R|; side states (sideState_budget)
+complete | 2026-10-14 22:12:18 ET | eq:side-cap, lines 2160-2163 | One cut of length <= rho|R| caps sum ||S||^2 on retained paths by (sum A)/rho <= m P^(C+1) (side_cap_states)
+complete | 2026-10-14 22:24:26 ET | line 2164 | Core/error sizes on retained cells via Z_u = Z_s - (Z_s - Z_u); error terms <= C M^3 sqrt(N eps)|R| (error_terms_le)
+complete | 2026-10-14 22:34:50 ET | lines 2167-2169 | Helper closure (rank L+5) on whole side states; main tests, ball and cumulative filters unchanged (helper_instantiation_main)
+complete | 2026-10-14 22:47:46 ET | lines 2172-2185 | Typed hereditary representatives; stabilization via lem:stabilize (blockComps_stab, typed_representatives_sched)
 complete | 2026-10-14 03:49:26 ET | eq:representative-separation, lines 2186-2192 | Separation given CURRENT non-adjacency (representative_separation)
 complete | 2026-10-14 03:49:26 ET | eq:component-size, lines 2196-2201 | Component sizes sigma_F (component_sizes)
-old incomplete | 2026-10-14 03:49:26 ET | eq:size-comparison, lines 2202-2209 | Proved with eps_c, eta_f and count hypotheses that are not instantiated
-old incomplete | 2026-10-14 03:49:26 ET | prop:tops, lines 2212-2219 | eq:top-count abstract only; not instantiated on representatives and sizes
-old incomplete | 2026-10-14 03:49:26 ET | lines 2221-2228 | First tops, non-overlap, rows, side part and absorption: only abstract pieces
-old incomplete | 2026-10-14 03:49:26 ET | line 2229 | Single-choice cut only; union over choices, extreme bins, P^C sizes missing
+complete | 2026-10-14 23:13:04 ET | eq:size-comparison, lines 2202-2209 | sigma_F^2 <= 12(PZ+V_F)+3Bc/D*^59, sum|V_F|^2 <= 2|V| (size_comparison, side_comparison_block)
+complete | 2026-10-15 00:08:28 ET | prop:tops, lines 2212-2219 | Cuts <= rho|R|; sum_G |A_G| <= min(D*, M N/(rho s^2)) off cuts; sizes by compSize_le (first_top_count_main)
+complete | 2026-10-15 00:08:28 ET | lines 2221-2228 | First tops, cross-mode separation, path-count rows, lift composition, side part, absorption (tops_energy)
+complete | 2026-10-15 00:08:28 ET | line 2229 | Cuts over all choices (tops_cut_many), first tops above uses, D* budget, component sizes (compSize_le)
 
 ## sec:sides, lines 2236-2459
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-old incomplete | 2026-10-14 03:49:26 ET | lines 2236-2237 | Helpers not instantiated on side states; helper count bound missing
+complete | 2026-10-15 00:20:24 ET | lines 2236-2237 | Helper rank L+5 on whole side states, all named histories; per cell <= n_(L+5), log n_(L+5) <= k^C (helper_sides)
 complete | 2026-10-14 03:49:26 ET | line 2240 | Complement expansion into chain products; distinct ranks (form_layer_chains)
 complete | 2026-10-14 03:49:26 ET | eq:transfer, lines 2242-2251 | Pad bands and exact transfer identity (padFam, transfer_identity)
-old incomplete | 2026-10-14 03:49:26 ET | lines 2252-2256 | Far bands: far_cell conditional on test-pass hypotheses; farC <= D^-C3 not shown
-complete | 2026-10-14 03:49:26 ET | eq:transferred-main, lines 2257-2263 | Chain-pair sum, restoring B to Y, fixed offsets, terminal band
+complete | 2026-10-15 01:46:26 ET | lines 2252-2256 | Far bands, main columns: <= #steps (P+1)^2 8 tau_3 S_z^2 S_a S_b per chain pair; thresholds cancel costs (leaf_far_search)
+complete | 2026-10-15 01:46:26 ET | eq:transferred-main, lines 2257-2263 | H(D S_a,S_b,Y_c,Y_d) - U corrections + defects, D <= 2fuel+2 helper averages (leaf_transferred_mainM)
 complete | 2026-10-14 03:49:26 ET | eq:mixed-Mq, lines 2267-2272 | Mixed maximal bound (oneMixedNorm)
 complete | 2026-10-14 03:49:26 ET | lem:shortblock, lines 2275-2367 | eq:shortblock and its proof (short_block_comparison)
-old incomplete | 2026-10-14 03:49:26 ET | line 2373 | Budgets to caps: cut abstract; P^C|R| size of the actual budgets missing
+complete | 2026-10-15 01:59:31 ET | line 2373 | P^C1 budgets of size P^C2|R| capped at P^(C1+C2)/rho by one cut of length <= rho|R| (poly_budget_caps)
 complete | 2026-10-14 03:49:26 ET | eq:three-sides, lines 2375-2382 | Group Cauchy-Schwarz and eq:three-sides (group_triple_le, three_sides_power)
-old incomplete | 2026-10-14 03:49:26 ET | lines 2382-2384 | Three-side cost, main term eta P^C |R|, restoration errors on the leaf: conditional
-old incomplete | 2026-10-14 03:49:26 ET | line 2386 | Frozen complements: slotVar <= P^C |R| not shown; shared terminal-band budgets missing
+complete | 2026-10-15 01:59:31 ET | lines 2382-2384 | Leaf main <= eta sqrt(sum S_a^2) sqrt(sum S_b^2); U corrections three strong factors (leaf_main_groupsM, leaf_corr_groupsM)
+complete | 2026-10-15 02:24:32 ET | line 2386 | Frozen complements: local bounds, single-pad variation joint (ball) or shared (cum, history) G0|R| (basic_variation_ballP/cumP)
 complete | 2026-10-14 03:49:26 ET | line 2388 | Flag indicator inequality (freeze_flag_le)
-old incomplete | 2026-10-14 03:49:26 ET | line 2388 | Flags on the leaf need current bounds; ancestor certificates and AncClosed missing
-old incomplete | 2026-10-14 03:49:26 ET | eq:stack-energy, lines 2393-2399 | Attempt stack energies only from hypotheses; P G0 |R| and G0 |R| not derived
+complete | 2026-10-15 02:24:32 ET | line 2388 | Flag energy <= K C0^-2 sum |u_J - v_J|^2 over certified ancestors (flag_energy_le, band_stack_le, Cert.mono)
+complete | 2026-10-15 02:55:16 ET | eq:stack-energy, lines 2393-2399 | Banded side via global helper bands (bandStackM_all), untouched side (posStack_all); varCap_basicOut
 complete | 2026-10-14 03:49:26 ET | lines 2401-2419 | Binary prefix expansion, linear-side product jumps, rolling split (abstract Hilbert space)
-old incomplete | 2026-10-14 03:49:26 ET | lines 2415-2419 | Rolling base terms on the leaf conditional on VarCap, AncClosed, EL, EO
-old incomplete | 2026-10-14 03:49:26 ET | line 2419 | Configuration count: cardinality only, no bound by G0
+complete | 2026-10-15 02:55:16 ET | lines 2415-2419 | Rolling base terms: E_W from sideState_budget (variation on [u_b, b], overlap) and linear_energy; VarCap proved
+complete | 2026-10-15 02:55:16 ET | line 2419 | Leaves, chain pairs, steps, offsets, lengths <= exp((7c+6)X^2), X = 1+log 2k (config_count_le, leaf_chain_counts)
 complete | 2026-10-14 03:49:26 ET | line 2421 | Rademacher selection identities (rademacher_select_two, piece_select_bound)
-old incomplete | 2026-10-14 03:49:26 ET | line 2426 | Hull mass: multiplicity M0 <= exp(k^O(1)) not proved
+complete | 2026-10-15 03:44:08 ET | line 2426 | Sum |Omega_nu| <= |configs| M_act D |R|, active multiplicity, uniform in depth (hull_mass_active, hull_mult_le, useHull_max_sub)
 complete | 2026-10-14 03:49:26 ET | line 2428 | Hull cuts for two energies (two_hull_caps)
-old incomplete | 2026-10-14 03:49:26 ET | line 2428 | Joint caps P G0 and G0 of the actual stacks: conditional
+complete | 2026-10-15 03:44:08 ET | line 2428 | Joint caps of the actual stacks from eq:stack-energy and the use multiplicity (near_band_cutM, near_band_actualM)
 complete | 2026-10-14 03:49:26 ET | lines 2430-2437 | Sparse decomposition into short-block pieces and hull-maxima summation
-old incomplete | 2026-10-14 03:49:26 ET | eq:near-band, lines 2438-2443 | Leaf bound in hypothesized budgets, not P^(-1/2) G0; uses C_K, not C_N
+complete | 2026-10-15 03:44:08 ET | eq:near-band, lines 2438-2443 | (o/P) near bands <= 4 C_q(1+C_N) log K K^e B_c B_d G0 P^(-1/2)|R| (near_band_criticalM, stackEA_le)
 complete | 2026-10-14 03:49:26 ET | eq:min-power, lines 2444-2449 | Signs to absolute sums; min(eta,x) <= eta^(1-p) x^p and split
-old incomplete | 2026-10-14 03:49:26 ET | lines 2446, 2451 | Restarts: hypotheses on subroots not connected to the side estimate
-old incomplete | 2026-10-14 03:49:26 ET | lines 2454-2456 | Exported side estimate: leaf_two_two_bound unused, inputs hypotheses, AncClosed unproved
+complete | 2026-10-15 07:58:13 ET | lines 2446, 2451 | Leaf side estimate on side states (side_estimate_leaf); base data anew below subroots (restrictTo_subRootProps, below_families)
+complete | 2026-10-15 07:58:13 ET | lines 2454-2456 | Exported estimate: cut of root fraction 2rho, two-side, near-band, three-side and side-cap outputs on one sum (side_estimate_leaf)
 
 ## sec:core, lines 2460-2825
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-old incomplete | 2026-10-14 03:49:26 ET | line 2461 | Core reduction conditional; three cores with a basic U side not covered
-complete | 2026-10-14 03:49:26 ET | line 2464 | Exact first-success identity (first_success_hasSum, group_first_success)
-old incomplete | 2026-10-14 03:49:26 ET | line 2466 | Failure masks select whole subtotals and representatives a_j: need hstab
-old incomplete | 2026-10-14 03:49:26 ET | eq:core-torus-form, lines 2466-2471 | Error eta <= D_*^-150 not shown; common chart data assumed
-old incomplete | 2026-10-14 03:49:26 ET | eq:frequency-box, lines 2471-2476 | Enlarged-cutoff error <= D_*^-300 not shown; box needs |alive| <= D_*
-old incomplete | 2026-10-14 03:49:26 ET | line 2478 | Offset S proved; R_z bound is hypothesis hRb, forcing W >= |box|
-not started | 2026-10-14 03:49:26 ET | line 2480 | Declaration common-height on a leaf cell
-old incomplete | 2026-10-14 03:49:26 ET | lines 2482-2487 | Tiny/huge dichotomy per good mode given hsmall; cell bounds assume the gap
-old incomplete | 2026-10-14 03:49:26 ET | eq:torus-size, lines 2489-2496 | Abstract bound proved; TorusData never constructed; floor differs
+complete | 2026-10-15 08:23:22 ET | line 2461 | Core reduction on side states: errors, 2+2 restored, >=3 sides via side estimate, retained sizes; >=3 cores remain (core_reduction_leaf)
+complete | 2026-10-15 08:23:22 ET | line 2464 | Component expansion and first success over upper heights on side states (coreAt_eq_comps, tuple_success, pattern_first_success)
+complete | 2026-10-15 08:32:17 ET | line 2466 | Masks select whole components, final classes, selected modes in the good predecessor of any representative; stabilization from blockComps_stab
+complete | 2026-10-15 08:42:01 ET | eq:core-torus-form, lines 2466-2471 | Selected wave sum = e(cp)e(g*(y-x*))g(xi(y-x*)) up to D_*^-150 (cell_torus_form, core_torus_form)
+complete | 2026-10-15 08:49:43 ET | eq:frequency-box, lines 2471-2476 | All indices in D_*^5 E_h, cutoff costs <= gaugeSqNorm, tails <= D_*^-300 (freqBox_*, cutoffP_truncate_full)
+complete | 2026-10-15 08:54:16 ET | line 2478 | Offset cutoff average c_zeta, offset side norm, gauge multiplier; truncated R_z bounded by 1 + tail for all offsets and anchors (multTrunc_sup)
+complete | 2026-10-15 08:58:02 ET | line 2480 | Declaration common-height on a leaf cell of the side states (SideInput.firstSuccessfulHeight)
+complete | 2026-10-15 09:06:20 ET | lines 2482-2487 | Tiny/huge dichotomy in the full box at the chosen schedule (box_dichotomy, frequency_dichotomy); torus H via rationalAnnihilator
+complete | 2026-10-15 09:41:15 ET | eq:torus-size, lines 2489-2496 | True periodic factor on H: a' <= 6 (sum_D (|A_D|_2,I + D*^-30 s_D)^2)^1/2, <= 6 sigma_F (SideInput.torus_size(_compSize))
 complete | 2026-10-14 03:49:26 ET | eq:Haar-four, lines 2498-2504 | Four-function Haar bound on rational subtori (haar_four)
-complete | 2026-10-14 03:49:26 ET | eq:four-tests, lines 2506-2520 | Reference, mu and nu bands, discard rule (refQ, refT, fourMu, fourNu)
-old incomplete | 2026-10-14 03:49:26 ET | lines 2522-2530 | Four-core coset reduction given undischarged gap fields; W >= |box| factor
-complete | 2026-10-14 03:49:26 ET | lines 2530-2540 | Kernel decay and three-core test pairing (admissible_kernel_decay, anchorK_entry)
-old incomplete | 2026-10-14 03:49:26 ET | lines 2542-2547 | D_m Parseval abstract; separation and coset alternatives undischarged
-old incomplete | 2026-10-14 03:49:26 ET | eq:side-windows, lines 2549-2560 | Proved given ThreeData and CellCoreData; extra sqrt|N| W |box| factor
-old incomplete | 2026-10-14 03:49:26 ET | eq:core-numerical, lines 2562-2567 | Errors <= Cmax prod sum|alpha|; Cmax <= C D_*^-100 and O(e^-k |R|) missing
-old incomplete | 2026-10-14 03:49:26 ET | lines 2569-2577 | First-success moments abstract; cells need hstab, TorusData, delta_* conditions
-old incomplete | 2026-10-14 03:49:26 ET | eq:principal-core, lines 2577-2582 | Only for given CellCoreData, TorusData, ThreeData; W and |box| factors
-not started | 2026-10-14 03:49:26 ET | line 2585 | Declaration frequency-tests
+complete | 2026-10-15 09:45:50 ET | eq:four-tests, lines 2506-2520 | U0, Q, T, fixed-rule reference in the full box, discard test, dyadic bands (fourRef_spec, fourPasses, fourBands_spec)
+complete | 2026-10-15 10:19:22 ET | lines 2522-2530 | Four-core coset reduction on the side states: |Lambda| <= errors + |W(rq',rt')|(1+tau_m) prod(a'_j+tau_c s_j) + coset errors (four_core_test)
+complete | 2026-10-15 10:24:25 ET | lines 2530-2540 | Kernel decay; three-core test on the side states: threeRef(_spec), threeBeta, threePasses, bands; W_beta entries (three_core_anchor_entry)
+complete | 2026-10-15 10:33:35 ET | lines 2542-2547 | Three-core cosets on the side states (three_cosets); Parseval for D_m with sup (1+tau_m)(1+tau_c) (dual_slice_parseval_of)
+complete | 2026-10-15 11:17:23 ET | eq:side-windows, lines 2549-2560 | Offset-averaged windows b_Lambda (mask-free threeWin), W=(1+tau_m)(1+tau_c), prod(a'_j+tau_c s_j), L2 tail (three_core_test)
+complete | 2026-10-15 12:42:49 ET | eq:core-numerical, lines 2562-2567 | Tuple errors <= C D_*^-100 prod sum|alpha| (x side size), discards too; first-success weight one; integrated O(e^-k |R|)
+complete | 2026-10-15 12:58:11 ET | lines 2569-2577 | a'_j <= 6 sigma_F, E a'_j^2 <= 36 (2d_*)^n_j sigma_F^2 (per unit); Holder E prod a'_j <= 36^4 (2d_*)^(n/4) prod sigma_F; series converges
+complete | 2026-10-15 13:36:31 ET | eq:principal-core, lines 2577-2582 | 4 and 3 cores: sum over heights and bins of C mu nu^-J Lambda^-J prod sigma_j N, plus errors (*_core_principal_bins)
+complete | 2026-10-15 13:41:31 ET | line 2585 | Declaration frequency-tests on a leaf cell of the side states (SideInput.principalFrequencyTests)
 complete | 2026-10-14 03:49:26 ET | lem:sparse-count, lines 2587-2705 | Sparse progression mass count and its proof (sparse_count)
-old incomplete | 2026-10-14 03:49:26 ET | lines 2709-2717 | Counting setup and pair determination: abstract; attempt hypotheses undischarged
+in progress | 2026-10-15 13:41:31 ET | lines 2709-2717 | Counting setup and pair determination: abstract; attempt hypotheses undischarged
 old incomplete | 2026-10-14 03:49:26 ET | eq:triple-test, lines 2718-2724 | L0 formula proved; L0 <= P^C (1+log nu/mu)^C not proved
 old incomplete | 2026-10-14 03:49:26 ET | eq:total-count, lines 2726-2729 | Side incidence abstract; attempt version only under hypotheses
 old incomplete | 2026-10-14 03:49:26 ET | eq:applied-sparse, lines 2731-2742 | Conditional on pure-shift, reserve and separation hypotheses

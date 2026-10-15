@@ -5,7 +5,7 @@ Authors: Claude
 -/
 module
 
-public import TrilinearHT.Auto.Sec15_2TorusNormsFourierTests
+public import TrilinearHT.Auto.Sec15_2bTorusSizeFourierTests
 
 /-!
 # Section 15.3: The finite sparse-count lemma

@@ -1310,7 +1310,7 @@ theorem stabilize_pre (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [Decidab
     (hQR : expandConst (dv + dz) D < 2 ^ (R - Δ))
     (hzS : (expandConst (dv + dz) D : ℚ) * (D * Eq h) + 6 ^ R * ((3 * D ^ 2) ^ (dv + dz) *
       (expandConst (dv + dz) D * (D * Eq (h - R)))) ≤ Sk h)
-    (hEcur : (Fintype.card Mode : ℝ) * S.Eh h ≤ ((D * Eq h : ℚ) : ℝ))
+    (hEcur : ∀ z : ℤ, |(z : ℝ)| ≤ Fintype.card Mode * S.Eh h → |(z : ℚ)| ≤ D * Eq h)
     (hcurgap : (Fintype.card Mode : ℝ) * (S.Ξ / rt) < Tt / rt)
     {Mh Mp : ℕ} (hMh : (Fintype.card Mode : ℝ) * S.Eh h ≤ Mh) (h6h : 6 ^ h ≤ Mh)
     (hMhH : max (D : ℝ) (3 * ((D : ℝ) * Mh) ^ 2) ≤ Hn)
@@ -1320,7 +1320,7 @@ theorem stabilize_pre (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [Decidab
     (hMpH : max (D : ℝ) (3 * ((D : ℝ) * Mp) ^ 2) ≤ Hn) :
     ∀ x x', π x = p → π x' = p →
       x' ∈ (S.preCurrent hA ω (fun l => Θ (Fin.natAdd dv l)) π a0 rv rt hrt).F h x →
-      x' ∈ (S.preCurrent hA ω (fun l => Θ (Fin.natAdd dv l)) π a0 rv rt hrt).E (h - Δ) x := by
+      S.gapEdge ω (fun l => Θ (Fin.natAdd dv l)) a0 rv (S.Ξ / rv) (h - Δ) x x' := by
   intro x x' hπ hπ' hF
   set ϑ : Fin dz → ℝ := fun l => Θ (Fin.natAdd dv l)
   set K := tinySpan Θ Hn (Tt⁻¹ / rv)
@@ -1355,10 +1355,7 @@ theorem stabilize_pre (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [Decidab
       have := hnx a0 hy0
       rw [← hbeval] at this
       linarith
-  have hmh : ∀ l, |(n l : ℚ)| ≤ D * Eq h := by
-    intro l
-    have h1 : |(n l : ℝ)| ≤ ((D * Eq h : ℚ) : ℝ) := (hn l).trans hEcur
-    exact_mod_cast h1
+  have hmh : ∀ l, |(n l : ℚ)| ≤ D * Eq h := fun l => hEcur _ (hn l)
   obtain ⟨m', hm'K, hm'b⟩ := stabilize_core K hD Eq Sk hEq0 hΔR hRh hSk0 hV hU hQR hzS haD hmh
     hbK
   -- the PRE witness is tiny
@@ -1376,7 +1373,7 @@ theorem stabilize_pre (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [Decidab
     exact_mod_cast h2
   have hb'tiny := tiny_of_mem_tinySpan Θ hHn hε hgap hsmall hm'K hb'H
   -- the PRE edge
-  refine ModeComponents.ofEdges_E_of_pre _ _ π _ _ _ ⟨m', hm'r, fun y hy => ?_⟩
+  refine ⟨m', hm'r, fun y hy => ?_⟩
   have hb'eval : ratEval Θ b' = ω x y - ω x' y + (∑ l, (m' l : ℝ) * ϑ l) / Lh (h - Δ) := by
     rw [ratEval_zEmb, ← hdiff y hy]
     congr 1
@@ -1543,7 +1540,7 @@ theorem hstab_of_primaryGood (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [
     (hQR : ∀ p, expandConst (dvOf p + dz) D < 2 ^ (R - Δ))
     (hzS : ∀ p h, R ≤ h → (expandConst (dvOf p + dz) D : ℚ) * (D * Eq h) + 6 ^ R *
       ((3 * D ^ 2) ^ (dvOf p + dz) * (expandConst (dvOf p + dz) D * (D * Eq (h - R)))) ≤ Sk h)
-    (hEcur : ∀ h, (Fintype.card Mode : ℝ) * S.Eh h ≤ ((D * Eq h : ℚ) : ℝ))
+    (hEcur : ∀ h (z : ℤ), |(z : ℝ)| ≤ Fintype.card Mode * S.Eh h → |(z : ℚ)| ≤ D * Eq h)
     (hcurgap : (Fintype.card Mode : ℝ) * (S.Ξ / rt) < Tt / rt)
     (hMh : ∀ h, ∃ Mh : ℕ, (Fintype.card Mode : ℝ) * S.Eh h ≤ Mh ∧ 6 ^ h ≤ Mh ∧
       max (D : ℝ) (3 * ((D : ℝ) * Mh) ^ 2) ≤ Hn)
@@ -1568,7 +1565,7 @@ theorem hstab_of_primaryGood (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [
     hΔR hRh (hSk0 _) hV hU (hQR _)
     (hzS _ h hRh) (hEcur h) hcurgap hMh1 hMh2 hMh3 (hBp _ h hRh) hMp1 hMp2 hMp3
   rw [e] at key
-  exact key x x' rfl hπ hF
+  exact ModeComponents.ofEdges_E_of_pre _ _ π _ _ _ (key x x' rfl hπ hF)
 
 end ModeSchedule
 
@@ -1820,30 +1817,6 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
-/-- The side parameters of the coherence argument read off a schedule (blueprint lines
-2006-2024): heights `H`, mode-difference height `D_*`, gap threshold `T`, witness sizes
-`D_* E_h`, kernel sizes `C_*³ D_* E_h`, lag `R_*^{ht}`, shift `Δ = 10`, top height `J_*`. -/
-noncomputable def ModeSchedule.sideParams (S : ModeSchedule) (δs : ℝ) : SideParams where
-  Hn := ⌊S.H⌋₊
-  D := ⌈S.Dstar⌉₊
-  Tt := S.T
-  Eq := fun h => (⌈S.Dstar * S.Eh h⌉₊ : ℚ)
-  Sk := fun h => (⌈S.Cstar ^ 3 * S.Dstar * S.Eh h⌉₊ : ℚ)
-  R := S.Rht
-  Δ := 10
-  Jst := S.Jstar
-  δs := δs
-
-end Auto
-
-end
-
-section
-
-namespace Auto
-open MeasureTheory Metric
-open scoped FourierTransform ComplexConjugate ENNReal
-
 namespace ModeComponents
 variable {Mode P : Type*} [DecidableEq Mode] [DecidableEq P] (C : ModeComponents Mode P)
 
@@ -1863,6 +1836,1129 @@ theorem mem_pred_of_good_class (Δ : ℕ) (goodP : ℕ → P → Prop) [∀ h, D
   exact C.E_mono 0 (h - Δ) x₀ (Nat.zero_le _) hx
 
 end ModeComponents
+
+/-! ## Exceptional blocks on a path (blueprint line 1996) -/
+
+/-- Blueprint `eq:gap` (lines 1991-1995): the block with start `b` is exceptional for the
+frequency vector `Θ` at height `H` when some rational vector `a` of height at most `H` has
+`T⁻¹ / r_{v_b} < |a·Θ| < T / r_{t_b}` (neither tiny nor large), where `r_n = r₀ 2^{-n}`,
+`v_b = b - 2K` and `t_b = b + K`. -/
+def ExceptionalAt {d : ℕ} (Θ : Fin d → ℝ) (H r0 T : ℝ) (K : ℕ) (b : ℤ) : Prop :=
+  ∃ a : Fin d → ℚ, (∀ i, (rationalHeight (a i) : ℝ) ≤ H) ∧
+    T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * K))) < |ratEval Θ a| ∧
+      |ratEval Θ a| < T / (r0 * (2 : ℝ) ^ (-(b + K)))
+
+/-- Blueprint line 1996 ("zero evaluations are always tiny"): a witness of an exceptional block
+has a nonzero evaluation. -/
+theorem ExceptionalAt.eval_ne_zero {d : ℕ} {Θ : Fin d → ℝ} {r0 T : ℝ} (hr0 : 0 < r0)
+    (hT : 0 < T) {K : ℕ} {b : ℤ} {a : Fin d → ℚ}
+    (ha : T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * K))) < |ratEval Θ a|) : ratEval Θ a ≠ 0 := by
+  intro h0
+  rw [h0, abs_zero] at ha
+  have : 0 < T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * K))) := by positivity
+  linarith
+
+/-- Blueprint line 1996: each primary is exceptional in at most `4 dim Θ` blocks on a path
+(`C d_max`). By lem:height the logarithms `x(a) = log₂(|a·Θ| r₀)` of the nonzero evaluations of
+height-`H` vectors lie in at most `dim Θ` packets of width `W = 8 (d+1)³ log(2H) / log 2`; a block
+start `b = b₀ + βK` is exceptional only if some `x(a)` lies in `(b - 2K - log₂ T, b + K + log₂ T)`,
+and a packet meets this window for at most four starts when `W + 2 log₂ T ≤ K`. -/
+theorem exceptional_blocks_le {d : ℕ} (Θ : Fin d → ℝ) {H r0 T : ℝ} (hH : 2 ≤ H) (hr0 : 0 < r0)
+    (hT : 1 ≤ T) {K : ℕ} (hK : 0 < K)
+    (hKW : 8 * ((d : ℝ) + 1) ^ 3 * Real.log (2 * H) / Real.log 2 + 2 * Real.logb 2 T ≤ K)
+    (b0 : ℤ) (Bs : Finset ℤ) (hBs : ∀ β ∈ Bs, ExceptionalAt Θ H r0 T K (b0 + β * K)) :
+    Bs.card ≤ 4 * d := by
+  classical
+  obtain ⟨t, htc, hcov⟩ := rational_frequency_logarithmic_cover hH Θ
+  have hl2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
+  have hT0 : 0 < T := by linarith
+  set w := 8 * ((d : ℝ) + 1) ^ 3 * Real.log (2 * H)
+  set W := w / Real.log 2
+  set L := Real.log T / Real.log 2
+  set packets := t.image fun a => (a + Real.log r0) / Real.log 2 - b0
+  set X : Set ℝ := {x | ∃ a : Fin d → ℚ, (∀ i, (rationalHeight (a i) : ℝ) ≤ H) ∧
+    ratEval Θ a ≠ 0 ∧ x = (Real.log |ratEval Θ a| + Real.log r0) / Real.log 2 - b0}
+  have hX : ∀ x ∈ X, ∃ p ∈ packets, p ≤ x ∧ x ≤ p + W := by
+    rintro x ⟨a, haH, hne, rfl⟩
+    obtain ⟨a0, ha0, hlo, hhi⟩ := hcov a haH hne
+    have hlo' : a0 ≤ Real.log |ratEval Θ a| := hlo
+    have hhi' : Real.log |ratEval Θ a| ≤ a0 + w := hhi
+    refine ⟨(a0 + Real.log r0) / Real.log 2 - b0, Finset.mem_image_of_mem _ ha0, ?_, ?_⟩
+    · have : (a0 + Real.log r0) / Real.log 2 ≤ (Real.log |ratEval Θ a| + Real.log r0) /
+          Real.log 2 := div_le_div_of_nonneg_right (by linarith) hl2.le
+      linarith
+    · have : (Real.log |ratEval Θ a| + Real.log r0) / Real.log 2 ≤
+          (a0 + Real.log r0) / Real.log 2 + W := by
+        rw [← add_div]
+        exact div_le_div_of_nonneg_right (by linarith) hl2.le
+      linarith
+  have hB : ∀ β ∈ Bs, ∃ x ∈ X, β * (K : ℝ) - 2 * K - L < x ∧ x < β * K + K + L := by
+    intro β hβ
+    obtain ⟨a, haH, h1, h2⟩ := hBs β hβ
+    have hne := ExceptionalAt.eval_ne_zero hr0 hT0 h1
+    set e := |ratEval Θ a|
+    have he : 0 < e := abs_pos.mpr hne
+    refine ⟨(Real.log e + Real.log r0) / Real.log 2 - b0, ⟨a, haH, hne, rfl⟩, ?_, ?_⟩
+    · have hpos : 0 < r0 * (2 : ℝ) ^ (-((b0 + β * K : ℤ) - 2 * K)) := by positivity
+      rw [div_lt_iff₀ hpos] at h1
+      have hl := Real.log_lt_log (by positivity) h1
+      rw [Real.log_inv, Real.log_mul he.ne' hpos.ne', Real.log_mul hr0.ne' (by positivity),
+        Real.log_zpow] at hl
+      have : -Real.log T / Real.log 2 < (Real.log e + Real.log r0 +
+          ((-((b0 + β * K : ℤ) - 2 * K) : ℤ) : ℝ) * Real.log 2) / Real.log 2 :=
+        div_lt_div_of_pos_right (by linarith) hl2
+      rw [add_div, mul_div_assoc, div_self hl2.ne', mul_one] at this
+      push_cast at this
+      simp only [L]
+      rw [neg_div] at this
+      linarith
+    · have hpos : 0 < r0 * (2 : ℝ) ^ (-((b0 + β * K : ℤ) + K)) := by positivity
+      rw [lt_div_iff₀ hpos] at h2
+      have hl := Real.log_lt_log (by positivity) h2
+      rw [Real.log_mul he.ne' hpos.ne', Real.log_mul hr0.ne' (by positivity),
+        Real.log_zpow] at hl
+      have : (Real.log e + Real.log r0 +
+          ((-((b0 + β * K : ℤ) + K) : ℤ) : ℝ) * Real.log 2) / Real.log 2 <
+          Real.log T / Real.log 2 := div_lt_div_of_pos_right (by linarith) hl2
+      rw [add_div, mul_div_assoc, div_self hl2.ne', mul_one] at this
+      push_cast at this
+      simp only [L]
+      linarith
+  have hKpos : (0 : ℝ) < K := by exact_mod_cast hK
+  have hWK : W + 3 * (K : ℝ) + 2 * L ≤ 4 * K := by
+    have : W + 2 * L ≤ K := by simpa [W, L, Real.logb] using hKW
+    linarith
+  calc Bs.card ≤ 4 * packets.card :=
+        exceptional_blocks_count hKpos hWK packets X hX Bs hB
+    _ ≤ 4 * d := Nat.mul_le_mul_left _ (Finset.card_image_le.trans htc)
+
+/-- Blueprint line 1996 at the chosen mode schedule (`eq:mode-parameters`, with the inputs
+`d_max, D_*, B_* ≥ 2` and `Q₀ ≥ 1` of `chooseSchedule`): when the packet width `W` of the schedule
+is at least the width `8 (d+1)³ log(2H) / log 2` of lem:height at the schedule height `H` in
+dimension `d`, each primary of frequency dimension `d` is exceptional in at most `4d` blocks
+(`K ≥ W + 2 log₂ T + C_K log₂ D_*`). -/
+theorem ModeSchedule.exceptional_blocks_le (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : ℝ}
+    (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar)
+    (hQ : 1 ≤ S.Q0) {d : ℕ}
+    (hW : 8 * ((d : ℝ) + 1) ^ 3 * Real.log (2 * S.H) / Real.log 2 ≤ W) (Θ : Fin d → ℝ)
+    {r0 : ℝ} (hr0 : 0 < r0) (b0 : ℤ) (Bs : Finset ℤ)
+    (hBs : ∀ β ∈ Bs, ExceptionalAt Θ S.H r0 S.T S.K (b0 + β * S.K)) :
+    Bs.card ≤ 4 * d := by
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have hQ' : (1 : ℝ) ≤ S.Q0 := by exact_mod_cast hQ
+  have hCs : 1 ≤ S.Cstar := le_trans (one_le_pow₀ (by nlinarith)) hV.Cstar_ge
+  have hA0 : 1 ≤ S.A0 := by
+    refine le_trans (one_le_pow₀ ?_) hV.A0_ge
+    have h6 : (1 : ℝ) ≤ 6 ^ S.Rht := one_le_pow₀ (by norm_num)
+    have h1 : 1 ≤ S.Cstar * 6 ^ S.Rht := one_le_mul_of_one_le_of_one_le hCs h6
+    have h2 : 1 ≤ S.Cstar * 6 ^ S.Rht * S.Bstar :=
+      one_le_mul_of_one_le_of_one_le h1 (by linarith)
+    exact one_le_mul_of_one_le_of_one_le h2 (by linarith)
+  have hEh : 1 ≤ S.Eh S.Jstar := one_le_pow₀ hA0
+  have hLh : (1 : ℝ) ≤ ModeSchedule.Lh S.Jstar := one_le_pow₀ (by norm_num)
+  have hΞ : 1 ≤ S.Ξ := one_le_pow₀ (by linarith)
+  have hprod : 4 ≤ S.dmax * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar *
+      S.Q0 * S.Ξ := by
+    have p1 : 2 ≤ (S.dmax : ℝ) * S.Cstar := by nlinarith
+    have p2 : 2 ≤ (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar := by nlinarith
+    have p3 : 4 ≤ (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar * S.Bstar := by nlinarith
+    have p4 : 4 ≤ (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar := by
+      nlinarith
+    have p5 : 4 ≤ (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar *
+        S.Q0 := by nlinarith
+    nlinarith
+  have hH : 2 ≤ S.H := by
+    have := hV.H_gt
+    have h10 : (4 : ℝ) ≤ (S.dmax * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar *
+        S.Q0 * S.Ξ) ^ 10 := le_trans hprod (le_self_pow₀ (by linarith) (by norm_num))
+    linarith
+  have hT : 1 ≤ S.T := by
+    have h1 : (1 : ℝ) ≤ (S.dmax * S.H) ^ (CT * S.dmax ^ 4) := one_le_pow₀ (by nlinarith)
+    have := hV.T_gt
+    nlinarith
+  obtain ⟨κ, hκ⟩ := hV.K_dyadic
+  have hK : 0 < S.K := by rw [hκ]; positivity
+  have hKW : 8 * ((d : ℝ) + 1) ^ 3 * Real.log (2 * S.H) / Real.log 2 +
+      2 * Real.logb 2 S.T ≤ S.K := by
+    have h1 := hV.K_ge
+    have h2 : 0 ≤ (CK : ℝ) * Real.logb 2 S.Dstar :=
+      mul_nonneg (Nat.cast_nonneg _) (Real.logb_nonneg (by norm_num) (by linarith))
+    linarith
+  exact Auto.exceptional_blocks_le Θ hH hr0 hT hK hKW b0 Bs hBs
+
+/-! ## The tiny span at a nonexceptional block of the schedule (blueprint lines 1997-1998) -/
+
+/-- Blueprint line 1998: `K_B = {w : (0, w) ∈ K_rat}`, the `ϑ`-part of the tiny span. -/
+def tinyKB {dv dz : ℕ} (Θ : Fin (dv + dz) → ℝ) (H : ℕ) (ε : ℝ) : Submodule ℚ (Fin dz → ℚ) :=
+  (tinySpan Θ H ε).comap (zEmb dv dz)
+
+theorem mem_tinyKB {dv dz : ℕ} {Θ : Fin (dv + dz) → ℝ} {H : ℕ} {ε : ℝ} {w : Fin dz → ℚ} :
+    w ∈ tinyKB Θ H ε ↔ zEmb dv dz w ∈ tinySpan Θ H ε := Iff.rfl
+
+/-- The size of the spanning constant of the tiny span: for `d ≤ d_max`, `d_max ≥ 2` and
+`1 ≤ Hn ≤ H`, `(3 Hn²)^d d! Hn^(d²+d) ≤ (d_max H)^(4 d_max⁴)`. -/
+theorem tinySpan_const_le {d dmax Hn : ℕ} {H : ℝ} (hd : d ≤ dmax) (hd2 : 2 ≤ dmax)
+    (hHn : 1 ≤ Hn) (hHnH : (Hn : ℝ) ≤ H) :
+    (3 * (Hn : ℝ) ^ 2) ^ d * ((d.factorial : ℝ) * (Hn : ℝ) ^ (d ^ 2 + d)) ≤
+      ((dmax : ℝ) * H) ^ (4 * dmax ^ 4) := by
+  have hd2' : (2 : ℝ) ≤ dmax := by exact_mod_cast hd2
+  have hHn1 : (1 : ℝ) ≤ Hn := by exact_mod_cast hHn
+  have hH1 : 1 ≤ H := hHn1.trans hHnH
+  set X := (dmax : ℝ) * H with hX
+  have hX1 : 1 ≤ X := by nlinarith
+  have hHnX : (Hn : ℝ) ≤ X := by nlinarith
+  have hdX : (dmax : ℝ) ≤ X := by nlinarith
+  have h1 : 3 * (Hn : ℝ) ^ 2 ≤ X ^ 2 := by
+    have : (3 : ℝ) ≤ (dmax : ℝ) ^ 2 := by nlinarith
+    calc 3 * (Hn : ℝ) ^ 2 ≤ (dmax : ℝ) ^ 2 * H ^ 2 :=
+          mul_le_mul this (pow_le_pow_left₀ (by linarith) hHnH 2) (by positivity) (by positivity)
+      _ = X ^ 2 := by rw [hX]; ring
+  have h2 : (d.factorial : ℝ) ≤ X ^ d := by
+    have : (d.factorial : ℝ) ≤ (d : ℝ) ^ d := by exact_mod_cast Nat.factorial_le_pow d
+    refine this.trans (pow_le_pow_left₀ (Nat.cast_nonneg _) ?_ d)
+    have : (d : ℝ) ≤ dmax := by exact_mod_cast hd
+    linarith
+  have h3 : (Hn : ℝ) ^ (d ^ 2 + d) ≤ X ^ (d ^ 2 + d) := pow_le_pow_left₀ (by linarith) hHnX _
+  have hexp : 2 * d + (d + (d ^ 2 + d)) ≤ 4 * dmax ^ 4 := by
+    have h4 : d ^ 2 ≤ dmax ^ 2 := Nat.pow_le_pow_left hd 2
+    have h5 : dmax ^ 2 * 4 ≤ dmax ^ 4 := by
+      have : 4 ≤ dmax ^ 2 := by nlinarith
+      calc dmax ^ 2 * 4 ≤ dmax ^ 2 * dmax ^ 2 := Nat.mul_le_mul_left _ this
+        _ = dmax ^ 4 := by ring
+    have h6 : dmax ≤ dmax ^ 2 := by nlinarith
+    omega
+  calc (3 * (Hn : ℝ) ^ 2) ^ d * ((d.factorial : ℝ) * (Hn : ℝ) ^ (d ^ 2 + d)) ≤
+        (X ^ 2) ^ d * (X ^ d * X ^ (d ^ 2 + d)) := by
+        gcongr
+    _ = X ^ (2 * d + (d + (d ^ 2 + d))) := by rw [← pow_mul, ← pow_add, ← pow_add]
+    _ ≤ X ^ (4 * dmax ^ 4) := pow_le_pow_right₀ hX1 hexp
+
+/-! ### Elementary consequences of `eq:mode-parameters` -/
+
+namespace ModeSchedule
+
+section Basics
+variable {S : ModeSchedule} {Cj CA CT CK : ℕ} {δs W : ℝ}
+
+theorem Valid.two_le_Cstar (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) : 2 ≤ S.Cstar := by
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have h1 : (2 : ℝ) ≤ 10 * S.dmax * S.Dstar := by nlinarith
+  exact (h1.trans (le_self_pow₀ (by linarith)
+    (Nat.mul_pos (by norm_num) (pow_pos (by omega) 4)).ne')).trans hV.Cstar_ge
+
+theorem Valid.dmax_le_Cstar (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) : (S.dmax : ℝ) ≤ S.Cstar := by
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have h1 : (S.dmax : ℝ) ≤ 10 * S.dmax * S.Dstar := by nlinarith
+  exact (h1.trans (le_self_pow₀ (by nlinarith)
+    (Nat.mul_pos (by norm_num) (pow_pos (by omega) 4)).ne')).trans hV.Cstar_ge
+
+theorem Valid.one_le_A0 (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) : 1 ≤ S.A0 := by
+  have hC := hV.two_le_Cstar hd2 hD
+  refine le_trans (one_le_pow₀ ?_) hV.A0_ge
+  have h6 : (1 : ℝ) ≤ 6 ^ S.Rht := one_le_pow₀ (by norm_num)
+  have h1 : 1 ≤ S.Cstar * 6 ^ S.Rht := one_le_mul_of_one_le_of_one_le (by linarith) h6
+  have h2 : 1 ≤ S.Cstar * 6 ^ S.Rht * S.Bstar := one_le_mul_of_one_le_of_one_le h1 (by linarith)
+  exact one_le_mul_of_one_le_of_one_le h2 (by linarith)
+
+theorem Valid.thirty_le_Rht (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) : 30 ≤ S.Rht := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have h0 : 0 ≤ Real.logb 2 S.Cstar := Real.logb_nonneg (by norm_num) (by linarith)
+  have : (30 : ℝ) ≤ S.Rht := by linarith [hV.Rht_ge]
+  exact_mod_cast this
+
+/-- `C_* < 2^{R_*^{ht} - Δ}` with `Δ = 10`, from `R_*^{ht} ≥ log₂ C_* + 2Δ + 10`. -/
+theorem Valid.Cstar_lt_two_pow (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) : S.Cstar < (2 : ℝ) ^ (S.Rht - 10) := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have hR := hV.thirty_le_Rht hd2 hD
+  have h1 : (2 : ℝ) ^ (Real.logb 2 S.Cstar + 30) ≤ (2 : ℝ) ^ (S.Rht : ℝ) :=
+    Real.rpow_le_rpow_of_exponent_le (by norm_num) hV.Rht_ge
+  have h2 : (2 : ℝ) ^ (Real.logb 2 S.Cstar + 30) = S.Cstar * 2 ^ 30 := by
+    rw [Real.rpow_add (by norm_num), Real.rpow_logb (by norm_num) (by norm_num) (by linarith),
+      show (30 : ℝ) = ((30 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
+  rw [h2, Real.rpow_natCast] at h1
+  have h3 : (2 : ℝ) ^ S.Rht = 2 ^ (S.Rht - 10) * 2 ^ 10 := by
+    rw [← pow_add]; congr 1; omega
+  rw [h3] at h1
+  have h4 : (0 : ℝ) ≤ 2 ^ (S.Rht - 10) := by positivity
+  norm_num at h1
+  linarith
+
+theorem Valid.base_le_A0 (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) :
+    S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar ≤ S.A0 := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have h6 : (1 : ℝ) ≤ 6 ^ S.Rht := one_le_pow₀ (by norm_num)
+  have h1 : 1 ≤ S.Cstar * 6 ^ S.Rht := one_le_mul_of_one_le_of_one_le (by linarith) h6
+  have h2 : 1 ≤ S.Cstar * 6 ^ S.Rht * S.Bstar := one_le_mul_of_one_le_of_one_le h1 (by linarith)
+  have h3 : 1 ≤ S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar :=
+    one_le_mul_of_one_le_of_one_le h2 (by linarith)
+  exact (le_self_pow₀ h3 (by omega)).trans hV.A0_ge
+
+theorem Valid.six_le_A0 (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) : 6 ≤ S.A0 := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have hR := hV.thirty_le_Rht hd2 hD
+  have h0 : (0 : ℝ) ≤ 6 ^ S.Rht := by positivity
+  have h6 : (6 : ℝ) ≤ 6 ^ S.Rht := le_self_pow₀ (by norm_num) (by omega)
+  have e1 : (6 : ℝ) ^ S.Rht ≤ S.Cstar * 6 ^ S.Rht := le_mul_of_one_le_left h0 (by linarith)
+  have e2 : S.Cstar * 6 ^ S.Rht ≤ S.Cstar * 6 ^ S.Rht * S.Bstar :=
+    le_mul_of_one_le_right (mul_nonneg (by linarith) h0) (by linarith)
+  have e3 : S.Cstar * 6 ^ S.Rht * S.Bstar ≤ S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar :=
+    le_mul_of_one_le_right (mul_nonneg (mul_nonneg (by linarith) h0) (by linarith)) (by linarith)
+  linarith [hV.base_le_A0 hCA hd2 hD hB]
+
+/-- `H > (d_max C_* E_{J_*} B_* L_{J_*} Q₀ Ξ)^{10}` dominates `27 D_*⁴ (E_{J_*} L_{J_*})²`. -/
+theorem Valid.H_ge (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) :
+    27 * S.Dstar ^ 4 * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 < S.H := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have hA := hV.one_le_A0 hd2 hD hB
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have hQ' : (1 : ℝ) ≤ S.Q0 := by exact_mod_cast hQ
+  have hE : 1 ≤ S.Eh S.Jstar := one_le_pow₀ hA
+  have hL : (1 : ℝ) ≤ Lh S.Jstar := one_le_pow₀ (by norm_num)
+  have hY : 1 ≤ S.Eh S.Jstar * Lh S.Jstar := one_le_mul_of_one_le_of_one_le hE hL
+  have hΞ : 27 * S.Dstar ^ 4 ≤ S.Ξ := by
+    have h1 : (27 : ℝ) ≤ S.Dstar ^ 996 :=
+      le_trans (le_trans (by norm_num : (27 : ℝ) ≤ 2 ^ 5)
+        (pow_le_pow_right₀ (by norm_num) (by norm_num : 5 ≤ 996)))
+        (pow_le_pow_left₀ (by norm_num) hD 996)
+    have h4 : (0 : ℝ) ≤ S.Dstar ^ 4 := pow_nonneg (by linarith) 4
+    calc 27 * S.Dstar ^ 4 ≤ S.Dstar ^ 996 * S.Dstar ^ 4 := mul_le_mul_of_nonneg_right h1 h4
+      _ = S.Ξ := by rw [← pow_add]; rfl
+  have hD4 : 1 ≤ S.Dstar ^ 4 := one_le_pow₀ (by linarith)
+  have hΞ1 : 1 ≤ S.Ξ := by linarith
+  have hc : 1 ≤ (S.dmax : ℝ) * S.Cstar * S.Bstar * S.Q0 := by
+    have h1 : 1 ≤ (S.dmax : ℝ) * S.Cstar :=
+      one_le_mul_of_one_le_of_one_le (by linarith) (by linarith)
+    have h2 : 1 ≤ (S.dmax : ℝ) * S.Cstar * S.Bstar :=
+      one_le_mul_of_one_le_of_one_le h1 (by linarith)
+    exact one_le_mul_of_one_le_of_one_le h2 hQ'
+  have hYΞ : 1 ≤ S.Eh S.Jstar * Lh S.Jstar * S.Ξ := one_le_mul_of_one_le_of_one_le hY hΞ1
+  have hX : S.Eh S.Jstar * Lh S.Jstar * S.Ξ ≤
+      S.dmax * S.Cstar * S.Eh S.Jstar * S.Bstar * Lh S.Jstar * S.Q0 * S.Ξ := by
+    have e : (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar * S.Bstar * Lh S.Jstar * S.Q0 * S.Ξ =
+        (S.dmax * S.Cstar * S.Bstar * S.Q0) * (S.Eh S.Jstar * Lh S.Jstar * S.Ξ) := by ring
+    rw [e]; exact le_mul_of_one_le_left (by linarith) hc
+  have hsq : S.Ξ * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 ≤ (S.Eh S.Jstar * Lh S.Jstar * S.Ξ) ^ 2 := by
+    have h0 : 0 ≤ (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := sq_nonneg _
+    nlinarith [mul_nonneg (mul_nonneg h0 (by linarith : (0 : ℝ) ≤ S.Ξ - 1))
+      (by linarith : (0 : ℝ) ≤ S.Ξ)]
+  calc 27 * S.Dstar ^ 4 * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 ≤
+        S.Ξ * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := mul_le_mul_of_nonneg_right hΞ (sq_nonneg _)
+    _ ≤ (S.Eh S.Jstar * Lh S.Jstar * S.Ξ) ^ 2 := hsq
+    _ ≤ (S.Eh S.Jstar * Lh S.Jstar * S.Ξ) ^ 10 := pow_le_pow_right₀ hYΞ (by norm_num)
+    _ ≤ (S.dmax * S.Cstar * S.Eh S.Jstar * S.Bstar * Lh S.Jstar * S.Q0 * S.Ξ) ^ 10 :=
+        pow_le_pow_left₀ (by linarith) hX 10
+    _ < S.H := hV.H_gt
+
+theorem Valid.two_le_H (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) : 2 ≤ S.H := by
+  have h := hV.H_ge hd2 hD hB hQ
+  have hA := hV.one_le_A0 hd2 hD hB
+  have hE : 1 ≤ S.Eh S.Jstar := one_le_pow₀ hA
+  have hL : (1 : ℝ) ≤ Lh S.Jstar := one_le_pow₀ (by norm_num)
+  have hY : 1 ≤ (S.Eh S.Jstar * Lh S.Jstar) ^ 2 :=
+    one_le_pow₀ (one_le_mul_of_one_le_of_one_le hE hL)
+  have hD4 : 1 ≤ S.Dstar ^ 4 := one_le_pow₀ (by linarith)
+  nlinarith
+
+theorem Valid.Dstar_lt_H (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) : S.Dstar < S.H := by
+  have h := hV.H_ge hd2 hD hB hQ
+  have hA := hV.one_le_A0 hd2 hD hB
+  have hE : 1 ≤ S.Eh S.Jstar := one_le_pow₀ hA
+  have hL : (1 : ℝ) ≤ Lh S.Jstar := one_le_pow₀ (by norm_num)
+  have hY : 1 ≤ (S.Eh S.Jstar * Lh S.Jstar) ^ 2 :=
+    one_le_pow₀ (one_le_mul_of_one_le_of_one_le hE hL)
+  have hD4 : S.Dstar ≤ S.Dstar ^ 4 := le_self_pow₀ (by linarith) (by norm_num)
+  nlinarith
+
+theorem Valid.H_mul_Ξ_lt_T (hV : S.Valid Cj CA CT CK δs W) (hCT : 1 ≤ CT) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) : S.H * S.Ξ < S.T := by
+  have hH := hV.two_le_H hd2 hD hB hQ
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have hX1 : 1 ≤ (S.dmax : ℝ) * S.H := by nlinarith
+  have h1 : S.H ≤ (S.dmax : ℝ) * S.H := by nlinarith
+  have h2 : (S.dmax : ℝ) * S.H ≤ ((S.dmax : ℝ) * S.H) ^ (CT * S.dmax ^ 4) :=
+    le_self_pow₀ hX1 (Nat.mul_pos (by omega) (pow_pos (by omega) 4)).ne'
+  calc S.H * S.Ξ ≤ ((S.dmax : ℝ) * S.H) ^ (CT * S.dmax ^ 4) * S.Ξ :=
+        mul_le_mul_of_nonneg_right (h1.trans h2) (Ξ_nonneg S)
+    _ < S.T := hV.T_gt
+
+theorem Valid.one_le_T (hV : S.Valid Cj CA CT CK δs W) (hCT : 1 ≤ CT) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) : 1 ≤ S.T := by
+  have h := hV.H_mul_Ξ_lt_T hCT hd2 hD hB hQ
+  have hH := hV.two_le_H hd2 hD hB hQ
+  have hΞ : 1 ≤ S.Ξ := one_le_pow₀ (by linarith)
+  nlinarith
+
+/-- Blueprint line 1998 at the chosen schedule: the spanning constant `(3H²)^d d! H^(d²+d)` of the
+tiny span (`tiny_of_mem_tinySpan`) times the tiny threshold `T⁻¹ / r_{v_b}` is below the large
+threshold `T / r_{t_b}`, because the threshold ratio is `T² 2^{3K}` and
+`T > (d_max H)^(C_T d_max⁴) Ξ` with `C_T ≥ 4` (`eq:mode-parameters`). -/
+theorem Valid.tinySpan_small (hV : S.Valid Cj CA CT CK δs W) (hCT : 4 ≤ CT) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {d : ℕ} (hd : d ≤ S.dmax) {r0 : ℝ}
+    (hr0 : 0 < r0) (b : ℤ) :
+    (3 * ((⌊S.H⌋₊ : ℕ) : ℝ) ^ 2) ^ d * ((d.factorial : ℝ) * ((⌊S.H⌋₊ : ℕ) : ℝ) ^ (d ^ 2 + d)) *
+      (S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))) < S.T / (r0 * (2 : ℝ) ^ (-(b + S.K))) := by
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have hΞ : 1 ≤ S.Ξ := one_le_pow₀ (by linarith)
+  have hH := hV.two_le_H hd2 hD hB hQ
+  have hHn : 1 ≤ ⌊S.H⌋₊ := Nat.le_floor (by norm_num; linarith)
+  have hHnH : ((⌊S.H⌋₊ : ℕ) : ℝ) ≤ S.H := Nat.floor_le (by linarith)
+  have hX1 : (1 : ℝ) ≤ S.dmax * S.H := by nlinarith
+  have hT : ((S.dmax : ℝ) * S.H) ^ (4 * S.dmax ^ 4) < S.T := by
+    have h1 : ((S.dmax : ℝ) * S.H) ^ (4 * S.dmax ^ 4) ≤ ((S.dmax : ℝ) * S.H) ^ (CT * S.dmax ^ 4) :=
+      pow_le_pow_right₀ hX1 (Nat.mul_le_mul_right _ hCT)
+    have h2 : ((S.dmax : ℝ) * S.H) ^ (CT * S.dmax ^ 4) ≤
+        ((S.dmax : ℝ) * S.H) ^ (CT * S.dmax ^ 4) * S.Ξ :=
+      le_mul_of_one_le_right (by positivity) hΞ
+    exact lt_of_le_of_lt (h1.trans h2) hV.T_gt
+  have hT1 : 1 ≤ S.T := le_trans (one_le_pow₀ hX1) hT.le
+  set ε := S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))
+  set Λ := S.T / (r0 * (2 : ℝ) ^ (-(b + S.K)))
+  have hε : 0 < ε := by positivity
+  have hΛ : Λ = ε * (S.T ^ 2 * (2 : ℝ) ^ (3 * S.K)) := by
+    simp only [ε, Λ]
+    have h2 : (2 : ℝ) ^ (-(b + (S.K : ℤ))) * (2 : ℝ) ^ (3 * S.K) =
+        (2 : ℝ) ^ (-(b - 2 * (S.K : ℤ))) := by
+      rw [← zpow_natCast, ← zpow_add₀ (by norm_num)]
+      congr 1; push_cast; ring
+    have hT0 : S.T ≠ 0 := by linarith
+    field_simp
+    rw [← h2]
+  have hc := tinySpan_const_le hd hd2 hHn hHnH
+  have hK1 : (1 : ℝ) ≤ (2 : ℝ) ^ (3 * S.K) := one_le_pow₀ (by norm_num)
+  have hT2 : S.T ≤ S.T ^ 2 * (2 : ℝ) ^ (3 * S.K) := by nlinarith
+  rw [hΛ]
+  have hlt : (3 * ((⌊S.H⌋₊ : ℕ) : ℝ) ^ 2) ^ d * ((d.factorial : ℝ) *
+      ((⌊S.H⌋₊ : ℕ) : ℝ) ^ (d ^ 2 + d)) < S.T ^ 2 * (2 : ℝ) ^ (3 * S.K) := by linarith
+  have := mul_lt_mul_of_pos_right hlt hε
+  linarith
+
+end Basics
+
+end ModeSchedule
+
+/-- Blueprint lines 1997-1998 at the chosen mode schedule: at a nonexceptional block (every vector
+of height at most `H` is tiny, `|a·Θ| ≤ T⁻¹ / r_{v_b}`, or large, `|a·Θ| ≥ T / r_{t_b}`, with
+`r_n = r₀ 2^{-n}`), every vector of height at most `H` in the rational span `K_rat` of the tiny
+height-`H` vectors is itself tiny. The spanning constant `(3H²)^d d! H^(d²+d)` is below the
+threshold ratio `T² 2^(3K)` because `T > (d_max H)^(C_T d_max⁴) Ξ` with `C_T ≥ 4`
+(`eq:mode-parameters`) and the frequency dimension is at most `d_max`. -/
+theorem ModeSchedule.tiny_of_mem_tinySpan (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : ℝ}
+    (hV : S.Valid Cj CA CT CK δs W) (hCT : 4 ≤ CT) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {d : ℕ} (hd : d ≤ S.dmax) (Θ : Fin d → ℝ) {r0 : ℝ}
+    (hr0 : 0 < r0) (b : ℤ)
+    (hgap : ∀ a : Fin d → ℚ, vecHeight a ≤ ⌊S.H⌋₊ →
+      |ratEval Θ a| ≤ S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) ∨
+        S.T / (r0 * (2 : ℝ) ^ (-(b + S.K))) ≤ |ratEval Θ a|)
+    {a : Fin d → ℚ} (ha : a ∈ tinySpan Θ ⌊S.H⌋₊ (S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))))
+    (haH : vecHeight a ≤ ⌊S.H⌋₊) :
+    |ratEval Θ a| ≤ S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) := by
+  have hH := hV.two_le_H hd2 hD hB hQ
+  have hHn : 1 ≤ ⌊S.H⌋₊ := Nat.le_floor (by norm_num; linarith)
+  have hT1 := hV.one_le_T (by omega) hd2 hD hB hQ
+  have hε : 0 ≤ S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) :=
+    div_nonneg (inv_nonneg.mpr (by linarith)) (by positivity)
+  exact Auto.tiny_of_mem_tinySpan Θ hHn hε hgap (hV.tinySpan_small hCT hd2 hD hB hQ hd hr0 b) ha
+    haH
+
+/-! ## Lem:stabilize at the chosen schedule (blueprint lines 2002-2028) -/
+
+/-- A block that is not exceptional (`¬ExceptionalAt`) satisfies `eq:gap` for every rational
+vector of height at most `⌊H⌋`. -/
+theorem gap_of_not_exceptionalAt {d : ℕ} {Θ : Fin d → ℝ} {H r0 T : ℝ} (hH : 0 ≤ H) {K : ℕ}
+    {b : ℤ} (hne : ¬ExceptionalAt Θ H r0 T K b) (a : Fin d → ℚ) (ha : vecHeight a ≤ ⌊H⌋₊) :
+    |ratEval Θ a| ≤ T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * K))) ∨
+      T / (r0 * (2 : ℝ) ^ (-(b + K))) ≤ |ratEval Θ a| := by
+  by_contra hc
+  simp only [not_or, not_le] at hc
+  refine hne ⟨a, fun i => ?_, hc.1, hc.2⟩
+  have h1 : rationalHeight (a i) ≤ ⌊H⌋₊ := (le_vecHeight a i).trans ha
+  exact (by exact_mod_cast h1 : (rationalHeight (a i) : ℝ) ≤ ⌊H⌋₊).trans (Nat.floor_le hH)
+
+namespace ModeSchedule
+variable (S : ModeSchedule)
+
+/-- The block radii `r_{t_b} ≤ r_{v_b}` (`r_n = r₀ 2^{-n}`) give `Ξ/r_{v_b} ≤ Ξ/r_{t_b}`. -/
+theorem Ξ_div_lag_le {r0 : ℝ} (hr0 : 0 < r0) (b : ℤ) :
+    S.Ξ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) ≤ S.Ξ / (r0 * (2 : ℝ) ^ (-(b + S.K))) := by
+  refine div_le_div_of_nonneg_left (Ξ_nonneg S) (by positivity) ?_
+  exact mul_le_mul_of_nonneg_left (zpow_le_zpow_right₀ (by norm_num) (by omega)) hr0.le
+
+/-- The PRE and CURRENT components of the block with start `b` on the `v_b`-cell
+`[a₀, a₀ + r_{v_b}]` (`eq:PRE` with `Ξ/r_{v_b}`, `eq:CURRENT` with `Ξ/r_{t_b}`), `r_n = r₀ 2^{-n}`,
+`v_b = b - 2K`, `t_b = b + K`. -/
+noncomputable def blockGraphs (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [DecidableEq Mode]
+    [DecidableEq P] {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) {r0 : ℝ}
+    (hr0 : 0 < r0) (b : ℤ) (a0 : ℝ) : ModeComponents Mode P :=
+  S.preCurrent hA ω ϑ π a0 (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) (r0 * (2 : ℝ) ^ (-(b + S.K)))
+    (S.Ξ_div_lag_le hr0 b)
+
+/-- The witness bound of the spans `V_i` (blueprint line 2012): `⌊D_*⌋ · witE i = ⌊D_* E_i⌋`, so an
+integer vector `m` satisfies `|m|_∞ ≤ ⌊D_*⌋ · witE i` exactly when `|m|_∞ ≤ D_* E_i`. -/
+noncomputable def witE (i : ℕ) : ℚ := (⌊S.Dstar * S.Eh i⌋₊ : ℚ) / (⌊S.Dstar⌋₊ : ℚ)
+
+/-- The size bound of the generators of the spans `U_i` (blueprint line 2012): integer vectors
+`z` with `|z|_∞ ≤ ⌊C_*³ D_* E_i⌋`, that is `|z|_∞ ≤ C_*³ D_* E_i`. -/
+noncomputable def kerS (i : ℕ) : ℚ := (⌊S.Cstar ^ 3 * S.Dstar * S.Eh i⌋₊ : ℚ)
+
+theorem D_mul_witE (hD : 1 ≤ S.Dstar) (i : ℕ) :
+    (⌊S.Dstar⌋₊ : ℚ) * S.witE i = (⌊S.Dstar * S.Eh i⌋₊ : ℚ) := by
+  have h1 : 1 ≤ ⌊S.Dstar⌋₊ := Nat.le_floor (by exact_mod_cast hD)
+  have h0 : (⌊S.Dstar⌋₊ : ℚ) ≠ 0 := by
+    have : (1 : ℚ) ≤ ⌊S.Dstar⌋₊ := by exact_mod_cast h1
+    linarith
+  unfold witE
+  field_simp
+
+theorem witE_nonneg (i : ℕ) : 0 ≤ S.witE i := by unfold witE; positivity
+
+theorem kerS_nonneg (i : ℕ) : 0 ≤ S.kerS i := by unfold kerS; positivity
+
+theorem witE_succ (hA : 6 ≤ S.A0) (hD : 1 ≤ S.Dstar) (i : ℕ) :
+    6 * S.witE i ≤ S.witE (i + 1) := by
+  have h1 : 1 ≤ ⌊S.Dstar⌋₊ := Nat.le_floor (by exact_mod_cast hD)
+  have hD0 : (0 : ℚ) ≤ ⌊S.Dstar⌋₊ := Nat.cast_nonneg _
+  have hE0 : 0 ≤ S.Dstar * S.Eh i := mul_nonneg (by linarith) (S.Eh_nonneg hA i)
+  have key : 6 * ⌊S.Dstar * S.Eh i⌋₊ ≤ ⌊S.Dstar * S.Eh (i + 1)⌋₊ := by
+    refine Nat.le_floor ?_
+    have e : S.Dstar * S.Eh (i + 1) = S.A0 * (S.Dstar * S.Eh i) := by unfold Eh; ring
+    rw [e]
+    push_cast
+    have := Nat.floor_le hE0
+    nlinarith [mul_nonneg (sub_nonneg.mpr hA) hE0]
+  unfold witE
+  rw [← mul_div_assoc]
+  exact div_le_div_of_nonneg_right (by exact_mod_cast key) hD0
+
+theorem kerS_mono (hA : 6 ≤ S.A0) (hD : 1 ≤ S.Dstar) (hC : 1 ≤ S.Cstar) : Monotone S.kerS := by
+  intro i j hij
+  unfold kerS
+  have hE : S.Eh i ≤ S.Eh j := pow_le_pow_right₀ (by linarith) (by omega)
+  have h0 : 0 ≤ S.Cstar ^ 3 * S.Dstar := mul_nonneg (pow_nonneg (by linarith) 3) (by linarith)
+  have : ⌊S.Cstar ^ 3 * S.Dstar * S.Eh i⌋₊ ≤ ⌊S.Cstar ^ 3 * S.Dstar * S.Eh j⌋₊ :=
+    Nat.floor_mono (mul_le_mul_of_nonneg_left hE h0)
+  exact_mod_cast this
+
+theorem six_pow_mul_Eh_le (hA : 6 ≤ S.A0) {R h : ℕ} (hRh : R ≤ h) :
+    (6 : ℝ) ^ R * S.Eh (h - R) ≤ S.Eh h := by
+  unfold Eh
+  have e : h + 1 = (h - R + 1) + R := by omega
+  rw [e, pow_add S.A0 (h - R + 1) R]
+  calc (6 : ℝ) ^ R * S.A0 ^ (h - R + 1) = S.A0 ^ (h - R + 1) * 6 ^ R := mul_comm _ _
+    _ ≤ S.A0 ^ (h - R + 1) * S.A0 ^ R :=
+        mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (by norm_num) hA R)
+          (pow_nonneg (by linarith) _)
+
+theorem A0_mul_Eh_le (hA : 1 ≤ S.A0) {R Δ h : ℕ} (hΔR : Δ < R) (hRh : R ≤ h) :
+    S.A0 * S.Eh (h - R) ≤ S.Eh (h - Δ) := by
+  unfold Eh
+  have e : h - Δ + 1 = (h - R + 1) + (R - Δ) := by omega
+  rw [e, pow_add S.A0 (h - R + 1) (R - Δ)]
+  calc S.A0 * S.A0 ^ (h - R + 1) = S.A0 ^ (h - R + 1) * S.A0 := mul_comm _ _
+    _ ≤ S.A0 ^ (h - R + 1) * S.A0 ^ (R - Δ) :=
+        mul_le_mul_of_nonneg_left (le_self_pow₀ hA (by omega)) (pow_nonneg (by linarith) _)
+
+/-- Blueprint lem:stabilize: the height `h` is good for the primary `p` of the block with start
+`b` (frequency vector `Θ_p`) when `p` is nonexceptional at the block (`eq:gap` at height `H`),
+`h ≥ R_*^{ht}`, and neither the span `V_i` of the height-`D_*` vectors `q'` with witnesses
+`q' + (0, m/L_i) ∈ K_rat`, `|m|_∞ ≤ D_* E_i`, nor the span `U_i` of the integer vectors of `K_B` of
+size at most `C_*³ D_* E_i` changes between `i = h - R_*^{ht}` and `i = h`. -/
+def stabGood {P : Type*} {dz : ℕ} (dvOf : P → ℕ) (ΘOf : ∀ p, Fin (dvOf p + dz) → ℝ) (r0 : ℝ)
+    (b : ℤ) (h : ℕ) (p : P) : Prop :=
+  primaryGood dvOf ΘOf ⌊S.H⌋₊ ⌊S.Dstar⌋₊ (S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))))
+    (S.T / (r0 * (2 : ℝ) ^ (-(b + S.K)))) S.witE S.kerS S.Rht h p
+
+section Stabilize
+variable {S} {Cj CA CT CK : ℕ} {δs W : ℝ}
+
+/-- `(3 D²)^d ≤ C_*` for `d ≤ d_max` and `D ≤ D_*`. -/
+theorem Valid.three_sq_pow_le (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) {d D : ℕ} (hd : d ≤ S.dmax) (hDD : (D : ℝ) ≤ S.Dstar) :
+    (3 * (D : ℝ) ^ 2) ^ d ≤ S.Cstar := by
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have hY1 : (1 : ℝ) ≤ 10 * S.dmax * S.Dstar := by nlinarith
+  have hD2 : (D : ℝ) ^ 2 ≤ S.Dstar ^ 2 := pow_le_pow_left₀ (Nat.cast_nonneg _) hDD 2
+  have hd4 : (4 : ℝ) ≤ (S.dmax : ℝ) ^ 2 := by nlinarith
+  have h1 : (3 : ℝ) * D ^ 2 ≤ (10 * S.dmax * S.Dstar) ^ 2 := by
+    have e : (10 * (S.dmax : ℝ) * S.Dstar) ^ 2 = 100 * (S.dmax : ℝ) ^ 2 * S.Dstar ^ 2 := by ring
+    rw [e]
+    nlinarith [mul_le_mul_of_nonneg_right hd4 (sq_nonneg S.Dstar), sq_nonneg S.Dstar]
+  have hexp : 2 * d ≤ 100 * S.dmax ^ 4 := by
+    have := le_self_pow₀ (by omega : 1 ≤ S.dmax) (by norm_num : 4 ≠ 0)
+    omega
+  calc (3 * (D : ℝ) ^ 2) ^ d ≤ ((10 * S.dmax * S.Dstar) ^ 2) ^ d :=
+        pow_le_pow_left₀ (by positivity) h1 d
+    _ = (10 * S.dmax * S.Dstar) ^ (2 * d) := by rw [← pow_mul]
+    _ ≤ (10 * S.dmax * S.Dstar) ^ (100 * S.dmax ^ 4) := pow_le_pow_right₀ hY1 hexp
+    _ ≤ S.Cstar := hV.Cstar_ge
+
+/-- The expansion constant of `rational_span_expand_bounded` in dimension `d ≤ d_max` at height
+`D ≤ D_*` is at most `C_*` ("coefficients and common denominator at most `C_*`"). -/
+theorem Valid.expandConst_le (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) {d D : ℕ} (hd : d ≤ S.dmax) (hDD : (D : ℝ) ≤ S.Dstar) :
+    (expandConst d D : ℝ) ≤ S.Cstar := by
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have hdd : (d : ℝ) ≤ S.dmax := by exact_mod_cast hd
+  have hY1 : (1 : ℝ) ≤ 10 * S.dmax * S.Dstar := by nlinarith
+  have hdY : (d : ℝ) ≤ 10 * S.dmax * S.Dstar := by nlinarith
+  have hDY : (D : ℝ) ≤ 10 * S.dmax * S.Dstar := by nlinarith
+  have h1 : (d.factorial : ℝ) ≤ (10 * S.dmax * S.Dstar) ^ d :=
+    (by exact_mod_cast Nat.factorial_le_pow d : (d.factorial : ℝ) ≤ (d : ℝ) ^ d).trans
+      (pow_le_pow_left₀ (Nat.cast_nonneg _) hdY d)
+  have h2 : ((D : ℝ) * (D : ℝ) ^ (d * d + d)) ^ d ≤
+      ((10 * S.dmax * S.Dstar) * (10 * S.dmax * S.Dstar) ^ (d * d + d)) ^ d := by
+    gcongr
+  have h3 : ((10 * S.dmax * S.Dstar : ℝ) * (10 * S.dmax * S.Dstar) ^ (d * d + d)) ^ d =
+      (10 * S.dmax * S.Dstar) ^ ((d * d + d + 1) * d) := by
+    rw [← pow_succ', ← pow_mul]
+  have hexp : d + (d * d + d + 1) * d ≤ 100 * S.dmax ^ 4 := by
+    have b1 : d ≤ S.dmax ^ 4 := hd.trans (le_self_pow₀ (by omega) (by norm_num))
+    have b2 : d * d ≤ S.dmax ^ 4 := by
+      calc d * d ≤ S.dmax * S.dmax := Nat.mul_le_mul hd hd
+        _ ≤ S.dmax * S.dmax * S.dmax * S.dmax := by
+          rw [mul_assoc (S.dmax * S.dmax)]
+          exact Nat.le_mul_of_pos_right _ (Nat.mul_pos (by omega) (by omega))
+        _ = S.dmax ^ 4 := by ring
+    have b3 : d * d * d ≤ S.dmax ^ 4 := by
+      calc d * d * d ≤ S.dmax * S.dmax * S.dmax := Nat.mul_le_mul (Nat.mul_le_mul hd hd) hd
+        _ ≤ S.dmax * S.dmax * S.dmax * S.dmax := Nat.le_mul_of_pos_right _ (by omega)
+        _ = S.dmax ^ 4 := by ring
+    nlinarith
+  calc (expandConst d D : ℝ) = (d.factorial : ℝ) * ((D : ℝ) * (D : ℝ) ^ (d * d + d)) ^ d := by
+        unfold expandConst; push_cast; ring
+    _ ≤ (10 * S.dmax * S.Dstar) ^ d * (10 * S.dmax * S.Dstar) ^ ((d * d + d + 1) * d) := by
+        rw [← h3]; exact mul_le_mul h1 h2 (by positivity) (pow_nonneg (by linarith) _)
+    _ = (10 * S.dmax * S.Dstar) ^ (d + (d * d + d + 1) * d) := by rw [pow_add]
+    _ ≤ (10 * S.dmax * S.Dstar) ^ (100 * S.dmax ^ 4) := pow_le_pow_right₀ hY1 hexp
+    _ ≤ S.Cstar := hV.Cstar_ge
+
+/-- The fixed-power choice of `A₀` (`A₀ ≥ (C_* 6^{R_*^{ht}} B_* D_*)^{C_A}` with `C_A ≥ 5`)
+dominates `C_*² D_* 6^{R_*^{ht}} + d_max C_*³ D_*`. -/
+theorem Valid.stab_le_A0 (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) :
+    S.Cstar ^ 2 * S.Dstar * 6 ^ S.Rht + S.dmax * (S.Cstar ^ 3 * S.Dstar) ≤ S.A0 := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have hdC := hV.dmax_le_Cstar hd2 hD
+  have h6 : (1 : ℝ) ≤ 6 ^ S.Rht := one_le_pow₀ (by norm_num)
+  obtain ⟨X, hX⟩ : ∃ X, X = S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar := ⟨_, rfl⟩
+  have hA : X ^ 5 ≤ S.A0 := by
+    have hX1 : 1 ≤ X := by
+      rw [hX]
+      have h1 : 1 ≤ S.Cstar * 6 ^ S.Rht := one_le_mul_of_one_le_of_one_le (by linarith) h6
+      have h2 : 1 ≤ S.Cstar * 6 ^ S.Rht * S.Bstar :=
+        one_le_mul_of_one_le_of_one_le h1 (by linarith)
+      exact one_le_mul_of_one_le_of_one_le h2 (by linarith)
+    rw [hX] at hX1 ⊢
+    exact (pow_le_pow_right₀ hX1 hCA).trans hV.A0_ge
+  have hCD6 : S.Cstar * S.Dstar * 6 ^ S.Rht ≤ X := by
+    rw [hX]
+    have e : S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar =
+        (S.Cstar * S.Dstar * 6 ^ S.Rht) * S.Bstar := by ring
+    rw [e]
+    exact le_mul_of_one_le_right (mul_nonneg (mul_nonneg (by linarith) (by linarith))
+      (by positivity)) (by linarith)
+  have hCD : S.Cstar * S.Dstar ≤ X := by
+    have : S.Cstar * S.Dstar ≤ S.Cstar * S.Dstar * 6 ^ S.Rht :=
+      le_mul_of_one_le_right (mul_nonneg (by linarith) (by linarith)) h6
+    linarith
+  have hCX : S.Cstar ≤ X := by
+    have : S.Cstar ≤ S.Cstar * S.Dstar := le_mul_of_one_le_right (by linarith) (by linarith)
+    linarith
+  have hX2 : 2 ≤ X := by linarith
+  have e1 : S.Cstar ^ 2 * S.Dstar * 6 ^ S.Rht ≤ X ^ 4 := by
+    calc S.Cstar ^ 2 * S.Dstar * 6 ^ S.Rht = S.Cstar * (S.Cstar * S.Dstar * 6 ^ S.Rht) := by
+          ring
+      _ ≤ X * X := mul_le_mul hCX hCD6 (by positivity) (by linarith)
+      _ = X ^ 2 := by ring
+      _ ≤ X ^ 4 := pow_le_pow_right₀ (by linarith) (by norm_num)
+  have e2 : S.dmax * (S.Cstar ^ 3 * S.Dstar) ≤ X ^ 4 := by
+    calc (S.dmax : ℝ) * (S.Cstar ^ 3 * S.Dstar) ≤ S.Cstar * (S.Cstar ^ 3 * S.Dstar) :=
+          mul_le_mul_of_nonneg_right hdC (mul_nonneg (pow_nonneg (by linarith) 3) (by linarith))
+      _ = S.Cstar ^ 3 * (S.Cstar * S.Dstar) := by ring
+      _ ≤ X ^ 3 * X := mul_le_mul (pow_le_pow_left₀ (by linarith) hCX 3) hCD
+          (mul_nonneg (by linarith) (by linarith)) (pow_nonneg (by linarith) 3)
+      _ = X ^ 4 := by ring
+  have e3 : 2 * X ^ 4 ≤ X ^ 5 := by
+    have h4 : 0 ≤ X ^ 4 := pow_nonneg (by linarith) 4
+    nlinarith
+  linarith
+
+/-- The heights of the CURRENT and PRE relations in the proof of lem:stabilize are at most `H`:
+`max(D, 3 (D M)²) ≤ ⌊H⌋` for `D = ⌊D_*⌋` and `M ≤ 3 D_* E_{J_*} L_{J_*}`. -/
+theorem Valid.height_budget (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {M : ℕ}
+    (hM : (M : ℝ) ≤ 3 * (S.Dstar * (S.Eh S.Jstar * Lh S.Jstar))) :
+    max (⌊S.Dstar⌋₊ : ℝ) (3 * ((⌊S.Dstar⌋₊ : ℝ) * M) ^ 2) ≤ (⌊S.H⌋₊ : ℝ) := by
+  have hH := hV.H_ge hd2 hD hB hQ
+  have hDH := hV.Dstar_lt_H hd2 hD hB hQ
+  have hDf : (⌊S.Dstar⌋₊ : ℝ) ≤ S.Dstar := Nat.floor_le (by linarith)
+  have hM0 : (0 : ℝ) ≤ M := Nat.cast_nonneg _
+  have key2 : 3 * ((⌊S.Dstar⌋₊ : ℝ) * M) ^ 2 ≤ S.H := by
+    have h1 : (⌊S.Dstar⌋₊ : ℝ) * M ≤ S.Dstar * (3 * (S.Dstar * (S.Eh S.Jstar * Lh S.Jstar))) :=
+      mul_le_mul hDf hM hM0 (by linarith)
+    calc 3 * ((⌊S.Dstar⌋₊ : ℝ) * M) ^ 2 ≤
+          3 * (S.Dstar * (3 * (S.Dstar * (S.Eh S.Jstar * Lh S.Jstar)))) ^ 2 := by
+          gcongr
+      _ = 27 * S.Dstar ^ 4 * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := by ring
+      _ ≤ S.H := hH.le
+  rw [max_le_iff]
+  constructor
+  · have : ⌊S.Dstar⌋₊ ≤ ⌊S.H⌋₊ := Nat.floor_mono (by linarith)
+    exact_mod_cast this
+  · have : 3 * (⌊S.Dstar⌋₊ * M) ^ 2 ≤ ⌊S.H⌋₊ := Nat.le_floor (by push_cast; exact key2)
+    exact_mod_cast this
+
+/-- `⌈e⌉ + 6^i ≤ 3 D_* E_{J_*} L_{J_*}` for `0 ≤ e ≤ D_* E_{J_*}` and `i ≤ J_*`. -/
+theorem Valid.ceil_budget (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) {e : ℝ} (he0 : 0 ≤ e) (he : e ≤ S.Dstar * S.Eh S.Jstar) {i : ℕ}
+    (hi : i ≤ S.Jstar) :
+    ((⌈e⌉₊ + 6 ^ i : ℕ) : ℝ) ≤ 3 * (S.Dstar * (S.Eh S.Jstar * Lh S.Jstar)) := by
+  have hA := hV.one_le_A0 hd2 hD hB
+  have hE : 1 ≤ S.Eh S.Jstar := one_le_pow₀ hA
+  have hL : (1 : ℝ) ≤ Lh S.Jstar := one_le_pow₀ (by norm_num)
+  have hLi : (6 : ℝ) ^ i ≤ Lh S.Jstar := pow_le_pow_right₀ (by norm_num) hi
+  have h1 := Nat.ceil_lt_add_one he0
+  have hDE : 1 ≤ S.Dstar * S.Eh S.Jstar := one_le_mul_of_one_le_of_one_le (by linarith) hE
+  have e1 : S.Dstar * (S.Eh S.Jstar * Lh S.Jstar) = (S.Dstar * S.Eh S.Jstar) * Lh S.Jstar := by
+    ring
+  have h2 : S.Dstar * S.Eh S.Jstar ≤ S.Dstar * (S.Eh S.Jstar * Lh S.Jstar) := by
+    rw [e1]; exact le_mul_of_one_le_right (by linarith) hL
+  have h3 : Lh S.Jstar ≤ S.Dstar * (S.Eh S.Jstar * Lh S.Jstar) := by
+    rw [e1]; exact le_mul_of_one_le_left (by linarith) hDE
+  push_cast
+  linarith
+
+open Classical in
+/-- Blueprint lem:stabilize, counting part, at the chosen schedule: for a primary `p` that is
+nonexceptional at the block with start `b`, at most `3 d_max R_*^{ht}` heights are not good for
+it (`C d_max R_*^{ht}`): the heights below `R_*^{ht}`, and those where the rank of `V_i` or `U_i`
+changes between `h - R_*^{ht}` and `h`. -/
+theorem Valid.stabGood_bad_card (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA)
+    (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) {P : Type*} {dz : ℕ}
+    (dvOf : P → ℕ) (ΘOf : ∀ p, Fin (dvOf p + dz) → ℝ) (r0 : ℝ) (b : ℤ) (p : P)
+    (hdim : dvOf p + dz ≤ S.dmax) (hne : ¬ExceptionalAt (ΘOf p) S.H r0 S.T S.K b) (N : ℕ) :
+    ((Finset.range N).filter fun h => ¬S.stabGood dvOf ΘOf r0 b h p).card ≤
+      3 * S.dmax * S.Rht := by
+  have hH0 : 0 ≤ S.H := le_trans (Even.pow_nonneg (by decide) _) hV.H_gt.le
+  have hA := hV.six_le_A0 hCA hd2 hD hB
+  have hC := hV.two_le_Cstar hd2 hD
+  have h1 := primaryGood_bad_card dvOf ΘOf ⌊S.H⌋₊ ⌊S.Dstar⌋₊
+    (S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))) (S.T / (r0 * (2 : ℝ) ^ (-(b + S.K))))
+    S.witE S.kerS (S.witE_succ hA (by linarith)) (S.kerS_mono hA (by linarith) (by linarith))
+    S.Rht N p (gap_of_not_exceptionalAt hH0 hne)
+  have h2 : 1 + (dvOf p + dz) + dz ≤ 3 * S.dmax := by omega
+  calc _ ≤ (1 + (dvOf p + dz) + dz) * S.Rht := h1
+    _ ≤ 3 * S.dmax * S.Rht := Nat.mul_le_mul_right _ h2
+
+/-- Blueprint lem:stabilize at the chosen schedule, the PRE edge: let the modes of the frozen list
+on the `v_b`-cell `[a₀, a₀ + r_{v_b}]` be at most `D_*` in number, with primaries `π` whose
+frequency vectors are `Θ_p = (θ_{v,p}, ϑ)` of dimension at most `d_max`, two modes of one primary
+differing in slope by `a·Θ_p` with `a` of height at most `D_*` (`eq:mode-differences`). If `h ≤ J_*`
+is good for the primary of `x` (`stabGood`), then a mode `x'` of the same primary in the CURRENT
+component of `x` at height `h` is directly PRE-adjacent to `x` at height `h - Δ`, `Δ = 10`. All
+numeric side conditions are derived from `eq:mode-parameters` with `C_A ≥ 5` and `C_T ≥ 4` as the
+choice of the absolute constants. -/
+theorem Valid.stabGood_pre (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT)
+    (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {Mode P : Type*}
+    [Fintype Mode] [DecidableEq Mode] [DecidableEq P] (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar)
+    {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
+    (θvOf : ∀ p, Fin (dvOf p) → ℝ) (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0)
+    (b : ℤ) (a0 : ℝ)
+    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
+      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
+        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
+    {h : ℕ} (hJ : h ≤ S.Jstar) {x x' : Mode}
+    (hg : S.stabGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b h (π x)) (hπ : π x' = π x)
+    (hF : x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F h x) :
+    S.gapEdge ω ϑ a0 (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))
+      (S.Ξ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))) (h - 10) x x' := by
+  have hA := hV.six_le_A0 (by omega) hd2 hD hB
+  have hA1 : 1 ≤ S.A0 := by linarith
+  have hC := hV.two_le_Cstar hd2 hD
+  have hR := hV.thirty_le_Rht hd2 hD
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have hH2 := hV.two_le_H hd2 hD hB hQ
+  have hHΞ := hV.H_mul_Ξ_lt_T (by omega) hd2 hD hB hQ
+  have hDH := hV.Dstar_lt_H hd2 hD hB hQ
+  have hT1 := hV.one_le_T (by omega) hd2 hD hB hQ
+  have hΞ1 : 1 ≤ S.Ξ := one_le_pow₀ (by linarith)
+  have hrv : 0 < r0 * (2 : ℝ) ^ (-(b - 2 * S.K)) := by positivity
+  have hrt0 : 0 < r0 * (2 : ℝ) ^ (-(b + S.K)) := by positivity
+  have hD1 : 1 ≤ ⌊S.Dstar⌋₊ := Nat.le_floor (by norm_num; linarith)
+  have hDD : (⌊S.Dstar⌋₊ : ℝ) ≤ S.Dstar := Nat.floor_le (by linarith)
+  have hHn : 1 ≤ ⌊S.H⌋₊ := Nat.le_floor (by norm_num; linarith)
+  have hd := hdim (π x)
+  have hdz : dz ≤ S.dmax := le_trans (Nat.le_add_left _ _) hd
+  obtain ⟨hgap, hRh, hVs, hUs⟩ := hg
+  have hCx := hV.expandConst_le hd2 hD hd hDD
+  have hQx := hV.three_sq_pow_le hd2 hD hd hDD
+  have hC0 : (0 : ℝ) ≤ S.Cstar := by linarith
+  -- the same-primary relations at height `⌊D_*⌋`
+  have hsame' : ∀ y y', π y = π x → π y' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ,
+      vecHeight a ≤ ⌊S.Dstar⌋₊ ∧ ∀ t ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
+        ω y t - ω y' t = ratEval (Fin.append (θvOf (π x)) ϑ) a := by
+    intro y y' hy hy'
+    rw [← hy]
+    obtain ⟨a, ha, hω⟩ := hsame y y' (hy'.trans hy.symm)
+    exact ⟨a, Nat.le_floor ha, hω⟩
+  have hε : 0 ≤ S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) :=
+    div_nonneg (inv_nonneg.mpr (by linarith)) hrv.le
+  have htiny : S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) ≤
+      S.Ξ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) :=
+    div_le_div_of_nonneg_right ((inv_le_one_of_one_le₀ hT1).trans hΞ1) hrv.le
+  -- `hQR`: the expansion constant is below `2^{R - Δ}`
+  have hQR : expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ < 2 ^ (S.Rht - 10) := by
+    have := hCx.trans_lt (hV.Cstar_lt_two_pow hd2 hD)
+    exact_mod_cast this
+  -- bounds shared by `hzS` and `hBp`
+  have hDEr : 0 ≤ S.Dstar * S.Eh (h - S.Rht) := mul_nonneg (by linarith) (S.Eh_nonneg hA _)
+  have u2 : (3 * (⌊S.Dstar⌋₊ : ℝ) ^ 2) ^ (dvOf (π x) + dz) *
+      ((expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ : ℝ) * ⌊S.Dstar * S.Eh (h - S.Rht)⌋₊) ≤
+        S.Cstar * (S.Cstar * (S.Dstar * S.Eh (h - S.Rht))) := by
+    have u1 : (expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ : ℝ) * ⌊S.Dstar * S.Eh (h - S.Rht)⌋₊ ≤
+        S.Cstar * (S.Dstar * S.Eh (h - S.Rht)) :=
+      mul_le_mul hCx (Nat.floor_le hDEr) (Nat.cast_nonneg _) hC0
+    exact mul_le_mul hQx u1 (by positivity) hC0
+  have hEh6 := S.six_pow_mul_Eh_le hA hRh
+  -- `hzS`: the cleared kernel vector has size at most `C_*³ D_* E_h`
+  have hzS : (expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ : ℚ) * ((⌊S.Dstar⌋₊ : ℚ) * S.witE h) +
+      6 ^ S.Rht * ((3 * (⌊S.Dstar⌋₊ : ℚ) ^ 2) ^ (dvOf (π x) + dz) *
+        ((expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ : ℚ) *
+          ((⌊S.Dstar⌋₊ : ℚ) * S.witE (h - S.Rht)))) ≤ S.kerS h := by
+    rw [S.D_mul_witE (by linarith) h, S.D_mul_witE (by linarith) (h - S.Rht)]
+    unfold kerS
+    have hDE : 0 ≤ S.Dstar * S.Eh h := mul_nonneg (by linarith) (S.Eh_nonneg hA _)
+    have key : expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ * ⌊S.Dstar * S.Eh h⌋₊ +
+        6 ^ S.Rht * ((3 * ⌊S.Dstar⌋₊ ^ 2) ^ (dvOf (π x) + dz) *
+          (expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ * ⌊S.Dstar * S.Eh (h - S.Rht)⌋₊)) ≤
+        ⌊S.Cstar ^ 3 * S.Dstar * S.Eh h⌋₊ := by
+      refine Nat.le_floor ?_
+      push_cast
+      have t1 : (expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ : ℝ) * ⌊S.Dstar * S.Eh h⌋₊ ≤
+          S.Cstar * (S.Dstar * S.Eh h) :=
+        mul_le_mul hCx (Nat.floor_le hDE) (Nat.cast_nonneg _) hC0
+      have t2 := mul_le_mul_of_nonneg_left u2 (by positivity : (0 : ℝ) ≤ 6 ^ S.Rht)
+      have t4 : (6 : ℝ) ^ S.Rht * (S.Cstar * (S.Cstar * (S.Dstar * S.Eh (h - S.Rht)))) ≤
+          S.Cstar ^ 2 * S.Dstar * S.Eh h := by
+        have e : (6 : ℝ) ^ S.Rht * (S.Cstar * (S.Cstar * (S.Dstar * S.Eh (h - S.Rht)))) =
+            S.Cstar ^ 2 * S.Dstar * (6 ^ S.Rht * S.Eh (h - S.Rht)) := by ring
+        rw [e]
+        exact mul_le_mul_of_nonneg_left hEh6 (mul_nonneg (sq_nonneg _) (by linarith))
+      have t5 : S.Cstar * (S.Dstar * S.Eh h) + S.Cstar ^ 2 * S.Dstar * S.Eh h ≤
+          S.Cstar ^ 3 * S.Dstar * S.Eh h := by
+        have hc3 : S.Cstar + S.Cstar ^ 2 ≤ S.Cstar ^ 3 := by nlinarith
+        have := mul_le_mul_of_nonneg_right hc3 hDE
+        nlinarith
+      linarith
+    exact_mod_cast key
+  -- `hEcur`: a CURRENT path of at most `D_*` edges has a witness of size at most `D_* E_h`
+  have hEcur : ∀ z : ℤ, |(z : ℝ)| ≤ Fintype.card Mode * S.Eh h →
+      |(z : ℚ)| ≤ (⌊S.Dstar⌋₊ : ℚ) * S.witE h := by
+    intro z hz
+    rw [S.D_mul_witE (by linarith) h]
+    have hz' : |(z : ℝ)| ≤ S.Dstar * S.Eh h :=
+      hz.trans (mul_le_mul_of_nonneg_right hcard (S.Eh_nonneg hA _))
+    have e : (z.natAbs : ℝ) = |(z : ℝ)| := by rw [Nat.cast_natAbs, Int.cast_abs]
+    have h1 : z.natAbs ≤ ⌊S.Dstar * S.Eh h⌋₊ := Nat.le_floor (by rw [e]; exact hz')
+    have h2 : (z.natAbs : ℚ) ≤ ⌊S.Dstar * S.Eh h⌋₊ := by exact_mod_cast h1
+    rwa [Nat.cast_natAbs, Int.cast_abs] at h2
+  -- `hcurgap`: `D_* Ξ < T`
+  have hcurgap : (Fintype.card Mode : ℝ) * (S.Ξ / (r0 * (2 : ℝ) ^ (-(b + S.K)))) <
+      S.T / (r0 * (2 : ℝ) ^ (-(b + S.K))) := by
+    rw [← mul_div_assoc]
+    refine div_lt_div_of_pos_right ?_ hrt0
+    have h1 : (Fintype.card Mode : ℝ) * S.Ξ ≤ S.H * S.Ξ :=
+      mul_le_mul_of_nonneg_right (hcard.trans hDH.le) (by linarith)
+    linarith
+  -- `hBp`: the PRE witness has size at most `E_{h - Δ}`
+  have hBp : (((6 : ℚ) ^ (S.Rht - 10) * ((3 * (⌊S.Dstar⌋₊ : ℚ) ^ 2) ^ (dvOf (π x) + dz) *
+      ((expandConst (dvOf (π x) + dz) ⌊S.Dstar⌋₊ : ℚ) *
+        ((⌊S.Dstar⌋₊ : ℚ) * S.witE (h - S.Rht)))) + (dz : ℚ) * S.kerS (h - S.Rht) : ℚ) : ℝ) ≤
+      S.Eh (h - 10) := by
+    rw [S.D_mul_witE (by linarith) (h - S.Rht)]
+    unfold kerS
+    push_cast
+    have hCDE : 0 ≤ S.Cstar ^ 3 * S.Dstar * S.Eh (h - S.Rht) :=
+      mul_nonneg (mul_nonneg (pow_nonneg hC0 3) (by linarith)) (S.Eh_nonneg hA _)
+    have v1 : (6 : ℝ) ^ (S.Rht - 10) ≤ 6 ^ S.Rht := pow_le_pow_right₀ (by norm_num) (by omega)
+    have v3 := mul_le_mul v1 u2 (by positivity) (by positivity)
+    have v4 : (dz : ℝ) * ⌊S.Cstar ^ 3 * S.Dstar * S.Eh (h - S.Rht)⌋₊ ≤
+        S.dmax * (S.Cstar ^ 3 * S.Dstar * S.Eh (h - S.Rht)) :=
+      mul_le_mul (by exact_mod_cast hdz) (Nat.floor_le hCDE) (Nat.cast_nonneg _)
+        (Nat.cast_nonneg _)
+    have v5 := mul_le_mul_of_nonneg_right (hV.stab_le_A0 hCA hd2 hD hB) (S.Eh_nonneg hA (h - S.Rht))
+    have v6 := S.A0_mul_Eh_le hA1 (by omega : 10 < S.Rht) hRh
+    have e : (6 : ℝ) ^ S.Rht * (S.Cstar * (S.Cstar * (S.Dstar * S.Eh (h - S.Rht)))) +
+        S.dmax * (S.Cstar ^ 3 * S.Dstar * S.Eh (h - S.Rht)) =
+        (S.Cstar ^ 2 * S.Dstar * 6 ^ S.Rht + S.dmax * (S.Cstar ^ 3 * S.Dstar)) *
+          S.Eh (h - S.Rht) := by ring
+    linarith
+  -- the heights of the CURRENT and PRE relations
+  have hEJ : S.Eh h ≤ S.Eh S.Jstar := pow_le_pow_right₀ hA1 (by omega)
+  have hEJ' : S.Eh (h - 10) ≤ S.Eh S.Jstar := pow_le_pow_right₀ hA1 (by omega)
+  have hDEh : 0 ≤ S.Dstar * S.Eh h := mul_nonneg (by linarith) (S.Eh_nonneg hA _)
+  have hMh3 := hV.height_budget hd2 hD hB hQ (hV.ceil_budget hd2 hD hB hDEh
+    (mul_le_mul_of_nonneg_left hEJ (by linarith)) hJ)
+  have hMp3 := hV.height_budget hd2 hD hB hQ (hV.ceil_budget hd2 hD hB (S.Eh_nonneg hA (h - 10))
+    (hEJ'.trans (le_mul_of_one_le_left (S.Eh_nonneg hA _) (by linarith)))
+    (by omega : h - 10 ≤ S.Jstar))
+  have hMh1 : (Fintype.card Mode : ℝ) * S.Eh h ≤ ((⌈S.Dstar * S.Eh h⌉₊ + 6 ^ h : ℕ) : ℝ) := by
+    push_cast
+    have h1 := Nat.le_ceil (S.Dstar * S.Eh h)
+    have h2 := mul_le_mul_of_nonneg_right hcard (S.Eh_nonneg hA h)
+    have h3 : (0 : ℝ) ≤ 6 ^ h := by positivity
+    linarith
+  have hMp1 : S.Eh (h - 10) ≤ ((⌈S.Eh (h - 10)⌉₊ + 6 ^ (h - 10) : ℕ) : ℝ) := by
+    push_cast
+    have h1 := Nat.le_ceil (S.Eh (h - 10))
+    have h3 : (0 : ℝ) ≤ 6 ^ (h - 10) := by positivity
+    linarith
+  have key := S.stabilize_pre hA ω (Fin.append (θvOf (π x)) ϑ) π a0
+    (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) (r0 * (2 : ℝ) ^ (-(b + S.K))) hrv.le (S.Ξ_div_lag_le hr0 b)
+    (div_nonneg (Ξ_nonneg S) hrt0.le) hD1 hHn (π x) hsame' hgap hε
+    (hV.tinySpan_small hCT hd2 hD hB hQ hd hr0 b) htiny S.witE S.kerS S.witE_nonneg
+    (by omega : 10 ≤ S.Rht) hRh (S.kerS_nonneg _) hVs hUs hQR hzS hEcur hcurgap hMh1
+    (Nat.le_add_left _ _) hMh3 hBp hMp1 (Nat.le_add_left _ _) hMp3
+  have e : (fun l => Fin.append (θvOf (π x)) ϑ (Fin.natAdd (dvOf (π x)) l)) = ϑ :=
+    funext fun l => Fin.append_right _ _ _
+  rw [e] at key
+  exact key x x' rfl hπ hF
+
+/-- Lem:stabilize at the chosen schedule, in component form: under the hypotheses of
+`Valid.stabGood_pre`, `x'` lies in the PRE component of `x` at height `h - Δ`. -/
+theorem Valid.stabGood_mem_E (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT)
+    (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {Mode P : Type*}
+    [Fintype Mode] [DecidableEq Mode] [DecidableEq P] (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar)
+    {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
+    (θvOf : ∀ p, Fin (dvOf p) → ℝ) (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0)
+    (b : ℤ) (a0 : ℝ)
+    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
+      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
+        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
+    {h : ℕ} (hJ : h ≤ S.Jstar) {x x' : Mode}
+    (hg : S.stabGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b h (π x)) (hπ : π x' = π x)
+    (hF : x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F h x) :
+    x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).E (h - 10) x := by
+  unfold blockGraphs
+  exact ModeComponents.ofEdges_E_of_pre _ _ π _ _ _
+    (hV.stabGood_pre hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame hJ hg hπ hF)
+
+open Classical in
+/-- Blueprint lem:stabilize (lines 2002-2028) at the chosen schedule: for a primary `p` that is
+nonexceptional at the block with start `b`, all but `3 d_max R_*^{ht}` heights `h ≤ J_*` have the
+property that two modes of `p` in one CURRENT component at height `h` are directly adjacent in PRE
+at height `h - Δ`, `Δ = 10`. The modes are those of the frozen list on the `v_b`-cell
+`[a₀, a₀ + r_{v_b}]`, at most `D_*` in number, with frequency vectors `Θ_q = (θ_{v,q}, ϑ)` of
+dimension at most `d_max` and same-primary slope differences `a·Θ_q` of height at most `D_*`
+(`eq:mode-differences`). -/
+theorem Valid.stabilize (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT)
+    (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {Mode P : Type*}
+    [Fintype Mode] [DecidableEq Mode] [DecidableEq P] (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar)
+    {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
+    (θvOf : ∀ p, Fin (dvOf p) → ℝ) (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0)
+    (b : ℤ) (a0 : ℝ)
+    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
+      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
+        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
+    (p : P) (hne : ¬ExceptionalAt (Fin.append (θvOf p) ϑ) S.H r0 S.T S.K b) :
+    ((Finset.range (S.Jstar + 1)).filter fun h => ¬(10 ≤ h ∧ ∀ x x', π x = p → π x' = p →
+      x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F h x →
+      S.gapEdge ω ϑ a0 (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))
+        (S.Ξ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))) (h - 10) x x')).card ≤
+      3 * S.dmax * S.Rht := by
+  refine le_trans (Finset.card_le_card ?_) (hV.stabGood_bad_card (by omega) hd2 hD hB dvOf
+    (fun q => Fin.append (θvOf q) ϑ) r0 b p (hdim p) hne (S.Jstar + 1))
+  intro h hh
+  obtain ⟨hN, hbad⟩ := Finset.mem_filter.mp hh
+  refine Finset.mem_filter.mpr ⟨hN, fun hg => hbad ⟨?_, fun x x' hx hx' hF => ?_⟩⟩
+  · obtain ⟨-, hRh, -⟩ := hg
+    have := hV.thirty_le_Rht hd2 hD
+    omega
+  · subst hx
+    exact hV.stabGood_pre hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame
+      (Nat.lt_succ_iff.mp (Finset.mem_range.mp hN)) hg hx' hF
+
+end Stabilize
+
+end ModeSchedule
+
+/-! ## Coherence of the good predicates at the chosen schedule (blueprint lines 2030-2045) -/
+
+namespace ModeComponents
+variable {Mode P : Type*} [DecidableEq Mode] [DecidableEq P] (C : ModeComponents Mode P)
+
+/-- Blueprint line 2039: modes in one minimal PRE component have the same bad heights, so the
+core/side decision is constant there. -/
+theorem core_iff_of_minimal_pre (Δ : ℕ) (goodP : ℕ → P → Prop) [∀ h, DecidablePred (goodP h)]
+    (J : ℕ) (δ : ℝ) {m m' : Mode} (hmm' : m' ∈ C.E 0 m) :
+    C.Core Δ goodP J δ m ↔ C.Core Δ goodP J δ m' := by
+  have : C.badHeights Δ goodP J m = C.badHeights Δ goodP J m' := by
+    unfold badHeights
+    exact Finset.filter_congr fun h _ => by rw [C.good_iff_of_minimal_pre Δ goodP hmm' h]
+  unfold Core; rw [this]
+
+end ModeComponents
+
+namespace ModeSchedule
+variable (S : ModeSchedule)
+
+/-- The heights good for a primary (blueprint lem:stabilize, line 2004) within the height range
+`0 ≤ h ≤ J_*` of the schedule: `h ≤ J_*` and `stabGood`. -/
+def heightGood {P : Type*} {dz : ℕ} (dvOf : P → ℕ) (ΘOf : ∀ p, Fin (dvOf p + dz) → ℝ) (r0 : ℝ)
+    (b : ℤ) (h : ℕ) (p : P) : Prop :=
+  h ≤ S.Jstar ∧ S.stabGood dvOf ΘOf r0 b h p
+
+/-- The side parameters of the coherence argument read off a schedule (blueprint lines
+2006-2024): heights `⌊H⌋`, mode-difference height `⌊D_*⌋`, gap threshold `T`, witness bounds
+`⌊D_*⌋ · witE h = ⌊D_* E_h⌋`, kernel sizes `⌊C_*³ D_* E_h⌋`, lag `R_*^{ht}`, shift `Δ = 10`, top
+height `J_*`, core fraction `δ_*`. -/
+noncomputable def sideParams (δs : ℝ) : SideParams where
+  Hn := ⌊S.H⌋₊
+  D := ⌊S.Dstar⌋₊
+  Tt := S.T
+  Eq := S.witE
+  Sk := S.kerS
+  R := S.Rht
+  Δ := 10
+  Jst := S.Jstar
+  δs := δs
+
+section Coherence
+variable {S} {Cj CA CT CK : ℕ} {δs W : ℝ}
+
+/-- `J_* ≥ 2` from `J_* ≥ C δ_*^{-2} d_max R_*^{ht} log(2 D_m)` with `C ≥ 1`, `δ_* ≤ 1`,
+`D_m ≥ 2`. -/
+theorem Valid.two_le_Jstar (hV : S.Valid Cj CA CT CK δs W) (hCj : 1 ≤ Cj) (hδ : 0 < δs)
+    (hδ1 : δs ≤ 1) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hDm : 2 ≤ S.Dm) : 2 ≤ S.Jstar := by
+  have hR := hV.thirty_le_Rht hd2 hD
+  have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+  have hR' : (30 : ℝ) ≤ S.Rht := by exact_mod_cast hR
+  have hCj' : (1 : ℝ) ≤ Cj := by exact_mod_cast hCj
+  have hδi : 1 ≤ δs⁻¹ ^ 2 := one_le_pow₀ (one_le_inv₀ hδ |>.mpr hδ1)
+  have hlog : 1 ≤ Real.log (2 * S.Dm) := by
+    have h4 : Real.log 4 ≤ Real.log (2 * S.Dm) := Real.log_le_log (by norm_num) (by linarith)
+    have h42 : Real.log 4 = 2 * Real.log 2 := by
+      rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.log_pow]; norm_num
+    linarith [Real.log_two_gt_d9]
+  have h1 : (1 : ℝ) ≤ Cj * δs⁻¹ ^ 2 := one_le_mul_of_one_le_of_one_le hCj' hδi
+  have h2 : (2 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax := by nlinarith
+  have h3 : (60 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax * S.Rht := by nlinarith
+  have h4 : (60 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax * S.Rht * Real.log (2 * S.Dm) := by nlinarith
+  have : (2 : ℝ) ≤ S.Jstar := by linarith [hV.Jstar_ge]
+  exact_mod_cast this
+
+/-- Lem:stabilize in the form used by the coherence argument: for the good-height predicate
+`heightGood` on the block graphs, two modes of a primary good at `h` in one CURRENT component at
+`h` are PRE-joined at `h - Δ`, at every height. -/
+theorem Valid.heightGood_stab (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT)
+    (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {Mode P : Type*}
+    [Fintype Mode] [DecidableEq Mode] [DecidableEq P] (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar)
+    {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
+    (θvOf : ∀ p, Fin (dvOf p) → ℝ) (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0)
+    (b : ℤ) (a0 : ℝ)
+    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
+      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
+        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a) :
+    ∀ h x x', S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b h
+        ((S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).π x) →
+      (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).π x' =
+        (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).π x →
+      x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F h x →
+      x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).E (h - 10) x := by
+  intro h x x' hg hπ hF
+  exact hV.stabGood_mem_E hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame hg.1
+    hg.2 hπ hF
+
+open Classical in
+/-- Blueprint lines 2036-2037 at the chosen schedule: two modes good at `h` (`eq:good` with
+`Δ = 10` and the good-height predicate of lem:stabilize) in one CURRENT component at `h` have the
+same PRE predecessor at `h - Δ`. -/
+theorem Valid.good_same_predecessor (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA)
+    (hCT : 4 ≤ CT) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0)
+    {Mode P : Type*} [Fintype Mode] [DecidableEq Mode] [DecidableEq P]
+    (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar) {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ)
+    (π : Mode → P) (dvOf : P → ℕ) (θvOf : ∀ p, Fin (dvOf p) → ℝ)
+    (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0) (b : ℤ) (a0 : ℝ)
+    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
+      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
+        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
+    {h : ℕ} {m m' : Mode}
+    (hm : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Good 10
+      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) h m)
+    (hm' : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Good 10
+      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) h m')
+    (hmm' : m' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F h m) :
+    (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).E (h - 10) m =
+      (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).E (h - 10) m' :=
+  ModeComponents.good_same_predecessor _ 10 _
+    (hV.heightGood_stab hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame) hm hm'
+    hmm'
+
+open Classical in
+/-- Blueprint lines 2037-2045 at the chosen schedule: two core modes (at most `δ_* (J_* + 1)` bad
+heights) in one minimal CURRENT component have identical good predicates on the upper heights
+`eq:upper-heights`, `⌈4 δ_* J_*⌉ ≤ h ≤ J_*`; they have a common good height below `⌈4 δ_* J_*⌉`,
+where their PRE predecessors agree, and by nesting at every higher height. Here `δ_* ≤ 1/16` is
+the small absolute constant, `C_J ≥ 1` the constant of `J_*`, and `D_m ≥ 2`. -/
+theorem Valid.core_good_iff (hV : S.Valid Cj CA CT CK δs W) (hCj : 1 ≤ Cj) (hCA : 5 ≤ CA)
+    (hCT : 4 ≤ CT) (hδ : 0 < δs) (hδ16 : δs ≤ 1 / 16) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) (hDm : 2 ≤ S.Dm) {Mode P : Type*} [Fintype Mode]
+    [DecidableEq Mode] [DecidableEq P] (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar) {dz : ℕ}
+    (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
+    (θvOf : ∀ p, Fin (dvOf p) → ℝ) (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0)
+    (b : ℤ) (a0 : ℝ)
+    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
+      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
+        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
+    {m m' : Mode}
+    (hm : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Core 10
+      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) S.Jstar δs m)
+    (hm' : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Core 10
+      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) S.Jstar δs m')
+    (hmm' : m' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F 0 m) :
+    ∀ h ∈ ModeComponents.upperHeights S.Jstar δs,
+      (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Good 10
+          (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) h m ↔
+        (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Good 10
+          (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) h m' := by
+  have hJ := hV.two_le_Jstar hCj hδ (by linarith) hd2 hD hDm
+  have hδJ : ⌈4 * δs * S.Jstar⌉₊ ≤ S.Jstar := by
+    refine Nat.ceil_le.mpr ?_
+    have : (0 : ℝ) ≤ S.Jstar := Nat.cast_nonneg _
+    nlinarith
+  exact ModeComponents.core_good_iff _ 10 _
+    (hV.heightGood_stab hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame) hJ hδ
+    hδJ hm hm' hmm'
+
+open Classical in
+/-- Blueprint line 2045 at the chosen schedule: a core mode has bad proportion at most `2 δ_*` on
+the upper heights. -/
+theorem Valid.core_bad_proportion (hV : S.Valid Cj CA CT CK δs W) (hCj : 1 ≤ Cj) (hCA : 5 ≤ CA)
+    (hδ : 0 < δs) (hδ16 : δs ≤ 1 / 16) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) (hDm : 2 ≤ S.Dm) {Mode P : Type*} [Fintype Mode] [DecidableEq Mode]
+    [DecidableEq P] {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
+    (θvOf : ∀ p, Fin (dvOf p) → ℝ) {r0 : ℝ} (hr0 : 0 < r0) (b : ℤ) (a0 : ℝ) {m : Mode}
+    (hm : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Core 10
+      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) S.Jstar δs m) :
+    (((S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).badHeights 10
+        (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) S.Jstar m ∩
+          ModeComponents.upperHeights S.Jstar δs).card : ℝ) ≤
+      2 * δs * (ModeComponents.upperHeights S.Jstar δs).card :=
+  ModeComponents.core_bad_proportion _ 10 _ (hV.two_le_Jstar hCj hδ (by linarith) hd2 hD hDm) hδ
+    hδ16 hm
+
+end Coherence
+
+end ModeSchedule
 
 end Auto
 

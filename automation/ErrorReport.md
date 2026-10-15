@@ -280,3 +280,1007 @@ Departures in complete rows before blueprint line 651 that were not yet logged. 
 5. Cube forms and lem:cube-foundation, lines 163-174 and 216-236.
    - `cubeAverage` (GowersCauchySchwarz.lean:88) integrates h outside x. This equals the printed iterated expectation by Fubini for bounded measurable inputs.
    - `gowersThreeSeminorm` (GowersCauchySchwarz.lean:732) is the U^3 seminorm on bounded measurable functions, the source's domain. It is extended to L^2 by the continuity statement eq:cube-L2.
+
+## 2026-10-14T05:43:41-04:00
+
+lem:chart-operations, blueprint line 651 ("The same calculation works with any real linear map V: R^k -> R^d in place of y -> theta y").
+- Formalized in TrilinearHT/Auto/Sec05QuadraticCharts.lean:
+  - `chart_lattice_sum_translate` (:1562): the translation calculation of lines 646-650 at an arbitrary horizontal position.
+  - `mvTranslateChart_atom` (:1680): the translate of a several-variable chart.
+  - `mvLinearChart_atom` (:1726): linear substitution.
+  - `multivariableQuadraticChart_affine_closure` (:1750): every real affine substitution z -> M z + z0 of a several-variable chart is again such a chart. The complexity bound chartTranslationBudget H is independent of M and z0, and boundedness is preserved.
+- Departure: the Gevrey order must satisfy c0 >= 1, as in the one-variable closure. This is the same unimportant edge case as entry 2026-10-14T05:35:26 item 3: for c0 = 0 the chart class has only zero amplitudes.
+- Organizational change: `MultivariableQuadraticChartComplexity` and `multivariableChartAlongLine_complexity` were moved from Sec09_1 back to Sec05. They are part of the several-variable chart definition (lines 656-660) and are needed here.
+
+## 2026-10-14T06:07:00-04:00
+
+lem:chartfourier, blueprint line 1349 with the pooling step of the proof, line 1377. Formalized as `splitFourierExpansion_pooled` (TrilinearHT/Auto/Sec09_2ChartFourierSeparation.lean:2850). Precise reading of the wording, not a change of content:
+- "the coefficient envelope pooled over all splittings of height at most B": S is exactly the finite set of rational symmetric splittings of height <= B that satisfy eq:weyl-splitting's isotropy. It has at most (3B^2)^(d^2) <= exp(3X^3) elements.
+- "uniformly over the allowed amplitudes and bounded slow values": a single envelope env J l, depending only on the integer index l, dominates every coefficient of every splitting in S, every family, and every admissible chart (matrix C, complexity H, slow velocity <= B).
+- The pooled shell mass, summed over all splittings and families, is at most exp(D_J X^D_J) T^(-J(d+1)^2), and the pooled tail is <= eps once 2^K >= 2E/eps, with 2^K <= max 1 (4E/eps).
+- "separately for each resulting frequency and quadratic part": this is a regrouping. The envelope of a coefficient obtained by summing terms with the same frequency and quadratic part is at most the sum of their envelopes, so every grouped shell and tail bound follows from the per-term bounds above.
+
+## 2026-10-14T06:27:50-04:00
+
+Resolution of the eq:separation gap, lem:separation, blueprint lines 1382-1388. Item 4 of entry 2026-10-14T03:50:08: progressionSeparation required chart dimensions d, e >= 1.
+- `progressionSeparation_all` (TrilinearHT/Auto/Sec09_2ChartFourierSeparation.lean:7725) proves eq:separation for charts of every dimension d, e >= 0, as def:chart allows.
+- Proof: both charts are padded to positive dimension by `exists_pad_chart` (:5050), which does not change their atoms. Then `progressionSeparation` is applied, and the padded budget X' = 1 + log(max(H, W0)^6) <= N X is converted back into a quasipolynomial in X = 1 + log H.
+- The conclusion states the blueprint's items explicitly:
+  - exact absolutely convergent expansion;
+  - bounded factor atoms fixed independently of scale;
+  - total mass <= D;
+  - shell tails <= D T^-100;
+  - factor dimension <= log D;
+  - factor complexity <= (D T)^6 at a fixed Gevrey order;
+  - in addition, a count of terms per shell.
+- Generalizations, not restrictions: the atoms need not be bounded, and the slots are any integers of absolute value <= 3 with a != b.
+- Organizational change: `quadraticChartComplexity_order_mono`, `exists_unit_chart` and `exists_pad_chart` (chart operations) were moved from Sec10Detection to Sec09_2, before their new consumer.
+
+## 2026-10-14T06:46:31-04:00
+
+lem:von-neumann, blueprint lines 1419-1426: "b, c in L^infty(I)".
+- Gap found while checking complete rows strictly: `vonNeumannOneL2` assumed pointwise bounds ||b(y)|| <= M_b and ||c(y)|| <= M_c for all y in I. That is a stronger hypothesis than b, c in L^infty(I).
+- Resolved by `vonNeumann_essSup` (TrilinearHT/Auto/Sec10Detection.lean:2399): |H_I(R,g,b,c)| <= C ||R||_(2,I) ||g||_(U(I)) ||b||_infty ||c||_infty, where ||.||_infty is the essential supremum on I and C depends only on the kernel class.
+- Proof: b and c are replaced by their truncations at the essential supremum. These agree with b and c almost everywhere, so the form is unchanged by `localProgressionForm_update_congr_ae`; then the pointwise version applies.
+- The L^1 assertion of the lemma (second conjunct of `vonNeumannOneL2`) already used essential suprema; it needed no change.
+- Five over-long generated file titles (Sec11_2a/b/c, Sec14_2a/b) were shortened. This is cosmetic.
+
+## 2026-10-14T07:03:38-04:00
+
+Conventions in complete sec:base rows (blueprint lines 1482-1596), logged for transparency. Neither changes mathematical content.
+1. Admissible sequences, lines 1482-1486. The blueprint defines admissible sequences as three concrete types (a fixed F, a current inherited projection P_I F, a square-energy Z_I) and finite sums of them.
+   - Lean defines admissibility by the properties the later proofs use: `IsAdmissibleOpponent`, a Bessel transfer against cell row families, and `HasDepthEnergy` (TrilinearHT/Auto/Sec11_1aPredictors.lean). Both are closed under finite sums.
+   - Each of the three blueprint types is proved admissible, with constants 1, a polynomial in log(2 D_h), and L respectively.
+   - So lem:predictors and lem:delay, proved for the property-defined class, apply to every blueprint-admissible sequence. This is a generalization, not a restriction.
+2. eq:base-tuple expansion, lines 1586-1587. The blueprint groups the remaining terms as "four terminal residuals" or "one whole terminal projection and three terminal residuals".
+   - Lean (`StaggerCell.expansion`) keeps the one-increment-and-three-residuals terms separate, one per increment.
+   - Summing them over the increments of a slot gives the blueprint's whole-terminal-projection term, by linearity of the form in that slot.
+   - Each separate term is bounded by 32 e^(-k_(T-3)) (`StaggerCell.remainder_four`), so the remaining terms still vanish in the limit, as eq:stagger requires.
+
+## 2026-10-14T08:02:12-04:00
+
+prop:base, blueprint lines 1600-1607 (eq:Y and the budgets). Resolves gap 5 of 2026-10-14T03:50:08.
+1. Departure (edge case of the finite truncation). eq:Y uses P^new_(e,s+K0) at depth s. In a finite tree of depth N, for the last K0 levels (s + K0 > J.1 + N) the cells of depth s + K0 lie below the tree, where the Lean column families have no cells. The blueprint does not treat this truncation.
+   - Lean (TrilinearHT/Auto/Sec11_2cFiniteBaseDataAssembly.lean: `baseBottom`, used in `baseTuple`): these cells are grouped below fresh normalized roots at depth max(J.1 + N + 1 - K0, depth of the first-level root), at most K0 levels above them. On each group the new high families are empty at depth s and the identity at depth s + K0. So Y = X there (no replacement error), B_e = -g_prev (zero projection minus the previous fit) and U_e = F_e.
+   - The conclusions of prop:base hold on these setups: sizes and pair smallness are those of the tuple; eq:basic-side holds below every sub-root with constant K0 <= (1 + K0)^2, since at most K0 levels occur; the two-U term is at most eta0 K0^2 |R| by pair smallness of the low pair; each B_l is a difference of two current basic projections.
+   - Consequence: the extra error 4 eta0 K0 |J| of the earlier formalization is gone. `baseTuple` and `activeCellReduction` now give eq:Y with error e^-k times root length, as stated.
+   - Packing: the fresh roots have total length <= 9|J| (first-level roots <= 8|J|; one depth layer <= |J|, `sum_tree_depth_le`). All setup roots now total <= 91/3 |J| (was 64/3 |J|); the blueprint asserts only bounded packing. Sec16_3SummingUpdateLevels (`normalizedAbsorption_of_activeFinal`) uses 91/3.
+2. Inverse private weights, line 1607 ("Counts, complexities and inverse private weights are exp(k^O(1))"): now exported.
+   - `ActiveSetup.colBudget` = 2 + |L| (1 + D_c). `HasColumnRep` and `ColumnRepBelow` require both basic projections to have column budget <= colBudget. A column budget X bounds the inverse private weights by X^2 (`BasicProjection.inv_privateWeight_le`). With |L|, D_c <= E = exp(k^Cb) from `activeCellReduction`, all inverse private weights are <= (2 + E + E^2)^2.
+   - Sources: the fit-opponent families have budget max(2, M), now recorded in `IsFitOpponent` (Sec11_2bFiniteBaseDataPairs.lean) and carried by `IsBasicOn`; the high systems have budget <= 2 + |W| + |W| eps^(-1/2) (`PathColumnSystem.budget_le`), and D_c = eps^(-1/2).
+Full `lake build` passed (9080 jobs). baseBottom, baseTuple, activeCellReduction, BasicProjection.inv_privateWeight_le, normalizedAbsorption_of_activeFinal use only propext, Classical.choice, Quot.sound.
+
+## 2026-10-14T08:19:15-04:00
+
+sec:localization, blueprint lines 1668-1673 (P and small overheads). `localization_largeParameter` (TrilinearHT/Auto/Sec12_1TagsAmbientGraph.lean): with eta = e^(-k^theta) (prop:base, line 1607) and P = ceil(eta^(-alpha)), for every fixed 0 < alpha < 1, eventually in k: 2 <= P <= e^k, exp(C_q (1 + log(2k))^C) <= P^eps for every eps > 0 (G0 = P^o(1)), and k^p <= P^eps.
+- Generalizations, not restrictions: theta <= 1 is allowed (the blueprint has 0 < theta < 1), and k ranges over the reals (the blueprint's k is a natural number; the statement for natural k follows along the cast).
+- The remark "an exponential exp(P^C) is not a small overhead" (line 1673) is a convention and has no formal content.
+Full `lake build` passed (9080 jobs); standard axioms only.
+
+## 2026-10-14T08:55:24-04:00
+
+prop:base, blueprint line 1607 ("Counts, complexities and inverse private weights are exp(k^O(1))"), complexities of the basic projections. Addendum to 2026-10-14T08:02:12-04:00.
+- Gap found after that entry: the basic projections of `HasColumnRep`/`ColumnRepBelow` carried no chart data for their columns, so their complexities were not exported (only the expansion labels A.L had charts). These charts are also the tags of the original basic columns in sec:localization (line 1676).
+- Resolved: `BasicProjection.HasChartsOn` (TrilinearHT/Auto/Sec11_2cFiniteBaseDataAssembly.lean): every column available at a cell of the setup is a bounded quadratic chart atom of order c0 and complexity at most A.H on that cell. `HasColumnRep` and `ColumnRepBelow` require it for both basic projections. With A.H <= exp(k^Cb) from `activeCellReduction` the complexities are exp(k^O(1)).
+- Sources: fit families record the charts of their atoms in `IsFitOpponent` (Sec11_2bFiniteBaseDataPairs.lean, from `Hyp.atoms_good` and `atoms_leaf`) and carry them in `IsBasicOn`; high systems use `PathCharts` with `PathColumnSystem.scalar_eq`.
+Full `lake build` passed (9080 jobs); standard axioms only.
+
+## 2026-10-14T09:39:07-04:00
+
+sec:localization, catalogs, blueprint lines 1803-1815. Resolves gap 8 of 2026-10-14T03:50:08 (catalogs omitted the rank-0 original columns of line 1805). New file TrilinearHT/Auto/Sec12_3bCatalogsMainColumns.lean.
+- Main projections (line 1805): `mainSel`/`mainRange`/`mainProj` span, at a cell, the original columns of the basic families available there whose vertex lies in the vertex mask (rank zero, with their own private weights) and the templates of rank <= r born above the cell with tag in the mask (private weight one). The template-only `catProj` of Sec12_3FiniteSameTagCatalogs.lean is superseded from line 1803 on.
+- Vertices (line 1676): `ActiveSetup.BasicFamilies` fixes the two basic projections of each slot from `HasColumnRep`. A vertex is (slot, family, label) with its admission cell; it is available when the label lies in the family mask; tags come from the family charts (`BasicProjection.HasChartsOn`). The vertex bound D = floor(8 colBudget) + 1 bounds the present columns through the family path budgets (`admT_X_card_le`).
+- Colors and masks: `coloring`, `colorSetup` and `masks` re-instantiated on these vertices. Cumulative masks `cmask` and ball masks `bmask` grow in depth and in the pad. Ranks L-m+1, L+j and helper L+5; base pads 10P(L-m+1) and 20P(L+1)+10(j-1)P. The field `pads_le` (20P(L+1)+31P+2 <= H_max) records that all needed neighbor enlargements lie below H_max.
+- Filters: `cumFilt` and `ballFilt` average P main projections with pads base+p, 1 <= p <= P. They are nested in the pad (`cum_nest_pad`, `ball_nest_pad`) and in depth (`cum_nest_depth`, `ball_nest_depth`: the restriction of the range at a cell to a subcell lies in the range there). Averages and complements are contractions.
+- Tests: `MainTest` with an augmented base, `hist`, `resid`, `Pass` at level tau times the normalized norm of the base on the cell. The level tau_3/(D sqrt(n_(r-1))) with tau_3 = D^(-C_tau) is `catLevel`. Spectators are arbitrary normalized L^2 functions. `avg_history_pass`: if the tests of all individual pad choices pass, the averaged history passes.
+- Formulation note (not weaker than the blueprint): `Pass` bounds the form against every pure source chart whose tag lies in the mask, not only against lower-rank ones. Pure sources of a tag are the same class of charts at every rank.
+- Consequence: later rows whose Lean objects are the superseded template-only catalogs or the vertex model on the expansion labels are downgraded to old incomplete (separate entry).
+Full `lake build` passed (9081 jobs); standard axioms only.
+
+## 2026-10-14T09:45:20-04:00
+
+Ledger consequence of the catalog redefinition (2026-10-14T09:39:07). An audit of all complete rows after line 1815 classified their cited Lean declarations. 11 rows are no longer faithful: their declarations are instantiated on the superseded template-only catalogs (`catProj`, `CatTest`, `VTest`, `catLabels`, `catAtom`, `AttemptParams`, `LeafSplit`) or on the vertex model built on the expansion labels A.L (`A.Vtx`, `A.vtag`, `A.admT`).
+- The 11 rows: lem:closure 1819-1828; prop:localize 1838-1856; line 1888; eq:firstmatch 1903-1910; eq:sides 2124-2133; lines 2135-2150; line 2159; lines 2167-2169; eq:transferred-main 2257-2263; line 2464; eq:four-tests 2506-2520.
+- Status: they are marked old incomplete, except lem:closure 1819-1828, which is now the first non-complete row and is in progress.
+- Unaffected: the other 44 complete rows after line 1815 cite generic declarations (arbitrary Hilbert spaces, projection families, mode systems, real inequalities) and stay complete.
+- Caveat: `ModeSystem` fixes its primary type to Fin Mc. Reusing those generic rows on the main columns needs a reindexing or a generalization of the primary type. Their statements remain correct as stated.
+
+## 2026-10-14T10:20:26-04:00
+
+lem:closure, blueprint lines 1819-1828, on the main columns (TrilinearHT/Auto/Sec12_3bCatalogsMainColumns.lean). Replaces the closure on the superseded template-only catalogs (`cell_closure`, `tree_closure`, `catalogs_exist`, `catalogs_counted`).
+- Gain (lines 1823-1827): `MainTest.gain`. If a main test fails at a cell, the same-tag test (line 1797) gives a same-tag template born at the cell, with the test's rank and a tag in its mask. Inserting it grows the target projection on the old history value by more than tau/(2 H0) times sqrt|I| times the normalized base norm on the cell. The new template coordinate is absent from the old state (`MainFresh`, `hist_fresh`), so the moment is an increment of the target projection (`mainProj_gain`).
+- Nesting (line 1828): `mainProj_append_irrel`, `MainTest.pass_append_irrel`. Templates born at cells that do not contain I leave the projections and the tests at I unchanged.
+- Cell closure (line 1828): `main_cell_closure`, via `local_closure` and the prefix inequality eq:prefix. The rank-r insertions at one cell number at most |W| 4^m L_T^(2m) (2 H0 / tau_r)^2, and fewer than T are inserted, when these allowances sum to less than T. The bases must be supported on the cell and have no coordinates on template labels beyond a fixed prefix catalog s0 (s0 is empty for the main closure and the main catalog for the helper closure).
+- Tree closure: `main_tree_closure`, processing the cells coarse first (`exists_coarse_first`).
+- Attempt level (line 1820): `ActiveSetup.BasicFamilies.FamParams.main_closure`, on every active cell (`A.cells`), for slot catalogs over the main columns of the basic families.
+  - Thresholds are tau_3/(D sqrt(n_(r-1))) of eq:catalog-test (`catThreshold`, with D = `famVtxBound`).
+  - Rank-r insertions at one cell number at most K n_(r-1), where K = K_t 4^m L_T^(2m) (2 H0 D / tau_3)^2 (`closureRatio`).
+  - The main labels of rank <= r <= L+5 at any cell in at most M_p active cells number at most n_r (`mainLabels`, `card_mainLabels_le`; originals counted by `card_avail_le`).
+  - These hold when n_0 >= 2 colBudget, n_(r+1) >= (1 + (L+6) M_p K) n_r, and T >= n_(L+5).
+  - `exists_pathCounts` shows such n and T exist for all data (n_r = exp((r+j) X^C2) from `closure_parameters`), so the hypotheses are not vacuous.
+  - No bound involves the edge threshold H_ed (line 1820, "degrees are independent of H_ed").
+- Helper closure (lines 1815, 1820): `helper_closure`. For any slot catalogs and any finite families of rank-(L+5) helper tests on fixed whole bases supported on the cells, with no coordinates beyond the catalog (private coordinates disjoint from fresh helper labels), helper templates of rank L+5 close the helper tests. They number at most K n_(L+4) per cell.
+- Formulation notes (none weakens the blueprint):
+  1. Named tests. The closure is proved for every finite family of named main tests: any target ranks 1 <= r <= L+5, any masks, any histories of length <= m, any bases supported on the cell without template coordinates, and at most K_t names per cell and slot.
+     - The concrete named histories of line 1809 are those required by prop:localize and the transfer. They are instantiated there.
+     - The count exp(k^O(1)) of line 1823 is the size of K_t. It is quantitative and is moved to the row for lines 1820, 1823 and 1828-1830, which also bounds log n_(L+5) <= k^O(1).
+  2. Path counts. They count the available original labels (rank 0) together with the templates, so n_0 >= 2 colBudget.
+  3. Label capacity. The template labels are indexed by Fin M_c; M_c >= |cells| T (main) is a formal capacity, chosen after T. The blueprint uses unboundedly many fresh labels.
+  4. `Pass` tests every pure source of a mask tag, not only lower-rank ones (as in the 09:39:07 entry).
+- Moved: the generic counting lemma `length_filter_le_sum` moved from Sec14_1TransferPairedDefects.lean to Sec12_3bCatalogsMainColumns.lean. Sec12_4BinaryLocalizationVariation.lean now imports Sec12_3bCatalogsMainColumns.lean, so the later rows can use the main columns.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms only (propext, Classical.choice, Quot.sound).
+
+## 2026-10-14T10:44:02-04:00
+
+lem:closure, blueprint lines 1820, 1823 and 1828-1830: sizes of the main closure (TrilinearHT/Auto/Sec12_3bCatalogsMainColumns.lean). The previous attempt-level counts came from `exists_prefix_fixed` with no bound in k (gap 7 of 2026-10-14T03:50:08); they are replaced.
+- Names (line 1823): `FamParams.MaskName`, `maskOf`, `TestName`, `testOf`, `HelperName`, `helperOf`.
+  - A mask name is a cumulative split m <= L with a pad h <= H_max, or an original vertex present at the cell (naming its group) with a pad. Names involve original vertices, ranks, pads and the history length; they involve no graph distances and no inserted sources.
+  - A test name is a target rank 1 <= r <= L+5, a mask name, a history of at most m factors (rank, mask name, complement flag) and a base name. All filter masks are named (`cmask_named`, `bmask_named`).
+  - Count: `card_testName_le` gives (L+5) (L+1+D)(H_max+1) (m+1) (2 (L+6)(L+1+D)(H_max+1))^m |Bn| per cell. `names_count_poly` bounds this by exp(k^(c+2)).
+- Color sizes (line 1828, "L+5 = k^O(1)"): `colorSizes_poly`. For 1 <= D <= exp(k^c) and P <= e^k, the choices of line 1715 (L = d0^30 with d0 = ceil(1000 log 2D), and H_max = 100 P (L+1)) give L+6 <= k^(30c+31) and H_max+1 <= exp(k^(30c+32)).
+- Path counts (lines 1820, 1828): `pathCounts_poly`, from `closure_parameters`. The counts are n_r = exp((r+j) k^C2) with n_0 >= the required n_0. The ratios satisfy n_(r+1)/n_r >= 1 + (L+6) M_p K for the closure ratio K of the trial cap T, so the binary-prefix factor is below the ratio and no cap is attained. Also n_(L+5) <= T and log T <= k^C.
+- Same-tag constant and thresholds: `closureData_le` bounds 1 + (L+6) M_p K_t (2 H0 D / tau_3)^2 by exp(k^(c Dst + c + 1)) when H0 = exp(Dst (1 + log H)^Dst), log H <= k^c and 1/tau_3 <= exp(k^c).
+- Assembly: `FamParams.closure_poly`. For fixed c and Dst there are C and k0 such that, for k >= k0 and every attempt with k^c-bounded sizes:
+  - the main and helper test names number at most K_t per cell, with log K_t <= k^C;
+  - path counts and a trial cap satisfy all hypotheses of `main_closure` and `helper_closure`, including the helper allowance K n_(L+4) < T;
+  - log n_(L+5) <= k^C and log T <= k^C.
+  The sizes bounded by exp(k^c) are the vertex bound, H_max, the path multiplicity, two column budgets, the base-name counts, 1/tau_3 and the source complexity (log H <= k^c); also L+6 <= k^c and m <= c(1 + log k).
+  C and k0 are chosen before the attempt, so the degrees do not depend on H_ed or any later precision (lines 1820, 1830). The count is fixed before tau_2 and H_ed: no bound involves them.
+- Formulation notes (none weakens the blueprint):
+  1. The size hypotheses of `closure_poly` are supplied where the attempt parameters are fixed:
+     - L and H_max by `colorSizes_poly`;
+     - D, the column budgets, the path multiplicity and the source complexity by prop:base (exp(k^O(1)), line 1607; path multiplicity D^C, line 1623);
+     - P <= e^k by `localization_largeParameter` (line 1668);
+     - tau_3 = D^(-C_tau);
+     - the history length m = O(log L) by the binary search of prop:localize (line 1848).
+  2. The named family is universal: all histories of length <= m over the named masks. The histories required by prop:localize and the transfer are among them.
+  3. The trial cap is the integer ceiling of n_(L+5), since template labels are indexed by naturals.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms only (propext, Classical.choice, Quot.sound).
+
+## 2026-10-14T11:05:35-04:00
+
+sec:localization, blueprint line 1835: main budget and expansion cost on the main columns (TrilinearHT/Auto/Sec12_3bCatalogsMainColumns.lean). Resolves the line-1835 part of gap 6 of 2026-10-14T03:50:08: the old catalog budget max 2 M_c counted all retained cells of the tree.
+- Expansion: `mainRange_exists_coeff`. Every vector of a main range is a combination of the columns of the main labels of rank <= r at the cell.
+- Coefficient bound: `mainCoeff_sum_le` (via `mainCombination_coeFn`, `inner_single_privateColumnValue`). Distinct labels have distinct private coordinates, so on the cell the coordinate of label w is c_w sqrt(eps_w). Bessel gives |I| sum |c_w|^2 eps_w <= ||x||^2. If all inverse private weights are at most D^2, Cauchy-Schwarz gives sum |c_w| <= sqrt(N) D ||x|| / sqrt|I| for N labels.
+- Attempt level:
+  - `inv_mainWeight_le`: original columns have inverse private weight at most colBudget^2 (`inv_privateWeight_le` with the family budgets); new labels have weight one ("only original columns have small private weights").
+  - `primal_expansion`: the rank-r main projection of any input expands with coefficient sum at most colBudget sqrt(N) ||z|| / sqrt|I|.
+  - `primal_expansion_count`: for inputs supported on the cell and at most n_r labels (the path counts of `main_closure`), the coefficient sum is at most colBudget sqrt(n_r) ||z||_(2,I).
+- The denominator of eq:catalog-test:
+  - `catThreshold_mul_cost`: tau_3/(D sqrt n_(r-1)) times D sqrt n_(r-1) equals tau_3.
+  - `colBudget_le_famVtxBound` and `expansion_cost_le_threshold`: the expansion cost times the threshold is at most tau_3.
+- Common budget: `ActiveSetup.mainBudget T U` = colBudget^2 T U, with trial cap T and use-count bound U.
+  - `mainBudget_spec`: D_m dominates the catalog sizes (T >= n_(L+5)), the inverse private weights, the expansion cost colBudget sqrt(T) and the use counts.
+  - `log_mainBudget_le`: log D_m <= 2 k^c + k^C + k^C' when colBudget <= exp(k^c), log T <= k^C (`closure_poly`) and log U <= k^C'.
+- Formulation notes (none weakens the blueprint):
+  1. The use counts are defined in prop:localize (line 1854: counts of uses are fixed powers of D). D_m takes their bound U as a parameter; it is instantiated there.
+  2. The coefficient bound is stated for the absolute coefficient sum. This is the coefficient norm charged at line 1854.
+  3. The remark "a full coefficient sum will not be charged in retained main estimates" concerns how later estimates use the expansion. It has no separate content here.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms only (propext, Classical.choice, Quot.sound).
+
+## 2026-10-14T12:04:51-04:00
+
+prop:localize, blueprint lines 1838-1856, on the main columns (new section at the end of TrilinearHT/Auto/Sec12_4BinaryLocalizationVariation.lean). Replaces `attempt_localization` on the superseded catalogs (Sec14_2bShortBlockSummation.lean).
+- Common column space (refines the objects of the rows 1803-1815, 1819-1828, 1820-1830 and 1835).
+  - All slots now use one column space ColumnL2 (Lab + Fin M_c), Lab being all original basic column labels. `origCols l` makes available at a cell exactly the columns of the two basic families of slot l in their masks. The columns of other slots are never available for slot l.
+  - Each slot's catalog uses its own template list. Template coordinates are indexed by Fin M_c in every slot, but a slot-l vector only ever carries coordinates of slot-l columns.
+  - The slot-l projections therefore act exactly as in the slot-l column space; the projections, ranges and estimates are unchanged.
+  - Reason: the generic leaf identities (`leaf_identity`, `leaf_localization`, `search_cell_min`) need one space for the four slots of the form.
+  - `main_closure`, `helper_closure`, `primal_expansion`, `closure_poly` and the test names are restated on the common space and re-proved.
+- Leaf histories are named tests.
+  - `layerName` and `layerName_hist`: a layer list at a pad choice is a test name of `TestName`.
+  - `layer_residOK`: if the layer tests of all pad choices pass, the averaged target residual of the averaged layered input passes (line 1811, "the tests also hold for averages").
+- Generic leaf error: `ResidOK.form_le`, `ResidOK.combo_le` and `leaf_error_resid`. These are the old-source, matching, separation and residual bounds from passing residuals, in any column space.
+- Attempt facts on the basic families:
+  - `classify` (line 1850): a vertex of the upper cumulative mask is old (in every lower guard mask) or lies in the first ball mask of a current group.
+  - `sep_pair` (lines 1851-1852): vertices of first ball masks of distinct current groups are pair separated, via `mask_sep` and lem:graph.
+  - `origCol_source`, `templateCol_source`, `mainLabel_source`: main columns are pure sources.
+  - `avg_expansion` (line 1835): averaged filter outputs expand in main columns with coefficient sum at most colBudget sqrt(N) S.
+- Leaf and sum:
+  - `leaf_bound` and `leaf_main` handle one cell and leaf. The upper guard is a cumulative main filter, or the basic slot expanded in its available original columns ("expand only this outer primal").
+  - `localized_sum` sums over the cells and the leaves of the guarded search, using eq:min-subadd.
+- Attempt theorem: `FamParams.attempt_localization`. For slot inputs supported on the active cells without template coordinates:
+  - `main_closure` on the named tests of the inputs (at the thresholds tau_3/(D sqrt(n_(r-1)))) gives the catalogs.
+  - On every set of active cells with path multiplicity at most M_p, no failed vertices, colors at most L, a basic guard input in its original columns, and local input sizes at most S, the weighted cell minima are at most the leaf current-group sums plus Sum|I| #leaves 9 (D+1) tau_3 S^4.
+  - `leafErrM_le` checks the cancellation of line 1854. Each expansion cost D sqrt(n_(r-1)) meets a threshold tau_3/(D sqrt(n_(r-1))), and tau_2 = tau_3/(D^2 n_(L+1)) is chosen after the main count.
+  - #leaves <= 2^fuel (`searchLeaves_length_le`), which is at most 4L for fuel = ceil(log_2 L) + 1 (`two_pow_clog_succ_le`), so poly(k).
+- Formulation notes (none weakens the blueprint):
+  1. The slot inputs are arbitrary augmented vectors. The basic guard slot only needs to be a combination of its available original columns, which holds for the augmented basic projection output on a cell. The concrete basic-slot inputs B_(l,s) B_l on F_l belong to line 1859, the next row.
+  2. The total error is stated as Sum_I |I| times #leaves times 9 (D+1) tau_3 S^4. The blueprint's form "C e^(-k) |R|" follows when tau_3 = D^(-C_tau) with C_tau large (line 1854). The factors involved:
+     - #leaves = O(L);
+     - Sum_I |I| <= M_p |R| (path multiplicity);
+     - D >= e^k;
+     - S is the local input size.
+     These are fixed powers of D. The choice is made with the attempt parameters.
+  3. The hypotheses no failed vertex, colors <= L, H_ed large for tau_2 and the local sizes S are the blueprint's standing assumptions at this point. They come from lines 1720-1745, 1715, lem:graph and line 1854 ("local sizes and same-time contractions are bounded").
+- Moved: generic helpers moved from Sec14_1TransferPairedDefects.lean and Sec14_2bShortBlockSummation.lean to Sec12_4 so that this section can use them; `cellForm_pair_le` is generalized from Fin M_c to any label type. Moved lemmas: `localProgressionForm_congr_support`, `cellForm_apply`, `localProgressionForm_smul`, `localProgressionForm_congr_cell`, `fin4_cover_of_distinct`, `thirdSlot_ne`, `searchLeaves_inv`, `sum_norm_le_sqrt_card`, `augPhys_normalized_le`, `cellForm_pair_le`, `otherTwo_spec`, `SearchLeaf.role_t/role_ge/role_le`, `searchLeaves_layers_length`, `leafAt_mem`, `searchLeaves_range`, `searchList_inv`, `leafAt_facts`, `searchLeaves_length_le`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms only (propext, Classical.choice, Quot.sound).
+
+## 2026-10-14T13:13:32-04:00
+
+Blueprint line 1859 (basic-slot histories, compression loss, zero convention) on the main columns: new section "Basic-slot histories on the main columns" at the end of TrilinearHT/Auto/Sec12_4BinaryLocalizationVariation.lean.
+- Global main column tree (`MainBudget`, `mainTree`).
+  - Labels: the relevant main labels `RLab` (original basic columns available at some active cell, and the catalog templates), with the family scalars and private weights (templates: weight 1).
+  - Births: the family birth cell of an original column, clamped to the attempt root R when it contains R; the birth cell of a template. Cells: the complete tree of depth `treeDepth` below R.
+  - Budget: any B with 8 colBudget + (template path count) <= B.
+  - Formalization note (not a weakening): main labels never available on the attempt are left out of the tree. They carry no column at any attempt cell, so no main projection uses them, but they would enter the path count of the tree. The full main space ColumnL2 (Lab + Fin M_c) is reached by the isometric relabeling `colRelabel rv` and its adjoint. `relabel_cellProj`: at an active cell the relabeled cell projection of the tree is exactly the cell-local main projection `mainProj`.
+- Inherited masks `mainMaskT` (zero convention and retained projections, line 1859).
+  - At a cell of the tree the masks are the main labels of its deepest active ancestor (`deepAnc`); they are empty when no active cell contains the cell.
+  - `mainMaskT_labels_none`, `mainCellProj_none`, `gBall_zero_before`: on cells above the attempt the main projections, hence the ball outputs, vanish.
+  - `mainMaskT_labels_retain`: between actual uses every cell of the tree, in particular every endpoint cell, keeps the masks (hence the inherited projections) of its last active ancestor.
+- Global objects and bridges.
+  - `gHist`: the shared cumulative history at depth h (layers of averaged global main depth projections or their complements). `gBall`: the global smeared ball filter.
+  - `hist_bridge`, `ball_bridge`: at an active cell they restrict to the cell-local `cumFilt` and `ballFilt` of prop:localize.
+- Basic inputs.
+  - `famEmb` embeds the column space of the basic family (l, j) into the main space. `gBasic l h = P_{l,0,h} F_{l,0} - P_{l,1,h} F_{l,1}` (depth projections of the two basic families acting on their inputs). `basicIn l I` is its restriction to I.
+  - `basicIn_phys`: its physical part is B_l(I) on I. `basicIn_fresh`, `basicIn_support`, `basicIn_comb`: no template coordinates, support in I, a combination of the available original columns. So the basic inputs satisfy the slot-input and guard hypotheses of `attempt_localization`.
+  - Formulation note: F_l is the pair of inputs (F_{l,0}, F_{l,1}) of the at most two current basic projections of prop:base (line 1611); "the fixed signed basic sum" is P_{l,0} F_{l,0} - P_{l,1} F_{l,1}.
+- The histories (first sentence of line 1859).
+  - `basic_history`, `basic_history_expand`: on an active cell, B_{l,s} B_l is the restriction to the cell of Sum_j (-1)^j (uniform average over the pad tuples w of the complement products of |ls| global main depth projections) applied to the basic depth projection P_{l,j} F_{l,j}. The expression involves no group (shared across groups).
+  - `basic_leaf_expand`: at a search leaf |ls| <= fuel with L - 1 < 2^fuel, i.e. O(log L) factors.
+  - `basic_leaf_out`: the ball output L_{l,G,s} B_{l,s} B_l is the restriction of the global ball filter applied to the global history.
+- The compression loss G_0.
+  - `basic_compression`: rows that are Bessel with constant B and local to active decision cells stay Bessel after inserting, at the depth of each decision cell, the global history and the basic depth projection acting on F_{l,j}. The constant is B compressionC(main tree, |ls|)^2 compression1(basic tree)^2 ||F_{l,j}||^2. The basic projection is inserted by the one-factor compression of its own family tree, after the history.
+  - `compression_loss_le`: this loss is at most G_0 = exp(C_q (1 + log 2k)^2), C_q = 4096 (c+1)(1024 (c+1) + c + 7), when log(2 budget) <= k^c for both trees and |ls| <= c (log k + 1).
+  - `tmplPath_le`, `MainBudget.ofCounts`: B = 8 colBudget + n_{L+5} is a main budget when every active cell lies in at most M_p active cells (the closure counts of lem:closure). `log_two_mainB_le`: log(2B) <= k^(c+1) when colBudget, n_{L+5} <= exp(k^c) and k >= 4.
+  - `attempt_localization` now also returns these closure counts of its catalogs (ranks <= L + 5, at most n_r main labels of rank <= r at cells in at most M_p active cells, length <= #cells T).
+- Moved, unchanged: generic compression and locality lemmas from TrilinearHT/Auto/Sec13_3BesselRowsLinearSideEnergy.lean to Sec12_4 (`compression1`, `rows_projection_compression`, `rows_opAvg_le`, `layerFactor`, `layerPattern`, `layerOp_opAvg_expand`, `compressionC`, `rows_uniformAvg_le`, `rows_layer_compression`, `starProjection_restrict_eq`, `span_vanish_restrict`, `opAvg_commute`, `layerOp_commute`, `columnL2Restriction_idem`, `ColumnDepthFamily.proj_adjoint`, `ColumnDepthFamily.restrict_proj`, `layerOp_intertwine`, `opAvg_intertwine`, `globHist_compression`).
+Full `lake build` passed (9081 jobs, no warnings); standard axioms only (propext, Classical.choice, Quot.sound).
+
+## 2026-10-14T14:17:36-04:00
+
+Blueprint lem:variation (lines 1861-1879) on the main columns: new section "Certified variation on the main columns" at the end of TrilinearHT/Auto/Sec12_4BinaryLocalizationVariation.lean.
+- Whole endpoint ranges on the main columns (lem:whole-ranges as applied at line 1875).
+  - `vWholeRanges`: `usableRangeBessel` for vertex-labelled main columns. The labels are original column occurrences (vertices, with their chart atoms) and templates (with their atoms). Private weights are those of the basic families; inverse weights are at most colBudget^2 = W_0^2. Separation comes from `endpoint_sep` (lem:masks), pairings from lem:graph (`Dg_same`).
+  - `mainRange_wholeRanges`: vector form for sums of elements of main ranges at certified active cells. The main labels are split into vertices. Occurrences of one original column with distinct vertices have disjoint admission cells (`vtxAt_eq_of_meet`), so the norms are unchanged (`groupOutput_fiber_norm`).
+  - Formalization note (not a weakening): the blueprint's labels with fixed tags are, for original columns, the vertices (column occurrences, line 1676). The inequality is proved for the vertex-labelled outputs and transferred to the main labels.
+- Global objects:
+  - `ballFamT`: the ball depth families.
+  - `gOut`: L_{G,h} B'_h.
+  - `basicOut`: Z_{G,h}. `basicOut_restrict`: its restriction to an active cell of depth h is the leaf output of prop:localize.
+  - `histOut`: the shared history B'_h B_l.
+- `main_wr1`, `main_wr2`: eq:whole-ranges for the interval rows and for the right-endpoint ball rows. The adjoints lie in whole main ball ranges at both endpoints; the right certificate certifies the left-endpoint ancestors (active by `AncClosed`).
+- `main_variation`: certified variation for a common input. It uses `certifiedVariation_avg` with the history jumps `globHist_jump` and the compression `globHist_compression` of the main tree.
+- `main_variation_basic`, `basic_variation`: the basic coarse output Z_{G,s} = L_{G,s} B'_s B_l.
+  - Split: Z_t - Z_r = (T_t - T_r) P_r F + T_t (P_t - P_r) F (`emb_variation`).
+  - The first term is bounded by compression of the basic projection (`emb_insert`). The second uses the joint Bessel bound (`main_joint`) and the orthogonal increments of the basic family.
+  - The signed sum over the two basic families is taken, and F is restricted to R (`out_restrictR`).
+- `basic_variation_G0`: Sum <= G_0 Sum_j 2 ||1_R F_{l,j}||^2 <= 4 G_0 |R|, with G_0 = exp(C_q (1 + log 2k)^2) and C_q = 4096 (c+1)(1024 (c+1) + c + 7) + c^2 + 3. Hypotheses: log(2 D_m) <= k^c, log(2 colBudget) <= k^c, |ls| <= c (log k + 1) and tau N colBudget^2 <= 1 (`variation_loss_le`, `compressionC_mono`, `famInput_energy`).
+- `basic_history_variation`, `basic_history_variation_G0`: the shared-history assertion (no outer ball, no groups); the bound is 8 G_0 |R|.
+- `basic_variation_overlap`: bounded overlap. Colour the intervals with M colours, same-coloured intervals disjoint; the bound is multiplied by M (`sum_le_of_coloring`).
+- `basic_onetime`: intervals crossing the attempt start. With the zero convention the earlier outputs vanish (`gBall_zero_before`), leaving the one-time estimate at the right endpoint.
+- Formulation notes (none weakens the blueprint):
+  1. Depth intervals are offsets r <= t <= treeDepth below the attempt root.
+  2. The pair threshold tau and the number N of group-label pairs present at a point are hypotheses. tau N colBudget^2 <= 1 is the blueprint's choice of tau_2 after the counts (lines 1787-1789, 1854).
+  3. The endpoint cells are active cells, and the setup is assumed closed under ancestors (`AncClosed`), as planned in the open entry on certified variation and whole ranges. Establishing `AncClosed` for the assembled attempt remains open there.
+  4. Certificates `Cert k G I`: an active cell inside I with a successful present vertex of color k and group G (downstream actual use).
+- Moved, unchanged, to Sec12_4:
+  - From Sec13_1: `dyadicGridCell_eq_of_meet`.
+  - From Sec13_3: `ColumnDepthFamily.proj_comm_restrict`, `proj_vanish`, `norm_sq_partition`, `interval_rows`, `globHist_layer_jump`, `globHist_jump`, `columnL2Restriction_comm`, `AncClosed`, `sum_filter_fst_eq`, `cells_pairwiseDisjoint_of_depth`, `norm_sq_partition'`, `blk_of_commute`, `columnL2Restriction_vanish`, `Ioc_disjoint_shift`, `jumps_from_le`.
+  - From Sec13_4: `certifiedVariation_gen`, `certifiedVariation_avg`, `Ioc_disjoint_of_mod`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms only (propext, Classical.choice, Quot.sound).
+
+## 2026-10-14T14:32:19-04:00
+
+sec:modes, line 1888 (primaries and first-match cells on the main columns): new section at the end of TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean.
+- `primaries l s G j d I`: the main columns available to the maximal pad P and the rank L + j of the role's outer ball (main labels with masks `bmask I G j P`).
+- `ballLabels_subset_primaries`, `ballFilt_comb`: every individual ball projection of the role, and hence every outer-ball output at a cell, is a combination of the primaries' columns there.
+- `primaries_desc`: primaries are nested in depth. This is "the mode lists, including primaries whose coefficients are zero, are nested"; a primary keeps its role on every active descendant (`primaries_of_firstCell`).
+- `firstCells`: the first-match cells of a primary, i.e. the maximal cells of the family at which it is a primary.
+  - `exists_firstCell`, `firstCell_unique`: each primary at a cell has a unique first-match cell above it.
+  - `firstCells_disjoint`: distinct first-match branches of one primary are disjoint.
+- Scope note: the choice of one expansion at the first match and keeping its modes on every descendant is the content of eq:firstmatch and the lift. Their main-column instantiation (the analogue of `attemptLift` with these primaries and first-match cells) is recorded in the Status row "eq:firstmatch, lines 1888, 1903-1910" and is redone there in ledger order.
+Full `lake build` passed (9081 jobs, no warnings).
+
+## 2026-10-14T14:43:37-04:00
+
+eq:offset-mean, blueprint lines 1895-1901, in TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean.
+- Correction of the audit item 9 of 2026-10-14T03:50:08-04:00. `branchProfile δ = gevreyIntervalCutoff 0 (2δ) (1-2δ) 1` already vanishes for `s ≤ δ` and for `s ≥ 1 - δ`: `gevreyIntervalCutoff a b c d` vanishes below `(a+b)/2` and above `(c+d)/2`. It is one on `[2δ, 1-2δ]`, so the cutoff vanishes within `δ` of each branch cut as the blueprint requires. The audit's statement "positive on (0,1)" was wrong; no definition changed.
+- New: `branchProfile_eq_zero_near_cut` and `branchCutoffValue_cuts`. `ζ^ρ` takes values in `[0,1]`, vanishes when some coordinate `{u_i - ρ_i}` is within `δ` of an integer, equals one at distance at least `2δ` from all cuts, and equals one in horizontal dimension zero. Together with `offsetMean` (`E_ρ ζ^ρ = c_ζ ≥ 1/2` independently of `u`, `E_ρ |1 - (ζ^ρ)²|² ≤ 4 d δ`), the row is complete. The Gevrey regularity of the cutoff is `branchAmp_smooth`, `branchProfile_deriv_le`.
+- The separate gap at line 1944 (gauge multiplier agreement only up to `8 d δ R_δ`) stays open in its own row.
+Full `lake build` passed (9081 jobs, no warnings).
+
+## 2026-10-14T14:54:29-04:00
+
+eq:firstmatch, blueprint lines 1888 and 1903-1910, on the main columns: new section at the end of TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean.
+- Short paths of lem:graph for the original basic columns: `BasicFamilies.tagWalk_path` and `BasicFamilies.tagEdge_of_dist`, ported from the catalog vertices.
+- `FamParams.ballRadius`, `ballEdgeH`, `mask_tagEdge_center`: a vertex in a ball mask of a group is joined to the group center by a tag edge of the ball-radius height.
+- `mainLabel_chart`: an available main label (original column occurrence or template) is, on the cell, a pure chart of its tag in the slot, of the common source complexity. `vTag_vKey`, `vOccurs_of_mainLabels` and `mainScalar_eq_vPhi` connect main labels with vertex labels.
+- `mainFirstMatch_attempt`: the exact absolutely convergent expansion of the product chart of a primary with the branch chart of the group center. It has one curvature, rational frequency differences, and bounds `exp(D X^D)`.
+- `mainFirstMatch_finite`: finitely many modes approximate `φ_v ζ^ρ e(-c_l p_ρ)` within `δ_c` on the whole cell.
+- `mainFirstMatch_kept`: at each first-match cell `I₀` of a primary one expansion is chosen, and on every active descendant of `I₀` the label is still a primary and the same modes approximate within `δ_c` ("keep its modes and labels on every descendant").
+- Formulation note: the primaries are those of the maximal pad `P` (`primaries`), so the ball radius in `X` is that of the pad `bbase j + P`.
+Full `lake build` passed (9081 jobs, no warnings).
+
+## 2026-10-14T15:17:43-04:00
+
+Line 1932 (main-column lift `R_(l,G)`), new section at the end of TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean.
+- Interface change in `LiftData`: the field `δ_sum : δ² Σ_Φ ε_Φ⁻¹ ≤ 1` is replaced by the pointwise field `q_sum : ∀ y, Σ_Φ ‖q_Φ(y)‖² / ε_Φ ≤ 1`.
+  - Reason: the old field sums the inverse private weights over all primaries. On the main columns that is a global label count, not the local main budget of the blueprint, which charges the physical correction only for the primaries matched at `y`.
+  - `modeLift_norm_sq_le'` proves the norm bound `√5` from the new field.
+  - The catalog-only `attemptLift` derives the new field from its hypothesis `δ_c² M_c ≤ 1`; its statement is unchanged.
+- `FamParams.card_matched_le`: the primaries matched at `y` (with a first-match cell containing `y`) are primaries at the deepest such cell. Hence they number at most the main labels there.
+- `FamParams.mainAttemptLift`: the lift on the main columns `bf.Lab ⊕ Fin M_c` of a role, with modes indexed by (primary, first-match cell, mode) and the `q_Φ` of the blueprint.
+  - Primary weights are the private weights of the main columns.
+  - Mode weights are local: `ε_m = ε_Φ / (Σ_m' |a_(Φ,m')|² + 1)`. This gives the per-primary private bound pointwise, and `1/ε_m ≤ colBudget² (exp(D X^D)² + 1)`.
+  - Physical correction: `Σ_Φ |q_Φ(y)|²/ε_Φ ≤ δ_c² N colBudget²` pointwise, `N` bounding the main labels of the rank at the cells. This is the blueprint's `δ_c D_m^C`.
+  - Further exports: zero before the match; exact synthesis `R(Σ_Φ β_Φ main_Φ) = Σ_(Φ,m) β_Φ a_(Φ,m) ψ_m` at points where every primary with `β_Φ ≠ 0` is matched; the per-primary absolute coefficient sum `≤ exp(D X^D)`; mode counts `≤ N · bnd` at each point; one curvature per branch; rational frequency differences.
+- Parameter note: the absolute norm bound of the lift uses `δ_c² N colBudget² ≤ 1`. This is the blueprint's choice of `δ_c = exp(-k^(C_c))` with `C_c` large after the main budgets, here passed as an explicit hypothesis on `δ_c`. The bound `log(1/ε_m) ≤ P^C` follows from the displayed bound once `X`, `log colBudget ≤ P^C`. That comparison is part of the next row (choice of `D_*`, line 1934).
+Full `lake build` passed (9081 jobs, no warnings).
+
+## 2026-10-14T16:07:04-04:00
+
+Line 1934 (choice of the a priori budget `D_*`), new section at the end of TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean.
+- `FamParams.modeStar D d_B H δ_c N k` is an explicit sum. Here `B = exp(D X_max^D)`, and `X_max` (`Xmax`) is the first-match size at the largest ball radius `b₁ d₀ + b₁ + bbase 4 + P`. The terms are:
+  - `e^k`;
+  - the modes of all groups along a path, `D (potMax + 1) (N + 1) M₁`, with `M₁ = B (4 max(1, 4B/δ_c) + 1)^(4 d_B)` the mode bound of one primary at one branch;
+  - the rational heights of eq:mode-differences, `B (1 + 4 (2 d_B + 1) max(1, 4B/δ_c))`;
+  - the inverse private weights, `colBudget² (B² + 1)`;
+  - the clearing-integer bound `H_ed^(d_B²)`;
+  - the coefficient sums `(√N + 1) colBudget B`.
+- It does not involve the branch offsets. It is uniform over the groups with nonnegative top score, which are all actual groups (`ColorSetup.grp_top_nonneg`), and over the levels `j ≤ 4` (`ballRadius_le`, `X_le_Xmax`).
+- `le_modeStar`: each quantity exported by `mainAttemptLift` is at most `D_*`. This covers mode counts per branch, per point and along a path across groups, main uses along a path, heights, inverse weights, coefficient sums, and `|λ||I₀|²`.
+- `Q₀` (line 1893): `clearInt C`, the product of the denominators of `C`. It clears every entry (`clearInt_clears`, the hypothesis form used by `gauge_char_int` and `gaugeMult_periodic`), satisfies `clearInt C ≤ H_ed^(d²)` (`clearInt_le`), and `clearInt_le_modeStar` gives `Q₀ ≤ D_*`.
+- Paths across groups:
+  - `ColorSetup.card_grp_chain_le` / `FamParams.card_groups_path_le`: the groups of present central vertices at the active cells containing a point number at most `D (potMax + 1)`. The color-data change counter is monotone along ancestors and determines the group when it is unchanged (`changes_anc`).
+  - `BasicFamilies.card_mainLabels_path_le`: the main labels along a path occur at the deepest cell, so there are at most `N` (`mainLabels_desc`).
+- `R Z` coefficient sums on endpoint cells:
+  - `lift_endpoint`: for the exports of `mainAttemptLift`, a main output with coefficients on the primaries of a cell `J` of the family lifts at every point of `J` to the mode synthesis with coefficients `c_Φ a_(Φ,m)`, of absolute sum at most `B Σ|c_Φ|`.
+  - `endpoint_coeff_le_modeStar`: by private-coordinate recovery (`mainCoeff_sum_le`), `B Σ|c_Φ| ≤ D_* ‖x‖ / √|J|` at any depth.
+- `log_modeStar_poly`: there is `C` (depending only on `c` and the first-match degree `D`) with `log D_* ≤ C (kP)^C`. The standing bounds are `k ≥ 1`, `L + 6`, `d_B`, `log H_ed`, `log H`, `log(1/δ_c)`, `log N`, `log colBudget ≤ k^c`, and `H_max + 1 ≤ (kP)^c`.
+  - Formulation notes: "`P^C`" is read as a polynomial bound in `P` and `k` (blueprint line 1673).
+  - The standing bounds are passed as hypotheses. They are the parameter choices of the attempt: `L, d_max ≤ k^{O(1)}`, `H_ed = exp(k^{O(1)})` by lem:graph, `δ_c = exp(-k^{C_c})`, `log D_m ≤ k^{O(1)}`, and `H_max` polynomial in `P, k` (pads `20P(L+1)+31P+2`).
+  - Compared with `closure_poly`, which only assumes `H_max + 1 ≤ exp(k^c)`, the bound on `H_max` here is polynomial in `kP`. It enters through the ball radius.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T16:53:10-04:00
+
+Line 1944 (gauge multiplier, enlarged `D_*`, common cutoff `B_*`), new section at the end of TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean.
+- Resolution of the open gap recorded on 2026-10-12 and in audit item 9:
+  - The true cutoff `branchProfile δ` vanishes within `δ` of each cut (`branchProfile_eq_zero_near_cut`, row eq:offset-mean). The enlarged cutoff `branchProfile (δ/2)` is one on `[δ, 1-δ]` and zero at the cuts.
+  - `gauge_factors_eq_mult_exact` therefore proves the blueprint's exact identity. The four true cutoffs times the four gauge phases `e(c_j p_(ρ_j)(y_j))` equal the four true cutoffs times `gaugeMult (δ/2)` at the torus point.
+  - This replaces the additive error `8 d δ'' R_δ` of `gauge_factors_eq_mult`, which is no longer needed.
+- Fourier norms:
+  - `periodic_fourierNorm_le`: a smooth periodic function with derivative bound `A` of order `d + 1` and sup bound `B` is the sum of its absolutely convergent Fourier series, and `Σ_v |ĉ_v| ≤ 5^d B + 2·7^d A √d^(d+1)`.
+  - `periodic_truncate_full`: the same, with the box truncation stated for the coefficients `ĉ_v` themselves.
+  - Instances: `gaugeMult_fourier` (bound `gaugeMultNorm`) and `gaugeSq_fourier` (bound `gaugeSqNorm`, the squared gauge `(ζ^ρ)²`).
+  - In horizontal dimension zero both functions are identically one (`gaugeMult_dim_zero`, `gaugeSq_truncate'`).
+- Uniformity in the center tag: `gaugeMultA_mono`, `gaugeMultTail_mono`, `gaugeMultNorm_mono`, `gaugeTail_mono`, `gaugeSqNorm_mono`. The clearing integer is `Q₀ = clearInt C_z ≤ H_ed^(d_B²)` and the entries satisfy `|C_ab| ≤ H_ed`.
+- Enlarged budget `FamParams.modeStarG = modeStar + gaugeMultNorm d_B (H_ed^(d_B²)) H_ed (δ/2) + gaugeSqNorm d_B δ`. It dominates `e^k`, the line-1934 budget and both full norm bounds (`le_modeStarG`).
+- Common cutoff: `K_* = ⌈log₂(2 (T_* + 1) D_*^300)⌉`, with `T_*` (`tailStar`) the uniform truncation constant, and `B_* = 2^(K_*+1)`. Then `tail_le_Kstar` gives tails at most `D_*^(-300)`, and `log_Bstar_le` gives `log B_* ≤ 301 log D_* + 3`.
+- Final statements:
+  - `gaugeMult_star`: for every center of dimension at least one, every anchor and all offsets in `[0,1]`, the multiplier with cutoff `δ/2` and `Q₀ = clearInt C_z` is the sum of its Fourier series. Its coefficients are at most 1, every coefficient sum is at most `D_*`, and the box-`B_*` truncation is within `D_*^(-300)`.
+  - `gaugeSq_star`: the same for `(ζ^ρ)²` with cutoff `δ`.
+  - `log_modeStarG_poly`: `log D_* ≤ C (kP)^C` and `log B_* ≤ C (kP)^C`, under the standing bounds of `log_modeStar_poly` together with `0 < δ_c`, `0 < δ` and `δ⁻¹ ≤ exp(k^c)` (the cutoff width is `exp(-k^{O(1)})`, blueprint line 1895).
+- Moved (no change of statements): `fractProfile`, `gaugeSq` and their lemmas, `gaugeSq_truncate`, `gaugeTail` and `gaugeSq_truncate'` move from Sec13_3 to Sec13_1. Line 1944 needs `(ζ^ρ)²`, and Sec13_1 precedes Sec13_3.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T16:53:23-04:00
+
+LEDGER INCIDENT (not a source error; no Lean change).
+- At 2026-10-14 16:50:04 ET a ledger script opened automation/Status.md for writing before computing the new content. Its row-length assertion then failed and left the file empty.
+- Repair: the file was rebuilt from the committed version (HEAD 82f5d2a) by replaying, in order and with their original timestamps, the 26 row replacements recorded in this session's transcript (05:36:17 to 16:07:04 ET).
+- Checks: the rebuilt file agrees with every printout of the file in the transcript and with the recorded `git diff --stat` row counts (19, 22, 23 changed rows at 10:20, 13:13 and 14:44 ET). Line endings (CRLF) and the row count (587 lines) are unchanged.
+- The line-1944 update of 16:53:10 ET was applied after the repair. Ledger scripts now compute all new contents before writing any file.
+
+## 2026-10-14T17:19:22-04:00
+
+Line 1967 (freezing at `u_b` and the retention rule), new section at the end of TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean.
+- `FamParams.frozenZ`: the basic coarse output `Z_(l,G,u)` of the role at the depth `u`, set to zero at depths before the attempt root. On cells of the depth partition with no active ancestor it vanishes by the zero convention of line 1859 (`gBall_zero_before`).
+- `gBall_cell_rep`, `basicOut_cell_rep`, `frozenZ_cell_rep`: on every cell `U` of the depth partition the frozen output is zero or a combination, with constant coefficients on `U`, of the main columns on `U` of the primaries at the deepest active ancestor `a` of `U` (retained inherited projections; `ballMaskT_labels_primaries`). Non-active cells are treated through their deepest active ancestor, so no ancestor-closedness of the active cells is assumed.
+- `ActualUse`, `retainedV`: a `v_b`-cell (depth `b - 2K`) of the attempt tree is retained for `G` exactly when it contains a cell with an actual use of `G` (active, with a present central vertex of successful color data and group `G`) at a depth in `[b, b + K)`.
+- `frozenLift`: `Z̃_(l,G,b) = R_(l,G) Z_(l,G,u_b)` restricted to the retained `v_b`-cells; `frozenLift_off`: it vanishes off them.
+- `firstCell_contains`: a first-match cell of a primary at an active cell meeting a subcell `U` contains `U` ("a mode available at `u_b` has first match no later than `u_b`").
+- `frozen_endpoint`, `frozenLift_retained`: for the lift of `mainAttemptLift` on the family of all active cells, on a retained `v_b`-cell inside a `u_b`-cell `U` the frozen lifted output is a combination of augmented modes with coefficients `c_(Φ(m)) a_m` constant on `U`, with absolute sum at most `D_*` times the normalized norm of the frozen output on `U`.
+- Scope note: the slope oscillation bound `eq:slope-variation` that the blueprint states next (lines 1968-1975) is its own row.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T17:34:32-04:00
+
+Line 1996 (exceptional blocks), new section at the end of TrilinearHT/Auto/Sec13_2TwoGraphsHeightStabilization.lean.
+- `ExceptionalAt Θ H r₀ T K b`: the negation of `eq:gap` at the block start `b`: some rational vector of height at most `H` has `T⁻¹ / r_(v_b) < |a·Θ| < T / r_(t_b)`, with `r_n = r₀ 2^(-n)`. `ExceptionalAt.eval_ne_zero`: zero evaluations are always tiny.
+- `exceptional_blocks_le`: lem:height (`rational_frequency_logarithmic_cover`) puts the logarithms `x(a) = log₂(|a·Θ| r₀)` of the nonzero evaluations into at most `dim Θ` packets of width `W = 8 (dim Θ + 1)³ log(2H) / log 2`. Exception at `b = b₀ + βK` forces `b - 2K - log₂ T < x(a) < b + K + log₂ T`, and with `W + 2 log₂ T ≤ K` a packet meets at most four block starts (`exceptional_blocks_count`). Hence each primary is exceptional in at most `4 dim Θ ≤ 8 d_B` blocks, which is `C d_max`. The blueprint's count of five starts per packet is improved to four.
+- `ModeSchedule.exceptional_blocks_le`: the same at the chosen schedule. `K ≥ W + 2 log₂ T + C_K log₂ D_*` is the field `K_ge` of `eq:mode-parameters`, with `W` the lem:height packet width. `H ≥ 2`, `T ≥ 1` and `K > 0` are derived from the schedule inequalities and the inputs `d_max, D_*, B_* ≥ 2`, `Q₀ ≥ 1` of `chooseSchedule`.
+- This replaces the earlier attempt bound of about `2 (3H²)^d` exceptional blocks.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T17:48:30-04:00
+
+Lines 1997-1998 (the tiny span at a nonexceptional block), new section at the end of TrilinearHT/Auto/Sec13_2TwoGraphsHeightStabilization.lean.
+- `tinyKB`, `mem_tinyKB`: `K_B = {w : (0, w) ∈ K_rat}` as the comap of the tiny span under `w ↦ (0, w)`.
+- `tinySpan_const_le`: the spanning constant `(3H²)^d d! H^(d²+d)` of `tiny_of_mem_tinySpan` is at most `(d_max H)^(4 d_max⁴)` for `d ≤ d_max`. This is the blueprint's coefficient-sum bound `(d_max H)^(C d_max³)`, written with exponent `4 d_max⁴`, which suffices against `T`.
+- `ModeSchedule.tiny_of_mem_tinySpan`: at the chosen schedule, at a nonexceptional block (`eq:gap` with `T⁻¹ / r_(v_b)` and `T / r_(t_b)`, `r_n = r₀ 2^(-n)`), every vector of height at most `⌊H⌋` in the span of the tiny height-`⌊H⌋` vectors is tiny. The smallness hypothesis of the earlier attempt is now derived: the threshold ratio is `T² 2^(3K)`, and `T > (d_max H)^(C_T d_max⁴) Ξ` (field `T_gt`) with `C_T ≥ 4` dominates the spanning constant. `C_T ≥ 4` is the choice of the absolute constant `C` in `eq:mode-parameters`; `H ≥ 2` and `T ≥ 1` are derived from `H_gt`, `T_gt` and the inputs `d_max, D_*, B_* ≥ 2`, `Q₀ ≥ 1`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T18:09:51-04:00
+
+Lem:stabilize (lines 2002-2028), TrilinearHT/Auto/Sec13_2TwoGraphsHeightStabilization.lean.
+- `ModeSchedule.stabilize_pre` now concludes the direct PRE edge (`gapEdge` with threshold `Ξ/r_v` at height `h - Δ`), as the blueprint states ("directly adjacent in PRE"); `hstab_of_primaryGood` recovers the component form through `ofEdges_E_of_pre`. The hypothesis `hEcur` is replaced by its integer form (an integer `z` with `|z| ≤ #modes · E_h` has `|z| ≤ D · Eq h`), which is all the proof uses. This lets the witness bound be exactly `⌊D_* E_h⌋`.
+- Elementary consequences of `eq:mode-parameters` (new block before `ModeSchedule.tiny_of_mem_tinySpan`): `Valid.two_le_Cstar`, `dmax_le_Cstar`, `one_le_A0`, `thirty_le_Rht`, `Cstar_lt_two_pow` (`C_* < 2^(R - 10)` from `R ≥ log₂ C_* + 30`), `base_le_A0`, `six_le_A0`, `H_ge` (`27 D_*⁴ (E_(J_*) L_(J_*))² < H`), `two_le_H`, `Dstar_lt_H`, `H_mul_Ξ_lt_T`, `one_le_T`, `tinySpan_small`. `ModeSchedule.tiny_of_mem_tinySpan` now uses `tinySpan_small`; its statement is unchanged.
+- `blockGraphs`: the PRE and CURRENT components of the block with start `b` on the `v_b`-cell `[a₀, a₀ + r_(v_b)]`, `r_n = r₀ 2^(-n)`. `Ξ_div_lag_le`: `Ξ/r_(v_b) ≤ Ξ/r_(t_b)`.
+- `witE`, `kerS`: the bounds of the spans `V_i` and `U_i` of the proof. `⌊D_*⌋ · witE i = ⌊D_* E_i⌋` (`D_mul_witE`), so for integer witnesses this is exactly `|m|_∞ ≤ D_* E_i`; `kerS i = ⌊C_*³ D_* E_i⌋`, exactly `|z|_∞ ≤ C_*³ D_* E_i` for integer vectors. `witE_succ` (`6 witE i ≤ witE (i+1)`) and `kerS_mono` give the monotonicity used in the rank count.
+- `stabGood`: the height `h` is good for the primary when the primary is nonexceptional at the block (`eq:gap` at height `⌊H⌋`), `h ≥ R_*^ht`, and `V` and `U` do not change between `h - R_*^ht` and `h`.
+- `Valid.stabGood_bad_card`: for a primary with `¬ExceptionalAt` at the block (line 1996), at most `3 d_max R_*^ht` heights are not good (`C = 3`).
+- `Valid.stabGood_pre`: for `h ≤ J_*` good for the primary of `x`, a mode `x'` of the same primary in the CURRENT component of `x` at `h` is directly PRE-adjacent to `x` at `h - 10`. All side conditions of `stabilize_pre` are derived:
+  - the expansion constant is `≤ C_* < 2^(R - Δ)` (`Valid.expandConst_le`, `Valid.Cstar_lt_two_pow`), and `(3D²)^d ≤ C_*` (`Valid.three_sq_pow_le`);
+  - the cleared kernel vector has size `≤ C_*³ D_* E_h`;
+  - the PRE witness has size `≤ E_(h-Δ)` by the fixed power `A₀ ≥ (C_* 6^R B_* D_*)^(C_A)` with `C_A ≥ 5` (`Valid.stab_le_A0`, `A0_mul_Eh_le`);
+  - `D_* Ξ < T`;
+  - the heights of the CURRENT and PRE relations are at most `⌊H⌋` for `h ≤ J_*` (`Valid.height_budget`, `Valid.ceil_budget`);
+  - the tiny-span smallness comes from `T_gt` with `C_T ≥ 4`.
+- `Valid.stabGood_mem_E`: the same in component form, as used by the coherence row.
+- `Valid.stabilize`: the blueprint statement. For a nonexceptional primary `p`, at most `3 d_max R_*^ht` heights `h ≤ J_*` fail to have the property "`h ≥ Δ`, and two modes of `p` in one CURRENT component at `h` are directly adjacent in PRE at `h - Δ`".
+- Inputs, all part of the blueprint's data:
+  - the number of modes on the list is at most `D_*` ("covering all mode counts"; "a simple CURRENT path has at most `D_*` edges");
+  - the frequency vectors `Θ_q = (θ_(v,q), ϑ)` have dimension at most `d_max`;
+  - same-primary slope differences are `a·Θ_q` with `a` of height at most `D_*` (`eq:mode-differences`, which `D_*` covers);
+  - heights range over `0 ≤ h ≤ J_*`, where `E_h` is defined, and `Δ = 10`.
+- Choices of absolute constants: `C_A ≥ 5` for "a sufficiently large fixed power" and `C_T ≥ 4` for the `C` in `T`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T18:20:32-04:00
+
+Lines 2039-2044 (coherence of the good predicates), new section at the end of TrilinearHT/Auto/Sec13_2TwoGraphsHeightStabilization.lean.
+- `ModeSchedule.heightGood`: the heights good for a primary within the height range `0 ≤ h ≤ J_*` of the schedule: `h ≤ J_*` and `stabGood` (nonexceptional at the block, and the spans of lem:stabilize stable). This is the predicate "nonexceptional and good for the primary at `h`" of `eq:good`.
+- `Valid.heightGood_stab`: the `hstab` hypothesis of the generic coherence lemmas, now discharged at every height from `Valid.stabGood_mem_E` (lem:stabilize).
+- `Valid.good_same_predecessor`: two good modes (`eq:good` with `Δ = 10` and `heightGood`) in one CURRENT component at `h` of the block graphs have the same PRE predecessor at `h - Δ`.
+- `ModeComponents.core_iff_of_minimal_pre`: modes in one minimal PRE component have the same bad heights, so the core/side decision is constant there.
+- `Valid.core_good_iff`: two core modes in one minimal CURRENT component have identical good predicates on `eq:upper-heights` (`⌈4 δ_* J_*⌉ ≤ h ≤ J_*`). The conditions `J_* ≥ 2` (`Valid.two_le_Jstar`, from `Jstar_ge` with `C_J ≥ 1`, `δ_* ≤ 1` and `D_m ≥ 2`, an input of `chooseSchedule`) and `⌈4 δ_* J_*⌉ ≤ J_*` are derived.
+- `Valid.core_bad_proportion`: a core mode has bad proportion at most `2 δ_*` on the upper heights.
+- Choices of absolute constants: `δ_* ≤ 1/16` for "a sufficiently small absolute `δ_*`", and `C_J ≥ 1` for the `C` in `J_*`.
+- `ModeSchedule.sideParams` is redefined from the blueprint data: `D = ⌊D_*⌋`, witness bound `⌊D_* E_h⌋` (`witE`), kernel size `⌊C_*³ D_* E_h⌋` (`kerS`). It was previously unused, and its old witness bound `⌈D_*⌉ ⌈D_* E_h⌉` did not match the blueprint.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T19:20:23-04:00
+
+Lem:lift-composition (lines 2062-2077), on the main columns. New section at the end of TrilinearHT/Auto/Sec13_3BesselRowsLinearSideEnergy.lean; one generalization in TrilinearHT/Auto/Sec12_4BinaryLocalizationVariation.lean.
+- `basic_compression` (line 1859, Sec12_4) now takes an arbitrary input `Z` of the basic family instead of the fixed `F_(l,j)`; the statement is otherwise unchanged and it had no other callers. This allows the input `1_R F_(l,j)`, whose energy is at most `|R|`.
+- `piLpSingle`, `norm_piLpSingle`: the isometric embedding of one summand into the `ℓ²` sum `PiLp 2 F`. The rows of different groups have different targets; this embedding puts them in one space for the compression lemmas.
+- `cell_ballFamT`, `gBall_restrict_comm`, `gBall_adjoint`: the outer ball filter at the depth of an active cell is the cell projection after restriction, commutes with the restriction, and is self-adjoint.
+- `main_rows_group`: for one group, `lem:compression` with one factor inserts the outer averaged ball projection at the depth of each decision cell (cost `C₁²` of the main tree).
+- `gBall_row_adjoint_mem`: the adjoint of `Q L_(l,G,u)` takes values in the main ball range of `u` at the largest pad. Masks grow with the pad (`bmask_pad_mono`, `mainRange_mono`). This is "every term of `A_G^*` has outer factor `L_(l,G,u_e)`, so its range is a sum of whole usable main endpoint ranges".
+- `main_rows_joint`: the rows of all groups of one color, local to active decision cells with downstream use certificates (`Cert`), are jointly Bessel after the outer ball projections, with constant `(1 + τ N colBudget²) c C₁²`. This combines `eq:whole-ranges` (`mainRange_wholeRanges`) with `joint_bessel_hetero`.
+- `lift_rows_history`: compression again (`basic_compression`) inserts the shared history and the basic projections acting on the family input (cost `C_|ls|² C_(1,j_b)²`).
+- `row_out_restrictR`: rows local to active cells see the family input only through `1_R F`.
+- `lift_rows_bessel`, `lift_rows_local`: the lift `R_(l,G)` (any `LiftData` on the main columns, norm `≤ √5`) keeps per-group Bessel bounds (factor 5) and locality.
+- `lift_composition_global`, `lift_composition`: for mode rows `P_(G,e)` with per-group Bessel constant `c` (the blueprint's `G₀`), local to sets `J_(G,e)` inside active cells `u_(G,e)` with downstream use certificates of `G`, the outputs `P_(G,e) R_(l,G) L_(l,G,u) B_(l,u) B_l` have joint squared sum at most `2 (1 + τ N colBudget²) 5c C₁² C_|ls|² (C_(1,0)² + C_(1,1)²) |R|`.
+  - `lift_composition` uses the leaf output `ballFilt (layerOp cumFilt (basicIn))` at the cell, via `basicOut_restrict`.
+  - `lift_composition_G0` gives `c G₀ |R|` with `G₀ = exp(C_q (1 + log 2k)²)` and `C_q = 6144 (c+1)(1024 (c+1) + c + 7) + 4`. It assumes `log(2 D_m) ≤ k^c`, `log(2 colBudget) ≤ k^c`, `|ls| ≤ c (log k + 1)` and `τ N colBudget² ≤ 1`, the hypotheses of `basic_variation_G0`.
+  - Only main projections are compressed; the mode budget does not enter the loss.
+- Scope, as in the completed lem:variation row:
+  - one slot `l`, one color `k`, one ball level `j` and one shared history `ls`, i.e. one leaf of the color search; the groups at a leaf all have its color;
+  - `eq:whole-ranges` is used with its point count `N` and the edge-height condition `hHed` as hypotheses.
+  - The row modes need not come from the list available at `u_e`; the bound holds for arbitrary rows that are local to `J_e`.
+- The earlier catalog-framework statements (`compose_lift_with_main_histories`, `lift_rows_joint`, `lift_composition_catalog`, `attempt_event_rows`) are superseded for this row.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T19:38:43-04:00
+
+`eq:bad-density` (lines 2100-2112), TrilinearHT/Auto/Sec13_3BesselRowsLinearSideEnergy.lean. Part of the in-progress row prop:linear-side (lines 2080-2087); the statement row stays in progress until the proof rows 2114-2118 are done.
+- `ModeSystem.chain_events_bound` generalized:
+  - the label sets of the chain are bounded by a path-local count `M`, the number of keys of the modes alive at any cell (`hM`), instead of the global mode count `card Md`;
+  - the exceptional-block hypothesis is required only for sets of blocks of the events themselves.
+  - Its only caller, `group_event_rows`, passes `M = card Md`.
+- `ModeSystem.exceptionalAt_of_not_nonexcAt` and `not_exceptionalAt_of_nonexcAt`: with the side parameters of the schedule, `nonexcAt` is exactly the negation of `ExceptionalAt` (`eq:gap`) with `r₀` the base length of the grid.
+- `ModeSystem.chain_length_schedule`: at the chosen schedule, a linked chain of side events of one class has length `N ≤ 180 d_max log(2 D_m) / δ_*`, free of the height parameter. The class has blocks on the `K`-grid through `R₀`, at least `3K` apart. The ingredients are derived:
+  - a key is exceptional in at most `4 dim Θ ≤ 4 d_max` blocks of the class (`ModeSchedule.exceptional_blocks_le`, line 1996, with the packet width `W ≥ 8 (d_max + 1)³ log(2H)/log 2`);
+  - a nonexceptional key is height-bad at most `3 d_max R_*^ht` times at one event (`Valid.stabGood_bad_card`, lem:stabilize);
+  - the absorption `2 (Δ + 10 Δ l + 10 A_h (1 + l)) ≤ δ_* (J_* + 1)` follows from `J_* ≥ C_J δ_*^(-2) d_max R_*^ht log(2 D_m)` with `C_J ≥ 340`.
+- Inputs:
+  - the label sets are at most `M ≤ 2 D_m` at every cell ("their sizes are at most `D_m`");
+  - `δ_* ≤ 1`, and `C_J ≥ 340` as the choice of the absolute constant of `J_*`;
+  - `d_max, D_*, B_* ≥ 2`, `Q₀ ≥ 1`, `D_m ≥ 2`, as for `chooseSchedule`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T19:55:46-04:00
+
+Lines 2114-2116 (level rows of the side events), as part of the in-progress row prop:linear-side. Files: TrilinearHT/Auto/Sec13_3BesselRowsLinearSideEnergy.lean and TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean; callers updated in TrilinearHT/Auto/Sec13_4SideStatesFixedOffsets.lean.
+- `gaugeSq_truncate_full` (Sec13_1): the squared gauge is approximated within `2 B_ζ/2^K` by its Fourier sum over the box, with every finite absolute coefficient sum at most its full Fourier norm `gaugeSqNorm` ("expand `(ζ^ρ)²` with coefficient sum at most `D_*` and tail `D_*^{-300}`", lines 1944, 2055).
+- `modeWave_pair_le_full`: the mode pairing bound of lines 2054-2056 with the full Fourier norm, `gaugeSqNorm · 8/(Θ r) + 2 B_ζ/2^K`.
+  - `pairConst` is redefined to `gaugeSqNorm · 8/Ξ + 2 B_ζ/2^K`; `cellMode_inner_le` and `modeWave_rows` now use `modeWave_pair_le_full`.
+  - The earlier box-count constant `(2·2^(K+1)+1)^d · 8/Ξ` could not reach `D_*^{-200}` in dimension above two. This was a gap in the D_*^{-200} claim of line 2055 (row lem:mode-rows); it is closed here.
+- `ModeSchedule.pairConst_mul_le`: `pairConst · D_*^200 ≤ 1` when `gaugeSqNorm ≤ D_*` ("enlarge `D_*` to cover these full Fourier norms") and `2 B_ζ/2^K ≤ D_*^{-300}` ("only then truncate the Fourier series to tails at most `D_*^{-300}`"), with `Ξ = D_*^1000`.
+- Path-local mode counts:
+  - `ModeSystem.ptSet y` is the set of modes whose first-match cells contain `y`, i.e. the modes on the path through `y`.
+  - `level_rows`, `class_rows`, `blockSide_norm_sq_le`, `group_side_energy` and `group_event_rows` now assume `|ptSet y| ≤ D` and `|ptSet y| ≤ ε D²` at every point, instead of the global `card Md`.
+  - The multiplicity argument counts the events of one level through a point by their disjoint mode sets inside `ptSet y` (`card_le_of_pairwiseDisjoint_subset`).
+  - The older catalog-framework callers convert their global bounds with `ptSet_card_le`.
+- `ModeSystem.group_event_rows_schedule`: at the chosen schedule, for one group, the side-event rows (projections onto the spans of the modes of each event) are Bessel with constant `6 (⌊180 d_max log(2 D_m)/δ_*⌋ + 1)`:
+  - three classes of blocks on the `K`-grid; longest-chain levels within each class;
+  - lem:mode-rows on each level, with cross pairings `≤ D_*^{-200}` (so `η D_*³ ≤ 1`), at most `D_*` modes through each point and inverse private weights at most `D_*`;
+  - chain length from `eq:bad-density`.
+  - Inputs ("`D_*` covers ..."):
+    - mode curvature `Λ ≤ D_*`;
+    - `gaugeSqNorm ≤ D_*` and the truncation tail `≤ D_*^{-300}`;
+    - the common cutoff `B_* ≥ Q₀ 2^(K_f+1)` covers the truncation box, so `E₀ = A₀ ≥ B_*` allows every retained shift.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T20:12:36-04:00
+
+Line 2118 (exact side subtotals and their errors), as part of the in-progress row prop:linear-side. File: TrilinearHT/Auto/Sec13_3BesselRowsLinearSideEnergy.lean.
+- `sum_sum_measureReal_le_of_count`: sets inside `R`, at most `N` of them through each point of `R`, have total length at most `N |R|`. This is the counting form of the path budget, for a family of families of sets.
+- `ModeSystem.class_count`: within one class of blocks whose chains have at most `L` links, the side events through a point `y` number at most `(L + 1) |ptSet y|`. On one longest-chain level, the events through `y` have pairwise disjoint nonempty mode sets inside `ptSet y`, by `level_pair`.
+- `ModeSystem.group_count`: at the chosen schedule, the side events of one group through `y` number at most `3 (⌊180 d_max log(2 D_m)/δ_*⌋ + 1) |ptSet y|`. This uses three classes and the chain length from `eq:bad-density`.
+- `ModeSystem.side_errors_negligible` (the D_*^-190 bound and "these squared additive errors are negligible"): for the groups with frozen coefficients whose square sums are at most `B_c` on every pre-cell, assuming
+  - at most `D_*` modes alive at each cell;
+  - `gaugeSqNorm ≤ D_*` and truncation tail `≤ D_*^{-300}`, so cross pairings are `≤ D_*^{-200}`;
+  - at most `D_*` modes through each point across all groups (the path budget, "all groups are included in the path budget");
+  - pre-cells inside the root `R`;
+
+  the following hold:
+  - the error `eventErr` of each exact side subtotal (`event_subtotal_close`) satisfies `err² D_*^{397} ≤ B_c |J|`;
+  - the total over groups, blocks, pre-cells and events satisfies `(Σ err²) D_*^{396} ≤ 3 (⌊180 d_max log(2 D_m)/δ_*⌋ + 1) B_c |R|`.
+- The blueprint normalizes the complementary coefficient norm to `D_*` and the error to `D_*^{-190}`. Here the coefficient bound `B_c` is kept as a parameter (with `0 ≤ B_c`), and the error is relative to `|J|`, which is stronger. The specialization of `B_c` to the frozen coefficients of normalized attempt roots belongs to the assembly of `eq:linear-energy` (row prop:linear-side). As recorded earlier, the per-cell normalization of the root is available from `IsBasicOn` (Sec11_2c), while `HasColumnRep` exports only the root energy; the assembly must thread it.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T21:00:38-04:00
+
+prop:linear-side (`eq:linear-energy`, lines 2080-2087, proof lines 2088-2118). The statement row is now complete. Files: TrilinearHT/Auto/Sec13_3BesselRowsLinearSideEnergy.lean and TrilinearHT/Auto/Sec13_1OneExpansionAtFirstMatch.lean; `cellMode_vanish` moved unchanged from Sec13_4SideStatesFixedOffsets.lean to Sec13_3.
+- Sec13_1, frozen-mode data interface (lines 1971-1975):
+  - `frozen_endpoint` and `frozenLift_retained` now also export that every mode with a nonzero frozen coefficient is alive on the `u_b`-cell ("a mode available at `u_b` has first match no later than `u_b`").
+  - `LiftData.reindex` transports a lift along an equivalence of the primary labels.
+  - `MainLiftExports` records the exports of `mainAttemptLift` for one role and group.
+  - `exists_mainModeSystem`: the modes of `mainAttemptLift` form a `ModeSystem`, with primary labels relabeled by `Fin n`, whose waves and private weights are those of the lift `R_{l,G}`. It also exports the tag, the curvature bound `B = exp(D X^D)`, the dimensions, the inverse private weights, and the counts of modes through a point and alive at a cell. This makes `linear_energy` applicable to the lift constructed in `lem:first-match`.
+- Sec13_3:
+  - `liftConst_le_G0`: the arithmetic of `lift_composition_G0`, separated so it can be reused.
+  - `lift_composition_finset` and `lift_composition_dep`: lem:lift-composition for row families indexed by finite sets `T_G` (also of group-dependent types). Each is padded with zero rows to one finite index type, and groups without rows are dropped.
+  - `ModeSystem.frozenEval_eq_restrict`: a column function agreeing on `J` with `Σ_m β_m ψ_m`, with `β` supported on the modes alive at `u_b`, restricts on `J` to the frozen evaluation.
+  - `norm_basicCell_le` and `norm_basicOut_cell_le`: on an active cell, the coarse basic output is at most the two family inputs on the cell.
+  - `retained_decision`: the `u_b`-ancestor of a retained `v_b`-cell contains it, is active, and carries a use certificate of the group's color ("their decision cells are the containing `u_b`-cells").
+  - `frozen_coeffs`: frozen coefficients on every retained cell. They represent `Z̃ = R_{l,G} Z_{l,G,u_b}`, are supported on the alive modes, and have square sum at most `4 D_*² C_F`.
+  - `ModeSystem.eventProj_restrict`: the event projections are local to every cell containing the pre-cell.
+  - `linear_energy`, the statement of prop:linear-side for one basic role, color, ball level and shared history: there are frozen coefficients `c_{G,b,J}` representing `Z̃_{l,G,b}` on all retained `v_b`-cells of the blocks `b ∈ Bs`, and the exact side subtotals satisfy `Σ_{G,b} ‖V_{l,G,b}‖² ≤ 24 (⌊180 d_max log(2 D_m)/δ_*⌋ + 1) (G₀ + 2 C_F D_*^{-394}) |R|`, with `G₀ = exp(C_q (1 + log 2k)²)`. The proof uses:
+    - `group_side_energy`;
+    - `group_event_rows_schedule`, whose Bessel constant is `6 (L + 1)`;
+    - `lift_composition_dep` with the `u_b`-cells as decision cells;
+    - `side_errors_negligible` with `B_c = 4 D_*² C_F`.
+- Hypotheses of `linear_energy` and their blueprint sources:
+  1. The mode systems carry the exports of `mainAttemptLift` (`MainLiftExports`; same private weights). `exists_mainModeSystem` provides such systems.
+  2. Schedule coverings, i.e. the choices of the a priori budgets (line 1934 and lines 1944-1958):
+     - `dvOf + dim ≤ d_max`;
+     - label sets at a cell `≤ M ≤ 2 D_m`, as in eq:bad-density ("their sizes are at most `D_m`");
+     - `Λ ≤ D_*`;
+     - `gaugeSqNorm ≤ D_*` and truncation tail `≤ D_*^{-300}`, with `Q₀ 2^(K_f+1) ≤ B_*`;
+     - inverse private weights `≤ D_*`;
+     - alive modes `≤ D_*`;
+     - modes along a path across groups `≤ D_*`;
+     - `modeStar ≤ D_*` (the coefficient budget);
+     - the label path count `N_q`, with `τ N_q colBudget² ≤ 1`, and the compression budgets of `lift_composition_G0`.
+  3. Fresh normalized attempt roots: `‖1_U F_{l,j}‖² ≤ C_F |U|` on active cells `U`. The proposition is asserted "on fresh normalized attempt roots", and line 414 normalizes the inputs on every cell of the chosen subtree. As recorded earlier, `IsBasicOn` (Sec11_2c) provides per-cell energies on the tree, while `HasColumnRep`/`BasicProjection` export only the root energy. The final assembly must thread the per-cell bound.
+  4. `A.AncClosed`, so that the decision cells `u_b` are active. This is the same formulation as `lem:variation` (row of 2026-10-14 14:17:36) and the open entry of 2026-10-12T10:05. Establishing `AncClosed` for the assembled attempt remains open there.
+- `Bs` is any finite set of block starts on the `K`-grid; non-retained branches contribute zero. The bound is uniform in the offsets of the mode systems.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T21:13:02-04:00
+
+`eq:sides` and `eq:core-side-error` (lines 2124-2133) on the main columns of the attempt. File: TrilinearHT/Auto/Sec13_4SideStatesFixedOffsets.lean. The earlier `LeafSplit` versions over the superseded `AttemptParams` remain in the file unchanged; they are not used for this row.
+- `ModeSystem.blockCore`: the full core subtotal `A_{l,G,b}`. It is the sum, over the retained pre-cells, of the subtotals of the core components (minimal CURRENT components that are not side events) with the frozen coefficients.
+- `ModeSystem.eq_blockCore_add_blockSide`: a column function that is supported on the disjoint pre-cells of a block and restricts on each to the frozen evaluation equals `A + V`. Every alive mode lies in exactly one minimal CURRENT component (`frozenEval_sub_side`).
+- `retainedV_pairwiseDisjoint`, `frozenLift_eq_core_add_side`: `Z̃_{l,G,b} = R_{l,G} Z_{l,G,u_b}` on the retained branches equals `A_{l,G,b} + V_{l,G,b}`, for the frozen coefficients produced by `linear_energy`.
+- `physMain`, `sideState`, `physError`:
+  - the physical coordinate in the main column space;
+  - the side state `S_{l,G,h} = Z_{l,G,h} - Z_{l,G,u_b} + V_{l,G,b}` (`eq:sides`), in physical coordinates, with the frozen output zero before the attempt;
+  - the error `E_{l,G,b} = (Z_{l,G,u_b})_phys - (Z̃_{l,G,b})_phys`.
+- `core_side_error` (`eq:core-side-error`): `(Z_{l,G,h})_phys = (A_{l,G,b})_phys + S_{l,G,h} + E_{l,G,b}` for every depth `h` of the block.
+- Basic `U` roles take the whole output as the side state, with no core and no error. This is a convention of the blueprint; the decomposition is then trivial.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T21:50:07-04:00
+
+Lines 2135-2150 (the physical error of the frozen lift and the selection of the offsets) and `eq:physical-error` (lines 2151-2156), on the main columns of the attempt. File: TrilinearHT/Auto/Sec13_4SideStatesFixedOffsets.lean. Sec13_1: `exists_mainModeSystem` now also exports the gauge `s = (ζ^ρ)²`; docstrings of `frozen_endpoint`, `frozenLift_retained` updated.
+- `norm_mainScalar_le_one`: on an active cell, the scalars of its main labels are bounded atoms (`bf.charts`) or bounded templates, hence at most one.
+- `frozenZ_main_rep`: on an active cell `U` the frozen main output is a main combination `Σ_Φ β_Φ (φ_Φ, √ε_Φ e_Φ)` of the primaries at `U` (line 2131). It satisfies:
+  - `Σ|β_Φ| ≤ √N colBudget ‖Z‖_U/√|U|` (private-coordinate recovery);
+  - its physical supremum on `U` is at most `Σ|β_Φ|`.
+- `physError_majorant`: for every lift with the main private weights and gauge `s = ζ²`, on a retained `v_b`-cell the error is `E = (1 - ζ²) Z_phys - Σ_Φ β_Φ q_Φ`. Hence `|E|² ≤ 2|1 - ζ²|²|Z_phys|² + 2 δ_c² (Σ|β|)²`, with `|q_Φ| ≤ δ_c`. This generalizes the earlier template-only version (`ModeSystem.physical_error_le`, which assumed `ε_P = 1`).
+- `exists_offsets_used`: for the actual main uses `I ∈ U_i` (fixed before the offsets, at most `N_use` through each point of the root), majorants `2|1 - ζ_i^ρ|² Z + C` with `Z ≤ M` a.e. on the used cells admit offsets in the unit cubes with total at most `(8 d_max δ M + C) N_use |R|`. The proof uses `eq:offset-mean` via `exists_offsets_physical` and the path count (`sum_sum_measureReal_le_of_count`).
+- `ancAt_mem_retainedV`: the `v_b`-ancestor of an actual use of the block is retained.
+- `physical_error_used` (`eq:physical-error`): there are offsets such that every choice of first-match lifts at these offsets satisfies `Σ_i Σ_{I ∈ U_i} ∫_I |E_{l_i,G_i,b(I)}|² ≤ (8 d_max δ + 2 δ_c²) · 4 N colBudget² C_F · N_use |R|`. Here "every choice" means: main private weights, gauge `(ζ_i^ρ)²`, corrections of size `δ_c`. The offsets are selected by the explicit majorant before the lifts are chosen, so no measurable selection of expansions is used.
+- Formulation notes:
+  1. The blueprint uses one parameter `δ_c` both for the cutoff width of `ζ^ρ` and for the size of the corrections `q_Φ`; here the cutoff width `δ` and `δ_c` are separate. With `δ = δ_c` the bound is the blueprint's `2 D_m^{C''} d_max δ_c |R|`, where `D_m^{C''}` covers `4 N colBudget² C_F N_use`.
+  2. As in prop:linear-side, the hypotheses are:
+     - `A.AncClosed` (decision cells `u_b` active; open entry of 2026-10-12T10:05);
+     - fresh normalized attempt roots `‖1_V F_{l,j}‖² ≤ C_F |V|` on active cells;
+     - the label count `N` at active cells;
+     - the path multiplicity `N_use` of the actual main uses ("the main path multiplicity").
+  3. Uses in blocks starting before `R.1 + 4K` have zero frozen output and zero error (the zero convention before the attempt).
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T22:04:18-04:00
+
+Line 2159 (integrated budgets of the side states) on the main columns of the attempt. File: TrilinearHT/Auto/Sec13_4SideStatesFixedOffsets.lean. The earlier versions over the superseded catalogs (`rolling_budget`, `linear_budget`, `uslot_budget` in namespace `AttemptParams`) remain unchanged; they are not used for this row.
+- `sum_block_le`: a quantity attached to the block start `K ⌊s/K⌋` of each depth is counted at most `K` times ("a fixed `V_{l,G,b}` is counted at most `K` times").
+- `basic_variation_overlap_G0`: `eq:variation` with the loss `G₀` for depth intervals colored so that intervals of one color are disjoint.
+- `FamParams.rolling_budget`: for blocks `[b, b + K)` on `R.1 + Kℤ` with `u_b = b - 4K` and the frozen output zero before the attempt, the rolling sides `Z_s - Z_{u_b}` on certified cells satisfy `Σ_{s,G} ≤ K (20 G₀ + 32) |R|`.
+  - Depths `s ≥ 4K` use `eq:variation`, with the intervals `(u_b, s]` colored modulo `5K` (overlap `O(K)`).
+  - The first `4K` depths use the one-time projection estimate (`basic_onetime`).
+- `FamParams.uslot_budget`: in a basic `U` role the whole outputs of the inputs `w_s` on certified cells satisfy `Σ_{s,G} ≤ (1 + τ N colBudget²) Σ_s ‖w_s‖²` (current group Bessel, `main_joint`). This is at most `2 C_U |R|` given `eq:basic-side` in the form `Σ_s ‖w_s‖² ≤ C_U |R|`.
+  - The identification of `w_s` with the basic `U` inputs `U_{e,s}` of prop:base (whose energy is `eq:basic-side`, proved in `activeCellReduction`) belongs to the attempt assembly.
+- `FamParams.sideState_budget`: the side states `S_{l,G,s}` of a basic `B` role on certified cells satisfy `Σ_{s,G} ‖1_E S‖² ≤ 2 K (20 G₀ + 32) |R| + 2 K Σ_{b,G} ‖V_{l,G,b}‖²`. With the frozen coefficients of `linear_energy` (blocks on the `K`-grid through `R.1`), `eq:linear-energy` bounds the last sum ("`eq:linear-energy` gives the same bound").
+- As before, the hypotheses include `A.AncClosed` (decision cells active; open entry of 2026-10-12T10:05) and the label path count `N` with `τ N colBudget² ≤ 1`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T22:12:18-04:00
+
+`eq:side-cap` (lines 2160-2163) for the side states of a search leaf. File: TrilinearHT/Auto/Sec13_4SideStatesFixedOffsets.lean.
+- `norm_sq_restrict_biUnion`: the restriction to a disjoint union of cells has squared norm the sum over the cells.
+- `side_cap`: `lem:cuts` (`side_caps_of_budgets`) for the cell weights `a(I) = Σ_{ν,G needed at I} ‖X_{ν,G,I.1}‖²_{2,I}` with integrated budgets `Σ_I |I| a_ν(I) ≤ A_ν |R|`.
+- `cell_budget_eq` rewrites the budgets of `sideState_budget` and `uslot_budget` over the needed cells of each depth cell by cell.
+- `side_cap_states` (`eq:side-cap`): from these budgets, one first-crossing cut of root length at most `ρ |R|` (an arbitrarily small fixed cost) gives, on every retained path, `Σ_{ν,s,G} ‖X_{ν,G,s}‖²_{2,I_s(y)} ≤ (Σ_ν A_ν)/ρ`. This holds simultaneously for all roles.
+- `side_cap_le_pow` (the `P^C` form): if `ρ⁻¹ ≤ P` and each budget is at most `P^C`, the cap is at most `m P^(C+1)` for `m` roles.
+- The budgets of line 2159 are `A = 2K(20 G₀ + 32) + 2K · 24 (L + 1)(G₀ + 2C_F D_*^{-394})` for basic `B` roles and `2C_U` for basic `U` roles. They are polynomial in `P` by the choices of the parameters:
+  - `K` is polynomial in `P, k` (line 1958);
+  - `G₀ ≤ P^{1/8}` for large `k` (line 2876, lem:budget-rules);
+  - `L + 1 ≤ C d_max log(2D_m)/δ_*` with `d_max, log D_m ≤ k^{O(1)}`.
+  The numeric instantiation of these sizes belongs to the final assembly (prop:normalized), as for the other `P^C` statements.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T22:24:26-04:00
+
+Line 2164 (core and error sizes; terms containing a physical error) on the main columns. File: TrilinearHT/Auto/Sec13_4SideStatesFixedOffsets.lean.
+- `core_error_sizes`: on a cell `I` inside a retained `v_b`-cell, the lift is pointwise bounded (`‖R‖ ≤ √5`), `Z_{u_b} = Z_s - (Z_s - Z_{u_b})` and `A = Z̃ - V` (`frozenLift_eq_core_add_side`). Hence:
+  - `‖1_I E‖ ≤ (1 + √5)(‖1_I Z_s‖ + ‖1_I (Z_s - Z_{u_b})‖)`;
+  - `‖1_I A‖ ≤ √5 (‖1_I Z_s‖ + ‖1_I (Z_s - Z_{u_b})‖) + ‖1_I V‖`.
+  With the normalized coarse outputs and the side caps on retained paths, these are the `P^C` sizes of the blueprint.
+- `cellForm_norm_le_L2`: `eq:absolute` with all exponents two for the cell form, `|H_I(x)| ≤ C_κ Π_j ‖(x_j)_phys‖_{2,I}`.
+- `sum_uses_le`: Cauchy-Schwarz over the uses.
+- `error_terms_le`: for uses whose error slot has normalized size `e_u` and whose other slots have sizes at most `M`, with `Σ_u |I_u| ≤ N |R|` and `Σ_u |I_u| e_u² ≤ ε |R|` (`eq:physical-error`), we get `Σ_u |I_u| |H_{I_u}| ≤ C_κ M³ √(N ε) |R|`.
+- `eLpNorm_augPhys_cell_le`: the normalized size with `|I| e_I² = ∫_I |x_phys|²`, linking `error_terms_le` to `physical_error_used`.
+- The bound is `O(e^{-k}|R|)` because `ε` carries the factor `8 d_max δ + 2 δ_c²` with `δ_c = exp(-k^{C_c})` and `C_c` chosen after the main budgets (lines 1897, 2156). The numeric choice belongs to the final assembly, as for the other parameter choices.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T22:34:50-04:00
+
+Helper instantiation (lines 2167-2169) on the main columns. File: TrilinearHT/Auto/Sec13_4SideStatesFixedOffsets.lean. The earlier `helper_instantiation` over the superseded `VTest`/`CatTest` catalogs remains unchanged; it is not used for this row.
+- `mainSel_append_highRank`, `mainProj_append_highRank`: catalog columns of rank above `r` do not change the main selections and projections of rank at most `r`.
+- `MainTest.pass_append_highRank`: main tests with target and history ranks below the inserted columns keep passing.
+- `ballFilt_append_helper`, `cumFilt_append_helper`: the ball filters of the levels `j ≤ 4` (ranks `L + j`) and the cumulative filters (ranks `L - m + 1`) are unchanged by helper columns of rank `L + 5`. Hence the main projections, and the outputs and side states built from them, are unchanged ("helper ranks exceed every main rank, so their insertion leaves all previously fixed main projections, offsets and side states unchanged").
+- `helper_instantiation_main`: the universal helper part of `lem:closure` (`helper_closure`) applied to helper tests of rank `L + 5` on fixed whole bases at the active cells. It gives helper templates of rank `L + 5` such that:
+  - all helper tests pass;
+  - every main test of ranks at most `L + 4` still passes;
+  - the ball and cumulative filters are unchanged;
+  - the insertions per cell are counted by the closure ratio times `n_{L+4}`.
+- `sideState_base`: the side states (any physical column function) restricted to an active cell are admissible helper bases. Their template coordinates vanish and they are supported on the cell ("the helper bases are these entire states").
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T22:47:46-04:00
+
+Lines 2172-2185 (hereditary representatives and cross-mode non-adjacency). File: TrilinearHT/Auto/Sec13_5RepresentativesComponentSizesFirstTops.lean. This resolves the representatives part of audit item 11: the stabilization hypothesis is now discharged.
+- `ModeSystem.blockComps_stab`: `lem:stabilize` for the frozen mode graphs at the schedule. The graphs `blockComps` are the block graphs of `ModeSchedule.blockGraphs`, and `goodP` with the side parameters is `stabGood`. So two alive modes of one key, good at a height `h ≤ J_*` and lying in one CURRENT component at `h`, are PRE-joined at `h - 10` (`ModeSchedule.Valid.stabGood_mem_E`). Its hypotheses are schedule constants and the `D_*` choices (lines 1932-1934):
+  - the alive modes at the decision cell number at most `D_*`;
+  - `d_v + dim z ≤ d_max`;
+  - `2 (Q₀ (3 B_σ²)²)² ≤ ⌊D_*⌋` (heights of mode differences).
+- The hypothesis `hstab` of `predecessor_nesting`, `attempt_representatives`, `attempt_representatives3` and `typed_representatives` is weakened to the single height `h` used ("a later nonexceptional height-good one").
+- `nodeType1`, `nodeType2` and `typed_representatives` are moved from Sec15_4 to Sec13_5 (lines 2172-2174: "Fix height, role, group and type").
+- `typed_representatives_sched`: for fixed height `h ≤ J_*` (the upper end of `H_up`, line 2041) and types, with `Δ = 10` and the side parameters of the schedule, representatives exist in the PRE predecessors. They are:
+  - inherited under predecessor inclusion along comparable nodes;
+  - for different representatives on comparable nodes, carried by disjoint predecessors with no shared or CURRENT-adjacent modes in the later graph.
+  The node hypotheses (alive, good, distinct components) come from `classNodes_props`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-14T23:13:04-04:00
+
+`eq:size-comparison` (lines 2196-2209), instantiated at actual cells. File: TrilinearHT/Auto/Sec13_5RepresentativesComponentSizesFirstTops.lean. The setting is an actual cell `I` with `|I| ≥ r_{t_b}`, inside a pre-cell `J` (depth `v_b`) of the block `b`.
+- `actualCell_inner_le`: two modes alive at `u_b` that lie in different minimal (height zero) CURRENT components pair on `I` by at most `η |I|`, where `η` is the pairing constant at `Ξ/2`. The proof goes through `alive_representative_separation` (`eq:slope-variation` halves the CURRENT threshold on the whole pre-cell) and `cellMode_inner_le_of_sep`. At the schedule `η ≤ 2 D_*^{-200}` (`pairConst_half_mul_le`).
+- `compSizeSq` is `eq:component-size` with normalized norms:
+  - the minimal CURRENT components `D ⊆ F_h(x)` are `minComps`;
+  - the core subtotals are `A_D = Σ_{m core in D} α_m Ψ_{I,m}`;
+  - core means `IsCoreAt`, i.e. at most `δ_*(J_*+1)` bad heights.
+- `size_comparison`: `σ_F² ≤ 12 (‖P_{F,I} Z̃‖²_{2,I} + ‖V_F‖²_{2,I}) + 3 B_c D_*^{-59}`. Here `Z̃` on `J` is the frozen evaluation `Σ_{m alive} c_m Ψ_{J,m}`, which equals `R_{l,G} Z_{l,G,u_b}` on `J` by `frozen_coeffs`; `B_c` bounds `Σ |c_m|²`, and `B_c = 4 D_*² C_F` there. The pieces of the bound:
+  - almost orthogonality of the `A_D` (lower half, `component_sizes`);
+  - the coefficient floors, at most `D_*^{-59} B_c` (blueprint: `C D_*^{-58}`);
+  - complementary pairing against the range of `P_{F,I}`: `‖P_{F,I} Z̃ - T_F‖² ≤ 4 D_*^{-397} B_c |I|` (blueprint: `D_*^{-190}`).
+  The blueprint's `+ D_*^{-50}` is `12 C_F D_*^{-57} ≤ D_*^{-50}`, a `D_*` covering choice.
+- Schedule hypotheses are those of `linear_energy`: `Λ ≤ D_*`; the Fourier norm and tail of the squared gauge are covered by `D_*`; inverse private weights `≤ D_*`; at most `D_*` alive modes.
+- `side_comparison` and `side_comparison_block`: for any family of height-`h` CURRENT components (the successful ones), `Σ_F ‖V_F‖² ≤ 2 ‖1_I V_{l,G,b}‖²`. This uses:
+  - `restrict_blockSide_actual`: the block side subtotal restricted to `I` is the side synthesis on `I`;
+  - `sum_sideEvents_eq`: the side events partition the side modes, by `core_iff_of_minimal_pre`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-15T00:08:28-04:00
+
+prop:tops (`eq:top-count`, lines 2212-2229), instantiated on the successful components and their hereditary representatives. File: TrilinearHT/Auto/Sec13_5RepresentativesComponentSizesFirstTops.lean.
+
+Representatives and nodes:
+- `comp_cross_sep` (via `pred_nested_of_link`): the stronger cross-mode conclusion. Comparable nodes of one type class with different representatives have no mode of the earlier component equal or CURRENT-joined to a mode of the later component in the later graph.
+- `succModes` and `succNodes`: the successful components (those containing a core mode good at `h`), one node per component, namely the good mode of least index. `exists_succMode` shows every successful component has its node; `succNodes_props` gives the node hypotheses.
+- `exists_repClass`: for every height `h ≤ J_*` and type, the hereditary representatives of `typed_representatives_sched` on these nodes. Blocks are `K`-spaced and stabilization comes from `blockComps_stab`.
+- The earlier `classNodes` needed a class-mode map into possibly empty alive sets, so it is not used here.
+
+First tops (lines 2221-2222):
+- `firstTops`: the maximal use cells of a representative above the threshold. `RepClass.pair_sep`: tops of one representative do not overlap; overlapping tops of different representatives have disjoint component mode sets separated at `(Ξ/2)/|I|` on the smaller cell. `RepClass.topRow_injOn`: distinct tops have distinct rows.
+- `RepClass.firstTops_rows`: `lem:mode-rows` with the path counts (`tops_rows_path`, `ptSet`) in place of the global mode count; Bessel constant `2`.
+
+Energy of the tops (lines 2222-2228, `tops_energy`):
+- Decision cells are the containing `u_b`-cells. They are active and certified (`retained_decision` with `A.AncClosed`, the precedent of lem:variation), so `lift_composition_dep` and `liftConst_le_G0` give `Σ_tops ‖P_{F,I} Z̃‖² ≤ 2 G₀ |R|`.
+- Side part: `RepClass.tops_side`, `Σ_tops ‖V_F‖² ≤ 2K Σ_{G,b} ‖V_{l,G,b}‖²`, by `side_comparison_block` at each cell and disjointness at each depth. `eq:linear-energy` then applies; `linear_energy` now also exports its coefficient bound `Σ |c|² ≤ 4 D_*² C_F`.
+- Absorption: `RepClass.tops_absorb`, using `eq:size-comparison` and `6 B_c D_*^{-59} ≤ σ₀`.
+
+Cuts and counts (line 2229):
+- `tops_cut_many`: first crossings of the partial top counts for all choices at once, with cost split evenly over the `N` choices.
+- `exists_firstTop_above` and `card_reps_le_firstTops`: each used representative has a first top above its use.
+- `first_top_count` and `first_top_count_main`: from the hypotheses of `linear_energy`, the representatives, `24 C_F ≤ D_*^{55}` and finite sets of types and of thresholds `σ ≥ D_*^{-1}`, there are frozen coefficients, representative classes and cuts of length `≤ ρ|R|` such that off the cuts `Σ_G |A_G| ≤ min(D_*, M N/(ρ σ²))`. Here:
+  - `M = 24 (2 G₀ + 2 K V₀)`, with `V₀` the linear-energy constant;
+  - `N` is the number of choices of height, type and threshold. It is polynomial in `P, k` because heights are at most `J_*` and types and dyadic thresholds number `O(log D_*)`, with `log D_* ≤ P^C`;
+  - `G₀ = P^{o(1)}` (budget rules).
+- `usedReps_le_Dstar`: the `D_*` bound for every threshold, which covers the bins with `σ < D_*^{-1}`.
+- `compSize_le`: `σ_F² ≤ 12 (‖Z̃‖²_{2,I} + 2 ‖V‖²_{2,I}) + 3 B_c D_*^{-59}` (projection contraction and `eq:size-comparison`). With the `P^C` sizes of `Z̃` and `V` on uses (line 2164, side caps), component sizes are at most `P^C`, and bins above that are empty. `eq:side-cap` is `side_cap_states`.
+
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-15T00:20:24-04:00
+
+Lines 2236-2237 (the helper rank on the side states). File: TrilinearHT/Auto/Sec14_1TransferPairedDefects.lean.
+- `sideState_restrict_base`: the side state `S_{l,G,s} = (Z_s)_phys - (Z_{u_b})_phys + (V_{l,G,b})_phys` (`sideState`), restricted to an active cell, is an admissible helper base. Its template coordinates vanish ("their extra private directions are distinct from the fresh helper directions"), and it is supported on the cell.
+- `helper_sides`: for fixed degrees there are `C` and `k₀` with the following property. For `k ≥ k₀`, take every attempt whose closure data are `exp(k^{O(1)})` (as in `closure_poly`), with at most `exp(k^c)` groups, and with room for `exp(k^C)` helper insertions per active cell in the main columns. Consider the helper tests of rank `L + 5`: all target masks and named histories (`HelperName`), on the whole side states of the groups. They close with helper templates such that:
+  - every main test of ranks at most `L + 4` still passes;
+  - the ball and cumulative filters are unchanged;
+  - the helper insertions per cell number at most `n_{L+5}`, with `log n_{L+5} ≤ k^C` ("the helper count still has logarithm `k^{O(1)}`, independently of the mode count").
+  The bases are entire side states, never individual modes, heights or amplitudes. The proof combines `closure_poly` with `helper_instantiation_main`.
+- The room in the main columns, `|cat_l| + |cells| exp(k^C) ≤ M_c`, is the choice of `M_c`, as for the main closure.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-15T01:46:26-04:00
+
+Lines 2252-2256 (far bands) and eq:transferred-main, lines 2257-2263, on the main columns. File: TrilinearHT/Auto/Sec14_1TransferPairedDefects.lean.
+
+Moved declarations (no mathematical change). The transfer section precedes the short-block file, so these generic lemmas moved from Sec14_2bShortBlockSummation.lean to Sec14_1: `opAvg_const`, `chainDefectSel`, `chainDefectSel_le`, `operatorComplementProduct_succ_shift`, `rankMerge_length`, `posExpand_mem_length`, and `chainDefect_split` from Sec14_5CommonCutsHullMaximaSummation.lean.
+
+Merged transfer steps on the main columns (lines 2240-2252):
+- `filtAvgM`, `toStepM`, `mergeStepsM`: helper pads of rank `r_H` on the side slot, main pads of the filter rank on the complement slot.
+- `chainVal_mergeStepsM_c/d`, `chainSide_mergeStepsM`, `mergeStepsM_decomp`: ports of the template-catalog versions.
+
+Far bands (lines 2252-2256):
+- `far_stepM`: one step, from `far_term_main`.
+- `chainPair_farM`: a whole merged chain. The main levels `β_m(r)` depend on the removed rank `r` and the coefficient sums `C_o(r')` on the outer rank `r'` of the other complement (`r' = 0` when it is unfiltered). The step bound is needed only for `r' < r`: by `rankMerge_decomp` and distinct ranks across the two slots, the other complement has a strictly lower-rank outer primal (line 2241).
+- Leaf ingredients:
+  - `slotFiltM`: the ball filter of the role level, then the cumulative layers. `slotFiltM_suffix_cons` and `slotFiltM_suffix` give the suffix structure.
+  - Neighbor closure: `filtOK_cum` (triangle inequality) and `filtOK_ball` (lem:masks, at pads below `H_max` by `bbase_le`).
+  - Sources of the other complement: `srcDataM_basic` (its available original columns, coefficient sum `D √(2D) S`) and `srcDataM_filt` (`avg_expansion`, coefficient sum `D √N S`).
+  - Main tests of a removed filter: `chain_passM` (`layer_residOK` on single-target named tests).
+  - Helper tests of a step: `helper_stepPass` (`avg_history_pass` on the named helper tests on the fixed base).
+- `leaf_farM`: the far defects of a chain pair are at most `#steps (P + 1)² 8 τ₃ S_z² S_a S_b` (`far_numeric`), under three conditions:
+  - `τ_r D √n_{r-1} ≤ τ₃` for the main thresholds. `catThreshold_cancel` shows the closure thresholds satisfy this, since `colBudget ≤ D` (line 2256: the coefficient factor is canceled by the denominator in eq:catalog-test).
+  - `τ_H D √n_{L+4} ≤ τ₃` for the helper threshold.
+  - `τ₂ D² √n_{L+4} √N_H ≤ τ₃` ("fixed powers of the main and helper budgets were included before choosing `τ₂`").
+- `leaf_far_search`: the chain hypotheses hold at the leaves of the guarded search:
+  - splits lie in `[1, L]` (`leafAt_layers_ge`, `posExpand_mem_sub`);
+  - splits are distinct across slots (`leafAt_layers_distinct`);
+  - ball levels are distinct (`SearchLeaf.role_injective`);
+  - there are at most `2 fuel + 2` steps.
+- From `τ₂`-bound to `D^{-C₃}`: with `τ₃ = D^{-C_τ}`, polynomially many steps, `(P+1)²` band pairs and `S_z` bounded, the bound is `D^{-C₃} S_a S_b` once `C_τ` is large. `C_τ` is fixed at assembly, as in prop:localize.
+- Assembly obligation: the helper threshold `τ₃/(D √n_{L+4})` needs path counts `n` that dominate the main label counts at rank `L + 4`. One sequence from `closure_poly` for both the main and the helper closures meets this, because its `K_t` covers both name types.
+
+eq:transferred-main (lines 2257-2263):
+- `leaf_transferM`: the form of the sides and the whole leaf outputs is the signed sum over pairs of positive chains of the transferred main term plus `chainDefect`. `chainDefect_split` separates the near and far band pairs.
+- The side operator `D_{a,s}`: by `chainSide_mergeStepsM_eq` it is the product of the helper averages of the steps. By `leaf_steps_le` it has at most `2 fuel + 2 = O(log L)` factors.
+- Restoration: `Ucol` is the basic side `U_l` in the main columns. `basicIn_add_Ucol` shows `B_l + U_l` is `Y_l` on the cell. `leaf_transferred_mainM` gives `H(D S_a, S_b, Y_c, Y_d)` minus three corrections, each with an extra basic side `U`, plus the defects.
+- Line 2263:
+  - `slotFiltM_suffix_shared` and `slotFiltM_cum_inner`: a remaining complement either has the positive ball outermost or is the same for every group, and a removed cumulative filter has only shared layers inside.
+  - `terminal_band` splits the terminal band.
+  - `chainDefectSel_eq_sum` (Sec14_3) arranges the sum at fixed offsets.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-15T01:59:31-04:00
+
+Line 2373 and lines 2382-2384 (power costs, the transferred main term, restoration errors). File: TrilinearHT/Auto/Sec14_3PowerCostsFrozenComplements.lean.
+
+Line 2373:
+- `poly_budget_caps`: at most `P^{C₁}` families of nonnegative cell weights, each with integrated budget at most `P^{C₂}|R|`, are capped simultaneously at `P^{C₁+C₂}/ρ` by one first-crossing cut of length at most `ρ|R|` (from `side_caps_of_budgets`, i.e. lem:cuts).
+- The sizes `P^C|R|` of the individual budgets named after line 2373 are proved in their own rows (frozen complements line 2386, flags line 2388, stack energies lines 2393-2399).
+
+Lines 2382-2384, on the main columns:
+- Integrating the path caps and the fourth strong factor are covered by `power_cost_bound` and `prod_four_le_of_three` (generic).
+- `norm_Λc_le_sizes`: the main-column cell form is bounded by `C_κ` times the product of the normalized sizes.
+- `Λc_pair_smallM`: with a pair-small pair in the slots `c, d`, the cell form is at most `τ S_a S_b`.
+- `main_restoredM`: the transferred main term with `Y_c = B_c + U_c`, `Y_d = B_d + U_d` (`Ucol`, `basicIn_add_Ucol`) is at most `η S_a S_b`. Pair-smallness of `(Y_c, Y_d)` at the active cells is an input from the exported base data: the final base-data theorem gives `PairSmall ... (Y I s) (Y I s') (2 η₀)` for `s ≠ s'`.
+- `restore_corrM`: a restoration correction is at most `C_κ S_a S_b S_u S_v`, with one of `u, v` a basic side `U`.
+- `leaf_main_groupsM`, with `norm_chainSide_mergeStepsM` (the helper product is a contraction) and `group_pair_le` (Cauchy-Schwarz in groups): at one cell and chain pair, the restored main terms of the current groups sum to at most `η √(Σ_G ‖x_G a‖²) √(Σ_G ‖x_G b‖²)`. With path caps, `pair_small_main_bound` gives the absolute cost `η √(C_a C_b) |R| = η P^C |R|`.
+- `leaf_corr_groupsM`, with `group_triple_shared_le`: the restoration corrections of the groups sum to at most `C_κ √(Σ_G ‖x_G a‖²) √(Σ_G ‖x_G b‖²) S_u S_v`. This is three strong factors with the group sum taken first; `power_cost_bound` gives `eq:three-sides`.
+- The numerical transfer errors are the far band defects of `leaf_far_search`: `8 τ₃ S_z² S_a S_b` per step and band pair.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-15T02:24:32-04:00
+
+Lines 2386 and 2388 (frozen complements and flags) on the main columns. File: TrilinearHT/Auto/Sec14_3PowerCostsFrozenComplements.lean.
+
+Single-mask certified variation (lem:variation for an individual pad choice, line 1871: "couple individual pad choices across times"). The chain of `basic_variation` is generalized from the averaged ball output to one outer main projection with an arbitrary inherited mask `M_G`:
+- `gOutM`, `gOutM_commute`, `gOutM_rows_blk`, `main_blkM`.
+- `main_variationM` comes from `certifiedVariation_gen` in place of `certifiedVariation_avg`. The whole-range conditions are hypotheses `hwr1`, `hwr2` with constant `C_w`.
+- `main_jointM`, `main_variation_basicM`, `basicOutM`, `out_restrictRM`, `basic_variationM`, `basic_variationM_le` (`G₀ · 4|R|` for `C_w ≤ 2`).
+- Instances:
+  - `basic_variation_ballP`: one ball pad of the groups. The whole-range conditions are `main_wr1` and `main_wr2` for that pad, with `C_w = 1 + τ N colBudget²`. This gives joint group budgets for positive ball ranges.
+  - `basic_variation_cumP`: one cumulative pad, shared (a single family, `C_w = 1`). This gives shared budgets for group-independent histories.
+- Bridges: `basicOutM_ball_restrict` and `basicOutM_cum_restrict` restrict the global pad outputs to an active cell; there they equal the cell pad projections of the layered history of the basic input.
+
+Line 2386:
+- `band_stack_le`: the current complementary band stack at a cell has total square at most `‖basic input‖²` (pad bands are orthogonal, `padFamC_bessel`; inner histories are contractions). The other complement is a contraction (`norm_applyAll_filtAvgM_le`).
+- Differences from the block start have integrated square budgets `G₀|R|`:
+  - for each ball pad, jointly over groups (`basic_variation_ballP`);
+  - for each cumulative pad, shared (`basic_variation_cumP`);
+  - the shared identity part of the terminal band (`terminal_band`, `slotFiltM_suffix_shared`) via `basic_history_variation_G0`;
+  - the other complement with its ball outermost via `basic_variation_G0`, or shared via `basic_history_variation_G0`.
+  The polynomial number of bands (`P + 1`) and the `O(K)` overlap of the intervals `[b, s]` (one disjoint family per offset, `sum_le_of_coloring`) multiply these bounds.
+
+Line 2388:
+- `freeze_split` and `freeze_four` (generic): the freeze errors and the split of an unbounded frozen complement.
+- `flag_ind_le`: the length-weighted indicator of a frozen value above twice the current bound `C₀` is at most `‖u - v‖² / C₀²`.
+- `flag_energy_le`: flags set at a cell or at an ancestor at most `K` depths above have total length at most `K C₀^{-2} Σ_J ‖u_J - v_J‖²` (`flag_propagation_le`). With `norm_sq_restrict_biUnion` this is the variation sum over the certified ancestors.
+- Ancestors of uses carry downstream certificates (`Cert.mono`). Ancestor closure of the active cells (`AncClosed`) is part of the final base-data theorem.
+
+Assembly obligation: the current uniform bound `C₀` is the normalized size `S_z` of the basic inputs, as in `attempt_localization`, where it is a hypothesis. A bound on the main-column norm of `basicIn` by `D^{O(1)}` must be supplied at assembly.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-15T02:55:16-04:00
+
+eq:stack-energy (lines 2393-2399), the rolling base terms (lines 2415-2419) and the configuration count (line 2419), on the main columns. File: TrilinearHT/Auto/Sec14_4FixedStacksTwoVaryingSides.lean.
+
+Global helper objects in the main column space:
+- `gProjC`: a global depth projection of the main base of a catalog with an inherited mask, conjugated by the relabeling of the relevant labels (`colRelabel`, an isometric embedding).
+  - It is a projection (`isStarProjection_conj`), nested in the pad (`gProjC_mask_nested`) and commutes with restrictions to coarser cells (`gProjC_commute`).
+  - On an active cell it agrees with the cell main projection on inputs in the range of the relabeling (`gProjC_bridge`); physical vectors lie in that range (`physMain_mem_range`, `colRelabel_physEmbed`).
+- Transfer descriptors:
+  - `slotDescM` and `stepMaskM` give the cell masks of a descriptor; `slotFiltM_eq` and `rankMerge_slotFiltM` show the merged slot filters of a cell are the merged descriptors with their cell masks.
+  - `mergeDescM` merges the descriptors of the two slots.
+  - `hMaskM` is the helper mask of rank `L + 5` (`mainMaskT_labels_mono` gives pad monotonicity).
+- Global helper prefix and band family:
+  - `gPreR`: the global history of the helper averages of the prefix descriptors.
+  - `gBandR` and `gBandC`: the pad family of the current step after the prefix, conjugated into the main columns.
+  - `gBandC_bessel`: the bands are Bessel ("on the banded side pay at most `P + 1` indices").
+  - `gBandC_commute`: they commute with restrictions.
+  - `gBandC_jump`: the jumps of a fixed input over disjoint intervals cost `(|D| + 1) Σ_{m ≤ |D|} C_m²` (`globHist_jump` with the current pad as a top layer of constant pad family; `layerOp_congr`).
+  - `gBandC_bridge`: on an active cell the global band family acts as the cell helper pads after the cell helper prefix, i.e. on the actual transfer values.
+
+eq:stack-energy (lines 2393-2399):
+- `varCap_basicOut`: the physical global coarse outputs of a basic slot for a set of groups of one color have variation capacity `G₀ · 4|R|` (`basic_variation_G0`).
+- `bandStackM_all`: the banded side. The generic `bandStack_all` is instantiated with `gBandC`, giving the bound `N (2B + 16 (P+2) C_j E_W + 16 (P+2) N C_j N B) + E_W`.
+- The untouched side is the generic `posStack_all` with the same capacity and block energy (`N B + E_W`).
+- With `B = 4 G₀ |R|`, `C_j` and `E_W` of compression-loss type and `N = O(log K)` levels, these are the bounds `P G₀ |R|` and `G₀ |R|`, logarithms and configurations absorbed in `G₀`.
+- The stacks are built from the fixed global objects before any cut.
+
+Lines 2415-2419 (rolling base terms):
+- The block input is `W = Z_b - Z_{u_b} + V_{G,b}` (`sideState` at the block start). Its energy `E_W` on the block-start ancestors of the uses is `sideState_budget`: `rolling_budget` (lem:variation on `[u_b, b]` with bounded overlap, the zero convention before the attempt) and the linear-side energy `linear_energy`.
+- The certificates are `Cert.mono` on ancestors; ancestor closure is part of the final base-data theorem.
+
+Line 2419:
+- `leaf_chain_counts`: at most `2^fuel` leaves and `2^fuel` chains per slot.
+- `leaf_steps_le`: at most `2 fuel + 2` steps.
+- `config_count_le`: with `fuel, N ≤ c X`, `X = 1 + log 2k`, the total number of configurations is at most `exp((7c + 6) X²)`, a constant of the type of `G₀`.
+Full `lake build` passed (9081 jobs, no warnings); standard axioms.
+
+## 2026-10-15T03:44:08-04:00
+
+Lines 2426-2443 (hull mass, joint caps of the actual stacks, `eq:near-band`) on the main columns. File: TrilinearHT/Auto/Sec14_5CommonCutsHullMaximaSummation.lean.
+
+Moved generic lemmas (no change of statement):
+- `exceptional_roots_le`, `two_hull_caps`: from Sec16_1 to Sec14_5 (used by line 2428).
+- `stackDens` and its lemmas, `useHull` and its lemmas, `unPhase`, `gluedStack_norm_sq_mono`, the depth stacks, `energyAverage_band_le`/`_single_le`, `gluedStack_sum_mono`, `bandStack_outer`, `posStack_outer`, `near_real`: from Sec16_1 to Sec14_5. They are generic in the active setup and the column type.
+
+Line 2426 ("`Σ_ν |Ω_ν| ≤ M₀ |R|` by active multiplicity, the main group count, and the number of configurations"):
+- `hull_mult_le`: if the uses of `ν = (G, configuration, block)` lie in a cell set `Act` of point multiplicity `M_p`, carry the group `G` (`fp.groupsAt`), and distinct blocks have disjoint uses, then every point lies in at most `|configurations| M_p D` uses.
+- `hull_mass_main`: with `hull_mass_le`, `Σ_ν |Ω_ν| ≤ |configurations| M_p D |R|`.
+- `hull_mass_active`: for `Act` = active cells, `M_p` is the path multiplicity of `active_count`, uniform in the setup and in the depth.
+- Departure from the superseded attempt route: `near_band_cut` bounded the hull mass by the number of indices, which grows with the number of blocks, i.e. with the depth. The new route uses the point multiplicity, as in the blueprint.
+
+Line 2428 (joint caps of the actual stacks):
+- `useHull_max_sub`: the maximal hull cells are use cells.
+- `near_band_cutM`: two hull caps `C_{ρ/2} E (1 + log(2 + M_u))` from `two_hull_caps`, with the hull mass `M_u |R|` taken from the point multiplicity `M_u` of the uses.
+- `near_band_stacksM`, `near_band_positionsM`, `near_band_positions_UM`: the main-column ports of the configuration and position layers. The hull mass of the indices `(m, k_a, k_b)` is `|K_a| |K_b| M_u`.
+- `near_band_actualM`: the actual stacks.
+  - Banded side: the global helper bands `gBandC` of the step after its helper prefix, applied to `S_a = Z_a - Z_a(b) + W_a`.
+  - Untouched side: `S_b`.
+  - Energies: `bandStack_outer`/`posStack_outer` (eq:stack-energy), with the Bessel, commutation and jump properties of `gBandC` proved, not assumed.
+  - Use multiplicity: `hull_mult_le` gives `|Ω| M_p D`.
+
+`eq:near-band` (lines 2438-2443):
+- `near_band_criticalM`: for a near offset `|o| ≤ 2`, the transfer coefficient `o/P` times the near-band sums is at most `4 C_q (1 + C_N) (1 + log(K+2)) (K+2)^{2(q-2)/(q-1)} (64 B_c B_d) G₀ P^{-1/2} |R|`, with `G₀ = C_{ρ/2} (N+1) (1 + log(2 + (N+1)² |Ω| M_p D)) √(Γ_a Γ_b)` (`near_coeff_le`: `(2/P)(8/7)√(P+2) ≤ 4/√P`).
+- `stackEA_le`: the banded stack energy is `(P + 2)` times a `P`-free quantity, which gives `Γ_a`.
+- The finite-depth constant is now `C_N` for any `N_d ≥ K` (the original depths). This resolves the `C_K` item of entry 12 of the 2026-10-14 discrepancy list.
+- `B_c, B_d` are the unflagged complement bounds; the flags and freeze errors are the power-cost rows.
+
+Full lake build passed (9081 jobs); standard axioms.
+
+## 2026-10-15T06:03:13-04:00
+
+Lines 2375-2394 and 2454-2456 (third strong factors on the main columns). File: TrilinearHT/Auto/Sec14_5bExportedSideEstimate.lean.
+
+Discrepancy found and corrected:
+- The superseded `third_budgetM` (with `frzE`, `strTh_sqM`) bounded the third strong factor of each group by its own square and summed over the groups at a cell.
+- This counts the `U` restoration energies and the shared (cumulative) frozen histories once for every group at the cell.
+- Blueprint line 2263 says "a shared history will not be counted once for every group", and line 2375 says "a third factor is shared or bounded by its group square sum".
+- The number of main groups at a cell is only bounded by a power of `D_base`, not by `P^C`. So the old accounting could not give the `P^C |R|` budget.
+- These three declarations are removed. Nothing else used them.
+
+New route (Sec14_5b):
+- `two_two_leafM` and `leaf_two_two_boundM` now take a cell value `C₃` that bounds the third factor of every group at the cell, instead of a per-group square cap.
+- `strTh_le_SG`, `third_le_SG`: the third factor is at most a shared part (`thS`: `U` restorations, identity outputs, pads of cumulative steps, other complements with cumulative histories) plus a group-indexed part (`thG`: pads of ball steps, other complements with a ball).
+- `Xo_indep`, `pYe_indep`, `dFe_indep`, `thS_indep`: the shared parts do not depend on the group. The merge order gives this: `mergeDescM_after` says later descriptors of a slot are cumulative.
+- `band_split`: the complement bands of an offset are bounded by four times the pad and identity freeze energies.
+- `unfl_of_noflag`, `unfl_ind_le`: flags split into block flags of the three energies.
+- `flag_prop`: block-flag propagation costs `K / c`.
+- `frz_varcap`: block-freeze differences cost `K` times a variation capacity.
+- `C3v` is the shared part plus the root of the group square sum of the group part.
+- `third_le_C3v`, `C3v_budget`, `C3v_budget_cap`: the integrated bound. The `U` energy is counted once per cell. The freeze budgets come from the shared variation capacities and the joint group variation capacities of the outputs.
+- `leaf_two_two_capM`: the leaf two-side estimate with this budget.
+
+Full lake build passed (9082 jobs); standard axioms.
+
+## 2026-10-15T11:17:23-04:00
+
+Row eq:side-windows (lines 2549-2560). File: TrilinearHT/Auto/Sec15_2bTorusSizeFourierTests.lean.
+
+Statements:
+- `three_core_averaged_of`: the generic three-core bound with the fresh side offset averaged (factor 2 of `offset_average_form`). The side cutoff and the gauge multiplier are truncated afresh at each offset, the core cutoffs once.
+- `SideInput.three_core_test`: on a leaf cell of the side states, a three-core tuple with side role `l` passing the three-core test, and any side column `X` in slot `l`. The cell form is at most twice the sum of: the torus-form and gauge errors; the shells above `2^{I_w}`; the coset errors; and `Σ_{Λ = 2^i ≤ 2^{I_w}} C_{J,A} μ ν^{-J} Λ^{-(A+1)} W Π_{j≠l} (a'_j + τ_c Σ_{F_j}|α|) b_Λ` with `b_Λ² = E_ρ Σ_{k ∈ threeWin(Λ)} |Ŝ'_ρ(k)|²`.
+
+Departures (constants and formulation only):
+- Window box `|n|_∞ ≤ 16 B'_h` instead of `B'_h`. The coset references are expansion frequencies (multiplier, cutoff and shift indices summed), which reach `9 B'_h`. The counting section only uses `|n|_∞ ≤ C B'_h`.
+- Decay `Λ^{-(A+1)}` for any fixed `A ≥ 1`, with constant `2^{A+4} C_{J,A}`, instead of `Λ^{-J}` (the Schur bound "with `A` increased").
+- Sign convention: the normalized coefficients are `∫_I S'(y) e(k y/r) dy`, so the windows read `|k - r(Q + n·ξ)| ≤ 2Λ` (the blueprint's `|k + r(Q + n·ξ)|` is for `e(-k y/r)`).
+- `S'_ρ = e(-c_l p_ρ) S_phys` without the factor `ζ^{ρ_l}`. The cutoff is carried by the truncated core product (its truncation has sup at most `1 + τ_c`); the expectation normalization is the factor 2. Since `|ζ| ≤ 1`, Parseval for each offset is unchanged (`window_energy_integrable`: `Σ_k |Ŝ'_ρ(k)|² ≤ r ∫_I |S_phys|²`).
+- The core sizes enter as `a'_j + τ_c Σ_{F_j}|α|` and the multiplier as `W = (1 + τ_m)(1 + τ_c)` (no `|box|` or `√|N|` factor). The truncation parts are left for eq:core-numerical.
+- `I_w` is free; the shells above `2^{I_w}` are bounded by the ordinary `L²` pairing (cell Bessel, `three_core_main_l2`): `2^{A+5} C_{J,A} μ ν^{-J} 2^{-(I_w+1)(A+1)} W Π (a'_j + τ_c Σ|α|) (r ∫_I |S_phys|²)^{1/2}`. The blueprint's cut at `U_0` is the choice `2^{I_w} ≈ U_0`.
+- Far cosets: `H = T/L_{h-Δ} - U_0 ≥ 4` from `L_{h'}(U_0 + 4) ≤ T` (`Tt_ge_U0_four`).
+- The tiny/huge gap may come from a good component of any role `j₀` in the common chart (`three_cosets` generalized from role 0). With side role `l = 0` the gap is that of a successful core component, as in the blueprint ("a successful component contains a nonexceptional primary").
+
+Other changes: the duplicate `card_windowSet_le` in Sec15_4 (identical statement) is removed. Six Lean files had been rewritten with CRLF line endings by a scripted edit; they are restored to LF (no content change).
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T12:42:49-04:00
+
+Row eq:core-numerical (lines 2562-2567). File: TrilinearHT/Auto/Sec15_2bTorusSizeFourierTests.lean (gaugeErr in Sec15_1).
+
+Statements:
+- `SideInput.four_core_tuple_bound`: a four-core tuple on a leaf cell of the side states. The cell form is at most `|Ŵ_s(r q', r t')| Π_j a'_j` if the tuple passes the four-core test (`0` if it is discarded), plus `fourErrC κ J · D_*^{-100} Π_j Σ_{F_j} |α|`.
+- `SideInput.three_core_tuple_bound`: a three-core tuple with side role `l`. The cell form is at most `threePrin` (the principal window sum with the true torus sizes) if the tuple passes, `0` if it is discarded, plus `threeErrC κ J A · D_*^{-100} Π_{j ≠ l} Σ_{F_j} |α| · σ` with the local side size `σ = (r⁻¹ ∫_I |S_phys|²)^{1/2}`.
+- `SideInput.pattern_error_first_success`: the first-success weighted sum of tuple errors over trial counts, assignments, words and final heights equals the plain sum over the component tuples (weight one), which is at most `C Π_{core l} Σ_K Σ_{m ∈ K} |α_m| Π_{other l} s_l`.
+- `core_numerical_integrated`: the integrated bound `m C e^{-k} |R|`.
+
+Formulation and departures:
+- The gauge multiplier is taken with the enlarged cutoff `δ/2`, where the gauge identity is exact (`gauge_factors_eq_mult_exact`, entry 2026-10-14T16:53:10). `gauge_torus_approx_of` and the three/four-core chain now carry `gaugeErr d δ δ''`, which is `0` at `δ'' = δ/2`; the earlier thin-layer error `8 d δ'' R_δ` is not small at that choice.
+- The budgets of line 1944 (truncation tails at most `D_*^{-300}`, full Fourier norms of the multiplier and the cutoffs at most `D_*`) are hypotheses of the tuple bounds, as in the earlier rows.
+- Discarded four-core tuples without reference: every expansion frequency `(P₁, P₂)` lies in the full box `B'_{h-Δ} = D_*^5 E_{h-Δ}` (shifts at most `D_* E`, cutoff and multiplier indices at most `E`; `(10 + 6 D_*) E ≤ D_*^5 E` for `D_* ≥ 2`, `expP_fullBox`). Hence `ν ≥ U₀` for all of them and `|Ŵ_s| ≤ C₁ U₀⁻¹`.
+- Discarded three-core tuples without reference: every anchored frequency `T_l + (P₂ - l P₁)·ξ` has `|r ·| > U₀`, again by the full box. In positive chart dimension the averaged bound is applied with no near coset. In dimension zero there is a single constant coset; the reference value is chosen so that `|r β₀| ≥ U₀` in both cases (`three_core_noref_of`). In this case the core torus sizes are bounded crudely by `(1 + τ_c) Σ|α|` on the full torus, which is enough for an error term.
+- Constants: `fourErrC κ J = 104 ‖w‖ + 31 C₀ + 2 C₁ + C_near + C_J`, `threeErrC κ J A = 208 ‖w‖ + 2^{A+12} C_{J,A} + 2 C_near' + 96 C_J`. Here `J ≥ 1` (four cores) and `J ≥ 3` (three cores; the far tails `(4/H)^{J-2}` need `J - 2 ≥ 1`). The window range of the three-core principal quantity satisfies `2^{I_w+1} ≥ U₀` ("shells above `U₀` are negligible").
+- The integrated sum: "the path multiplicities, coefficient sums, and retained size caps make their integrated sum `O(e^{-k}|R|)`" is formalized with these quantities as fixed powers of `D_*` (coefficient sums `≤ D_*^a`, side sizes `≤ D_*^b`, length-weighted group multiplicity `≤ D_*^c |R|`, `4a + b + c ≤ 99`) and `D_* ≥ e^k`. The blueprint leaves this exponent accounting implicit (line 1934: `D_*` covers coefficient sums on normalized cells and the counts along paths; retained sizes are `P^C` with `P ≤ e^k ≤ D_*`).
+- Generalizations: `four_core_test` and `three_core_test` now need only a reference (the threshold part of the test is used only to decide principal versus discarded).
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T12:58:11-04:00
+
+Row lines 2569-2577 (moments of the core torus sizes over the failure histories). File: TrilinearHT/Auto/Sec15_2bTorusSizeFourierTests.lean.
+
+Statements:
+- `SideInput.role_size_moments`: fix a final upper height `h`, a good mode `m` of a core role `j` (final class `F = F_h(m)`) and an assignment `asg` of the `n` failed trials. Take torus forms of the selected modes `maskSel` for all words `w ∈ H^n`. Then `a'_j(w) ≤ 6 σ_F` and `E_w a'_j(w)² ≤ 36 (2δ_*)^{n_j} σ_F²`, where `σ_F² = compSizeSq` (`eq:component-size`).
+- `SideInput.masked_sizes_moment` (Hölder): `E_w Π_{core j} a'_j ≤ 36⁴ ((2δ_*)^n)^{1/4} Π_{core j} σ_{F_j}`.
+- `SideInput.masked_sizes_moment_exists`: the same with the torus forms provided by `maskSel_torus_form`.
+- `assignment_moments_hasSum`: the sum over the `4^n` assignments and all `n` converges when `4 (2δ_*)^{1/4} < 1`.
+- `SideInput.masked_tuples_empty`: a failure assigned to a non-core role leaves no masked tuples.
+
+Formulation and departures:
+- Constants: `C = 6` in the deterministic bound and `C = 36` in the second moment (from the factor `6` of `eq:torus-size`).
+- The probability bound is applied to each minimal CURRENT component `U ⊆ F` (the summands of `eq:torus-size`). `U` counts as good at a height when all core components of the cell inside `U` are good there. On the upper heights these share their good predicates, so `U` is bad at a proportion at most `2δ_*` (`unitGood_bad_card`). A summand of a word needs its unit to fail at the `n_j` heights assigned to `j`; the other success requirements are dropped (`selComps_sum_le_filter`, `mask_second_moment`).
+- Hölder is taken over the four slots with `m₀ = 4` factors also for three-core patterns; the side slot contributes the factor `1`. The exponent is therefore `n/4` rather than `n/m₀ = n/3` in the three-core case. This is a weaker bound that is still summable; it is used with the smallness condition `4 (2δ_*)^{1/4} < 1` on the "chosen small absolute δ_*" (line 1946). Assignments `Fin n → Fin 4` range over all four slots; those assigning a failure to a non-core slot have empty masks (`masked_tuples_empty`).
+- The shifts of the torus forms are arbitrary functions of the word satisfying `eq:core-torus-form` (`TorusFormAt`). Their existence for every word is `maskSel_torus_form`, from `core_torus_form`.
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T13:36:31-04:00
+
+Row eq:principal-core (lines 2577-2582). File: TrilinearHT/Auto/Sec15_2bTorusSizeFourierTests.lean.
+
+Statements:
+- `SideInput.four_core_principal_bins` (four cores, `Λ = 1`): `‖Λ_I(pattern)‖ ≤ 2⁴/(1 - 4(2δ_*)^{1/4}) Σ_{h∈H} |H|⁻¹ Σ_{bins} C_J 2μ ν^{-J} Π_j 6(2σ_j) N_{h,bin}` plus `Σ_r C_J D_*^{-100} Π_l Σ_{m ∈ r_l} |α_m|`.
+- `SideInput.three_core_principal_bins` (side role `l`): the same with the bins `(μ, ν, Λ = 2^i, b_Λ, σ_j)`, the values `2 C_{J,A} 2^{A+4} (2μ) ν^{-J} Λ^{-(A+1)} (2b_Λ) Π_{j≠l} 6(2σ_j)` and the side size as an extra error factor.
+- Intermediate results: `four_core_principal` and `three_core_principal` (before binning), `four_core_binned` and `three_core_binned`, `anchor_injective`.
+
+Formulation and departures:
+- Anchors. The representatives `a_j` of the final classes are a parameter `anc h j F` with the property `AnchorOK`: every mode of a core component good at `h` lies in `E_{h-Δ}` of the anchor of its class. The hereditary representatives of lines 2172-2183 satisfy it (`selected_in_pred_of_rep`). The tests and frequencies use these anchors; `anchor_injective` shows each tuple of anchors is counted at most once.
+- `N_{h,bin}` counts tuples `p` of final classes of good core components at the final height `h`: those that pass the test, have nonzero sizes (and, for three cores, nonzero window size at the shell), and lie in the bin. The bins are the dyadic bands of `eq:four-tests` and of the sizes. Zero factors contribute nothing (they are excluded from the count).
+- The power of `Λ` in the three-core values is `Λ^{-(A+1)}` with the Schur exponent `A ≥ 1` of `eq:side-windows`. The blueprint's `Λ^{-J}` is the case `A = J - 1`.
+- Constants: `2⁴/(1 - 4(2δ_*)^{1/4})` comes from Hölder over four roles and the assignment series. It requires `4(2δ_*)^{1/4} < 1` (the chosen small absolute `δ_*`). The factors `6` in `6σ_j` come from `eq:torus-size`. The factors `2` come from the dyadic bands.
+- Assignments of a failed trial to the side slot leave no masked tuples, so they contribute nothing (proof of `three_core_principal`).
+
+Full lake build passed; standard axioms.

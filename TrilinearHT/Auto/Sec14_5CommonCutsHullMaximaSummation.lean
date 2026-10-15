@@ -3219,43 +3219,6 @@ end AttemptParams
 
 end ActiveSetup
 
-section DefectSplit
-variable {E : Type*} [AddCommGroup E] [Module ℂ E]
-
-/-- The band defects split into the selected and the remaining band pairs. -/
-theorem chainDefect_split (Λ : MultilinearMap ℂ (fun _ : Fin 4 => E) ℂ) (P : ℕ)
-    (a c d : Fin 4) (x : Fin 4 → E) (yc yd : E) (sel : ℕ → ℕ → Prop) [DecidableRel sel] :
-    ∀ (steps : List (TransferStep E)) (xa : E),
-      chainDefect Λ P a c d x yc yd steps xa =
-        chainDefectSel Λ P a c d x yc yd sel steps xa +
-          chainDefectSel Λ P a c d x yc yd (fun p q => ¬ sel p q) steps xa
-  | [], xa => by simp [chainDefect, chainDefectSel]
-  | st :: rest, xa => by
-    rw [chainDefect, chainDefectSel, chainDefectSel,
-      chainDefect_split Λ P a c d x yc yd sel rest (filterAvg P st.2.1 xa)]
-    have h : ∀ p ∈ Finset.range (P + 1), ∑ q ∈ Finset.range (P + 1),
-        (((p : ℂ) - q) / P) * Λ (Function.update (Function.update (Function.update
-          (Function.update x c (chainVal P true rest yc)) d (chainVal P false rest yd)) a
-            (st.2.1 (p + 1) xa - st.2.1 p xa)) (if st.1 then c else d)
-              (st.2.2 (q + 1) (chainVal P st.1 rest (if st.1 then yc else yd)) -
-                st.2.2 q (chainVal P st.1 rest (if st.1 then yc else yd)))) =
-        ∑ q ∈ (Finset.range (P + 1)).filter (sel p),
-          (((p : ℂ) - q) / P) * Λ (Function.update (Function.update (Function.update
-            (Function.update x c (chainVal P true rest yc)) d (chainVal P false rest yd)) a
-              (st.2.1 (p + 1) xa - st.2.1 p xa)) (if st.1 then c else d)
-                (st.2.2 (q + 1) (chainVal P st.1 rest (if st.1 then yc else yd)) -
-                  st.2.2 q (chainVal P st.1 rest (if st.1 then yc else yd)))) +
-        ∑ q ∈ (Finset.range (P + 1)).filter (fun q => ¬ sel p q),
-          (((p : ℂ) - q) / P) * Λ (Function.update (Function.update (Function.update
-            (Function.update x c (chainVal P true rest yc)) d (chainVal P false rest yd)) a
-              (st.2.1 (p + 1) xa - st.2.1 p xa)) (if st.1 then c else d)
-                (st.2.2 (q + 1) (chainVal P st.1 rest (if st.1 then yc else yd)) -
-                  st.2.2 q (chainVal P st.1 rest (if st.1 then yc else yd)))) :=
-      fun p _ => (Finset.sum_filter_add_sum_filter_not _ _ _).symm
-    rw [Finset.sum_congr rfl h, Finset.sum_add_distrib]
-    ring
-
-end DefectSplit
 
 end Auto
 
@@ -4049,6 +4012,2923 @@ theorem physicalColumnInput_zero {V : Type*} [Fintype V] :
     physicalColumnInput (V := V) (0 : Lp ℂ 2 (volume : Measure ℝ)) = 0 :=
   map_zero ((ContinuousLinearMap.toSpanSingleton ℂ
     (EuclideanSpace.single (none : Option V) (1 : ℂ))).compLpL 2 volume)
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+/-- Blueprint lines 2839-2840 ("choose their thresholds so the union of exceptional roots has
+length at most `|R|/4`") with path-packing line 429 ("for several rules take maximal cells in
+their union and add their length bounds"): finitely many cut families of lengths at most
+`ρ_i |R|` with `Σ ρ_i ≤ ρ` have maximal union cells of total length at most `ρ |R|`. -/
+theorem exceptional_roots_le (G : RealDyadicGrid) {ι : Type*} (T : Finset ι)
+    (F : ι → Finset (ℤ × ℤ)) (ρs : ι → ℝ) (root : ℤ × ℤ)
+    (hF : ∀ i ∈ T, dyadicRootLength G (F i) ≤ ρs i * dyadicGridLength G root.1) {ρ : ℝ}
+    (hρ : ∑ i ∈ T, ρs i ≤ ρ) :
+    dyadicRootLength G (maximalDyadicCells G (T.biUnion F)) ≤ ρ * dyadicGridLength G root.1 := by
+  classical
+  have hw : ∀ c : ℤ × ℤ, 0 ≤ dyadicGridLength G c.1 := fun c => (dyadicGridLength_pos G c.1).le
+  calc dyadicRootLength G (maximalDyadicCells G (T.biUnion F)) ≤
+      dyadicRootLength G (T.biUnion F) :=
+        Finset.sum_le_sum_of_subset_of_nonneg (maximalDyadicCells_subset G _) fun c _ _ => hw c
+    _ ≤ ∑ i ∈ T, dyadicRootLength G (F i) := finite_union_weight_le T F _ hw
+    _ ≤ ∑ i ∈ T, ρs i * dyadicGridLength G root.1 := Finset.sum_le_sum hF
+    _ = (∑ i ∈ T, ρs i) * dyadicGridLength G root.1 := by rw [Finset.sum_mul]
+    _ ≤ ρ * dyadicGridLength G root.1 :=
+        mul_le_mul_of_nonneg_right hρ (dyadicGridLength_pos G root.1).le
+
+/-- Blueprint lines 2841-2843 ("the root packing ... gives total length at most `4|R|/3`; on a
+finite tree this recursion terminates, so a retained-attempt estimate sums with this fixed
+factor"): if each restart root `c` of generation `k` contributes at most `A |c|` and has
+exceptional children of total length at most `|c|/4`, then the contributions over all restart
+generations sum to at most `(4/3) A |R|` (for any number of generations). -/
+theorem restart_attempt_sum (G : RealDyadicGrid) (root : ℤ × ℤ)
+    (generation : ℕ → Finset (ℤ × ℤ)) (children : ℕ → ℤ × ℤ → Finset (ℤ × ℤ))
+    (hzero : generation 0 = {root})
+    (hnext : ∀ k, generation (k + 1) ⊆ (generation k).biUnion (children k))
+    (hchild : ∀ k c, c ∈ generation k →
+      dyadicRootLength G (children k c) ≤ 1 / 4 * dyadicGridLength G c.1)
+    (contrib : ℕ → ℤ × ℤ → ℝ) {A : ℝ} (hA : 0 ≤ A)
+    (hcontrib : ∀ k, ∀ c ∈ generation k, contrib k c ≤ A * dyadicGridLength G c.1) (n : ℕ) :
+    ∑ k ∈ Finset.range n, ∑ c ∈ generation k, contrib k c ≤
+      4 / 3 * A * dyadicGridLength G root.1 := by
+  obtain ⟨-, hsum, htot⟩ := dyadicRestartPacking G root generation children (by norm_num)
+    (by norm_num) hzero hnext hchild
+  have h1 : ∑ k ∈ Finset.range n, ∑ c ∈ generation k, contrib k c ≤
+      A * ∑ k ∈ Finset.range n, dyadicRootLength G (generation k) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun k _ => ?_
+    unfold dyadicRootLength
+    rw [Finset.mul_sum]
+    exact Finset.sum_le_sum fun c hc => hcontrib k c hc
+  have h2 : ∑ k ∈ Finset.range n, dyadicRootLength G (generation k) ≤
+      ∑' k, dyadicRootLength G (generation k) :=
+    hsum.sum_le_tsum _ fun k _ => dyadicRootLength_nonneg G _
+  have h3 : dyadicGridLength G root.1 / (1 - 1 / 4) = 4 / 3 * dyadicGridLength G root.1 := by
+    ring
+  rw [h3] at htot
+  calc _ ≤ A * ∑ k ∈ Finset.range n, dyadicRootLength G (generation k) := h1
+    _ ≤ A * (4 / 3 * dyadicGridLength G root.1) :=
+        mul_le_mul_of_nonneg_left (h2.trans htot) hA
+    _ = _ := by ring
+
+open Classical in
+/-- Blueprint lines 2428-2431 ("apply the hull part of `lem:cuts` to the two energies in
+`eq:stack-energy` ... combine these cuts"): two families of fixed functions with total square
+energies `E_a |R|`, `E_b |R|` on hulls of total support `M |R|` admit one family of cut
+cells of total length at most `ρ |R|` after which the squared hull maxima on the retained hulls
+have the joint caps `C_{ρ/2} E_a (1 + log(2+M))` and `C_{ρ/2} E_b (1 + log(2+M))` everywhere. -/
+theorem two_hull_caps {ι F : Type*} [NormedAddCommGroup F] (V : Finset ι) (G : RealDyadicGrid)
+    (S : Finset (ℤ × ℤ)) (H : ι → Finset (ℤ × ℤ)) (fa fb : ι → ℝ → F)
+    (hfa : ∀ ν ∈ V, AEStronglyMeasurable (fa ν) volume)
+    (hfb : ∀ ν ∈ V, AEStronglyMeasurable (fb ν) volume)
+    (root : ℤ × ℤ) (hHS : ∀ ν ∈ V, H ν ⊆ S)
+    (hS : ∀ c ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G root.1 root.2)
+    {Ea Eb M ρ : ℝ} (hEa : 0 ≤ Ea) (hEb : 0 ≤ Eb) (hM0 : 0 ≤ M) (hρ : 0 < ρ) (hρ1 : ρ < 1)
+    (hea : ∑ ν ∈ V, eLpNorm (fa ν) 2 volume ^ (2 : ℕ) ≤
+      ENNReal.ofReal (Ea * dyadicGridLength G root.1))
+    (heb : ∑ ν ∈ V, eLpNorm (fb ν) 2 volume ^ (2 : ℕ) ≤
+      ENNReal.ofReal (Eb * dyadicGridLength G root.1))
+    (hM : ∑ ν ∈ V, volume (⋃ c ∈ maximalDyadicCells G (H ν),
+      dyadicGridCell G c.1 c.2) ≤ ENNReal.ofReal (M * dyadicGridLength G root.1)) :
+    ∃ C : Finset (ℤ × ℤ), C ⊆ S ∧
+      dyadicRootLength G (maximalDyadicCells G C) ≤ ρ * dyadicGridLength G root.1 ∧
+      (∀ x : ℝ, ∑ ν ∈ V, dyadicHullMax G
+        ((H ν).filter (fun c => ¬∃ d ∈ C,
+          dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2)) (fun y => ‖fa ν y‖ₑ ^ (2 : ℕ)) x ≤
+        ENNReal.ofReal (hullCutConstant (ρ / 2) * Ea * (1 + Real.log (2 + M)))) ∧
+      ∀ x : ℝ, ∑ ν ∈ V, dyadicHullMax G
+        ((H ν).filter (fun c => ¬∃ d ∈ C,
+          dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2)) (fun y => ‖fb ν y‖ₑ ^ (2 : ℕ)) x ≤
+        ENNReal.ofReal (hullCutConstant (ρ / 2) * Eb * (1 + Real.log (2 + M))) := by
+  obtain ⟨Ca, hCaS, -, hCa, hcapa⟩ := dyadicHullFirstCrossingCuts_L2 V G S H fa hfa root hHS hS
+    hEa hM0 (half_pos hρ) (by linarith) hea hM
+  obtain ⟨Cb, hCbS, -, hCb, hcapb⟩ := dyadicHullFirstCrossingCuts_L2 V G S H fb hfb root hHS hS
+    hEb hM0 (half_pos hρ) (by linarith) heb hM
+  refine ⟨Ca ∪ Cb, Finset.union_subset hCaS hCbS, ?_, fun x => ?_, fun x => ?_⟩
+  · have h := exceptional_roots_le G (Finset.univ : Finset Bool) (fun v => if v then Ca else Cb)
+      (fun _ => ρ / 2) root (fun v _ => by cases v <;> simpa using (by assumption)) (ρ := ρ)
+      (by simp; ring_nf; rfl)
+    have hU : (Finset.univ : Finset Bool).biUnion (fun v => if v then Ca else Cb) = Ca ∪ Cb := by
+      ext c; simp
+    rwa [hU] at h
+  · refine le_trans (Finset.sum_le_sum fun ν _ => dyadicHullMax_mono G ?_ _ x) (hcapa x)
+    intro c hc
+    obtain ⟨hcH, hno⟩ := Finset.mem_filter.mp hc
+    exact Finset.mem_filter.mpr ⟨hcH, fun ⟨d, hd, hcd⟩ =>
+      hno ⟨d, Finset.mem_union_left _ hd, hcd⟩⟩
+  · refine le_trans (Finset.sum_le_sum fun ν _ => dyadicHullMax_mono G ?_ _ x) (hcapb x)
+    intro c hc
+    obtain ⟨hcH, hno⟩ := Finset.mem_filter.mp hc
+    exact Finset.mem_filter.mpr ⟨hcH, fun ⟨d, hd, hcd⟩ =>
+      hno ⟨d, Finset.mem_union_right _ hd, hcd⟩⟩
+
+
+/-! ## The hull mass of the stacks (blueprint line 2426) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- Blueprint line 2426 ("`Σ_ν |Ω_ν| ≤ M₀ |R|` with `M₀ ≤ exp(k^{O(1)})`, by active multiplicity,
+the main group count, and the number of configurations"), pointwise: if the use cells of the
+indices `ν = (G, configuration, block)` are cells of a set `Act` (the active cells) where `G` is a
+current group of the color `k`, each cell lies in the uses of at most one block for fixed
+`(G, configuration)`, and every point lies in at most `M_p` cells of `Act`, then every point lies
+in at most `|configurations| M_p D` use cells counted over all `ν` (`D` the vertex bound). With
+`hull_mass_le` this gives `Σ_ν |Ω_ν| ≤ |configurations| M_p D |R|`. -/
+theorem hull_mult_le {γ : Type*} (Gs : Finset bf.Grp) (Cs : Finset γ) (Bs : Finset ℕ) (k : ℕ)
+    (Act : Finset (ℤ × ℤ)) (U : bf.Grp → γ → ℕ → Finset (ℤ × ℤ))
+    (hU : ∀ G x b, ∀ c ∈ U G x b, c ∈ Act ∧ G ∈ fp.groupsAt c k)
+    (hblk : ∀ G x b b', ∀ c ∈ U G x b, c ∈ U G x b' → b = b') {Mp : ℝ}
+    (hMp : ∀ y, ((Act.filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) ≤ Mp) (y : ℝ) :
+    ∑ G ∈ Gs, ∑ x ∈ Cs, ∑ b ∈ Bs,
+        (((U G x b).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) ≤
+      Cs.card * Mp * A.famVtxBound := by
+  set Cy := Act.filter fun c => y ∈ dyadicGridCell A.G c.1 c.2
+  -- for fixed `(G, x)` the blocks contribute each cell of `Cy` at most once
+  have hblock : ∀ G x, ∑ b ∈ Bs,
+      (((U G x b).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) ≤
+        ((Cy.filter fun c => G ∈ fp.groupsAt c k).card : ℝ) := by
+    intro G x
+    have hsub : (Bs.biUnion fun b => (U G x b).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2) ⊆
+        Cy.filter fun c => G ∈ fp.groupsAt c k := by
+      intro c hc
+      obtain ⟨b, -, hcb⟩ := Finset.mem_biUnion.mp hc
+      obtain ⟨hcU, hy⟩ := Finset.mem_filter.mp hcb
+      exact Finset.mem_filter.mpr ⟨Finset.mem_filter.mpr ⟨(hU G x b c hcU).1, hy⟩,
+        (hU G x b c hcU).2⟩
+    have hdisj : (Bs : Set ℕ).PairwiseDisjoint fun b =>
+        (U G x b).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2 := by
+      intro b _ b' _ hbb
+      rw [Function.onFun, Finset.disjoint_left]
+      intro c hc hc'
+      exact hbb (hblk G x b b' c (Finset.mem_filter.mp hc).1 (Finset.mem_filter.mp hc').1)
+    rw [← Nat.cast_sum, ← Finset.card_biUnion hdisj]
+    exact_mod_cast Finset.card_le_card hsub
+  have hcell : ∑ G ∈ Gs, ((Cy.filter fun c => G ∈ fp.groupsAt c k).card : ℝ) ≤
+      Mp * A.famVtxBound := by
+    have e : ∑ G ∈ Gs, ((Cy.filter fun c => G ∈ fp.groupsAt c k).card : ℝ) =
+        ∑ c ∈ Cy, ((Gs.filter fun G => G ∈ fp.groupsAt c k).card : ℝ) := by
+      simp only [Finset.card_filter]
+      push_cast
+      exact Finset.sum_comm
+    rw [e]
+    calc ∑ c ∈ Cy, ((Gs.filter fun G => G ∈ fp.groupsAt c k).card : ℝ)
+        ≤ ∑ _c ∈ Cy, (A.famVtxBound : ℝ) := by
+          refine Finset.sum_le_sum fun c _ => ?_
+          have h1 : (Gs.filter fun G => G ∈ fp.groupsAt c k) ⊆ fp.groupsAt c k := fun G hG =>
+            (Finset.mem_filter.mp hG).2
+          exact_mod_cast (Finset.card_le_card h1).trans (fp.card_groupsAt_le c k)
+      _ = Cy.card * A.famVtxBound := by rw [Finset.sum_const, nsmul_eq_mul]
+      _ ≤ Mp * A.famVtxBound := by
+          have := hMp y
+          gcongr
+  calc ∑ G ∈ Gs, ∑ x ∈ Cs, ∑ b ∈ Bs,
+        (((U G x b).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ)
+      ≤ ∑ G ∈ Gs, ∑ _x ∈ Cs, ((Cy.filter fun c => G ∈ fp.groupsAt c k).card : ℝ) :=
+        Finset.sum_le_sum fun G _ => Finset.sum_le_sum fun x _ => hblock G x
+    _ = Cs.card * ∑ G ∈ Gs, ((Cy.filter fun c => G ∈ fp.groupsAt c k).card : ℝ) := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl fun G _ => ?_
+        rw [Finset.sum_const, nsmul_eq_mul]
+    _ ≤ Cs.card * (Mp * A.famVtxBound) :=
+        mul_le_mul_of_nonneg_left hcell (Nat.cast_nonneg _)
+    _ = Cs.card * Mp * A.famVtxBound := by ring
+
+open Classical in
+/-- Blueprint line 2426 (`Σ_ν |Ω_ν| ≤ M₀ |R|`, `M₀ = |configurations| M_p D`): if the maximal
+cells of each hull are use cells of its index, the hull roots of all indices
+`ν = (G, configuration, block)` have total measure at most `|configurations| M_p D |R|`. -/
+theorem hull_mass_main {γ : Type*} (Gs : Finset bf.Grp) (Cs : Finset γ) (Bs : Finset ℕ) (k : ℕ)
+    (Act : Finset (ℤ × ℤ)) (U : bf.Grp → γ → ℕ → Finset (ℤ × ℤ))
+    (hU : ∀ G x b, ∀ c ∈ U G x b, c ∈ Act ∧ G ∈ fp.groupsAt c k)
+    (hblk : ∀ G x b b', ∀ c ∈ U G x b, c ∈ U G x b' → b = b') {Mp : ℝ}
+    (hMp : ∀ y, ((Act.filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) ≤ Mp)
+    (H : bf.Grp × γ × ℕ → Finset (ℤ × ℤ))
+    (hmax : ∀ ν ∈ Gs ×ˢ Cs ×ˢ Bs, maximalDyadicCells A.G (H ν) ⊆ U ν.1 ν.2.1 ν.2.2)
+    (root : ℤ × ℤ)
+    (hroot : ∀ c ∈ Act, dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G root.1 root.2) :
+    ∑ ν ∈ Gs ×ˢ Cs ×ˢ Bs, volume (⋃ c ∈ maximalDyadicCells A.G (H ν),
+        dyadicGridCell A.G c.1 c.2) ≤
+      ENNReal.ofReal (Cs.card * Mp * A.famVtxBound * dyadicGridLength A.G root.1) := by
+  refine hull_mass_le A.G (Gs ×ˢ Cs ×ˢ Bs) H (fun ν => U ν.1 ν.2.1 ν.2.2) hmax root
+    (fun ν _ c hc => hroot c (hU ν.1 ν.2.1 ν.2.2 c hc).1) fun y => ?_
+  have h := fp.hull_mult_le Gs Cs Bs k Act U hU hblk hMp y
+  simp only [Finset.sum_product] at h ⊢
+  exact_mod_cast h
+
+end ActiveSetup.BasicFamilies.FamParams
+
+open Classical in
+/-- Blueprint line 2426 (`Σ_ν |Ω_ν| ≤ M₀ |R|` with `M₀ ≤ exp(k^{O(1)})`, "by active multiplicity,
+the main group count, and the number of configurations"): if the uses are active cells, the hull
+roots of all indices `ν = (G, configuration, block)` have total measure at most
+`|configurations| M_act D |R|`, with the active path multiplicity
+`M_act = 4 |L|³ C (216 log H + log C_κ + 2 log δ⁻¹)^C` of `active_count` (uniform in the setup and
+the depth) and the vertex bound `D`. -/
+theorem hull_mass_active (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
+    ∃ C : ℕ, 1 ≤ C ∧ ∀ (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp : bf.FamParams)
+      (δ : ℝ), 0 < δ → δ ≤ 1 → ∀ {γ : Type} (Gs : Finset bf.Grp) (Cs : Finset γ)
+      (Bs : Finset ℕ) (k : ℕ) (U : bf.Grp → γ → ℕ → Finset (ℤ × ℤ)),
+      (∀ G x b, ∀ c ∈ U G x b, (c ∈ A.cells ∧ A.active δ c) ∧ G ∈ fp.groupsAt c k) →
+      (∀ G x b b', ∀ c ∈ U G x b, c ∈ U G x b' → b = b') →
+      ∀ H : bf.Grp × γ × ℕ → Finset (ℤ × ℤ),
+      (∀ ν ∈ Gs ×ˢ Cs ×ˢ Bs, maximalDyadicCells A.G (H ν) ⊆ U ν.1 ν.2.1 ν.2.2) →
+      ∑ ν ∈ Gs ×ˢ Cs ×ˢ Bs, volume (⋃ c ∈ maximalDyadicCells A.G (H ν),
+          dyadicGridCell A.G c.1 c.2) ≤
+        ENNReal.ofReal (Cs.card * (4 * Fintype.card A.L ^ 3 *
+          (C * (216 * Real.log (chartTranslationBudget A.H) + Real.log (sliceConst κ) +
+            2 * Real.log δ⁻¹) ^ C)) * A.famVtxBound * dyadicGridLength A.G A.R.1) := by
+  obtain ⟨C, hC, hcnt⟩ := ActiveSetup.active_count κ c₀ hc
+  refine ⟨C, hC, ?_⟩
+  intro A bf fp δ hδ hδ1 γ Gs Cs Bs k U hU hblk H hmax
+  refine fp.hull_mass_main Gs Cs Bs k (A.cells.filter fun c => A.active δ c) U
+    (fun G x b c hc => ⟨Finset.mem_filter.mpr (hU G x b c hc).1, (hU G x b c hc).2⟩) hblk
+    (fun y => ?_) H hmax A.R (fun c hc => A.sub c (Finset.mem_filter.mp hc).1)
+  refine le_trans (le_of_eq ?_) (hcnt A δ hδ hδ1 y)
+  congr 2
+  ext c
+  simp only [Finset.mem_filter]
+  tauto
+
+open Classical in
+/-- Blueprint line 2428 ("apply the hull part of `lem:cuts` to the two energies in
+`eq:stack-energy`"), for stacks of column vectors: two families of fixed stack vectors with total
+square norms `E_a |R|`, `E_b |R|` on hulls of total support `M |R|` admit one family of cut cells
+of length at most `ρ |R|` after which the squared hull maxima on the whole retained hulls have the
+joint caps `C_{ρ/2} E_a (1 + log(2+M))` and `C_{ρ/2} E_b (1 + log(2+M))` everywhere. -/
+theorem two_hull_caps_col {ι W : Type*} [Fintype W] (V : Finset ι) (G : RealDyadicGrid)
+    (S : Finset (ℤ × ℤ)) (H : ι → Finset (ℤ × ℤ)) (xa xb : ι → ColumnL2 W)
+    (root : ℤ × ℤ) (hHS : ∀ ν ∈ V, H ν ⊆ S)
+    (hS : ∀ c ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G root.1 root.2)
+    {Ea Eb M ρ : ℝ} (hEa : 0 ≤ Ea) (hEb : 0 ≤ Eb) (hM0 : 0 ≤ M) (hρ : 0 < ρ) (hρ1 : ρ < 1)
+    (hea : ∑ ν ∈ V, ‖xa ν‖ ^ 2 ≤ Ea * dyadicGridLength G root.1)
+    (heb : ∑ ν ∈ V, ‖xb ν‖ ^ 2 ≤ Eb * dyadicGridLength G root.1)
+    (hM : ∑ ν ∈ V, volume (⋃ c ∈ maximalDyadicCells G (H ν),
+      dyadicGridCell G c.1 c.2) ≤ ENNReal.ofReal (M * dyadicGridLength G root.1)) :
+    ∃ C : Finset (ℤ × ℤ), C ⊆ S ∧
+      dyadicRootLength G (maximalDyadicCells G C) ≤ ρ * dyadicGridLength G root.1 ∧
+      (∀ x : ℝ, ∑ ν ∈ V, dyadicHullMax G
+        ((H ν).filter (fun c => ¬∃ d ∈ C, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2))
+          (fun y => ‖(xa ν : ℝ → ColumnHilbert W) y‖ₑ ^ (2 : ℕ)) x ≤
+        ENNReal.ofReal (hullCutConstant (ρ / 2) * Ea * (1 + Real.log (2 + M)))) ∧
+      ∀ x : ℝ, ∑ ν ∈ V, dyadicHullMax G
+        ((H ν).filter (fun c => ¬∃ d ∈ C, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2))
+          (fun y => ‖(xb ν : ℝ → ColumnHilbert W) y‖ₑ ^ (2 : ℕ)) x ≤
+        ENNReal.ofReal (hullCutConstant (ρ / 2) * Eb * (1 + Real.log (2 + M))) := by
+  have hconv : ∀ (x : ι → ColumnL2 W) {E : ℝ},
+      ∑ ν ∈ V, ‖x ν‖ ^ 2 ≤ E * dyadicGridLength G root.1 →
+      ∑ ν ∈ V, eLpNorm (x ν : ℝ → ColumnHilbert W) 2 volume ^ (2 : ℕ) ≤
+        ENNReal.ofReal (E * dyadicGridLength G root.1) := by
+    intro x E hx
+    have e : ∀ ν, eLpNorm (x ν : ℝ → ColumnHilbert W) 2 volume ^ (2 : ℕ) =
+        ENNReal.ofReal (‖x ν‖ ^ 2) := by
+      intro ν
+      rw [Lp.norm_def, ENNReal.ofReal_pow ENNReal.toReal_nonneg,
+        ENNReal.ofReal_toReal (Lp.eLpNorm_ne_top (x ν))]
+    simp only [e]
+    rw [← ENNReal.ofReal_sum_of_nonneg fun ν _ => sq_nonneg _]
+    exact ENNReal.ofReal_le_ofReal hx
+  exact two_hull_caps V G S H (fun ν => (xa ν : ℝ → ColumnHilbert W))
+    (fun ν => (xb ν : ℝ → ColumnHilbert W)) (fun ν _ => (Lp.aestronglyMeasurable _))
+    (fun ν _ => (Lp.aestronglyMeasurable _)) root hHS hS hEa hEb hM0 hρ hρ1 (hconv xa hea)
+    (hconv xb heb) hM
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## Stack densities, use hulls and outer stack energies (blueprint lines 2410-2430) -/
+
+/-- A finite double sum of physical squares has integral at most the sum of the square norms. -/
+theorem lintegral_augPhys_sum_le {V : Type*} [Fintype V] {ι β : Type*} (s : Finset ι)
+    (u : Finset β) (X : ι → β → ColumnL2 V) :
+    ∫⁻ y, ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖augPhys (X i p) y‖ ^ 2) ≤
+      ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖X i p‖ ^ 2) := by
+  have hm : ∀ i p, Measurable fun y => ENNReal.ofReal (‖augPhys (X i p) y‖ ^ 2) := fun i p =>
+    ENNReal.measurable_ofReal.comp ((columnPhys_measurable (X i p)).norm.pow_const 2)
+  calc ∫⁻ y, ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖augPhys (X i p) y‖ ^ 2)
+      = ∫⁻ y, ∑ i ∈ s, ∑ p ∈ u, ENNReal.ofReal (‖augPhys (X i p) y‖ ^ 2) := by
+        refine lintegral_congr fun y => ?_
+        rw [ENNReal.ofReal_sum_of_nonneg fun i _ => Finset.sum_nonneg fun p _ => by positivity]
+        exact Finset.sum_congr rfl fun i _ =>
+          ENNReal.ofReal_sum_of_nonneg fun p _ => by positivity
+    _ = ∑ i ∈ s, ∑ p ∈ u, ∫⁻ y, ENNReal.ofReal (‖augPhys (X i p) y‖ ^ 2) := by
+        rw [lintegral_finsetSum _ fun i _ => Finset.measurable_sum _ fun p _ => hm i p]
+        exact Finset.sum_congr rfl fun i _ => lintegral_finsetSum _ fun p _ => hm i p
+    _ ≤ ∑ i ∈ s, ∑ p ∈ u, ENNReal.ofReal (‖X i p‖ ^ 2) :=
+        Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun p _ => lintegral_augPhys_sq_le _
+    _ = ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖X i p‖ ^ 2) := by
+        rw [ENNReal.ofReal_sum_of_nonneg fun i _ => Finset.sum_nonneg fun p _ => by positivity]
+        exact Finset.sum_congr rfl fun i _ =>
+          (ENNReal.ofReal_sum_of_nonneg fun p _ => by positivity).symm
+
+/-- The square root of a finite double sum of physical squares, as a stack density. -/
+noncomputable def stackDens {V : Type*} [Fintype V] {ι β : Type*} (s : Finset ι) (u : Finset β)
+    (X : ι → β → ColumnL2 V) (y : ℝ) : ℝ :=
+  Real.sqrt (∑ i ∈ s, ∑ p ∈ u, ‖augPhys (X i p) y‖ ^ 2)
+
+theorem stackDens_measurable {V : Type*} [Fintype V] {ι β : Type*} (s : Finset ι)
+    (u : Finset β) (X : ι → β → ColumnL2 V) : Measurable (stackDens s u X) :=
+  (Finset.measurable_sum _ fun i _ => Finset.measurable_sum _ fun p _ =>
+    (columnPhys_measurable (X i p)).norm.pow_const 2).sqrt
+
+theorem stackDens_enorm_sq {V : Type*} [Fintype V] {ι β : Type*} (s : Finset ι) (u : Finset β)
+    (X : ι → β → ColumnL2 V) (y : ℝ) :
+    ‖stackDens s u X y‖ₑ ^ (2 : ℕ) =
+      ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖augPhys (X i p) y‖ ^ 2) := by
+  unfold stackDens
+  rw [Real.enorm_eq_ofReal_abs, abs_of_nonneg (Real.sqrt_nonneg _), ← ENNReal.ofReal_pow
+    (Real.sqrt_nonneg _), Real.sq_sqrt (Finset.sum_nonneg fun i _ => Finset.sum_nonneg
+      fun p _ => by positivity)]
+
+theorem stackDens_eLpNorm_sq {V : Type*} [Fintype V] {ι β : Type*} (s : Finset ι)
+    (u : Finset β) (X : ι → β → ColumnL2 V) :
+    eLpNorm (stackDens s u X) 2 volume ^ (2 : ℕ) ≤
+      ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖X i p‖ ^ 2) := by
+  rw [← lintegral_enorm_sq_eq_eLpNorm_sq _ (stackDens_measurable s u X).aestronglyMeasurable]
+  simp_rw [stackDens_enorm_sq]
+  exact lintegral_augPhys_sum_le s u X
+
+/-- The energy average of a physical square sum on a cell is finite. -/
+theorem energyAverage_augPhys_ne_top {V : Type*} [Fintype V] (G : RealDyadicGrid) {ι β : Type*}
+    (s : Finset ι) (u : Finset β) (X : ι → β → ColumnL2 V) (d : ℤ × ℤ) :
+    dyadicEnergyAverage G (fun y => ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖augPhys (X i p) y‖ ^ 2))
+      d ≠ ⊤ := by
+  unfold dyadicEnergyAverage
+  refine ENNReal.div_ne_top (ne_top_of_le_ne_top ENNReal.ofReal_ne_top
+    ((setLIntegral_le_lintegral _ _).trans (lintegral_augPhys_sum_le s u X))) ?_
+  exact (ENNReal.ofReal_pos.mpr (dyadicGridLength_pos G d.1)).ne'
+
+namespace ActiveSetup
+variable {κ' : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ' c₀)
+
+open Classical in
+/-- The hull of a family of use cells: the active cells between two of its cells. -/
+noncomputable def useHull (U : Finset (ℤ × ℤ)) : Finset (ℤ × ℤ) :=
+  A.cells.filter fun d => ∃ c ∈ U, ∃ r ∈ U, dyadicGridCell A.G c.1 c.2 ⊆
+    dyadicGridCell A.G d.1 d.2 ∧ dyadicGridCell A.G d.1 d.2 ⊆ dyadicGridCell A.G r.1 r.2
+
+open Classical in
+theorem useHull_sub (U : Finset (ℤ × ℤ)) : A.useHull U ⊆ A.cells := Finset.filter_subset _ _
+
+open Classical in
+theorem mem_useHull {U : Finset (ℤ × ℤ)} (hU : U ⊆ A.cells) {c : ℤ × ℤ} (hc : c ∈ U) :
+    c ∈ A.useHull U :=
+  Finset.mem_filter.mpr ⟨hU hc, c, hc, c, hc, subset_rfl, subset_rfl⟩
+
+open Classical in
+/-- The maximal cells of the hull of a family of active cells lie in the root. -/
+theorem useHull_volume_le (U : Finset (ℤ × ℤ)) :
+    volume (⋃ c ∈ maximalDyadicCells A.G (A.useHull U), dyadicGridCell A.G c.1 c.2) ≤
+      ENNReal.ofReal (dyadicGridLength A.G A.R.1) := by
+  refine (measure_mono (Set.iUnion₂_subset fun c hc =>
+    A.sub c (A.useHull_sub U (maximalDyadicCells_subset _ _ hc)))).trans ?_
+  rw [dyadicGridCell_volume]
+
+end ActiveSetup
+
+/-- The unimodular phase undoing the argument of a complex number (zero at zero). -/
+noncomputable def unPhase (z : ℂ) : ℂ := if z = 0 then 0 else conj z / (‖z‖ : ℂ)
+
+theorem norm_unPhase_le (z : ℂ) : ‖unPhase z‖ ≤ 1 := by
+  unfold unPhase
+  split_ifs with h
+  · simp
+  · rw [norm_div, Complex.norm_conj, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (norm_nonneg z), div_self (norm_ne_zero_iff.mpr h)]
+
+theorem unPhase_mul (z : ℂ) : unPhase z * z = (‖z‖ : ℂ) := by
+  unfold unPhase
+  split_ifs with h
+  · simp [h]
+  · have hn : (‖z‖ : ℂ) ≠ 0 := by exact_mod_cast norm_ne_zero_iff.mpr h
+    rw [div_mul_eq_mul_div, Complex.conj_mul', div_eq_iff hn]
+    ring
+
+/-- A finite sum of moduli is the modulus of the sum with the undoing phases. -/
+theorem sum_enorm_eq_unPhase {α : Type*} (s : Finset α) (x : α → ℂ) :
+    ∑ i ∈ s, ‖x i‖ₑ = ‖∑ i ∈ s, unPhase (x i) * x i‖ₑ := by
+  simp_rw [unPhase_mul]
+  rw [← Complex.ofReal_sum, ← ofReal_norm, Complex.norm_real, Real.norm_of_nonneg
+    (Finset.sum_nonneg fun i _ => norm_nonneg _), ENNReal.ofReal_sum_of_nonneg
+    fun i _ => norm_nonneg _]
+  exact Finset.sum_congr rfl fun i _ => (ofReal_norm _).symm
+
+/-- The glued stack over a smaller family of cells is smaller. -/
+theorem gluedStack_norm_sq_mono (G : RealDyadicGrid) {V : Type*} [Fintype V] {ι : Type*}
+    {U U' : Finset (ℤ × ℤ)} (hUU : U' ⊆ U) (sel : ℤ × ℤ → ι) (val : ι → ColumnL2 V) (i : ι) :
+    ‖gluedStack G U' sel val i‖ ^ 2 ≤ ‖gluedStack G U sel val i‖ ^ 2 := by
+  have hsub : selUnion G U' sel i ⊆ selUnion G U sel i := by
+    intro y hy
+    simp only [selUnion, Set.mem_iUnion] at hy ⊢
+    obtain ⟨I, hI, he, hyI⟩ := hy
+    exact ⟨I, hUU hI, he, hyI⟩
+  exact columnL2Restriction_norm_sq_mono _ (selUnion_measurable G U sel i) hsub (val i)
+
+section DepthStacks
+variable (G : RealDyadicGrid) {V : Type*} [Fintype V]
+
+/-- The restriction to one cell of the restriction to a disjoint cell vanishes. -/
+theorem restrict_restrict_disjoint {I J : ℤ × ℤ}
+    (h : Disjoint (dyadicGridCell G I.1 I.2) (dyadicGridCell G J.1 J.2)) (x : ColumnL2 V) :
+    columnL2Restriction (dyadicGridCell G I.1 I.2) (dyadicGridCell_measurable G I.1 I.2)
+      (columnL2Restriction (dyadicGridCell G J.1 J.2) (dyadicGridCell_measurable G J.1 J.2) x) =
+      0 := by
+  have hn : ‖columnL2Restriction (dyadicGridCell G I.1 I.2)
+      (dyadicGridCell_measurable G I.1 I.2) (columnL2Restriction (dyadicGridCell G J.1 J.2)
+        (dyadicGridCell_measurable G J.1 J.2) x)‖ ^ 2 = 0 := by
+    rw [columnL2Restriction_norm_sq]
+    refine integral_eq_zero_of_ae ?_
+    rw [Filter.EventuallyEq, ae_restrict_iff' (dyadicGridCell_measurable G I.1 I.2)]
+    filter_upwards [columnL2Indicator_coeFn _ (dyadicGridCell_measurable G J.1 J.2) x]
+      with y hy hyI
+    change ‖(columnL2Indicator (dyadicGridCell G J.1 J.2) (dyadicGridCell_measurable G J.1 J.2) x :
+      ℝ → ColumnHilbert V) y‖ ^ 2 = 0
+    rw [hy, Set.indicator_of_notMem (Set.disjoint_left.mp h hyI)]
+    simp
+  exact norm_eq_zero.mp (pow_eq_zero_iff two_ne_zero |>.mp hn)
+
+open Classical in
+/-- On a cell of `U`, the depth stack at its selection is its local value, if the cells of one
+selection are pairwise disjoint. -/
+theorem depthStack_restrict (U : Finset (ℤ × ℤ)) (sel : ℤ × ℤ → ℕ)
+    (hdis : ∀ I ∈ U, ∀ J ∈ U, sel I = sel J → I ≠ J →
+      Disjoint (dyadicGridCell G I.1 I.2) (dyadicGridCell G J.1 J.2))
+    (v : ℤ × ℤ → ColumnL2 V) {I : ℤ × ℤ} (hI : I ∈ U) :
+    columnL2Restriction (dyadicGridCell G I.1 I.2) (dyadicGridCell_measurable G I.1 I.2)
+        (depthStack G U sel v (sel I)) =
+      columnL2Restriction (dyadicGridCell G I.1 I.2) (dyadicGridCell_measurable G I.1 I.2)
+        (v I) := by
+  unfold depthStack
+  rw [map_sum, ← Finset.add_sum_erase (U.filter fun J => sel J = sel I) _
+    (Finset.mem_filter.mpr ⟨hI, rfl⟩)]
+  have hz : ∑ J ∈ (U.filter fun J => sel J = sel I).erase I,
+      columnL2Restriction (dyadicGridCell G I.1 I.2) (dyadicGridCell_measurable G I.1 I.2)
+        (columnL2Restriction (dyadicGridCell G J.1 J.2) (dyadicGridCell_measurable G J.1 J.2)
+          (v J)) = 0 := by
+    refine Finset.sum_eq_zero fun J hJ => ?_
+    obtain ⟨hJI, hJf⟩ := Finset.mem_erase.mp hJ
+    obtain ⟨hJU, hJs⟩ := Finset.mem_filter.mp hJf
+    exact restrict_restrict_disjoint G (hdis I hI J hJU hJs.symm (Ne.symm hJI)) _
+  rw [hz, add_zero, ← ContinuousLinearMap.comp_apply, columnL2Restriction_idem]
+
+open Classical in
+/-- The square norm of a depth stack is the sum of the square norms of the restricted local values
+of its cells (disjoint supports). -/
+theorem depthStack_norm_sq (U : Finset (ℤ × ℤ)) (sel : ℤ × ℤ → ℕ)
+    (hdis : ∀ I ∈ U, ∀ J ∈ U, sel I = sel J → I ≠ J →
+      Disjoint (dyadicGridCell G I.1 I.2) (dyadicGridCell G J.1 J.2))
+    (v : ℤ × ℤ → ColumnL2 V) (m : ℕ) :
+    ‖depthStack G U sel v m‖ ^ 2 = ∑ J ∈ U.filter (fun J => sel J = m),
+      ‖columnL2Restriction (dyadicGridCell G J.1 J.2) (dyadicGridCell_measurable G J.1 J.2)
+        (v J)‖ ^ 2 := by
+  set T := U.filter fun J => sel J = m
+  set w := depthStack G U sel v m
+  have hTm : MeasurableSet (⋃ J ∈ T, dyadicGridCell G J.1 J.2) :=
+    Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable G J.1 J.2
+  have hw : columnL2Restriction (⋃ J ∈ T, dyadicGridCell G J.1 J.2) hTm w = w := by
+    simp only [w, depthStack, map_sum]
+    refine Finset.sum_congr rfl fun J hJ => ?_
+    rw [← ContinuousLinearMap.comp_apply, columnL2Restriction_comp_of_subset'
+      (dyadicGridCell_measurable G J.1 J.2) hTm (Set.subset_biUnion_of_mem (u := fun J =>
+        dyadicGridCell G J.1 J.2) hJ)]
+  have hpair : Set.Pairwise (↑T)
+      (Function.onFun Disjoint fun J : ℤ × ℤ => dyadicGridCell G J.1 J.2) := by
+    intro I hI J hJ hIJ
+    obtain ⟨hIU, hIs⟩ := Finset.mem_filter.mp hI
+    obtain ⟨hJU, hJs⟩ := Finset.mem_filter.mp hJ
+    exact hdis I hIU J hJU (hIs.trans hJs.symm) hIJ
+  rw [← hw, columnL2Restriction_norm_sq, integral_biUnion_finset T
+    (fun J _ => dyadicGridCell_measurable G J.1 J.2) hpair
+    (fun J _ => ((Lp.memLp w).integrable_norm_pow two_ne_zero).integrableOn)]
+  refine Finset.sum_congr rfl fun J hJ => ?_
+  rw [← columnL2Restriction_norm_sq _ (dyadicGridCell_measurable G J.1 J.2)]
+  obtain ⟨hJU, hJs⟩ := Finset.mem_filter.mp hJ
+  have h := depthStack_restrict G U sel hdis v hJU
+  rw [hJs] at h
+  rw [h]
+
+end DepthStacks
+
+/-- The energy average of a physical square sum on a cell is at most the restricted square norms
+divided by the length. -/
+theorem energyAverage_band_le (G : RealDyadicGrid) {V : Type*} [Fintype V] {β : Type*}
+    (u : Finset β) (Y : β → ColumnL2 V) (d : ℤ × ℤ) :
+    dyadicEnergyAverage G (fun r => ENNReal.ofReal (∑ p ∈ u, ‖augPhys (Y p) r‖ ^ 2)) d ≤
+      ENNReal.ofReal ((∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell G d.1 d.2)
+        (dyadicGridCell_measurable G d.1 d.2) (Y p)‖ ^ 2) / dyadicGridLength G d.1) := by
+  have hr := dyadicGridLength_pos G d.1
+  unfold dyadicEnergyAverage
+  rw [ENNReal.ofReal_div_of_pos hr]
+  refine ENNReal.div_le_div_right ?_ _
+  have hm : ∀ p, Measurable fun y => ENNReal.ofReal (‖augPhys (Y p) y‖ ^ 2) := fun p =>
+    ENNReal.measurable_ofReal.comp ((columnPhys_measurable (Y p)).norm.pow_const 2)
+  calc ∫⁻ x in dyadicGridCell G d.1 d.2, ENNReal.ofReal (∑ p ∈ u, ‖augPhys (Y p) x‖ ^ 2)
+      = ∑ p ∈ u, ∫⁻ x in dyadicGridCell G d.1 d.2, ENNReal.ofReal (‖augPhys (Y p) x‖ ^ 2) := by
+        rw [← lintegral_finsetSum _ fun p _ => hm p]
+        exact lintegral_congr fun x =>
+          ENNReal.ofReal_sum_of_nonneg fun p _ => by positivity
+    _ ≤ ∑ p ∈ u, ENNReal.ofReal (‖columnL2Restriction (dyadicGridCell G d.1 d.2)
+          (dyadicGridCell_measurable G d.1 d.2) (Y p)‖ ^ 2) := by
+        refine Finset.sum_le_sum fun p _ => ?_
+        rw [columnL2Restriction_norm_sq, ofReal_integral_eq_lintegral_ofReal
+          ((Lp.memLp (Y p)).integrable_norm_pow two_ne_zero).integrableOn
+          (Filter.Eventually.of_forall fun _ => by positivity)]
+        refine lintegral_mono fun y => ENNReal.ofReal_le_ofReal
+          (pow_le_pow_left₀ (norm_nonneg _) ?_ 2)
+        unfold augPhys
+        rw [EuclideanSpace.norm_eq]
+        exact Real.le_sqrt_of_sq_le (Finset.single_le_sum
+          (f := fun i => ‖(Y p : ℝ → ColumnHilbert V) y i‖ ^ 2) (fun _ _ => by positivity)
+          (Finset.mem_univ none))
+    _ = ENNReal.ofReal (∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell G d.1 d.2)
+          (dyadicGridCell_measurable G d.1 d.2) (Y p)‖ ^ 2) :=
+        (ENNReal.ofReal_sum_of_nonneg fun p _ => by positivity).symm
+
+/-- The energy average of one physical square on a cell is at most the restricted square norm
+divided by the length. -/
+theorem energyAverage_single_le (G : RealDyadicGrid) {V : Type*} [Fintype V] (F : ColumnL2 V)
+    (d : ℤ × ℤ) :
+    dyadicEnergyAverage G (fun r => ‖augPhys F r‖ₑ ^ 2) d ≤
+      ENNReal.ofReal (‖columnL2Restriction (dyadicGridCell G d.1 d.2)
+        (dyadicGridCell_measurable G d.1 d.2) F‖ ^ 2 / dyadicGridLength G d.1) := by
+  have h := energyAverage_band_le G ({()} : Finset Unit) (fun _ => F) d
+  simp only [Finset.sum_singleton] at h
+  refine le_trans (le_of_eq ?_) h
+  congr 1
+  funext r
+  rw [← ofReal_norm, ← ENNReal.ofReal_pow (norm_nonneg _)]
+
+/-- Glued stacks over smaller families of cells and band ranges have smaller total energies. -/
+theorem gluedStack_sum_mono (G : RealDyadicGrid) {V : Type*} [Fintype V] {ι β : Type*}
+    [DecidableEq ι] {U U' : Finset (ℤ × ℤ)} (hUU : U' ⊆ U) (sel : ℤ × ℤ → ι) {u u' : Finset β}
+    (huu : u' ⊆ u) (val : β → ι → ColumnL2 V) :
+    ∑ i ∈ U'.image sel, ∑ p ∈ u', ‖gluedStack G U' sel (val p) i‖ ^ 2 ≤
+      ∑ i ∈ U.image sel, ∑ p ∈ u, ‖gluedStack G U sel (val p) i‖ ^ 2 := by
+  calc ∑ i ∈ U'.image sel, ∑ p ∈ u', ‖gluedStack G U' sel (val p) i‖ ^ 2
+      ≤ ∑ i ∈ U'.image sel, ∑ p ∈ u, ‖gluedStack G U sel (val p) i‖ ^ 2 :=
+        Finset.sum_le_sum fun i _ => (Finset.sum_le_sum fun p _ =>
+          gluedStack_norm_sq_mono G hUU sel (val p) i).trans
+          (Finset.sum_le_sum_of_subset_of_nonneg huu fun _ _ _ => by positivity)
+    _ ≤ _ := Finset.sum_le_sum_of_subset_of_nonneg (Finset.image_subset_image hUU)
+        fun _ _ _ => Finset.sum_nonneg fun _ _ => by positivity
+
+namespace ActiveSetup
+variable {κ' : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ' c₀)
+
+open Classical in
+/-- The banded stack energies over indices `m = (ω, g, β)` with use sets inside the uses of the
+group and block, band ranges inside `0..P` and band values `(A_{ω,g,p+1} - A_{ω,g,p}) S_{g,β}`:
+the sum over the outer indices `ω` of `bandStack_all`. -/
+theorem bandStack_outer (hanc : A.AncClosed) {Ω γ : Type*} {V : Type*} [Fintype V]
+    (Os : Finset Ω) (Gs : Finset γ) (Z : γ → ℤ → ColumnL2 V) (ok : γ → ℤ × ℤ → Prop) {B : ℝ}
+    (hcap : A.VarCap Gs Z ok B) {K N : ℕ} (hKN : K ≤ 2 ^ N)
+    (Bs : Finset ℕ) (U : γ → ℕ → Finset (ℤ × ℤ)) (off : ℤ × ℤ → ℕ)
+    (hoff : ∀ (J : ℤ × ℤ) (β m : ℕ), m < K → J.1 = A.R.1 + ((K * β + m : ℕ) : ℤ) → off J = m)
+    (hU : ∀ g β, ∀ I ∈ U g β, I ∈ A.cells ∧ I.1 = A.R.1 + (K * β + off I : ℕ) ∧ off I < K)
+    (hok : ∀ g ∈ Gs, ∀ β, ∀ I ∈ U g β, ∀ J ∈ A.cells,
+      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2 → ok g J)
+    {P : ℕ} (Ah : Ω → γ → ℕ → ℤ → ColumnL2 V →L[ℂ] ColumnL2 V)
+    (hbes : ∀ ω g h y, ∑ p ∈ Finset.range (P + 1), ‖(Ah ω g (p + 1) h - Ah ω g p h) y‖ ^ 2 ≤
+      ‖y‖ ^ 2)
+    (hcomm : ∀ ω g n h (J : ℤ × ℤ), J.1 ≤ h → J.1 ≤ A.R.1 + A.treeDepth →
+      (columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+        (dyadicGridCell_measurable A.G J.1 J.2)).comp (Ah ω g n h) =
+        (Ah ω g n h).comp (columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+          (dyadicGridCell_measurable A.G J.1 J.2)))
+    (Cj : Ω → ℝ) (hCj : ∀ ω, 0 ≤ Cj ω)
+    (hJ : ∀ ω, ∀ g ∈ Gs, ∀ n, ∀ {ι : Type} [Fintype ι] (r t : ι → ℕ), (∀ i, r i ≤ t i) →
+      (∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i'))) →
+      ∀ Ec : ι → Finset (ℤ × ℤ), (∀ i, ∀ J ∈ Ec i, J ∈ A.cells) → ∀ x,
+      ∑ i, ‖columnL2Restriction (⋃ J ∈ Ec i, dyadicGridCell A.G J.1 J.2)
+        (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
+        ((Ah ω g n (A.R.1 + t i) - Ah ω g n (A.R.1 + r i)) x)‖ ^ 2 ≤ Cj ω * ‖x‖ ^ 2)
+    (W : γ → ℕ → ColumnL2 V) {EW : ℝ}
+    (hEW : ∑ g ∈ Gs, ∑ β ∈ Bs, ‖columnL2Restriction
+      (⋃ J ∈ (U g β).image (fun I => ancAt A.G I (A.R.1 + ((K * β : ℕ) : ℤ))),
+        dyadicGridCell A.G J.1 J.2)
+      (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
+      (W g β)‖ ^ 2 ≤ EW)
+    (Sa : γ → ℕ → ℤ → ColumnL2 V)
+    (hSa : ∀ g β h, Sa g β h = Z g h - Z g (A.R.1 + ((K * β : ℕ) : ℤ)) + W g β)
+    (Ms : Finset (Ω × γ × ℕ)) (hMs : Ms ⊆ Os ×ˢ (Gs ×ˢ Bs)) (Um : Ω × γ × ℕ → Finset (ℤ × ℤ))
+    (hUm : ∀ m ∈ Ms, Um m ⊆ U m.2.1 m.2.2) (u : Ω × γ × ℕ → Finset ℕ)
+    (hu : ∀ m ∈ Ms, u m ⊆ Finset.range (P + 1)) :
+    ∑ m ∈ Ms, ∑ k : Fin (N + 1), ∑ i ∈ ((Um m).filter fun I => posAct N k (off I)).image
+        (fun I => off I / 2 ^ ((k : ℕ) + 1)), ∑ p ∈ u m,
+      ‖gluedStack A.G ((Um m).filter fun I => posAct N k (off I))
+        (fun I => off I / 2 ^ ((k : ℕ) + 1))
+        (fun i => posVal (fun n => (Ah m.1 m.2.1 (p + 1) (A.R.1 + ((K * m.2.2 : ℕ) : ℤ) + n) -
+          Ah m.1 m.2.1 p (A.R.1 + ((K * m.2.2 : ℕ) : ℤ) + n))
+          (Sa m.2.1 m.2.2 (A.R.1 + ((K * m.2.2 : ℕ) : ℤ) + n))) N k i) i‖ ^ 2 ≤
+      ∑ ω ∈ Os, (N * (2 * B + 16 * (P + 2) * (Cj ω * EW) +
+        16 * (P + 2) * (N * (Cj ω * (N * B)))) + EW) := by
+  have hcast : ∀ β n : ℕ, A.R.1 + ((K * β : ℕ) : ℤ) + (n : ℤ) = A.R.1 + ((K * β + n : ℕ) : ℤ) :=
+    fun β n => by push_cast; ring
+  -- the term of an index is at most the term of its full group and block
+  set T : Ω × γ × ℕ → ℝ := fun m => ∑ k : Fin (N + 1),
+    ∑ q ∈ ((U m.2.1 m.2.2).filter fun I => posAct N k (off I)).image
+      (fun I => off I / 2 ^ ((k : ℕ) + 1)), ∑ p ∈ Finset.range (P + 1),
+      ‖gluedStack A.G ((U m.2.1 m.2.2).filter fun I => posAct N k (off I))
+        (fun I => off I / 2 ^ ((k : ℕ) + 1))
+        (fun q => posVal (fun n => (Ah m.1 m.2.1 (p + 1) (A.R.1 + (K * m.2.2 + n : ℕ)) -
+          Ah m.1 m.2.1 p (A.R.1 + (K * m.2.2 + n : ℕ)))
+          (Sa m.2.1 m.2.2 (A.R.1 + (K * m.2.2 + n : ℕ)))) N k q) q‖ ^ 2
+  have hT : ∀ m ∈ Ms, ∑ k : Fin (N + 1), ∑ i ∈ ((Um m).filter fun I => posAct N k (off I)).image
+        (fun I => off I / 2 ^ ((k : ℕ) + 1)), ∑ p ∈ u m,
+      ‖gluedStack A.G ((Um m).filter fun I => posAct N k (off I))
+        (fun I => off I / 2 ^ ((k : ℕ) + 1))
+        (fun i => posVal (fun n => (Ah m.1 m.2.1 (p + 1) (A.R.1 + ((K * m.2.2 : ℕ) : ℤ) + n) -
+          Ah m.1 m.2.1 p (A.R.1 + ((K * m.2.2 : ℕ) : ℤ) + n))
+          (Sa m.2.1 m.2.2 (A.R.1 + ((K * m.2.2 : ℕ) : ℤ) + n))) N k i) i‖ ^ 2 ≤ T m := by
+    intro m hm
+    refine Finset.sum_le_sum fun k _ => ?_
+    simp only [hcast]
+    exact gluedStack_sum_mono A.G (Finset.filter_subset_filter _ (hUm m hm)) _ (hu m hm) _
+  calc _ ≤ ∑ m ∈ Ms, T m := Finset.sum_le_sum hT
+    _ ≤ ∑ m ∈ Os ×ˢ (Gs ×ˢ Bs), T m :=
+        Finset.sum_le_sum_of_subset_of_nonneg hMs fun _ _ _ => Finset.sum_nonneg fun _ _ =>
+          Finset.sum_nonneg fun _ _ => Finset.sum_nonneg fun _ _ => by positivity
+    _ = ∑ ω ∈ Os, ∑ k : Fin (N + 1), ∑ g ∈ Gs, ∑ β ∈ Bs,
+          ∑ q ∈ ((U g β).filter fun I => posAct N k (off I)).image
+            (fun I => off I / 2 ^ ((k : ℕ) + 1)), ∑ p ∈ Finset.range (P + 1),
+          ‖gluedStack A.G ((U g β).filter fun I => posAct N k (off I))
+            (fun I => off I / 2 ^ ((k : ℕ) + 1))
+            (fun q => posVal (fun n => (Ah ω g (p + 1) (A.R.1 + (K * β + n : ℕ)) -
+              Ah ω g p (A.R.1 + (K * β + n : ℕ))) (Sa g β (A.R.1 + (K * β + n : ℕ)))) N k q)
+              q‖ ^ 2 := by
+        rw [Finset.sum_product]
+        refine Finset.sum_congr rfl fun ω _ => ?_
+        rw [Finset.sum_product]
+        have swap : ∀ F : γ → ℕ → Fin (N + 1) → ℝ, ∑ g ∈ Gs, ∑ β ∈ Bs, ∑ k, F g β k =
+            ∑ k, ∑ g ∈ Gs, ∑ β ∈ Bs, F g β k := fun F =>
+          (Finset.sum_congr rfl fun g _ => Finset.sum_comm).trans Finset.sum_comm
+        exact swap _
+    _ ≤ _ := Finset.sum_le_sum fun ω _ => A.bandStack_all hanc Gs Z ok hcap hKN Bs U off hoff
+        hU hok (Ah ω) (hbes ω) (hcomm ω) (hCj ω) (hJ ω) W hEW Sa hSa
+
+open Classical in
+/-- The untouched-side position stack energies over indices `m = (ω, g, β)` with use sets inside
+the uses of the group and block: `#Ω` times `posStack_all`. -/
+theorem posStack_outer (hanc : A.AncClosed) {Ω γ : Type*} {V : Type*} [Fintype V]
+    (Os : Finset Ω) (Gs : Finset γ) (Z : γ → ℤ → ColumnL2 V) (ok : γ → ℤ × ℤ → Prop) {B : ℝ}
+    (hcap : A.VarCap Gs Z ok B) {K N : ℕ} (hKN : K ≤ 2 ^ N)
+    (Bs : Finset ℕ) (U : γ → ℕ → Finset (ℤ × ℤ)) (off : ℤ × ℤ → ℕ)
+    (hU : ∀ g β, ∀ I ∈ U g β, I ∈ A.cells ∧ I.1 = A.R.1 + (K * β + off I : ℕ) ∧ off I < K)
+    (hok : ∀ g ∈ Gs, ∀ β, ∀ I ∈ U g β, ∀ J ∈ A.cells,
+      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2 → ok g J)
+    (Sb : γ → ℕ → ℤ → ColumnL2 V)
+    (hSb : ∀ g β h h', Sb g β h - Sb g β h' = Z g h - Z g h') {EW : ℝ}
+    (hEW : ∑ g ∈ Gs, ∑ β ∈ Bs, ‖columnL2Restriction
+      (⋃ J ∈ (U g β).image (fun I => ancAt A.G I (A.R.1 + ((K * β : ℕ) : ℤ))),
+        dyadicGridCell A.G J.1 J.2)
+      (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
+      (Sb g β (A.R.1 + ((K * β : ℕ) : ℤ)))‖ ^ 2 ≤ EW)
+    (Ms : Finset (Ω × γ × ℕ)) (hMs : Ms ⊆ Os ×ˢ (Gs ×ˢ Bs)) (Um : Ω × γ × ℕ → Finset (ℤ × ℤ))
+    (hUm : ∀ m ∈ Ms, Um m ⊆ U m.2.1 m.2.2) :
+    ∑ m ∈ Ms, ∑ k : Fin (N + 1), ∑ i ∈ ((Um m).filter fun I => posAct N k (off I)).image
+        (fun I => off I / 2 ^ ((k : ℕ) + 1)),
+      ‖gluedStack A.G ((Um m).filter fun I => posAct N k (off I))
+        (fun I => off I / 2 ^ ((k : ℕ) + 1))
+        (fun i => posVal (fun n => Sb m.2.1 m.2.2 (A.R.1 + ((K * m.2.2 : ℕ) : ℤ) + n)) N k i)
+        i‖ ^ 2 ≤ ∑ _ω ∈ Os, (N * B + EW) := by
+  have hcast : ∀ β n : ℕ, A.R.1 + ((K * β : ℕ) : ℤ) + (n : ℤ) = A.R.1 + ((K * β + n : ℕ) : ℤ) :=
+    fun β n => by push_cast; ring
+  set T : Ω × γ × ℕ → ℝ := fun m => ∑ k : Fin (N + 1),
+    ∑ q ∈ ((U m.2.1 m.2.2).filter fun I => posAct N k (off I)).image
+      (fun I => off I / 2 ^ ((k : ℕ) + 1)),
+      ‖gluedStack A.G ((U m.2.1 m.2.2).filter fun I => posAct N k (off I))
+        (fun I => off I / 2 ^ ((k : ℕ) + 1))
+        (fun q => posVal (fun n => Sb m.2.1 m.2.2 (A.R.1 + (K * m.2.2 + n : ℕ))) N k q) q‖ ^ 2
+  have hT : ∀ m ∈ Ms, ∑ k : Fin (N + 1), ∑ i ∈ ((Um m).filter fun I => posAct N k (off I)).image
+        (fun I => off I / 2 ^ ((k : ℕ) + 1)),
+      ‖gluedStack A.G ((Um m).filter fun I => posAct N k (off I))
+        (fun I => off I / 2 ^ ((k : ℕ) + 1))
+        (fun i => posVal (fun n => Sb m.2.1 m.2.2 (A.R.1 + ((K * m.2.2 : ℕ) : ℤ) + n)) N k i)
+        i‖ ^ 2 ≤ T m := by
+    intro m hm
+    refine Finset.sum_le_sum fun k _ => ?_
+    simp only [hcast]
+    have h := gluedStack_sum_mono A.G
+      (Finset.filter_subset_filter (fun I => posAct N k (off I)) (hUm m hm))
+      (fun I => off I / 2 ^ ((k : ℕ) + 1)) (subset_refl ({()} : Finset Unit))
+      (fun _ q => posVal (fun n => Sb m.2.1 m.2.2 (A.R.1 + (K * m.2.2 + n : ℕ))) N k q)
+    simpa using h
+  calc _ ≤ ∑ m ∈ Ms, T m := Finset.sum_le_sum hT
+    _ ≤ ∑ m ∈ Os ×ˢ (Gs ×ˢ Bs), T m :=
+        Finset.sum_le_sum_of_subset_of_nonneg hMs fun _ _ _ => Finset.sum_nonneg fun _ _ =>
+          Finset.sum_nonneg fun _ _ => by positivity
+    _ = ∑ _ω ∈ Os, ∑ k : Fin (N + 1), ∑ g ∈ Gs, ∑ β ∈ Bs,
+          ∑ q ∈ ((U g β).filter fun I => posAct N k (off I)).image
+            (fun I => off I / 2 ^ ((k : ℕ) + 1)),
+          ‖gluedStack A.G ((U g β).filter fun I => posAct N k (off I))
+            (fun I => off I / 2 ^ ((k : ℕ) + 1))
+            (fun q => posVal (fun n => Sb g β (A.R.1 + (K * β + n : ℕ))) N k q) q‖ ^ 2 := by
+        rw [Finset.sum_product]
+        refine Finset.sum_congr rfl fun ω _ => ?_
+        rw [Finset.sum_product]
+        have swap : ∀ F : γ → ℕ → Fin (N + 1) → ℝ, ∑ g ∈ Gs, ∑ β ∈ Bs, ∑ k, F g β k =
+            ∑ k, ∑ g ∈ Gs, ∑ β ∈ Bs, F g β k := fun F =>
+          (Finset.sum_congr rfl fun g _ => Finset.sum_comm).trans Finset.sum_comm
+        exact swap _
+    _ ≤ _ := Finset.sum_le_sum fun ω _ => A.posStack_all hanc Gs Z ok hcap hKN Bs U off hU hok
+        Sb hSb hEW
+
+end ActiveSetup
+
+/-- The real form of the extended-norm conclusion of `near_band_positions`. -/
+theorem near_real {M ι : Type*} (Ms : Finset M) (U : M → Finset ι) (L : ι → ℝ)
+    (hL : ∀ i, 0 ≤ L i) (v : M → ι → ℂ) {X Y₁ Y₂ R : ℝ} (hX : 0 ≤ X) (hY₁ : 0 ≤ Y₁)
+    (hY₂ : 0 ≤ Y₂) (hR : 0 ≤ R)
+    (h : 7 * ∑ m ∈ Ms, ∑ i ∈ U m, ‖(L i : ℂ) * v m i‖ₑ ≤
+      8 * ENNReal.ofReal X * ((ENNReal.ofReal Y₁ * ENNReal.ofReal Y₂) ^ (1 / 2 : ℝ) *
+        ENNReal.ofReal R)) :
+    ∑ m ∈ Ms, ∑ i ∈ U m, L i * ‖v m i‖ ≤ 8 / 7 * X * Real.sqrt (Y₁ * Y₂) * R := by
+  have e1 : ∀ m i, ‖(L i : ℂ) * v m i‖ₑ = ENNReal.ofReal (L i * ‖v m i‖) := fun m i => by
+    rw [← ofReal_norm, norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (hL i)]
+  have hs0 : ∀ m, 0 ≤ ∑ i ∈ U m, L i * ‖v m i‖ := fun m =>
+    Finset.sum_nonneg fun i _ => mul_nonneg (hL i) (norm_nonneg _)
+  have e2 : ∑ m ∈ Ms, ∑ i ∈ U m, ‖(L i : ℂ) * v m i‖ₑ =
+      ENNReal.ofReal (∑ m ∈ Ms, ∑ i ∈ U m, L i * ‖v m i‖) := by
+    simp_rw [e1]
+    rw [ENNReal.ofReal_sum_of_nonneg fun m _ => hs0 m]
+    exact Finset.sum_congr rfl fun m _ =>
+      (ENNReal.ofReal_sum_of_nonneg fun i _ => mul_nonneg (hL i) (norm_nonneg _)).symm
+  have e3 : (ENNReal.ofReal Y₁ * ENNReal.ofReal Y₂) ^ (1 / 2 : ℝ) =
+      ENNReal.ofReal (Real.sqrt (Y₁ * Y₂)) := by
+    rw [← ENNReal.ofReal_mul hY₁, ENNReal.ofReal_rpow_of_nonneg (mul_nonneg hY₁ hY₂)
+      (by norm_num), Real.sqrt_eq_rpow]
+  rw [e2, e3, ← ENNReal.ofReal_mul (Real.sqrt_nonneg _),
+    show (8 : ℝ≥0∞) = ENNReal.ofReal 8 by simp, ← ENNReal.ofReal_mul (by norm_num),
+    ← ENNReal.ofReal_mul (by positivity),
+    show (7 : ℝ≥0∞) = ENNReal.ofReal 7 by simp, ← ENNReal.ofReal_mul (by norm_num),
+    ENNReal.ofReal_le_ofReal_iff (by positivity)] at h
+  have : 0 ≤ ∑ m ∈ Ms, ∑ i ∈ U m, L i * ‖v m i‖ := Finset.sum_nonneg fun m _ => hs0 m
+  nlinarith [Real.sqrt_nonneg (Y₁ * Y₂)]
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## Near bands on the main columns (blueprint lines 2426-2443) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The cell form on the main columns sees only the restrictions of its inputs to the cell. -/
+theorem Λc_congr_restrictM (I : ℤ × ℤ) {x y : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)}
+    (h : ∀ l, columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (x l) =
+      columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) (y l)) :
+    fp.Λc I x = fp.Λc I y := by
+  by_cases hI : I ∈ A.cells
+  · rw [fp.Λc_apply hI, fp.Λc_apply hI]
+    refine localProgressionForm_congr_cell (A.adm I hI) fun l => ?_
+    have hm := dyadicGridCell_measurable A.G I.1 I.2
+    have hx := columnL2Indicator_coeFn _ hm (x l)
+    have hy := columnL2Indicator_coeFn _ hm (y l)
+    have he : (columnL2Indicator _ hm (x l) : ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) =ᵐ[volume]
+        (columnL2Indicator _ hm (y l) : ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) := by
+      have := congrArg (fun z : ColumnL2 (bf.Lab ⊕ Fin fp.Mc) => (z : ℝ → ColumnHilbert (bf.Lab ⊕
+          Fin fp.Mc)))
+        (h l)
+      exact Filter.EventuallyEq.of_eq this
+    filter_upwards [hx, hy, he] with z h1 h2 h3 hz
+    rw [h1, h2, Set.indicator_of_mem hz, Set.indicator_of_mem hz] at h3
+    unfold augPhys
+    rw [h3]
+  · unfold FamParams.Λc
+    simp [hI]
+
+open Classical in
+/-- Blueprint lines 2400-2411 and 2423 at one use, on the main columns: if the restrictions of the
+two varying sides to the use are the sums of the selected components of their active
+configurations, the cell form is the sum over the pairs of active configurations of the forms of
+the glued stacks. -/
+theorem Λc_stacks_expandM {I : ℤ × ℤ} {a b : Fin 4} (hab : a ≠ b) (x : Fin 4 → ColumnL2 (bf.Lab ⊕
+    Fin fp.Mc))
+    (va vb : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {Ka Kb : Type*} (Sa : Finset Ka) (Sb : Finset Kb)
+    (fa : Ka → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (fb : Kb → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (ga : Ka → Kb → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (gb : Ka → Kb → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (hga : ∀ k ∈ Sa, ∀ k' ∈ Sb, columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (ga k k') = columnL2Restriction
+        (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2) (fa k))
+    (hgb : ∀ k ∈ Sa, ∀ k' ∈ Sb, columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (gb k k') = columnL2Restriction
+        (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2) (fb k'))
+    (hva : columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) va = ∑ k ∈ Sa, columnL2Restriction
+        (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2) (fa k))
+    (hvb : columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) vb = ∑ k ∈ Sb, columnL2Restriction
+        (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2) (fb k)) :
+    fp.Λc I (Function.update (Function.update x a va) b vb) =
+      ∑ ka ∈ Sa, ∑ kb ∈ Sb,
+        fp.Λc I (Function.update (Function.update x a (ga ka kb)) b (gb ka kb)) := by
+  set rI := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
+    (dyadicGridCell_measurable A.G I.1 I.2)
+  have hidem : ∀ y, rI (rI y) = rI y := fun y => by
+    rw [← ContinuousLinearMap.comp_apply, columnL2Restriction_idem]
+  have e1 : fp.Λc I (Function.update (Function.update x a va) b vb) =
+      fp.Λc I (Function.update (Function.update x a (∑ k ∈ Sa, rI (fa k))) b
+        (∑ k ∈ Sb, rI (fb k))) := by
+    refine fp.Λc_congr_restrictM I fun l => ?_
+    simp only [Function.update_apply]
+    split_ifs with h1 h2
+    · rw [hvb, map_sum]; exact Finset.sum_congr rfl fun k _ => (hidem _).symm
+    · rw [hva, map_sum]; exact Finset.sum_congr rfl fun k _ => (hidem _).symm
+    · rfl
+  rw [e1, multilinear_update_two_finsum _ hab]
+  refine Finset.sum_congr rfl fun ka hka => Finset.sum_congr rfl fun kb hkb => ?_
+  refine fp.Λc_congr_restrictM I fun l => ?_
+  simp only [Function.update_apply]
+  split_ifs with h1 h2
+  · rw [hidem, hgb ka hka kb hkb]
+  · rw [hidem, hga ka hka kb hkb]
+  · rfl
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup
+variable {κ' : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ' c₀)
+
+open Classical in
+/-- The maximal cells of the hull of a family of active cells are cells of the family (blueprint
+line 2426: "its maximal cells are disjoint roots"). -/
+theorem useHull_max_sub {U : Finset (ℤ × ℤ)} (hU : U ⊆ A.cells) :
+    maximalDyadicCells A.G (A.useHull U) ⊆ U := by
+  intro c hc
+  obtain ⟨hcH, hmax⟩ := Finset.mem_filter.mp hc
+  obtain ⟨-, c', -, r, hr, -, hcr⟩ := Finset.mem_filter.mp hcH
+  have hrc := hmax r (A.mem_useHull hU hr) hcr
+  have he : c = r := dyadicGridCell_injective A.G (le_antisymm hcr hrc)
+  exact he ▸ hr
+
+end ActiveSetup
+
+/-- The physical parts of a triple slot update. -/
+theorem augPhys_update3V {V : Type*} [Fintype V] (F : Fin 4 → ColumnL2 V) (a b c : Fin 4)
+    (xa xb xc : ColumnL2 V) :
+    (fun l => augPhys (Function.update (Function.update (Function.update F a xa) b xb) c xc l)) =
+      Function.update (Function.update (Function.update (fun l => augPhys (F l)) a (augPhys xa))
+        b (augPhys xb)) c (augPhys xc) := by
+  funext l
+  simp only [Function.update_apply]
+  split_ifs <;> rfl
+
+open Classical in
+/-- Blueprint lines 2430-2444 (`eq:near-band`) on the main column stacks: the near-band bound of
+`near_band_bound` for the cell forms `Λ_c` on the main columns, applied to fixed column inputs
+`F`, the first side stack `X` (positions and bands), the second side stack `W` and the frozen band
+stack `Y`, on hulls of active cells. -/
+theorem leaf_near_bandM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
+        bf.FamParams) (K Nd : ℕ),
+      K ≤ Nd → 1 ≤ K →
+      ∀ {N : Type*} (Ns : Finset N) (H Rt U : N → Finset (ℤ × ℤ)) {R : Set ℝ},
+      MeasurableSet R → (∀ n ∈ Ns, Rt n ⊆ H n) →
+      (∀ n ∈ Ns, (Rt n : Set (ℤ × ℤ)).PairwiseDisjoint fun c => dyadicGridCell A.G c.1 c.2) →
+      (∀ n ∈ Ns, ∀ r ∈ Rt n, dyadicGridCell A.G r.1 r.2 ⊆ R) → (∀ n ∈ Ns, U n ⊆ H n) →
+      (∀ n ∈ Ns, ∀ c ∈ U n, ∃ r ∈ Rt n, dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G r.1 r.2) →
+      (∀ n ∈ Ns, ∀ c ∈ U n, ∀ r ∈ Rt n,
+        dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G r.1 r.2 → c.1 < r.1 + K) →
+      (∀ n ∈ Ns, ∀ c ∈ U n, ∀ r ∈ Rt n, ∀ d : ℤ × ℤ,
+        dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+        dyadicGridCell A.G d.1 d.2 ⊆ dyadicGridCell A.G r.1 r.2 → d ∈ H n) →
+      (∀ n ∈ Ns, H n ⊆ A.cells) →
+      ∀ {ι κ' β : Type} [DecidableEq ι] [DecidableEq κ'] [DecidableEq β]
+      (s : N → Finset ι) (t : N → Finset κ') (u : N → Finset β) {a b c : Fin 4},
+      a ≠ b → a ≠ c → b ≠ c →
+      ∀ (F : N → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (X : N → ι → β → ColumnL2 (bf.Lab ⊕ Fin
+          fp.Mc))
+        (W : N → κ' → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Y : N → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
+      ∀ {Aa Bb : ℝ≥0∞},
+      (∀ z ∈ R, ∑ n ∈ Ns, dyadicHullMax A.G (H n)
+        (fun r => ENNReal.ofReal (∑ i ∈ s n, ∑ p ∈ u n, ‖augPhys (X n i p) r‖ ^ 2)) z ≤ Aa) →
+      (∀ z ∈ R, ∑ n ∈ Ns, dyadicHullMax A.G (H n)
+        (fun r => ENNReal.ofReal (∑ k ∈ t n, ‖augPhys (W n k) r‖ ^ 2)) z ≤ Bb) →
+      (∀ n ∈ Ns, ∀ d ∈ H n, dyadicEnergyAverage A.G
+        (fun r => ENNReal.ofReal (∑ i ∈ s n, ∑ p ∈ u n, ‖augPhys (X n i p) r‖ ^ 2)) d ≠ ⊤) →
+      (∀ n ∈ Ns, ∀ d ∈ H n, dyadicEnergyAverage A.G
+        (fun r => ENNReal.ofReal (∑ k ∈ t n, ‖augPhys (W n k) r‖ ^ 2)) d ≠ ⊤) →
+      ∀ {Bc Bd : ℝ}, 0 ≤ Bc → 0 ≤ Bd →
+      (∀ n ∈ Ns, ∀ d ∈ H n, dyadicEnergyAverage A.G
+        (fun r => ENNReal.ofReal (∑ p ∈ u n, ‖augPhys (Y n p) r‖ ^ 2)) d ≤
+          ENNReal.ofReal (Bc ^ 2)) →
+      (∀ n ∈ Ns, ∀ j, j ≠ a → j ≠ b → j ≠ c → ∀ d ∈ H n,
+        dyadicEnergyAverage A.G (fun r => ‖augPhys (F n j) r‖ₑ ^ 2) d ≤
+          ENNReal.ofReal (Bd ^ 2)) →
+      ∀ (sa : N → ℤ × ℤ → ι) (sb : N → ℤ × ℤ → κ'), (∀ n ∈ Ns, ∀ I ∈ U n, sa n I ∈ s n) →
+      (∀ n ∈ Ns, ∀ I ∈ U n, sb n I ∈ t n) →
+      ∀ sg : N → ℤ × ℤ → ℂ, (∀ n I, ‖sg n I‖ ≤ 1) →
+      7 * ∑ n ∈ Ns, ‖∑ I ∈ U n, (dyadicGridLength A.G I.1 : ℂ) * (sg n I * ∑ p ∈ u n,
+          fp.Λc I (Function.update (Function.update (Function.update (F n) a
+            (X n (sa n I) p)) b (W n (sb n I))) c (Y n p)))‖ₑ ≤
+        8 * ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
+          (1 + Real.log ((K : ℝ) + 2)) * ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) *
+            (64 * Bc * Bd)) * ((Aa * Bb) ^ (1 / 2 : ℝ) * volume R) := by
+  obtain ⟨Cq, hCq, hnb⟩ := near_band_bound κ hq2 hq3
+  refine ⟨Cq, hCq, ?_⟩
+  intro c₀ A bf fp K Nd hKN hK N Ns H Rt U R hRm hRtH hRtdis hRtR hUH hUr hdep hclos hHc ι κ' β
+    _ _ _ s t u a b c hab hac hbc F X W Y Aa Bb hA hB hAf hBf Bc Bd hBc hBd hcB hdB sa sb hsa
+    hsb sg hsg
+  have h := hnb A.G K Nd hKN hK Ns H Rt U hRm hRtH hRtdis hRtR hUH hUr hdep hclos s t u hab hac
+    hbc (fun n l => augPhys (F n l)) (fun n i p => augPhys (X n i p)) (fun n k => augPhys (W n k))
+    (fun n p => augPhys (Y n p)) (fun n j => columnPhys_measurable _)
+    (fun n i p => columnPhys_measurable _) (fun n k => columnPhys_measurable _)
+    (fun n p => columnPhys_measurable _) hA hB hAf hBf (fun _ => A.w)
+    (fun n hn I hI => A.adm I (hHc n hn hI))
+    (fun n _ I _ j => augPhys_normalized_ne_top A.G I _)
+    (fun n _ I _ i p => augPhys_normalized_ne_top A.G I _)
+    (fun n _ I _ k => augPhys_normalized_ne_top A.G I _)
+    (fun n _ I _ p => augPhys_normalized_ne_top A.G I _) hBc hBd hcB hdB sa sb hsa hsb sg hsg
+  refine le_trans (le_of_eq ?_) h
+  congr 1
+  refine Finset.sum_congr rfl fun n hn => ?_
+  congr 1
+  refine Finset.sum_congr rfl fun I hI => ?_
+  congr 2
+  refine Finset.sum_congr rfl fun p _ => ?_
+  rw [fp.Λc_apply (hHc n hn (hUH n hn hI)), augPhys_update3V]
+
+open Classical in
+/-- Blueprint lines 2426-2444 on the main columns: for indices `n` with use cells `U n` in one
+depth block `[b_n, b_n + K)` and point multiplicity `Σ_n #{I ∈ U n : y ∈ I} ≤ M_u` (so the hull
+roots have total measure `Σ_n |Ω_n| ≤ M_u |R|`, line 2426), fixed stacks of total energies
+`E_a |R|`, `E_b |R|`, and frozen complements bounded on the active ancestors of the uses within
+their blocks, there are common cut cells of total length at most `ρ |R|` after which the squared
+hull maxima have the joint caps `C_{ρ/2} E (1 + log(2 + M_u))` of `two_hull_caps` (line 2428)
+and the near-band sums over the uses below no cut cell obey `eq:near-band`. -/
+theorem near_band_cutM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
+        bf.FamParams) (K Nd : ℕ),
+      K ≤ Nd → 1 ≤ K → A.AncClosed →
+      ∀ {N : Type*} (Ns : Finset N) (U : N → Finset (ℤ × ℤ)) (bs : N → ℤ),
+      (∀ n ∈ Ns, U n ⊆ A.cells) → (∀ n ∈ Ns, ∀ c ∈ U n, bs n ≤ c.1 ∧ c.1 < bs n + K) →
+      ∀ {ι κ' β : Type} [DecidableEq ι] [DecidableEq κ'] [DecidableEq β]
+      (s : N → Finset ι) (t : N → Finset κ') (u : N → Finset β) {a b c : Fin 4},
+      a ≠ b → a ≠ c → b ≠ c →
+      ∀ (F : N → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (X : N → ι → β → ColumnL2 (bf.Lab ⊕ Fin
+          fp.Mc))
+        (W : N → κ' → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Y : N → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
+      ∀ {Ea Eb ρ Mu : ℝ}, 0 ≤ Ea → 0 ≤ Eb → 0 ≤ Mu → 0 < ρ → ρ < 1 →
+      ∑ n ∈ Ns, ∑ i ∈ s n, ∑ p ∈ u n, ‖X n i p‖ ^ 2 ≤ Ea * dyadicGridLength A.G A.R.1 →
+      ∑ n ∈ Ns, ∑ k ∈ t n, ∑ _p ∈ ({()} : Finset Unit), ‖W n k‖ ^ 2 ≤
+        Eb * dyadicGridLength A.G A.R.1 →
+      (∀ y, ∑ n ∈ Ns, ((U n).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card ≤ Mu) →
+      ∀ {Bc Bd : ℝ}, 0 ≤ Bc → 0 ≤ Bd →
+      (∀ n ∈ Ns, ∀ c' ∈ U n, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 → bs n ≤ d.1 →
+        dyadicEnergyAverage A.G
+          (fun r => ENNReal.ofReal (∑ p ∈ u n, ‖augPhys (Y n p) r‖ ^ 2)) d ≤
+            ENNReal.ofReal (Bc ^ 2)) →
+      (∀ n ∈ Ns, ∀ j, j ≠ a → j ≠ b → j ≠ c → ∀ c' ∈ U n, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 → bs n ≤ d.1 →
+        dyadicEnergyAverage A.G (fun r => ‖augPhys (F n j) r‖ₑ ^ 2) d ≤
+          ENNReal.ofReal (Bd ^ 2)) →
+      ∀ (sa : N → ℤ × ℤ → ι) (sb : N → ℤ × ℤ → κ'), (∀ n ∈ Ns, ∀ I ∈ U n, sa n I ∈ s n) →
+      (∀ n ∈ Ns, ∀ I ∈ U n, sb n I ∈ t n) →
+      ∃ C : Finset (ℤ × ℤ), C ⊆ A.cells ∧
+        dyadicRootLength A.G (maximalDyadicCells A.G C) ≤ ρ * dyadicGridLength A.G A.R.1 ∧
+        7 * ∑ n ∈ Ns, ∑ I ∈ (U n).filter (fun I => ¬ ∃ e ∈ C,
+            dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
+          ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u n,
+            fp.Λc I (Function.update (Function.update (Function.update (F n) a
+              (X n (sa n I) p)) b (W n (sb n I))) c (Y n p))‖ₑ ≤
+          8 * ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
+            (1 + Real.log ((K : ℝ) + 2)) * ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) *
+              (64 * Bc * Bd)) *
+            ((ENNReal.ofReal (hullCutConstant (ρ / 2) * Ea * (1 + Real.log (2 + Mu))) *
+              ENNReal.ofReal (hullCutConstant (ρ / 2) * Eb * (1 + Real.log (2 + Mu)))) ^
+                (1 / 2 : ℝ) * ENNReal.ofReal (dyadicGridLength A.G A.R.1)) := by
+  obtain ⟨Cq, hCq, hnb⟩ := leaf_near_bandM κ hq2 hq3
+  refine ⟨Cq, hCq, ?_⟩
+  intro c₀ A bf fp K Nd hKN hK hanc N Ns U bs hUc hUb ι κ' β _ _ _ s t u a b c hab hac hbc F X W Y
+    Ea Eb ρ Mu hEa hEb hMu0 hρ hρ1 hXe hWe hMu Bc Bd hBc hBd hYb hFb sa sb hsa hsb
+  set R := dyadicGridCell A.G A.R.1 A.R.2
+  have hRm : MeasurableSet R := dyadicGridCell_measurable _ _ _
+  set H : N → Finset (ℤ × ℤ) := fun n => A.useHull (U n)
+  set fa : N → ℝ → ℝ := fun n => stackDens (s n) (u n) (X n)
+  set fb : N → ℝ → ℝ := fun n => stackDens (t n) ({()} : Finset Unit) (fun k _ => W n k)
+  have hea : ∑ n ∈ Ns, eLpNorm (fa n) 2 volume ^ (2 : ℕ) ≤
+      ENNReal.ofReal (Ea * dyadicGridLength A.G A.R.1) := by
+    refine (Finset.sum_le_sum fun n _ => stackDens_eLpNorm_sq (s n) (u n) (X n)).trans ?_
+    rw [← ENNReal.ofReal_sum_of_nonneg fun n _ => Finset.sum_nonneg fun i _ =>
+      Finset.sum_nonneg fun p _ => by positivity]
+    exact ENNReal.ofReal_le_ofReal hXe
+  have heb : ∑ n ∈ Ns, eLpNorm (fb n) 2 volume ^ (2 : ℕ) ≤
+      ENNReal.ofReal (Eb * dyadicGridLength A.G A.R.1) := by
+    refine (Finset.sum_le_sum fun n _ =>
+      stackDens_eLpNorm_sq (t n) ({()} : Finset Unit) (fun k _ => W n k)).trans ?_
+    rw [← ENNReal.ofReal_sum_of_nonneg fun n _ => Finset.sum_nonneg fun i _ =>
+      Finset.sum_nonneg fun p _ => by positivity]
+    exact ENNReal.ofReal_le_ofReal hWe
+  have hM : ∑ n ∈ Ns, volume (⋃ c ∈ maximalDyadicCells A.G (H n),
+      dyadicGridCell A.G c.1 c.2) ≤ ENNReal.ofReal (Mu * dyadicGridLength A.G A.R.1) :=
+    hull_mass_le A.G Ns H U (fun n hn => A.useHull_max_sub (hUc n hn)) A.R
+      (fun n hn c hc => A.sub c (hUc n hn hc)) hMu
+  obtain ⟨C, hCS, hClen, hcapa, hcapb⟩ := two_hull_caps Ns A.G A.cells H fa fb
+    (fun n _ => (stackDens_measurable _ _ _).aestronglyMeasurable)
+    (fun n _ => (stackDens_measurable _ _ _).aestronglyMeasurable) A.R
+    (fun n _ => A.useHull_sub (U n)) A.sub hEa hEb hMu0 hρ hρ1 hea heb hM
+  refine ⟨C, hCS, hClen, ?_⟩
+  set below : ℤ × ℤ → Prop := fun I => ∃ e ∈ C,
+    dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2
+  set U' : N → Finset (ℤ × ℤ) := fun n => (U n).filter fun I => ¬ below I
+  set H' : N → Finset (ℤ × ℤ) := fun n => (H n).filter fun I => ¬ below I
+  set Rt : N → Finset (ℤ × ℤ) := fun n => maximalDyadicCells A.G (U' n)
+  have hU'U : ∀ n, U' n ⊆ U n := fun n => Finset.filter_subset _ _
+  have hRtU : ∀ n, Rt n ⊆ U' n := fun n => maximalDyadicCells_subset _ _
+  have hUH : ∀ n ∈ Ns, U' n ⊆ H' n := fun n hn I hI => by
+    obtain ⟨hIU, hIb⟩ := Finset.mem_filter.mp hI
+    exact Finset.mem_filter.mpr ⟨A.mem_useHull (hUc n hn) hIU, hIb⟩
+  have hdepth : ∀ {x y : ℤ × ℤ}, dyadicGridCell A.G x.1 x.2 ⊆ dyadicGridCell A.G y.1 y.2 →
+      y.1 ≤ x.1 := fun h => dyadicGridCell_depth_le_of_subset A.G _ _ h
+  have hH'b : ∀ n ∈ Ns, ∀ d ∈ H' n, ∃ c' ∈ U n, d ∈ A.cells ∧
+      dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 ∧ bs n ≤ d.1 := by
+    intro n hn d hd
+    obtain ⟨hdH, -⟩ := Finset.mem_filter.mp hd
+    obtain ⟨hdc, c', hc', r, hr, hc'd, hdr⟩ := Finset.mem_filter.mp hdH
+    exact ⟨c', hc', hdc, hc'd, ((hUb n hn r hr).1).trans (hdepth hdr)⟩
+  have hfa : ∀ n, (fun y => ‖fa n y‖ₑ ^ (2 : ℕ)) =
+      fun r => ENNReal.ofReal (∑ i ∈ s n, ∑ p ∈ u n, ‖augPhys (X n i p) r‖ ^ 2) :=
+    fun n => funext fun y => stackDens_enorm_sq _ _ _ y
+  have hfb : ∀ n, (fun y => ‖fb n y‖ₑ ^ (2 : ℕ)) =
+      fun r => ENNReal.ofReal (∑ k ∈ t n, ‖augPhys (W n k) r‖ ^ 2) := by
+    intro n
+    funext y
+    rw [stackDens_enorm_sq]
+    simp
+  have h := hnb A bf fp K Nd hKN hK Ns H' Rt U' hRm
+    (fun n hn => (hRtU n).trans (hUH n hn))
+    (fun n _ => maximalDyadicCells_pairwiseDisjoint _ _)
+    (fun n hn r hr => A.sub r (hUc n hn (hU'U n (hRtU n hr))))
+    hUH
+    (fun n hn I hI => maximalDyadicCells_covers A.G (U' n) hI)
+    (fun n hn I hI r hr hIr => by
+      have h1 := (hUb n hn I (hU'U n hI)).2
+      have h2 := (hUb n hn r (hU'U n (hRtU n hr))).1
+      omega)
+    (fun n hn I hI r hr d hId hdr => by
+      have hrU := hU'U n (hRtU n hr)
+      have hIU := hU'U n hI
+      refine Finset.mem_filter.mpr ⟨?_, fun ⟨e, he, hde⟩ =>
+        (Finset.mem_filter.mp hI).2 ⟨e, he, hId.trans hde⟩⟩
+      refine Finset.mem_filter.mpr ⟨hanc I (hUc n hn hIU) d hId
+        (hdr.trans (A.sub r (hUc n hn hrU))), I, hIU, r, hrU, hId, hdr⟩)
+    (fun n _ d hd => A.useHull_sub (U n) (Finset.mem_filter.mp hd).1)
+    s t u hab hac hbc F X W Y
+    (Aa := ENNReal.ofReal (hullCutConstant (ρ / 2) * Ea * (1 + Real.log (2 + Mu))))
+    (Bb := ENNReal.ofReal (hullCutConstant (ρ / 2) * Eb * (1 + Real.log (2 + Mu))))
+    (fun z _ => by
+      have := hcapa z
+      simp only [hfa] at this
+      exact this)
+    (fun z _ => by
+      have := hcapb z
+      simp only [hfb] at this
+      exact this)
+    (fun n _ d _ => energyAverage_augPhys_ne_top A.G (s n) (u n) (X n) d)
+    (fun n _ d _ => by
+      have := energyAverage_augPhys_ne_top A.G (t n) ({()} : Finset Unit)
+        (fun k _ => W n k) d
+      simpa using this)
+    hBc hBd
+    (fun n hn d hd => by
+      obtain ⟨c', hc', hdc, hc'd, hbd⟩ := hH'b n hn d hd
+      exact hYb n hn c' hc' d hdc hc'd hbd)
+    (fun n hn j hja hjb hjc d hd => by
+      obtain ⟨c', hc', hdc, hc'd, hbd⟩ := hH'b n hn d hd
+      exact hFb n hn j hja hjb hjc c' hc' d hdc hc'd hbd)
+    sa sb (fun n hn I hI => hsa n hn I (hU'U n hI)) (fun n hn I hI => hsb n hn I (hU'U n hI))
+    (fun n I => unPhase ((dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u n,
+      fp.Λc I (Function.update (Function.update (Function.update (F n) a
+        (X n (sa n I) p)) b (W n (sb n I))) c (Y n p))))
+    (fun n I => norm_unPhase_le _)
+  rw [dyadicGridCell_volume] at h
+  refine le_trans (le_of_eq ?_) h
+  congr 1
+  refine Finset.sum_congr rfl fun n _ => ?_
+  rw [sum_enorm_eq_unPhase]
+  congr 1
+  refine Finset.sum_congr rfl fun I _ => ?_
+  ring
+
+open Classical in
+/-- Blueprint lines 2392-2444 on the main columns (fixed stacks, common cuts, hull maxima and
+summation): for indices `m` with use cells `U m` in one depth block and point multiplicity `M_u`,
+varying sides `v_a, v_b` whose restrictions to each use are the sums of the selected components of
+their active configurations, and frozen complements bounded on the active ancestors of the uses
+within their blocks, there are common cut cells of total length at most `ρ |R|` after which the
+absolute near-band sums over the uses below no cut cell obey `eq:near-band`, with the stack
+energies `E_a, E_b` of the configurations of each side (paid with the number of configurations of
+the other side) and the hull mass `|K_a| |K_b| M_u |R|` of the indices `(m, k_a, k_b)`. -/
+theorem near_band_stacksM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
+        bf.FamParams) (K Nd : ℕ),
+      K ≤ Nd → 1 ≤ K → A.AncClosed →
+      ∀ {M : Type*} (Ms : Finset M) (U : M → Finset (ℤ × ℤ)) (bs : M → ℤ),
+      (∀ m ∈ Ms, U m ⊆ A.cells) → (∀ m ∈ Ms, ∀ c ∈ U m, bs m ≤ c.1 ∧ c.1 < bs m + K) →
+      ∀ {Ka Kb : Type} [Fintype Ka] [Fintype Kb] {ι κ' β : Type}
+        (u : M → Finset β) {a b c : Fin 4}, a ≠ b → a ≠ c → b ≠ c →
+      ∀ (F : M → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Y : M → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+        (va : M → ℤ × ℤ → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (vb : M → ℤ × ℤ → ColumnL2 (bf.Lab ⊕
+            Fin fp.Mc))
+        (actA : Ka → ℤ × ℤ → Prop) (selA : Ka → ℤ × ℤ → ι)
+        (valA : M → Ka → ι → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+        (actB : Kb → ℤ × ℤ → Prop) (selB : Kb → ℤ × ℤ → κ')
+        (valB : M → Kb → κ' → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
+      (∀ m ∈ Ms, ∀ I ∈ U m, ∀ p ∈ u m, columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) (va m I p) =
+          ∑ k ∈ Finset.univ.filter (fun k => actA k I), columnL2Restriction
+            (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+              (valA m k (selA k I) p)) →
+      (∀ m ∈ Ms, ∀ I ∈ U m, columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) (vb m I) =
+          ∑ k ∈ Finset.univ.filter (fun k => actB k I), columnL2Restriction
+            (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+              (valB m k (selB k I))) →
+      ∀ {Ea Eb ρ Mu : ℝ}, 0 ≤ Ea → 0 ≤ Eb → 0 ≤ Mu → 0 < ρ → ρ < 1 →
+      ∑ m ∈ Ms, ∑ k, ∑ i ∈ ((U m).filter (actA k)).image (selA k), ∑ p ∈ u m,
+        ‖gluedStack A.G ((U m).filter (actA k)) (selA k) (fun i => valA m k i p) i‖ ^ 2 ≤
+          Ea * dyadicGridLength A.G A.R.1 →
+      ∑ m ∈ Ms, ∑ k, ∑ i ∈ ((U m).filter (actB k)).image (selB k),
+        ‖gluedStack A.G ((U m).filter (actB k)) (selB k) (valB m k) i‖ ^ 2 ≤
+          Eb * dyadicGridLength A.G A.R.1 →
+      (∀ y, ∑ m ∈ Ms, ((U m).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card ≤ Mu) →
+      ∀ {Bc Bd : ℝ}, 0 ≤ Bc → 0 ≤ Bd →
+      (∀ m ∈ Ms, ∀ c' ∈ U m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 → bs m ≤ d.1 →
+        dyadicEnergyAverage A.G
+          (fun r => ENNReal.ofReal (∑ p ∈ u m, ‖augPhys (Y m p) r‖ ^ 2)) d ≤
+            ENNReal.ofReal (Bc ^ 2)) →
+      (∀ m ∈ Ms, ∀ j, j ≠ a → j ≠ b → j ≠ c → ∀ c' ∈ U m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 → bs m ≤ d.1 →
+        dyadicEnergyAverage A.G (fun r => ‖augPhys (F m j) r‖ₑ ^ 2) d ≤
+          ENNReal.ofReal (Bd ^ 2)) →
+      ∃ C : Finset (ℤ × ℤ), C ⊆ A.cells ∧
+        dyadicRootLength A.G (maximalDyadicCells A.G C) ≤ ρ * dyadicGridLength A.G A.R.1 ∧
+        7 * ∑ m ∈ Ms, ∑ I ∈ (U m).filter (fun I => ¬ ∃ e ∈ C,
+            dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
+          ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m,
+            fp.Λc I (Function.update (Function.update (Function.update (F m) a
+              (va m I p)) b (vb m I)) c (Y m p))‖ₑ ≤
+          8 * ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
+            (1 + Real.log ((K : ℝ) + 2)) * ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) *
+              (64 * Bc * Bd)) *
+            ((ENNReal.ofReal (hullCutConstant (ρ / 2) * (Fintype.card Kb * Ea) *
+                (1 + Real.log (2 + Fintype.card Ka * Fintype.card Kb * Mu))) *
+              ENNReal.ofReal (hullCutConstant (ρ / 2) * (Fintype.card Ka * Eb) *
+                (1 + Real.log (2 + Fintype.card Ka * Fintype.card Kb * Mu)))) ^
+                (1 / 2 : ℝ) * ENNReal.ofReal (dyadicGridLength A.G A.R.1)) := by
+  obtain ⟨Cq, hCq, hnc⟩ := near_band_cutM κ hq2 hq3
+  refine ⟨Cq, hCq, ?_⟩
+  intro c₀ A bf fp K Nd hKN hK hanc M Ms U bs hUc hUb Ka Kb _ _ ι κ' β u a b c hab hac hbc F Y va vb
+    actA selA valA actB selB valB hrepA hrepB Ea Eb ρ Mu hEa hEb hMu0 hρ hρ1 hXe hWe hMu Bc Bd hBc
+        hBd hYb hFb
+  set Ns : Finset (M × Ka × Kb) := Ms ×ˢ (Finset.univ ×ˢ Finset.univ)
+  set U' : M × Ka × Kb → Finset (ℤ × ℤ) := fun n =>
+    (U n.1).filter fun I => actA n.2.1 I ∧ actB n.2.2 I
+  set X : M × Ka × Kb → ι → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun n i p =>
+    gluedStack A.G (U' n) (selA n.2.1) (fun i => valA n.1 n.2.1 i p) i
+  set W : M × Ka × Kb → κ' → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun n k =>
+    gluedStack A.G (U' n) (selB n.2.2) (valB n.1 n.2.2) k
+  have hU'U : ∀ n, U' n ⊆ U n.1 := fun n => Finset.filter_subset _ _
+  have hU'A : ∀ n, U' n ⊆ (U n.1).filter (actA n.2.1) := fun n I hI => by
+    obtain ⟨h1, h2, -⟩ := Finset.mem_filter.mp hI
+    exact Finset.mem_filter.mpr ⟨h1, h2⟩
+  have hU'B : ∀ n, U' n ⊆ (U n.1).filter (actB n.2.2) := fun n I hI => by
+    obtain ⟨h1, -, h3⟩ := Finset.mem_filter.mp hI
+    exact Finset.mem_filter.mpr ⟨h1, h3⟩
+  have hMu' : ∀ y, ∑ n ∈ Ns, ((U' n).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card ≤
+      Fintype.card Ka * Fintype.card Kb * Mu := by
+    intro y
+    have h1 := hMu y
+    push_cast at h1 ⊢
+    calc ∑ n ∈ Ns, (((U' n).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ)
+        ≤ ∑ n ∈ Ns, (((U n.1).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) :=
+          Finset.sum_le_sum fun n _ => by
+            exact_mod_cast Finset.card_le_card (Finset.filter_subset_filter _ (hU'U n))
+      _ = Fintype.card Ka * Fintype.card Kb *
+            ∑ m ∈ Ms, (((U m).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) := by
+          simp only [Ns, Finset.sum_product, Finset.sum_const, Finset.card_univ,
+            Finset.card_product, nsmul_eq_mul, Finset.mul_sum]
+          push_cast
+          exact Finset.sum_congr rfl fun m _ => by ring
+      _ ≤ _ := mul_le_mul_of_nonneg_left h1 (by positivity)
+  have hXe' : ∑ n ∈ Ns, ∑ i ∈ (U' n).image (selA n.2.1), ∑ p ∈ u n.1, ‖X n i p‖ ^ 2 ≤
+      (Fintype.card Kb * Ea) * dyadicGridLength A.G A.R.1 := by
+    have hn : ∀ n ∈ Ns, ∑ i ∈ (U' n).image (selA n.2.1), ∑ p ∈ u n.1, ‖X n i p‖ ^ 2 ≤
+        ∑ i ∈ ((U n.1).filter (actA n.2.1)).image (selA n.2.1), ∑ p ∈ u n.1,
+          ‖gluedStack A.G ((U n.1).filter (actA n.2.1)) (selA n.2.1)
+            (fun i => valA n.1 n.2.1 i p) i‖ ^ 2 := by
+      intro n _
+      refine (Finset.sum_le_sum fun i _ => Finset.sum_le_sum fun p _ =>
+        gluedStack_norm_sq_mono A.G (hU'A n) _ _ i).trans ?_
+      exact Finset.sum_le_sum_of_subset_of_nonneg (Finset.image_subset_image (hU'A n))
+        fun i _ _ => Finset.sum_nonneg fun p _ => by positivity
+    refine (Finset.sum_le_sum hn).trans ?_
+    calc _ = Fintype.card Kb * ∑ m ∈ Ms, ∑ k, ∑ i ∈ ((U m).filter (actA k)).image (selA k),
+          ∑ p ∈ u m, ‖gluedStack A.G ((U m).filter (actA k)) (selA k)
+            (fun i => valA m k i p) i‖ ^ 2 := by
+          simp only [Ns, Finset.sum_product, Finset.sum_const, Finset.card_univ, nsmul_eq_mul,
+            Finset.mul_sum]
+      _ ≤ Fintype.card Kb * (Ea * dyadicGridLength A.G A.R.1) :=
+          mul_le_mul_of_nonneg_left hXe (by positivity)
+      _ = _ := by ring
+  have hWe' : ∑ n ∈ Ns, ∑ k ∈ (U' n).image (selB n.2.2), ∑ _p ∈ ({()} : Finset Unit),
+      ‖W n k‖ ^ 2 ≤ (Fintype.card Ka * Eb) * dyadicGridLength A.G A.R.1 := by
+    have hn : ∀ n ∈ Ns, ∑ k ∈ (U' n).image (selB n.2.2), ∑ _p ∈ ({()} : Finset Unit),
+        ‖W n k‖ ^ 2 ≤ ∑ i ∈ ((U n.1).filter (actB n.2.2)).image (selB n.2.2),
+          ‖gluedStack A.G ((U n.1).filter (actB n.2.2)) (selB n.2.2) (valB n.1 n.2.2) i‖ ^ 2 := by
+      intro n _
+      simp only [Finset.sum_singleton]
+      refine (Finset.sum_le_sum fun i _ => gluedStack_norm_sq_mono A.G (hU'B n) _ _ i).trans ?_
+      exact Finset.sum_le_sum_of_subset_of_nonneg (Finset.image_subset_image (hU'B n))
+        fun i _ _ => by positivity
+    refine (Finset.sum_le_sum hn).trans ?_
+    calc _ = Fintype.card Ka * ∑ m ∈ Ms, ∑ k, ∑ i ∈ ((U m).filter (actB k)).image (selB k),
+          ‖gluedStack A.G ((U m).filter (actB k)) (selB k) (valB m k) i‖ ^ 2 := by
+          simp only [Ns, Finset.sum_product, Finset.sum_const, Finset.card_univ, nsmul_eq_mul,
+            Finset.mul_sum]
+      _ ≤ Fintype.card Ka * (Eb * dyadicGridLength A.G A.R.1) :=
+          mul_le_mul_of_nonneg_left hWe (by positivity)
+      _ = _ := by ring
+  obtain ⟨C, hCS, hClen, hb⟩ := hnc A bf fp K Nd hKN hK hanc Ns U' (fun n => bs n.1)
+    (fun n hn => (hU'U n).trans (hUc n.1 (Finset.mem_product.mp hn).1))
+    (fun n hn I hI => hUb n.1 (Finset.mem_product.mp hn).1 I (hU'U n hI))
+    (fun n => (U' n).image (selA n.2.1)) (fun n => (U' n).image (selB n.2.2))
+    (fun n => u n.1) hab hac hbc (fun n => F n.1) X W (fun n => Y n.1) (by positivity)
+    (by positivity) (by positivity) hρ hρ1 hXe' hWe' hMu' hBc hBd
+    (fun n hn c' hc' d hd h1 h2 => hYb n.1 (Finset.mem_product.mp hn).1 c' (hU'U n hc') d hd h1 h2)
+    (fun n hn j h1 h2 h3 c' hc' d hd h4 h5 =>
+      hFb n.1 (Finset.mem_product.mp hn).1 j h1 h2 h3 c' (hU'U n hc') d hd h4 h5)
+    (fun n => selA n.2.1) (fun n => selB n.2.2)
+    (fun n _ I hI => Finset.mem_image_of_mem _ hI) (fun n _ I hI => Finset.mem_image_of_mem _ hI)
+  refine ⟨C, hCS, hClen, le_trans ?_ hb⟩
+  set nb : ℤ × ℤ → Prop := fun I => ¬ ∃ e ∈ C,
+    dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2
+  set T : M × Ka × Kb → ℤ × ℤ → ℝ≥0∞ := fun n I =>
+    ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u n.1, fp.Λc I (Function.update (Function.update
+      (Function.update (F n.1) a (X n (selA n.2.1 I) p)) b (W n (selB n.2.2 I))) c (Y n.1 p))‖ₑ
+  have hre : ∀ (x : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (v₁ v₂ v₃ : ColumnL2 (bf.Lab ⊕ Fin
+      fp.Mc)),
+      Function.update (Function.update (Function.update x a v₁) b v₂) c v₃ =
+        Function.update (Function.update (Function.update x c v₃) a v₁) b v₂ := by
+    intro x v₁ v₂ v₃
+    rw [Function.update_comm hbc, Function.update_comm hac]
+  have hcell : ∀ m ∈ Ms, ∀ I ∈ U m,
+      ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m, fp.Λc I (Function.update (Function.update
+        (Function.update (F m) a (va m I p)) b (vb m I)) c (Y m p))‖ₑ ≤
+      ∑ ka, ∑ kb, if actA ka I ∧ actB kb I then T (m, ka, kb) I else 0 := by
+    intro m hm I hI
+    have hexp : ∀ p ∈ u m, fp.Λc I (Function.update (Function.update
+        (Function.update (F m) a (va m I p)) b (vb m I)) c (Y m p)) =
+        ∑ ka ∈ Finset.univ.filter (fun k => actA k I),
+          ∑ kb ∈ Finset.univ.filter (fun k => actB k I),
+            fp.Λc I (Function.update (Function.update (Function.update (F m) a
+              (X (m, ka, kb) (selA ka I) p)) b (W (m, ka, kb) (selB kb I))) c (Y m p)) := by
+      intro p hp
+      rw [hre]
+      simp_rw [hre]
+      have hmem : ∀ ka kb, actA ka I → actB kb I → I ∈ U' (m, ka, kb) := fun ka kb h1 h2 =>
+        Finset.mem_filter.mpr ⟨hI, h1, h2⟩
+      exact fp.Λc_stacks_expandM hab _ (va m I p) (vb m I) _ _
+        (fun k => valA m k (selA k I) p) (fun k => valB m k (selB k I))
+        (fun ka kb => X (m, ka, kb) (selA ka I) p) (fun ka kb => W (m, ka, kb) (selB kb I))
+        (fun ka hka kb hkb => gluedStack_restrict A.G (selA ka) _
+          (hmem ka kb (Finset.mem_filter.mp hka).2 (Finset.mem_filter.mp hkb).2))
+        (fun ka hka kb hkb => gluedStack_restrict A.G (selB kb) _
+          (hmem ka kb (Finset.mem_filter.mp hka).2 (Finset.mem_filter.mp hkb).2))
+        (hrepA m hm I hI p hp) (hrepB m hm I hI)
+    set f : Ka → Kb → β → ℂ := fun ka kb p => fp.Λc I (Function.update (Function.update
+      (Function.update (F m) a (X (m, ka, kb) (selA ka I) p)) b (W (m, ka, kb) (selB kb I))) c
+        (Y m p))
+    rw [Finset.sum_congr rfl hexp]
+    calc ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m,
+          ∑ ka ∈ Finset.univ.filter (fun k => actA k I),
+            ∑ kb ∈ Finset.univ.filter (fun k => actB k I), f ka kb p‖ₑ
+        = ‖∑ ka ∈ Finset.univ.filter (fun k => actA k I),
+            ∑ kb ∈ Finset.univ.filter (fun k => actB k I),
+              (dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m, f ka kb p‖ₑ := by
+          rw [Finset.sum_comm, Finset.mul_sum]
+          congr 1
+          refine Finset.sum_congr rfl fun ka _ => ?_
+          rw [Finset.sum_comm, Finset.mul_sum]
+      _ ≤ ∑ ka ∈ Finset.univ.filter (fun k => actA k I),
+            ∑ kb ∈ Finset.univ.filter (fun k => actB k I),
+              ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m, f ka kb p‖ₑ :=
+          (enorm_sum_le _ _).trans (Finset.sum_le_sum fun ka _ => enorm_sum_le _ _)
+      _ = ∑ ka, ∑ kb, if actA ka I ∧ actB kb I then T (m, ka, kb) I else 0 := by
+          rw [Finset.sum_filter]
+          refine Finset.sum_congr rfl fun ka _ => ?_
+          by_cases h : actA ka I
+          · rw [ite_eq_left_iff.mpr (fun hh => absurd h hh), Finset.sum_filter]
+            exact Finset.sum_congr rfl fun kb _ => by
+              by_cases h' : actB kb I
+              · simp only [h, h', and_self, ite_true]
+                rfl
+              · simp only [h', and_false, ite_false]
+          · simp only [h, false_and, ite_false, Finset.sum_const_zero]
+  calc 7 * ∑ m ∈ Ms, ∑ I ∈ (U m).filter nb,
+        ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m, fp.Λc I (Function.update (Function.update
+          (Function.update (F m) a (va m I p)) b (vb m I)) c (Y m p))‖ₑ
+      ≤ 7 * ∑ m ∈ Ms, ∑ I ∈ (U m).filter nb,
+          ∑ ka, ∑ kb, if actA ka I ∧ actB kb I then T (m, ka, kb) I else 0 := by
+        gcongr with m hm I hI
+        exact hcell m hm I (Finset.mem_filter.mp hI).1
+    _ = 7 * ∑ n ∈ Ns, ∑ I ∈ (U' n).filter nb, T n I := by
+        congr 1
+        simp only [Ns, Finset.sum_product]
+        refine Finset.sum_congr rfl fun m _ => ?_
+        rw [Finset.sum_comm]
+        refine Finset.sum_congr rfl fun ka _ => ?_
+        rw [Finset.sum_comm]
+        refine Finset.sum_congr rfl fun kb _ => ?_
+        rw [← Finset.sum_filter, Finset.filter_filter, Finset.filter_filter]
+        congr 1
+        ext I
+        simp only [Finset.mem_filter]
+        tauto
+
+open Classical in
+/-- `near_band_stacksM` with the binary position configurations of two varying sides given by
+global sequences `X_{m,p}(h)`, `W_m(h)` on the depths of the uses (offsets `off I < K ≤ 2^N` from
+the block starts). -/
+theorem near_band_positionsM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
+        bf.FamParams) (K Nd N : ℕ),
+      K ≤ Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
+      ∀ {M : Type} (Ms : Finset M) (U : M → Finset (ℤ × ℤ)) (bs : M → ℤ) (off : ℤ × ℤ → ℕ),
+      (∀ m ∈ Ms, U m ⊆ A.cells) →
+      (∀ m ∈ Ms, ∀ I ∈ U m, I.1 = bs m + (off I : ℤ) ∧ off I < K) →
+      ∀ {β : Type} (u : M → Finset β) {a b c : Fin 4}, a ≠ b → a ≠ c → b ≠ c →
+      ∀ (F : M → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Y : M → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+        (Xs : M → β → ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Ws : M → ℤ → ColumnL2 (bf.Lab ⊕ Fin
+            fp.Mc)),
+      ∀ {Ea Eb ρ Mu : ℝ}, 0 ≤ Ea → 0 ≤ Eb → 0 ≤ Mu → 0 < ρ → ρ < 1 →
+      ∑ m ∈ Ms, ∑ k : Fin (N + 1), ∑ i ∈ ((U m).filter fun I => posAct N k (off I)).image
+          (fun I => off I / 2 ^ ((k : ℕ) + 1)), ∑ p ∈ u m,
+        ‖gluedStack A.G ((U m).filter fun I => posAct N k (off I))
+          (fun I => off I / 2 ^ ((k : ℕ) + 1))
+          (fun i => posVal (fun n => Xs m p (bs m + n)) N k i) i‖ ^ 2 ≤
+            Ea * dyadicGridLength A.G A.R.1 →
+      ∑ m ∈ Ms, ∑ k : Fin (N + 1), ∑ i ∈ ((U m).filter fun I => posAct N k (off I)).image
+          (fun I => off I / 2 ^ ((k : ℕ) + 1)),
+        ‖gluedStack A.G ((U m).filter fun I => posAct N k (off I))
+          (fun I => off I / 2 ^ ((k : ℕ) + 1))
+          (fun i => posVal (fun n => Ws m (bs m + n)) N k i) i‖ ^ 2 ≤
+            Eb * dyadicGridLength A.G A.R.1 →
+      (∀ y, ∑ m ∈ Ms, ((U m).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card ≤ Mu) →
+      ∀ {Bc Bd : ℝ}, 0 ≤ Bc → 0 ≤ Bd →
+      (∀ m ∈ Ms, ∀ c' ∈ U m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 → bs m ≤ d.1 →
+        dyadicEnergyAverage A.G
+          (fun r => ENNReal.ofReal (∑ p ∈ u m, ‖augPhys (Y m p) r‖ ^ 2)) d ≤
+            ENNReal.ofReal (Bc ^ 2)) →
+      (∀ m ∈ Ms, ∀ j, j ≠ a → j ≠ b → j ≠ c → ∀ c' ∈ U m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 → bs m ≤ d.1 →
+        dyadicEnergyAverage A.G (fun r => ‖augPhys (F m j) r‖ₑ ^ 2) d ≤
+          ENNReal.ofReal (Bd ^ 2)) →
+      ∃ C : Finset (ℤ × ℤ), C ⊆ A.cells ∧
+        dyadicRootLength A.G (maximalDyadicCells A.G C) ≤ ρ * dyadicGridLength A.G A.R.1 ∧
+        7 * ∑ m ∈ Ms, ∑ I ∈ (U m).filter (fun I => ¬ ∃ e ∈ C,
+            dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
+          ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m,
+            fp.Λc I (Function.update (Function.update (Function.update (F m) a
+              (Xs m p I.1)) b (Ws m I.1)) c (Y m p))‖ₑ ≤
+          8 * ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
+            (1 + Real.log ((K : ℝ) + 2)) * ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) *
+              (64 * Bc * Bd)) *
+            ((ENNReal.ofReal (hullCutConstant (ρ / 2) * ((N + 1 : ℕ) * Ea) *
+                (1 + Real.log (2 + ((N + 1 : ℕ) : ℝ) * ((N + 1 : ℕ) : ℝ) * Mu))) *
+              ENNReal.ofReal (hullCutConstant (ρ / 2) * ((N + 1 : ℕ) * Eb) *
+                (1 + Real.log (2 + ((N + 1 : ℕ) : ℝ) * ((N + 1 : ℕ) : ℝ) * Mu)))) ^
+                (1 / 2 : ℝ) * ENNReal.ofReal (dyadicGridLength A.G A.R.1)) := by
+  obtain ⟨Cq, hCq, hns⟩ := near_band_stacksM.{0} κ hq2 hq3
+  refine ⟨Cq, hCq, ?_⟩
+  intro c₀ A bf fp K Nd N hKNd hK hKN hanc M Ms U bs off hUc hUo β u a b c hab hac hbc F Y Xs Ws
+    Ea Eb ρ Mu hEa hEb hMu0 hρ hρ1 hXe hWe hMu Bc Bd hBc hBd hYb hFb
+  have hrep : ∀ (S : ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (I : ℤ × ℤ), off I < 2 ^ N →
+      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (S (off I)) = ∑ k ∈ Finset.univ.filter (fun k : Fin (N + 1) => posAct N k (off I)),
+          columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+            (posVal S N k (off I / 2 ^ ((k : ℕ) + 1))) := fun S I hI => by
+    rw [pos_rep S hI, map_sum]
+  have hK2 : ∀ m ∈ Ms, ∀ I ∈ U m, off I < 2 ^ N := fun m hm I hI =>
+    lt_of_lt_of_le (hUo m hm I hI).2 hKN
+  have hUb : ∀ m ∈ Ms, ∀ c ∈ U m, bs m ≤ c.1 ∧ c.1 < bs m + K := fun m hm c hc => by
+    obtain ⟨h1, h2⟩ := hUo m hm c hc
+    constructor <;> omega
+  have hA : ∀ m ∈ Ms, ∀ I ∈ U m, ∀ p ∈ u m,
+      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (Xs m p I.1) = ∑ k ∈ Finset.univ.filter (fun k : Fin (N + 1) => posAct N k (off I)),
+          columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+            (posVal (fun n => Xs m p (bs m + n)) N k (off I / 2 ^ ((k : ℕ) + 1))) := by
+    intro m hm I hI p _
+    have e := hrep (fun n => Xs m p (bs m + n)) I (hK2 m hm I hI)
+    rw [← (hUo m hm I hI).1] at e
+    exact e
+  have hB : ∀ m ∈ Ms, ∀ I ∈ U m,
+      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (Ws m I.1) = ∑ k ∈ Finset.univ.filter (fun k : Fin (N + 1) => posAct N k (off I)),
+          columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+            (posVal (fun n => Ws m (bs m + n)) N k (off I / 2 ^ ((k : ℕ) + 1))) := by
+    intro m hm I hI
+    have e := hrep (fun n => Ws m (bs m + n)) I (hK2 m hm I hI)
+    rw [← (hUo m hm I hI).1] at e
+    exact e
+  have h := hns A bf fp K Nd hKNd hK hanc Ms U bs hUc hUb (Ka := Fin (N + 1)) (Kb := Fin (N + 1))
+    (ι := ℕ) (κ' := ℕ) u hab hac hbc F Y (fun m I p => Xs m p I.1) (fun m I => Ws m I.1)
+    (fun k I => posAct N k (off I)) (fun k I => off I / 2 ^ ((k : ℕ) + 1))
+    (fun m k i p => posVal (fun n => Xs m p (bs m + n)) N k i)
+    (fun k I => posAct N k (off I)) (fun k I => off I / 2 ^ ((k : ℕ) + 1))
+    (fun m k i => posVal (fun n => Ws m (bs m + n)) N k i)
+    (fun m hm I hI p hp => by convert hA m hm I hI p hp)
+    (fun m hm I hI => by convert hB m hm I hI)
+    hEa hEb hMu0 hρ hρ1 (by convert hXe) (by convert hWe) hMu hBc hBd hYb hFb
+  simp only [Fintype.card_fin] at h
+  exact h
+
+open Classical in
+/-- `near_band_stacksM` with the binary position configurations of the banded side given by global
+sequences `X_{m,p}(h)` and the depth stacks of local values `v_m(I)` of a basic `U` side (the cells
+of one offset in one block are distinct cells of one depth). -/
+theorem near_band_positions_UM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
+        bf.FamParams) (K Nd N : ℕ),
+      K ≤ Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
+      ∀ {M : Type} (Ms : Finset M) (U : M → Finset (ℤ × ℤ)) (bs : M → ℤ) (off : ℤ × ℤ → ℕ),
+      (∀ m ∈ Ms, U m ⊆ A.cells) →
+      (∀ m ∈ Ms, ∀ I ∈ U m, I.1 = bs m + (off I : ℤ) ∧ off I < K) →
+      ∀ {β : Type} (u : M → Finset β) {a b c : Fin 4}, a ≠ b → a ≠ c → b ≠ c →
+      ∀ (F : M → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Y : M → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+        (Xs : M → β → ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Wv : M → ℤ × ℤ → ColumnL2 (bf.Lab ⊕ Fin
+            fp.Mc)),
+      ∀ {Ea Eb ρ Mu : ℝ}, 0 ≤ Ea → 0 ≤ Eb → 0 ≤ Mu → 0 < ρ → ρ < 1 →
+      ∑ m ∈ Ms, ∑ k : Fin (N + 1), ∑ i ∈ ((U m).filter fun I => posAct N k (off I)).image
+          (fun I => off I / 2 ^ ((k : ℕ) + 1)), ∑ p ∈ u m,
+        ‖gluedStack A.G ((U m).filter fun I => posAct N k (off I))
+          (fun I => off I / 2 ^ ((k : ℕ) + 1))
+          (fun i => posVal (fun n => Xs m p (bs m + n)) N k i) i‖ ^ 2 ≤
+            Ea * dyadicGridLength A.G A.R.1 →
+      ∑ m ∈ Ms, ∑ I ∈ U m, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+          (dyadicGridCell_measurable A.G I.1 I.2) (Wv m I)‖ ^ 2 ≤
+            Eb * dyadicGridLength A.G A.R.1 →
+      (∀ y, ∑ m ∈ Ms, ((U m).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card ≤ Mu) →
+      ∀ {Bc Bd : ℝ}, 0 ≤ Bc → 0 ≤ Bd →
+      (∀ m ∈ Ms, ∀ c' ∈ U m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 → bs m ≤ d.1 →
+        dyadicEnergyAverage A.G
+          (fun r => ENNReal.ofReal (∑ p ∈ u m, ‖augPhys (Y m p) r‖ ^ 2)) d ≤
+            ENNReal.ofReal (Bc ^ 2)) →
+      (∀ m ∈ Ms, ∀ j, j ≠ a → j ≠ b → j ≠ c → ∀ c' ∈ U m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 → bs m ≤ d.1 →
+        dyadicEnergyAverage A.G (fun r => ‖augPhys (F m j) r‖ₑ ^ 2) d ≤
+          ENNReal.ofReal (Bd ^ 2)) →
+      ∃ C : Finset (ℤ × ℤ), C ⊆ A.cells ∧
+        dyadicRootLength A.G (maximalDyadicCells A.G C) ≤ ρ * dyadicGridLength A.G A.R.1 ∧
+        7 * ∑ m ∈ Ms, ∑ I ∈ (U m).filter (fun I => ¬ ∃ e ∈ C,
+            dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
+          ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m,
+            fp.Λc I (Function.update (Function.update (Function.update (F m) a
+              (Xs m p I.1)) b (Wv m I)) c (Y m p))‖ₑ ≤
+          8 * ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
+            (1 + Real.log ((K : ℝ) + 2)) * ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) *
+              (64 * Bc * Bd)) *
+            ((ENNReal.ofReal (hullCutConstant (ρ / 2) * ((1 : ℕ) * Ea) *
+                (1 + Real.log (2 + ((N + 1 : ℕ) : ℝ) * ((1 : ℕ) : ℝ) * Mu))) *
+              ENNReal.ofReal (hullCutConstant (ρ / 2) * ((N + 1 : ℕ) * Eb) *
+                (1 + Real.log (2 + ((N + 1 : ℕ) : ℝ) * ((1 : ℕ) : ℝ) * Mu)))) ^
+                (1 / 2 : ℝ) * ENNReal.ofReal (dyadicGridLength A.G A.R.1)) := by
+  obtain ⟨Cq, hCq, hns⟩ := near_band_stacksM.{0} κ hq2 hq3
+  refine ⟨Cq, hCq, ?_⟩
+  intro c₀ A bf fp K Nd N hKNd hK hKN hanc M Ms U bs off hUc hUo β u a b c hab hac hbc F Y Xs Wv
+    Ea Eb ρ Mu hEa hEb hMu0 hρ hρ1 hXe hWe hMu Bc Bd hBc hBd hYb hFb
+  have hrep : ∀ (S : ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (I : ℤ × ℤ), off I < 2 ^ N →
+      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (S (off I)) = ∑ k ∈ Finset.univ.filter (fun k : Fin (N + 1) => posAct N k (off I)),
+          columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+            (posVal S N k (off I / 2 ^ ((k : ℕ) + 1))) := fun S I hI => by
+    rw [pos_rep S hI, map_sum]
+  have hK2 : ∀ m ∈ Ms, ∀ I ∈ U m, off I < 2 ^ N := fun m hm I hI =>
+    lt_of_lt_of_le (hUo m hm I hI).2 hKN
+  have hUb : ∀ m ∈ Ms, ∀ c ∈ U m, bs m ≤ c.1 ∧ c.1 < bs m + K := fun m hm c hc => by
+    obtain ⟨h1, h2⟩ := hUo m hm c hc
+    constructor <;> omega
+  have hA : ∀ m ∈ Ms, ∀ I ∈ U m, ∀ p ∈ u m,
+      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (Xs m p I.1) = ∑ k ∈ Finset.univ.filter (fun k : Fin (N + 1) => posAct N k (off I)),
+          columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+            (posVal (fun n => Xs m p (bs m + n)) N k (off I / 2 ^ ((k : ℕ) + 1))) := by
+    intro m hm I hI p _
+    have e := hrep (fun n => Xs m p (bs m + n)) I (hK2 m hm I hI)
+    rw [← (hUo m hm I hI).1] at e
+    exact e
+  have hdis : ∀ m ∈ Ms, ∀ I ∈ U m, ∀ J ∈ U m, off I = off J → I ≠ J →
+      Disjoint (dyadicGridCell A.G I.1 I.2) (dyadicGridCell A.G J.1 J.2) := by
+    intro m hm I hI J hJ hIJ hne
+    have hd : I.1 = J.1 := by rw [(hUo m hm I hI).1, (hUo m hm J hJ).1, hIJ]
+    have h2 : I.2 ≠ J.2 := fun h => hne (Prod.ext hd h)
+    rw [hd]
+    exact dyadicGridCell_pairwiseDisjoint A.G J.1 h2
+  have hB : ∀ m ∈ Ms, ∀ I ∈ U m,
+      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (Wv m I) = ∑ k ∈ Finset.univ.filter (fun _ : Unit => True),
+          columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+            (depthStack A.G (U m) off (Wv m) (off I)) := by
+    intro m hm I hI
+    simp only [Finset.filter_true, Finset.univ_unique, Finset.sum_singleton]
+    exact (depthStack_restrict A.G (U m) off (hdis m hm) (Wv m) hI).symm
+  have hWe' : ∑ m ∈ Ms, ∑ k : Unit, ∑ i ∈ ((U m).filter fun _ => True).image off,
+      ‖gluedStack A.G ((U m).filter fun _ => True) off (depthStack A.G (U m) off (Wv m)) i‖ ^ 2 ≤
+        Eb * dyadicGridLength A.G A.R.1 := by
+    refine le_trans (Finset.sum_le_sum fun m hm => ?_) hWe
+    simp only [Finset.filter_true, Finset.univ_unique, Finset.sum_singleton]
+    calc ∑ i ∈ (U m).image off, ‖gluedStack A.G (U m) off (depthStack A.G (U m) off (Wv m)) i‖ ^ 2
+        ≤ ∑ i ∈ (U m).image off, ‖depthStack A.G (U m) off (Wv m) i‖ ^ 2 :=
+          Finset.sum_le_sum fun i _ => columnL2Restriction_norm_sq_le _ _ _
+      _ = ∑ i ∈ (U m).image off, ∑ J ∈ (U m).filter (fun J => off J = i),
+            ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+              (dyadicGridCell_measurable A.G J.1 J.2) (Wv m J)‖ ^ 2 :=
+          Finset.sum_congr rfl fun i _ => depthStack_norm_sq A.G (U m) off (hdis m hm) (Wv m) i
+      _ = ∑ I ∈ U m, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+            (dyadicGridCell_measurable A.G I.1 I.2) (Wv m I)‖ ^ 2 :=
+          Finset.sum_fiberwise_of_maps_to (fun I hI => Finset.mem_image_of_mem off hI) _
+  have h := hns A bf fp K Nd hKNd hK hanc Ms U bs hUc hUb (Ka := Fin (N + 1)) (Kb := Unit)
+    (ι := ℕ) (κ' := ℕ) u hab hac hbc F Y (fun m I p => Xs m p I.1) Wv
+    (fun k I => posAct N k (off I)) (fun k I => off I / 2 ^ ((k : ℕ) + 1))
+    (fun m k i p => posVal (fun n => Xs m p (bs m + n)) N k i)
+    (fun _ _ => True) (fun _ I => off I)
+    (fun m _ i => depthStack A.G (U m) off (Wv m) i)
+    (fun m hm I hI p hp => by convert hA m hm I hI p hp)
+    (fun m hm I hI => by convert hB m hm I hI)
+    hEa hEb hMu0 hρ hρ1 (by convert hXe) (by convert hWe') hMu hBc hBd hYb hFb
+  simp only [Fintype.card_fin, Fintype.card_unit] at h
+  exact h
+
+
+/-- The stack energy of the banded side over the outer configurations (`bandStack_outer`). -/
+noncomputable def ActiveSetup.BasicFamilies.FamParams.stackEA {κ' : LocalKernelClass} {c₀ : ℕ}
+    {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies} (fp : bf.FamParams) {Ω : Type*}
+    (Os : Finset Ω) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (D : Ω → List (Bool × ℕ × Option ℕ)) (N : ℕ) (B EW : ℝ) : ℝ :=
+  ∑ ω ∈ Os, (N * (2 * B + 16 * (fp.P + 2) * (fp.bandJumpM sA mbA (D ω).length * EW) +
+    16 * (fp.P + 2) * (N * (fp.bandJumpM sA mbA (D ω).length * (N * B)))) + EW)
+
+open Classical in
+/-- Blueprint lines 2392-2444 for the actual stacks on the main columns (`eq:stack-energy`, the
+hull mass of line 2426, the joint caps of line 2428 and the near-band summation): for outer
+configurations `ω` (step descriptors `e_ω, D_ω` and ball levels), groups `G` and blocks `β` with
+uses in a set `Act` of active cells of multiplicity `M_p` carrying the group, the banded side
+`(A_{p+1} - A_p) S_a` with the global helper bands `gBandC` of the step after its helper prefix
+and the rolling side `S_a = Z_a - Z_a(b) + W_a`, and the untouched side `S_b`, there is one cut
+family of root fraction `ρ` after which the near-band sums over the retained uses are at most the
+bound of `near_band_positionsM` with the stack energies `stackEA` (banded, `≈ P G₀ |R|`) and
+`|Ω| (N B_b + E_{W,b})` (untouched, `≈ G₀ |R|`), paid with the `N + 1` levels of the other side, and
+the hull mass `(N + 1)² |Ω| M_p D |R|` (active multiplicity, group count, configurations). -/
+theorem near_band_actualM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (fp : bf.FamParams) (K Nd N : ℕ), K ≤ Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
+      ∀ {Ω : Type} (Os : Finset Ω) (Gs : Finset bf.Grp) (Bs : Finset ℕ) (k : ℕ)
+        (Act : Finset (ℤ × ℤ)) (U : bf.Grp → ℕ → Finset (ℤ × ℤ)) (off : ℤ × ℤ → ℕ),
+      (∀ (J : ℤ × ℤ) (β m : ℕ), m < K → J.1 = A.R.1 + ((K * β + m : ℕ) : ℤ) → off J = m) →
+      (∀ g β, ∀ I ∈ U g β, I ∈ A.cells ∧ I.1 = A.R.1 + (K * β + off I : ℕ) ∧ off I < K) →
+      (∀ g β, ∀ I ∈ U g β, I ∈ Act ∧ g ∈ fp.groupsAt I k) →
+      ∀ {Mp : ℝ},
+      (∀ y, ((Act.filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) ≤ Mp) →
+      ∀ {a b c : Fin 4}, a ≠ b → a ≠ c → b ≠ c →
+      ∀ (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA) (jc jd : Ω → ℕ)
+        (e : Ω → Bool × ℕ × Option ℕ) (D : Ω → List (Bool × ℕ × Option ℕ))
+        (Za Zb : bf.Grp → ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+        (okA okB : bf.Grp → ℤ × ℤ → Prop) {BA BB : ℝ},
+      A.VarCap Gs Za okA BA → A.VarCap Gs Zb okB BB →
+      (∀ g ∈ Gs, ∀ β, ∀ I ∈ U g β, ∀ J ∈ A.cells,
+        dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2 → okA g J ∧ okB g J) →
+      ∀ (Wa : bf.Grp → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {EWa : ℝ},
+      ∑ g ∈ Gs, ∑ β ∈ Bs, ‖columnL2Restriction
+        (⋃ J ∈ (U g β).image (fun I => ancAt A.G I (A.R.1 + ((K * β : ℕ) : ℤ))),
+          dyadicGridCell A.G J.1 J.2)
+        (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
+        (Wa g β)‖ ^ 2 ≤ EWa →
+      ∀ (Sa Sb : bf.Grp → ℕ → ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
+      (∀ g β h, Sa g β h = Za g h - Za g (A.R.1 + ((K * β : ℕ) : ℤ)) + Wa g β) →
+      (∀ g β h h', Sb g β h - Sb g β h' = Zb g h - Zb g h') → ∀ {EWb : ℝ},
+      ∑ g ∈ Gs, ∑ β ∈ Bs, ‖columnL2Restriction
+        (⋃ J ∈ (U g β).image (fun I => ancAt A.G I (A.R.1 + ((K * β : ℕ) : ℤ))),
+          dyadicGridCell A.G J.1 J.2)
+        (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
+        (Sb g β (A.R.1 + ((K * β : ℕ) : ℤ)))‖ ^ 2 ≤ EWb →
+      ∀ (Ms : Finset (Ω × bf.Grp × ℕ)), Ms ⊆ Os ×ˢ (Gs ×ˢ Bs) →
+      ∀ (Um : Ω × bf.Grp × ℕ → Finset (ℤ × ℤ)), (∀ m ∈ Ms, Um m ⊆ U m.2.1 m.2.2) →
+      ∀ (u : Ω × bf.Grp × ℕ → Finset ℕ), (∀ m ∈ Ms, u m ⊆ Finset.range (fp.P + 1)) →
+      ∀ (F : Ω × bf.Grp × ℕ → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+        (Y : Ω × bf.Grp × ℕ → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {Bc Bd : ℝ}, 0 ≤ Bc → 0 ≤ Bd →
+      (∀ m ∈ Ms, ∀ c' ∈ Um m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+        A.R.1 + ((K * m.2.2 : ℕ) : ℤ) ≤ d.1 →
+        dyadicEnergyAverage A.G
+          (fun r => ENNReal.ofReal (∑ p ∈ u m, ‖augPhys (Y m p) r‖ ^ 2)) d ≤
+            ENNReal.ofReal (Bc ^ 2)) →
+      (∀ m ∈ Ms, ∀ j, j ≠ a → j ≠ b → j ≠ c → ∀ c' ∈ Um m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+        A.R.1 + ((K * m.2.2 : ℕ) : ℤ) ≤ d.1 →
+        dyadicEnergyAverage A.G (fun r => ‖augPhys (F m j) r‖ₑ ^ 2) d ≤
+          ENNReal.ofReal (Bd ^ 2)) →
+      ∀ {ρ : ℝ}, 0 < ρ → ρ < 1 →
+      ∃ C : Finset (ℤ × ℤ), C ⊆ A.cells ∧
+        dyadicRootLength A.G (maximalDyadicCells A.G C) ≤ ρ * dyadicGridLength A.G A.R.1 ∧
+        7 * ∑ m ∈ Ms, ∑ I ∈ (Um m).filter (fun I => ¬ ∃ e ∈ C,
+            dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
+          ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u m,
+            fp.Λc I (Function.update (Function.update (Function.update (F m) a
+              ((fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) (p + 1) I.1 -
+                fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) p I.1)
+                  (Sa m.2.1 m.2.2 I.1))) b (Sb m.2.1 m.2.2 I.1)) c (Y m p))‖ₑ ≤
+          8 * ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
+            (1 + Real.log ((K : ℝ) + 2)) * ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) *
+              (64 * Bc * Bd)) *
+            ((ENNReal.ofReal (hullCutConstant (ρ / 2) * ((N + 1 : ℕ) *
+                (fp.stackEA Os sA mbA D N BA EWa / dyadicGridLength A.G A.R.1)) *
+                (1 + Real.log (2 + ((N + 1 : ℕ) : ℝ) * ((N + 1 : ℕ) : ℝ) *
+                  (Os.card * Mp * A.famVtxBound)))) *
+              ENNReal.ofReal (hullCutConstant (ρ / 2) * ((N + 1 : ℕ) *
+                ((Os.card * (N * BB + EWb)) / dyadicGridLength A.G A.R.1)) *
+                (1 + Real.log (2 + ((N + 1 : ℕ) : ℝ) * ((N + 1 : ℕ) : ℝ) *
+                  (Os.card * Mp * A.famVtxBound))))) ^
+                (1 / 2 : ℝ) * ENNReal.ofReal (dyadicGridLength A.G A.R.1)) := by
+  obtain ⟨Cq, hCq, hnp⟩ := near_band_positionsM κ hq2 hq3
+  refine ⟨Cq, hCq, ?_⟩
+  intro c₀ A bf fp K Nd N hKNd hK hKN hanc Ω Os Gs Bs k Act U off hoff hU hUact Mp hMp a b c hab
+      hac hbc
+    sA mbA jc jd e D Za Zb okA okB BA BB hcapA hcapB hok Wa EWa hEWa Sa Sb hSa hSb EWb hEWb Ms hMs
+    Um hUm u hu F Y Bc Bd hBc hBd hYb hFb ρ hρ hρ1
+  have hR := dyadicGridLength_pos A.G A.R.1
+  -- the stack energies of `eq:stack-energy`
+  have hXe := A.bandStack_outer hanc Os Gs Za okA hcapA hKN Bs U off hoff hU
+    (fun g hg β I hI J hJ hIJ => (hok g hg β I hI J hJ hIJ).1) (P := fp.P)
+    (fun ω g n h => fp.gBandC a sA mbA g (jc ω) (jd ω) (e ω) (D ω) n h)
+    (fun ω g h y => fp.gBandC_bessel a sA mbA g (jc ω) (jd ω) (e ω) (D ω) h y)
+    (fun ω g n h J hJh hJN => fp.gBandC_commute a sA mbA g (jc ω) (jd ω) (e ω) (D ω) n h
+      (Q := J) (by
+        change J.1 ≤ max A.R.1 (min h (A.R.1 + A.treeDepth))
+        exact le_trans (le_min hJh hJN) (le_max_right _ _)))
+    (fun ω => fp.bandJumpM sA mbA (D ω).length) (fun ω => fp.bandJumpM_nonneg sA mbA _)
+    (fun ω g _ n ι _ r t hrt hdis Ec _ x => fp.gBandC_jump a sA mbA g (jc ω) (jd ω) (e ω) (D ω) n
+      r t hrt hdis (fun i => ⋃ J ∈ Ec i, dyadicGridCell A.G J.1 J.2)
+      (fun i => Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2) x)
+    Wa hEWa Sa hSa Ms hMs Um hUm u hu
+  have hWe := A.posStack_outer hanc Os Gs Zb okB hcapB hKN Bs U off hU
+    (fun g hg β I hI J hJ hIJ => (hok g hg β I hI J hJ hIJ).2) Sb hSb hEWb Ms hMs Um hUm
+  -- the use multiplicity (blueprint line 2426)
+  have hblk : ∀ (g : bf.Grp) (x : Unit) (β β' : ℕ), ∀ I ∈ (fun g (_ : Unit) β => U g β) g x β,
+      I ∈ (fun g (_ : Unit) β => U g β) g x β' → β = β' := by
+    intro g x β β' I hI hI'
+    obtain ⟨-, h1, h2⟩ := hU g β I hI
+    obtain ⟨-, h1', h2'⟩ := hU g β' I hI'
+    have h3 : K * β + off I = K * β' + off I := by
+      have := h1.symm.trans h1'
+      exact_mod_cast add_left_cancel this
+    have h4 : K * β = K * β' := by omega
+    exact Nat.eq_of_mul_eq_mul_left (by omega) h4
+  have hmult : ∀ y, ∑ m ∈ Ms, ((Um m).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card ≤
+      Os.card * Mp * A.famVtxBound := by
+    intro y
+    have h1 := fp.hull_mult_le Gs ({()} : Finset Unit) Bs k Act (fun g _ β => U g β)
+      (fun g _ β I hI => hUact g β I hI) hblk hMp y
+    simp only [Finset.sum_singleton, Finset.card_singleton, Nat.cast_one, one_mul] at h1
+    push_cast
+    calc ∑ m ∈ Ms, (((Um m).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ)
+        ≤ ∑ m ∈ Os ×ˢ (Gs ×ˢ Bs),
+            (((U m.2.1 m.2.2).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) := by
+          refine (Finset.sum_le_sum fun m hm => ?_).trans
+            (Finset.sum_le_sum_of_subset_of_nonneg hMs fun _ _ _ => Nat.cast_nonneg _)
+          exact_mod_cast Finset.card_le_card (Finset.filter_subset_filter _ (hUm m hm))
+      _ = Os.card * ∑ g ∈ Gs, ∑ β ∈ Bs,
+            (((U g β).filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) := by
+          simp only [Finset.sum_product, Finset.sum_const, nsmul_eq_mul]
+      _ ≤ Os.card * (Mp * A.famVtxBound) := mul_le_mul_of_nonneg_left h1 (Nat.cast_nonneg _)
+      _ = Os.card * Mp * A.famVtxBound := by ring
+  have hEA0 : 0 ≤ fp.stackEA Os sA mbA D N BA EWa :=
+    le_trans (Finset.sum_nonneg fun m _ => Finset.sum_nonneg fun _ _ => Finset.sum_nonneg
+      fun _ _ => Finset.sum_nonneg fun _ _ => by positivity) hXe
+  have hEB0 : 0 ≤ Os.card * (N * BB + EWb) := by
+    have h0 := le_trans (Finset.sum_nonneg fun m _ => Finset.sum_nonneg fun _ _ =>
+      Finset.sum_nonneg fun _ _ => by positivity) hWe
+    rwa [Finset.sum_const, nsmul_eq_mul] at h0
+  have hMu0 : 0 ≤ (Os.card : ℝ) * Mp * A.famVtxBound := by
+    have h := hmult (dyadicGridLeft A.G A.R.1 A.R.2)
+    exact le_trans (Nat.cast_nonneg _) h
+  refine hnp A bf fp K Nd N hKNd hK hKN hanc Ms Um (fun m => A.R.1 + ((K * m.2.2 : ℕ) : ℤ)) off
+    (fun m hm I hI => (hU _ _ I (hUm m hm hI)).1)
+    (fun m hm I hI => by
+      obtain ⟨-, h1, h2⟩ := hU _ _ I (hUm m hm hI)
+      exact ⟨by rw [h1]; push_cast; ring, h2⟩)
+    u hab hac hbc F Y
+    (fun m p h => (fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) (p + 1) h -
+      fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) p h) (Sa m.2.1 m.2.2 h))
+    (fun m h => Sb m.2.1 m.2.2 h)
+    (div_nonneg hEA0 hR.le) (div_nonneg hEB0 hR.le) hMu0 hρ hρ1 ?_ ?_ hmult hBc hBd hYb hFb
+  · rw [div_mul_cancel₀ _ hR.ne']
+    exact hXe
+  · rw [div_mul_cancel₀ _ hR.ne', ← nsmul_eq_mul, ← Finset.sum_const]
+    exact hWe
+
+
+/-- A variation capacity is nonnegative (the empty family of intervals). -/
+theorem ActiveSetup.VarCap.nonneg {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀}
+    {γ V : Type*} [Fintype V] {Gs : Finset γ} {Z : γ → ℤ → ColumnL2 V} {ok : γ → ℤ × ℤ → Prop}
+    {B : ℝ} (h : A.VarCap Gs Z ok B) : 0 ≤ B := by
+  have := h (ι := Empty) (fun i => i.elim) (fun i => i.elim) (fun i => i.elim)
+    (fun i => i.elim) (fun i => i.elim) (fun _ i => i.elim) (fun _ i => i.elim)
+  simpa using this
+
+/-- Blueprint line 2438 ("multiplying by the `O(P^{-1})` transfer coefficient"): for `P ≥ 1`, a
+banded energy at most `(P + 2) Γ_a` and an untouched energy at most `Γ_b`, the coefficient `2/P`
+times `(8/7) Z √(c E_a · c E_b)` is at most `4 Z c √(Γ_a Γ_b) / √P`. -/
+theorem near_coeff_le {P Ea Eb Γa Γb Z c : ℝ} (hP : 1 ≤ P) (hEa0 : 0 ≤ Ea) (hEb0 : 0 ≤ Eb)
+    (hEa : Ea ≤ (P + 2) * Γa) (hEb : Eb ≤ Γb) (hZ : 0 ≤ Z) (hc : 0 ≤ c) :
+    2 / P * (8 / 7 * Z * Real.sqrt ((c * Ea) * (c * Eb))) ≤
+      4 * Z * c * Real.sqrt (Γa * Γb) / Real.sqrt P := by
+  have hP0 : 0 < P := by linarith
+  have hsP : 0 < Real.sqrt P := Real.sqrt_pos.mpr hP0
+  have hΓa : 0 ≤ Γa := by nlinarith
+  have hΓb : 0 ≤ Γb := hEb0.trans hEb
+  have e1 : Real.sqrt ((c * Ea) * (c * Eb)) = c * Real.sqrt (Ea * Eb) := by
+    rw [show (c * Ea) * (c * Eb) = c ^ 2 * (Ea * Eb) by ring, Real.sqrt_mul (sq_nonneg c),
+      Real.sqrt_sq hc]
+  have h2 : Real.sqrt (Ea * Eb) ≤ Real.sqrt (P + 2) * Real.sqrt (Γa * Γb) := by
+    rw [← Real.sqrt_mul (by linarith)]
+    refine Real.sqrt_le_sqrt ?_
+    calc Ea * Eb ≤ ((P + 2) * Γa) * Γb := mul_le_mul hEa hEb hEb0 (by positivity)
+      _ = (P + 2) * (Γa * Γb) := by ring
+  have h3 : 2 / P * (8 / 7 * Real.sqrt (P + 2)) ≤ 4 / Real.sqrt P := by
+    rw [div_mul_eq_mul_div, div_le_div_iff₀ hP0 hsP]
+    have hs2 : Real.sqrt (P + 2) * Real.sqrt P ≤ 7 / 4 * P := by
+      rw [← Real.sqrt_mul (by linarith)]
+      refine Real.sqrt_le_iff.mpr ⟨by positivity, ?_⟩
+      nlinarith
+    nlinarith
+  rw [e1]
+  have hS : 0 ≤ Real.sqrt (Γa * Γb) := Real.sqrt_nonneg _
+  calc 2 / P * (8 / 7 * Z * (c * Real.sqrt (Ea * Eb)))
+      ≤ 2 / P * (8 / 7 * Z * (c * (Real.sqrt (P + 2) * Real.sqrt (Γa * Γb)))) := by
+        gcongr
+    _ = (2 / P * (8 / 7 * Real.sqrt (P + 2))) * (Z * c * Real.sqrt (Γa * Γb)) := by ring
+    _ ≤ 4 / Real.sqrt P * (Z * c * Real.sqrt (Γa * Γb)) := by
+        gcongr
+    _ = 4 * Z * c * Real.sqrt (Γa * Γb) / Real.sqrt P := by ring
+
+open Classical in
+/-- Blueprint `eq:near-band` (lines 2426-2443) for the actual stacks on the main columns: for a
+fixed near offset `o` (`|o| ≤ 2`), the transfer coefficient `o/P` of the matched bands times the
+near-band sums of `near_band_actualM` has, off one cut family of root fraction `ρ`, the critical
+absolute bound `4 C_q (1 + C_N) log K (K+2)^{2(q-2)/(q-1)} (64 B_c B_d) G₀ P^{-1/2} |R|`, where the
+banded stack energy is at most `(P + 2) Γ_a |R|` and the untouched one at most `Γ_b |R|`
+(`eq:stack-energy`), and
+`G₀ = C_{ρ/2} (N + 1) (1 + log(2 + (N+1)² |Ω| M_p D)) √(Γ_a Γ_b)` collects the logarithms and the
+configurations. -/
+theorem near_band_criticalM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (fp : bf.FamParams) (K Nd N : ℕ), K ≤ Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
+      ∀ {Ω : Type} (Os : Finset Ω) (Gs : Finset bf.Grp) (Bs : Finset ℕ) (k : ℕ)
+        (Act : Finset (ℤ × ℤ)) (U : bf.Grp → ℕ → Finset (ℤ × ℤ)) (off : ℤ × ℤ → ℕ),
+      (∀ (J : ℤ × ℤ) (β m : ℕ), m < K → J.1 = A.R.1 + ((K * β + m : ℕ) : ℤ) → off J = m) →
+      (∀ g β, ∀ I ∈ U g β, I ∈ A.cells ∧ I.1 = A.R.1 + (K * β + off I : ℕ) ∧ off I < K) →
+      (∀ g β, ∀ I ∈ U g β, I ∈ Act ∧ g ∈ fp.groupsAt I k) →
+      ∀ {Mp : ℝ},
+      (∀ y, ((Act.filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) ≤ Mp) →
+      ∀ {a b c : Fin 4}, a ≠ b → a ≠ c → b ≠ c →
+      ∀ (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA) (jc jd : Ω → ℕ)
+        (e : Ω → Bool × ℕ × Option ℕ) (D : Ω → List (Bool × ℕ × Option ℕ))
+        (Za Zb : bf.Grp → ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+        (okA okB : bf.Grp → ℤ × ℤ → Prop) {BA BB : ℝ},
+      A.VarCap Gs Za okA BA → A.VarCap Gs Zb okB BB →
+      (∀ g ∈ Gs, ∀ β, ∀ I ∈ U g β, ∀ J ∈ A.cells,
+        dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2 → okA g J ∧ okB g J) →
+      ∀ (Wa : bf.Grp → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {EWa : ℝ},
+      ∑ g ∈ Gs, ∑ β ∈ Bs, ‖columnL2Restriction
+        (⋃ J ∈ (U g β).image (fun I => ancAt A.G I (A.R.1 + ((K * β : ℕ) : ℤ))),
+          dyadicGridCell A.G J.1 J.2)
+        (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
+        (Wa g β)‖ ^ 2 ≤ EWa →
+      ∀ (Sa Sb : bf.Grp → ℕ → ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
+      (∀ g β h, Sa g β h = Za g h - Za g (A.R.1 + ((K * β : ℕ) : ℤ)) + Wa g β) →
+      (∀ g β h h', Sb g β h - Sb g β h' = Zb g h - Zb g h') → ∀ {EWb : ℝ},
+      ∑ g ∈ Gs, ∑ β ∈ Bs, ‖columnL2Restriction
+        (⋃ J ∈ (U g β).image (fun I => ancAt A.G I (A.R.1 + ((K * β : ℕ) : ℤ))),
+          dyadicGridCell A.G J.1 J.2)
+        (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
+        (Sb g β (A.R.1 + ((K * β : ℕ) : ℤ)))‖ ^ 2 ≤ EWb →
+      ∀ (Ms : Finset (Ω × bf.Grp × ℕ)), Ms ⊆ Os ×ˢ (Gs ×ˢ Bs) →
+      ∀ (Um : Ω × bf.Grp × ℕ → Finset (ℤ × ℤ)), (∀ m ∈ Ms, Um m ⊆ U m.2.1 m.2.2) →
+      ∀ (u : Ω × bf.Grp × ℕ → Finset ℕ), (∀ m ∈ Ms, u m ⊆ Finset.range (fp.P + 1)) →
+      ∀ (F : Ω × bf.Grp × ℕ → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+        (Y : Ω × bf.Grp × ℕ → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {Bc Bd : ℝ}, 0 ≤ Bc → 0 ≤ Bd →
+      (∀ m ∈ Ms, ∀ c' ∈ Um m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+        A.R.1 + ((K * m.2.2 : ℕ) : ℤ) ≤ d.1 →
+        dyadicEnergyAverage A.G
+          (fun r => ENNReal.ofReal (∑ p ∈ u m, ‖augPhys (Y m p) r‖ ^ 2)) d ≤
+            ENNReal.ofReal (Bc ^ 2)) →
+      (∀ m ∈ Ms, ∀ j, j ≠ a → j ≠ b → j ≠ c → ∀ c' ∈ Um m, ∀ d ∈ A.cells,
+        dyadicGridCell A.G c'.1 c'.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+        A.R.1 + ((K * m.2.2 : ℕ) : ℤ) ≤ d.1 →
+        dyadicEnergyAverage A.G (fun r => ‖augPhys (F m j) r‖ₑ ^ 2) d ≤
+          ENNReal.ofReal (Bd ^ 2)) →
+      ∀ {ρ : ℝ}, 0 < ρ → ρ < 1 → 1 ≤ fp.P → ∀ (o : ℤ), |o| ≤ 2 → ∀ {Γa Γb : ℝ},
+      fp.stackEA Os sA mbA D N BA EWa ≤ (fp.P + 2) * Γa * dyadicGridLength A.G A.R.1 →
+      Os.card * (N * BB + EWb) ≤ Γb * dyadicGridLength A.G A.R.1 →
+      ∃ C : Finset (ℤ × ℤ), C ⊆ A.cells ∧
+        dyadicRootLength A.G (maximalDyadicCells A.G C) ≤ ρ * dyadicGridLength A.G A.R.1 ∧
+        ∑ m ∈ Ms, ∑ I ∈ (Um m).filter (fun I => ¬ ∃ e ∈ C,
+            dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
+          dyadicGridLength A.G I.1 * ‖((o : ℂ) / fp.P) * ∑ p ∈ u m,
+            fp.Λc I (Function.update (Function.update (Function.update (F m) a
+              ((fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) (p + 1) I.1 -
+                fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) p I.1)
+                  (Sa m.2.1 m.2.2 I.1))) b (Sb m.2.1 m.2.2 I.1)) c (Y m p))‖ ≤
+          4 * (Cq * (1 + finiteDepthConstant κ q Nd) * (1 + Real.log ((K : ℝ) + 2)) *
+            ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * (64 * Bc * Bd)) *
+            (hullCutConstant (ρ / 2) * (N + 1 : ℕ) * (1 + Real.log (2 + ((N + 1 : ℕ) : ℝ) *
+              ((N + 1 : ℕ) : ℝ) * (Os.card * Mp * A.famVtxBound)))) *
+            Real.sqrt (Γa * Γb) / Real.sqrt fp.P * dyadicGridLength A.G A.R.1 := by
+  obtain ⟨Cq, hCq, hna⟩ := near_band_actualM κ hq2 hq3
+  refine ⟨Cq, hCq, ?_⟩
+  intro c₀ A bf fp K Nd N hKNd hK hKN hanc Ω Os Gs Bs k Act U off hoff hU hUact Mp hMp a b c hab
+      hac hbc
+    sA mbA jc jd e D Za Zb okA okB BA BB hcapA hcapB hok Wa EWa hEWa Sa Sb hSa hSb EWb hEWb Ms hMs
+    Um hUm u hu F Y Bc Bd hBc hBd hYb hFb ρ hρ hρ1 hP o ho Γa Γb hΓa hΓb
+  obtain ⟨C, hCS, hClen, h⟩ := hna A bf fp K Nd N hKNd hK hKN hanc Os Gs Bs k Act U off hoff hU
+      hUact
+    hMp hab hac hbc sA mbA jc jd e D Za Zb okA okB hcapA hcapB hok Wa hEWa Sa Sb hSa hSb hEWb Ms
+    hMs Um hUm u hu F Y hBc hBd hYb hFb hρ hρ1
+  refine ⟨C, hCS, hClen, ?_⟩
+  have hR := dyadicGridLength_pos A.G A.R.1
+  have hP0 : (0 : ℝ) < fp.P := by exact_mod_cast hP
+  have hCN : 0 ≤ finiteDepthConstant κ q Nd :=
+    le_trans zero_le_one (finiteDepthConstant_bounds κ (by linarith) Nd).1
+  have hlogK : 0 ≤ Real.log ((K : ℝ) + 2) := Real.log_nonneg (by linarith [K.cast_nonneg (α := ℝ)])
+  set X := Cq * (1 + finiteDepthConstant κ q Nd) * (1 + Real.log ((K : ℝ) + 2)) *
+    ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * (64 * Bc * Bd) with hX
+  have hX0 : 0 ≤ X := by positivity
+  set Mu := ((N + 1 : ℕ) : ℝ) * ((N + 1 : ℕ) : ℝ) * (Os.card * Mp * A.famVtxBound)
+  have hMu0 : 0 ≤ (Os.card : ℝ) * Mp * A.famVtxBound := by
+    have hcard := hMp (dyadicGridLeft A.G A.R.1 A.R.2)
+    have hMp0 : 0 ≤ Mp := le_trans (Nat.cast_nonneg _) hcard
+    positivity
+  have hLg : 0 ≤ 1 + Real.log (2 + Mu) := by
+    have hMu : 0 ≤ Mu := mul_nonneg (by positivity) hMu0
+    have : 0 ≤ Real.log (2 + Mu) := Real.log_nonneg (by linarith)
+    linarith
+  have hCh := (hullCutConstant_pos (half_pos hρ) (by linarith)).le
+  set cc := hullCutConstant (ρ / 2) * (N + 1 : ℕ) * (1 + Real.log (2 + Mu)) with hcc
+  have hcc0 : 0 ≤ cc := by positivity
+  set Ea := fp.stackEA Os sA mbA D N BA EWa / dyadicGridLength A.G A.R.1
+  set Eb := Os.card * (N * BB + EWb) / dyadicGridLength A.G A.R.1
+  -- the energies are nonnegative since the near-band bound has nonnegative stacks
+  have hEa0 : 0 ≤ Ea := by
+    refine div_nonneg ?_ hR.le
+    unfold ActiveSetup.BasicFamilies.FamParams.stackEA
+    refine Finset.sum_nonneg fun ω _ => ?_
+    have hBA : 0 ≤ BA := hcapA.nonneg
+    have hEW : 0 ≤ EWa := le_trans (by positivity) hEWa
+    have := fp.bandJumpM_nonneg sA mbA (D ω).length
+    positivity
+  have hEb0 : 0 ≤ Eb := by
+    refine div_nonneg ?_ hR.le
+    have hBB : 0 ≤ BB := hcapB.nonneg
+    have hEW : 0 ≤ EWb := le_trans (by positivity) hEWb
+    positivity
+  have hY1 : hullCutConstant (ρ / 2) * ((N + 1 : ℕ) * Ea) * (1 + Real.log (2 + Mu)) = cc * Ea := by
+    rw [hcc]; ring
+  have hY2 : hullCutConstant (ρ / 2) * ((N + 1 : ℕ) * Eb) * (1 + Real.log (2 + Mu)) = cc * Eb := by
+    rw [hcc]; ring
+  rw [hY1, hY2] at h
+  have hreal := near_real Ms (fun m => (Um m).filter fun I => ¬ ∃ e ∈ C,
+      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)
+    (fun I => dyadicGridLength A.G I.1) (fun I => (dyadicGridLength_pos A.G I.1).le)
+    (fun m I => ∑ p ∈ u m, fp.Λc I (Function.update (Function.update (Function.update (F m) a
+      ((fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) (p + 1) I.1 -
+        fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) p I.1)
+          (Sa m.2.1 m.2.2 I.1))) b (Sb m.2.1 m.2.2 I.1)) c (Y m p)))
+    hX0 (mul_nonneg hcc0 hEa0) (mul_nonneg hcc0 hEb0) hR.le h
+  have hEa : Ea ≤ (fp.P + 2) * Γa := by
+    rw [div_le_iff₀ hR]; linarith
+  have hEb : Eb ≤ Γb := by
+    rw [div_le_iff₀ hR]; linarith
+  have hco : ‖(o : ℂ) / fp.P‖ ≤ 2 / fp.P := by
+    rw [norm_div, Complex.norm_natCast, Complex.norm_intCast]
+    exact div_le_div_of_nonneg_right (by exact_mod_cast ho) hP0.le
+  have hnum := near_coeff_le (P := fp.P) (by exact_mod_cast hP) hEa0 hEb0 hEa hEb hX0 hcc0
+  calc ∑ m ∈ Ms, ∑ I ∈ (Um m).filter (fun I => ¬ ∃ e ∈ C,
+          dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
+        dyadicGridLength A.G I.1 * ‖((o : ℂ) / fp.P) * ∑ p ∈ u m,
+          fp.Λc I (Function.update (Function.update (Function.update (F m) a
+            ((fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) (p + 1) I.1 -
+              fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) p I.1)
+                (Sa m.2.1 m.2.2 I.1))) b (Sb m.2.1 m.2.2 I.1)) c (Y m p))‖
+      ≤ 2 / fp.P * ∑ m ∈ Ms, ∑ I ∈ (Um m).filter (fun I => ¬ ∃ e ∈ C,
+          dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
+        dyadicGridLength A.G I.1 * ‖∑ p ∈ u m,
+          fp.Λc I (Function.update (Function.update (Function.update (F m) a
+            ((fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) (p + 1) I.1 -
+              fp.gBandC a sA mbA m.2.1 (jc m.1) (jd m.1) (e m.1) (D m.1) p I.1)
+                (Sa m.2.1 m.2.2 I.1))) b (Sb m.2.1 m.2.2 I.1)) c (Y m p))‖ := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_le_sum fun m _ => ?_
+        rw [Finset.mul_sum]
+        refine Finset.sum_le_sum fun I _ => ?_
+        rw [norm_mul]
+        have hl := (dyadicGridLength_pos A.G I.1).le
+        calc dyadicGridLength A.G I.1 * (‖(o : ℂ) / fp.P‖ * ‖_‖)
+            ≤ dyadicGridLength A.G I.1 * (2 / fp.P * ‖_‖) := by gcongr
+          _ = _ := by ring
+    _ ≤ 2 / fp.P * (8 / 7 * X * Real.sqrt ((cc * Ea) * (cc * Eb)) *
+          dyadicGridLength A.G A.R.1) :=
+        mul_le_mul_of_nonneg_left hreal (by positivity)
+    _ = (2 / fp.P * (8 / 7 * X * Real.sqrt ((cc * Ea) * (cc * Eb)))) *
+          dyadicGridLength A.G A.R.1 := by ring
+    _ ≤ (4 * X * cc * Real.sqrt (Γa * Γb) / Real.sqrt fp.P) * dyadicGridLength A.G A.R.1 :=
+        mul_le_mul_of_nonneg_right hnum hR.le
+    _ = _ := by rw [hX, hcc]
+
+/-- Blueprint `eq:stack-energy` (line 2397, "`Σ ‖stack_a‖² ≤ P G₀ |R|`"): the banded stack energy
+over the outer configurations is `P + 2` times a quantity free of `P`, given a common bound `C_j`
+on the product-jump constants of the helper prefixes. -/
+theorem ActiveSetup.BasicFamilies.FamParams.stackEA_le {κ' : LocalKernelClass} {c₀ : ℕ}
+    {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies} (fp : bf.FamParams) {Ω : Type*}
+    (Os : Finset Ω) (sA : List (CatCol bf.Vtx)) (mbA : bf.MainBudget sA)
+    (D : Ω → List (Bool × ℕ × Option ℕ)) (N : ℕ) {B EW Cj : ℝ} (hB : 0 ≤ B) (hEW : 0 ≤ EW)
+    (hCj : ∀ ω ∈ Os, fp.bandJumpM sA mbA (D ω).length ≤ Cj) :
+    fp.stackEA Os sA mbA D N B EW ≤
+      (fp.P + 2) * (Os.card * (N * (2 * B + 16 * (Cj * EW) + 16 * (N * (Cj * (N * B)))) + EW)) := by
+  unfold ActiveSetup.BasicFamilies.FamParams.stackEA
+  calc ∑ ω ∈ Os, ((N : ℝ) * (2 * B + 16 * (fp.P + 2) * (fp.bandJumpM sA mbA (D ω).length * EW) +
+        16 * (fp.P + 2) * (N * (fp.bandJumpM sA mbA (D ω).length * (N * B)))) + EW)
+      ≤ ∑ _ω ∈ Os, ((fp.P + 2) * ((N : ℝ) * (2 * B + 16 * (Cj * EW) +
+          16 * (N * (Cj * (N * B)))) + EW)) := by
+        refine Finset.sum_le_sum fun ω hω => ?_
+        have hc0 := fp.bandJumpM_nonneg sA mbA (D ω).length
+        have hc := hCj ω hω
+        set c := fp.bandJumpM sA mbA (D ω).length
+        set Q : ℝ := fp.P + 2
+        have hQ : 1 ≤ Q := by simp only [Q]; linarith [(fp.P : ℕ).cast_nonneg (α := ℝ)]
+        have hn : (0 : ℝ) ≤ N := Nat.cast_nonneg _
+        have h1 : 0 ≤ (N : ℝ) * B * (Q - 1) := by
+          have := sub_nonneg.mpr hQ; positivity
+        have h2 : 0 ≤ Q * N * EW * (Cj - c) := by
+          have := sub_nonneg.mpr hc; have : 0 ≤ Q := by linarith
+          positivity
+        have h3 : 0 ≤ Q * (N : ℝ) ^ 3 * B * (Cj - c) := by
+          have := sub_nonneg.mpr hc; have : 0 ≤ Q := by linarith
+          positivity
+        have h4 : 0 ≤ EW * (Q - 1) := by
+          have := sub_nonneg.mpr hQ; positivity
+        nlinarith [h1, h2, h3, h4]
+    _ = _ := by rw [Finset.sum_const, nsmul_eq_mul]; ring
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+/-! ## Global transfer steps on the main columns (blueprint lines 2386-2391) -/
+
+namespace ActiveSetup.BasicFamilies
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (bf : A.BasicFamilies)
+
+open Classical in
+/-- On an active cell every main column of a relevant label lies in the range of the relabeling
+of the relevant labels. -/
+theorem mainCol_mem_range (l : Fin 4) (Mc : ℕ) (s : List (CatCol bf.Vtx)) {I : ℤ × ℤ}
+    {x : bf.Lab ⊕ Fin Mc} (hx : bf.Relevant s x)
+    (hmem : MemLp ((dyadicGridCell A.G I.1 I.2).indicator (privateColumnValue
+      (mainScalar Mc (bf.origCols l) s) (mainWeight Mc (bf.origCols l)) x)) 2 volume)
+    (hmeas : Measurable (mainScalar Mc (bf.origCols l) s x)) :
+    mainCol A.G Mc (bf.origCols l) s I x ∈
+      LinearMap.range (colRelabel (bf.rv Mc s)).toLinearMap := by
+  set φR : bf.RLab Mc s → ℝ → ℂ := fun w => mainScalar Mc (bf.origCols l) s w.1
+  set εR : bf.RLab Mc s → ℝ := fun w => mainWeight Mc (bf.origCols l) w.1
+  have hmR : MemLp ((dyadicGridCell A.G I.1 I.2).indicator
+      (privateColumnValue φR εR ⟨x, hx⟩)) 2 volume := by
+    refine hmem.of_le ?_ (Filter.Eventually.of_forall fun y => ?_)
+    · exact ((privateColumnValue_measurable φR εR ⟨x, hx⟩ hmeas).indicator
+        (dyadicGridCell_measurable A.G I.1 I.2)).aestronglyMeasurable
+    · have key : relabelCLM (bf.rv Mc s) (privateColumnValue φR εR ⟨x, hx⟩ y) =
+          privateColumnValue (mainScalar Mc (bf.origCols l) s) (mainWeight Mc (bf.origCols l))
+            x y :=
+        relabelCLM_privateColumnValue (f := bf.rv Mc s) (φ := φR) (ε := εR)
+          (φ' := mainScalar Mc (bf.origCols l) s) (ε' := mainWeight Mc (bf.origCols l))
+          (v := ⟨x, hx⟩) rfl rfl y
+      by_cases hy : y ∈ dyadicGridCell A.G I.1 I.2
+      · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy, ← norm_relabelCLM
+          (bf.rv_injective Mc s), key]
+      · simp [Set.indicator_of_notMem hy]
+  refine ⟨wColumn (dyadicGridCell A.G I.1 I.2) φR εR ⟨x, hx⟩, ?_⟩
+  exact colRelabel_wColumn (f := bf.rv Mc s) rfl rfl hmR hmem
+
+open Classical in
+/-- On an active cell the main range of a slot lies in the range of the relabeling of the relevant
+labels of its catalog. -/
+theorem mainRange_le_range (l : Fin 4) (Mc : ℕ) (s : List (CatCol bf.Vtx)) {I : ℤ × ℤ}
+    (hI : I ∈ A.cells) (r : ℕ) (M : bf.Vtx → Prop) :
+    mainRange A.G Mc (bf.origCols l) s I r M ≤
+      LinearMap.range (colRelabel (bf.rv Mc s)).toLinearMap := by
+  refine Submodule.span_le.mpr ?_
+  rintro z (⟨v, hv, -, rfl⟩ | ⟨n, hn, -, -, -, rfl⟩)
+  · have hocc : bf.occAvail I v := hv.2
+    exact bf.mainCol_mem_range l Mc s (x := Sum.inl v) ⟨I, hI, hocc⟩
+      (bf.origCol_memLp l s hocc) ((bf.P v.1 v.2.1).Ψ.D.scalar_measurable v.2.2)
+  · refine bf.mainCol_mem_range l Mc s (x := Sum.inr n) hn ?_ (catAtom_measurable s n)
+    exact wColumn_memLp (dyadicGridCell_measurable A.G I.1 I.2)
+      (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_lt_top) _ (catAtom_measurable s n)
+      (C := 1) fun y _ => catAtom_bound s n y
+
+open Classical in
+/-- On an active cell the main projection does not see the complement of the range of the
+relabeling: `Q = Q ∘ (C C^*)`. -/
+theorem mainProj_relabel_range (l : Fin 4) (Mc : ℕ) (s : List (CatCol bf.Vtx)) {I : ℤ × ℤ}
+    (hI : I ∈ A.cells) (r : ℕ) (M : bf.Vtx → Prop) (z : ColumnL2 (bf.Lab ⊕ Fin Mc)) :
+    mainProj A.G Mc (bf.origCols l) s I r M
+        (colRelabel (bf.rv Mc s) (ContinuousLinearMap.adjoint (colRelabel (bf.rv Mc s)) z)) =
+      mainProj A.G Mc (bf.origCols l) s I r M z := by
+  set C := colRelabel (bf.rv Mc s)
+  set K := mainRange A.G Mc (bf.origCols l) s I r M
+  have horth : z - C (ContinuousLinearMap.adjoint C z) ∈ Kᗮ := by
+    refine (Submodule.orthogonal_le (bf.mainRange_le_range l Mc s hI r M))
+      ((Submodule.mem_orthogonal _ _).mpr ?_)
+    rintro u ⟨w, rfl⟩
+    change inner ℂ (C w) (z - C (ContinuousLinearMap.adjoint C z)) = 0
+    rw [inner_sub_right, ← ContinuousLinearMap.adjoint_inner_right,
+      ← ContinuousLinearMap.adjoint_inner_right, colRelabel_adjoint_apply_relabel
+        (bf.rv_injective Mc s), sub_self]
+  have h0 : mainProj A.G Mc (bf.origCols l) s I r M (z - C (ContinuousLinearMap.adjoint C z)) =
+      0 := by
+    unfold mainProj
+    exact (Submodule.starProjection_apply_eq_zero_iff K).mpr horth
+  rw [map_sub, sub_eq_zero] at h0
+  exact h0.symm
+
+end ActiveSetup.BasicFamilies
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- On an active cell of the depth, the conjugated global projection with the inherited mask of a
+main mask is intertwined with the cell main projection by the restriction to the cell (on all
+inputs). -/
+theorem gProjC_restrict (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s) (r : ℕ)
+    (M : ℤ × ℤ → bf.Vtx → Prop)
+    (hM : ∀ c ∈ A.cells, ∀ d ∈ A.cells, dyadicGridCell A.G c.1 c.2 ⊆ dyadicGridCell A.G d.1 d.2 →
+      ∀ x, M d x → M c x) {I : ℤ × ℤ} (hI : I ∈ A.cells) :
+    (columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)).comp
+        (fp.gProjC s mb (bf.mainMaskT l fp.Mc s mb r M hM) I.1) =
+      (mainProj A.G fp.Mc (bf.origCols l) s I r (M I)).comp
+        (columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+          (dyadicGridCell_measurable A.G I.1 I.2)) := by
+  refine ContinuousLinearMap.ext fun y => ?_
+  simp only [ContinuousLinearMap.comp_apply]
+  unfold gProjC
+  simp only [ContinuousLinearMap.comp_apply]
+  rw [bf.proj_bridge l fp.Mc s mb r M hM hI, ← colRelabel_restrict,
+    ← colRelabel_adjoint_restrict, bf.mainProj_relabel_range l fp.Mc s hI]
+
+open Classical in
+/-- The global transfer step of a descriptor `e` at the depth `h` on the main columns: the
+conjugated global helper pads (rank `r_H`) on the catalog of the side slot `a` and the conjugated
+global pads of the complement slot of the descriptor on its catalog. -/
+noncomputable def gStepM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) (h : ℤ) :
+    Bool × (Fin fp.P → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) ×
+      (Fin fp.P → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :=
+  (e.1, fun p => fp.gProjC (cat a) (mbs a) (bf.mainMaskT a fp.Mc (cat a) (mbs a) rH
+      (fun c' => fp.stepMaskM G (if e.1 then jc else jd) e.2.2 p c')
+      (fp.stepMaskM_mono G _ e.2.2 p)) h,
+    fun p => fp.gProjC (cat (if e.1 then c else d)) (mbs _)
+      (bf.mainMaskT (if e.1 then c else d) fp.Mc (cat (if e.1 then c else d)) (mbs _) e.2.1
+        (fun c' => fp.stepMaskM G (if e.1 then jc else jd) e.2.2 p c')
+        (fp.stepMaskM_mono G _ e.2.2 p)) h)
+
+/-- The cell masks of a descriptor at a cell. -/
+def cellDescM (G : bf.Grp) (jc jd : ℕ) (I : ℤ × ℤ) (e : Bool × ℕ × Option ℕ) :
+    Bool × (ℕ × (Fin fp.P → bf.Vtx → Prop)) :=
+  (e.1, e.2.1, fun p => fp.stepMaskM G (if e.1 then jc else jd) e.2.2 p I)
+
+open Classical in
+/-- On an active cell the global step at its depth is intertwined with the cell step. -/
+theorem gStepM_rel (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (e : Bool × ℕ × Option ℕ) {I : ℤ × ℤ}
+    (hI : I ∈ A.cells) :
+    StepRel (columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2))
+      (fp.gStepM cat mbs a c d rH G jc jd e I.1)
+      (fp.toStepM cat a c d rH I (fp.cellDescM G jc jd I e)) := by
+  refine ⟨rfl, fun p => ?_, fun p => ?_⟩
+  · exact fp.gProjC_restrict a (cat a) (mbs a) rH _ _ hI
+  · exact fp.gProjC_restrict _ (cat _) (mbs _) e.2.1 _ _ hI
+
+theorem gStepsM_rel (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ))
+    {I : ℤ × ℤ} (hI : I ∈ A.cells) :
+    List.Forall₂ (StepRel (columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2)))
+      (D.map fun e => fp.gStepM cat mbs a c d rH G jc jd e I.1)
+      (D.map fun e => fp.toStepM cat a c d rH I (fp.cellDescM G jc jd I e)) := by
+  induction D with
+  | nil => exact List.Forall₂.nil
+  | cons e D ih => exact List.Forall₂.cons (fp.gStepM_rel cat mbs a c d rH G jc jd e hI) ih
+
+/-- The merged transfer steps of the slot filters of a pair of positive chains at a cell are the
+pad steps of the cell steps of the merged descriptors. -/
+theorem mergeStepsM_eq_desc (cat : Fin 4 → List (CatCol bf.Vtx)) (a c d : Fin 4) (rH : ℕ)
+    (G : bf.Grp) (jc jd : ℕ) (I : ℤ × ℤ) (t t' : List ℕ) :
+    fp.mergeStepsM cat a c d rH I (fp.slotFiltM G jc I t) (fp.slotFiltM G jd I t') =
+      ((fp.mergeDescM jc jd t t').map fun e =>
+        fp.toStepM cat a c d rH I (fp.cellDescM G jc jd I e)).map padStep := by
+  unfold mergeStepsM
+  rw [fp.rankMerge_slotFiltM, List.map_map, List.map_map, List.map_map]
+  rfl
+
+open Classical in
+/-- Blueprint lines 2386-2391 at one cell, on the main columns: the selected band defects of the
+transfer steps of a pair of positive chains at an active cell (basic inputs in the two complement
+slots) are the defect terms of the global steps at the depth of the cell, with the global basic
+inputs and global values of the side and the spectators restricting to the cell values. -/
+theorem defects_globalM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (t t' : List ℕ) (sel : ℕ → ℕ → Prop)
+    [DecidableRel sel] {I : ℤ × ℤ} (hI : I ∈ A.cells)
+    (x xg : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (hx : ∀ l, l ≠ a → l ≠ c → l ≠ d →
+      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (xg l) = columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+          (dyadicGridCell_measurable A.G I.1 I.2) (x l))
+    (xa : ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (hxa : x a = columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) xa) (e₀ : Bool × ℕ × Option ℕ) :
+    chainDefectSel (fp.Λc I) fp.P a c d x (bf.basicIn fp.Mc c I) (bf.basicIn fp.Mc d I) sel
+        (fp.mergeStepsM cat a c d rH I (fp.slotFiltM G jc I t) (fp.slotFiltM G jd I t')) (x a) =
+      ∑ j ∈ Finset.range (fp.mergeDescM jc jd t t').length, defTerm (fp.Λc I) fp.P a c d xg
+        (bf.gBasic fp.Mc c I.1) (bf.gBasic fp.Mc d I.1) sel
+        (padStep (fp.gStepM cat mbs a c d rH G jc jd
+          ((fp.mergeDescM jc jd t t').getD j e₀) I.1))
+        ((((fp.mergeDescM jc jd t t').drop (j + 1)).map fun e =>
+          fp.gStepM cat mbs a c d rH G jc jd e I.1).map padStep)
+        (helpPre fp.P ((((fp.mergeDescM jc jd t t').take j).map fun e =>
+          fp.gStepM cat mbs a c d rH G jc jd e I.1).map padStep) xa) := by
+  set D := fp.mergeDescM jc jd t t'
+  set rI := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
+    (dyadicGridCell_measurable A.G I.1 I.2)
+  have hr2 : ∀ y, rI (rI y) = rI y := fun y => by
+    rw [← ContinuousLinearMap.comp_apply, columnL2Restriction_idem]
+  set cs := fun e => fp.toStepM cat a c d rH I (fp.cellDescM G jc jd I e)
+  rw [fp.mergeStepsM_eq_desc, chainDefectSel_eq_sum_range _ _ _ _ _ _ _ _ _ _ _ (padStep (cs e₀)),
+    List.length_map, List.length_map]
+  refine Finset.sum_congr rfl fun j _ => ?_
+  rw [List.getD_map, List.getD_map, ← List.map_drop, ← List.map_drop, ← List.map_take,
+    ← List.map_take, hxa]
+  exact defTerm_intertwine (fp.Λc I) rI hr2 (fun x y h => fp.Λc_congr_restrictM I h) sel
+    _ _ (fp.gStepM_rel cat mbs a c d rH G jc jd _ hI) _ _ _ _
+    (fp.gStepsM_rel cat mbs a c d rH G jc jd _ hI)
+    (fp.gStepsM_rel cat mbs a c d rH G jc jd _ hI) xg x hx _ _ xa
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## Near band forms on the main columns (blueprint lines 2386-2394) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The cell form on the main columns is bounded by the normalized sizes of its inputs. -/
+theorem norm_Λc_leM (I : ℤ × ℤ) (x : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    ‖fp.Λc I x‖ ≤ localFormUniformConstant κ' *
+      ∏ l, (‖x l‖ / Real.sqrt (dyadicGridLength A.G I.1)) := by
+  have hC := localFormUniformConstant_nonneg κ'
+  have hP : 0 ≤ ∏ l, (‖x l‖ / Real.sqrt (dyadicGridLength A.G I.1)) :=
+    Finset.prod_nonneg fun _ _ => by positivity
+  by_cases hI : I ∈ A.cells
+  · rw [fp.Λc_of_mem hI, cellForm_apply]
+    have h := admissibleLocalForm_le_localLp (dyadicGridLength_pos A.G I.1) (q := 2) le_rfl
+      (A.adm I hI) (fun l => augPhys (x l)) (fun l => columnPhys_measurable (x l))
+    rw [show ENNReal.ofReal 2 = 2 by norm_num] at h
+    have h2 : ∏ l, eLpNorm (augPhys (x l)) 2
+        (normalizedIntervalMeasure (dyadicGridLeft A.G I.1 I.2) (dyadicGridLength A.G I.1)) ≤
+        ENNReal.ofReal (∏ l, (‖x l‖ / Real.sqrt (dyadicGridLength A.G I.1))) := by
+      rw [ENNReal.ofReal_prod_of_nonneg fun _ _ => by positivity]
+      exact Finset.prod_le_prod fun l _ => augPhys_normalized_le A.G I (x l)
+    have h3 := h.trans (mul_le_mul_right h2 _)
+    rw [← ENNReal.ofReal_mul hC, ← ofReal_norm] at h3
+    exact (ENNReal.ofReal_le_ofReal_iff (by positivity)).mp h3
+  · unfold FamParams.Λc
+    simp only [hI, ↓reduceDIte, zero_apply, norm_zero]
+    positivity
+
+/-- The cell form of four slot values is bounded by the normalized sizes of their restrictions to
+the cell. -/
+theorem norm_Λc_le_restrictM (I : ℤ × ℤ) (x : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    ‖fp.Λc I x‖ ≤ localFormUniformConstant κ' *
+      ∏ l, (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) (x l)‖ / Real.sqrt (dyadicGridLength A.G I.1)) := by
+  rw [fp.Λc_congr_restrictM I (y := fun l => columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+    (dyadicGridCell_measurable A.G I.1 I.2) (x l)) fun l => by
+      rw [← ContinuousLinearMap.comp_apply, columnL2Restriction_idem]]
+  exact fp.norm_Λc_leM I _
+
+/-- Blueprint lines 2386-2394 at one use: a band sum of the cell form with the paired bands
+`X_p, Y_p` in two slots and single values `W, F` in the other two is bounded by the product of the
+normalized sizes of `F`, `W` and the band families. -/
+theorem band_sum_leM (I : ℤ × ℤ) {a b e f : Fin 4} (hab : a ≠ b) (hae : a ≠ e) (haf : a ≠ f)
+    (hbe : b ≠ e) (hbf : b ≠ f) (hef : e ≠ f) (x : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {β :
+        Type*}
+    (u : Finset β) (X Y : β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (W F : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    ‖∑ p ∈ u, fp.Λc I (Function.update (Function.update (Function.update
+        (Function.update x f F) a (X p)) b W) e (Y p))‖ ≤
+      localFormUniformConstant κ' * ((‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) F‖ / Real.sqrt (dyadicGridLength A.G I.1)) *
+        (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+          (dyadicGridCell_measurable A.G I.1 I.2) W‖ / Real.sqrt (dyadicGridLength A.G I.1)) *
+        (Real.sqrt (∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+          (dyadicGridCell_measurable A.G I.1 I.2) (X p)‖ ^ 2) /
+            Real.sqrt (dyadicGridLength A.G I.1)) *
+        (Real.sqrt (∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+          (dyadicGridCell_measurable A.G I.1 I.2) (Y p)‖ ^ 2) /
+            Real.sqrt (dyadicGridLength A.G I.1))) := by
+  set rI := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
+    (dyadicGridCell_measurable A.G I.1 I.2)
+  set s := Real.sqrt (dyadicGridLength A.G I.1)
+  have hs : 0 < s := Real.sqrt_pos.mpr (dyadicGridLength_pos A.G I.1)
+  have hC := localFormUniformConstant_nonneg κ'
+  have hterm : ∀ p, ‖fp.Λc I (Function.update (Function.update (Function.update
+      (Function.update x f F) a (X p)) b W) e (Y p))‖ ≤
+      localFormUniformConstant κ' * ((‖rI F‖ / s) * (‖rI W‖ / s) *
+        ((‖rI (X p)‖ / s) * (‖rI (Y p)‖ / s))) := by
+    intro p
+    refine (fp.norm_Λc_le_restrictM I _).trans (le_of_eq ?_)
+    rw [prod_fin4_distinct hab hae haf hbe hbf hef]
+    simp only [Function.update_self, Function.update_of_ne hae, Function.update_of_ne hab,
+      Function.update_of_ne hbe, Function.update_of_ne hef.symm, Function.update_of_ne hbf.symm,
+      Function.update_of_ne haf.symm]
+    ring
+  have h := sum_mul_le_sqrt_mul_sqrt u (fun p => ‖rI (X p)‖) (fun p => ‖rI (Y p)‖)
+  have hFW : 0 ≤ ‖rI F‖ / s * (‖rI W‖ / s) := by positivity
+  calc ‖∑ p ∈ u, fp.Λc I (Function.update (Function.update (Function.update
+        (Function.update x f F) a (X p)) b W) e (Y p))‖
+      ≤ ∑ p ∈ u, localFormUniformConstant κ' * ((‖rI F‖ / s) * (‖rI W‖ / s) *
+          ((‖rI (X p)‖ / s) * (‖rI (Y p)‖ / s))) :=
+        (norm_sum_le _ _).trans (Finset.sum_le_sum fun p _ => hterm p)
+    _ = localFormUniformConstant κ' * ((‖rI F‖ / s) * (‖rI W‖ / s) *
+          ((∑ p ∈ u, ‖rI (X p)‖ * ‖rI (Y p)‖) / (s * s))) := by
+        rw [Finset.sum_div, Finset.mul_sum, Finset.mul_sum]
+        exact Finset.sum_congr rfl fun p _ => by ring
+    _ ≤ localFormUniformConstant κ' * ((‖rI F‖ / s) * (‖rI W‖ / s) *
+          ((Real.sqrt (∑ p ∈ u, ‖rI (X p)‖ ^ 2) * Real.sqrt (∑ p ∈ u, ‖rI (Y p)‖ ^ 2)) /
+            (s * s))) := by
+        gcongr
+    _ = _ := by ring
+
+/-- The near band form at a use: the band sum of the cell form with the band families `X, Y` in
+the slots `a, e`, the side `W` in the slot `b` and the complement `F` in the slot `f`. -/
+noncomputable def nearFormM (I : ℤ × ℤ) (a b e f : Fin 4) (z : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin
+    fp.Mc))
+    {β : Type*} (u : Finset β) (X Y : β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (W F : ColumnL2 (bf.Lab ⊕
+        Fin fp.Mc)) :
+    ℂ :=
+  ∑ p ∈ u, fp.Λc I (Function.update (Function.update (Function.update
+    (Function.update z f F) a (X p)) b W) e (Y p))
+
+/-- The near band form is additive in the band family `Y` and the complement `F`. -/
+theorem nearForm_freezeM (I : ℤ × ℤ) {a b e f : Fin 4} (_hae : a ≠ e) (_hbe : b ≠ e) (hef : e ≠ f)
+    (haf : a ≠ f) (hbf : b ≠ f) (z : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {β : Type*} (u :
+        Finset β)
+    (X Yc Yb : β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (W Fc Fb : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    fp.nearFormM I a b e f z u X Yc W Fc =
+      fp.nearFormM I a b e f z u X Yb W Fb + fp.nearFormM I a b e f z u X (Yc - Yb) W Fc +
+        fp.nearFormM I a b e f z u X Yc W (Fc - Fb) -
+        fp.nearFormM I a b e f z u X (Yc - Yb) W (Fc - Fb) := by
+  unfold nearFormM
+  simp only [← Finset.sum_add_distrib, ← Finset.sum_sub_distrib]
+  refine Finset.sum_congr rfl fun p _ => ?_
+  have hre : ∀ (F Y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)), Function.update (Function.update
+      (Function.update
+      (Function.update z f F) a (X p)) b W) e Y = Function.update (Function.update
+        (Function.update (Function.update z a (X p)) b W) e Y) f F := by
+    intro F Y
+    funext l
+    simp only [Function.update_apply]
+    split_ifs <;> simp_all
+  simp only [hre, Pi.sub_apply]
+  exact freeze_four (fp.Λc I) hef _ (Yc p) (Yb p) Fc Fb
+
+/-- Blueprint lines 2386-2394 at an unflagged use: the near band form with the current complements
+is at most the frozen one plus `C_κ (‖W‖/s) S_a (4 C₀ δ_Y + C₀ δ_F)`, where `S_a` bounds the band
+family `X`, `C₀` the current complements and `2 C₀` the frozen complement `F_b` (all normalized on
+the cell), and `δ_Y, δ_F` are the normalized freeze differences. -/
+theorem nearForm_unflaggedM (I : ℤ × ℤ) {a b e f : Fin 4} (hab : a ≠ b) (hae : a ≠ e)
+    (haf : a ≠ f) (hbe : b ≠ e) (hbf : b ≠ f) (hef : e ≠ f) (z : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin
+        fp.Mc))
+    {β : Type*} (u : Finset β) (X Yc Yb : β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (W Fc Fb : ColumnL2
+        (bf.Lab ⊕ Fin fp.Mc))
+    {C₀ SA : ℝ} (hC₀ : 0 ≤ C₀)
+    (hX : Real.sqrt (∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (X p)‖ ^ 2) /
+        Real.sqrt (dyadicGridLength A.G I.1) ≤ SA)
+    (hFc : ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+      Fc‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ C₀)
+    (hFb : ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+      Fb‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ 2 * C₀)
+    (hYc : Real.sqrt (∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (Yc p)‖ ^ 2) /
+        Real.sqrt (dyadicGridLength A.G I.1) ≤ C₀) :
+    ‖fp.nearFormM I a b e f z u X Yc W Fc‖ ≤ ‖fp.nearFormM I a b e f z u X Yb W Fb‖ +
+      localFormUniformConstant κ' * ((‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) W‖ / Real.sqrt (dyadicGridLength A.G I.1)) * SA *
+        (4 * C₀ * (Real.sqrt (∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+          (dyadicGridCell_measurable A.G I.1 I.2) (Yc p - Yb p)‖ ^ 2) /
+            Real.sqrt (dyadicGridLength A.G I.1)) +
+          C₀ * (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+            (dyadicGridCell_measurable A.G I.1 I.2) (Fc - Fb)‖ /
+              Real.sqrt (dyadicGridLength A.G I.1)))) := by
+  set rI := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
+    (dyadicGridCell_measurable A.G I.1 I.2)
+  set s := Real.sqrt (dyadicGridLength A.G I.1)
+  have hs : 0 < s := Real.sqrt_pos.mpr (dyadicGridLength_pos A.G I.1)
+  have hC := localFormUniformConstant_nonneg κ'
+  set w := ‖rI W‖ / s
+  set dY := Real.sqrt (∑ p ∈ u, ‖rI (Yc p - Yb p)‖ ^ 2) / s
+  set dF := ‖rI (Fc - Fb)‖ / s
+  have hw : 0 ≤ w := by positivity
+  have hdY : 0 ≤ dY := by positivity
+  have hdF : 0 ≤ dF := by positivity
+  have hSA : 0 ≤ SA := le_trans (by positivity) hX
+  have hdF3 : dF ≤ 3 * C₀ := by
+    have : ‖rI (Fc - Fb)‖ ≤ ‖rI Fc‖ + ‖rI Fb‖ := by rw [map_sub]; exact norm_sub_le _ _
+    calc dF ≤ (‖rI Fc‖ + ‖rI Fb‖) / s := div_le_div_of_nonneg_right this hs.le
+      _ = ‖rI Fc‖ / s + ‖rI Fb‖ / s := add_div _ _ _
+      _ ≤ C₀ + 2 * C₀ := add_le_add hFc hFb
+      _ = 3 * C₀ := by ring
+  have hdiff : ∀ p, Yc p - Yb p = (Yc - Yb) p := fun p => rfl
+  have h1 := fp.band_sum_leM I hab hae haf hbe hbf hef z u X (Yc - Yb) W Fc
+  have h2 := fp.band_sum_leM I hab hae haf hbe hbf hef z u X Yc W (Fc - Fb)
+  have h3 := fp.band_sum_leM I hab hae haf hbe hbf hef z u X (Yc - Yb) W (Fc - Fb)
+  simp only [Pi.sub_apply] at h1 h2 h3
+  rw [fp.nearForm_freezeM I hae hbe hef haf hbf z u X Yc Yb W Fc Fb]
+  have e1 : ‖fp.nearFormM I a b e f z u X (Yc - Yb) W Fc‖ ≤
+      localFormUniformConstant κ' * (C₀ * w * SA * dY) := by
+    refine h1.trans (mul_le_mul_of_nonneg_left ?_ hC)
+    gcongr
+  have e2 : ‖fp.nearFormM I a b e f z u X Yc W (Fc - Fb)‖ ≤
+      localFormUniformConstant κ' * (dF * w * SA * C₀) := by
+    refine h2.trans (mul_le_mul_of_nonneg_left ?_ hC)
+    gcongr
+  have e3 : ‖fp.nearFormM I a b e f z u X (Yc - Yb) W (Fc - Fb)‖ ≤
+      localFormUniformConstant κ' * (3 * C₀ * w * SA * dY) := by
+    refine h3.trans (mul_le_mul_of_nonneg_left ?_ hC)
+    gcongr
+  calc _ ≤ ‖fp.nearFormM I a b e f z u X Yb W Fb‖ +
+        ‖fp.nearFormM I a b e f z u X (Yc - Yb) W Fc‖ +
+        ‖fp.nearFormM I a b e f z u X Yc W (Fc - Fb)‖ +
+        ‖fp.nearFormM I a b e f z u X (Yc - Yb) W (Fc - Fb)‖ := by
+        exact (norm_sub_le _ _).trans (add_le_add ((norm_add_le _ _).trans
+          (add_le_add (norm_add_le _ _) le_rfl)) le_rfl)
+    _ ≤ _ := by
+        have : localFormUniformConstant κ' * (C₀ * w * SA * dY) +
+            localFormUniformConstant κ' * (dF * w * SA * C₀) +
+            localFormUniformConstant κ' * (3 * C₀ * w * SA * dY) =
+            localFormUniformConstant κ' * (w * SA * (4 * C₀ * dY + C₀ * dF)) := by ring
+        linarith
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## Frozen complements on the main columns (blueprint lines 2386-2389) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The offsets' band index sets: the bands `p` with `p + o - 2` in `0..P`. -/
+def uoM (o : ℕ) : Finset ℕ :=
+  (Finset.range (fp.P + 1)).filter (fun p => 2 ≤ p + o ∧ p + o - 2 ≤ fp.P)
+
+/-- The global transfer step `j` of the descriptors `D` at the depth `h`. -/
+noncomputable def gStM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ)) (j : ℕ)
+    (h : ℤ) : TransferStep (ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :=
+  padStep (fp.gStepM cat mbs a c d rH G jc jd (D.getD j (true, 0, none)) h)
+
+/-- The global transfer steps after the step `j` of the descriptors `D` at the depth `h`. -/
+noncomputable def gRestM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ)) (j : ℕ)
+    (h : ℤ) : List (TransferStep (ColumnL2 (bf.Lab ⊕ Fin fp.Mc))) :=
+  ((D.drop (j + 1)).map fun e => fp.gStepM cat mbs a c d rH G jc jd e h).map padStep
+
+/-- The complement band family of the step `j` at the offset `o` with the global steps and global
+basic inputs at the depth `h₀` (current at the depth of a use, frozen at the block start). -/
+noncomputable def YfrM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (j o : ℕ) (h₀ : ℤ) (p : ℕ) : ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+  (fp.gStM cat mbs a c d rH G jc jd D j h₀).2.2 (p + o - 2 + 1)
+      (chainVal fp.P (fp.gStM cat mbs a c d rH G jc jd D j h₀).1
+        (fp.gRestM cat mbs a c d rH G jc jd D j h₀)
+        (if (fp.gStM cat mbs a c d rH G jc jd D j h₀).1 then bf.gBasic fp.Mc c h₀
+          else bf.gBasic fp.Mc d h₀)) -
+    (fp.gStM cat mbs a c d rH G jc jd D j h₀).2.2 (p + o - 2)
+      (chainVal fp.P (fp.gStM cat mbs a c d rH G jc jd D j h₀).1
+        (fp.gRestM cat mbs a c d rH G jc jd D j h₀)
+        (if (fp.gStM cat mbs a c d rH G jc jd D j h₀).1 then bf.gBasic fp.Mc c h₀
+          else bf.gBasic fp.Mc d h₀))
+
+/-- The other complement of the step `j` with the global steps and global basic inputs at the
+depth `h₀`. -/
+noncomputable def FfrM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (j : ℕ) (h₀ : ℤ) : ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+  chainVal fp.P (!(fp.gStM cat mbs a c d rH G jc jd D j h₀).1)
+    (fp.gRestM cat mbs a c d rH G jc jd D j h₀)
+    (if (fp.gStM cat mbs a c d rH G jc jd D j h₀).1 then bf.gBasic fp.Mc d h₀
+      else bf.gBasic fp.Mc c h₀)
+
+/-- The complement value after cell transfer steps is a contraction. -/
+theorem norm_chainVal_cellM (cat : Fin 4 → List (CatCol bf.Vtx)) (a c d : Fin 4) (rH : ℕ)
+    (G : bf.Grp) (jc jd : ℕ) (I : ℤ × ℤ) (v : Bool) :
+    ∀ (D : List (Bool × ℕ × Option ℕ)) (y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
+      ‖chainVal fp.P v ((D.map fun e => fp.toStepM cat a c d rH I
+        (fp.cellDescM G jc jd I e)).map padStep) y‖ ≤ ‖y‖
+  | [], y => le_rfl
+  | e :: D, y => by
+    rw [List.map_cons, List.map_cons, chainVal]
+    split_ifs
+    · refine le_trans ?_ (norm_chainVal_cellM cat a c d rH G jc jd I v D y)
+      change ‖filterAvg fp.P (padFam (fp.toStepM cat a c d rH I
+        (fp.cellDescM G jc jd I e)).2.2) _‖ ≤ _
+      rw [filterAvg_padFam]
+      exact norm_opAvg_apply_le _ (fun _ z => Submodule.norm_starProjection_apply_le _ z) _
+    · exact norm_chainVal_cellM cat a c d rH G jc jd I v D y
+
+open Classical in
+/-- The bands of the global complement pads of a descriptor at the depth `h`, restricted to a cell
+at most that deep, are Bessel. -/
+theorem compBand_besselM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s) (r : ℕ)
+    (G : bf.Grp) (j : ℕ) (o : Option ℕ) (h : ℤ) (J : ℤ × ℤ) (hJ : J.1 ≤ h)
+    (hJN : J.1 ≤ A.R.1 + A.treeDepth) (y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    ∑ n ∈ Finset.range (fp.P + 1), ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+      (dyadicGridCell_measurable A.G J.1 J.2)
+      ((padFamC (fun p : Fin fp.P => fp.gProjC s mb (bf.mainMaskT l fp.Mc s mb r
+        (fun c' => fp.stepMaskM G j o p c') (fp.stepMaskM_mono G j o p)) h) (n + 1) -
+       padFamC (fun p : Fin fp.P => fp.gProjC s mb (bf.mainMaskT l fp.Mc s mb r
+        (fun c' => fp.stepMaskM G j o p c') (fp.stepMaskM_mono G j o p)) h) n) y)‖ ^ 2 ≤
+      ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
+        y‖ ^ 2 := by
+  set rJ := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G J.1 J.2)
+    (dyadicGridCell_measurable A.G J.1 J.2)
+  set Qg : Fin fp.P → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+    fun p => fp.gProjC s mb (bf.mainMaskT l fp.Mc s mb r
+      (fun c' => fp.stepMaskM G j o p c') (fp.stepMaskM_mono G j o p)) h with hQg
+  have hd : J.1 ≤ (bf.mainBase fp.Mc s mb).depth h := by
+    change J.1 ≤ max A.R.1 (min h (A.R.1 + A.treeDepth))
+    exact le_max_of_le_right (le_min hJ hJN)
+  have hpad : ∀ p, (Qg p).comp rJ = rJ.comp (Qg p) := fun p =>
+    (fp.gProjC_commute s mb _ h hd).symm
+  have hQ : ∀ n, rJ.comp (padFamC Qg n) = (padFamC Qg n).comp rJ := by
+    intro n
+    unfold padFamC
+    split_ifs
+    · simp
+    · exact (hpad _).symm
+    · simp
+  have he : ∀ n, rJ ((padFamC Qg (n + 1) - padFamC Qg n) y) =
+      (padFamC Qg (n + 1) - padFamC Qg n) (rJ y) := fun n => by
+    rw [sub_apply, sub_apply, map_sub, ← ContinuousLinearMap.comp_apply, hQ,
+      ← ContinuousLinearMap.comp_apply rJ, hQ]
+    rfl
+  simp_rw [he]
+  exact padFamC_bessel Qg (fun p => fp.gProjC_isStarProjection s mb _ h)
+    (fun p p' hpp => fp.gProjC_mask_nested s mb
+      (bf.mainMaskT_labels_mono l fp.Mc s mb r _ _
+        fun c x hx => fp.stepMaskM_pad_mono G j o hpp c x hx) h) (rJ y)
+
+/-- Reindexing the offset bands into all bands. -/
+theorem sum_uoM_le (o : ℕ) (g : ℕ → ℝ) (hg : ∀ n, 0 ≤ g n) :
+    ∑ p ∈ fp.uoM o, g (p + o - 2) ≤ ∑ n ∈ Finset.range (fp.P + 1), g n := by
+  rw [← Finset.sum_image (f := g) (g := fun p => p + o - 2) (fun p hp p' hp' h => by
+    have h1 := (Finset.mem_filter.mp hp).2.1
+    have h2 := (Finset.mem_filter.mp hp').2.1
+    simp only at h
+    omega)]
+  refine Finset.sum_le_sum_of_subset_of_nonneg (fun n hn => ?_) fun n _ _ => hg n
+  obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hn
+  have := (Finset.mem_filter.mp hp).2.2
+  exact Finset.mem_range.mpr (by omega)
+
+open Classical in
+/-- Blueprint lines 2388-2389 ("their current local `L²` norms are bounded: pad bands are
+orthogonal at one cell, and all inner histories are contractions on bounded basic inputs"), on the
+main columns: at an active cell where the basic inputs of the two complement slots have normalized
+size at most `C`, the current complement bands of every step and offset and the current other
+complement have restricted squares at most `C² |J|`. -/
+theorem cur_boundsM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (j o : ℕ) {J : ℤ × ℤ} (hJ : J ∈ A.cells) {C : ℝ}
+    (hsc : ‖bf.basicIn fp.Mc c J‖ ≤ C * Real.sqrt (dyadicGridLength A.G J.1))
+    (hsd : ‖bf.basicIn fp.Mc d J‖ ≤ C * Real.sqrt (dyadicGridLength A.G J.1)) :
+    ∑ p ∈ fp.uoM o, ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+        (dyadicGridCell_measurable A.G J.1 J.2) (fp.YfrM cat mbs a c d rH G jc jd D j o J.1 p)‖ ^
+            2 ≤
+      C ^ 2 * dyadicGridLength A.G J.1 ∧
+    ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
+      (fp.FfrM cat mbs a c d rH G jc jd D j J.1)‖ ^ 2 ≤ C ^ 2 * dyadicGridLength A.G J.1 := by
+  set rJ := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G J.1 J.2)
+    (dyadicGridCell_measurable A.G J.1 J.2) with hrJ
+  have hL := dyadicGridLength_pos A.G J.1
+  have hJN : J.1 ≤ A.R.1 + A.treeDepth :=
+    ((dyadicFiniteTree_mem_iff A.G A.R J A.treeDepth).mp (A.cells_mem_tree hJ)).2
+  have hV : ∀ (v : Bool) (x : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
+      ‖rJ (chainVal fp.P v (fp.gRestM cat mbs a c d rH G jc jd D j J.1) x)‖ ≤ ‖rJ x‖ := by
+    intro v x
+    unfold gRestM
+    rw [chainVal_intertwine rJ v _ _ (fp.gStepsM_rel cat mbs a c d rH G jc jd
+      (D.drop (j + 1)) hJ) x]
+    exact fp.norm_chainVal_cellM cat a c d rH G jc jd J v _ _
+  have hIn : ∀ b : Bool, ‖rJ (if b then bf.gBasic fp.Mc d J.1 else bf.gBasic fp.Mc c J.1)‖ ≤
+      C * Real.sqrt (dyadicGridLength A.G J.1) ∧
+      ‖rJ (if b then bf.gBasic fp.Mc c J.1 else bf.gBasic fp.Mc d J.1)‖ ≤
+        C * Real.sqrt (dyadicGridLength A.G J.1) := by
+    intro b
+    cases b
+    · exact ⟨hsc, hsd⟩
+    · exact ⟨hsd, hsc⟩
+  constructor
+  · unfold YfrM
+    set e := D.getD j (true, 0, none) with he
+    set V := chainVal fp.P (fp.gStM cat mbs a c d rH G jc jd D j J.1).1
+      (fp.gRestM cat mbs a c d rH G jc jd D j J.1)
+      (if (fp.gStM cat mbs a c d rH G jc jd D j J.1).1 then bf.gBasic fp.Mc c J.1
+        else bf.gBasic fp.Mc d J.1) with hVdef
+    set Qg : Fin fp.P → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+      fun p => fp.gProjC (cat (if e.1 then c else d)) (mbs _)
+        (bf.mainMaskT (if e.1 then c else d) fp.Mc (cat (if e.1 then c else d)) (mbs _) e.2.1
+          (fun c' => fp.stepMaskM G (if e.1 then jc else jd) e.2.2 p c')
+          (fp.stepMaskM_mono G _ e.2.2 p)) J.1 with hQg
+    have hY : ∀ m (y : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
+        (fp.gStM cat mbs a c d rH G jc jd D j J.1).2.2 m y = padFamC Qg m y :=
+      fun m y => padFam_apply_eq Qg m y
+    have hVb : ‖rJ V‖ ≤ C * Real.sqrt (dyadicGridLength A.G J.1) :=
+      (hV _ _).trans (hIn _).2
+    calc ∑ p ∈ fp.uoM o, ‖rJ ((fp.gStM cat mbs a c d rH G jc jd D j J.1).2.2
+          (p + o - 2 + 1) V - (fp.gStM cat mbs a c d rH G jc jd D j J.1).2.2
+            (p + o - 2) V)‖ ^ 2
+        = ∑ p ∈ fp.uoM o, ‖rJ ((padFamC Qg (p + o - 2 + 1) - padFamC Qg (p + o - 2)) V)‖ ^ 2 := by
+          refine Finset.sum_congr rfl fun p _ => ?_
+          rw [hY, hY, sub_apply]
+      _ ≤ ∑ n ∈ Finset.range (fp.P + 1), ‖rJ ((padFamC Qg (n + 1) - padFamC Qg n) V)‖ ^ 2 :=
+          fp.sum_uoM_le o (fun n => ‖rJ ((padFamC Qg (n + 1) - padFamC Qg n) V)‖ ^ 2)
+            fun n => sq_nonneg _
+      _ ≤ ‖rJ V‖ ^ 2 := fp.compBand_besselM _ (cat _) (mbs _) e.2.1 G _ e.2.2 J.1 J le_rfl hJN V
+      _ ≤ (C * Real.sqrt (dyadicGridLength A.G J.1)) ^ 2 := pow_le_pow_left₀ (norm_nonneg _) hVb 2
+      _ = _ := by rw [mul_pow, Real.sq_sqrt hL.le]
+  · unfold FfrM
+    have h := (hV (!(fp.gStM cat mbs a c d rH G jc jd D j J.1).1) _).trans
+      (hIn ((fp.gStM cat mbs a c d rH G jc jd D j J.1).1)).1
+    calc _ ≤ (C * Real.sqrt (dyadicGridLength A.G J.1)) ^ 2 :=
+          pow_le_pow_left₀ (norm_nonneg _) h 2
+      _ = _ := by rw [mul_pow, Real.sq_sqrt hL.le]
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## The global near terms of a use on the main columns (blueprint lines 2386-2394) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- The global helper prefix: the global steps before the step `j`. -/
+noncomputable def gPreM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (rH : ℕ) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ)) (j : ℕ)
+    (h : ℤ) : List (TransferStep (ColumnL2 (bf.Lab ⊕ Fin fp.Mc))) :=
+  ((D.take j).map fun e => fp.gStepM cat mbs a c d rH G jc jd e h).map padStep
+
+/-- An average of conjugated operators on a relabeled vector is the relabeled average. -/
+theorem opAvg_conj_apply {V W : Type*} [Fintype V] [Fintype W] {f : V → W}
+    (hf : Function.Injective f) {P : ℕ} (Q : Fin P → ColumnL2 V →L[ℂ] ColumnL2 V)
+    (z : ColumnL2 V) :
+    opAvg (fun p => (colRelabel f).comp ((Q p).comp (ContinuousLinearMap.adjoint (colRelabel f))))
+        (colRelabel f z) = colRelabel f (opAvg Q z) := by
+  have h := opAvg_intertwine₂ Q
+    (fun p => (colRelabel f).comp ((Q p).comp (ContinuousLinearMap.adjoint (colRelabel f))))
+    (colRelabel f) fun p => ContinuousLinearMap.ext fun y => by
+      simp only [ContinuousLinearMap.comp_apply, colRelabel_adjoint_apply_relabel hf]
+  exact (DFunLike.congr_fun h z).symm
+
+/-- A pad family of conjugated operators on a relabeled vector is the relabeled pad family. -/
+theorem padFam_conj_apply {V W : Type*} [Fintype V] [Fintype W] {f : V → W}
+    (hf : Function.Injective f) {P : ℕ} (Q : Fin P → ColumnL2 V →L[ℂ] ColumnL2 V) (n : ℕ)
+    (w : ColumnL2 V) :
+    padFam (fun p => (colRelabel f).comp ((Q p).comp (ContinuousLinearMap.adjoint (colRelabel f))))
+        n (colRelabel f w) = colRelabel f (padFamC Q n w) := by
+  rw [padFam_apply_eq]
+  unfold padFamC
+  split_ifs with h0 h1
+  · simp
+  · simp only [ContinuousLinearMap.comp_apply, colRelabel_adjoint_apply_relabel hf]
+  · rfl
+
+open Classical in
+/-- The global helper prefix of the first `j` steps on a relabeled vector is the relabeled global
+history of their helper masks (rank `L + 5`). -/
+theorem helpPre_gPreM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ)) (h : ℤ) :
+    ∀ j ≤ D.length, ∀ z : ColumnL2 (bf.RLab fp.Mc (cat a)),
+      helpPre fp.P (fp.gPreM cat mbs a c d (fp.Lc + 5) G jc jd D j h)
+          (colRelabel (bf.rv fp.Mc (cat a)) z) =
+        colRelabel (bf.rv fp.Mc (cat a)) (globHist (bf.mainBase fp.Mc (cat a) (mbs a))
+          (fun k p => fp.hMaskM a (cat a) (mbs a) G jc jd (D.getD k (true, 0, none)) p)
+          (lsOf j) h z)
+  | 0, _, z => by simp [gPreM, helpPre, globHist, lsOf, layerOp_nil]
+  | j + 1, hj, z => by
+    have ih := helpPre_gPreM cat mbs a c d G jc jd D h j (by omega) z
+    have hlt : j < D.length := by omega
+    unfold gPreM at ih ⊢
+    rw [List.take_succ_eq_append_getElem hlt, List.map_append, List.map_singleton,
+      List.map_append, List.map_singleton, helpPre_append, ih, lsOf_succ]
+    unfold globHist
+    rw [layerOp_append]
+    simp only [Bool.false_eq_true, ite_false, ContinuousLinearMap.comp_apply, padStep]
+    rw [filterAvg_padFam]
+    have e : (fp.gStepM cat mbs a c d (fp.Lc + 5) G jc jd D[j] h).2.1 =
+        fun p => (colRelabel (bf.rv fp.Mc (cat a))).comp ((((bf.mainBase fp.Mc (cat a)
+          (mbs a)).withMask (fp.hMaskM a (cat a) (mbs a) G jc jd (D.getD j (true, 0, none))
+            p)).proj h).comp (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc (cat a))))) := by
+      funext p
+      rw [List.getD_eq_getElem _ _ hlt]
+      rfl
+    rw [e, opAvg_conj_apply (bf.rv_injective fp.Mc (cat a))]
+
+open Classical in
+/-- The helper bands of the step `j` after its global helper prefix, on a relabeled vector, are
+the global helper bands `gBandC` of the step after its prefix descriptors. -/
+theorem gStM_help_band (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ)) {j : ℕ}
+    (hj : j < D.length) (h : ℤ) (n : ℕ) (z : ColumnL2 (bf.RLab fp.Mc (cat a))) :
+    (fp.gStM cat mbs a c d (fp.Lc + 5) G jc jd D j h).2.1 n
+        (helpPre fp.P (fp.gPreM cat mbs a c d (fp.Lc + 5) G jc jd D j h)
+          (colRelabel (bf.rv fp.Mc (cat a)) z)) =
+      fp.gBandC a (cat a) (mbs a) G jc jd (D.getD j (true, 0, none)) (D.take j) n h
+        (colRelabel (bf.rv fp.Mc (cat a)) z) := by
+  rw [fp.helpPre_gPreM cat mbs a c d G jc jd D h j hj.le z]
+  have hpre : globHist (bf.mainBase fp.Mc (cat a) (mbs a))
+      (fun k p => fp.hMaskM a (cat a) (mbs a) G jc jd (D.getD k (true, 0, none)) p) (lsOf j) h =
+      fp.gPreR a (cat a) (mbs a) G jc jd (D.take j) h := by
+    unfold gPreR globHist
+    rw [List.length_take, min_eq_left hj.le]
+    refine layerOp_congr _ fun x hx => ?_
+    obtain ⟨hx1, -⟩ := mem_lsOf hx
+    have : (D.take j).getD x.1 (true, 0, none) = D.getD x.1 (true, 0, none) := by
+      rw [List.getD_eq_getElem _ _ (by rw [List.length_take]; omega),
+        List.getD_eq_getElem _ _ (by omega), List.getElem_take]
+    simp only [this]
+  rw [hpre]
+  unfold gStM gBandC gBandR
+  simp only [padStep, ContinuousLinearMap.comp_apply, colRelabel_adjoint_apply_relabel
+    (bf.rv_injective fp.Mc (cat a))]
+  exact padFam_conj_apply (bf.rv_injective fp.Mc (cat a)) _ n _
+
+open Classical in
+/-- At an active cell of the depth, the helper bands of a relabeled side value after the global
+helper prefix have total restricted square at most the restricted square of the side value. -/
+theorem help_bands_besselM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (a c d : Fin 4) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ)) {j : ℕ}
+    (hj : j < D.length) {I : ℤ × ℤ} (hI : I ∈ A.cells) (xa : ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (hxa : xa ∈ LinearMap.range (colRelabel (bf.rv fp.Mc (cat a))).toLinearMap)
+    (u : Finset ℕ) (hu : u ⊆ Finset.range (fp.P + 1)) :
+    ∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2)
+        ((fp.gStM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1).2.1 (p + 1)
+          (helpPre fp.P (fp.gPreM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1) xa) -
+        (fp.gStM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1).2.1 p
+          (helpPre fp.P (fp.gPreM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1) xa))‖ ^ 2 ≤
+      ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        xa‖ ^ 2 := by
+  obtain ⟨z, hz⟩ := hxa
+  have hz' : colRelabel (bf.rv fp.Mc (cat a)) z = xa := hz
+  subst hz'
+  set rI := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
+    (dyadicGridCell_measurable A.G I.1 I.2)
+  set Ah := fun n => fp.gBandC a (cat a) (mbs a) G jc jd (D.getD j (true, 0, none)) (D.take j) n
+    I.1
+  have hN : I.1 ≤ A.R.1 + A.treeDepth :=
+    ((dyadicFiniteTree_mem_iff A.G A.R I A.treeDepth).mp (A.cells_mem_tree hI)).2
+  have hd : I.1 ≤ (bf.mainBase fp.Mc (cat a) (mbs a)).depth I.1 := by
+    change I.1 ≤ max A.R.1 (min I.1 (A.R.1 + A.treeDepth))
+    exact le_max_of_le_right (le_min le_rfl hN)
+  have hc : ∀ n y, rI (Ah n y) = Ah n (rI y) := fun n y =>
+    DFunLike.congr_fun (fp.gBandC_commute a (cat a) (mbs a) G jc jd _ _ n I.1 hd) y
+  calc _ = ∑ p ∈ u, ‖(Ah (p + 1) - Ah p) (rI (colRelabel (bf.rv fp.Mc (cat a)) z))‖ ^ 2 := by
+        refine Finset.sum_congr rfl fun p _ => ?_
+        rw [fp.gStM_help_band cat mbs a c d G jc jd D hj, fp.gStM_help_band cat mbs a c d G jc jd
+          D hj, map_sub, hc, hc, sub_apply]
+    _ ≤ ∑ p ∈ Finset.range (fp.P + 1),
+          ‖(Ah (p + 1) - Ah p) (rI (colRelabel (bf.rv fp.Mc (cat a)) z))‖ ^ 2 :=
+        Finset.sum_le_sum_of_subset_of_nonneg hu fun _ _ _ => by positivity
+    _ ≤ _ := fp.gBandC_bessel a (cat a) (mbs a) G jc jd _ _ I.1 _
+
+open Classical in
+/-- The near band sum of the step `j` at the offset `o` of a descriptor list, with the global
+steps, basic inputs and spectators at the depth `h`, in the cell form of `I`. -/
+noncomputable def nearTermGM (cat : Fin 4 → List (CatCol bf.Vtx))
+    (mbs : ∀ l, bf.MainBudget (cat l)) (rH : ℕ) (a c d : Fin 4) (G : bf.Grp) (jc jd : ℕ)
+    (D : List (Bool × ℕ × Option ℕ)) (I : ℤ × ℤ) (h : ℤ)
+    (xg : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (xa : ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (j o : ℕ) : ℂ :=
+  let st := fp.gStM cat mbs a c d rH G jc jd D j h
+  let R := fp.gRestM cat mbs a c d rH G jc jd D j h
+  let H := helpPre fp.P (fp.gPreM cat mbs a c d rH G jc jd D j h) xa
+  let V := chainVal fp.P st.1 R (if st.1 then bf.gBasic fp.Mc c h else bf.gBasic fp.Mc d h)
+  ∑ p ∈ fp.uoM o,
+    fp.Λc I (Function.update (Function.update (Function.update (Function.update xg c
+      (chainVal fp.P true R (bf.gBasic fp.Mc c h))) d
+        (chainVal fp.P false R (bf.gBasic fp.Mc d h)))
+        a (st.2.1 (p + 1) H - st.2.1 p H)) (if st.1 then c else d)
+          (st.2.2 (p + o - 2 + 1) V - st.2.2 (p + o - 2) V))
+
+open Classical in
+/-- The global near band sum of the step `j` at the offset `o` is the near band form with the
+slots `e` (the complement slot of the step) and `f` (the other complement slot), the helper bands
+of the side, the complement band family `Y` and the other complement `F` at the depth `h`. -/
+theorem nearTermGM_eq (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    (rH : ℕ) {a b c d : Fin 4} (hab : a ≠ b) (hac : a ≠ c) (had : a ≠ d) (hbc' : b ≠ c)
+    (hbd : b ≠ d) (hcd : c ≠ d) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ))
+    (I : ℤ × ℤ) (h : ℤ) (xg : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (xa : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (j o : ℕ) (z : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
+    fp.nearTermGM cat mbs rH a c d G jc jd D I h xg xa j o =
+      fp.nearFormM I a b (if (fp.gStM cat mbs a c d rH G jc jd D j h).1 then c else d)
+        (if (fp.gStM cat mbs a c d rH G jc jd D j h).1 then d else c) z (fp.uoM o)
+        (fun p => (fp.gStM cat mbs a c d rH G jc jd D j h).2.1 (p + 1)
+            (helpPre fp.P (fp.gPreM cat mbs a c d rH G jc jd D j h) xa) -
+          (fp.gStM cat mbs a c d rH G jc jd D j h).2.1 p
+            (helpPre fp.P (fp.gPreM cat mbs a c d rH G jc jd D j h) xa))
+        (fun p => fp.YfrM cat mbs a c d rH G jc jd D j o h p) (xg b)
+        (fp.FfrM cat mbs a c d rH G jc jd D j h) := by
+  unfold nearTermGM nearFormM YfrM FfrM
+  refine Finset.sum_congr rfl fun p _ => ?_
+  congr 1
+  funext l
+  have hl4 := fin4_last a b c d l hab hac had hbc' hbd hcd
+  simp only [Function.update_apply]
+  generalize (fp.gStM cat mbs a c d rH G jc jd D j h).1 = v
+  cases v <;> simp only [Bool.false_eq_true, ite_true, ite_false, Bool.not_true,
+    Bool.not_false] <;> split_ifs <;> simp_all
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## Freezing at one use on the main columns (blueprint lines 2386-2394) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+/-- Blueprint line 2393 at a flagged use, on the main columns: the near band form with the
+current complements is at most `C_κ (‖W‖/s) S_a C₀²`. -/
+theorem nearForm_current_leM (I : ℤ × ℤ) {a b e f : Fin 4} (hab : a ≠ b) (hae : a ≠ e)
+    (haf : a ≠ f) (hbe : b ≠ e) (hbf : b ≠ f) (hef : e ≠ f)
+    (z : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {β : Type*} (u : Finset β)
+    (X Yc : β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (W Fc : ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    {C₀ SA : ℝ} (hC₀ : 0 ≤ C₀)
+    (hX : Real.sqrt (∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (X p)‖ ^ 2) /
+        Real.sqrt (dyadicGridLength A.G I.1) ≤ SA)
+    (hFc : ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+      Fc‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤ C₀)
+    (hYc : Real.sqrt (∑ p ∈ u, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (Yc p)‖ ^ 2) /
+        Real.sqrt (dyadicGridLength A.G I.1) ≤ C₀) :
+    ‖fp.nearFormM I a b e f z u X Yc W Fc‖ ≤
+      localFormUniformConstant κ' * ((‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) W‖ / Real.sqrt (dyadicGridLength A.G I.1)) * SA *
+        C₀ ^ 2) := by
+  have hC := localFormUniformConstant_nonneg κ'
+  have h := fp.band_sum_leM I hab hae haf hbe hbf hef z u X Yc W Fc
+  refine h.trans (mul_le_mul_of_nonneg_left ?_ hC)
+  have hw : 0 ≤ ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) W‖ / Real.sqrt (dyadicGridLength A.G I.1) := by
+    positivity
+  have hSA : 0 ≤ SA := le_trans (by positivity) hX
+  calc _ ≤ C₀ * (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) W‖ / Real.sqrt (dyadicGridLength A.G I.1)) *
+        SA * C₀ := by gcongr
+    _ = _ := by ring
+
+open Classical in
+/-- Blueprint lines 2386-2394 at one use, on the main columns: the global near band sum of the step
+`j` at the offset `o` (helper bands after the global helper prefix, rank `L + 5`) is at most, if
+the use is unflagged, the near band form with the frozen band family `Y_b` and frozen complement
+`F_b`, plus `C_κ (‖W‖/s)(‖x_a‖/s)(4 C₀ δ_Y + C₀ δ_F + [flagged] C₀²)`, where the current
+complement bands and other complement have normalized sizes at most `C₀` and the frozen other
+complement at most `2 C₀` on unflagged uses. -/
+theorem near_useM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
+    {a b c d : Fin 4} (hab : a ≠ b) (hac : a ≠ c) (had : a ≠ d) (hbc' : b ≠ c) (hbd : b ≠ d)
+    (hcd : c ≠ d) (G : bf.Grp) (jc jd : ℕ) (D : List (Bool × ℕ × Option ℕ)) {I : ℤ × ℤ}
+    (hI : I ∈ A.cells) (xg : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (xa : ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (hxa : xa ∈ LinearMap.range (colRelabel (bf.rv fp.Mc (cat a))).toLinearMap)
+    {j : ℕ} (hj : j < D.length) (o : ℕ) (z : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
+    (Yb : ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Fb : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (Unfl : Prop)
+    {C₀ : ℝ} (hC₀ : 0 ≤ C₀)
+    (hFc : ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1)‖ /
+          Real.sqrt (dyadicGridLength A.G I.1) ≤ C₀)
+    (hYc : Real.sqrt (∑ p ∈ fp.uoM o, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd D j o I.1 p)‖ ^ 2) /
+          Real.sqrt (dyadicGridLength A.G I.1) ≤ C₀)
+    (hFb : Unfl → ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+        (dyadicGridCell_measurable A.G I.1 I.2) Fb‖ / Real.sqrt (dyadicGridLength A.G I.1) ≤
+          2 * C₀) :
+    ‖fp.nearTermGM cat mbs (fp.Lc + 5) a c d G jc jd D I I.1 xg xa j o‖ ≤
+      (if Unfl then ‖fp.nearFormM I a b
+          (if (fp.gStM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1).1 then c else d)
+          (if (fp.gStM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1).1 then d else c) z (fp.uoM o)
+          (fun p => (fp.gStM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1).2.1 (p + 1)
+              (helpPre fp.P (fp.gPreM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1) xa) -
+            (fp.gStM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1).2.1 p
+              (helpPre fp.P (fp.gPreM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1) xa))
+          Yb (xg b) Fb‖ else 0) +
+        localFormUniformConstant κ' * ((‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+            (dyadicGridCell_measurable A.G I.1 I.2) (xg b)‖ /
+              Real.sqrt (dyadicGridLength A.G I.1)) *
+            (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+              (dyadicGridCell_measurable A.G I.1 I.2) xa‖ / Real.sqrt (dyadicGridLength A.G I.1)) *
+          (4 * C₀ * (Real.sqrt (∑ p ∈ fp.uoM o, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+              (dyadicGridCell_measurable A.G I.1 I.2)
+              (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd D j o I.1 p - Yb p)‖ ^ 2) /
+                Real.sqrt (dyadicGridLength A.G I.1)) +
+            C₀ * (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+                (dyadicGridCell_measurable A.G I.1 I.2)
+                (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1 - Fb)‖ /
+                  Real.sqrt (dyadicGridLength A.G I.1)) + (if Unfl then 0 else C₀ ^ 2))) := by
+  rw [fp.nearTermGM_eq cat mbs (fp.Lc + 5) hab hac had hbc' hbd hcd G jc jd D I I.1 xg xa j o z]
+  have hC := localFormUniformConstant_nonneg κ'
+  have hs : 0 < Real.sqrt (dyadicGridLength A.G I.1) :=
+    Real.sqrt_pos.mpr (dyadicGridLength_pos A.G I.1)
+  set st := fp.gStM cat mbs a c d (fp.Lc + 5) G jc jd D j I.1
+  have hu : fp.uoM o ⊆ Finset.range (fp.P + 1) := Finset.filter_subset _ _
+  have hX := (Real.sqrt_le_sqrt (fp.help_bands_besselM cat mbs a c d G jc jd D hj hI xa hxa
+    _ hu)).trans (le_of_eq (Real.sqrt_sq (norm_nonneg _)))
+  have hX' := div_le_div_of_nonneg_right hX hs.le
+  have hae : a ≠ (if st.1 then c else d) := by split_ifs <;> assumption
+  have haf : a ≠ (if st.1 then d else c) := by split_ifs <;> assumption
+  have hbe : b ≠ (if st.1 then c else d) := by split_ifs <;> assumption
+  have hbf : b ≠ (if st.1 then d else c) := by split_ifs <;> assumption
+  have hef : (if st.1 then c else d) ≠ (if st.1 then d else c) := by
+    split_ifs
+    · exact hcd
+    · exact hcd.symm
+  have hw : 0 ≤ ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (xg b)‖ / Real.sqrt (dyadicGridLength A.G I.1) := by
+    positivity
+  have hxa0 : 0 ≤ ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) xa‖ / Real.sqrt (dyadicGridLength A.G I.1) := by
+    positivity
+  by_cases hU : Unfl
+  · simp only [hU, ite_true, add_zero]
+    exact fp.nearForm_unflaggedM I hab hae haf hbe hbf hef z _ _ _ Yb (xg b) _ Fb hC₀ hX' hFc
+      (hFb hU) hYc
+  · simp only [hU, ite_false, zero_add]
+    refine (fp.nearForm_current_leM I hab hae haf hbe hbf hef z _ _ _ (xg b) _ hC₀ hX' hFc
+      hYc).trans (mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left ?_
+        (mul_nonneg hw hxa0)) hC)
+    exact le_add_of_nonneg_left (add_nonneg (mul_nonneg (by positivity)
+      (div_nonneg (Real.sqrt_nonneg _) (Real.sqrt_nonneg _)))
+      (mul_nonneg hC₀ (div_nonneg (norm_nonneg _) (Real.sqrt_nonneg _))))
+
+end ActiveSetup.BasicFamilies.FamParams
 
 end Auto
 

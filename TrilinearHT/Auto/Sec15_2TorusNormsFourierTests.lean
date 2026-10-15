@@ -9466,6 +9466,191 @@ end AttemptParams
 
 end ActiveSetup
 
+/-! ## The frequency dichotomy on the side states (blueprint lines 2483-2487) -/
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+/-- The tiny-span smallness `eq:mode-parameters` at the chosen schedule: the spanning constant of
+the tiny span of a chart of dimension at most `d_max` times the tiny threshold `T⁻¹/r_{v_b}` is
+below the large threshold `T/r_{t_b}` (`Valid.tinySpan_small`). -/
+theorem tinySmall_of_valid {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar)
+    (hQ : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs) {d : ℕ} (hd : d ≤ D.S.dmax) (b : ℤ) :
+    (3 * D.SP.Hn ^ 2 : ℝ) ^ d * (d.factorial * D.SP.Hn ^ (d ^ 2 + d)) *
+        (D.SP.Tt⁻¹ / dyadicGridLength A.G (b - 2 * D.S.K)) <
+      D.SP.Tt / dyadicGridLength A.G (b + D.S.K) := by
+  have h := hV.tinySpan_small hCT hd2 hD hB hQ hd A.G.baseLength_pos b
+  rw [hSP]
+  exact h
+
+open Classical in
+/-- Blueprint lines 2483-2487 on a leaf cell `I` of the side states: a mode good at a height `h`
+for the block components on the pre-cell lies in a CURRENT component carrying a nonexceptional
+key `p` ("a successful component contains a nonexceptional primary"); its gap `eq:gap`, applied to
+pure `ϑ` shifts, makes `|I| n·ξ` (`ξ = ϑ / L`) tiny (`≤ T⁻¹/L`) for every integer `n` of height at
+most `H` in the rational tiny-frequency space `K_B` and huge (`≥ T/L`) otherwise. -/
+theorem frequency_dichotomy (I : ℤ × ℤ) (l : Fin 4) (G : bf.Grp) {h : ℕ}
+    {m : (D.Ms l G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))}
+    (hgood : ((D.Ms l G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).Good D.SP.Δ
+      ((D.Ms l G).goodP D.S D.SP (A.blkStart D.S.K I.1)) h m)
+    (hHn : 1 ≤ D.SP.Hn) (hT : 0 < D.SP.Tt)
+    (hsmall : (3 * D.SP.Hn ^ 2 : ℝ) ^ (D.Ms l G).zc.dim * ((D.Ms l G).zc.dim.factorial *
+      D.SP.Hn ^ ((D.Ms l G).zc.dim ^ 2 + (D.Ms l G).zc.dim)) *
+        (D.SP.Tt⁻¹ / dyadicGridLength A.G (A.blkStart D.S.K I.1 - 2 * D.S.K)) <
+      D.SP.Tt / dyadicGridLength A.G (A.blkStart D.S.K I.1 + D.S.K))
+    {L : ℝ} (hL : 0 < L) :
+    ∃ p ∈ ((D.Ms l G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).labels
+        (((D.Ms l G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).F h m),
+      (D.Ms l G).goodP D.S D.SP (A.blkStart D.S.K I.1) h p ∧
+      ∀ n : Fin (D.Ms l G).zc.dim → ℤ, vecHeight (fun i => (n i : ℚ)) ≤ D.SP.Hn →
+        (n ∈ rationalIntegerIntersection (tinySpan (fun i => (D.Ms l G).zc.θ i / D.S.Q0)
+            D.SP.Hn (D.SP.Tt⁻¹ / dyadicGridLength A.G (A.blkStart D.S.K I.1 - 2 * D.S.K))) →
+          dyadicGridLength A.G I.1 * |∑ i, (n i : ℝ) * ((D.Ms l G).zc.θ i / D.S.Q0 / L)| ≤
+            D.SP.Tt⁻¹ / L) ∧
+        (n ∉ rationalIntegerIntersection (tinySpan (fun i => (D.Ms l G).zc.θ i / D.S.Q0)
+            D.SP.Hn (D.SP.Tt⁻¹ / dyadicGridLength A.G (A.blkStart D.S.K I.1 - 2 * D.S.K))) →
+          D.SP.Tt / L ≤
+            dyadicGridLength A.G I.1 * |∑ i, (n i : ℝ) * ((D.Ms l G).zc.θ i / D.S.Q0 / L)|) := by
+  obtain ⟨p, hp, hgp⟩ := ModeComponents.exists_good_label _ D.SP.Δ _ hgood
+  refine ⟨p, hp, hgp, fun n hn => ?_⟩
+  have hb := blkStart_bounds D.hK I.1 (A := A)
+  have hK0 : (0 : ℤ) ≤ D.S.K := Nat.cast_nonneg _
+  have hgap := hgp.1
+  have hrv : dyadicGridLength A.G I.1 ≤
+      dyadicGridLength A.G (A.blkStart D.S.K I.1 - 2 * D.S.K) :=
+    (dyadicGridLength_strictAnti A.G).antitone (by omega)
+  have hrt : dyadicGridLength A.G (A.blkStart D.S.K I.1 + D.S.K) ≤ dyadicGridLength A.G I.1 :=
+    (dyadicGridLength_strictAnti A.G).antitone (by omega)
+  exact gap_tiny_huge ((D.Ms l G).θvOf p) (fun i => (D.Ms l G).zc.θ i / D.S.Q0) hHn hT
+    (dyadicGridLength_pos _ _) (dyadicGridLength_pos _ _) hgap hsmall hrv hrt hL n hn
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ModeSchedule
+variable {S : ModeSchedule} {Cj CA CT CK : ℕ} {δs W : ℝ}
+
+/-- `D_* ≤ A₀` (blueprint line 1955). -/
+theorem Valid.Dstar_le_A0 (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) : S.Dstar ≤ S.A0 := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have h6 : (1 : ℝ) ≤ 6 ^ S.Rht := one_le_pow₀ (by norm_num)
+  set X := S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar
+  have hDX : S.Dstar ≤ X := by
+    have h1 : 1 ≤ S.Cstar * 6 ^ S.Rht * S.Bstar :=
+      one_le_mul_of_one_le_of_one_le (one_le_mul_of_one_le_of_one_le (by linarith) h6)
+        (by linarith)
+    calc S.Dstar = 1 * S.Dstar := (one_mul _).symm
+      _ ≤ X := mul_le_mul_of_nonneg_right h1 (by linarith)
+  have hX1 : 1 ≤ X := le_trans (by linarith) hDX
+  calc S.Dstar ≤ X := hDX
+    _ = X ^ 1 := (pow_one X).symm
+    _ ≤ X ^ CA := pow_le_pow_right₀ hX1 hCA
+    _ ≤ S.A0 := hV.A0_ge
+
+/-- Sixteen times the frequency box is below `H` (blueprint lines 2483-2487: "apply its gap to
+pure `ϑ` shifts in all the boxes under consideration"; differences of the four-core expansion
+frequencies): `16 D_*^5 E_h < H` for `h ≤ J_*`. -/
+theorem Valid.box_lt_H (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {h : ℕ} (hh : h ≤ S.Jstar) :
+    16 * S.Dstar ^ 5 * S.Eh h < S.H := by
+  refine lt_of_le_of_lt ?_ (hV.H_ge hd2 hD hB hQ)
+  have hA := hV.one_le_A0 hd2 hD hB
+  have hDA := hV.Dstar_le_A0 hCA hd2 hD hB
+  have hE : S.Eh h ≤ S.Eh S.Jstar := pow_le_pow_right₀ hA (by omega)
+  have hE1 : S.A0 ≤ S.Eh S.Jstar := by
+    unfold Eh
+    calc S.A0 = S.A0 ^ 1 := (pow_one _).symm
+      _ ≤ S.A0 ^ (S.Jstar + 1) := pow_le_pow_right₀ hA (by omega)
+  have hL : (1 : ℝ) ≤ Lh S.Jstar := one_le_pow₀ (by norm_num)
+  have hE0 : 0 ≤ S.Eh h := pow_nonneg (by linarith) _
+  have hEJ : 0 ≤ S.Eh S.Jstar := le_trans hE0 hE
+  have hD4 : 0 ≤ S.Dstar ^ 4 := by positivity
+  calc 16 * S.Dstar ^ 5 * S.Eh h = 16 * S.Dstar ^ 4 * (S.Dstar * S.Eh h) := by ring
+    _ ≤ 16 * S.Dstar ^ 4 * (S.Eh S.Jstar * S.Eh S.Jstar) := by
+        gcongr
+        · linarith
+    _ ≤ 27 * S.Dstar ^ 4 * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := by
+        have : S.Eh S.Jstar * S.Eh S.Jstar ≤ (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := by
+          nlinarith [mul_le_mul_of_nonneg_left hL hEJ]
+        nlinarith
+
+end ModeSchedule
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint lines 2483-2487 for every character difference needed below: at the chosen schedule
+(`S.Valid`, side parameters `S.sideParams δ_*`), on a leaf cell `I` and for a mode good at a final
+upper height `h` with predecessor height `h - Δ`, every integer frequency `n` with
+`|n|_∞ ≤ 16 B'_{h-Δ} = 16 D_*^5 E_{h-Δ}` (all the boxes under consideration) has `|I| n·ξ`
+tiny if `n ∈ K_B` and huge otherwise
+(`ξ = ϑ / L_{h-Δ}`, `K_B` the rational tiny-frequency space of a nonexceptional key of the
+successful component). The torus `𝓗 = (K_B ∩ ℤ^d)^⊥` is connected with exact character integrals
+(`rationalAnnihilator`). -/
+theorem box_dichotomy {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 1 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar)
+    (hQ : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs) (I : ℤ × ℤ) (l : Fin 4) (G : bf.Grp)
+    (hdim : (D.Ms l G).zc.dim ≤ D.S.dmax) {h : ℕ} (hh : h ≤ D.SP.Jst)
+    {m : (D.Ms l G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))}
+    (hgood : ((D.Ms l G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).Good D.SP.Δ
+      ((D.Ms l G).goodP D.S D.SP (A.blkStart D.S.K I.1)) h m) :
+    ∃ p ∈ ((D.Ms l G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).labels
+        (((D.Ms l G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).F h m),
+      (D.Ms l G).goodP D.S D.SP (A.blkStart D.S.K I.1) h p ∧
+      ∀ n : Fin (D.Ms l G).zc.dim → ℤ,
+        (∀ i, |(n i : ℝ)| ≤ 16 * D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) →
+        (n ∈ rationalIntegerIntersection (tinySpan (fun i => (D.Ms l G).zc.θ i / D.S.Q0)
+            D.SP.Hn (D.SP.Tt⁻¹ / dyadicGridLength A.G (A.blkStart D.S.K I.1 - 2 * D.S.K))) →
+          dyadicGridLength A.G I.1 * |∑ i, (n i : ℝ) * (D.Ms l G).torusξ D.S (h - D.SP.Δ) i| ≤
+            D.SP.Tt⁻¹ / ModeSchedule.Lh (h - D.SP.Δ)) ∧
+        (n ∉ rationalIntegerIntersection (tinySpan (fun i => (D.Ms l G).zc.θ i / D.S.Q0)
+            D.SP.Hn (D.SP.Tt⁻¹ / dyadicGridLength A.G (A.blkStart D.S.K I.1 - 2 * D.S.K))) →
+          D.SP.Tt / ModeSchedule.Lh (h - D.SP.Δ) ≤
+            dyadicGridLength A.G I.1 * |∑ i, (n i : ℝ) * (D.Ms l G).torusξ D.S (h - D.SP.Δ) i|) :=
+                by
+  have hHn : D.SP.Hn = ⌊D.S.H⌋₊ := by rw [hSP]; rfl
+  have hTt : D.SP.Tt = D.S.T := by rw [hSP]; rfl
+  have hJst : D.SP.Jst = D.S.Jstar := by rw [hSP]; rfl
+  have hH2 := hV.two_le_H hd2 hD hB hQ
+  have hHn1 : 1 ≤ D.SP.Hn := by rw [hHn]; exact Nat.le_floor (by norm_num; linarith)
+  have hT : 0 < D.SP.Tt := by rw [hTt]; linarith [hV.one_le_T (by omega) hd2 hD hB hQ]
+  have hL : 0 < ModeSchedule.Lh (h - D.SP.Δ) := by unfold ModeSchedule.Lh; positivity
+  obtain ⟨p, hp, hgp, hdich⟩ := D.frequency_dichotomy I l G hgood hHn1 hT
+    (D.tinySmall_of_valid hV hCT hd2 hD hB hQ hSP hdim _) hL
+  refine ⟨p, hp, hgp, fun n hn => ?_⟩
+  have hbox := hV.box_lt_H hCA hd2 hD hB hQ (h := h - D.SP.Δ) (by rw [← hJst]; omega)
+  have hnH : vecHeight (fun i => (n i : ℚ)) ≤ D.SP.Hn := by
+    have hH1' : 1 ≤ ⌊D.S.H⌋₊ := hHn ▸ hHn1
+    rw [hHn]
+    refine vecHeight_int_le n hH1' fun i => ?_
+    have h1 : |(n i : ℝ)| < D.S.H := (hn i).trans_lt hbox
+    have e : ((n i).natAbs : ℝ) = |(n i : ℝ)| := by rw [Nat.cast_natAbs, Int.cast_abs]
+    have h2 : (n i).natAbs ≤ ⌊D.S.H⌋₊ := Nat.le_floor (by rw [e]; exact h1.le)
+    rw [← e]
+    exact_mod_cast h2
+  obtain ⟨h1, h2⟩ := hdich n hnH
+  have e : ∀ i, (D.Ms l G).torusξ D.S (h - D.SP.Δ) i =
+      (D.Ms l G).zc.θ i / D.S.Q0 / ModeSchedule.Lh (h - D.SP.Δ) := fun i => by
+    unfold ModeSystem.torusξ; rw [div_div]
+  simp_rw [e]
+  exact ⟨h1, h2⟩
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
 end Auto
 
 end

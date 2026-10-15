@@ -24,6 +24,49 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
+/-! ### The large parameter and small overheads -/
+
+open Filter in
+/-- Blueprint sec:localization, lines 1668-1673, with `η = e^{-k^θ}` (prop:base, line 1607):
+for fixed `0 < α < 1` and `0 < θ ≤ 1` the large parameter `P = ⌈η^{-α}⌉` satisfies
+`2 ≤ P ≤ e^k` for all sufficiently large `k`; every small overhead
+`G₀ = exp(C_q (1 + log(2k))^C)` (`eq:small-overhead`) is at most `P^ε` for each fixed `ε > 0`
+(`G₀ = P^{o(1)}`), and every fixed power `k^p` is at most `P^ε` (lem:budget-rules). The thresholds
+depend on `α, θ, C_q, C, p, ε`; the degrees `C, p` are arbitrary and do not depend on `α`. -/
+theorem localization_largeParameter {α θ : ℝ} (hα0 : 0 < α) (hα1 : α < 1) (hθ0 : 0 < θ)
+    (hθ1 : θ ≤ 1) (Cq : ℝ) (C : ℕ) (p : ℝ) {ε : ℝ} (hε : 0 < ε) :
+    ∀ᶠ k : ℝ in atTop,
+      2 ≤ (⌈Real.exp (-k ^ θ) ^ (-α)⌉₊ : ℝ) ∧ (⌈Real.exp (-k ^ θ) ^ (-α)⌉₊ : ℝ) ≤ Real.exp k ∧
+      Real.exp (Cq * (1 + Real.log (2 * k)) ^ C) ≤ (⌈Real.exp (-k ^ θ) ^ (-α)⌉₊ : ℝ) ^ ε ∧
+      k ^ p ≤ (⌈Real.exp (-k ^ θ) ^ (-α)⌉₊ : ℝ) ^ ε := by
+  have hP : ∀ k : ℝ, Real.exp (-k ^ θ) ^ (-α) = Real.exp (α * k ^ θ) := fun k => by
+    rw [← Real.exp_mul]; ring_nf
+  filter_upwards [quasipolynomial_overhead_eventually_le_ceiling_power Cq C hα0 hθ0 hε,
+    fixed_power_eventually_le_ceiling_power (p := p) hα0 hθ0 hε,
+    eventually_ge_atTop (max 1 (1 / (1 - α)))] with k h1 h2 hk
+  rw [hP]
+  have hk1 : 1 ≤ k := le_trans (le_max_left _ _) hk
+  have hk2 : 1 / (1 - α) ≤ k := le_trans (le_max_right _ _) hk
+  have hk0 : 0 < k := by linarith
+  refine ⟨?_, ?_, h1, h2⟩
+  · have hx : 1 < Real.exp (α * k ^ θ) := Real.one_lt_exp_iff.mpr (by positivity)
+    have h3 : 1 < ⌈Real.exp (α * k ^ θ)⌉₊ := Nat.lt_ceil.mpr (by exact_mod_cast hx)
+    have h4 : 2 ≤ ⌈Real.exp (α * k ^ θ)⌉₊ := h3
+    exact_mod_cast h4
+  · have hkθ : k ^ θ ≤ k := by
+      have := Real.rpow_le_rpow_of_exponent_le hk1 hθ1
+      rwa [Real.rpow_one] at this
+    have hlin : 1 ≤ k * (1 - α) := (div_le_iff₀ (by linarith)).mp hk2
+    have hexp : α * k ^ θ ≤ k - 1 := by nlinarith
+    have hc := Nat.ceil_lt_add_one (Real.exp_pos (α * k ^ θ)).le
+    have h3 : Real.exp (α * k ^ θ) ≤ Real.exp (k - 1) := Real.exp_le_exp.mpr hexp
+    have h4 : Real.exp k = Real.exp (k - 1) * Real.exp 1 := by rw [← Real.exp_add]; ring_nf
+    have h5 : 2 ≤ Real.exp 1 := by linarith [Real.add_one_le_exp (1 : ℝ)]
+    have h6 : 1 ≤ Real.exp (k - 1) := Real.one_le_exp (by linarith)
+    have h7 : Real.exp (k - 1) * 2 ≤ Real.exp (k - 1) * Real.exp 1 :=
+      mul_le_mul_of_nonneg_left h5 (Real.exp_pos _).le
+    linarith
+
 /-! ### Tags and the ambient graph -/
 
 /-- The conclusion `eq:weyl-splitting` of `lem:weyl` (one time variable) for horizontal data `V`,

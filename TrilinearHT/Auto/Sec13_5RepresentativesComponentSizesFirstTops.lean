@@ -209,10 +209,10 @@ theorem predecessor_nesting (C : ModeComponents Mode P) (C' : ModeComponents Mod
     (f : Mode → Mode') (hπ : ∀ x, C'.π (f x) = C.π x)
     (hE : ∀ h x y, y ∈ C.E h x → f y ∈ C'.E h (f x))
     (hF : ∀ h x y, y ∈ C.F h x → f y ∈ C'.F h (f x))
-    (Δ : ℕ) (goodP : ℕ → P → Prop) [∀ h, DecidablePred (goodP h)]
-    (hstab : ∀ h z z', goodP h (C'.π z) → C'.π z' = C'.π z → z' ∈ C'.F h z →
+    (Δ : ℕ) (goodP : ℕ → P → Prop) [∀ h, DecidablePred (goodP h)] {h : ℕ}
+    (hstab : ∀ z z', goodP h (C'.π z) → C'.π z' = C'.π z → z' ∈ C'.F h z →
       z' ∈ C'.E (h - Δ) z)
-    {h : ℕ} {m : Mode} {m' : Mode'} (hm' : C'.Good Δ goodP h m')
+    {m : Mode} {m' : Mode'} (hm' : C'.Good Δ goodP h m')
     (hlink : f m ∈ C'.F h m')
     (htype : (C'.labels (C'.E (h - Δ) m')).card < 2 * (C.labels (C.E (h - Δ) m)).card) :
     (C.E (h - Δ) m).image f ⊆ C'.E (h - Δ) m' := by
@@ -240,7 +240,7 @@ theorem predecessor_nesting (C : ModeComponents Mode P) (C' : ModeComponents Mod
   · intro x hx x' hx' hxx' hg
     -- the common good primary joins `x` to the later predecessor
     have hxEl : x ∈ El := by
-      have h1 := hstab h x' x (hxx' ▸ hg) hxx' (by
+      have h1 := hstab x' x (hxx' ▸ hg) hxx' (by
         rw [C'.F_comp h m' x' (hEl hx'), ← C'.F_comp h m' x (hEe hx)]
         exact C'.E_le_F h x (C'.E_self h x))
       have h2 : C'.E (h - Δ) x' = El := C'.E_comp _ m' x' hx'
@@ -306,9 +306,9 @@ theorem attempt_representatives (Nd : Finset (ℤ × (ℤ × ℤ)))
     (hNd : ∀ c ∈ Nd, c.2.1 = c.1 - 2 * S.K) {Bmin : ℤ} (hBmin : ∀ c ∈ Nd, Bmin ≤ c.1)
     (Δ h : ℕ) (mOf : ∀ c : ℤ × (ℤ × ℤ), Ms.alive (ancAt Gd c.2 (c.1 - 4 * S.K)))
     (hgood : ∀ c ∈ Nd, (Ms.blockComps S hA c.1 c.2).Good Δ (Ms.goodP S SP c.1) h (mOf c))
-    (hstab : ∀ c ∈ Nd, ∀ h' z z', Ms.goodP S SP c.1 h' ((Ms.blockComps S hA c.1 c.2).π z) →
+    (hstab : ∀ c ∈ Nd, ∀ z z', Ms.goodP S SP c.1 h ((Ms.blockComps S hA c.1 c.2).π z) →
       (Ms.blockComps S hA c.1 c.2).π z' = (Ms.blockComps S hA c.1 c.2).π z →
-      z' ∈ (Ms.blockComps S hA c.1 c.2).F h' z → z' ∈ (Ms.blockComps S hA c.1 c.2).E (h' - Δ) z)
+      z' ∈ (Ms.blockComps S hA c.1 c.2).F h z → z' ∈ (Ms.blockComps S hA c.1 c.2).E (h - Δ) z)
     {k1 k2 : ℕ}
     (htype1 : ∀ c ∈ Nd, Nat.log 2 ((Ms.blockComps S hA c.1 c.2).labels
       ((Ms.blockComps S hA c.1 c.2).E (h - Δ) (mOf c))).card = k1)
@@ -1165,6 +1165,61 @@ theorem hereditaryRep_disjoint' [DecidableEq α]
 
 end HereditaryRepresentatives2
 
+/-! ## Stabilization of the frozen mode graphs at the schedule (blueprint lines 2179-2181) -/
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc)
+
+open Classical in
+/-- Blueprint lem:stabilize (lines 2002-2028) for the frozen mode graphs at the chosen schedule, as
+used at lines 2179-2181 ("stabilization joins its two witnessing modes in later PRE"): on a
+pre-cell `J` of depth `v_b = b - 2K`, two alive modes of one key that is good at a height
+`h ≤ J_*` (`goodP` with the side parameters of the schedule) and lie in one CURRENT component at
+`h` are PRE-joined at `h - Δ`, `Δ = 10`. The alive modes number at most `D_*`, the dimensions are
+at most `d_max`, and `D_*` covers the heights of the mode differences
+(`2 (Q₀ (3 B_σ²)²)² ≤ ⌊D_*⌋`, line 1934). -/
+theorem blockComps_stab (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : ℝ}
+    (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) (hA : 6 ≤ S.A0)
+    (hdim : ∀ p, Ms.dvOf p + Ms.zc.dim ≤ S.dmax)
+    (hBσ : 2 * (S.Q0 * (3 * (Ms.Bσ * Ms.Bσ) ^ 2)) ^ 2 ≤ (⌊S.Dstar⌋₊ : ℝ)) {b : ℤ}
+    {J : ℤ × ℤ} (hJ : J.1 = b - 2 * S.K)
+    (hcard : ((Ms.alive (ancAt Gd J (b - 4 * S.K))).card : ℝ) ≤ S.Dstar) {h : ℕ}
+    (hJh : h ≤ S.Jstar) (z z' : Ms.alive (ancAt Gd J (b - 4 * S.K)))
+    (hg : Ms.goodP S (S.sideParams δs) b h ((Ms.blockComps S hA b J).π z))
+    (hπ : (Ms.blockComps S hA b J).π z' = (Ms.blockComps S hA b J).π z)
+    (hF : z' ∈ (Ms.blockComps S hA b J).F h z) :
+    z' ∈ (Ms.blockComps S hA b J).E (h - 10) z := by
+  have hK0 : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  have hKJ : J.1 ≤ b + S.K := by rw [hJ]; omega
+  -- the frozen mode graphs are the block graphs of lem:stabilize
+  have e : Ms.blockComps S hA b J = S.blockGraphs hA (fun x y => Ms.slope x.1 y)
+      (fun l => Ms.zc.θ l / S.Q0) (fun x => Ms.keyOf x.1) Gd.baseLength_pos b
+      (dyadicGridLeft Gd J.1 J.2) := by
+    rw [Ms.blockComps_eq S hA hKJ]
+    unfold preComps ModeSchedule.blockGraphs
+    have h1 : dyadicGridLength Gd J.1 = Gd.baseLength * (2 : ℝ) ^ (-(b - 2 * S.K)) := by
+      unfold dyadicGridLength; rw [hJ]
+    have h2 : dyadicGridLength Gd (b + S.K) = Gd.baseLength * (2 : ℝ) ^ (-(b + S.K)) := rfl
+    congr 1
+  rw [e] at hg hπ hF ⊢
+  have hg' : S.stabGood Ms.dvOf (fun p => Fin.append (Ms.θvOf p) fun l => Ms.zc.θ l / S.Q0)
+      Gd.baseLength b h (Ms.keyOf z.1) := hg
+  have hQ0 : 0 < S.Q0 := by omega
+  have hsame := Ms.hsame hQ0 hBσ (fun x : Ms.alive (ancAt Gd J (b - 4 * S.K)) => x.1)
+    (Set.Icc (dyadicGridLeft Gd J.1 J.2)
+      (dyadicGridLeft Gd J.1 J.2 + Gd.baseLength * (2 : ℝ) ^ (-(b - 2 * S.K))))
+  have hcard' : (Fintype.card (Ms.alive (ancAt Gd J (b - 4 * S.K))) : ℝ) ≤ S.Dstar := by
+    rw [Fintype.card_coe]; exact hcard
+  have hDf : (⌊S.Dstar⌋₊ : ℝ) ≤ S.Dstar := Nat.floor_le (by linarith)
+  refine hV.stabGood_mem_E hCA hCT hd2 hD hB hQ hcard' (fun x y => Ms.slope x.1 y)
+    (fun l => Ms.zc.θ l / S.Q0) (fun x => Ms.keyOf x.1) Ms.dvOf Ms.θvOf hdim Gd.baseLength_pos b
+    (dyadicGridLeft Gd J.1 J.2) (fun x x' hk => ?_) hJh hg' hπ hF
+  obtain ⟨a, ha, hy⟩ := hsame x x' hk
+  exact ⟨a, (Nat.cast_le.mpr ha).trans hDf, hy⟩
+
+end ModeSystem
+
 namespace ModeSystem
 variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
   (hA : 6 ≤ S.A0) (SP : SideParams)
@@ -1201,9 +1256,9 @@ theorem attempt_representatives3 (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
     (Δ h : ℕ) (halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
     (hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good Δ (Ms.goodP S SP c.1) h
       ⟨c.2.2, halive c hc⟩)
-    (hstab : ∀ c ∈ Nd, ∀ h' z z', Ms.goodP S SP c.1 h' ((Ms.blockComps S hA c.1 c.2.1).π z) →
+    (hstab : ∀ c ∈ Nd, ∀ z z', Ms.goodP S SP c.1 h ((Ms.blockComps S hA c.1 c.2.1).π z) →
       (Ms.blockComps S hA c.1 c.2.1).π z' = (Ms.blockComps S hA c.1 c.2.1).π z →
-      z' ∈ (Ms.blockComps S hA c.1 c.2.1).F h' z → z' ∈ (Ms.blockComps S hA c.1 c.2.1).E (h' - Δ) z)
+      z' ∈ (Ms.blockComps S hA c.1 c.2.1).F h z → z' ∈ (Ms.blockComps S hA c.1 c.2.1).E (h - Δ) z)
     (hdist : ∀ c (hc : c ∈ Nd) c' (hc' : c' ∈ Nd) (h1 : c.1 = c'.1) (h2 : c.2.1 = c'.2.1),
       c ≠ c' → (⟨c'.2.2, by rw [h1, h2]; exact halive c' hc'⟩ :
         Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) ∉
@@ -1354,6 +1409,111 @@ theorem attempt_representatives3 (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
       hereditaryRep_disjoint' E lt d hd dflt hpath hnest hmaj hcc' hrep,
     fun c c' hcc' hrep z z' hz hz' hzF => hrep (hereditaryRep_inherit' E lt d hd dflt hpath
       hnest hmaj c c' hcc' (hlinked c c' hcc' z z' hz hz' hzF)).symm⟩
+
+open Classical in
+/-- The first role type of a mode node: the dyadic size class of the number of primaries of its
+PRE predecessor (blueprint line 2708, "fix ... all role types"). -/
+noncomputable def nodeType1 (Δ h : ℕ) (c : ℤ × (ℤ × ℤ) × Ms.Md) : ℕ :=
+  if hm : c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)) then
+    Nat.log 2 ((Ms.blockComps S hA c.1 c.2.1).labels
+      ((Ms.blockComps S hA c.1 c.2.1).E (h - Δ) ⟨c.2.2, hm⟩)).card
+  else 0
+
+/-- The second role type of a mode node: the dyadic size class of its predecessor. -/
+noncomputable def nodeType2 (Δ h : ℕ) (c : ℤ × (ℤ × ℤ) × Ms.Md) : ℕ :=
+  Nat.log 2 (Ms.predOfMode S hA Δ h c).card
+
+open Classical in
+/-- Blueprint lines 2172-2191 with the role types fixed (`attempt_representatives3` on each type
+class of nodes): there are representatives `rep k₁ k₂` for every type class, in the predecessors of
+the nodes, inherited and separated along comparable nodes of the class. -/
+theorem typed_representatives (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
+    (hNd : ∀ c ∈ Nd, c.2.1.1 = c.1 - 2 * S.K) {Bmin : ℤ} (hBmin : ∀ c ∈ Nd, Bmin ≤ c.1)
+    (Δ h : ℕ) (halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
+    (hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good Δ (Ms.goodP S SP c.1) h
+      ⟨c.2.2, halive c hc⟩)
+    (hstab : ∀ c ∈ Nd, ∀ z z', Ms.goodP S SP c.1 h ((Ms.blockComps S hA c.1 c.2.1).π z) →
+      (Ms.blockComps S hA c.1 c.2.1).π z' = (Ms.blockComps S hA c.1 c.2.1).π z →
+      z' ∈ (Ms.blockComps S hA c.1 c.2.1).F h z → z' ∈ (Ms.blockComps S hA c.1 c.2.1).E (h - Δ) z)
+    (hdist : ∀ c (hc : c ∈ Nd) c' (hc' : c' ∈ Nd) (h1 : c.1 = c'.1) (h2 : c.2.1 = c'.2.1),
+      c ≠ c' → (⟨c'.2.2, by rw [h1, h2]; exact halive c' hc'⟩ :
+        Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) ∉
+        (Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, halive c hc⟩) (dflt : Ms.Md) :
+    ∃ rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md, ∀ k₁ k₂,
+      let Nk := Nd.filter fun c => Ms.nodeType1 S hA Δ h c = k₁ ∧ Ms.nodeType2 S hA Δ h c = k₂
+      (∀ c, rep k₁ k₂ c ∈ Ms.predOfMode S hA Δ h c) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' →
+        Ms.predOfMode S hA Δ h c ⊆ Ms.predOfMode S hA Δ h c' → rep k₁ k₂ c' = rep k₁ k₂ c) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep k₁ k₂ c ≠ rep k₁ k₂ c' →
+        Disjoint (Ms.predOfMode S hA Δ h c) (Ms.predOfMode S hA Δ h c')) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep k₁ k₂ c ≠ rep k₁ k₂ c' →
+        ∀ z z' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)), z.1 ∈ Ms.predOfMode S hA Δ h c →
+          z'.1 ∈ Ms.predOfMode S hA Δ h c' → z ∉ (Ms.blockComps S hA c'.1 c'.2.1).F h z') := by
+  have key : ∀ k₁ k₂ : ℕ, ∃ rep : ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md,
+      let Nk := Nd.filter fun c => Ms.nodeType1 S hA Δ h c = k₁ ∧ Ms.nodeType2 S hA Δ h c = k₂
+      (∀ c, rep c ∈ Ms.predOfMode S hA Δ h c) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' →
+        Ms.predOfMode S hA Δ h c ⊆ Ms.predOfMode S hA Δ h c' → rep c' = rep c) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep c ≠ rep c' →
+        Disjoint (Ms.predOfMode S hA Δ h c) (Ms.predOfMode S hA Δ h c')) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep c ≠ rep c' →
+        ∀ z z' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)), z.1 ∈ Ms.predOfMode S hA Δ h c →
+          z'.1 ∈ Ms.predOfMode S hA Δ h c' → z ∉ (Ms.blockComps S hA c'.1 c'.2.1).F h z') := by
+    intro k₁ k₂
+    have hsub : ∀ c ∈ Nd.filter (fun c => Ms.nodeType1 S hA Δ h c = k₁ ∧
+        Ms.nodeType2 S hA Δ h c = k₂), c ∈ Nd := fun c hc => (Finset.mem_filter.mp hc).1
+    exact Ms.attempt_representatives3 S hA SP _ (fun c hc => hNd c (hsub c hc))
+      (fun c hc => hBmin c (hsub c hc)) Δ h (fun c hc => halive c (hsub c hc))
+      (fun c hc => hgood c (hsub c hc)) (fun c hc => hstab c (hsub c hc))
+      (fun c hc c' hc' h1 h2 hne => hdist c (hsub c hc) c' (hsub c' hc') h1 h2 hne)
+      (k1 := k₁) (k2 := k₂)
+      (fun c hc => by
+        have h1 := (Finset.mem_filter.mp hc).2.1
+        unfold nodeType1 at h1
+        rwa [dite_eq_left_of_eq_true (eq_true (halive c (hsub c hc)))] at h1)
+      (fun c hc => (Finset.mem_filter.mp hc).2.2) dflt
+  choose rep hrep using key
+  exact ⟨rep, hrep⟩
+
+open Classical in
+/-- Blueprint lines 2172-2185 (`THT.Modes.hereditaryRepresentatives`) at the chosen schedule: with
+the side parameters of the schedule (`Δ = 10`) at a height `h ≤ J_*` (the upper end of
+`H_up`, line 2041), the stabilization step ("stabilization joins its two witnessing modes in later
+PRE") is `lem:stabilize` for the frozen mode graphs (`blockComps_stab`). Hence, for fixed height
+and types, representatives in the PRE predecessors exist, are inherited under predecessor
+inclusion along comparable nodes, and different representatives on comparable nodes have disjoint
+predecessors with no shared or CURRENT-adjacent modes in the later graph. The alive modes at each
+decision cell number at most `D_*` and `D_*` covers the heights of the mode differences (the
+choices of `D_*`, lines 1932-1934). -/
+theorem typed_representatives_sched {Cj CA CT CK : ℕ} {δs W : ℝ}
+    (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0)
+    (hdim : ∀ p, Ms.dvOf p + Ms.zc.dim ≤ S.dmax)
+    (hBσ : 2 * (S.Q0 * (3 * (Ms.Bσ * Ms.Bσ) ^ 2)) ^ 2 ≤ (⌊S.Dstar⌋₊ : ℝ))
+    (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
+    (hNd : ∀ c ∈ Nd, c.2.1.1 = c.1 - 2 * S.K) {Bmin : ℤ} (hBmin : ∀ c ∈ Nd, Bmin ≤ c.1)
+    (hcard : ∀ c ∈ Nd, ((Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))).card : ℝ) ≤ S.Dstar)
+    {h : ℕ} (hJh : h ≤ S.Jstar)
+    (halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
+    (hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good 10
+      (Ms.goodP S (S.sideParams δs) c.1) h ⟨c.2.2, halive c hc⟩)
+    (hdist : ∀ c (hc : c ∈ Nd) c' (hc' : c' ∈ Nd) (h1 : c.1 = c'.1) (h2 : c.2.1 = c'.2.1),
+      c ≠ c' → (⟨c'.2.2, by rw [h1, h2]; exact halive c' hc'⟩ :
+        Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) ∉
+        (Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, halive c hc⟩) (dflt : Ms.Md) :
+    ∃ rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md, ∀ k₁ k₂,
+      let Nk := Nd.filter fun c => Ms.nodeType1 S hA 10 h c = k₁ ∧ Ms.nodeType2 S hA 10 h c = k₂
+      (∀ c, rep k₁ k₂ c ∈ Ms.predOfMode S hA 10 h c) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' →
+        Ms.predOfMode S hA 10 h c ⊆ Ms.predOfMode S hA 10 h c' → rep k₁ k₂ c' = rep k₁ k₂ c) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep k₁ k₂ c ≠ rep k₁ k₂ c' →
+        Disjoint (Ms.predOfMode S hA 10 h c) (Ms.predOfMode S hA 10 h c')) ∧
+      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep k₁ k₂ c ≠ rep k₁ k₂ c' →
+        ∀ z z' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)), z.1 ∈ Ms.predOfMode S hA 10 h c →
+          z'.1 ∈ Ms.predOfMode S hA 10 h c' → z ∉ (Ms.blockComps S hA c'.1 c'.2.1).F h z') :=
+  Ms.typed_representatives S hA (S.sideParams δs) Nd hNd hBmin 10 h halive hgood
+    (fun c hc z z' hg hπ hF => Ms.blockComps_stab S hV hCA hCT hd2 hD hB hQ hA hdim hBσ
+      (hNd c hc) (hcard c hc) hJh z z' hg hπ hF) hdist dflt
 
 end ModeSystem
 
@@ -1578,6 +1738,2606 @@ theorem classNodes_props (P : Finset (ℤ × (ℤ × ℤ))) (hP : ∀ bJ ∈ P, 
     exact Ms.classMode_not_mem_F S hA (mC b J) (hmC _ hbJ C hC).2 (hmC _ hbJ' C' hC').2 hne'
 
 end ModeSystem
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## Component sizes at an actual cell (blueprint lines 2196-2209, `eq:size-comparison`) -/
+
+/-- Halving the threshold at most doubles the pairing constant. -/
+theorem pairConst_half_le (d : ℕ) {δ Ξ : ℝ} (hδ : 0 < δ) (hΞ : 0 < Ξ) (Kf : ℕ) :
+    pairConst d δ (Ξ / 2) Kf ≤ 2 * pairConst d δ Ξ Kf := by
+  unfold pairConst
+  have h1 := gaugeTail_nonneg d hδ
+  have h2 : 0 ≤ gaugeSqNorm d δ := by unfold gaugeSqNorm; positivity
+  have e : gaugeSqNorm d δ * (8 / (Ξ / 2)) = 2 * (gaugeSqNorm d δ * (8 / Ξ)) := by
+    field_simp
+  rw [e]
+  have : 0 ≤ 2 * gaugeTail d δ / 2 ^ Kf := by positivity
+  linarith
+
+/-- Blueprint line 2055 at threshold `Ξ/2`: the pairing constant is at most `2 D_*^{-200}`. -/
+theorem ModeSchedule.pairConst_half_mul_le (S : ModeSchedule) (hD : 2 ≤ S.Dstar) {d : ℕ}
+    {δ : ℝ} (hδ : 0 < δ) {Kf : ℕ} (hDg : gaugeSqNorm d δ ≤ S.Dstar)
+    (hKf : 2 * gaugeTail d δ / 2 ^ Kf * S.Dstar ^ 300 ≤ 1) :
+    pairConst d δ (S.Ξ / 2) Kf * S.Dstar ^ 200 ≤ 2 := by
+  have hΞ : 0 < S.Ξ := pow_pos (by linarith) 1000
+  have h := S.pairConst_mul_le hD hDg hKf
+  have h2 := pairConst_half_le d hδ hΞ Kf
+  have hp : 0 ≤ S.Dstar ^ 200 := by positivity
+  nlinarith [mul_le_mul_of_nonneg_right h2 hp]
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+
+/-- `cellMode_inner_le` with the height-zero separation given directly at threshold `Ξ'/|J|` on the
+cell (the form of `lem:mode-rows` on the smaller cell). -/
+theorem cellMode_inner_le_of_sep {Ξ' : ℝ} (hδ : 0 < Ms.δc) (hΛ : 8 * Ms.Λ ≤ Ξ') (hΞ : 0 < Ξ')
+    (hQ0 : 0 < S.Q0) (Kf : ℕ) (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0) {J : ℤ × ℤ}
+    {m m' : Ms.Md}
+    (hm : dyadicGridCell Gd J.1 J.2 ⊆ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2)
+    (hm' : dyadicGridCell Gd J.1 J.2 ⊆ dyadicGridCell Gd (Ms.cellOf m').1 (Ms.cellOf m').2)
+    (hne : m ≠ m')
+    (hsep : ∀ n : Fin Ms.zc.dim → ℤ, (∀ i, |(n i : ℝ)| ≤ S.Eh 0) →
+      ∃ x ∈ Set.Icc (dyadicGridLeft Gd J.1 J.2)
+          (dyadicGridLeft Gd J.1 J.2 + dyadicGridLength Gd J.1),
+        Ξ' / dyadicGridLength Gd J.1 ≤
+          |Ms.slope m x - Ms.slope m' x + ∑ i, (n i : ℝ) * (Ms.zc.θ i / S.Q0)|) :
+    ‖inner ℂ (Ms.cellMode J m) (Ms.cellMode J m')‖ ≤
+      pairConst Ms.zc.dim Ms.δc Ξ' Kf * dyadicGridLength Gd J.1 := by
+  set r := dyadicGridLength Gd J.1
+  have hr := dyadicGridLength_pos Gd J.1
+  unfold cellMode
+  rw [inner_augMode_toLp_ne (dyadicGridCell_measurable Gd J.1 J.2)
+    (dyadicGridCell_volume_ne_top Gd J) (Ms.wave_measurable m) (Ms.wave_norm_le m)
+    (Ms.wave_measurable m') (Ms.wave_norm_le m') _ _ hne]
+  have hcell : dyadicGridCell Gd J.1 J.2 =
+      Set.Ico (dyadicGridLeft Gd J.1 J.2) (dyadicGridLeft Gd J.1 J.2 + r) := rfl
+  rw [hcell, ← integral_Icc_eq_integral_Ico]
+  -- slope variation
+  have hlen := dyadicGridLength_le_of_subset Gd hm
+  have hlen' := dyadicGridLength_le_of_subset Gd hm'
+  have hr2 : |Ms.lamOf m| * r ^ 2 ≤ Ms.Λ :=
+    (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ hr.le hlen 2) (abs_nonneg _)).trans (Ms.lam_le m)
+  have hr2' : |Ms.lamOf m'| * r ^ 2 ≤ Ms.Λ :=
+    (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ hr.le hlen' 2) (abs_nonneg _)).trans
+      (Ms.lam_le m')
+  have hvar : 2 * |Ms.lamOf m - Ms.lamOf m'| * r ≤ Ξ' / r / 2 := by
+    have habs := abs_sub (Ms.lamOf m) (Ms.lamOf m')
+    rw [div_div, le_div_iff₀ (by positivity)]
+    nlinarith [mul_le_mul_of_nonneg_right habs (sq_nonneg r)]
+  have h := modeWave_pair_le_full Ms.zc hδ Ms.ρ Ms.cl (Ms.lamOf m)
+    (dyadicGridLeft Gd (Ms.cellOf m).1 (Ms.cellOf m).2) (Ms.γOf m) (Ms.lamOf m')
+    (dyadicGridLeft Gd (Ms.cellOf m').1 (Ms.cellOf m').2) (Ms.γOf m') hr (div_pos hΞ hr) hQ0 Kf
+    hbox (fun n hn => by
+      obtain ⟨x, hx, hl⟩ := hsep n hn
+      refine ⟨x, hx, le_of_le_of_eq hl ?_⟩
+      simp only [slope]) hvar
+  have hconj : ∫ y in Set.Icc (dyadicGridLeft Gd J.1 J.2) (dyadicGridLeft Gd J.1 J.2 + r),
+      (starRingEnd ℂ) (Ms.wave m y) * Ms.wave m' y =
+      (starRingEnd ℂ) (∫ y in Set.Icc (dyadicGridLeft Gd J.1 J.2) (dyadicGridLeft Gd J.1 J.2 + r),
+        Ms.wave m y * (starRingEnd ℂ) (Ms.wave m' y)) := by
+    rw [← integral_conj]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+    simp [mul_comm]
+  rw [hconj, RCLike.norm_conj]
+  rw [inv_mul_le_iff₀ hr] at h
+  refine h.trans (le_of_eq ?_)
+  unfold pairConst
+  field_simp
+  ring
+
+/-- A cell mode restricts on a subcell to the cell mode of the subcell. -/
+theorem cellMode_restrict {I J : ℤ × ℤ}
+    (hIJ : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd J.1 J.2) (m : Ms.Md) :
+    columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+      (Ms.cellMode J m) = Ms.cellMode I m := by
+  classical
+  have hJm : ∀ᵐ y ∂volume, (Ms.cellMode J m : ℝ → ColumnHilbert Ms.Md) y =
+      augMode (dyadicGridCell Gd J.1 J.2) (Ms.wave m) (Ms.L.εM m) m y :=
+    MemLp.coeFn_toLp (augMode_memLp (dyadicGridCell_measurable Gd J.1 J.2)
+      (dyadicGridCell_volume_ne_top Gd J) (Ms.wave_measurable m) (Ms.wave_norm_le m)
+      (Ms.L.εM m) m)
+  have hIm : ∀ᵐ y ∂volume, (Ms.cellMode I m : ℝ → ColumnHilbert Ms.Md) y =
+      augMode (dyadicGridCell Gd I.1 I.2) (Ms.wave m) (Ms.L.εM m) m y :=
+    MemLp.coeFn_toLp (augMode_memLp (dyadicGridCell_measurable Gd I.1 I.2)
+      (dyadicGridCell_volume_ne_top Gd I) (Ms.wave_measurable m) (Ms.wave_norm_le m)
+      (Ms.L.εM m) m)
+  refine Lp.ext ?_
+  filter_upwards [columnL2Restriction_coeFn _ (dyadicGridCell_measurable Gd I.1 I.2)
+    (Ms.cellMode J m), hJm, hIm] with y h1 h2 h3
+  rw [h1, h3]
+  by_cases hy : y ∈ dyadicGridCell Gd I.1 I.2
+  · rw [Set.indicator_of_mem hy, h2]
+    unfold augMode
+    rw [Set.indicator_of_mem (hIJ hy), Set.indicator_of_mem hy]
+  · rw [Set.indicator_of_notMem hy]
+    unfold augMode
+    rw [Set.indicator_of_notMem hy]
+
+end ModeSystem
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0)
+
+/-- Blueprint lines 2202-2203 ("two-sided almost orthogonality for arbitrary subtotals in distinct
+minimal CURRENT components"), one pair: two modes alive at the decision cell of the pre-cell `J`
+of the block `b` that lie in different minimal CURRENT components pair on an actual cell `I ⊆ J`
+of length at least `r_{t_b}` by at most `η |I|`, with `η` the pairing constant at threshold
+`Ξ/2` (`eq:slope-variation` halves the CURRENT threshold on the whole pre-cell). -/
+theorem actualCell_inner_le {b : ℤ} {J I : ℤ × ℤ} (hJ : J.1 = b - 2 * S.K)
+    (hIJ : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd J.1 J.2) (hIt : I.1 ≤ b + S.K)
+    (hδ : 0 < Ms.δc) (hΛ : 16 * Ms.Λ ≤ S.Ξ) (hΞ : 0 < S.Ξ) (hQ0 : 0 < S.Q0) (Kf : ℕ)
+    (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0) {z z' : Ms.alive (ancAt Gd J (b - 4 * S.K))}
+    (hzF : z ∉ (Ms.blockComps S hA b J).F 0 z') :
+    ‖inner ℂ (Ms.cellMode I z'.1) (Ms.cellMode I z.1)‖ ≤
+      pairConst Ms.zc.dim Ms.δc (S.Ξ / 2) Kf * dyadicGridLength Gd I.1 := by
+  have hK : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  have hΛ0 : 0 ≤ Ms.Λ := le_trans (by positivity) (Ms.lam_le z.1)
+  have hI := dyadicGridLength_pos Gd I.1
+  have hIr : dyadicGridLength Gd (b + S.K) ≤ dyadicGridLength Gd I.1 :=
+    (dyadicGridLength_strictAnti Gd).antitone hIt
+  have hU : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd (ancAt Gd J (b - 4 * S.K)).1
+      (ancAt Gd J (b - 4 * S.K)).2 := hIJ.trans (subset_ancAt Gd J (by rw [hJ]; omega))
+  have hz' : z'.1 ≠ z.1 := fun h => hzF (by
+    rw [show z = z' from Subtype.ext h.symm]
+    exact (Ms.blockComps S hA b J).E_le_F 0 z' ((Ms.blockComps S hA b J).E_self 0 z'))
+  refine Ms.cellMode_inner_le_of_sep S hδ (by linarith) (by linarith) hQ0 Kf hbox
+    (hU.trans ((Ms.mem_alive).mp z'.2)) (hU.trans ((Ms.mem_alive).mp z.2)) hz' (fun n hn => ?_)
+  have hsep := Ms.alive_representative_separation S hA hJ (by linarith) hzF n hn hIr hIr
+  have hxI : dyadicGridLeft Gd I.1 I.2 ∈ Set.Icc (dyadicGridLeft Gd I.1 I.2)
+      (dyadicGridLeft Gd I.1 I.2 + dyadicGridLength Gd I.1) := ⟨le_rfl, by linarith⟩
+  refine ⟨_, hxI, ?_⟩
+  have hx := hsep _ (dyadicGridCell_Icc_subset Gd hIJ hxI)
+  rw [max_self, show ModeSchedule.Lh 0 = 1 by simp [ModeSchedule.Lh], div_one] at hx
+  rw [div_eq_mul_inv (S.Ξ / 2)]
+  exact hx.le
+
+/-- The modes of the CURRENT component `F_h(x)` of the block `b` on the pre-cell `J`. -/
+noncomputable def compModes (b : ℤ) (J : ℤ × ℤ) (h : ℕ)
+    (x : Ms.alive (ancAt Gd J (b - 4 * S.K))) : Finset Ms.Md :=
+  ((Ms.blockComps S hA b J).F h x).map ⟨Subtype.val, Subtype.val_injective⟩
+
+open Classical in
+/-- The minimal (height zero) CURRENT components inside `F_h(x)`, as mode sets. -/
+noncomputable def minComps (b : ℤ) (J : ℤ × ℤ) (h : ℕ)
+    (x : Ms.alive (ancAt Gd J (b - 4 * S.K))) : Finset (Finset Ms.Md) :=
+  ((Ms.blockComps S hA b J).F h x).image fun y =>
+    ((Ms.blockComps S hA b J).F 0 y).map ⟨Subtype.val, Subtype.val_injective⟩
+
+theorem mem_compModes {b : ℤ} {J : ℤ × ℤ} {h : ℕ} {x : Ms.alive (ancAt Gd J (b - 4 * S.K))}
+    {m : Ms.Md} :
+    m ∈ Ms.compModes S hA b J h x ↔ ∃ y ∈ (Ms.blockComps S hA b J).F h x, y.1 = m := by
+  unfold compModes
+  simp only [Finset.mem_map, Function.Embedding.coeFn_mk]
+
+theorem compModes_subset_alive (b : ℤ) (J : ℤ × ℤ) (h : ℕ)
+    (x : Ms.alive (ancAt Gd J (b - 4 * S.K))) :
+    Ms.compModes S hA b J h x ⊆ Ms.alive (ancAt Gd J (b - 4 * S.K)) := by
+  intro m hm
+  obtain ⟨y, -, rfl⟩ := (Ms.mem_compModes S hA).mp hm
+  exact y.2
+
+/-- Two CURRENT components at one height are equal or disjoint. -/
+theorem comp_eq_or_disjoint (b : ℤ) (J : ℤ × ℤ) (h : ℕ)
+    (y y' : Ms.alive (ancAt Gd J (b - 4 * S.K))) :
+    ((Ms.blockComps S hA b J).F h y).map ⟨Subtype.val, Subtype.val_injective⟩ =
+        ((Ms.blockComps S hA b J).F h y').map ⟨Subtype.val, Subtype.val_injective⟩ ∨
+      Disjoint (((Ms.blockComps S hA b J).F h y).map ⟨Subtype.val, Subtype.val_injective⟩)
+        (((Ms.blockComps S hA b J).F h y').map ⟨Subtype.val, Subtype.val_injective⟩) := by
+  by_cases hd : Disjoint (((Ms.blockComps S hA b J).F h y).map
+      ⟨Subtype.val, Subtype.val_injective⟩)
+      (((Ms.blockComps S hA b J).F h y').map ⟨Subtype.val, Subtype.val_injective⟩)
+  · exact Or.inr hd
+  · left
+    obtain ⟨m, hm, hm'⟩ := Finset.not_disjoint_iff.mp hd
+    obtain ⟨a, ha, rfl⟩ := Finset.mem_map.mp hm
+    obtain ⟨a', ha', ha'e⟩ := Finset.mem_map.mp hm'
+    have he : a' = a := Subtype.ext ha'e
+    subst he
+    rw [← (Ms.blockComps S hA b J).F_comp h y a' ha, (Ms.blockComps S hA b J).F_comp h y' a' ha']
+
+/-- Modes of different CURRENT components at a height are not CURRENT-joined there. -/
+theorem not_mem_F_of_ne (b : ℤ) (J : ℤ × ℤ) (h : ℕ)
+    {y y' a a' : Ms.alive (ancAt Gd J (b - 4 * S.K))}
+    (hne : ((Ms.blockComps S hA b J).F h y).map ⟨Subtype.val, Subtype.val_injective⟩ ≠
+      ((Ms.blockComps S hA b J).F h y').map ⟨Subtype.val, Subtype.val_injective⟩)
+    (ha : a ∈ (Ms.blockComps S hA b J).F h y) (ha' : a' ∈ (Ms.blockComps S hA b J).F h y') :
+    a' ∉ (Ms.blockComps S hA b J).F h a := by
+  intro hmem
+  apply hne
+  rw [← (Ms.blockComps S hA b J).F_comp h y a ha, ← (Ms.blockComps S hA b J).F_comp h y' a' ha',
+    (Ms.blockComps S hA b J).F_comp h a a' hmem]
+
+theorem mem_minComps {b : ℤ} {J : ℤ × ℤ} {h : ℕ} {x : Ms.alive (ancAt Gd J (b - 4 * S.K))}
+    {D : Finset Ms.Md} :
+    D ∈ Ms.minComps S hA b J h x ↔ ∃ y ∈ (Ms.blockComps S hA b J).F h x,
+      ((Ms.blockComps S hA b J).F 0 y).map ⟨Subtype.val, Subtype.val_injective⟩ = D := by
+  classical
+  unfold minComps
+  rw [Finset.mem_image]
+
+/-- The minimal CURRENT components inside `F_h(x)` cover its modes. -/
+theorem biUnion_minComps (b : ℤ) (J : ℤ × ℤ) (h : ℕ) (x : Ms.alive (ancAt Gd J (b - 4 * S.K))) :
+    (Ms.minComps S hA b J h x).biUnion id = Ms.compModes S hA b J h x := by
+  classical
+  set C := Ms.blockComps S hA b J
+  ext m
+  simp only [Finset.mem_biUnion, id]
+  constructor
+  · rintro ⟨D, hD, hmD⟩
+    obtain ⟨y, hy, rfl⟩ := (Ms.mem_minComps S hA).mp hD
+    obtain ⟨a, ha, rfl⟩ := Finset.mem_map.mp hmD
+    have hah : a ∈ C.F h y := C.F_mono 0 h y (Nat.zero_le _) ha
+    rw [C.F_comp h x y hy] at hah
+    exact (Ms.mem_compModes S hA).mpr ⟨a, hah, rfl⟩
+  · intro hm
+    obtain ⟨y, hy, rfl⟩ := (Ms.mem_compModes S hA).mp hm
+    exact ⟨_, (Ms.mem_minComps S hA).mpr ⟨y, hy, rfl⟩,
+      Finset.mem_map.mpr ⟨y, C.E_le_F 0 y (C.E_self 0 y), rfl⟩⟩
+
+theorem card_minComps_le (b : ℤ) (J : ℤ × ℤ) (h : ℕ) (x : Ms.alive (ancAt Gd J (b - 4 * S.K))) :
+    (Ms.minComps S hA b J h x).card ≤ (Ms.alive (ancAt Gd J (b - 4 * S.K))).card := by
+  classical
+  unfold minComps
+  refine Finset.card_image_le.trans ((Finset.card_le_univ _).trans (le_of_eq ?_))
+  exact Fintype.card_coe _
+
+theorem minComps_subset_alive {b : ℤ} {J : ℤ × ℤ} {h : ℕ}
+    {x : Ms.alive (ancAt Gd J (b - 4 * S.K))} {D : Finset Ms.Md}
+    (hD : D ∈ Ms.minComps S hA b J h x) : D ⊆ Ms.alive (ancAt Gd J (b - 4 * S.K)) := by
+  obtain ⟨y, -, rfl⟩ := (Ms.mem_minComps S hA).mp hD
+  intro m hm
+  obtain ⟨a, -, rfl⟩ := Finset.mem_map.mp hm
+  exact a.2
+
+end ModeSystem
+
+/-- Sums over the filtered members of pairwise disjoint finite sets are sums over the filtered
+union. -/
+theorem sum_filter_disjoint_family {μ M : Type*} [DecidableEq μ] [AddCommMonoid M]
+    (s : Finset (Finset μ)) (hdis : ∀ D ∈ s, ∀ D' ∈ s, D ≠ D' → Disjoint D D') (p : μ → Prop)
+    [DecidablePred p] (f : μ → M) :
+    ∑ D ∈ s, ∑ m ∈ D.filter p, f m = ∑ m ∈ (s.biUnion id).filter p, f m := by
+  rw [Finset.filter_biUnion, Finset.sum_biUnion]
+  · rfl
+  · intro D hD D' hD' hne
+    exact Finset.disjoint_filter_filter (hdis D hD D' hD' hne)
+
+/-- The numerical side conditions at the schedule: from `η D_*^{200} ≤ 2`, `η D_*³ ≤ 1/2` and
+`12 η² D_*³ B ≤ B D_*^{-59}`. -/
+theorem eta_sched_bounds {η Dst Bc : ℝ} (hD : 2 ≤ Dst) (hη0 : 0 ≤ η)
+    (hη200 : η * Dst ^ 200 ≤ 2) (hBc : 0 ≤ Bc) :
+    η * Dst ^ 3 ≤ 1 / 2 ∧ 12 * (η ^ 2 * Dst ^ 3 * Bc) ≤ Bc / Dst ^ 59 := by
+  have hD1 : (1 : ℝ) ≤ Dst := by linarith
+  have hDp : 0 < Dst := by linarith
+  constructor
+  · have h197 : 4 ≤ Dst ^ 197 :=
+      le_trans (by nlinarith) (pow_le_pow_right₀ hD1 (by norm_num : 2 ≤ 197))
+    have e : η * Dst ^ 200 = η * Dst ^ 3 * Dst ^ 197 := by ring
+    have h0 : 0 ≤ η * Dst ^ 3 := by positivity
+    nlinarith
+  · rw [le_div_iff₀ (by positivity)]
+    have h6 : (48 : ℝ) ≤ Dst ^ 6 :=
+      le_trans (by norm_num : (48 : ℝ) ≤ 2 ^ 6) (pow_le_pow_left₀ (by norm_num) hD 6)
+    have h338 : (48 : ℝ) ≤ Dst ^ 338 := h6.trans (pow_le_pow_right₀ hD1 (by norm_num))
+    have e : (η * Dst ^ 200) ^ 2 = η ^ 2 * Dst ^ 3 * Dst ^ 59 * Dst ^ 338 := by ring
+    have hsq : (η * Dst ^ 200) ^ 2 ≤ 4 := by
+      have : 0 ≤ η * Dst ^ 200 := by positivity
+      nlinarith
+    have h0 : 0 ≤ η ^ 2 * Dst ^ 3 * Dst ^ 59 := by positivity
+    have h12 : 12 * (η ^ 2 * Dst ^ 3 * Dst ^ 59) ≤ 1 := by nlinarith
+    calc 12 * (η ^ 2 * Dst ^ 3 * Bc) * Dst ^ 59 = 12 * (η ^ 2 * Dst ^ 3 * Dst ^ 59) * Bc := by
+          ring
+      _ ≤ 1 * Bc := mul_le_mul_of_nonneg_right h12 hBc
+      _ = Bc := one_mul _
+
+/-- `(a/√r + q)² r = (a + q √r)²`. -/
+theorem sq_div_sqrt_add_mul (a q : ℝ) {r : ℝ} (hr : 0 < r) :
+    (a / Real.sqrt r + q) ^ 2 * r = (a + q * Real.sqrt r) ^ 2 := by
+  have hs0 : Real.sqrt r ≠ 0 := (Real.sqrt_pos.mpr hr).ne'
+  have hs2 : Real.sqrt r ^ 2 = r := Real.sq_sqrt hr.le
+  have key : a / Real.sqrt r + q = (a + q * Real.sqrt r) / Real.sqrt r := by field_simp
+  rw [key, div_pow, hs2, div_mul_cancel₀ _ hr.ne']
+
+/-- The normalization step of `size_comparison`. -/
+theorem size_final_arith {σ P2 V2 e2 r Bc D : ℝ} (hr : 0 < r)
+    (hcs : σ * r ≤ 12 * (P2 + e2 + V2) + 2 * (Bc * r / D)) (he : 12 * e2 ≤ Bc / D * r) :
+    σ ≤ 12 * ((P2 + V2) / r) + 3 * Bc / D := by
+  have h1 : σ ≤ (12 * (P2 + e2 + V2) + 2 * (Bc * r / D)) / r := by
+    rw [le_div_iff₀ hr]; exact hcs
+  refine h1.trans ?_
+  rw [div_le_iff₀ hr]
+  have e : (12 * ((P2 + V2) / r) + 3 * Bc / D) * r = 12 * (P2 + V2) + 3 * (Bc / D * r) := by
+    rw [add_mul, mul_assoc 12, div_mul_cancel₀ _ hr.ne']; ring
+  rw [e]
+  have : 2 * (Bc * r / D) = 2 * (Bc / D * r) := by ring
+  linarith
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0) (SP : SideParams)
+
+open Classical in
+/-- A core mode of the block `b` on the pre-cell `J`: alive at the decision cell and with at most
+`δ_* (J_* + 1)` bad heights (line 2037). -/
+def IsCoreAt (b : ℤ) (J : ℤ × ℤ) (m : Ms.Md) : Prop :=
+  ∃ hm : m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)),
+    (Ms.blockComps S hA b J).Core SP.Δ (Ms.goodP S SP b) SP.Jst SP.δs ⟨m, hm⟩
+
+open Classical in
+/-- Blueprint `eq:component-size` (lines 2196-2201) on the actual cell `I`:
+`σ_F² = Σ_{D ⊆ F} (‖A_D‖_{2,I} + D_*^{-30} Σ_{m core in D} |α_m|)²` over the minimal CURRENT
+components `D` of `F = F_h(x)`, with the full core subtotals `A_D = Σ_{m core in D} α_m Ψ_{I,m}` and
+the normalized norm `‖f‖_{2,I} = |I|^{-1/2} ‖1_I f‖₂`. -/
+noncomputable def compSizeSq (I : ℤ × ℤ) (b : ℤ) (J : ℤ × ℤ) (h : ℕ)
+    (x : Ms.alive (ancAt Gd J (b - 4 * S.K))) (c : Ms.Md → ℂ) : ℝ :=
+  ∑ D ∈ Ms.minComps S hA b J h x,
+    (‖∑ m ∈ D.filter (Ms.IsCoreAt S hA SP b J), c m • Ms.cellMode I m‖ /
+        Real.sqrt (dyadicGridLength Gd I.1) +
+      (S.Dstar ^ 30)⁻¹ * ∑ m ∈ D.filter (Ms.IsCoreAt S hA SP b J), ‖c m‖) ^ 2
+
+/-- At the schedule, `Ξ = D_*^{1000}` dominates `16 Λ` when `Λ ≤ D_*`. -/
+theorem sixteen_Λ_le (hD : 2 ≤ S.Dstar) (hΛ : Ms.Λ ≤ S.Dstar) : 16 * Ms.Λ ≤ S.Ξ := by
+  have hD1 : (1 : ℝ) ≤ S.Dstar := by linarith
+  have h4 : (16 : ℝ) ≤ S.Dstar ^ 4 :=
+    le_trans (by norm_num) (pow_le_pow_left₀ (by norm_num) hD 4)
+  have h5 : 16 * S.Dstar ≤ S.Dstar ^ 5 := by
+    rw [pow_succ]; nlinarith
+  have h1000 : S.Dstar ^ 5 ≤ S.Dstar ^ 1000 := pow_le_pow_right₀ hD1 (by norm_num)
+  unfold ModeSchedule.Ξ
+  linarith
+
+open Classical in
+/-- Blueprint `eq:size-comparison` (lines 2202-2209), first assertion, at an actual cell `I` of
+length at least `r_{t_b}` inside the pre-cell `J` of the block `b`, for the CURRENT component
+`F = F_h(x)`: with the frozen coefficients `c` of `Z̃_{l,G,b}` on `J` (square sum at most `B_c` over
+the alive modes; `B_c = 4 D_*² C_F` by `frozen_coeffs`),
+`σ_F² ≤ 12 (‖P_{F,I} Z̃‖²_{2,I} + ‖V_F‖²_{2,I}) + 3 B_c D_*^{-59}`, where `P_{F,I}` projects onto
+the modes of `F` on `I` and `V_F` is the exact linear-side subtotal of `F` on `I`.
+
+Proof as in the blueprint: the core subtotals of distinct minimal CURRENT components are almost
+orthogonal (`actualCell_inner_le`, cross pairings `≤ 2 D_*^{-200} |I|`), so
+`Σ_D ‖A_D‖² ≤ 2 ‖T_F - V_F‖²`; the coefficient floors cost at most `D_*^{-59} B_c`; and pairing the
+complementary modes against the range of `P_{F,I}` gives
+`‖P_{F,I} Z̃ - T_F‖² ≤ 4 D_*^{-397} B_c |I|`
+(`projection_subtotal_close`). The schedule enters through `Ξ = D_*^{1000}`, `Λ ≤ D_*`, the Fourier
+norm and tail of the squared gauge, the inverse private weights at most `D_*` and at most `D_*`
+alive modes (line 2055). -/
+theorem size_comparison {b : ℤ} {J I : ℤ × ℤ} (hJ : J.1 = b - 2 * S.K)
+    (hIJ : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd J.1 J.2) (hIt : I.1 ≤ b + S.K)
+    (hD : 2 ≤ S.Dstar) (hδ : 0 < Ms.δc) (hΛ : Ms.Λ ≤ S.Dstar) (hQ0 : 0 < S.Q0) (Kf : ℕ)
+    (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : gaugeSqNorm Ms.zc.dim Ms.δc ≤ S.Dstar)
+    (hKf : 2 * gaugeTail Ms.zc.dim Ms.δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ m, S.Dstar⁻¹ ≤ Ms.L.εM m)
+    (halive : ((Ms.alive (ancAt Gd J (b - 4 * S.K))).card : ℝ) ≤ S.Dstar)
+    (c : Ms.Md → ℂ) {Bc : ℝ}
+    (hc : ∑ m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)), ‖c m‖ ^ 2 ≤ Bc)
+    (h : ℕ) (x : Ms.alive (ancAt Gd J (b - 4 * S.K)))
+    [(Submodule.span ℂ ((Ms.cellMode I) ''
+      (Ms.compModes S hA b J h x : Set Ms.Md))).HasOrthogonalProjection] :
+    Ms.compSizeSq S hA SP I b J h x c ≤
+      12 * ((‖(Submodule.span ℂ ((Ms.cellMode I) ''
+          (Ms.compModes S hA b J h x : Set Ms.Md))).starProjection (Ms.frozenEval S b J c)‖ ^ 2 +
+        ‖∑ m ∈ (Ms.compModes S hA b J h x).filter (fun m => ¬ Ms.IsCoreAt S hA SP b J m),
+          c m • Ms.cellMode I m‖ ^ 2) / dyadicGridLength Gd I.1) + 3 * Bc / S.Dstar ^ 59 := by
+  have hDp : 0 < S.Dstar := by linarith
+  have hD1 : (1 : ℝ) ≤ S.Dstar := by linarith
+  have hΞ : 0 < S.Ξ := pow_pos hDp 1000
+  have hΛ16 := Ms.sixteen_Λ_le S hD hΛ
+  have hr : 0 < dyadicGridLength Gd I.1 := dyadicGridLength_pos Gd I.1
+  have hε : 0 < S.Dstar⁻¹ := inv_pos.mpr hDp
+  obtain ⟨η, hηe⟩ : ∃ η, η = pairConst Ms.zc.dim Ms.δc (S.Ξ / 2) Kf := ⟨_, rfl⟩
+  have hη0 : 0 ≤ η := by rw [hηe]; exact pairConst_nonneg _ hδ (by linarith) Kf
+  have hη200 : η * S.Dstar ^ 200 ≤ 2 := by rw [hηe]; exact S.pairConst_half_mul_le hD hδ hDg hKf
+  have hBc : 0 ≤ Bc := le_trans (Finset.sum_nonneg fun _ _ => sq_nonneg _) hc
+  obtain ⟨hηD, hη2⟩ := eta_sched_bounds hD hη0 hη200 hBc
+  have hFal := Ms.compModes_subset_alive S hA b J h x
+  -- pairings of modes in different minimal CURRENT components
+  have hpairA : ∀ a a' : Ms.alive (ancAt Gd J (b - 4 * S.K)),
+      a' ∉ (Ms.blockComps S hA b J).F 0 a →
+      ‖inner ℂ (Ms.cellMode I a.1) (Ms.cellMode I a'.1)‖ ≤ η * dyadicGridLength Gd I.1 :=
+    fun a a' h0 => by
+      rw [hηe]; exact Ms.actualCell_inner_le S hA hJ hIJ hIt hδ hΛ16 hΞ hQ0 Kf hbox h0
+  -- the projected frozen evaluation on `I`
+  have hres : columnL2Restriction (dyadicGridCell Gd I.1 I.2)
+      (dyadicGridCell_measurable Gd I.1 I.2) (Ms.frozenEval S b J c) =
+      ∑ m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)), c m • Ms.cellMode I m := by
+    unfold frozenEval
+    rw [map_sum]
+    refine Finset.sum_congr rfl fun m _ => ?_
+    rw [map_smul, Ms.cellMode_restrict hIJ]
+  have hPZ := Ms.eventProj_restrict I (Ms.compModes S hA b J h x)
+    (dyadicGridCell_measurable Gd I.1 I.2) le_rfl (Ms.frozenEval S b J c)
+  rw [hres] at hPZ
+  rw [← hPZ]
+  -- the complementary pairing error
+  have hclose := projection_subtotal_close (Ms.compModes S hA b J h x)
+    (Ms.alive (ancAt Gd J (b - 4 * S.K))) hFal (Ms.cellMode I) c (η := η)
+    (L := dyadicGridLength Gd I.1) (ε := S.Dstar⁻¹) (ℓ := dyadicGridLength Gd I.1)
+    (mul_nonneg hη0 hr.le) (mul_pos hε hr) (fun m hm m' hm' => ?_)
+    (fun c' => Ms.cellMode_synthesis_ge I _ c' hε.le hεw)
+  swap
+  · obtain ⟨y, hy, rfl⟩ := (Ms.mem_compModes S hA).mp hm
+    obtain ⟨hm'al, hm'F⟩ := Finset.mem_sdiff.mp hm'
+    refine hpairA y ⟨m', hm'al⟩ fun h0 => hm'F ((Ms.mem_compModes S hA).mpr ⟨⟨m', hm'al⟩, ?_, rfl⟩)
+    have := (Ms.blockComps S hA b J).F_mono 0 h y (Nat.zero_le _) h0
+    rwa [(Ms.blockComps S hA b J).F_comp h x y hy] at this
+  obtain ⟨εc, hεce⟩ : ∃ εc, εc = η * dyadicGridLength Gd I.1 *
+      (Real.sqrt (Ms.compModes S hA b J h x).card *
+        (Real.sqrt (Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x).card *
+          Real.sqrt (∑ m' ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x,
+            ‖c m'‖ ^ 2))) / Real.sqrt (S.Dstar⁻¹ * dyadicGridLength Gd I.1) := ⟨_, rfl⟩
+  rw [← hεce] at hclose
+  have hεc0 : 0 ≤ εc := by rw [hεce]; positivity
+  have hεc2 : εc ^ 2 ≤ η ^ 2 * S.Dstar ^ 3 * Bc * dyadicGridLength Gd I.1 := by
+    have hFc : ((Ms.compModes S hA b J h x).card : ℝ) ≤ S.Dstar :=
+      le_trans (by exact_mod_cast Finset.card_le_card hFal) halive
+    have hGc : ((Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x).card : ℝ) ≤
+        S.Dstar := le_trans (by exact_mod_cast Finset.card_le_card Finset.sdiff_subset) halive
+    have hS0 : 0 ≤ ∑ m' ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x,
+        ‖c m'‖ ^ 2 := Finset.sum_nonneg fun _ _ => sq_nonneg _
+    have hSB : ∑ m' ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x,
+        ‖c m'‖ ^ 2 ≤ Bc := le_trans (Finset.sum_le_sum_of_subset_of_nonneg Finset.sdiff_subset
+          fun _ _ _ => sq_nonneg _) hc
+    have e : εc ^ 2 = η ^ 2 * dyadicGridLength Gd I.1 * S.Dstar *
+        ((Ms.compModes S hA b J h x).card *
+          ((Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x).card *
+            ∑ m' ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x,
+              ‖c m'‖ ^ 2)) := by
+      rw [hεce, div_pow, mul_pow, mul_pow, mul_pow, mul_pow, Real.sq_sqrt (Nat.cast_nonneg _),
+        Real.sq_sqrt (Nat.cast_nonneg _), Real.sq_sqrt hS0, Real.sq_sqrt (by positivity)]
+      field_simp
+    rw [e]
+    have h1 : ((Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x).card : ℝ) *
+        ∑ m' ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x, ‖c m'‖ ^ 2 ≤
+        S.Dstar * Bc := mul_le_mul hGc hSB hS0 hDp.le
+    have h2 : ((Ms.compModes S hA b J h x).card : ℝ) *
+        (((Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x).card : ℝ) *
+          ∑ m' ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)) \ Ms.compModes S hA b J h x, ‖c m'‖ ^ 2) ≤
+        S.Dstar * (S.Dstar * Bc) := mul_le_mul hFc h1 (by positivity) hDp.le
+    have h3 : 0 ≤ η ^ 2 * dyadicGridLength Gd I.1 * S.Dstar := by positivity
+    calc _ ≤ η ^ 2 * dyadicGridLength Gd I.1 * S.Dstar * (S.Dstar * (S.Dstar * Bc)) :=
+          mul_le_mul_of_nonneg_left h2 h3
+      _ = η ^ 2 * S.Dstar ^ 3 * Bc * dyadicGridLength Gd I.1 := by ring
+  -- the decomposition of the core part into minimal CURRENT components
+  have hdis : ∀ D ∈ Ms.minComps S hA b J h x, ∀ D' ∈ Ms.minComps S hA b J h x, D ≠ D' →
+      Disjoint D D' := by
+    intro D hD D' hD' hne
+    obtain ⟨y, -, rfl⟩ := (Ms.mem_minComps S hA).mp hD
+    obtain ⟨y', -, rfl⟩ := (Ms.mem_minComps S hA).mp hD'
+    exact (Ms.comp_eq_or_disjoint S hA b J 0 y y').resolve_left hne
+  have hT : ∑ m ∈ Ms.compModes S hA b J h x, c m • Ms.cellMode I m -
+      ∑ m ∈ (Ms.compModes S hA b J h x).filter (fun m => ¬ Ms.IsCoreAt S hA SP b J m),
+        c m • Ms.cellMode I m =
+      ∑ D ∈ Ms.minComps S hA b J h x, ∑ m ∈ D.filter (Ms.IsCoreAt S hA SP b J),
+        c m • Ms.cellMode I m := by
+    rw [sum_filter_disjoint_family _ hdis, Ms.biUnion_minComps S hA b J h x,
+      ← Finset.sum_filter_add_sum_filter_not (Ms.compModes S hA b J h x)
+        (Ms.IsCoreAt S hA SP b J), add_sub_cancel_right]
+  -- the floors
+  obtain ⟨y, hye⟩ : ∃ y : Finset Ms.Md → ℝ, y = fun D => (S.Dstar ^ 30)⁻¹ *
+      (∑ m ∈ D.filter (Ms.IsCoreAt S hA SP b J), ‖c m‖) * Real.sqrt (dyadicGridLength Gd I.1) :=
+    ⟨_, rfl⟩
+  have hy : ∑ D ∈ Ms.minComps S hA b J h x, y D ^ 2 ≤
+      Bc * dyadicGridLength Gd I.1 / S.Dstar ^ 59 := by
+    have hsq : ∀ D, y D ^ 2 = ((S.Dstar ^ 30)⁻¹) ^ 2 * dyadicGridLength Gd I.1 *
+        (∑ m ∈ D.filter (Ms.IsCoreAt S hA SP b J), ‖c m‖) ^ 2 := fun D => by
+      rw [hye]; simp only; rw [mul_pow, mul_pow, Real.sq_sqrt hr.le]; ring
+    simp only [hsq]
+    rw [← Finset.mul_sum]
+    have hsum : ∑ D ∈ Ms.minComps S hA b J h x,
+        (∑ m ∈ D.filter (Ms.IsCoreAt S hA SP b J), ‖c m‖) ^ 2 ≤ S.Dstar * Bc := by
+      refine (Finset.sum_sq_le_sq_sum_of_nonneg fun D _ =>
+        Finset.sum_nonneg fun _ _ => norm_nonneg _).trans ?_
+      rw [sum_filter_disjoint_family _ hdis, Ms.biUnion_minComps S hA b J h x]
+      have h1 : ∑ m ∈ (Ms.compModes S hA b J h x).filter (Ms.IsCoreAt S hA SP b J), ‖c m‖ ≤
+          ∑ m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)), ‖c m‖ :=
+        Finset.sum_le_sum_of_subset_of_nonneg ((Finset.filter_subset _ _).trans hFal)
+          fun _ _ _ => norm_nonneg _
+      have h2 := sq_sum_le_card_mul_sum_sq (s := Ms.alive (ancAt Gd J (b - 4 * S.K)))
+        (f := fun m => ‖c m‖)
+      have hS0 : 0 ≤ ∑ m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)), ‖c m‖ ^ 2 :=
+        Finset.sum_nonneg fun _ _ => sq_nonneg _
+      calc (∑ m ∈ (Ms.compModes S hA b J h x).filter (Ms.IsCoreAt S hA SP b J), ‖c m‖) ^ 2
+          ≤ (∑ m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)), ‖c m‖) ^ 2 :=
+            pow_le_pow_left₀ (Finset.sum_nonneg fun _ _ => norm_nonneg _) h1 2
+        _ ≤ (Ms.alive (ancAt Gd J (b - 4 * S.K))).card *
+            ∑ m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)), ‖c m‖ ^ 2 := h2
+        _ ≤ S.Dstar * Bc := mul_le_mul halive hc hS0 hDp.le
+    have hk : ((S.Dstar ^ 30)⁻¹) ^ 2 * dyadicGridLength Gd I.1 * (S.Dstar * Bc) =
+        Bc * dyadicGridLength Gd I.1 / S.Dstar ^ 59 := by
+      field_simp
+    rw [← hk]
+    exact mul_le_mul_of_nonneg_left hsum (by positivity)
+  have hcs := component_sizes (Ms.minComps S hA b J h x)
+    (fun D => D.filter (Ms.IsCoreAt S hA SP b J)) (Ms.cellMode I) c hη0 hr.le hε hDp.le
+    (fun D hD D' hD' hne m hm m' hm' => ?_)
+    (fun D _ => Ms.cellMode_synthesis_ge I _ c hε.le hεw)
+    (le_trans (by exact_mod_cast Ms.card_minComps_le S hA b J h x) halive)
+    (fun D hD => ?_) hηD y hy hεc0 hT hclose
+  rotate_left
+  · obtain ⟨y1, -, rfl⟩ := (Ms.mem_minComps S hA).mp hD
+    obtain ⟨y2, -, rfl⟩ := (Ms.mem_minComps S hA).mp hD'
+    obtain ⟨a, ha, rfl⟩ := Finset.mem_map.mp (Finset.mem_filter.mp hm).1
+    obtain ⟨a', ha', rfl⟩ := Finset.mem_map.mp (Finset.mem_filter.mp hm').1
+    exact hpairA a a' (Ms.not_mem_F_of_ne S hA b J 0 hne ha ha')
+  · have hsub : D.filter (Ms.IsCoreAt S hA SP b J) ⊆ Ms.alive (ancAt Gd J (b - 4 * S.K)) :=
+      (Finset.filter_subset _ _).trans (Ms.minComps_subset_alive S hA hD)
+    have hc1 : ((D.filter (Ms.IsCoreAt S hA SP b J)).card : ℝ) ≤ S.Dstar :=
+      le_trans (by exact_mod_cast Finset.card_le_card hsub) halive
+    rw [sq, ← mul_assoc, inv_mul_cancel₀ hDp.ne', one_mul]
+    exact hc1
+  -- normalize
+  have hsizes : Ms.compSizeSq S hA SP I b J h x c * dyadicGridLength Gd I.1 =
+      ∑ D ∈ Ms.minComps S hA b J h x,
+        (‖∑ m ∈ D.filter (Ms.IsCoreAt S hA SP b J), c m • Ms.cellMode I m‖ + y D) ^ 2 := by
+    unfold compSizeSq
+    rw [Finset.sum_mul]
+    refine Finset.sum_congr rfl fun D _ => ?_
+    rw [hye]
+    simp only
+    rw [sq_div_sqrt_add_mul _ _ hr]
+  have hεr : 12 * εc ^ 2 ≤ Bc / S.Dstar ^ 59 * dyadicGridLength Gd I.1 := by
+    calc 12 * εc ^ 2 ≤ 12 * (η ^ 2 * S.Dstar ^ 3 * Bc * dyadicGridLength Gd I.1) :=
+          mul_le_mul_of_nonneg_left hεc2 (by norm_num)
+      _ = 12 * (η ^ 2 * S.Dstar ^ 3 * Bc) * dyadicGridLength Gd I.1 := by ring
+      _ ≤ Bc / S.Dstar ^ 59 * dyadicGridLength Gd I.1 :=
+          mul_le_mul_of_nonneg_right hη2 hr.le
+  rw [← hsizes] at hcs
+  exact size_final_arith hr hcs hεr
+
+open Classical in
+/-- The CURRENT components at height `h` of the block `b` on the pre-cell `J`, as mode sets. -/
+noncomputable def curComps (b : ℤ) (J : ℤ × ℤ) (h : ℕ) : Finset (Finset Ms.Md) :=
+  Finset.univ.image fun y : Ms.alive (ancAt Gd J (b - 4 * S.K)) =>
+    ((Ms.blockComps S hA b J).F h y).map ⟨Subtype.val, Subtype.val_injective⟩
+
+open Classical in
+/-- Blueprint `eq:size-comparison` (lines 2202-2209), second assertion ("decomposing `V` into all
+height-`h` CURRENT components and discarding unsuccessful ones"): on an actual cell `I` of length
+at least `r_{t_b}` inside the pre-cell `J` of the block `b`, for any family `Fs` of CURRENT
+components at height `h`, the exact side subtotals satisfy `Σ_{F ∈ Fs} ‖V_F‖² ≤ 2 ‖V‖²`, where
+`V = Σ_{m alive, side} α_m Ψ_{I,m}` is the linear side on `I`. -/
+theorem side_comparison {b : ℤ} {J I : ℤ × ℤ} (hJ : J.1 = b - 2 * S.K)
+    (hIJ : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd J.1 J.2) (hIt : I.1 ≤ b + S.K)
+    (hD : 2 ≤ S.Dstar) (hδ : 0 < Ms.δc) (hΛ : Ms.Λ ≤ S.Dstar) (hQ0 : 0 < S.Q0) (Kf : ℕ)
+    (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : gaugeSqNorm Ms.zc.dim Ms.δc ≤ S.Dstar)
+    (hKf : 2 * gaugeTail Ms.zc.dim Ms.δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ m, S.Dstar⁻¹ ≤ Ms.L.εM m)
+    (halive : ((Ms.alive (ancAt Gd J (b - 4 * S.K))).card : ℝ) ≤ S.Dstar)
+    (c : Ms.Md → ℂ) (h : ℕ) {Fs : Finset (Finset Ms.Md)} (hFs : Fs ⊆ Ms.curComps S hA b J h) :
+    ∑ F ∈ Fs, ‖∑ m ∈ F.filter (fun m => ¬ Ms.IsCoreAt S hA SP b J m), c m • Ms.cellMode I m‖ ^ 2 ≤
+      2 * ‖∑ m ∈ (Ms.alive (ancAt Gd J (b - 4 * S.K))).filter
+        (fun m => ¬ Ms.IsCoreAt S hA SP b J m), c m • Ms.cellMode I m‖ ^ 2 := by
+  have hDp : 0 < S.Dstar := by linarith
+  have hD1 : (1 : ℝ) ≤ S.Dstar := by linarith
+  have hΞ : 0 < S.Ξ := pow_pos hDp 1000
+  have hΛ16 := Ms.sixteen_Λ_le S hD hΛ
+  have hr : 0 < dyadicGridLength Gd I.1 := dyadicGridLength_pos Gd I.1
+  have hε : 0 < S.Dstar⁻¹ := inv_pos.mpr hDp
+  obtain ⟨η, hηe⟩ : ∃ η, η = pairConst Ms.zc.dim Ms.δc (S.Ξ / 2) Kf := ⟨_, rfl⟩
+  have hη0 : 0 ≤ η := by rw [hηe]; exact pairConst_nonneg _ hδ (by linarith) Kf
+  have hη200 : η * S.Dstar ^ 200 ≤ 2 := by rw [hηe]; exact S.pairConst_half_mul_le hD hδ hDg hKf
+  have hηD := (eta_sched_bounds hD hη0 hη200 le_rfl).1
+  have hdis : ∀ F ∈ Ms.curComps S hA b J h, ∀ F' ∈ Ms.curComps S hA b J h, F ≠ F' →
+      Disjoint F F' := by
+    intro F hF F' hF' hne
+    obtain ⟨y, -, rfl⟩ := Finset.mem_image.mp hF
+    obtain ⟨y', -, rfl⟩ := Finset.mem_image.mp hF'
+    exact (Ms.comp_eq_or_disjoint S hA b J h y y').resolve_left hne
+  have hcover : (Ms.curComps S hA b J h).biUnion id = Ms.alive (ancAt Gd J (b - 4 * S.K)) := by
+    ext m
+    simp only [Finset.mem_biUnion, id]
+    constructor
+    · rintro ⟨F, hF, hmF⟩
+      obtain ⟨y, -, rfl⟩ := Finset.mem_image.mp hF
+      obtain ⟨a, -, rfl⟩ := Finset.mem_map.mp hmF
+      exact a.2
+    · intro hm
+      refine ⟨_, Finset.mem_image_of_mem _ (Finset.mem_univ ⟨m, hm⟩), Finset.mem_map.mpr
+        ⟨⟨m, hm⟩, (Ms.blockComps S hA b J).E_le_F h _ ((Ms.blockComps S hA b J).E_self h _), rfl⟩⟩
+  have hsub := side_subtotals_le (Ms.curComps S hA b J h)
+    (fun F => F.filter (fun m => ¬ Ms.IsCoreAt S hA SP b J m)) (Ms.cellMode I) c hη0 hr.le hε
+    hDp.le (fun F hF F' hF' hne m hm m' hm' => ?_)
+    (fun F _ => Ms.cellMode_synthesis_ge I _ c hε.le hεw) ?_ (fun F hF => ?_) hηD
+  rotate_left
+  · obtain ⟨y1, -, rfl⟩ := Finset.mem_image.mp hF
+    obtain ⟨y2, -, rfl⟩ := Finset.mem_image.mp hF'
+    obtain ⟨a, ha, rfl⟩ := Finset.mem_map.mp (Finset.mem_filter.mp hm).1
+    obtain ⟨a', ha', rfl⟩ := Finset.mem_map.mp (Finset.mem_filter.mp hm').1
+    have h0 : a' ∉ (Ms.blockComps S hA b J).F 0 a := fun h0 =>
+      Ms.not_mem_F_of_ne S hA b J h hne ha ha'
+        ((Ms.blockComps S hA b J).F_mono 0 h a (Nat.zero_le _) h0)
+    rw [hηe]; exact Ms.actualCell_inner_le S hA hJ hIJ hIt hδ hΛ16 hΞ hQ0 Kf hbox h0
+  · refine le_trans ?_ halive
+    unfold curComps
+    exact_mod_cast Finset.card_image_le.trans ((Finset.card_le_univ _).trans
+      (le_of_eq (Fintype.card_coe _)))
+  · have hFal : F ⊆ Ms.alive (ancAt Gd J (b - 4 * S.K)) := by
+      obtain ⟨y, -, rfl⟩ := Finset.mem_image.mp hF
+      intro m hm
+      obtain ⟨a, -, rfl⟩ := Finset.mem_map.mp hm
+      exact a.2
+    have hsub : F.filter (fun m => ¬ Ms.IsCoreAt S hA SP b J m) ⊆
+        Ms.alive (ancAt Gd J (b - 4 * S.K)) := (Finset.filter_subset _ _).trans hFal
+    have hc1 : ((F.filter (fun m => ¬ Ms.IsCoreAt S hA SP b J m)).card : ℝ) ≤ S.Dstar :=
+      le_trans (by exact_mod_cast Finset.card_le_card hsub) halive
+    rw [sq, ← mul_assoc, inv_mul_cancel₀ hDp.ne', one_mul]
+    exact hc1
+  rw [sum_filter_disjoint_family _ hdis, hcover] at hsub
+  refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg hFs fun _ _ _ => sq_nonneg _) hsub
+
+end ModeSystem
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0) (SP : SideParams)
+
+open Classical in
+/-- The side events of a pre-cell partition its side modes (blueprint line 2084, "it is entirely
+side by the predicate coherence", `core_iff_of_minimal_pre`). -/
+theorem sum_sideEvents_eq {b : ℤ} {J : ℤ × ℤ} (hJ : J.1 ≤ b + S.K) {M : Type*}
+    [AddCommMonoid M] (f : Ms.Md → M) :
+    ∑ E ∈ Ms.sideEvents S hA SP b J, ∑ m ∈ E, f m =
+      ∑ m ∈ (Ms.alive (ancAt Gd J (b - 4 * S.K))).filter
+        (fun m => ¬ Ms.IsCoreAt S hA SP b J m), f m := by
+  have hsum := Finset.sum_biUnion (s := Ms.sideEvents S hA SP b J) (t := id) (f := f)
+    (fun E hE E' hE' hne => (Ms.sideEvents_pair S hA SP hJ hE hE' hne).1)
+  simp only [id] at hsum
+  rw [← hsum]
+  refine Finset.sum_congr ?_ fun _ _ => rfl
+  ext m
+  simp only [Finset.mem_biUnion, Finset.mem_filter, id]
+  constructor
+  · rintro ⟨E, hE, hmE⟩
+    obtain ⟨x, hx, rfl⟩ := Finset.mem_image.mp hE
+    obtain ⟨y, hy, rfl⟩ := Finset.mem_map.mp hmE
+    refine ⟨y.2, fun ⟨hm, hcore⟩ => ?_⟩
+    have hx' : ¬ (Ms.blockComps S hA b J).Core SP.Δ (Ms.goodP S SP b) SP.Jst SP.δs x := by
+      unfold sideModes at hx
+      exact (Finset.mem_filter.mp hx).2
+    apply hx'
+    exact ((Ms.blockComps S hA b J).core_iff_of_minimal_pre SP.Δ (Ms.goodP S SP b) SP.Jst
+      SP.δs hy).mpr hcore
+  · rintro ⟨hm, hnc⟩
+    refine ⟨_, Finset.mem_image_of_mem _ ?_,
+      Finset.mem_map.mpr ⟨⟨m, hm⟩, ModeComponents.E_self _ 0 _, rfl⟩⟩
+    unfold sideModes
+    exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, fun hc => hnc ⟨hm, hc⟩⟩
+
+open Classical in
+/-- The block side subtotal `V_{l,G,b}` restricted to an actual cell `I` inside one of its pre-cells
+`J` is the side synthesis on `I` with the frozen coefficients of `J`. -/
+theorem restrict_blockSide_actual {b : ℤ} {cells : Finset (ℤ × ℤ)}
+    (hdepth : ∀ J ∈ cells, J.1 = b - 2 * S.K) (c : ℤ × ℤ → Ms.Md → ℂ) {J I : ℤ × ℤ}
+    (hJ : J ∈ cells) (hIJ : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd J.1 J.2) :
+    columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+        (Ms.blockSide S hA SP b cells c) =
+      ∑ m ∈ (Ms.alive (ancAt Gd J (b - 4 * S.K))).filter
+        (fun m => ¬ Ms.IsCoreAt S hA SP b J m), c J m • Ms.cellMode I m := by
+  have hK : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  have hdis : Set.PairwiseDisjoint (cells : Set (ℤ × ℤ)) fun J => dyadicGridCell Gd J.1 J.2 := by
+    intro J hJ J' hJ' hne
+    rw [Function.onFun, Set.disjoint_iff_inter_eq_empty]
+    by_contra hov
+    exact hne (dyadicGridCell_eq_of_meet Gd ((hdepth J hJ).trans (hdepth J' hJ').symm)
+      (Set.nonempty_iff_ne_empty.mpr hov))
+  have h1 : columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+        (Ms.blockSide S hA SP b cells c) =
+      columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+        (columnL2Restriction (dyadicGridCell Gd J.1 J.2) (dyadicGridCell_measurable Gd J.1 J.2)
+          (Ms.blockSide S hA SP b cells c)) := by
+    rw [← ContinuousLinearMap.comp_apply (columnL2Restriction _ _),
+      columnL2Restriction_comp_of_subset _ _ hIJ]
+  rw [h1, Ms.restrict_blockSide S hA SP hdis c hJ,
+    Ms.sum_sideEvents_eq S hA SP (by rw [hdepth J hJ]; omega)]
+  simp only [map_sum, map_smul, Ms.cellMode_restrict hIJ]
+
+open Classical in
+/-- Blueprint `eq:size-comparison` (lines 2202-2209), second assertion, with `V = V_{l,G,b}`: on an
+actual cell `I` of length at least `r_{t_b}` inside a pre-cell `J` of the block, for any family
+`Fs` of CURRENT components at height `h`, `Σ_{F ∈ Fs} ‖V_F‖²_{2,I} ≤ 2 ‖V_{l,G,b}‖²_{2,I}`. -/
+theorem side_comparison_block {b : ℤ} {cells : Finset (ℤ × ℤ)}
+    (hdepth : ∀ J ∈ cells, J.1 = b - 2 * S.K) (c : ℤ × ℤ → Ms.Md → ℂ) {J I : ℤ × ℤ}
+    (hJ : J ∈ cells) (hIJ : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd J.1 J.2)
+    (hIt : I.1 ≤ b + S.K) (hD : 2 ≤ S.Dstar) (hδ : 0 < Ms.δc) (hΛ : Ms.Λ ≤ S.Dstar)
+    (hQ0 : 0 < S.Q0) (Kf : ℕ) (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : gaugeSqNorm Ms.zc.dim Ms.δc ≤ S.Dstar)
+    (hKf : 2 * gaugeTail Ms.zc.dim Ms.δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ m, S.Dstar⁻¹ ≤ Ms.L.εM m)
+    (halive : ((Ms.alive (ancAt Gd J (b - 4 * S.K))).card : ℝ) ≤ S.Dstar)
+    (h : ℕ) {Fs : Finset (Finset Ms.Md)} (hFs : Fs ⊆ Ms.curComps S hA b J h) :
+    ∑ F ∈ Fs, ‖∑ m ∈ F.filter (fun m => ¬ Ms.IsCoreAt S hA SP b J m),
+        c J m • Ms.cellMode I m‖ ^ 2 ≤
+      2 * ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+        (Ms.blockSide S hA SP b cells c)‖ ^ 2 := by
+  rw [Ms.restrict_blockSide_actual S hA SP hdepth c hJ hIJ]
+  exact Ms.side_comparison S hA SP (hdepth J hJ) hIJ hIt hD hδ hΛ hQ0 Kf hbox hDg hKf hεw halive
+    (c J) h hFs
+
+end ModeSystem
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-! ## Cross-mode separation of components with different representatives (lines 2183-2185) -/
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0) (SP : SideParams)
+
+open Classical in
+/-- The linking step of `attempt_representatives3` (blueprint lines 2176-2181): if the mode of an
+earlier node is CURRENT-joined at height `h` in the later graph to the mode of a later comparable
+node of the same first type, the earlier predecessor is contained in the later one. -/
+theorem pred_nested_of_link (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
+    (hNd : ∀ c ∈ Nd, c.2.1.1 = c.1 - 2 * S.K) (Δ h : ℕ)
+    (halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
+    (hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good Δ (Ms.goodP S SP c.1) h
+      ⟨c.2.2, halive c hc⟩)
+    (hstab : ∀ c ∈ Nd, ∀ z z', Ms.goodP S SP c.1 h ((Ms.blockComps S hA c.1 c.2.1).π z) →
+      (Ms.blockComps S hA c.1 c.2.1).π z' = (Ms.blockComps S hA c.1 c.2.1).π z →
+      z' ∈ (Ms.blockComps S hA c.1 c.2.1).F h z → z' ∈ (Ms.blockComps S hA c.1 c.2.1).E (h - Δ) z)
+    {k1 : ℕ}
+    (htype1 : ∀ c (hc : c ∈ Nd), Nat.log 2 ((Ms.blockComps S hA c.1 c.2.1).labels
+      ((Ms.blockComps S hA c.1 c.2.1).E (h - Δ) ⟨c.2.2, halive c hc⟩)).card = k1)
+    {c c' : ℤ × (ℤ × ℤ) × Ms.Md} (hc : c ∈ Nd) (hc' : c' ∈ Nd)
+    (hsub : dyadicGridCell Gd c'.2.1.1 c'.2.1.2 ⊆ dyadicGridCell Gd c.2.1.1 c.2.1.2)
+    (hlt : c.1 < c'.1)
+    (hlink : Ms.aliveMap (ancAt_block_subset S (hNd c hc) hlt.le hsub) ⟨c.2.2, halive c hc⟩ ∈
+      (Ms.blockComps S hA c'.1 c'.2.1).F h ⟨c'.2.2, halive c' hc'⟩) :
+    Ms.predOfMode S hA Δ h c ⊆ Ms.predOfMode S hA Δ h c' := by
+  have hUU := ancAt_block_subset S (hNd c hc) hlt.le hsub
+  have hper := fun h' {x y : Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))} =>
+    Ms.blockComps_persist S hA (hNd c hc) (hNd c' hc') hlt.le hsub h' hUU (x := x) (y := y)
+  have hEc : Ms.predOfMode S hA Δ h c = ((Ms.blockComps S hA c.1 c.2.1).E (h - Δ)
+      ⟨c.2.2, halive c hc⟩).map ⟨Subtype.val, Subtype.val_injective⟩ :=
+    Ms.predOfMode_eq S hA Δ h (halive c hc)
+  have hEc' : Ms.predOfMode S hA Δ h c' = ((Ms.blockComps S hA c'.1 c'.2.1).E (h - Δ)
+      ⟨c'.2.2, halive c' hc'⟩).map ⟨Subtype.val, Subtype.val_injective⟩ :=
+    Ms.predOfMode_eq S hA Δ h (halive c' hc')
+  rw [hEc, hEc']
+  have htype : ((Ms.blockComps S hA c'.1 c'.2.1).labels ((Ms.blockComps S hA c'.1 c'.2.1).E
+      (h - Δ) ⟨c'.2.2, halive c' hc'⟩)).card <
+      2 * ((Ms.blockComps S hA c.1 c.2.1).labels ((Ms.blockComps S hA c.1 c.2.1).E (h - Δ)
+        ⟨c.2.2, halive c hc⟩)).card := by
+    refine ModeComponents.card_lt_two_mul_of_log2_eq ?_
+      ((htype1 c hc).trans (htype1 c' hc').symm)
+    exact Finset.card_pos.mpr ⟨_, Finset.mem_image_of_mem _
+      ((Ms.blockComps S hA c.1 c.2.1).E_self _ _)⟩
+  have hnest' := ModeComponents.predecessor_nesting (Ms.blockComps S hA c.1 c.2.1)
+    (Ms.blockComps S hA c'.1 c'.2.1) (Ms.aliveMap hUU)
+    (fun x => by simp only [blockComps_π]; rfl)
+    (fun h' x y hy => (hper h').1 hy) (fun h' x y hy => (hper h').2 hy) Δ (Ms.goodP S SP c'.1)
+    (hstab c' hc') (hgood c' hc') hlink htype
+  intro y hy
+  obtain ⟨y1, hy1, rfl⟩ := Finset.mem_map.mp hy
+  exact Finset.mem_map.mpr ⟨Ms.aliveMap hUU y1,
+    hnest' (Finset.mem_image_of_mem _ hy1), rfl⟩
+
+open Classical in
+/-- Blueprint lines 2183-2185 ("different representatives on comparable actual-use cells have no
+shared or adjacent cross modes in the later CURRENT graph"), at the level of whole components:
+for representatives inherited under predecessor inclusion, if two comparable nodes of one type
+class have different representatives, no mode of the earlier CURRENT component is equal or
+CURRENT-adjacent (in one later CURRENT component at `h`) to a mode of the later component. -/
+theorem comp_cross_sep (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
+    (hNd : ∀ c ∈ Nd, c.2.1.1 = c.1 - 2 * S.K) (Δ h : ℕ)
+    (halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
+    (hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good Δ (Ms.goodP S SP c.1) h
+      ⟨c.2.2, halive c hc⟩)
+    (hstab : ∀ c ∈ Nd, ∀ z z', Ms.goodP S SP c.1 h ((Ms.blockComps S hA c.1 c.2.1).π z) →
+      (Ms.blockComps S hA c.1 c.2.1).π z' = (Ms.blockComps S hA c.1 c.2.1).π z →
+      z' ∈ (Ms.blockComps S hA c.1 c.2.1).F h z → z' ∈ (Ms.blockComps S hA c.1 c.2.1).E (h - Δ) z)
+    {k1 : ℕ}
+    (htype1 : ∀ c (hc : c ∈ Nd), Nat.log 2 ((Ms.blockComps S hA c.1 c.2.1).labels
+      ((Ms.blockComps S hA c.1 c.2.1).E (h - Δ) ⟨c.2.2, halive c hc⟩)).card = k1)
+    (rep : ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md)
+    (hinh : ∀ c c', nodeLt3 (Gd := Gd) Ms Nd c c' →
+      Ms.predOfMode S hA Δ h c ⊆ Ms.predOfMode S hA Δ h c' → rep c' = rep c)
+    {c c' : ℤ × (ℤ × ℤ) × Ms.Md} (hcc' : nodeLt3 (Gd := Gd) Ms Nd c c') (hne : rep c ≠ rep c')
+    (z z' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)))
+    (hz : z.1 ∈ ((Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, halive c hcc'.1⟩).map
+      ⟨Subtype.val, Subtype.val_injective⟩)
+    (hz' : z' ∈ (Ms.blockComps S hA c'.1 c'.2.1).F h ⟨c'.2.2, halive c' hcc'.2.1⟩) :
+    z ∉ (Ms.blockComps S hA c'.1 c'.2.1).F h z' := by
+  obtain ⟨hc, hc', hsub, hlt⟩ := hcc'
+  intro hzF
+  have hUU := ancAt_block_subset S (hNd c hc) hlt.le hsub
+  obtain ⟨y1, hy1, hy1e⟩ := Finset.mem_map.mp hz
+  have hfy : Ms.aliveMap hUU y1 = z := Subtype.ext hy1e
+  -- the earlier component persists into the later CURRENT graph
+  have hper := (Ms.blockComps_persist S hA (hNd c hc) (hNd c' hc') hlt.le hsub h hUU
+    (x := ⟨c.2.2, halive c hc⟩) (y := y1)).2 hy1
+  rw [hfy] at hper
+  have hlink : Ms.aliveMap hUU ⟨c.2.2, halive c hc⟩ ∈
+      (Ms.blockComps S hA c'.1 c'.2.1).F h ⟨c'.2.2, halive c' hc'⟩ := by
+    have e1 := (Ms.blockComps S hA c'.1 c'.2.1).F_comp h _ _ hper
+    have e2 := (Ms.blockComps S hA c'.1 c'.2.1).F_comp h _ _ hzF
+    have e3 := (Ms.blockComps S hA c'.1 c'.2.1).F_comp h _ _ hz'
+    rw [← e3, ← e2, e1]
+    exact (Ms.blockComps S hA c'.1 c'.2.1).E_le_F _ _ ((Ms.blockComps S hA c'.1 c'.2.1).E_self _ _)
+  have hnest := Ms.pred_nested_of_link S hA SP Nd hNd Δ h halive hgood hstab htype1 hc hc' hsub
+    hlt hlink
+  exact hne (hinh c c' ⟨hc, hc', hsub, hlt⟩ hnest).symm
+
+end ModeSystem
+
+/-! ## Rows on the first tops with path counts (prop:tops, lines 2221-2222) -/
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+
+/-- Blueprint prop:tops, lines 2221-2222 (`lem:mode-rows` on the rows `P_{F,I}` of the tops), with
+the path counts of the blueprint: rows on cells with nonempty mode sets alive on their cells, such
+that overlapping distinct rows meet in one of their cells, have disjoint mode sets and are
+separated there at threshold `Ξ'` for every allowed shift, are Bessel with constant `1 + η D³` when
+at most `D` modes (and at most `ε D²`) are alive at every point. -/
+theorem tops_rows_path {s : Finset Ms.Event} (hδ : 0 < Ms.δc) (h1 : ∀ e ∈ s, e.2.2.Nonempty)
+    (h2 : ∀ e ∈ s, ∀ m ∈ e.2.2,
+      Ms.evCell e ⊆ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2) {Ξ' : ℝ}
+    (htop : ∀ e ∈ s, ∀ e' ∈ s, e ≠ e' → (Ms.evCell e ∩ Ms.evCell e').Nonempty →
+      ∃ c : ℤ × ℤ, Ms.evCell e ∩ Ms.evCell e' = dyadicGridCell Gd c.1 c.2 ∧
+        Disjoint e.2.2 e'.2.2 ∧ ∀ m ∈ e.2.2, ∀ m' ∈ e'.2.2,
+          ∀ n : Fin Ms.zc.dim → ℤ, (∀ i, |(n i : ℝ)| ≤ S.Eh 0) →
+            ∃ x ∈ Set.Icc (dyadicGridLeft Gd c.1 c.2)
+              (dyadicGridLeft Gd c.1 c.2 + dyadicGridLength Gd c.1),
+              Ξ' / dyadicGridLength Gd c.1 ≤ |Ms.slope m x - Ms.slope m' x +
+                ∑ i, (n i : ℝ) * (Ms.zc.θ i / S.Q0)|)
+    (hΛ : 8 * Ms.Λ ≤ Ξ') (hΞ : 0 < Ξ')
+    (hQ0 : 0 < S.Q0) (Kf : ℕ) (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0) {ε D : ℝ}
+    (hε : 0 < ε) (hεw : ∀ m, ε ≤ Ms.L.εM m) (hD0 : 0 ≤ D)
+    (hD1 : ∀ y, ((Ms.ptSet y).card : ℝ) ≤ D) (hD2 : ∀ y, ((Ms.ptSet y).card : ℝ) ≤ ε * D ^ 2)
+    [inst : ∀ e, (Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).HasOrthogonalProjection]
+    (F : ColumnL2 Ms.Md) :
+    ∑ e ∈ s, ‖(Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).starProjection F‖ ^ 2 ≤
+      (1 + pairConst Ms.zc.dim Ms.δc Ξ' Kf * D ^ 3) * ‖F‖ ^ 2 := by
+  classical
+  refine @modeWave_rows _ _ _ _ Ms.zc _ hδ Ms.ρ Ms.cl Ms.lamOf
+    (fun m => dyadicGridLeft Gd (Ms.cellOf m).1 (Ms.cellOf m).2) Ms.γOf Ms.L.εM s Ms.evCell
+    (fun e => (dyadicGridCell_measurable Gd e.2.1.1 e.2.1.2 : MeasurableSet (Ms.evCell e)))
+    (fun e => (dyadicGridCell_volume_ne_top Gd e.2.1 : volume (Ms.evCell e) ≠ ⊤))
+    (fun e => e.2.2) _ _ _ hΞ hε hD0 _ hQ0 Kf _ hbox
+    (fun e _ m _ => hεw m) ?_ ?_ ?_ ?_ (fun e => inst e) F
+  · -- shared modes only on null overlaps
+    intro e he e' he' hne m hm hm'
+    by_contra hov
+    have hov' : (Ms.evCell e ∩ Ms.evCell e').Nonempty := by
+      by_contra h
+      exact hov (by rw [Set.not_nonempty_iff_eq_empty.mp h, measure_empty])
+    obtain ⟨c, -, hdis, -⟩ := htop e he e' he' hne hov'
+    exact Finset.disjoint_left.mp hdis hm hm'
+  · -- the cross geometry on the smaller cell
+    intro e he e' he' hne hov
+    have hov' : (Ms.evCell e ∩ Ms.evCell e').Nonempty := by
+      by_contra h
+      exact hov (by rw [Set.not_nonempty_iff_eq_empty.mp h, measure_empty])
+    obtain ⟨c, hcell, -, hna⟩ := htop e he e' he' hne hov'
+    have hr := dyadicGridLength_pos Gd c.1
+    refine ⟨dyadicGridLeft Gd c.1 c.2, dyadicGridLength Gd c.1, hr, hcell, fun m hm m' hm' => ?_⟩
+    have hcm : dyadicGridCell Gd c.1 c.2 ⊆ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2 := by
+      rw [← hcell]; exact Set.inter_subset_left.trans (h2 e he m hm)
+    have hcm' : dyadicGridCell Gd c.1 c.2 ⊆
+        dyadicGridCell Gd (Ms.cellOf m').1 (Ms.cellOf m').2 := by
+      rw [← hcell]; exact Set.inter_subset_right.trans (h2 e' he' m' hm')
+    refine ⟨fun n hn => ?_, ?_⟩
+    · obtain ⟨x, hx, hl⟩ := hna m hm m' hm' n hn
+      exact ⟨x, hx, hl⟩
+    · -- slope variation from the curvature bounds on the first-match cells
+      have hlm := Ms.lam_le m
+      have hlm' := Ms.lam_le m'
+      have hlen := dyadicGridLength_le_of_subset Gd hcm
+      have hlen' := dyadicGridLength_le_of_subset Gd hcm'
+      set r := dyadicGridLength Gd c.1
+      have hr2 : |Ms.lamOf m| * r ^ 2 ≤ Ms.Λ :=
+        (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ hr.le hlen 2) (abs_nonneg _)).trans hlm
+      have hr2' : |Ms.lamOf m'| * r ^ 2 ≤ Ms.Λ :=
+        (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ hr.le hlen' 2) (abs_nonneg _)).trans hlm'
+      have habs := abs_sub (Ms.lamOf m) (Ms.lamOf m')
+      rw [div_div, le_div_iff₀ (by positivity)]
+      nlinarith [mul_le_mul_of_nonneg_right habs (sq_nonneg r)]
+  · -- multiplicity: the rows through a point have disjoint mode sets alive at the point
+    intro e he
+    refine (sum_measureReal_inter_le s Ms.evCell
+      (fun e => dyadicGridCell_measurable Gd e.2.1.1 e.2.1.2)
+      (fun e => dyadicGridCell_volume_ne_top Gd e.2.1) e (N := ⌊D⌋₊)
+      (fun y hy => ?_)).trans (mul_le_mul_of_nonneg_right (Nat.floor_le hD0) measureReal_nonneg)
+    refine (card_le_of_pairwiseDisjoint_subset _ (fun e => e.2.2) (Ms.ptSet y)
+      (fun e' he' => h1 e' (Finset.mem_filter.mp he').1) (fun e' he' m hm => ?_) ?_).trans
+      (Nat.le_floor (hD1 y))
+    · obtain ⟨he'1, hye'⟩ := Finset.mem_filter.mp he'
+      exact (Ms.mem_ptSet).mpr (h2 e' he'1 m hm hye')
+    · intro a ha b hb hab
+      obtain ⟨ha, hya⟩ := Finset.mem_filter.mp ha
+      obtain ⟨hb, hyb⟩ := Finset.mem_filter.mp hb
+      obtain ⟨c, -, hdis, -⟩ := htop _ ha _ hb hab ⟨y, hya, hyb⟩
+      exact hdis
+  · -- mode counts: the modes of a row are alive at the left endpoint of its cell
+    intro e he
+    have hy : dyadicGridLeft Gd e.2.1.1 e.2.1.2 ∈ Ms.evCell e :=
+      dyadicGridCell_left_mem Gd e.2.1.1 e.2.1.2
+    refine le_trans (Nat.cast_le.mpr (Finset.card_le_card fun m hm => ?_))
+      (hD2 (dyadicGridLeft Gd e.2.1.1 e.2.1.2))
+    exact (Ms.mem_ptSet).mpr (h2 e he m hm hy)
+
+end ModeSystem
+
+/-! ## First tops of the representatives (prop:tops, lines 2221-2222) -/
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0) (SP : SideParams)
+
+open Classical in
+/-- The modes of the CURRENT component at height `h` of a node `(b, J, m)` (the mode alone if it is
+not alive at the decision cell). -/
+noncomputable def nodeComp (h : ℕ) (c : ℤ × (ℤ × ℤ) × Ms.Md) : Finset Ms.Md :=
+  if hm : c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)) then
+    ((Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, hm⟩).map ⟨Subtype.val, Subtype.val_injective⟩
+  else {c.2.2}
+
+theorem nodeComp_eq (h : ℕ) {c : ℤ × (ℤ × ℤ) × Ms.Md}
+    (hm : c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) :
+    Ms.nodeComp S hA h c =
+      ((Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, hm⟩).map
+        ⟨Subtype.val, Subtype.val_injective⟩ := by
+  unfold nodeComp
+  rw [dite_eq_left_of_eq_true (eq_true hm)]
+
+/-- The predecessor of a node lies in its CURRENT component. -/
+theorem predOfMode_subset_nodeComp (Δ h : ℕ) {c : ℤ × (ℤ × ℤ) × Ms.Md}
+    (hm : c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) :
+    Ms.predOfMode S hA Δ h c ⊆ Ms.nodeComp S hA h c := by
+  rw [Ms.predOfMode_eq S hA Δ h hm, Ms.nodeComp_eq S hA h hm]
+  intro y hy
+  obtain ⟨a, ha, rfl⟩ := Finset.mem_map.mp hy
+  exact Finset.mem_map.mpr ⟨a, (Ms.blockComps S hA c.1 c.2.1).F_mono _ h _ (Nat.sub_le _ _)
+    ((Ms.blockComps S hA c.1 c.2.1).E_le_F _ _ ha), rfl⟩
+
+open Classical in
+/-- Blueprint line 2221 ("take the first actual-use cells on each branch where a given
+representative has `σ_F ≥ σ`"): among the instances `(I, c)` (a use cell `I` and the node `c` of
+a component used there) with size at least `σ₀`, those whose cell is maximal among the instances
+of the same representative with size at least `σ₀`. -/
+noncomputable def firstTops (X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)))
+    (rep : ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md) (σ : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ) (σ₀ : ℝ) :
+    Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)) :=
+  X.filter fun p => σ₀ ≤ σ p ∧ ∀ p' ∈ X, σ₀ ≤ σ p' → rep p'.2 = rep p.2 →
+    dyadicGridCell Gd p.1.1 p.1.2 ⊆ dyadicGridCell Gd p'.1.1 p'.1.2 → p'.1 = p.1
+
+/-- The row of a top: its block, its cell and the modes of its component. -/
+noncomputable def topRow (h : ℕ) (p : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)) : Ms.Event :=
+  (p.2.1, p.1, Ms.nodeComp S hA h p.2)
+
+/-- `eq:representative-separation` at the left endpoint of an actual cell `I ⊆ J` of length at least
+`r_{t_b}`, at height zero. -/
+theorem alive_sep_at_cell {b : ℤ} {J I : ℤ × ℤ} (hJ : J.1 = b - 2 * S.K)
+    (hIJ : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd J.1 J.2) (hIt : I.1 ≤ b + S.K)
+    (hΛ : 8 * Ms.Λ ≤ S.Ξ) {z z' : Ms.alive (ancAt Gd J (b - 4 * S.K))}
+    (hzF : z ∉ (Ms.blockComps S hA b J).F 0 z') (n : Fin Ms.zc.dim → ℤ)
+    (hn : ∀ i, |(n i : ℝ)| ≤ S.Eh 0) :
+    S.Ξ / 2 / dyadicGridLength Gd I.1 < |Ms.slope z'.1 (dyadicGridLeft Gd I.1 I.2) -
+      Ms.slope z.1 (dyadicGridLeft Gd I.1 I.2) + ∑ i, (n i : ℝ) * (Ms.zc.θ i / S.Q0)| := by
+  have hI := dyadicGridLength_pos Gd I.1
+  have hIr : dyadicGridLength Gd (b + S.K) ≤ dyadicGridLength Gd I.1 :=
+    (dyadicGridLength_strictAnti Gd).antitone hIt
+  have hsep := Ms.alive_representative_separation S hA hJ hΛ hzF n hn hIr hIr
+  have hxI : dyadicGridLeft Gd I.1 I.2 ∈ Set.Icc (dyadicGridLeft Gd I.1 I.2)
+      (dyadicGridLeft Gd I.1 I.2 + dyadicGridLength Gd I.1) := ⟨le_rfl, by linarith⟩
+  have hx := hsep _ (dyadicGridCell_Icc_subset Gd hIJ hxI)
+  rw [max_self, show ModeSchedule.Lh 0 = 1 by simp [ModeSchedule.Lh], div_one] at hx
+  rw [div_eq_mul_inv (S.Ξ / 2)]
+  exact hx
+
+open Classical in
+/-- Blueprint lines 2221-2222 ("tops for that representative do not overlap; different
+representatives on overlapping tops have component-mode nonadjacency ... their sets are disjoint on
+a path"): for two first tops with nested cells `I ⊆ I'` and different rows, the component modes are
+disjoint and every pair (inner, outer) is separated at threshold `(Ξ/2)/|I|` at the left endpoint
+of `I`, for every allowed shift at height zero. Hypotheses: the nodes, representatives and
+type-class conclusions of `typed_representatives`, blocks `K`-spaced, and instances `(I, c)` with
+`I` inside the pre-cell of `c` at a depth of its block. -/
+theorem firstTops_pair_sep (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
+    (hNd : ∀ c ∈ Nd, c.2.1.1 = c.1 - 2 * S.K) (Δ h : ℕ)
+    (halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
+    (hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good Δ (Ms.goodP S SP c.1) h
+      ⟨c.2.2, halive c hc⟩)
+    (hstab : ∀ c ∈ Nd, ∀ z z', Ms.goodP S SP c.1 h ((Ms.blockComps S hA c.1 c.2.1).π z) →
+      (Ms.blockComps S hA c.1 c.2.1).π z' = (Ms.blockComps S hA c.1 c.2.1).π z →
+      z' ∈ (Ms.blockComps S hA c.1 c.2.1).F h z → z' ∈ (Ms.blockComps S hA c.1 c.2.1).E (h - Δ) z)
+    {k1 : ℕ}
+    (htype1 : ∀ c (hc : c ∈ Nd), Nat.log 2 ((Ms.blockComps S hA c.1 c.2.1).labels
+      ((Ms.blockComps S hA c.1 c.2.1).E (h - Δ) ⟨c.2.2, halive c hc⟩)).card = k1)
+    (hdist : ∀ c (hc : c ∈ Nd) c' (hc' : c' ∈ Nd) (h1 : c.1 = c'.1) (h2 : c.2.1 = c'.2.1),
+      c ≠ c' → (⟨c'.2.2, by rw [h1, h2]; exact halive c' hc'⟩ :
+        Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) ∉
+        (Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, halive c hc⟩)
+    (rep : ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md)
+    (hrep : ∀ c, rep c ∈ Ms.predOfMode S hA Δ h c)
+    (hinh : ∀ c c', nodeLt3 (Gd := Gd) Ms Nd c c' →
+      Ms.predOfMode S hA Δ h c ⊆ Ms.predOfMode S hA Δ h c' → rep c' = rep c)
+    (hsp : ∀ c ∈ Nd, ∀ c' ∈ Nd, c.1 ≠ c'.1 → c.1 + S.K ≤ c'.1 ∨ c'.1 + S.K ≤ c.1)
+    (X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)))
+    (hX : ∀ p ∈ X, p.2 ∈ Nd ∧
+      dyadicGridCell Gd p.1.1 p.1.2 ⊆ dyadicGridCell Gd p.2.2.1.1 p.2.2.1.2 ∧
+      p.2.1 ≤ p.1.1 ∧ p.1.1 < p.2.1 + S.K)
+    (σ : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ) (σ₀ : ℝ) (hΛ : 8 * Ms.Λ ≤ S.Ξ)
+    {p p' : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)} (hp : p ∈ Ms.firstTops X rep σ σ₀)
+    (hp' : p' ∈ Ms.firstTops X rep σ σ₀)
+    (hsub : dyadicGridCell Gd p.1.1 p.1.2 ⊆ dyadicGridCell Gd p'.1.1 p'.1.2)
+    (hne : Ms.topRow S hA h p ≠ Ms.topRow S hA h p') :
+    Disjoint (Ms.nodeComp S hA h p.2) (Ms.nodeComp S hA h p'.2) ∧
+      ∀ m ∈ Ms.nodeComp S hA h p.2, ∀ m' ∈ Ms.nodeComp S hA h p'.2,
+        ∀ n : Fin Ms.zc.dim → ℤ, (∀ i, |(n i : ℝ)| ≤ S.Eh 0) →
+          S.Ξ / 2 / dyadicGridLength Gd p.1.1 <
+            |Ms.slope m (dyadicGridLeft Gd p.1.1 p.1.2) -
+              Ms.slope m' (dyadicGridLeft Gd p.1.1 p.1.2) +
+                ∑ i, (n i : ℝ) * (Ms.zc.θ i / S.Q0)| := by
+  have hK : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  obtain ⟨I, c⟩ := p
+  obtain ⟨I', c'⟩ := p'
+  simp only at hsub hne ⊢
+  obtain ⟨hpX, hσp, hmax⟩ := Finset.mem_filter.mp hp
+  obtain ⟨hp'X, hσp', -⟩ := Finset.mem_filter.mp hp'
+  obtain ⟨hc, hIJ, hb1, hb2⟩ := hX _ hpX
+  obtain ⟨hc', hIJ', hb1', hb2'⟩ := hX _ hp'X
+  simp only at hc hIJ hb1 hb2 hc' hIJ' hb1' hb2' hσp hσp' hmax
+  have hII := dyadicGridLength_le_of_subset Gd hsub
+  have hIdepth : I'.1 ≤ I.1 := by
+    by_contra hlt
+    push Not at hlt
+    have := (dyadicGridLength_strictAnti Gd) hlt
+    linarith
+  -- the later node is `c` (block of the inner cell); the earlier is `c'`
+  have hbb : c'.1 ≤ c.1 := by
+    by_contra hlt
+    push Not at hlt
+    rcases hsp c hc c' hc' (by omega) with h1 | h1 <;> omega
+  have hJJ : dyadicGridCell Gd c.2.1.1 c.2.1.2 ⊆ dyadicGridCell Gd c'.2.1.1 c'.2.1.2 :=
+    dyadicGridCell_subset_of_common_point Gd (hIJ (dyadicGridCell_left_mem Gd I.1 I.2))
+      (hIJ' (hsub (dyadicGridCell_left_mem Gd I.1 I.2)))
+      (by rw [hNd c hc, hNd c' hc']; omega)
+  -- the alive transport from the earlier decision cell
+  have hUU := ancAt_block_subset S (hNd c' hc') hbb hJJ
+  -- the separation for modes of the later component against modes in other later components
+  have hsepF : ∀ z z' : Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)),
+      z ∉ (Ms.blockComps S hA c.1 c.2.1).F h z' →
+      z.1 ≠ z'.1 ∧ ∀ n : Fin Ms.zc.dim → ℤ, (∀ i, |(n i : ℝ)| ≤ S.Eh 0) →
+        S.Ξ / 2 / dyadicGridLength Gd I.1 < |Ms.slope z'.1 (dyadicGridLeft Gd I.1 I.2) -
+          Ms.slope z.1 (dyadicGridLeft Gd I.1 I.2) + ∑ i, (n i : ℝ) * (Ms.zc.θ i / S.Q0)| := by
+    intro z z' hzF
+    refine ⟨fun he => hzF ?_, fun n hn => Ms.alive_sep_at_cell S hA (hNd c hc) hIJ (by omega) hΛ
+      (fun h0 => hzF ((Ms.blockComps S hA c.1 c.2.1).F_mono 0 h z' (Nat.zero_le _) h0)) n hn⟩
+    rw [show z = z' from Subtype.ext he]
+    exact (Ms.blockComps S hA c.1 c.2.1).E_le_F _ _ ((Ms.blockComps S hA c.1 c.2.1).E_self _ _)
+  -- the representatives differ
+  have hrne : rep c ≠ rep c' := by
+    intro hreq
+    have hI'I : I' = I := hmax _ hp'X hσp' hreq.symm hsub
+    subst hI'I
+    have hbe : c.1 = c'.1 := by
+      by_contra hb
+      rcases hsp c hc c' hc' hb with h1 | h1 <;> omega
+    have hJe : c.2.1 = c'.2.1 := dyadicGridCell_eq_of_meet Gd
+      (by rw [hNd c hc, hNd c' hc', hbe])
+      ⟨_, hIJ (dyadicGridCell_left_mem Gd I'.1 I'.2), hIJ' (dyadicGridCell_left_mem Gd I'.1 I'.2)⟩
+    have hcc : c ≠ c' := fun h => hne (by rw [h])
+    have hd := hdist c hc c' hc' hbe hJe hcc
+    -- the representatives lie in the two distinct components
+    have h1 := Ms.predOfMode_subset_nodeComp S hA Δ h (halive c hc) (hrep c)
+    have h2 := Ms.predOfMode_subset_nodeComp S hA Δ h (halive c' hc') (hrep c')
+    rw [Ms.nodeComp_eq S hA h (halive c hc)] at h1
+    rw [Ms.nodeComp_eq S hA h (halive c' hc')] at h2
+    obtain ⟨y1, hy1, hy1e⟩ := Finset.mem_map.mp h1
+    obtain ⟨y2, hy2, hy2e⟩ := Finset.mem_map.mp h2
+    have hy2' : (⟨y2.1, by rw [hbe, hJe]; exact y2.2⟩ : Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
+        ∈ (Ms.blockComps S hA c.1 c.2.1).F h ⟨c'.2.2, by rw [hbe, hJe]; exact halive c' hc'⟩ := by
+      obtain ⟨b1, J1, m1⟩ := c
+      obtain ⟨b2, J2, m2⟩ := c'
+      simp only at hbe hJe y2 hy2 ⊢
+      subst hbe hJe
+      exact hy2
+    have he : (⟨y2.1, by rw [hbe, hJe]; exact y2.2⟩ : Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) =
+        y1 := Subtype.ext ((hy2e.trans hreq.symm).trans hy1e.symm)
+    rw [he] at hy2'
+    apply hd
+    rw [← (Ms.blockComps S hA c.1 c.2.1).F_comp h _ _ hy1,
+      (Ms.blockComps S hA c.1 c.2.1).F_comp h _ _ hy2']
+    exact (Ms.blockComps S hA c.1 c.2.1).E_le_F _ _ ((Ms.blockComps S hA c.1 c.2.1).E_self _ _)
+  -- every outer mode, transported, is not CURRENT-joined to an inner mode
+  have hkey : ∀ m ∈ Ms.nodeComp S hA h c, ∀ m' ∈ Ms.nodeComp S hA h c',
+      ∃ (z z' : Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))), z'.1 = m ∧ z.1 = m' ∧
+        z ∉ (Ms.blockComps S hA c.1 c.2.1).F h z' := by
+    intro m hm m' hm'
+    rw [Ms.nodeComp_eq S hA h (halive c hc)] at hm
+    rw [Ms.nodeComp_eq S hA h (halive c' hc')] at hm'
+    obtain ⟨a, ha, rfl⟩ := Finset.mem_map.mp hm
+    obtain ⟨a', ha', rfl⟩ := Finset.mem_map.mp hm'
+    refine ⟨Ms.aliveMap hUU a', a, rfl, rfl, ?_⟩
+    rcases hbb.lt_or_eq with hlt | heq
+    · -- different blocks: `comp_cross_sep` on the comparable nodes `c' < c`
+      exact Ms.comp_cross_sep S hA SP Nd hNd Δ h halive hgood hstab htype1 rep hinh
+        ⟨hc', hc, hJJ, hlt⟩ hrne.symm _ a (Finset.mem_map.mpr ⟨a', ha', rfl⟩) ha
+    · -- one block: the pre-cells agree and the nodes lie in different components
+      have hJe : c'.2.1 = c.2.1 := dyadicGridCell_eq_of_meet Gd
+        (by rw [hNd c hc, hNd c' hc', heq])
+        ⟨_, hJJ (dyadicGridCell_left_mem Gd c.2.1.1 c.2.1.2),
+          dyadicGridCell_left_mem Gd c.2.1.1 c.2.1.2⟩
+      have hcc : c' ≠ c := fun h => hrne (by rw [h])
+      have hd := hdist c hc c' hc' heq.symm hJe.symm hcc.symm
+      intro hmem
+      apply hd
+      have ha'' : Ms.aliveMap hUU a' ∈ (Ms.blockComps S hA c.1 c.2.1).F h
+          ⟨c'.2.2, by rw [← heq, ← hJe]; exact halive c' hc'⟩ := by
+        obtain ⟨b1, J1, m1⟩ := c
+        obtain ⟨b2, J2, m2⟩ := c'
+        simp only at heq hJe a' ha' hUU ⊢
+        subst heq hJe
+        exact ha'
+      rw [← (Ms.blockComps S hA c.1 c.2.1).F_comp h _ _ ha,
+        ← (Ms.blockComps S hA c.1 c.2.1).F_comp h _ _ hmem,
+        (Ms.blockComps S hA c.1 c.2.1).F_comp h _ _ ha'']
+      exact (Ms.blockComps S hA c.1 c.2.1).E_le_F _ _ ((Ms.blockComps S hA c.1 c.2.1).E_self _ _)
+  refine ⟨Finset.disjoint_left.mpr fun m hm hm' => ?_, fun m hm m' hm' n hn => ?_⟩
+  · obtain ⟨z, z', hz', hz, hzF⟩ := hkey m hm m hm'
+    exact (hsepF z z' hzF).1 (hz.trans hz'.symm)
+  · obtain ⟨z, z', rfl, rfl, hzF⟩ := hkey m hm m' hm'
+    exact (hsepF z z' hzF).2 n hn
+
+end ModeSystem
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0) (SP : SideParams)
+
+open Classical in
+/-- Hereditary representatives of one type class at height `h` (blueprint lines 2172-2185): the
+nodes `(b, J, m)` (one good mode per successful CURRENT component of a pre-cell) with the
+hypotheses and conclusions of `typed_representatives`, the blocks being `K`-spaced. -/
+structure RepClass (Δ h : ℕ) where
+  Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md)
+  hNd : ∀ c ∈ Nd, c.2.1.1 = c.1 - 2 * S.K
+  halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))
+  hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good Δ (Ms.goodP S SP c.1) h
+    ⟨c.2.2, halive c hc⟩
+  hstab : ∀ c ∈ Nd, ∀ z z', Ms.goodP S SP c.1 h ((Ms.blockComps S hA c.1 c.2.1).π z) →
+    (Ms.blockComps S hA c.1 c.2.1).π z' = (Ms.blockComps S hA c.1 c.2.1).π z →
+    z' ∈ (Ms.blockComps S hA c.1 c.2.1).F h z → z' ∈ (Ms.blockComps S hA c.1 c.2.1).E (h - Δ) z
+  k1 : ℕ
+  htype1 : ∀ c (hc : c ∈ Nd), Nat.log 2 ((Ms.blockComps S hA c.1 c.2.1).labels
+    ((Ms.blockComps S hA c.1 c.2.1).E (h - Δ) ⟨c.2.2, halive c hc⟩)).card = k1
+  hdist : ∀ c (hc : c ∈ Nd) c' (hc' : c' ∈ Nd) (h1 : c.1 = c'.1) (h2 : c.2.1 = c'.2.1),
+    c ≠ c' → (⟨c'.2.2, by rw [h1, h2]; exact halive c' hc'⟩ :
+      Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) ∉
+      (Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, halive c hc⟩
+  rep : ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md
+  hrep : ∀ c, rep c ∈ Ms.predOfMode S hA Δ h c
+  hinh : ∀ c c', nodeLt3 (Gd := Gd) Ms Nd c c' →
+    Ms.predOfMode S hA Δ h c ⊆ Ms.predOfMode S hA Δ h c' → rep c' = rep c
+  hsp : ∀ c ∈ Nd, ∀ c' ∈ Nd, c.1 ≠ c'.1 → c.1 + S.K ≤ c'.1 ∨ c'.1 + S.K ≤ c.1
+
+variable {Ms S hA SP}
+
+/-- The instances of a type class: use cells `I` inside the pre-cell of a node `c`, at a depth of
+its block. -/
+def RepClass.Inst {Δ h : ℕ} (R : Ms.RepClass S hA SP Δ h)
+    (X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md))) : Prop :=
+  ∀ p ∈ X, p.2 ∈ R.Nd ∧
+    dyadicGridCell Gd p.1.1 p.1.2 ⊆ dyadicGridCell Gd p.2.2.1.1 p.2.2.1.2 ∧
+    p.2.1 ≤ p.1.1 ∧ p.1.1 < p.2.1 + S.K
+
+theorem RepClass.pair_sep {Δ h : ℕ} (R : Ms.RepClass S hA SP Δ h)
+    {X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md))} (hX : R.Inst X)
+    (σ : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ) (σ₀ : ℝ) (hΛ : 8 * Ms.Λ ≤ S.Ξ)
+    {p p' : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)} (hp : p ∈ Ms.firstTops X R.rep σ σ₀)
+    (hp' : p' ∈ Ms.firstTops X R.rep σ σ₀)
+    (hsub : dyadicGridCell Gd p.1.1 p.1.2 ⊆ dyadicGridCell Gd p'.1.1 p'.1.2)
+    (hne : Ms.topRow S hA h p ≠ Ms.topRow S hA h p') :
+    Disjoint (Ms.nodeComp S hA h p.2) (Ms.nodeComp S hA h p'.2) ∧
+      ∀ m ∈ Ms.nodeComp S hA h p.2, ∀ m' ∈ Ms.nodeComp S hA h p'.2,
+        ∀ n : Fin Ms.zc.dim → ℤ, (∀ i, |(n i : ℝ)| ≤ S.Eh 0) →
+          S.Ξ / 2 / dyadicGridLength Gd p.1.1 <
+            |Ms.slope m (dyadicGridLeft Gd p.1.1 p.1.2) -
+              Ms.slope m' (dyadicGridLeft Gd p.1.1 p.1.2) + ∑ i, (n i : ℝ) * (Ms.zc.θ i / S.Q0)| :=
+  Ms.firstTops_pair_sep S hA SP R.Nd R.hNd Δ h R.halive R.hgood R.hstab R.htype1 R.hdist R.rep
+    R.hrep R.hinh R.hsp X hX σ σ₀ hΛ hp hp' hsub hne
+
+open Classical in
+/-- Distinct first tops have distinct rows. -/
+theorem RepClass.topRow_injOn {Δ h : ℕ} (R : Ms.RepClass S hA SP Δ h)
+    {X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md))} (hX : R.Inst X)
+    (σ : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ) (σ₀ : ℝ) :
+    Set.InjOn (Ms.topRow S hA h) (Ms.firstTops X R.rep σ σ₀ : Set _) := by
+  intro p hp p' hp' heq
+  obtain ⟨I, c⟩ := p
+  obtain ⟨I', c'⟩ := p'
+  have hpX := (Finset.mem_filter.mp (Finset.mem_coe.mp hp)).1
+  have hp'X := (Finset.mem_filter.mp (Finset.mem_coe.mp hp')).1
+  obtain ⟨hc, hIJ, -, -⟩ := hX _ hpX
+  obtain ⟨hc', hIJ', -, -⟩ := hX _ hp'X
+  simp only [topRow, Prod.mk.injEq] at heq hc hIJ hc' hIJ'
+  obtain ⟨hbe, hIe, hcomp⟩ := heq
+  subst hIe
+  have hJe : c.2.1 = c'.2.1 := dyadicGridCell_eq_of_meet Gd
+    (by rw [R.hNd c hc, R.hNd c' hc', hbe])
+    ⟨_, hIJ (dyadicGridCell_left_mem Gd I.1 I.2), hIJ' (dyadicGridCell_left_mem Gd I.1 I.2)⟩
+  by_contra hne
+  have hcc : c ≠ c' := fun h => hne (by rw [h])
+  apply R.hdist c hc c' hc' hbe hJe hcc
+  -- the mode of `c'` lies in the component of `c`
+  have hm' : c'.2.2 ∈ Ms.nodeComp S hA h c := by
+    rw [hcomp, Ms.nodeComp_eq S hA h (R.halive c' hc')]
+    exact Finset.mem_map.mpr ⟨_, (Ms.blockComps S hA c'.1 c'.2.1).E_le_F _ _
+      ((Ms.blockComps S hA c'.1 c'.2.1).E_self _ _), rfl⟩
+  rw [Ms.nodeComp_eq S hA h (R.halive c hc)] at hm'
+  obtain ⟨a, ha, hae⟩ := Finset.mem_map.mp hm'
+  rw [show (⟨c'.2.2, by rw [hbe, hJe]; exact R.halive c' hc'⟩ :
+      Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) = a from Subtype.ext hae.symm]
+  exact ha
+
+/-- The sign flip of the shift in the frequency difference. -/
+theorem abs_slope_flip {dz : ℕ} (u v : ℝ) (θ : Fin dz → ℝ) (n : Fin dz → ℤ) :
+    |v - u + ∑ i, ((-n i : ℤ) : ℝ) * θ i| = |u - v + ∑ i, (n i : ℝ) * θ i| := by
+  rw [← abs_neg]
+  congr 1
+  push_cast
+  rw [neg_add, neg_sub, ← Finset.sum_neg_distrib]
+  congr 1
+  exact Finset.sum_congr rfl fun i _ => by ring
+
+open Classical in
+/-- Blueprint prop:tops, lines 2221-2222 (`lem:mode-rows` on the rows `P_{F,I}` of the first tops of
+one type class at height `h` and threshold `σ₀`), at the schedule: the rows of the first tops are
+Bessel with constant `2`, when `Λ ≤ D_*`, `D_*` covers the Fourier norm and tail of the squared
+gauge, the inverse private weights are at most `D_*` and at most `D_*` modes are alive at every
+point. -/
+theorem RepClass.firstTops_rows {Δ h : ℕ} (R : Ms.RepClass S hA SP Δ h)
+    {X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md))} (hX : R.Inst X)
+    (σ : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ) (σ₀ : ℝ)
+    (hD : 2 ≤ S.Dstar) (hδ : 0 < Ms.δc) (hΛ : Ms.Λ ≤ S.Dstar) (hQ0 : 0 < S.Q0) (Kf : ℕ)
+    (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : gaugeSqNorm Ms.zc.dim Ms.δc ≤ S.Dstar)
+    (hKf : 2 * gaugeTail Ms.zc.dim Ms.δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ m, S.Dstar⁻¹ ≤ Ms.L.εM m) (hpt : ∀ y, ((Ms.ptSet y).card : ℝ) ≤ S.Dstar)
+    [inst : ∀ e, (Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).HasOrthogonalProjection]
+    (F : ColumnL2 Ms.Md) :
+    ∑ e ∈ (Ms.firstTops X R.rep σ σ₀).image (Ms.topRow S hA h),
+        ‖(Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).starProjection F‖ ^ 2 ≤
+      2 * ‖F‖ ^ 2 := by
+  classical
+  have hK : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  have hDp : 0 < S.Dstar := by linarith
+  have hΞ : 0 < S.Ξ := pow_pos hDp 1000
+  have hΛ16 := Ms.sixteen_Λ_le S hD hΛ
+  have hε : 0 < S.Dstar⁻¹ := inv_pos.mpr hDp
+  have hη0 := pairConst_nonneg Ms.zc.dim hδ (by linarith : 0 < S.Ξ / 2) Kf
+  have hη200 := S.pairConst_half_mul_le hD hδ hDg hKf
+  have hηD := (eta_sched_bounds hD hη0 hη200 le_rfl).1
+  have hpt2 : ∀ y, ((Ms.ptSet y).card : ℝ) ≤ S.Dstar⁻¹ * S.Dstar ^ 2 := fun y => by
+    rw [sq, ← mul_assoc, inv_mul_cancel₀ hDp.ne', one_mul]; exact hpt y
+  have hrows := Ms.tops_rows_path S (s := (Ms.firstTops X R.rep σ σ₀).image (Ms.topRow S hA h))
+    hδ ?_ ?_ (Ξ' := S.Ξ / 2) ?_ (by linarith) (by linarith) hQ0 Kf hbox hε hεw hDp.le hpt hpt2
+    (inst := inst) F
+  · refine hrows.trans (mul_le_mul_of_nonneg_right ?_ (sq_nonneg _))
+    linarith
+  · -- the rows are nonempty
+    intro e he
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp he
+    obtain ⟨hc, -, -, -⟩ := hX _ (Finset.mem_filter.mp hp).1
+    rw [topRow, Ms.nodeComp_eq S hA h (R.halive _ hc)]
+    exact ⟨_, Finset.mem_map.mpr ⟨_, (Ms.blockComps S hA _ _).E_le_F _ _
+      ((Ms.blockComps S hA _ _).E_self _ _), rfl⟩⟩
+  · -- the modes are alive on the top cells
+    intro e he m hm
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp he
+    obtain ⟨hc, hIJ, hb1, -⟩ := hX _ (Finset.mem_filter.mp hp).1
+    simp only [topRow] at hm
+    rw [Ms.nodeComp_eq S hA h (R.halive _ hc)] at hm
+    obtain ⟨a, -, rfl⟩ := Finset.mem_map.mp hm
+    have hJU := subset_ancAt Gd p.2.2.1 (show p.2.1 - 4 * S.K ≤ p.2.2.1.1 by
+      rw [R.hNd _ hc]; omega)
+    exact hIJ.trans (hJU.trans ((Ms.mem_alive).mp a.2))
+  · -- overlapping rows
+    intro e he e' he' hne hov
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp he
+    obtain ⟨p', hp', rfl⟩ := Finset.mem_image.mp he'
+    obtain ⟨y, hy, hy'⟩ := hov
+    simp only [evCell, topRow] at hy hy' ⊢
+    rcases le_total p'.1.1 p.1.1 with hle | hle
+    · have hsub := dyadicGridCell_subset_of_common_point Gd hy hy' hle
+      obtain ⟨hdis, hsep⟩ := R.pair_sep hX σ σ₀ (by linarith) hp hp' hsub hne
+      refine ⟨p.1, Set.inter_eq_left.mpr hsub, hdis, fun m hm m' hm' n hn =>
+        ⟨_, ⟨le_rfl, by linarith [dyadicGridLength_pos Gd p.1.1]⟩, (hsep m hm m' hm' n hn).le⟩⟩
+    · have hsub := dyadicGridCell_subset_of_common_point Gd hy' hy hle
+      obtain ⟨hdis, hsep⟩ := R.pair_sep hX σ σ₀ (by linarith) hp' hp hsub (Ne.symm hne)
+      refine ⟨p'.1, Set.inter_eq_right.mpr hsub, hdis.symm, fun m hm m' hm' n hn =>
+        ⟨_, ⟨le_rfl, by linarith [dyadicGridLength_pos Gd p'.1.1]⟩, ?_⟩⟩
+      have hn' : ∀ i, |((-n i : ℤ) : ℝ)| ≤ S.Eh 0 := fun i => by
+        push_cast; rw [abs_neg]; exact hn i
+      have := (hsep m' hm' m hm (fun i => -n i) hn').le
+      rw [abs_slope_flip] at this
+      exact this
+
+end ModeSystem
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} {Ms : ModeSystem Gd Mc} {S : ModeSchedule}
+  {hA : 6 ≤ S.A0} {SP : SideParams}
+
+/-- Grouping a sum over a finite set of pairs `(b, d)` by the first coordinate, when at most `K`
+second coordinates occur with each first coordinate (they lie in `[b, b + K)`). -/
+theorem sum_pairs_le_card_mul {BD : Finset (ℤ × ℤ)} {Bs : Finset ℤ} {K : ℕ} (w : ℤ → ℝ)
+    (hw : ∀ b, 0 ≤ w b) (hBD : ∀ bd ∈ BD, bd.1 ∈ Bs ∧ bd.1 ≤ bd.2 ∧ bd.2 < bd.1 + K) :
+    ∑ bd ∈ BD, w bd.1 ≤ K * ∑ b ∈ Bs, w b := by
+  classical
+  rw [← Finset.sum_fiberwise_of_maps_to (g := Prod.fst) (t := Bs) fun bd hbd => (hBD bd hbd).1,
+    Finset.mul_sum]
+  refine Finset.sum_le_sum fun b _ => ?_
+  rw [Finset.sum_congr rfl fun bd hbd => by rw [(Finset.mem_filter.mp hbd).2], Finset.sum_const,
+    nsmul_eq_mul]
+  refine mul_le_mul_of_nonneg_right ?_ (hw b)
+  have hinj : Set.InjOn Prod.snd (BD.filter fun bd => bd.1 = b : Set (ℤ × ℤ)) := by
+    intro x hx y hy hxy
+    have h1 := (Finset.mem_filter.mp (Finset.mem_coe.mp hx)).2
+    have h2 := (Finset.mem_filter.mp (Finset.mem_coe.mp hy)).2
+    exact Prod.ext (h1.trans h2.symm) hxy
+  have hsub : (BD.filter fun bd => bd.1 = b).image Prod.snd ⊆ Finset.Ico b (b + K) := by
+    intro d hd
+    obtain ⟨bd, hbd, rfl⟩ := Finset.mem_image.mp hd
+    obtain ⟨hbdB, hbe⟩ := Finset.mem_filter.mp hbd
+    obtain ⟨-, h1, h2⟩ := hBD bd hbdB
+    rw [← hbe]
+    exact Finset.mem_Ico.mpr ⟨h1, h2⟩
+  have hc := Finset.card_le_card hsub
+  rw [Finset.card_image_of_injOn hinj, Int.card_Ico] at hc
+  have : (b + K - b).toNat = K := by simp
+  rw [this] at hc
+  exact_mod_cast hc
+
+open Classical in
+/-- Blueprint prop:tops, lines 2224-2225 (the side part of `eq:size-comparison` on the tops):
+"sum first at a fixed depth of a block: cells are disjoint and component subtotals sum in square to
+`C ‖V_{l,G,b}‖²`; summing the at most `K` depths" gives
+`Σ_tops ‖V_F‖²_{2,I} ≤ 2 K Σ_b ‖V_{l,G,b}‖²` for the first tops of one type class, with `V_F` the
+exact side subtotal of the top's component on its cell (frozen coefficients `c b J`). -/
+theorem RepClass.tops_side {Δ h : ℕ} (R : Ms.RepClass S hA SP Δ h)
+    {X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md))} (hX : R.Inst X)
+    (σ : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ) (σ₀ : ℝ)
+    (cells : ℤ → Finset (ℤ × ℤ)) (hdepth : ∀ b, ∀ J ∈ cells b, J.1 = b - 2 * S.K)
+    (hXc : ∀ p ∈ X, p.2.2.1 ∈ cells p.2.1) (Bs : Finset ℤ) (hXB : ∀ p ∈ X, p.2.1 ∈ Bs)
+    (c : ℤ → ℤ × ℤ → Ms.Md → ℂ)
+    (hD : 2 ≤ S.Dstar) (hδ : 0 < Ms.δc) (hΛ : Ms.Λ ≤ S.Dstar) (hQ0 : 0 < S.Q0) (Kf : ℕ)
+    (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : gaugeSqNorm Ms.zc.dim Ms.δc ≤ S.Dstar)
+    (hKf : 2 * gaugeTail Ms.zc.dim Ms.δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ m, S.Dstar⁻¹ ≤ Ms.L.εM m)
+    (hal : ∀ b, ∀ J ∈ cells b, ((Ms.alive (ancAt Gd J (b - 4 * S.K))).card : ℝ) ≤ S.Dstar) :
+    ∑ p ∈ Ms.firstTops X R.rep σ σ₀,
+        ‖∑ m ∈ (Ms.nodeComp S hA h p.2).filter (fun m => ¬ Ms.IsCoreAt S hA SP p.2.1 p.2.2.1 m),
+          c p.2.1 p.2.2.1 m • Ms.cellMode p.1 m‖ ^ 2 ≤
+      2 * S.K * ∑ b ∈ Bs, ‖Ms.blockSide S hA SP b (cells b) (c b)‖ ^ 2 := by
+  have hK : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  set T := Ms.firstTops X R.rep σ σ₀ with hT
+  have hTX : ∀ p ∈ T, p ∈ X := fun p hp => (Finset.mem_filter.mp hp).1
+  set f : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ := fun p =>
+    ‖∑ m ∈ (Ms.nodeComp S hA h p.2).filter (fun m => ¬ Ms.IsCoreAt S hA SP p.2.1 p.2.2.1 m),
+      c p.2.1 p.2.2.1 m • Ms.cellMode p.1 m‖ ^ 2 with hf
+  set g : ℤ × (ℤ × ℤ) → ℝ := fun k => ‖columnL2Restriction (dyadicGridCell Gd k.2.1 k.2.2)
+    (dyadicGridCell_measurable Gd k.2.1 k.2.2) (Ms.blockSide S hA SP k.1 (cells k.1) (c k.1))‖ ^ 2
+    with hg
+  -- step 1: the tops at one block and cell
+  have hstep1 : ∀ k ∈ T.image (fun p => (p.2.1, p.1)),
+      ∑ p ∈ T.filter (fun p => (p.2.1, p.1) = k), f p ≤ 2 * g k := by
+    intro k hk
+    obtain ⟨p0, hp0, rfl⟩ := Finset.mem_image.mp hk
+    obtain ⟨hc0, hIJ0, hb10, hb20⟩ := hX _ (hTX p0 hp0)
+    -- all tops of the fiber share the pre-cell of `p0`
+    have hJ : ∀ p ∈ T.filter (fun p => (p.2.1, p.1) = (p0.2.1, p0.1)), p.2.2.1 = p0.2.2.1 := by
+      intro p hp
+      obtain ⟨hpT, hpk⟩ := Finset.mem_filter.mp hp
+      simp only [Prod.mk.injEq] at hpk
+      obtain ⟨hc, hIJ, -, -⟩ := hX _ (hTX p hpT)
+      refine dyadicGridCell_eq_of_meet Gd (by rw [R.hNd _ hc, R.hNd _ hc0, hpk.1])
+        ⟨dyadicGridLeft Gd p.1.1 p.1.2, ?_, ?_⟩
+      · exact hIJ (dyadicGridCell_left_mem Gd p.1.1 p.1.2)
+      · rw [hpk.2]; exact hIJ0 (dyadicGridCell_left_mem Gd p0.1.1 p0.1.2)
+    -- the components of the fiber
+    have hinj : Set.InjOn (fun p : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) => Ms.nodeComp S hA h p.2)
+        (T.filter (fun p => (p.2.1, p.1) = (p0.2.1, p0.1)) : Set _) := by
+      intro p hp p' hp' heq
+      obtain ⟨hpT, hpk⟩ := Finset.mem_filter.mp (Finset.mem_coe.mp hp)
+      obtain ⟨hp'T, hp'k⟩ := Finset.mem_filter.mp (Finset.mem_coe.mp hp')
+      simp only [Prod.mk.injEq] at hpk hp'k
+      refine R.topRow_injOn hX σ σ₀ (Finset.mem_coe.mpr hpT) (Finset.mem_coe.mpr hp'T) ?_
+      simp only [topRow, Prod.mk.injEq]
+      exact ⟨hpk.1.trans hp'k.1.symm, hpk.2.trans hp'k.2.symm, heq⟩
+    have hsum : ∑ p ∈ T.filter (fun p => (p.2.1, p.1) = (p0.2.1, p0.1)), f p =
+        ∑ F ∈ (T.filter (fun p => (p.2.1, p.1) = (p0.2.1, p0.1))).image
+          (fun p => Ms.nodeComp S hA h p.2),
+          ‖∑ m ∈ F.filter (fun m => ¬ Ms.IsCoreAt S hA SP p0.2.1 p0.2.2.1 m),
+            c p0.2.1 p0.2.2.1 m • Ms.cellMode p0.1 m‖ ^ 2 := by
+      rw [Finset.sum_image hinj]
+      refine Finset.sum_congr rfl fun p hp => ?_
+      obtain ⟨-, hpk⟩ := Finset.mem_filter.mp hp
+      simp only [Prod.mk.injEq] at hpk
+      simp only [hf, hpk.1, hpk.2, hJ p hp]
+    rw [hsum]
+    have hFs : (T.filter (fun p => (p.2.1, p.1) = (p0.2.1, p0.1))).image
+        (fun p => Ms.nodeComp S hA h p.2) ⊆ Ms.curComps S hA p0.2.1 p0.2.2.1 h := by
+      intro F hF
+      obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hF
+      obtain ⟨hpT, hpk⟩ := Finset.mem_filter.mp hp
+      simp only [Prod.mk.injEq] at hpk
+      obtain ⟨hc, -, -, -⟩ := hX _ (hTX p hpT)
+      have hJp := hJ p hp
+      rw [Ms.nodeComp_eq S hA h (R.halive _ hc)]
+      have key : ∀ (b : ℤ) (J : ℤ × ℤ) (m : Ms.Md) (hm : m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K))),
+          b = p0.2.1 → J = p0.2.2.1 → ((Ms.blockComps S hA b J).F h ⟨m, hm⟩).map
+            ⟨Subtype.val, Subtype.val_injective⟩ ∈ Ms.curComps S hA p0.2.1 p0.2.2.1 h := by
+        rintro b J m hm rfl rfl
+        exact Finset.mem_image_of_mem _ (Finset.mem_univ _)
+      exact key _ _ _ _ hpk.1 hJp
+    have hside := Ms.side_comparison_block S hA SP (hdepth p0.2.1) (c p0.2.1)
+      (hXc p0 (hTX p0 hp0)) hIJ0 (by omega) hD hδ hΛ hQ0 Kf hbox hDg hKf hεw
+      (hal _ _ (hXc p0 (hTX p0 hp0))) h hFs
+    exact hside
+  -- step 2: group the tops by block and cell
+  have hT1 : ∑ p ∈ T, f p = ∑ k ∈ T.image (fun p => (p.2.1, p.1)),
+      ∑ p ∈ T.filter (fun p => (p.2.1, p.1) = k), f p :=
+    (Finset.sum_fiberwise_of_maps_to (fun p hp => Finset.mem_image_of_mem _ hp) f).symm
+  -- step 3: the cells of one block and depth are disjoint
+  have hkey : ∀ k ∈ T.image (fun p => (p.2.1, p.1)),
+      k.1 ∈ Bs ∧ k.1 ≤ k.2.1 ∧ k.2.1 < k.1 + S.K := by
+    intro k hk
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp hk
+    obtain ⟨-, -, hb1, hb2⟩ := hX _ (hTX p hp)
+    exact ⟨hXB p (hTX p hp), hb1, hb2⟩
+  have hstep3 : ∑ k ∈ T.image (fun p => (p.2.1, p.1)), g k ≤
+      S.K * ∑ b ∈ Bs, ‖Ms.blockSide S hA SP b (cells b) (c b)‖ ^ 2 := by
+    rw [← Finset.sum_fiberwise_of_maps_to (g := fun k : ℤ × (ℤ × ℤ) => (k.1, k.2.1))
+      (t := (T.image (fun p => (p.2.1, p.1))).image (fun k : ℤ × (ℤ × ℤ) => (k.1, k.2.1)))
+      (fun k hk => Finset.mem_image_of_mem _ hk)]
+    refine le_trans (Finset.sum_le_sum fun bd _ => ?_)
+      (sum_pairs_le_card_mul (w := fun b => ‖Ms.blockSide S hA SP b (cells b) (c b)‖ ^ 2)
+        (fun b => sq_nonneg _) fun bd hbd => ?_)
+    · -- one block and depth
+      set Φ := (T.image (fun p => (p.2.1, p.1))).filter
+        (fun k : ℤ × (ℤ × ℤ) => (k.1, k.2.1) = bd)
+      have hΦ : ∀ k ∈ Φ, k.1 = bd.1 ∧ k.2.1 = bd.2 := fun k hk => by
+        have := (Finset.mem_filter.mp hk).2
+        exact ⟨congrArg Prod.fst this, congrArg Prod.snd this⟩
+      have hinjΦ : Set.InjOn (fun k : ℤ × (ℤ × ℤ) => k.2) (Φ : Set _) := by
+        intro x hx y hy hxy
+        exact Prod.ext ((hΦ x hx).1.trans (hΦ y hy).1.symm) hxy
+      have hsumΦ : ∑ k ∈ Φ, g k = ∑ I ∈ Φ.image (fun k => k.2),
+          ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+            (Ms.blockSide S hA SP bd.1 (cells bd.1) (c bd.1))‖ ^ 2 := by
+        rw [Finset.sum_image hinjΦ]
+        refine Finset.sum_congr rfl fun k hk => ?_
+        simp only [hg, (hΦ k hk).1]
+      rw [hsumΦ, sum_norm_sq_restrict_le Gd _ ?_]
+      · exact columnL2Restriction_norm_sq_le _ _ _
+      · intro I hI I' hI' hne
+        obtain ⟨k, hk, rfl⟩ := Finset.mem_image.mp hI
+        obtain ⟨k', hk', rfl⟩ := Finset.mem_image.mp hI'
+        rw [Function.onFun, Set.disjoint_iff_inter_eq_empty]
+        by_contra hov
+        exact hne (dyadicGridCell_eq_of_meet Gd ((hΦ k hk).2.trans (hΦ k' hk').2.symm)
+          (Set.nonempty_iff_ne_empty.mpr hov))
+    · obtain ⟨k, hk, rfl⟩ := Finset.mem_image.mp hbd
+      exact hkey k hk
+  have hg0 : ∀ k, 0 ≤ g k := fun k => sq_nonneg _
+  calc ∑ p ∈ T, f p = ∑ k ∈ T.image (fun p => (p.2.1, p.1)),
+        ∑ p ∈ T.filter (fun p => (p.2.1, p.1) = k), f p := hT1
+    _ ≤ ∑ k ∈ T.image (fun p => (p.2.1, p.1)), 2 * g k := Finset.sum_le_sum hstep1
+    _ = 2 * ∑ k ∈ T.image (fun p => (p.2.1, p.1)), g k := by rw [Finset.mul_sum]
+    _ ≤ 2 * (S.K * ∑ b ∈ Bs, ‖Ms.blockSide S hA SP b (cells b) (c b)‖ ^ 2) :=
+        mul_le_mul_of_nonneg_left hstep3 (by norm_num)
+    _ = 2 * S.K * ∑ b ∈ Bs, ‖Ms.blockSide S hA SP b (cells b) (c b)‖ ^ 2 := by ring
+
+end ModeSystem
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0) (SP : SideParams)
+
+open Classical in
+/-- The component size `σ_F²` (`eq:component-size`) of the node of an instance `(I, c)` on its
+cell, with the frozen coefficients `c b J` of its block and pre-cell (zero off the alive modes). -/
+noncomputable def nodeSize (c : ℤ → ℤ × ℤ → Ms.Md → ℂ) (h : ℕ)
+    (p : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)) : ℝ :=
+  if hm : p.2.2.2 ∈ Ms.alive (ancAt Gd p.2.2.1 (p.2.1 - 4 * S.K)) then
+    Ms.compSizeSq S hA SP p.1 p.2.1 p.2.2.1 h ⟨p.2.2.2, hm⟩ (c p.2.1 p.2.2.1)
+  else 0
+
+theorem nodeSize_eq (c : ℤ → ℤ × ℤ → Ms.Md → ℂ) (h : ℕ)
+    {p : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)}
+    (hm : p.2.2.2 ∈ Ms.alive (ancAt Gd p.2.2.1 (p.2.1 - 4 * S.K))) :
+    Ms.nodeSize S hA SP c h p =
+      Ms.compSizeSq S hA SP p.1 p.2.1 p.2.2.1 h ⟨p.2.2.2, hm⟩ (c p.2.1 p.2.2.1) := by
+  unfold nodeSize
+  rw [dite_eq_left_of_eq_true (eq_true hm)]
+
+/-- The modes of the component of a node are its `compModes`. -/
+theorem nodeComp_eq_compModes (h : ℕ) {c : ℤ × (ℤ × ℤ) × Ms.Md}
+    (hm : c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) :
+    Ms.nodeComp S hA h c = Ms.compModes S hA c.1 c.2.1 h ⟨c.2.2, hm⟩ :=
+  Ms.nodeComp_eq S hA h hm
+
+variable {Ms S hA SP}
+
+open Classical in
+/-- Blueprint prop:tops, lines 2226-2229 (before the cut): on the first tops of one type class at
+threshold `σ₀` (sizes `σ_F² ≥ σ₀`), `eq:size-comparison` and the absorption of its error
+(`6 B_c D_*^{-59} ≤ σ₀`, from `σ² ≥ D_*^{-2}`) give
+`σ₀ Σ_tops |I| ≤ 24 (Σ_tops ‖P_{F,I} Z̃‖² + Σ_tops ‖V_F‖²)`, with `Z̃` the frozen evaluation on the
+top's pre-cell. -/
+theorem RepClass.tops_absorb {Δ h : ℕ} (R : Ms.RepClass S hA SP Δ h)
+    {X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md))} (hX : R.Inst X)
+    (c : ℤ → ℤ × ℤ → Ms.Md → ℂ) {σ₀ Bc : ℝ}
+    (hD : 2 ≤ S.Dstar) (hδ : 0 < Ms.δc) (hΛ : Ms.Λ ≤ S.Dstar) (hQ0 : 0 < S.Q0) (Kf : ℕ)
+    (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : gaugeSqNorm Ms.zc.dim Ms.δc ≤ S.Dstar)
+    (hKf : 2 * gaugeTail Ms.zc.dim Ms.δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ m, S.Dstar⁻¹ ≤ Ms.L.εM m)
+    (hal : ∀ p ∈ X, ((Ms.alive (ancAt Gd p.2.2.1 (p.2.1 - 4 * S.K))).card : ℝ) ≤ S.Dstar)
+    (hc : ∀ p ∈ X, ∑ m ∈ Ms.alive (ancAt Gd p.2.2.1 (p.2.1 - 4 * S.K)),
+      ‖c p.2.1 p.2.2.1 m‖ ^ 2 ≤ Bc)
+    (hab : 6 * Bc / S.Dstar ^ 59 ≤ σ₀)
+    [inst : ∀ e,
+      (Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).HasOrthogonalProjection] :
+    σ₀ * ∑ p ∈ Ms.firstTops X R.rep (Ms.nodeSize S hA SP c h) σ₀, dyadicGridLength Gd p.1.1 ≤
+      24 * (∑ p ∈ Ms.firstTops X R.rep (Ms.nodeSize S hA SP c h) σ₀,
+          ‖(Submodule.span ℂ ((Ms.evMode (Ms.topRow S hA h p)) ''
+            ((Ms.topRow S hA h p).2.2 : Set Ms.Md))).starProjection
+            (Ms.frozenEval S p.2.1 p.2.2.1 (c p.2.1 p.2.2.1))‖ ^ 2 +
+        ∑ p ∈ Ms.firstTops X R.rep (Ms.nodeSize S hA SP c h) σ₀,
+          ‖∑ m ∈ (Ms.nodeComp S hA h p.2).filter
+            (fun m => ¬ Ms.IsCoreAt S hA SP p.2.1 p.2.2.1 m),
+            c p.2.1 p.2.2.1 m • Ms.cellMode p.1 m‖ ^ 2) := by
+  have hK : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  rw [Finset.mul_sum, ← Finset.sum_add_distrib, Finset.mul_sum]
+  refine Finset.sum_le_sum fun p hp => ?_
+  obtain ⟨hpX, hσp, -⟩ := Finset.mem_filter.mp hp
+  obtain ⟨hcN, hIJ, hb1, hb2⟩ := hX p hpX
+  have hm := R.halive _ hcN
+  have hr := dyadicGridLength_pos Gd p.1.1
+  rw [Ms.nodeSize_eq S hA SP c h hm] at hσp
+  have hinst : (Submodule.span ℂ ((Ms.cellMode p.1) ''
+      (Ms.compModes S hA p.2.1 p.2.2.1 h ⟨p.2.2.2, hm⟩ : Set Ms.Md))).HasOrthogonalProjection := by
+    have := inst (Ms.topRow S hA h p)
+    simp only [topRow, Ms.nodeComp_eq_compModes S hA h hm] at this
+    exact this
+  have hsz := Ms.size_comparison S hA SP (R.hNd _ hcN) hIJ (by omega) hD hδ hΛ hQ0 Kf hbox hDg hKf
+    hεw (hal p hpX) (c p.2.1 p.2.2.1) (hc p hpX) h ⟨p.2.2.2, hm⟩
+  -- the projections and side subtotals of the row are those of the size comparison
+  have e1 : ‖(Submodule.span ℂ ((Ms.evMode (Ms.topRow S hA h p)) ''
+      ((Ms.topRow S hA h p).2.2 : Set Ms.Md))).starProjection
+        (Ms.frozenEval S p.2.1 p.2.2.1 (c p.2.1 p.2.2.1))‖ =
+      ‖(Submodule.span ℂ ((Ms.cellMode p.1) ''
+        (Ms.compModes S hA p.2.1 p.2.2.1 h ⟨p.2.2.2, hm⟩ : Set Ms.Md))).starProjection
+        (Ms.frozenEval S p.2.1 p.2.2.1 (c p.2.1 p.2.2.1))‖ := by
+    simp only [topRow, Ms.nodeComp_eq_compModes S hA h hm, evMode_eq]
+  have e2 : (Ms.nodeComp S hA h p.2).filter (fun m => ¬ Ms.IsCoreAt S hA SP p.2.1 p.2.2.1 m) =
+      (Ms.compModes S hA p.2.1 p.2.2.1 h ⟨p.2.2.2, hm⟩).filter
+        (fun m => ¬ Ms.IsCoreAt S hA SP p.2.1 p.2.2.1 m) := by
+    rw [Ms.nodeComp_eq_compModes S hA h hm]
+  rw [e1, e2]
+  set P2 := ‖(Submodule.span ℂ ((Ms.cellMode p.1) ''
+      (Ms.compModes S hA p.2.1 p.2.2.1 h ⟨p.2.2.2, hm⟩ : Set Ms.Md))).starProjection
+      (Ms.frozenEval S p.2.1 p.2.2.1 (c p.2.1 p.2.2.1))‖ ^ 2
+  set V2 := ‖∑ m ∈ (Ms.compModes S hA p.2.1 p.2.2.1 h ⟨p.2.2.2, hm⟩).filter
+      (fun m => ¬ Ms.IsCoreAt S hA SP p.2.1 p.2.2.1 m), c p.2.1 p.2.2.1 m • Ms.cellMode p.1 m‖ ^ 2
+  have h1 : σ₀ ≤ 12 * ((P2 + V2) / dyadicGridLength Gd p.1.1) + σ₀ / 2 := by
+    have : 3 * Bc / S.Dstar ^ 59 ≤ σ₀ / 2 := by
+      have e : 3 * Bc / S.Dstar ^ 59 = (6 * Bc / S.Dstar ^ 59) / 2 := by ring
+      rw [e]; linarith
+    linarith [hσp.trans hsz]
+  have h2 : σ₀ ≤ 24 * ((P2 + V2) / dyadicGridLength Gd p.1.1) := by linarith
+  have e3 : 24 * ((P2 + V2) / dyadicGridLength Gd p.1.1) * dyadicGridLength Gd p.1.1 =
+      24 * (P2 + V2) := by field_simp
+  calc σ₀ * dyadicGridLength Gd p.1.1 ≤ 24 * ((P2 + V2) / dyadicGridLength Gd p.1.1) *
+        dyadicGridLength Gd p.1.1 := mul_le_mul_of_nonneg_right h2 hr.le
+    _ = 24 * (P2 + V2) := e3
+
+end ModeSystem
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+/-- The ancestor at a depth above a containing cell is the ancestor of that cell. -/
+theorem ancAt_eq_ancAt_of_subset {G : RealDyadicGrid} {I J : ℤ × ℤ}
+    (hIJ : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J.1 J.2) {d : ℤ} (hd : d ≤ J.1) :
+    ancAt G I d = ancAt G J d :=
+  ancAt_eq_of_subset (G := G) (I := I) (c := ancAt G J d) (hIJ.trans (subset_ancAt G J hd))
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc)
+
+/-- The row projection of an event is local to every set containing its cell. -/
+theorem evProj_restrict (e : Ms.Event)
+    [(Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).HasOrthogonalProjection]
+    {t : Set ℝ} (ht : MeasurableSet t) (hJt : dyadicGridCell Gd e.2.1.1 e.2.1.2 ⊆ t)
+    (w : ColumnL2 Ms.Md) :
+    (Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).starProjection
+        (columnL2Restriction t ht w) =
+      (Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).starProjection w :=
+  starProjection_restrict_eq _ t ht (span_vanish_restrict hJt ht _ fun v hv => by
+    obtain ⟨m, -, rfl⟩ := hv
+    exact Ms.cellMode_vanish e.2.1 m) w
+
+end ModeSystem
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- Blueprint prop:tops, lines 2221-2227, for one height, one type class (representatives `R G` of
+each group) and one threshold `σ₀`: on the first tops of the actual uses,
+`σ₀ Σ_G Σ_tops |I| ≤ 24 (2 G₀ |R| + 2 K V_E)`.
+
+* `lem:mode-rows` on the rows `P_{F,I}` of the tops (`RepClass.firstTops_rows`, Bessel constant
+  `2`);
+  their decision cells are the containing `u_b`-cells, active and certified by the tops
+  (`retained_decision`), so `lem:lift-composition` (`lift_composition_dep`, `liftConst_le_G0`) gives
+  `Σ_tops ‖P_{F,I} Z̃_{l,G,b}‖² ≤ 2 G₀ |R|`;
+* the side part: `Σ_tops ‖V_F‖² ≤ 2 K Σ_{G,b} ‖V_{l,G,b}‖² ≤ 2 K V_E` (`RepClass.tops_side`, with
+  `V_E` the linear-side energy of `eq:linear-energy`);
+* `eq:size-comparison` and absorption on each top (`RepClass.tops_absorb`, `6 B_c D_*^{-59} ≤ σ₀`).
+
+The frozen coefficients `c` represent `Z̃_{l,G,b} = R_{l,G} Z_{l,G,u_b}` on the retained pre-cells
+with square sums at most `B_c` (`frozen_coeffs`, `linear_energy`); the instances are use cells
+inside retained pre-cells of blocks in `Bs`. -/
+theorem tops_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
+    (hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
+      e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
+    (htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx) (mb : bf.MainBudget s)
+    (hne : A.cells.Nonempty) (hanc : A.AncClosed)
+    {ι : Type*} [Fintype ι] (grp : ι → bf.Grp) (hgrp : Function.Injective grp) (k : ℕ)
+    (hcol : ∀ G, (grp G).1 = k) (j : ℕ) (hPH : fp.bbase j + fp.P ≤ fp.Hmax)
+    (ls : List (ℕ × Bool)) (S : ModeSchedule) (hA : 6 ≤ S.A0) (SP : SideParams)
+    {n : ℕ} (Ms : ι → ModeSystem A.G n) (L : ∀ G, LiftData (bf.Lab ⊕ Fin fp.Mc) (Ms G).Md)
+    (Bs : Finset ℤ) (c : ∀ G, ℤ → ℤ × ℤ → (Ms G).Md → ℂ)
+    (hcrep : ∀ G, ∀ b ∈ Bs, ∀ J ∈ fp.retainedV (grp G) b S.K,
+      (Ms G).frozenEval S b J (c G b J) = columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+        (dyadicGridCell_measurable A.G J.1 J.2)
+        ((L G).op (fp.frozenZ l s mb (grp G) j ls (b - 4 * S.K))))
+    {Bc VE : ℝ}
+    (hcB : ∀ G, ∀ b ∈ Bs, ∀ J ∈ fp.retainedV (grp G) b S.K,
+      ∑ m ∈ (Ms G).alive (ancAt A.G J (b - 4 * S.K)), ‖c G b J m‖ ^ 2 ≤ Bc)
+    (hVE : ∑ G, ∑ b ∈ Bs, ‖(Ms G).blockSide S hA SP b (fp.retainedV (grp G) b S.K) (c G b)‖ ^ 2 ≤
+      VE)
+    {Δ h : ℕ} (R : ∀ G, (Ms G).RepClass S hA SP Δ h)
+    (X : ∀ G, Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md))) (hX : ∀ G, (R G).Inst (X G))
+    (hXr : ∀ G, ∀ p ∈ X G, p.2.1 ∈ Bs ∧ p.2.2.1 ∈ fp.retainedV (grp G) p.2.1 S.K)
+    (hD : 2 ≤ S.Dstar) (hδ : ∀ G, 0 < (Ms G).δc) (hΛ : ∀ G, (Ms G).Λ ≤ S.Dstar)
+    (hQ0 : 0 < S.Q0) (Kf : ℕ) (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : ∀ G, gaugeSqNorm (Ms G).zc.dim (Ms G).δc ≤ S.Dstar)
+    (hKf : ∀ G, 2 * gaugeTail (Ms G).zc.dim (Ms G).δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ G m, S.Dstar⁻¹ ≤ (Ms G).L.εM m)
+    (halive : ∀ G (U : ℤ × ℤ), (((Ms G).alive U).card : ℝ) ≤ S.Dstar)
+    (hpt : ∀ G y, (((Ms G).ptSet y).card : ℝ) ≤ S.Dstar)
+    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
+    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
+    (hHτ : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
+    {Nq : ℕ} (hNq : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
+      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
+          (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ Nq)
+    (hτN : τ * Nq * A.colBudget ^ 2 ≤ 1) (cc : ℕ) (hcc : 1 ≤ cc) {kq : ℝ} (hkq : 1 ≤ kq)
+    (hDmq : Real.log (2 * mb.B) ≤ kq ^ cc) (hDb : Real.log (2 * A.colBudget) ≤ kq ^ cc)
+    (hn : (ls.length : ℝ) ≤ cc * (Real.log kq + 1))
+    {σ₀ : ℝ} (hab : 6 * Bc / S.Dstar ^ 59 ≤ σ₀) :
+    σ₀ * ∑ G, ∑ p ∈ (Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀,
+        dyadicGridLength A.G p.1.1 ≤
+      24 * (2 * Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+          (1 + Real.log (2 * kq)) ^ 2) * dyadicGridLength A.G A.R.1 + 2 * S.K * VE) := by
+  have hK0 : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  have hR0 : 0 < dyadicGridLength A.G A.R.1 := dyadicGridLength_pos A.G A.R.1
+  -- the span projections of the rows
+  have inst : ∀ G (e : (Ms G).Event),
+      (Submodule.span ℂ (((Ms G).evMode e) '' (e.2.2 : Set (Ms G).Md))).HasOrthogonalProjection :=
+    fun G e => by
+      have : FiniteDimensional ℂ
+          (Submodule.span ℂ (((Ms G).evMode e) '' (e.2.2 : Set (Ms G).Md))) :=
+        FiniteDimensional.span_of_finite ℂ (e.2.2.finite_toSet.image _)
+      infer_instance
+  -- the decision cells of the tops
+  have hdec : ∀ G, ∀ p ∈ X G, A.R.1 ≤ p.2.1 - 4 * S.K →
+      ancAt A.G p.1 (p.2.1 - 4 * S.K) ∈ A.cells ∧
+        dyadicGridCell A.G p.1.1 p.1.2 ⊆ dyadicGridCell A.G (ancAt A.G p.1 (p.2.1 - 4 * S.K)).1
+          (ancAt A.G p.1 (p.2.1 - 4 * S.K)).2 ∧
+        fp.Cert k (grp G) (ancAt A.G p.1 (p.2.1 - 4 * S.K)) := by
+    intro G p hp hR
+    obtain ⟨hcN, hIJ, -, -⟩ := hX G p hp
+    obtain ⟨-, hJr⟩ := hXr G p hp
+    obtain ⟨hJU, hUc, hcert⟩ := fp.retained_decision hanc hJr hR
+    have he : ancAt A.G p.1 (p.2.1 - 4 * S.K) = ancAt A.G p.2.2.1 (p.2.1 - 4 * S.K) :=
+      ancAt_eq_ancAt_of_subset hIJ (by rw [(R G).hNd _ hcN]; omega)
+    rw [he]
+    refine ⟨hUc, hIJ.trans hJU, ?_⟩
+    rw [← hcol G]; exact hcert
+  -- absorption on each group
+  have habs : ∀ G, σ₀ * ∑ p ∈ (Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀,
+      dyadicGridLength A.G p.1.1 ≤
+      24 * (∑ p ∈ (Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀,
+          ‖(Submodule.span ℂ (((Ms G).evMode ((Ms G).topRow S hA h p)) ''
+            (((Ms G).topRow S hA h p).2.2 : Set (Ms G).Md))).starProjection
+            ((Ms G).frozenEval S p.2.1 p.2.2.1 (c G p.2.1 p.2.2.1))‖ ^ 2 +
+        ∑ p ∈ (Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀,
+          ‖∑ m ∈ ((Ms G).nodeComp S hA h p.2).filter
+            (fun m => ¬ (Ms G).IsCoreAt S hA SP p.2.1 p.2.2.1 m),
+            c G p.2.1 p.2.2.1 m • (Ms G).cellMode p.1 m‖ ^ 2) := fun G =>
+    (R G).tops_absorb (hX G) (c G) hD (hδ G) (hΛ G) hQ0 Kf hbox (hDg G) (hKf G) (hεw G)
+      (fun p _ => halive G _) (fun p hp => hcB G p.2.1 (hXr G p hp).1 p.2.2.1 (hXr G p hp).2) hab
+      (inst := inst G)
+  -- the side part (`RepClass.tops_side` and `eq:linear-energy`)
+  have hside : ∀ G, ∑ p ∈ (Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀,
+      ‖∑ m ∈ ((Ms G).nodeComp S hA h p.2).filter
+        (fun m => ¬ (Ms G).IsCoreAt S hA SP p.2.1 p.2.2.1 m),
+        c G p.2.1 p.2.2.1 m • (Ms G).cellMode p.1 m‖ ^ 2 ≤
+      2 * S.K * ∑ b ∈ Bs, ‖(Ms G).blockSide S hA SP b (fp.retainedV (grp G) b S.K) (c G b)‖ ^ 2 :=
+    fun G => (R G).tops_side (hX G) _ σ₀ (fun b => fp.retainedV (grp G) b S.K)
+      (fun b J hJ => ((fp.mem_retainedV).mp hJ).2.1) (fun p hp => (hXr G p hp).2) Bs
+      (fun p hp => (hXr G p hp).1) (c G) hD (hδ G) (hΛ G) hQ0 Kf hbox (hDg G) (hKf G) (hεw G)
+      (fun b J _ => halive G _)
+  -- the row outputs: the blocks before the attempt root contribute nothing
+  have hPZ : ∀ G, ∑ p ∈ (Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀,
+      ‖(Submodule.span ℂ (((Ms G).evMode ((Ms G).topRow S hA h p)) ''
+        (((Ms G).topRow S hA h p).2.2 : Set (Ms G).Md))).starProjection
+        ((Ms G).frozenEval S p.2.1 p.2.2.1 (c G p.2.1 p.2.2.1))‖ ^ 2 =
+      ∑ e ∈ (((Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀).filter
+          (fun p => A.R.1 ≤ p.2.1 - 4 * S.K)).image ((Ms G).topRow S hA h),
+        ‖(Submodule.span ℂ (((Ms G).evMode e) '' (e.2.2 : Set (Ms G).Md))).starProjection
+          ((L G).op (fp.basicOut l s mb (grp G) j ls
+            (ancAt A.G e.2.1 (e.1 - 4 * S.K)).1))‖ ^ 2 := by
+    intro G
+    have hinj : Set.InjOn ((Ms G).topRow S hA h)
+        ((((Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀).filter
+          (fun p => A.R.1 ≤ p.2.1 - 4 * S.K) : Finset _) : Set _) :=
+      ((R G).topRow_injOn (hX G) _ σ₀).mono (Finset.coe_subset.mpr (Finset.filter_subset _ _))
+    rw [Finset.sum_image hinj, ← Finset.sum_filter_add_sum_filter_not _
+      (fun p => A.R.1 ≤ p.2.1 - 4 * S.K)]
+    have hzero : ∑ p ∈ ((Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h)
+        σ₀).filter (fun p => ¬ A.R.1 ≤ p.2.1 - 4 * S.K),
+        ‖(Submodule.span ℂ (((Ms G).evMode ((Ms G).topRow S hA h p)) ''
+          (((Ms G).topRow S hA h p).2.2 : Set (Ms G).Md))).starProjection
+          ((Ms G).frozenEval S p.2.1 p.2.2.1 (c G p.2.1 p.2.2.1))‖ ^ 2 = 0 := by
+      refine Finset.sum_eq_zero fun p hp => ?_
+      obtain ⟨hpT, hR⟩ := Finset.mem_filter.mp hp
+      have hpX : p ∈ X G := (Finset.mem_filter.mp hpT).1
+      have hfz : fp.frozenZ l s mb (grp G) j ls (p.2.1 - 4 * S.K) = 0 := by
+        simp [frozenZ, not_le.mp hR]
+      rw [hcrep G p.2.1 (hXr G p hpX).1 p.2.2.1 (hXr G p hpX).2, hfz, map_zero, map_zero,
+        map_zero, norm_zero]
+      norm_num
+    rw [hzero, add_zero]
+    refine Finset.sum_congr rfl fun p hp => ?_
+    obtain ⟨hpT, hR⟩ := Finset.mem_filter.mp hp
+    have hpX : p ∈ X G := (Finset.mem_filter.mp hpT).1
+    obtain ⟨hcN, hIJ, -, -⟩ := hX G p hpX
+    rw [hcrep G p.2.1 (hXr G p hpX).1 p.2.2.1 (hXr G p hpX).2]
+    have hz : fp.frozenZ l s mb (grp G) j ls (p.2.1 - 4 * S.K) =
+        fp.basicOut l s mb (grp G) j ls (ancAt A.G p.1 (p.2.1 - 4 * S.K)).1 := by
+      simp [frozenZ, not_lt.mpr hR, ancAt]
+    rw [hz]
+    exact congrArg (fun x => ‖x‖ ^ 2) ((Ms G).evProj_restrict ((Ms G).topRow S hA h p)
+      (dyadicGridCell_measurable A.G p.2.2.1.1 p.2.2.1.2) hIJ _)
+  -- lem:lift-composition on the rows of the tops
+  have hrows := fp.lift_composition_dep l s hT htag d mb hne (ρ := fun G => (Ms G).Event) grp hgrp
+    k j hPH ls (fun G => (Ms G).Md) L (fun G => ColumnL2 (Ms G).Md)
+    (fun G => (((Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀).filter
+      (fun p => A.R.1 ≤ p.2.1 - 4 * S.K)).image ((Ms G).topRow S hA h))
+    (fun G e => (Submodule.span ℂ (((Ms G).evMode e) '' (e.2.2 : Set (Ms G).Md))).starProjection)
+    (c := 2) (by norm_num) (fun G x => ?_) (fun G e => ancAt A.G e.2.1 (e.1 - 4 * S.K))
+    (fun G e he => ?_) (fun G e he => ?_) (fun G e he => ?_) hroot hτ hτ1 hHτ (N := Nq) ?_
+  rotate_left
+  · exact (Finset.sum_le_sum_of_subset_of_nonneg (Finset.image_subset_image
+      (Finset.filter_subset _ _)) fun _ _ _ => sq_nonneg _).trans
+      ((R G).firstTops_rows (hX G) _ σ₀ hD (hδ G) (hΛ G) hQ0 Kf hbox (hDg G) (hKf G) (hεw G)
+        (hpt G) (inst := inst G) x)
+  · obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp he
+    obtain ⟨hpT, hR⟩ := Finset.mem_filter.mp hp
+    exact (hdec G p (Finset.mem_filter.mp hpT).1 hR).1
+  · obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp he
+    obtain ⟨hpT, hR⟩ := Finset.mem_filter.mp hp
+    exact ContinuousLinearMap.ext fun w => (Ms G).evProj_restrict ((Ms G).topRow S hA h p) _
+      (hdec G p (Finset.mem_filter.mp hpT).1 hR).2.1 w
+  · obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp he
+    obtain ⟨hpT, hR⟩ := Finset.mem_filter.mp hp
+    exact (hdec G p (Finset.mem_filter.mp hpT).1 hR).2.2
+  · convert hNq using 0
+  have hG0 := fp.liftConst_le_G0 l s mb ls (c := 2) (by norm_num) hτ hτN cc hcc hkq hDmq hDb hn
+  -- combine
+  set G0 := Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+    (1 + Real.log (2 * kq)) ^ 2)
+  have hPZsum : ∑ G, ∑ p ∈ (Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀,
+      ‖(Submodule.span ℂ (((Ms G).evMode ((Ms G).topRow S hA h p)) ''
+        (((Ms G).topRow S hA h p).2.2 : Set (Ms G).Md))).starProjection
+        ((Ms G).frozenEval S p.2.1 p.2.2.1 (c G p.2.1 p.2.2.1))‖ ^ 2 ≤
+      2 * G0 * dyadicGridLength A.G A.R.1 := by
+    rw [Finset.sum_congr rfl fun G _ => hPZ G]
+    exact hrows.trans (mul_le_mul_of_nonneg_right hG0 hR0.le)
+  have hVsum : ∑ G, ∑ p ∈ (Ms G).firstTops (X G) (R G).rep ((Ms G).nodeSize S hA SP (c G) h) σ₀,
+      ‖∑ m ∈ ((Ms G).nodeComp S hA h p.2).filter
+        (fun m => ¬ (Ms G).IsCoreAt S hA SP p.2.1 p.2.2.1 m),
+        c G p.2.1 p.2.2.1 m • (Ms G).cellMode p.1 m‖ ^ 2 ≤ 2 * S.K * VE := by
+    refine (Finset.sum_le_sum fun G _ => hside G).trans ?_
+    rw [← Finset.mul_sum]
+    exact mul_le_mul_of_nonneg_left hVE (by positivity)
+  rw [Finset.mul_sum]
+  refine (Finset.sum_le_sum fun G _ => habs G).trans ?_
+  rw [← Finset.mul_sum, Finset.sum_add_distrib]
+  exact mul_le_mul_of_nonneg_left (add_le_add hPZsum hVsum) (by norm_num)
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## Counting the used representatives by first tops (prop:tops, line 2229) -/
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc)
+
+open Classical in
+/-- Blueprint line 2229 ("each representative used in the bin has a ... first `σ`-top above that
+use"): an instance of size at least `σ₀` lies below a first top of its representative. -/
+theorem exists_firstTop_above (X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)))
+    (rep : ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md) (σ : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ) (σ₀ : ℝ)
+    {p : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)} (hp : p ∈ X) (hσ : σ₀ ≤ σ p) :
+    ∃ q ∈ Ms.firstTops X rep σ σ₀, rep q.2 = rep p.2 ∧
+      dyadicGridCell Gd p.1.1 p.1.2 ⊆ dyadicGridCell Gd q.1.1 q.1.2 := by
+  set Y := X.filter fun q => σ₀ ≤ σ q ∧ rep q.2 = rep p.2 ∧
+    dyadicGridCell Gd p.1.1 p.1.2 ⊆ dyadicGridCell Gd q.1.1 q.1.2
+  have hpY : p ∈ Y := Finset.mem_filter.mpr ⟨hp, hσ, rfl, subset_rfl⟩
+  obtain ⟨q, hqY, hmin⟩ := Y.exists_min_image (fun q => q.1.1) ⟨p, hpY⟩
+  obtain ⟨hqX, hσq, hrq, hpq⟩ := Finset.mem_filter.mp hqY
+  refine ⟨q, Finset.mem_filter.mpr ⟨hqX, hσq, fun q' hq'X hσq' hrq' hqq' => ?_⟩, hrq, hpq⟩
+  have hq'Y : q' ∈ Y := Finset.mem_filter.mpr ⟨hq'X, hσq', hrq'.trans hrq, hpq.trans hqq'⟩
+  have h1 := hmin q' hq'Y
+  have h2 : q'.1.1 ≤ q.1.1 := by
+    by_contra hlt
+    push Not at hlt
+    have := (dyadicGridLength_strictAnti Gd) hlt
+    have := dyadicGridLength_le_of_subset Gd hqq'
+    linarith
+  exact dyadicGridCell_eq_of_meet Gd (le_antisymm h2 h1)
+    ⟨_, hqq' (dyadicGridCell_left_mem Gd q.1.1 q.1.2), dyadicGridCell_left_mem Gd q.1.1 q.1.2⟩
+
+open Classical in
+/-- Blueprint line 2229: the distinct representatives of the instances of size at least `σ₀` used
+at a point `y` are at most the first tops containing `y`. -/
+theorem card_reps_le_firstTops (X : Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md)))
+    (rep : ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md) (σ : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ) (σ₀ : ℝ)
+    (y : ℝ) :
+    ((X.filter fun p => y ∈ dyadicGridCell Gd p.1.1 p.1.2 ∧ σ₀ ≤ σ p).image
+        (fun p => rep p.2)).card ≤
+      ((Ms.firstTops X rep σ σ₀).filter fun q => y ∈ dyadicGridCell Gd q.1.1 q.1.2).card := by
+  set A := (X.filter fun p => y ∈ dyadicGridCell Gd p.1.1 p.1.2 ∧ σ₀ ≤ σ p).image
+    (fun p => rep p.2)
+  have htop : ∀ a ∈ A, ∃ q ∈ (Ms.firstTops X rep σ σ₀).filter
+      (fun q => y ∈ dyadicGridCell Gd q.1.1 q.1.2), rep q.2 = a := by
+    intro a ha
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp ha
+    obtain ⟨hpX, hy, hσ⟩ := Finset.mem_filter.mp hp
+    obtain ⟨q, hq, hrq, hpq⟩ := Ms.exists_firstTop_above X rep σ σ₀ hpX hσ
+    exact ⟨q, Finset.mem_filter.mpr ⟨hq, hpq hy⟩, hrq⟩
+  choose! top htopm htopr using htop
+  exact reps_card_le_tops A _ top htopm fun a ha a' ha' he => by
+    rw [← htopr a ha, ← htopr a' ha', he]
+
+end ModeSystem
+
+open Classical in
+/-- Blueprint line 2229 ("there are polynomially many choices ... Markov's inequality and first
+crossings of their partial top counts give simultaneously `Σ_tops 1_I(y) ≤ P^C σ^{-2}` outside a
+small root fraction, after increasing the fixed power for their number"): for finitely many
+choices `ch` with tops of total length `Σ_t |I_t| ≤ M_ch |R|`, the first crossings of the partial
+top counts at the thresholds `M_ch N/ρ` (`N` choices) remove root length at most `ρ |R|`, and
+outside the removed cells every point lies in at most `M_ch N/ρ` tops of every choice. -/
+theorem tops_cut_many (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) {ι κ : Type*} (CH : Finset κ)
+    (T : κ → Finset ι) (cell : ι → ℤ × ℤ) (hT : ∀ ch ∈ CH, ∀ t ∈ T ch, cell t ∈ S)
+    (root : ℤ × ℤ) (hroot : ∀ c ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G root.1 root.2)
+    {M : κ → ℝ} {ρ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ < 1) (hCH : CH.Nonempty)
+    (hM : ∀ ch ∈ CH, ∑ t ∈ T ch, dyadicGridLength G (cell t).1 ≤
+      M ch * dyadicGridLength G root.1) :
+    ∃ Cut : Finset (ℤ × ℤ), dyadicRootLength G Cut ≤ ρ * dyadicGridLength G root.1 ∧
+      ∀ x : ℝ, (∀ d ∈ Cut, x ∉ dyadicGridCell G d.1 d.2) → ∀ ch ∈ CH,
+        (((T ch).filter fun t => x ∈ dyadicGridCell G (cell t).1 (cell t).2).card : ℝ) ≤
+          M ch * CH.card / ρ := by
+  have hN : (0 : ℝ) < CH.card := by exact_mod_cast hCH.card_pos
+  have hN1 : (1 : ℝ) ≤ CH.card := by exact_mod_cast hCH.card_pos
+  set ρ' := ρ / CH.card
+  have hρ' : 0 < ρ' := div_pos hρ hN
+  have hρ'1 : ρ' < 1 := lt_of_le_of_lt (div_le_self hρ.le hN1) hρ1
+  set a : κ → ℤ × ℤ → ℝ := fun ch I => (((T ch).filter fun t => cell t = I).card : ℝ)
+  have hcut := fun ch (hch : ch ∈ CH) =>
+    tops_count_cut G S (T ch) cell (hT ch hch) root hroot hρ' hρ'1 (hM ch hch)
+  refine ⟨CH.biUnion fun ch => dyadicFirstCrossings G S (a ch) (M ch / ρ'), ?_, ?_⟩
+  · -- the union of the first crossings
+    unfold dyadicRootLength
+    refine (sum_biUnion_le_of_nonneg _ _ (fun c : ℤ × ℤ => dyadicGridLength G c.1)
+      fun c => (dyadicGridLength_pos G c.1).le).trans ?_
+    calc ∑ ch ∈ CH, ∑ c ∈ dyadicFirstCrossings G S (a ch) (M ch / ρ'), dyadicGridLength G c.1
+        ≤ ∑ _ch ∈ CH, ρ' * dyadicGridLength G root.1 :=
+          Finset.sum_le_sum fun ch hch => (hcut ch hch).1
+      _ = ρ * dyadicGridLength G root.1 := by
+          rw [Finset.sum_const, nsmul_eq_mul]
+          simp only [ρ']
+          field_simp
+  · intro x hx ch hch
+    have hret : ∀ t ∈ T ch, x ∈ dyadicGridCell G (cell t).1 (cell t).2 →
+        cell t ∈ dyadicRetainedCells G S (a ch) (M ch / ρ') := by
+      intro t ht hxt
+      refine (dyadicRetainedCells_iff G S (a ch) (fun _ _ => Nat.cast_nonneg _) _ _).mpr
+        ⟨hT ch hch t ht, ?_⟩
+      rintro ⟨d, hd, hsub⟩
+      exact hx d (Finset.mem_biUnion.mpr ⟨ch, hch, hd⟩) (hsub hxt)
+    have heq : (T ch).filter (fun t => x ∈ dyadicGridCell G (cell t).1 (cell t).2) =
+        (T ch).filter (fun t => cell t ∈ dyadicRetainedCells G S (a ch) (M ch / ρ') ∧
+          x ∈ dyadicGridCell G (cell t).1 (cell t).2) := by
+      ext t
+      simp only [Finset.mem_filter]
+      constructor
+      · rintro ⟨ht, hxt⟩; exact ⟨ht, hret t ht hxt, hxt⟩
+      · rintro ⟨ht, -, hxt⟩; exact ⟨ht, hxt⟩
+    rw [heq]
+    refine ((hcut ch hch).2 x).trans (le_of_eq ?_)
+    simp only [ρ']
+    field_simp
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- Blueprint prop:tops, `eq:top-count` (lines 2212-2229), for given type classes of hereditary
+representatives: after first-crossing cuts of total root length at most `ρ |R|`, at every point `y`
+outside the cuts, for every height `h ∈ Hs`, type `τ ∈ Ts` and threshold `σ ∈ Thr`
+(`σ ≥ D_*^{-1}`), the distinct representatives `A_G` of the components used at `y` with size
+`σ_F ≥ σ` satisfy `Σ_G |A_G| ≤ min(D_*, M N / (ρ σ²))`, with `M = 24 (2 G₀ + 2 K V₀)` and `N` the
+number of choices (`V₀ |R|` bounds the linear-side energy `eq:linear-energy`). The first bound is
+the full mode budget along the path; the second comes from `tops_energy` for each choice and the
+first crossings of the partial top counts (`tops_cut_many`), each used representative having a
+retained first top above its use (`card_reps_le_firstTops`). -/
+theorem first_top_count (l : Fin 4) (s : List (CatCol bf.Vtx))
+    (hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
+      e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
+    (htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx) (mb : bf.MainBudget s)
+    (hne : A.cells.Nonempty) (hanc : A.AncClosed)
+    {ι : Type*} [Fintype ι] (grp : ι → bf.Grp) (hgrp : Function.Injective grp) (k : ℕ)
+    (hcol : ∀ G, (grp G).1 = k) (j : ℕ) (hPH : fp.bbase j + fp.P ≤ fp.Hmax)
+    (ls : List (ℕ × Bool)) (S : ModeSchedule) (hA : 6 ≤ S.A0) (SP : SideParams)
+    {n : ℕ} (Ms : ι → ModeSystem A.G n) (L : ∀ G, LiftData (bf.Lab ⊕ Fin fp.Mc) (Ms G).Md)
+    (Bs : Finset ℤ) (c : ∀ G, ℤ → ℤ × ℤ → (Ms G).Md → ℂ)
+    (hcrep : ∀ G, ∀ b ∈ Bs, ∀ J ∈ fp.retainedV (grp G) b S.K,
+      (Ms G).frozenEval S b J (c G b J) = columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+        (dyadicGridCell_measurable A.G J.1 J.2)
+        ((L G).op (fp.frozenZ l s mb (grp G) j ls (b - 4 * S.K))))
+    {Bc V₀ : ℝ}
+    (hcB : ∀ G, ∀ b ∈ Bs, ∀ J ∈ fp.retainedV (grp G) b S.K,
+      ∑ m ∈ (Ms G).alive (ancAt A.G J (b - 4 * S.K)), ‖c G b J m‖ ^ 2 ≤ Bc)
+    (hVE : ∑ G, ∑ b ∈ Bs, ‖(Ms G).blockSide S hA SP b (fp.retainedV (grp G) b S.K) (c G b)‖ ^ 2 ≤
+      V₀ * dyadicGridLength A.G A.R.1)
+    (Hs : Finset ℕ) (Ts : Finset (ℕ × ℕ)) (Thr : Finset ℝ) (hThr : ∀ σ ∈ Thr, S.Dstar⁻¹ ≤ σ)
+    (hCH : (Hs ×ˢ Ts ×ˢ Thr).Nonempty)
+    {Δ : ℕ} (R : ∀ (h : ℕ) (_ : ℕ × ℕ) G, (Ms G).RepClass S hA SP Δ h)
+    (X : ∀ (_ : ℕ) (_ : ℕ × ℕ) G, Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md)))
+    (hX : ∀ h τ G, (R h τ G).Inst (X h τ G))
+    (hXr : ∀ h τ G, ∀ p ∈ X h τ G, p.2.1 ∈ Bs ∧ p.2.2.1 ∈ fp.retainedV (grp G) p.2.1 S.K)
+    (hD : 2 ≤ S.Dstar) (hδ : ∀ G, 0 < (Ms G).δc) (hΛ : ∀ G, (Ms G).Λ ≤ S.Dstar)
+    (hQ0 : 0 < S.Q0) (Kf : ℕ) (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : ∀ G, gaugeSqNorm (Ms G).zc.dim (Ms G).δc ≤ S.Dstar)
+    (hKf : ∀ G, 2 * gaugeTail (Ms G).zc.dim (Ms G).δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ G m, S.Dstar⁻¹ ≤ (Ms G).L.εM m)
+    (halive : ∀ G (U : ℤ × ℤ), (((Ms G).alive U).card : ℝ) ≤ S.Dstar)
+    (hpath : ∀ y, (∑ G, ((Ms G).ptSet y).card : ℝ) ≤ S.Dstar)
+    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
+    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
+    (hHτ : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
+    {Nq : ℕ} (hNq : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
+      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
+          (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ Nq)
+    (hτN : τ * Nq * A.colBudget ^ 2 ≤ 1) (cc : ℕ) (hcc : 1 ≤ cc) {kq : ℝ} (hkq : 1 ≤ kq)
+    (hDmq : Real.log (2 * mb.B) ≤ kq ^ cc) (hDb : Real.log (2 * A.colBudget) ≤ kq ^ cc)
+    (hn : (ls.length : ℝ) ≤ cc * (Real.log kq + 1))
+    (hab : 6 * Bc / S.Dstar ^ 59 ≤ S.Dstar⁻¹ ^ 2) {ρ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ < 1) :
+    ∃ Cut : Finset (ℤ × ℤ), dyadicRootLength A.G Cut ≤ ρ * dyadicGridLength A.G A.R.1 ∧
+      ∀ y : ℝ, (∀ e ∈ Cut, y ∉ dyadicGridCell A.G e.1 e.2) → ∀ h ∈ Hs, ∀ t ∈ Ts, ∀ σ ∈ Thr,
+        (∑ G, (((X h t G).filter fun p => y ∈ dyadicGridCell A.G p.1.1 p.1.2 ∧
+            σ ^ 2 ≤ (Ms G).nodeSize S hA SP (c G) h p).image
+              (fun p => (R h t G).rep p.2)).card : ℝ) ≤
+          min S.Dstar (24 * (2 * Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+            (1 + Real.log (2 * kq)) ^ 2) + 2 * S.K * V₀) * (Hs ×ˢ Ts ×ˢ Thr).card /
+              (ρ * σ ^ 2)) := by
+  have hDp : 0 < S.Dstar := by linarith
+  have hR0 : 0 < dyadicGridLength A.G A.R.1 := dyadicGridLength_pos A.G A.R.1
+  set G0 := Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+    (1 + Real.log (2 * kq)) ^ 2) with hG0
+  set M := 24 * (2 * G0 + 2 * S.K * V₀) with hM
+  -- the tops of a choice, over all groups
+  set Tch : ℕ × (ℕ × ℕ) × ℝ → Finset (Σ G, (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md)) := fun ch =>
+    Finset.univ.sigma fun G => (Ms G).firstTops (X ch.1 ch.2.1 G) (R ch.1 ch.2.1 G).rep
+      ((Ms G).nodeSize S hA SP (c G) ch.1) (ch.2.2 ^ 2) with hTch
+  set cellOf : (Σ G, (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md)) → ℤ × ℤ := fun t => t.2.1 with hcellOf
+  set Sc := (Hs ×ˢ Ts ×ˢ Thr).biUnion fun ch => (Tch ch).image cellOf with hSc
+  -- the mass of the tops of each choice
+  have hpt : ∀ G y, (((Ms G).ptSet y).card : ℝ) ≤ S.Dstar := fun G y =>
+    (Finset.single_le_sum (f := fun G => (((Ms G).ptSet y).card : ℝ))
+      (fun _ _ => Nat.cast_nonneg _) (Finset.mem_univ G)).trans (hpath y)
+  have hmass : ∀ ch ∈ Hs ×ˢ Ts ×ˢ Thr, ∑ t ∈ Tch ch, dyadicGridLength A.G (cellOf t).1 ≤
+      M / ch.2.2 ^ 2 * dyadicGridLength A.G A.R.1 := by
+    intro ch hch
+    have hσ : ch.2.2 ∈ Thr := (Finset.mem_product.mp (Finset.mem_product.mp hch).2).2
+    have hσpos : 0 < ch.2.2 := lt_of_lt_of_le (inv_pos.mpr hDp) (hThr _ hσ)
+    have hab' : 6 * Bc / S.Dstar ^ 59 ≤ ch.2.2 ^ 2 :=
+      hab.trans (pow_le_pow_left₀ (inv_pos.mpr hDp).le (hThr _ hσ) 2)
+    have hE := fp.tops_energy l s hT htag d mb hne hanc grp hgrp k hcol j hPH ls S hA SP Ms L Bs c
+      hcrep hcB hVE (R := R ch.1 ch.2.1) (X ch.1 ch.2.1) (hX ch.1 ch.2.1) (hXr ch.1 ch.2.1) hD hδ
+      hΛ hQ0 Kf hbox hDg hKf hεw halive hpt hroot hτ hτ1 hHτ hNq hτN cc hcc hkq hDmq hDb hn hab'
+    have hsum : ∑ t ∈ Tch ch, dyadicGridLength A.G (cellOf t).1 =
+        ∑ G, ∑ p ∈ (Ms G).firstTops (X ch.1 ch.2.1 G) (R ch.1 ch.2.1 G).rep
+          ((Ms G).nodeSize S hA SP (c G) ch.1) (ch.2.2 ^ 2), dyadicGridLength A.G p.1.1 := by
+      simp only [hTch, hcellOf]
+      rw [Finset.sum_sigma]
+    rw [hsum, div_mul_eq_mul_div, le_div_iff₀ (by positivity), mul_comm]
+    refine hE.trans (le_of_eq ?_)
+    simp only [hM, hG0]
+    ring
+  -- all top cells lie in the root
+  have hrootR : ∀ e ∈ Sc, dyadicGridCell A.G e.1 e.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2 := by
+    intro e he
+    obtain ⟨ch, -, het⟩ := Finset.mem_biUnion.mp he
+    obtain ⟨t, ht, rfl⟩ := Finset.mem_image.mp het
+    obtain ⟨G, p⟩ := t
+    have hp := (Finset.mem_sigma.mp ht).2
+    have hpX := (Finset.mem_filter.mp hp).1
+    obtain ⟨-, hIJ, -, -⟩ := hX _ _ G p hpX
+    obtain ⟨-, hJr⟩ := hXr _ _ G p hpX
+    exact hIJ.trans ((dyadicFiniteTree_mem_iff A.G A.R _ _).mp ((fp.mem_retainedV).mp hJr).1).1
+  obtain ⟨Cut, hcost, hcount⟩ := tops_cut_many A.G Sc (Hs ×ˢ Ts ×ˢ Thr) Tch cellOf
+    (fun ch hch t ht => Finset.mem_biUnion.mpr ⟨ch, hch, Finset.mem_image_of_mem _ ht⟩) A.R
+    hrootR hρ hρ1 hCH hmass
+  refine ⟨Cut, hcost, fun y hy h hh t ht σ hσ => le_min ?_ ?_⟩
+  · -- the full mode budget along the path
+    refine le_trans ?_ (hpath y)
+    refine Finset.sum_le_sum fun G _ => Nat.cast_le.mpr (Finset.card_le_card fun a ha => ?_)
+    obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp ha
+    obtain ⟨hpX, hy', -⟩ := Finset.mem_filter.mp hp
+    obtain ⟨hcN, hIJ, -, -⟩ := hX h t G p hpX
+    have hal := (Ms G).mem_alive_of_mem_predOfMode S hA Δ h ((R h t G).halive _ hcN)
+      ((R h t G).hrep p.2)
+    have hJU := subset_ancAt A.G p.2.2.1 (show p.2.1 - 4 * S.K ≤ p.2.2.1.1 by
+      rw [(R h t G).hNd _ hcN]; have := (Nat.cast_nonneg S.K : (0 : ℤ) ≤ S.K); omega)
+    exact ((Ms G).mem_ptSet).mpr ((Ms G).mem_alive.mp hal (hJU (hIJ hy')))
+  · -- the retained first tops
+    have hch : (h, t, σ) ∈ Hs ×ˢ Ts ×ˢ Thr :=
+      Finset.mem_product.mpr ⟨hh, Finset.mem_product.mpr ⟨ht, hσ⟩⟩
+    have hσpos : 0 < σ := lt_of_lt_of_le (inv_pos.mpr hDp) (hThr _ hσ)
+    have hc := hcount y hy (h, t, σ) hch
+    have hsig : (((Tch (h, t, σ)).filter fun t' =>
+        y ∈ dyadicGridCell A.G (cellOf t').1 (cellOf t').2).card : ℝ) =
+        ∑ G, ((((Ms G).firstTops (X h t G) (R h t G).rep ((Ms G).nodeSize S hA SP (c G) h)
+          (σ ^ 2)).filter fun q => y ∈ dyadicGridCell A.G q.1.1 q.1.2).card : ℝ) := by
+      simp only [hTch, hcellOf, Finset.card_filter]
+      rw [Finset.sum_sigma]
+      push_cast
+      refine Finset.sum_congr rfl fun G _ => Finset.sum_congr rfl fun q _ => ?_
+      split_ifs <;> rfl
+    rw [hsig] at hc
+    refine le_trans (Finset.sum_le_sum fun G _ => Nat.cast_le.mpr
+      ((Ms G).card_reps_le_firstTops (X h t G) (R h t G).rep
+        ((Ms G).nodeSize S hA SP (c G) h) (σ ^ 2) y)) ?_
+    refine hc.trans (le_of_eq ?_)
+    field_simp
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0)
+
+open Classical in
+/-- The empty representative class (no nodes; every mode represents itself). -/
+def RepClass.trivial (SP : SideParams) (Δ h : ℕ) : Ms.RepClass S hA SP Δ h where
+  Nd := ∅
+  hNd := fun _ hc => absurd hc (Finset.notMem_empty _)
+  halive := fun _ hc => absurd hc (Finset.notMem_empty _)
+  hgood := fun _ hc => absurd hc (Finset.notMem_empty _)
+  hstab := fun _ hc => absurd hc (Finset.notMem_empty _)
+  k1 := 0
+  htype1 := fun _ hc => absurd hc (Finset.notMem_empty _)
+  hdist := fun _ hc => absurd hc (Finset.notMem_empty _)
+  rep := fun c => c.2.2
+  hrep := fun c => by
+    by_cases hm : c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))
+    · rw [Ms.predOfMode_eq S hA Δ h hm]
+      exact Finset.mem_map.mpr ⟨⟨c.2.2, hm⟩, ModeComponents.E_self _ _ _, rfl⟩
+    · unfold predOfMode
+      rw [dite_eq_right_of_eq_false (eq_false hm)]
+      exact Finset.mem_singleton_self _
+  hinh := fun _ _ hcc => absurd hcc.1 (Finset.notMem_empty _)
+  hsp := fun _ hc => absurd hc (Finset.notMem_empty _)
+
+open Classical in
+/-- Blueprint lines 2172-2185 at the schedule, for one height `h ≤ J_*` and one type `(k₁, k₂)`:
+nodes `(b, J, m)` (one good mode per successful CURRENT component of a pre-cell of depth `v_b`,
+nodes on one pre-cell lying in different components) of this type, with their hereditary
+representatives (`typed_representatives_sched`), form a `RepClass` (`Δ = 10`, the side parameters
+of the schedule). The blocks are `K`-spaced (`K ∣ b - R₀`), at most `D_*` modes are alive at each
+decision cell and `D_*` covers the heights of mode differences. -/
+theorem exists_repClass {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : S.Valid Cj CA CT CK δs W)
+    (hCA : 5 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar)
+    (hQ : 1 ≤ S.Q0) (hdim : ∀ p, Ms.dvOf p + Ms.zc.dim ≤ S.dmax)
+    (hBσ : 2 * (S.Q0 * (3 * (Ms.Bσ * Ms.Bσ) ^ 2)) ^ 2 ≤ (⌊S.Dstar⌋₊ : ℝ))
+    (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md)) (hNd : ∀ c ∈ Nd, c.2.1.1 = c.1 - 2 * S.K)
+    (halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
+    {h : ℕ} (hJh : h ≤ S.Jstar)
+    (hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good 10
+      (Ms.goodP S (S.sideParams δs) c.1) h ⟨c.2.2, halive c hc⟩)
+    (hdist : ∀ c (hc : c ∈ Nd) c' (hc' : c' ∈ Nd) (h1 : c.1 = c'.1) (h2 : c.2.1 = c'.2.1),
+      c ≠ c' → (⟨c'.2.2, by rw [h1, h2]; exact halive c' hc'⟩ :
+        Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) ∉
+        (Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, halive c hc⟩)
+    (R₀ : ℤ) (hblk : ∀ c ∈ Nd, (S.K : ℤ) ∣ c.1 - R₀)
+    (hcard : ∀ c ∈ Nd, ((Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))).card : ℝ) ≤ S.Dstar)
+    (k1 k2 : ℕ) :
+    ∃ R : Ms.RepClass S hA (S.sideParams δs) 10 h, R.Nd = Nd.filter
+      (fun c => Ms.nodeType1 S hA 10 h c = k1 ∧ Ms.nodeType2 S hA 10 h c = k2) := by
+  have hK : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  by_cases hNd0 : Nd.Nonempty
+  swap
+  · refine ⟨RepClass.trivial Ms S hA (S.sideParams δs) 10 h, ?_⟩
+    rw [Finset.not_nonempty_iff_eq_empty.mp hNd0, Finset.filter_empty]
+    rfl
+  obtain ⟨Bmin, hBmin⟩ : ∃ Bmin : ℤ, ∀ c ∈ Nd, Bmin ≤ c.1 := by
+    obtain ⟨B, hB'⟩ := (Nd.image Prod.fst).bddBelow
+    exact ⟨B, fun c hc => hB' (Finset.mem_coe.mpr (Finset.mem_image_of_mem _ hc))⟩
+  obtain ⟨rep, hrep⟩ := Ms.typed_representatives_sched S hA hV hCA hCT hd2 hD hB hQ hdim hBσ Nd
+    hNd hBmin hcard hJh halive hgood hdist hNd0.choose.2.2
+  obtain ⟨hmem, hinh, -, -⟩ := hrep k1 k2
+  set Nk := Nd.filter fun c => Ms.nodeType1 S hA 10 h c = k1 ∧ Ms.nodeType2 S hA 10 h c = k2
+  have hsub : ∀ c ∈ Nk, c ∈ Nd := fun c hc => (Finset.mem_filter.mp hc).1
+  refine ⟨{ Nd := Nk
+            hNd := fun c hc => hNd c (hsub c hc)
+            halive := fun c hc => halive c (hsub c hc)
+            hgood := fun c hc => hgood c (hsub c hc)
+            hstab := fun c hc z z' hg hπ hF => Ms.blockComps_stab S hV hCA hCT hd2 hD hB hQ hA
+              hdim hBσ (hNd c (hsub c hc)) (hcard c (hsub c hc)) hJh z z' hg hπ hF
+            k1 := k1
+            htype1 := fun c hc => by
+              have h1 := (Finset.mem_filter.mp hc).2.1
+              unfold nodeType1 at h1
+              rwa [dite_eq_left_of_eq_true (eq_true (halive c (hsub c hc)))] at h1
+            hdist := fun c hc c' hc' h1 h2 hne => hdist c (hsub c hc) c' (hsub c' hc') h1 h2 hne
+            rep := rep k1 k2
+            hrep := hmem
+            hinh := hinh
+            hsp := fun c hc c' hc' hne => ?_ }, rfl⟩
+  -- the blocks are `K`-spaced
+  obtain ⟨q, hq⟩ := Int.dvd_sub (hblk c (hsub c hc)) (hblk c' (hsub c' hc'))
+  have hq' : c.1 - c'.1 = S.K * q := by rw [← hq]; ring
+  have hq0 : q ≠ 0 := by
+    rintro rfl
+    exact hne (by linarith [hq'])
+  rcases lt_or_gt_of_ne hq0 with hlt | hgt
+  · left
+    have : q ≤ -1 := by omega
+    have : (S.K : ℤ) * q ≤ S.K * (-1) := mul_le_mul_of_nonneg_left this hK
+    linarith
+  · right
+    have : 1 ≤ q := by omega
+    have : (S.K : ℤ) * 1 ≤ S.K * q := mul_le_mul_of_nonneg_left this hK
+    linarith
+
+end ModeSystem
+
+end Auto
+
+end
+
+section
+
+namespace Auto
+open MeasureTheory Metric
+open scoped FourierTransform ComplexConjugate ENNReal
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0) (SP : SideParams)
+
+open Classical in
+/-- Blueprint line 2229 ("projection contraction and `eq:size-comparison` give the component
+bound"): at an actual cell `I` of length at least `r_{t_b}` inside a pre-cell `J` of the block,
+`σ_F² ≤ 12 (‖Z̃‖²_{2,I} + 2 ‖V_{l,G,b}‖²_{2,I}) + 3 B_c D_*^{-59}`; with the sizes `‖Z̃‖_{2,I}`,
+`‖V‖_{2,I}` at most `P^C` on uses (line 2164 and the side caps) the component sizes are at most
+`P^C`. -/
+theorem compSize_le {b : ℤ} {cells : Finset (ℤ × ℤ)} (hdepth : ∀ J ∈ cells, J.1 = b - 2 * S.K)
+    (c : ℤ × ℤ → Ms.Md → ℂ) {J I : ℤ × ℤ} (hJ : J ∈ cells)
+    (hIJ : dyadicGridCell Gd I.1 I.2 ⊆ dyadicGridCell Gd J.1 J.2) (hIt : I.1 ≤ b + S.K)
+    (hD : 2 ≤ S.Dstar) (hδ : 0 < Ms.δc) (hΛ : Ms.Λ ≤ S.Dstar) (hQ0 : 0 < S.Q0) (Kf : ℕ)
+    (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0)
+    (hDg : gaugeSqNorm Ms.zc.dim Ms.δc ≤ S.Dstar)
+    (hKf : 2 * gaugeTail Ms.zc.dim Ms.δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hεw : ∀ m, S.Dstar⁻¹ ≤ Ms.L.εM m)
+    (halive : ((Ms.alive (ancAt Gd J (b - 4 * S.K))).card : ℝ) ≤ S.Dstar) {Bc : ℝ}
+    (hc : ∑ m ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)), ‖c J m‖ ^ 2 ≤ Bc) (h : ℕ)
+    (x : Ms.alive (ancAt Gd J (b - 4 * S.K))) :
+    Ms.compSizeSq S hA SP I b J h x (c J) ≤
+      12 * ((‖columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+          (Ms.frozenEval S b J (c J))‖ ^ 2 +
+        2 * ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
+          (Ms.blockSide S hA SP b cells c)‖ ^ 2) / dyadicGridLength Gd I.1) +
+        3 * Bc / S.Dstar ^ 59 := by
+  have hr := dyadicGridLength_pos Gd I.1
+  have : (Submodule.span ℂ ((Ms.cellMode I) ''
+      (Ms.compModes S hA b J h x : Set Ms.Md))).HasOrthogonalProjection := by
+    have : FiniteDimensional ℂ (Submodule.span ℂ ((Ms.cellMode I) ''
+        (Ms.compModes S hA b J h x : Set Ms.Md))) :=
+      FiniteDimensional.span_of_finite ℂ ((Ms.compModes S hA b J h x).finite_toSet.image _)
+    infer_instance
+  have hs := Ms.size_comparison S hA SP (hdepth J hJ) hIJ hIt hD hδ hΛ hQ0 Kf hbox hDg hKf hεw
+    halive (c J) hc h x
+  refine hs.trans (add_le_add (mul_le_mul_of_nonneg_left
+    (div_le_div_of_nonneg_right (add_le_add ?_ ?_) hr.le) (by norm_num : (0 : ℝ) ≤ 12)) le_rfl)
+  · -- projection contraction
+    rw [← Ms.eventProj_restrict I (Ms.compModes S hA b J h x)
+      (dyadicGridCell_measurable Gd I.1 I.2) le_rfl]
+    exact pow_le_pow_left₀ (norm_nonneg _) (Submodule.norm_starProjection_apply_le _ _) 2
+  · -- one component of the side subtotal
+    have hF : ({Ms.compModes S hA b J h x} : Finset (Finset Ms.Md)) ⊆ Ms.curComps S hA b J h := by
+      intro F hF
+      rw [Finset.mem_singleton.mp hF]
+      exact Finset.mem_image_of_mem _ (Finset.mem_univ x)
+    have := Ms.side_comparison_block S hA SP hdepth c hJ hIJ hIt hD hδ hΛ hQ0 Kf hbox hDg hKf hεw
+      halive h hF
+    rwa [Finset.sum_singleton] at this
+
+end ModeSystem
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0)
+
+/-- A fixed enumeration of the modes. -/
+noncomputable def modeIdx (m : Ms.Md) : ℕ := (Fintype.equivFin Ms.Md m : ℕ)
+
+theorem modeIdx_injective : Function.Injective Ms.modeIdx := fun _ _ h =>
+  (Fintype.equivFin Ms.Md).injective (Fin.ext h)
+
+open Classical in
+/-- Blueprint lines 2172-2174 (successful components and their good modes): the modes alive at the
+decision cell of the pre-cell `J` of the block `b` that are good at height `h`, lie in a CURRENT
+component containing a core mode good at `h` (a successful component), and have the least index
+among the good modes of their component: one good mode for each successful component. -/
+noncomputable def succModes (SP : SideParams) (b : ℤ) (J : ℤ × ℤ) (h : ℕ) :
+    Finset (Ms.alive (ancAt Gd J (b - 4 * S.K))) :=
+  Finset.univ.filter fun x => (Ms.blockComps S hA b J).Good SP.Δ (Ms.goodP S SP b) h x ∧
+    (∃ y ∈ (Ms.blockComps S hA b J).F h x,
+      (Ms.blockComps S hA b J).Core SP.Δ (Ms.goodP S SP b) SP.Jst SP.δs y ∧
+        (Ms.blockComps S hA b J).Good SP.Δ (Ms.goodP S SP b) h y) ∧
+    ∀ y ∈ (Ms.blockComps S hA b J).F h x,
+      (Ms.blockComps S hA b J).Good SP.Δ (Ms.goodP S SP b) h y → Ms.modeIdx x.1 ≤ Ms.modeIdx y.1
+
+open Classical in
+/-- The nodes `(b, J, m)` of the successful components over a set `P` of pairs (block, pre-cell). -/
+noncomputable def succNodes (SP : SideParams) (P : Finset (ℤ × (ℤ × ℤ))) (h : ℕ) :
+    Finset (ℤ × (ℤ × ℤ) × Ms.Md) :=
+  P.biUnion fun bJ => (Ms.succModes S hA SP bJ.1 bJ.2 h).image fun x => (bJ.1, bJ.2, x.1)
+
+theorem mem_succNodes {SP : SideParams} {P : Finset (ℤ × (ℤ × ℤ))} {h : ℕ}
+    {c : ℤ × (ℤ × ℤ) × Ms.Md} :
+    c ∈ Ms.succNodes S hA SP P h ↔
+      ∃ bJ ∈ P, ∃ x ∈ Ms.succModes S hA SP bJ.1 bJ.2 h, c = (bJ.1, bJ.2, x.1) := by
+  classical
+  unfold succNodes
+  simp only [Finset.mem_biUnion, Finset.mem_image]
+  exact exists_congr fun bJ => and_congr_right fun _ =>
+    exists_congr fun x => and_congr_right fun _ => eq_comm
+
+open Classical in
+/-- Every successful component (one containing a core mode `y` good at `h`) has its node. -/
+theorem exists_succMode (SP : SideParams) (b : ℤ) (J : ℤ × ℤ) (h : ℕ)
+    {y : Ms.alive (ancAt Gd J (b - 4 * S.K))}
+    (hcore : (Ms.blockComps S hA b J).Core SP.Δ (Ms.goodP S SP b) SP.Jst SP.δs y)
+    (hgood : (Ms.blockComps S hA b J).Good SP.Δ (Ms.goodP S SP b) h y) :
+    ∃ x ∈ Ms.succModes S hA SP b J h,
+      (Ms.blockComps S hA b J).F h x = (Ms.blockComps S hA b J).F h y := by
+  set C := Ms.blockComps S hA b J
+  set T := (C.F h y).filter fun z => C.Good SP.Δ (Ms.goodP S SP b) h z
+  have hyT : y ∈ T := Finset.mem_filter.mpr ⟨C.E_le_F _ _ (C.E_self _ _), hgood⟩
+  obtain ⟨x, hxT, hmin⟩ := T.exists_min_image (fun z => Ms.modeIdx z.1) ⟨y, hyT⟩
+  obtain ⟨hxF, hxg⟩ := Finset.mem_filter.mp hxT
+  have hFx : C.F h x = C.F h y := C.F_comp h y x hxF
+  refine ⟨x, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hxg, ⟨y, ?_, hcore, hgood⟩,
+    fun z hz hzg => hmin z (Finset.mem_filter.mpr ⟨by rwa [← hFx], hzg⟩)⟩, hFx⟩
+  rw [hFx]; exact C.E_le_F _ _ (C.E_self _ _)
+
+open Classical in
+/-- The successful nodes are alive, of depth `v_b`, good, and distinct nodes on one pre-cell lie in
+different CURRENT components (the node hypotheses of `exists_repClass`). -/
+theorem succNodes_props (SP : SideParams) (P : Finset (ℤ × (ℤ × ℤ)))
+    (hP : ∀ bJ ∈ P, bJ.2.1 = bJ.1 - 2 * S.K) (h : ℕ) :
+    ∃ halive : ∀ c ∈ Ms.succNodes S hA SP P h,
+        c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)),
+      (∀ c ∈ Ms.succNodes S hA SP P h, c.2.1.1 = c.1 - 2 * S.K) ∧
+      (∀ c (hc : c ∈ Ms.succNodes S hA SP P h),
+        (Ms.blockComps S hA c.1 c.2.1).Good SP.Δ (Ms.goodP S SP c.1) h ⟨c.2.2, halive c hc⟩) ∧
+      (∀ c (hc : c ∈ Ms.succNodes S hA SP P h) c' (hc' : c' ∈ Ms.succNodes S hA SP P h)
+        (h1 : c.1 = c'.1) (h2 : c.2.1 = c'.2.1), c ≠ c' →
+        (⟨c'.2.2, by rw [h1, h2]; exact halive c' hc'⟩ :
+          Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) ∉
+          (Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, halive c hc⟩) := by
+  have halive : ∀ c ∈ Ms.succNodes S hA SP P h,
+      c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)) := by
+    intro c hc
+    obtain ⟨bJ, -, x, -, rfl⟩ := (Ms.mem_succNodes S hA).mp hc
+    exact x.2
+  refine ⟨halive, ?_, ?_, ?_⟩
+  · intro c hc
+    obtain ⟨bJ, hbJ, x, -, rfl⟩ := (Ms.mem_succNodes S hA).mp hc
+    exact hP bJ hbJ
+  · intro c hc
+    obtain ⟨bJ, -, x, hx, rfl⟩ := (Ms.mem_succNodes S hA).mp hc
+    exact (Finset.mem_filter.mp hx).2.1
+  · intro c hc c' hc' h1 h2 hne
+    obtain ⟨bJ, -, x, hx, rfl⟩ := (Ms.mem_succNodes S hA).mp hc
+    obtain ⟨bJ', -, x', hx', rfl⟩ := (Ms.mem_succNodes S hA).mp hc'
+    obtain ⟨b, J⟩ := bJ
+    obtain ⟨b', J'⟩ := bJ'
+    simp only at h1 h2 x hx x' hx' hne ⊢
+    subst h1 h2
+    intro hmem
+    have hmem' : x' ∈ (Ms.blockComps S hA b J).F h x := hmem
+    obtain ⟨-, hxg, -, hxmin⟩ := Finset.mem_filter.mp hx
+    obtain ⟨-, hx'g, -, hx'min⟩ := Finset.mem_filter.mp hx'
+    have hF := (Ms.blockComps S hA b J).F_comp h x x' hmem'
+    have i1 := hxmin x' hmem' hx'g
+    have i2 := hx'min x (by
+      rw [hF]; exact (Ms.blockComps S hA b J).E_le_F _ _ ((Ms.blockComps S hA b J).E_self _ _)) hxg
+    have he : x.1 = x'.1 := Ms.modeIdx_injective (le_antisymm i1 i2)
+    exact hne (by rw [he])
+
+end ModeSystem
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
+  (fp : bf.FamParams)
+
+open Classical in
+/-- The used instances of a group (blueprint line 2214, "used representatives"): an actual-use cell
+`I` of the group inside the pre-cell of a node `(b, J, m)`, at a depth of its block `[b, b + K)`. -/
+noncomputable def useInst (G : bf.Grp) (K : ℕ) {Md : Type} (Nd : Finset (ℤ × (ℤ × ℤ) × Md)) :
+    Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Md)) :=
+  (A.cells ×ˢ Nd).filter fun p => fp.ActualUse G p.1 ∧
+    dyadicGridCell A.G p.1.1 p.1.2 ⊆ dyadicGridCell A.G p.2.2.1.1 p.2.2.1.2 ∧
+    p.2.1 ≤ p.1.1 ∧ p.1.1 < p.2.1 + K
+
+open Classical in
+/-- The retained pairs `(b, J)` of a group: blocks `b ∈ Bs` and retained `v_b`-cells `J`. -/
+noncomputable def retainedPairs (G : bf.Grp) (Bs : Finset ℤ) (K : ℕ) : Finset (ℤ × (ℤ × ℤ)) :=
+  Bs.biUnion fun b => (fp.retainedV G b K).image fun J => (b, J)
+
+theorem mem_retainedPairs {G : bf.Grp} {Bs : Finset ℤ} {K : ℕ} {bJ : ℤ × (ℤ × ℤ)} :
+    bJ ∈ fp.retainedPairs G Bs K ↔ bJ.1 ∈ Bs ∧ bJ.2 ∈ fp.retainedV G bJ.1 K := by
+  classical
+  unfold retainedPairs
+  simp only [Finset.mem_biUnion, Finset.mem_image]
+  constructor
+  · rintro ⟨b, hb, J, hJ, rfl⟩; exact ⟨hb, hJ⟩
+  · rintro ⟨hb, hJ⟩; exact ⟨bJ.1, hb, bJ.2, hJ, rfl⟩
+
+open Classical in
+/-- Blueprint line 2229 ("the full mode budget proves the first [bound]; for `σ < D_*^{-1}` the full
+budget already implies the minimum"): at every point and for every threshold, the distinct
+representatives used at `y` over all groups number at most `D_*`, since they are modes alive at
+`y` and at most `D_*` modes are alive along a path across groups. -/
+theorem usedReps_le_Dstar {ι : Type*} [Fintype ι] {n : ℕ} (Ms : ι → ModeSystem A.G n)
+    (S : ModeSchedule) (hA : 6 ≤ S.A0) (SP : SideParams) {Δ h : ℕ}
+    (R : ∀ G, (Ms G).RepClass S hA SP Δ h)
+    (X : ∀ G, Finset ((ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md))) (hX : ∀ G, (R G).Inst (X G))
+    (hpath : ∀ y, (∑ G, ((Ms G).ptSet y).card : ℝ) ≤ S.Dstar)
+    (sz : ∀ G, (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md) → ℝ) (σ y : ℝ) :
+    (∑ G, (((X G).filter fun p => y ∈ dyadicGridCell A.G p.1.1 p.1.2 ∧ σ ^ 2 ≤ sz G p).image
+        (fun p => (R G).rep p.2)).card : ℝ) ≤ S.Dstar := by
+  refine le_trans ?_ (hpath y)
+  refine Finset.sum_le_sum fun G _ => Nat.cast_le.mpr (Finset.card_le_card fun a ha => ?_)
+  obtain ⟨p, hp, rfl⟩ := Finset.mem_image.mp ha
+  obtain ⟨hpX, hy', -⟩ := Finset.mem_filter.mp hp
+  obtain ⟨hcN, hIJ, -, -⟩ := hX G p hpX
+  have hal := (Ms G).mem_alive_of_mem_predOfMode S hA Δ h ((R G).halive _ hcN) ((R G).hrep p.2)
+  have hJU := subset_ancAt A.G p.2.2.1 (show p.2.1 - 4 * S.K ≤ p.2.2.1.1 by
+    rw [(R G).hNd _ hcN]; have := (Nat.cast_nonneg S.K : (0 : ℤ) ≤ S.K); omega)
+  exact ((Ms G).mem_ptSet).mpr ((Ms G).mem_alive.mp hal (hJU (hIJ hy')))
+
+open Classical in
+/-- **Blueprint prop:tops (`eq:top-count`, lines 2212-2229)** for one basic role `l`, color `k` and
+ball level `j`, with the hypotheses of `eq:linear-energy` (`linear_energy`): there are frozen
+coefficients `c` of `Z̃_{l,G,b}` on the retained pre-cells (with the linear-side energy bound), and
+for every height `h ≤ J_*` and type `τ` the hereditary representatives of the successful components
+(`RepClass` on the successful nodes `succNodes` of the retained pre-cells, of type `τ`), such that
+after first-crossing cuts of total root length at most `ρ |R|`, at every point `y` outside the cuts,
+for every height `h ≤ J_*`, type `τ ∈ Ts` and threshold `σ ∈ Thr` (`σ ≥ D_*^{-1}`), the distinct
+representatives `A_G` of the successful components used at actual-use cells of `G` containing `y`
+with size `σ_F ≥ σ` satisfy `Σ_G |A_G| ≤ min(D_*, M N / (ρ σ²))`, where
+`M = 24 (2 G₀ + 2 K V₀)` (`V₀ |R|` the linear-side energy bound) and `N` is the number of choices
+of height, type and threshold. The schedule hypotheses are those of `linear_energy` and of
+`typed_representatives_sched`, and `D_*` covers the normalization constant (`24 C_F ≤ D_*^{55}`). -/
+theorem first_top_count_main (l : Fin 4) (s : List (CatCol bf.Vtx))
+    (hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
+      e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
+    (htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx) (mb : bf.MainBudget s)
+    (hne : A.cells.Nonempty) (hanc : A.AncClosed)
+    {ι : Type*} [Fintype ι] (grp : ι → bf.Grp) (hgrp : Function.Injective grp) (k : ℕ)
+    (hcol : ∀ G, (grp G).1 = k) {j : ℕ} (hj : j ≤ 4) (hPH : fp.bbase j + fp.P ≤ fp.Hmax)
+    (ls : List (ℕ × Bool))
+    (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : S.Valid Cj CA CT CK δs W)
+    (hA : 6 ≤ S.A0) (hCj : 340 ≤ Cj) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT) (hδs : 0 < δs)
+    (hδ1 : δs ≤ 1) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) (hDm : 2 ≤ S.Dm)
+    (hW : 8 * ((S.dmax : ℝ) + 1) ^ 3 * Real.log (2 * S.H) / Real.log 2 ≤ W)
+    (D dB : ℕ) {H δc N kk : ℝ} (hHed : 2 ≤ fp.Hed) (hH : 1 ≤ H) (hδc : 0 < δc) (hN0 : 0 ≤ N)
+    (hNl : ∀ I ∈ A.cells,
+      ((mainLabels A.G fp.Mc (bf.origCols l) s I (fp.brank j)).card : ℝ) ≤ N)
+    {n : ℕ} (Ms : ι → ModeSystem A.G n) (L : ∀ G, LiftData (bf.Lab ⊕ Fin fp.Mc) (Ms G).Md)
+    (gs : ι → ℤ)
+    (hex : ∀ G, fp.MainLiftExports l s (grp G) j d D dB H (gs G) (L G) (Ms G).wave (Ms G).cellOf)
+    (hεM : ∀ G m, (L G).εM m = (Ms G).L.εM m)
+    (hdim : ∀ G p, (Ms G).dvOf p + (Ms G).zc.dim ≤ S.dmax) {M : ℕ} (hM1 : 1 ≤ M)
+    (hMD : (M : ℝ) ≤ 2 * S.Dm)
+    (hM : ∀ G (U : ℤ × ℤ), (((Ms G).alive U).image (Ms G).keyOf).card ≤ M)
+    (hδ : ∀ G, 0 < (Ms G).δc) (hΛ : ∀ G, (Ms G).Λ ≤ S.Dstar) (Kf : ℕ)
+    (hDg : ∀ G, gaugeSqNorm (Ms G).zc.dim (Ms G).δc ≤ S.Dstar)
+    (hKf : ∀ G, 2 * gaugeTail (Ms G).zc.dim (Ms G).δc / 2 ^ Kf * S.Dstar ^ 300 ≤ 1)
+    (hBox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Bstar) (hεw : ∀ G m, S.Dstar⁻¹ ≤ (Ms G).L.εM m)
+    (halive : ∀ G (U : ℤ × ℤ), (((Ms G).alive U).card : ℝ) ≤ S.Dstar)
+    (hpath : ∀ y, (∑ G, ((Ms G).ptSet y).card : ℝ) ≤ S.Dstar)
+    (hBσ : ∀ G, 2 * (S.Q0 * (3 * ((Ms G).Bσ * (Ms G).Bσ) ^ 2)) ^ 2 ≤ (⌊S.Dstar⌋₊ : ℝ))
+    (hstar : fp.modeStar D dB H δc N kk ≤ S.Dstar)
+    {CF : ℝ} (hCF : 0 ≤ CF) (hCFD : 24 * CF ≤ S.Dstar ^ 55)
+    (hnorm : ∀ jb : Fin 2, ∀ U ∈ A.cells, ‖columnL2Restriction (dyadicGridCell A.G U.1 U.2)
+      (dyadicGridCell_measurable A.G U.1 U.2) (bf.P l jb).Z‖ ^ 2 ≤ CF * dyadicGridLength A.G U.1)
+    (R₀ : ℤ) (Bs : Finset ℤ) (hgrid : ∀ b ∈ Bs, (S.K : ℤ) ∣ b - R₀)
+    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
+    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
+    (hHτ : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
+    {Nq : ℕ} (hNq : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
+      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
+          (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ Nq)
+    (hτN : τ * Nq * A.colBudget ^ 2 ≤ 1) (cc : ℕ) (hcc : 1 ≤ cc) {kq : ℝ} (hkq : 1 ≤ kq)
+    (hDmq : Real.log (2 * mb.B) ≤ kq ^ cc) (hDb : Real.log (2 * A.colBudget) ≤ kq ^ cc)
+    (hn : (ls.length : ℝ) ≤ cc * (Real.log kq + 1))
+    (Ts : Finset (ℕ × ℕ)) (Thr : Finset ℝ) (hThr : ∀ σ ∈ Thr, S.Dstar⁻¹ ≤ σ)
+    (hTs : Ts.Nonempty) (hThr0 : Thr.Nonempty) {ρ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ < 1) :
+    ∃ c : ∀ G, ℤ → ℤ × ℤ → (Ms G).Md → ℂ,
+      (∀ G, ∀ b ∈ Bs, ∀ J ∈ fp.retainedV (grp G) b S.K,
+        (Ms G).frozenEval S b J (c G b J) = columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+          (dyadicGridCell_measurable A.G J.1 J.2)
+          ((L G).op (fp.frozenZ l s mb (grp G) j ls (b - 4 * S.K)))) ∧
+      ∃ R : ∀ (h : ℕ) (_ : ℕ × ℕ) G, (Ms G).RepClass S hA (S.sideParams δs) 10 h,
+        (∀ h ≤ S.Jstar, ∀ t G, (R h t G).Nd = ((Ms G).succNodes S hA (S.sideParams δs)
+          (fp.retainedPairs (grp G) Bs S.K) h).filter
+            (fun c => (Ms G).nodeType1 S hA 10 h c = t.1 ∧ (Ms G).nodeType2 S hA 10 h c = t.2)) ∧
+        ∃ Cut : Finset (ℤ × ℤ), dyadicRootLength A.G Cut ≤ ρ * dyadicGridLength A.G A.R.1 ∧
+          ∀ y : ℝ, (∀ e ∈ Cut, y ∉ dyadicGridCell A.G e.1 e.2) →
+            ∀ h ∈ Finset.range (S.Jstar + 1), ∀ t ∈ Ts, ∀ σ ∈ Thr,
+              (∑ G, (((fp.useInst (grp G) S.K (R h t G).Nd).filter fun p =>
+                  y ∈ dyadicGridCell A.G p.1.1 p.1.2 ∧
+                    σ ^ 2 ≤ (Ms G).nodeSize S hA (S.sideParams δs) (c G) h p).image
+                    (fun p => (R h t G).rep p.2)).card : ℝ) ≤
+                min S.Dstar (24 * (2 * Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) +
+                  4) * (1 + Real.log (2 * kq)) ^ 2) + 2 * S.K * (24 *
+                    (⌊180 * S.dmax * Real.log (2 * S.Dm) / δs⌋₊ + 1) *
+                    (Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+                      (1 + Real.log (2 * kq)) ^ 2) + 2 * CF / S.Dstar ^ 394))) *
+                  (Finset.range (S.Jstar + 1) ×ˢ Ts ×ˢ Thr).card / (ρ * σ ^ 2)) := by
+  have hK0 : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
+  have hDp : 0 < S.Dstar := by linarith
+  have hD1 : (1 : ℝ) ≤ S.Dstar := by linarith
+  -- the frozen coefficients and the linear-side energy (`eq:linear-energy`)
+  obtain ⟨c, hcrep, hcB, hVE⟩ := fp.linear_energy l s hT htag d mb hne hanc grp hgrp k hcol hj
+    hPH ls S hV hCj (le_trans (by norm_num) hCA) hδs hδ1 hd2 hD hB hQ hDm hW D dB hHed hH hδc hN0
+    hNl Ms L gs hex hεM hdim hM1 hMD hM hδ hΛ Kf hDg hKf hBox hεw halive hpath hstar hCF hnorm R₀
+    Bs hgrid hroot hτ hτ1 hHτ hNq hτN cc hcc hkq hDmq hDb hn
+  refine ⟨c, hcrep, ?_⟩
+  -- the box of shifts at height zero
+  have hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0 := by
+    have hBA : S.Bstar ≤ S.A0 := by
+      have hb := hV.base_le_A0 (le_trans (by norm_num) hCA) hd2 hD hB
+      have hC := hV.two_le_Cstar hd2 hD
+      have h6 : (1 : ℝ) ≤ 6 ^ S.Rht := one_le_pow₀ (by norm_num)
+      have h1 : 1 ≤ S.Cstar * 6 ^ S.Rht := one_le_mul_of_one_le_of_one_le (by linarith) h6
+      have h2 : S.Bstar ≤ S.Cstar * 6 ^ S.Rht * S.Bstar :=
+        le_mul_of_one_le_left (by linarith) h1
+      have h3 : S.Cstar * 6 ^ S.Rht * S.Bstar ≤ S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar :=
+        le_mul_of_one_le_right (by positivity) hD1
+      linarith
+    have hE0 : S.Eh 0 = S.A0 := by unfold ModeSchedule.Eh; ring
+    rw [hE0]; linarith
+  have hQ0 : 0 < S.Q0 := by omega
+  -- the representative classes of the successful nodes
+  have hRex : ∀ (h : ℕ) (t : ℕ × ℕ) G, ∃ R : (Ms G).RepClass S hA (S.sideParams δs) 10 h,
+      (h ≤ S.Jstar → R.Nd = ((Ms G).succNodes S hA (S.sideParams δs)
+        (fp.retainedPairs (grp G) Bs S.K) h).filter
+          (fun c => (Ms G).nodeType1 S hA 10 h c = t.1 ∧ (Ms G).nodeType2 S hA 10 h c = t.2)) ∧
+      (¬ h ≤ S.Jstar → R.Nd = ∅) := by
+    intro h t G
+    by_cases hh : h ≤ S.Jstar
+    · have hP : ∀ bJ ∈ fp.retainedPairs (grp G) Bs S.K, bJ.2.1 = bJ.1 - 2 * S.K := fun bJ hbJ =>
+        ((fp.mem_retainedV).mp ((fp.mem_retainedPairs).mp hbJ).2).2.1
+      obtain ⟨hal, hNd, hgood, hdist⟩ := (Ms G).succNodes_props S hA (S.sideParams δs)
+        (fp.retainedPairs (grp G) Bs S.K) hP h
+      have hblk : ∀ c ∈ (Ms G).succNodes S hA (S.sideParams δs)
+          (fp.retainedPairs (grp G) Bs S.K) h, (S.K : ℤ) ∣ c.1 - R₀ := by
+        intro c hc
+        obtain ⟨bJ, hbJ, x, -, rfl⟩ := ((Ms G).mem_succNodes S hA).mp hc
+        exact hgrid _ ((fp.mem_retainedPairs).mp hbJ).1
+      obtain ⟨R, hR⟩ := (Ms G).exists_repClass S hA hV hCA hCT hd2 hD hB hQ (hdim G) (hBσ G) _ hNd
+        hal hh hgood hdist R₀ hblk (fun c _ => halive G _) t.1 t.2
+      exact ⟨R, fun _ => hR, fun h' => absurd hh h'⟩
+    · exact ⟨ModeSystem.RepClass.trivial (Ms G) S hA (S.sideParams δs) 10 h,
+        fun h' => absurd h' hh, fun _ => rfl⟩
+  choose R hR hR0 using hRex
+  refine ⟨R, fun h hh t G => hR h t G hh, ?_⟩
+  -- the instances
+  have hX : ∀ h t G, (R h t G).Inst (fp.useInst (grp G) S.K (R h t G).Nd) := by
+    intro h t G p hp
+    obtain ⟨hpc, hu, hIJ, hb1, hb2⟩ := Finset.mem_filter.mp hp
+    exact ⟨(Finset.mem_product.mp hpc).2, hIJ, hb1, hb2⟩
+  have hXr : ∀ h t G, ∀ p ∈ fp.useInst (grp G) S.K (R h t G).Nd,
+      p.2.1 ∈ Bs ∧ p.2.2.1 ∈ fp.retainedV (grp G) p.2.1 S.K := by
+    intro h t G p hp
+    have hpN := (Finset.mem_product.mp (Finset.mem_filter.mp hp).1).2
+    by_cases hh : h ≤ S.Jstar
+    · rw [hR h t G hh] at hpN
+      obtain ⟨bJ, hbJ, x, -, he⟩ := ((Ms G).mem_succNodes S hA).mp (Finset.mem_filter.mp hpN).1
+      rw [he]
+      exact (fp.mem_retainedPairs).mp hbJ
+    · rw [hR0 h t G hh] at hpN
+      exact absurd hpN (Finset.notMem_empty _)
+  have hab : 6 * (4 * S.Dstar ^ 2 * CF) / S.Dstar ^ 59 ≤ S.Dstar⁻¹ ^ 2 := by
+    rw [div_le_iff₀ (by positivity)]
+    have e : S.Dstar⁻¹ ^ 2 * S.Dstar ^ 59 = S.Dstar ^ 2 * S.Dstar ^ 55 := by
+      field_simp
+    rw [e]
+    have h2 : 0 ≤ S.Dstar ^ 2 := by positivity
+    have := mul_le_mul_of_nonneg_left hCFD h2
+    linarith
+  have hCH : (Finset.range (S.Jstar + 1) ×ˢ Ts ×ˢ Thr).Nonempty :=
+    Finset.Nonempty.product ⟨0, Finset.mem_range.mpr (Nat.succ_pos _)⟩
+      (Finset.Nonempty.product hTs hThr0)
+  exact fp.first_top_count l s hT htag d mb hne hanc grp hgrp k hcol j hPH ls S hA
+    (S.sideParams δs) Ms L Bs c hcrep hcB hVE (Finset.range (S.Jstar + 1)) Ts Thr hThr hCH R
+    (fun h t G => fp.useInst (grp G) S.K (R h t G).Nd) hX hXr hD hδ hΛ hQ0 Kf hbox hDg hKf hεw
+    halive hpath hroot hτ hτ1 hHτ hNq hτN cc hcc hkq hDmq hDb hn hab hρ hρ1
+
+end ActiveSetup.BasicFamilies.FamParams
 
 end Auto
 

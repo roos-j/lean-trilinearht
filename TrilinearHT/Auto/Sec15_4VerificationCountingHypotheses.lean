@@ -2772,21 +2772,6 @@ theorem windowSet_mono {ν : Type*} {N N' : Finset ν} (hNN' : N ⊆ N') (c : ν
     windowSet N c I ⊆ windowSet N' c I :=
   Finset.biUnion_subset_biUnion_of_subset_left _ hNN'
 
-theorem card_windowSet_le {ν : Type*} (N : Finset ν) (c : ν → ℝ) (I : ℕ) :
-    ((windowSet N c I).card : ℝ) ≤ N.card * (2 * 2 ^ I + 1) := by
-  unfold windowSet
-  refine (Nat.cast_le.mpr Finset.card_biUnion_le).trans ?_
-  push_cast
-  rw [← nsmul_eq_mul, ← Finset.sum_const]
-  refine Finset.sum_le_sum fun n _ => ?_
-  rw [Int.card_Icc]
-  have h1 := Int.floor_le (c n + 2 ^ I)
-  have h2 := Int.le_ceil (c n - 2 ^ I)
-  have h3 := toNat_cast_le_max (⌊c n + 2 ^ I⌋ + 1 - ⌈c n - 2 ^ I⌉)
-  refine h3.trans (max_le (by positivity) ?_)
-  push_cast
-  linarith
-
 namespace ActiveSetup
 
 namespace AttemptParams
@@ -4711,71 +4696,6 @@ theorem exists_classMode (b : ℤ) (J : ℤ × ℤ) (h : ℕ) (x₀ : Ms.alive (
         (C.F h x).map ⟨Subtype.val, Subtype.val_injective⟩ := ⟨x, hx, rfl⟩
   simp only [hK, ↓reduceDIte]
   exact ⟨hK.choose_spec.1, Finset.map_injective _ hK.choose_spec.2⟩
-
-open Classical in
-/-- The first role type of a mode node: the dyadic size class of the number of primaries of its
-PRE predecessor (blueprint line 2708, "fix ... all role types"). -/
-noncomputable def nodeType1 (Δ h : ℕ) (c : ℤ × (ℤ × ℤ) × Ms.Md) : ℕ :=
-  if hm : c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)) then
-    Nat.log 2 ((Ms.blockComps S hA c.1 c.2.1).labels
-      ((Ms.blockComps S hA c.1 c.2.1).E (h - Δ) ⟨c.2.2, hm⟩)).card
-  else 0
-
-/-- The second role type of a mode node: the dyadic size class of its predecessor. -/
-noncomputable def nodeType2 (Δ h : ℕ) (c : ℤ × (ℤ × ℤ) × Ms.Md) : ℕ :=
-  Nat.log 2 (Ms.predOfMode S hA Δ h c).card
-
-open Classical in
-/-- Blueprint lines 2172-2191 with the role types fixed (`attempt_representatives3` on each type
-class of nodes): there are representatives `rep k₁ k₂` for every type class, in the predecessors of
-the nodes, inherited and separated along comparable nodes of the class. -/
-theorem typed_representatives (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
-    (hNd : ∀ c ∈ Nd, c.2.1.1 = c.1 - 2 * S.K) {Bmin : ℤ} (hBmin : ∀ c ∈ Nd, Bmin ≤ c.1)
-    (Δ h : ℕ) (halive : ∀ c ∈ Nd, c.2.2 ∈ Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)))
-    (hgood : ∀ c (hc : c ∈ Nd), (Ms.blockComps S hA c.1 c.2.1).Good Δ (Ms.goodP S SP c.1) h
-      ⟨c.2.2, halive c hc⟩)
-    (hstab : ∀ c ∈ Nd, ∀ h' z z', Ms.goodP S SP c.1 h' ((Ms.blockComps S hA c.1 c.2.1).π z) →
-      (Ms.blockComps S hA c.1 c.2.1).π z' = (Ms.blockComps S hA c.1 c.2.1).π z →
-      z' ∈ (Ms.blockComps S hA c.1 c.2.1).F h' z → z' ∈ (Ms.blockComps S hA c.1 c.2.1).E (h' - Δ) z)
-    (hdist : ∀ c (hc : c ∈ Nd) c' (hc' : c' ∈ Nd) (h1 : c.1 = c'.1) (h2 : c.2.1 = c'.2.1),
-      c ≠ c' → (⟨c'.2.2, by rw [h1, h2]; exact halive c' hc'⟩ :
-        Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K))) ∉
-        (Ms.blockComps S hA c.1 c.2.1).F h ⟨c.2.2, halive c hc⟩) (dflt : Ms.Md) :
-    ∃ rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md, ∀ k₁ k₂,
-      let Nk := Nd.filter fun c => Ms.nodeType1 S hA Δ h c = k₁ ∧ Ms.nodeType2 S hA Δ h c = k₂
-      (∀ c, rep k₁ k₂ c ∈ Ms.predOfMode S hA Δ h c) ∧
-      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' →
-        Ms.predOfMode S hA Δ h c ⊆ Ms.predOfMode S hA Δ h c' → rep k₁ k₂ c' = rep k₁ k₂ c) ∧
-      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep k₁ k₂ c ≠ rep k₁ k₂ c' →
-        Disjoint (Ms.predOfMode S hA Δ h c) (Ms.predOfMode S hA Δ h c')) ∧
-      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep k₁ k₂ c ≠ rep k₁ k₂ c' →
-        ∀ z z' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)), z.1 ∈ Ms.predOfMode S hA Δ h c →
-          z'.1 ∈ Ms.predOfMode S hA Δ h c' → z ∉ (Ms.blockComps S hA c'.1 c'.2.1).F h z') := by
-  have key : ∀ k₁ k₂ : ℕ, ∃ rep : ℤ × (ℤ × ℤ) × Ms.Md → Ms.Md,
-      let Nk := Nd.filter fun c => Ms.nodeType1 S hA Δ h c = k₁ ∧ Ms.nodeType2 S hA Δ h c = k₂
-      (∀ c, rep c ∈ Ms.predOfMode S hA Δ h c) ∧
-      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' →
-        Ms.predOfMode S hA Δ h c ⊆ Ms.predOfMode S hA Δ h c' → rep c' = rep c) ∧
-      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep c ≠ rep c' →
-        Disjoint (Ms.predOfMode S hA Δ h c) (Ms.predOfMode S hA Δ h c')) ∧
-      (∀ c c', nodeLt3 (Gd := Gd) Ms Nk c c' → rep c ≠ rep c' →
-        ∀ z z' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)), z.1 ∈ Ms.predOfMode S hA Δ h c →
-          z'.1 ∈ Ms.predOfMode S hA Δ h c' → z ∉ (Ms.blockComps S hA c'.1 c'.2.1).F h z') := by
-    intro k₁ k₂
-    have hsub : ∀ c ∈ Nd.filter (fun c => Ms.nodeType1 S hA Δ h c = k₁ ∧
-        Ms.nodeType2 S hA Δ h c = k₂), c ∈ Nd := fun c hc => (Finset.mem_filter.mp hc).1
-    exact Ms.attempt_representatives3 S hA SP _ (fun c hc => hNd c (hsub c hc))
-      (fun c hc => hBmin c (hsub c hc)) Δ h (fun c hc => halive c (hsub c hc))
-      (fun c hc => hgood c (hsub c hc)) (fun c hc => hstab c (hsub c hc))
-      (fun c hc c' hc' h1 h2 hne => hdist c (hsub c hc) c' (hsub c' hc') h1 h2 hne)
-      (k1 := k₁) (k2 := k₂)
-      (fun c hc => by
-        have h1 := (Finset.mem_filter.mp hc).2.1
-        unfold nodeType1 at h1
-        rwa [dite_eq_left_of_eq_true (eq_true (halive c (hsub c hc)))] at h1)
-      (fun c hc => (Finset.mem_filter.mp hc).2.2) dflt
-  choose rep hrep using key
-  exact ⟨rep, hrep⟩
 
 end ModeSystem
 

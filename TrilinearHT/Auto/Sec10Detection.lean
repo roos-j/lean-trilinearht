@@ -2339,6 +2339,140 @@ theorem localProgressionForm_update_congr_ae {κ : LocalKernelClass} {a₀ r : �
   rw [hz, zero_mul, zero_mul, zero_mul, mul_zero] at hb
   exact enorm_eq_zero.mp (le_antisymm hb zero_le)
 
+/-- The truncation of `g` at the level `M`: it agrees with `g` where `‖g‖ ≤ M` and vanishes
+elsewhere. -/
+noncomputable def truncAtLevel (g : ℝ → ℂ) (M : ℝ) : ℝ → ℂ := fun y => if ‖g y‖ ≤ M then g y else 0
+
+theorem truncAtLevel_measurable {g : ℝ → ℂ} (hg : Measurable g) (M : ℝ) :
+    Measurable (truncAtLevel g M) :=
+  Measurable.ite (measurableSet_le hg.norm measurable_const) hg measurable_const
+
+theorem norm_truncAtLevel_le (g : ℝ → ℂ) {M : ℝ} (hM : 0 ≤ M) (y : ℝ) :
+    ‖truncAtLevel g M y‖ ≤ M := by
+  unfold truncAtLevel
+  split_ifs with h
+  · exact h
+  · simpa using hM
+
+/-- An essentially bounded function is bounded almost everywhere by its essential supremum. -/
+theorem ae_norm_le_eLpNorm_top_toReal {g : ℝ → ℂ} {μ : Measure ℝ} (hgm : Measurable g)
+    (hg : eLpNorm g ⊤ μ ≠ ⊤) : ∀ᵐ y ∂μ, ‖g y‖ ≤ (eLpNorm g ⊤ μ).toReal := by
+  have hEq : eLpNorm g ⊤ μ = eLpNormEssSup g μ := eLpNorm_exponent_top hgm.aestronglyMeasurable
+  have hae := ae_le_eLpNormEssSup (f := g) (μ := μ)
+  rw [hEq] at hg ⊢
+  filter_upwards [hae] with y hy
+  have := ENNReal.toReal_mono hg hy
+  simpa using this
+
+/-- An essentially bounded function agrees almost everywhere with its truncation at the level of
+its essential supremum. -/
+theorem truncAtLevel_ae_eq {g : ℝ → ℂ} {μ : Measure ℝ} (hgm : Measurable g)
+    (hg : eLpNorm g ⊤ μ ≠ ⊤) :
+    g =ᵐ[μ] truncAtLevel g (eLpNorm g ⊤ μ).toReal := by
+  filter_upwards [ae_norm_le_eLpNorm_top_toReal hgm hg] with y hy
+  simp [truncAtLevel, hy]
+
+/-- Four distinct elements exhaust `Fin 4`. -/
+theorem fin4_eq_of_distinct : ∀ jR ig kb lc j : Fin 4, jR ≠ ig → jR ≠ kb → jR ≠ lc → ig ≠ kb →
+    ig ≠ lc → kb ≠ lc → j = jR ∨ j = ig ∨ j = kb ∨ j = lc := by
+  decide
+
+theorem eLpNorm_two_normalized_ne_top_of_Ico {a₀ r : ℝ} {g : ℝ → ℂ}
+    (hg : MemLp g 2 (volume.restrict (Set.Ico a₀ (a₀ + r)))) :
+    eLpNorm g 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤ := by
+  have h : MemLp g 2 (volume.restrict (Set.Icc a₀ (a₀ + r))) := by
+    rwa [← Measure.restrict_congr_set Ico_ae_eq_Icc]
+  exact (h.smul_measure ENNReal.ofReal_ne_top).eLpNorm_ne_top
+
+theorem eLpNorm_two_normalized_ne_top_of_top {a₀ r : ℝ} (hr : 0 < r) {g : ℝ → ℂ}
+    (hgm : Measurable g) (hg : eLpNorm g ⊤ (normalizedIntervalMeasure a₀ r) ≠ ⊤) :
+    eLpNorm g 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤ := by
+  have := normalizedIntervalMeasure_probability a₀ hr
+  have h : MemLp g ⊤ (normalizedIntervalMeasure a₀ r) :=
+    memLp_top_of_bound hgm.aestronglyMeasurable _ (ae_norm_le_eLpNorm_top_toReal hgm hg)
+  exact (h.mono_exponent le_top).eLpNorm_ne_top
+
+/-- **Blueprint lem:von-neumann, eq:von-neumann, lines 1419-1426, with `b, c ∈ L^∞(I)`.** For any
+ordering of four distinct slots, with `R, g ∈ L²(I)` and `b, c ∈ L^∞(I)`,
+`|H_I(R, g, b, c)| ≤ C ‖R‖_{2,I} ‖g‖_{U(I)} ‖b‖_∞ ‖c‖_∞`, where `‖·‖_∞` is the essential supremum
+on `I`; the constant depends only on the admissible kernel class. -/
+theorem vonNeumann_essSup (κ : LocalKernelClass) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ {a₀ r : ℝ}, 0 < r → ∀ {w : ℝ × ℝ → ℂ},
+      IsAdmissibleLocalKernel κ a₀ r w → ∀ f : Fin 4 → ℝ → ℂ, (∀ j, Measurable (f j)) →
+      ∀ {jR ig kb lc : Fin 4}, jR ≠ ig → jR ≠ kb → jR ≠ lc → ig ≠ kb → ig ≠ lc → kb ≠ lc →
+      MemLp (f jR) 2 (volume.restrict (Set.Ico a₀ (a₀ + r))) →
+      MemLp (f ig) 2 (volume.restrict (Set.Ico a₀ (a₀ + r))) →
+      eLpNorm (f kb) ⊤ (normalizedIntervalMeasure a₀ r) ≠ ⊤ →
+      eLpNorm (f lc) ⊤ (normalizedIntervalMeasure a₀ r) ≠ ⊤ →
+      ‖localProgressionForm r w f‖ ≤
+        C * Real.sqrt (r⁻¹ * ∫ y in Set.Ico a₀ (a₀ + r), ‖f jR y‖ ^ 2) *
+          intervalGowersNorm a₀ (a₀ + r) (f ig) *
+          (eLpNorm (f kb) ⊤ (normalizedIntervalMeasure a₀ r)).toReal *
+          (eLpNorm (f lc) ⊤ (normalizedIntervalMeasure a₀ r)).toReal := by
+  obtain ⟨C, hC, hvn⟩ := vonNeumannOneL2 κ
+  refine ⟨C, hC, ?_⟩
+  intro a₀ r hr w hw f hf jR ig kb lc h1 h2 h3 h4 h5 h6 hR hg hb hc
+  set μ := normalizedIntervalMeasure a₀ r with hμ
+  set Mb := (eLpNorm (f kb) ⊤ μ).toReal with hMb
+  set Mc := (eLpNorm (f lc) ⊤ μ).toReal with hMc
+  have hMb0 : 0 ≤ Mb := ENNReal.toReal_nonneg
+  have hMc0 : 0 ≤ Mc := ENNReal.toReal_nonneg
+  set b' := truncAtLevel (f kb) Mb with hb'
+  set c' := truncAtLevel (f lc) Mc with hc'
+  have hb'm : Measurable b' := truncAtLevel_measurable (hf kb) Mb
+  have hc'm : Measurable c' := truncAtLevel_measurable (hf lc) Mc
+  have hall : ∀ j : Fin 4, j = jR ∨ j = ig ∨ j = kb ∨ j = lc := fun j =>
+    fin4_eq_of_distinct jR ig kb lc j h1 h2 h3 h4 h5 h6
+  have hfin : ∀ j, eLpNorm (f j) 2 μ ≠ ⊤ := by
+    intro j
+    rcases hall j with rfl | rfl | rfl | rfl
+    · exact eLpNorm_two_normalized_ne_top_of_Ico hR
+    · exact eLpNorm_two_normalized_ne_top_of_Ico hg
+    · exact eLpNorm_two_normalized_ne_top_of_top hr (hf _) hb
+    · exact eLpNorm_two_normalized_ne_top_of_top hr (hf _) hc
+  have hb'top : eLpNorm b' ⊤ μ ≠ ⊤ := by
+    rw [← eLpNorm_congr_ae (truncAtLevel_ae_eq (hf kb) hb)]; exact hb
+  have hc'top : eLpNorm c' ⊤ μ ≠ ⊤ := by
+    rw [← eLpNorm_congr_ae (truncAtLevel_ae_eq (hf lc) hc)]; exact hc
+  -- replace `f kb` by its truncation
+  have e1 := localProgressionForm_update_congr_ae hr hw hf hfin (Ne.symm h2) (Ne.symm h4) h6 h1 h3
+    h5
+    (hf kb) hb'm (hfin kb) (eLpNorm_two_normalized_ne_top_of_top hr hb'm hb'top)
+    (truncAtLevel_ae_eq (hf kb) hb)
+  rw [Function.update_eq_self] at e1
+  set f1 := Function.update f kb b' with hf1
+  have hf1m : ∀ j, Measurable (f1 j) := by
+    intro j; rw [hf1]; by_cases hj : j = kb
+    · subst hj; simpa using hb'm
+    · rw [Function.update_of_ne hj]; exact hf j
+  have hfin1 : ∀ j, eLpNorm (f1 j) 2 μ ≠ ⊤ := by
+    intro j; rw [hf1]; by_cases hj : j = kb
+    · subst hj; simpa using eLpNorm_two_normalized_ne_top_of_top hr hb'm hb'top
+    · rw [Function.update_of_ne hj]; exact hfin j
+  have hf1lc : f1 lc = f lc := by rw [hf1, Function.update_of_ne (Ne.symm h6)]
+  -- replace `f lc` by its truncation
+  have e2 := localProgressionForm_update_congr_ae hr hw hf1m hfin1 (Ne.symm h3) (Ne.symm h5)
+    (Ne.symm h6) h1 h2 h4 (hf1m lc) hc'm (hfin1 lc)
+    (eLpNorm_two_normalized_ne_top_of_top hr hc'm hc'top)
+    (by rw [hf1lc]; exact truncAtLevel_ae_eq (hf lc) hc)
+  rw [Function.update_eq_self] at e2
+  set f2 := Function.update f1 lc c' with hf2
+  have hf2m : ∀ j, Measurable (f2 j) := by
+    intro j; rw [hf2]; by_cases hj : j = lc
+    · subst hj; simpa using hc'm
+    · rw [Function.update_of_ne hj]; exact hf1m j
+  have hf2R : f2 jR = f jR := by rw [hf2, hf1, Function.update_of_ne h3, Function.update_of_ne h2]
+  have hf2g : f2 ig = f ig := by rw [hf2, hf1, Function.update_of_ne h5, Function.update_of_ne h4]
+  have hf2b : f2 kb = b' := by rw [hf2, hf1, Function.update_of_ne h6, Function.update_self]
+  have hf2c : f2 lc = c' := by rw [hf2, Function.update_self]
+  have hbound := (hvn hr hw f2 hf2m h1 h2 h3 h4 h5 h6).1 (Mb := Mb) (Mc := Mc)
+    (by rw [hf2R]; exact hR) (by rw [hf2g]; exact hg)
+    (fun y _ => by rw [hf2b]; exact norm_truncAtLevel_le _ hMb0 y)
+    (fun y _ => by rw [hf2c]; exact norm_truncAtLevel_le _ hMc0 y)
+  rw [hf2R, hf2g] at hbound
+  rw [e1, e2]
+  exact hbound
+
 theorem memLp_Ico_of_normalized {a₀ r : ℝ} (hr : 0 < r) {g : ℝ → ℂ}
     (hg : eLpNorm g 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤) :
     MemLp g 2 (volume.restrict (Set.Ico a₀ (a₀ + r))) := by
@@ -2632,90 +2766,6 @@ theorem detection_structured_slot (κ : LocalKernelClass) :
           apply mul_le_mul_of_nonneg_right (hcs.trans (le_max_right _ _)) (by positivity)
       _ = δ' / (2 * B) := by field_simp
   linarith
-
-theorem quadraticChartComplexity_order_mono {d c₀ c₁ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) (hc : c₀ ≤ c₁) : QuadraticChartComplexity c₁ H A where
-  lower := hA.lower
-  dimension := hA.dimension
-  height := hA.height
-  support := hA.support
-  derivative := by
-    intro m word z
-    have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-    have hm1 : (1 : ℝ) ≤ m + 1 := by have := (Nat.cast_nonneg m : (0 : ℝ) ≤ m); linarith
-    refine (hA.derivative m word z).trans ?_
-    exact mul_le_mul (pow_le_pow_right₀ hH1 (Nat.mul_le_mul_right _ hc))
-      (pow_le_pow_right₀ hm1 (Nat.mul_le_mul_right _ hc)) (pow_nonneg (by linarith) _)
-      (pow_nonneg (by linarith) _)
-
-/-- A one-dimensional chart whose atom is identically one, at a fixed Gevrey order. -/
-theorem exists_unit_chart : ∃ (c : ℕ) (W₀ : ℝ) (E : QuadraticChartData 1), 1 ≤ c ∧
-    Real.exp 2 ≤ W₀ ∧ (∀ y, quadraticChartAtom E y = 1) ∧
-    ∀ W, W₀ ≤ W → QuadraticChartComplexity c W E := by
-  obtain ⟨ψ, Kψ, hKψ, hψ, hψ1', hψ1, hψ0, hψd⟩ := exists_plateau_cutoff
-  set E : QuadraticChartData 1 := mkQuadraticChart (fun _ => 0) 0 0 0
-    (modulatedCutoff ψ (1 / 3) 1 0) (modulatedCutoff_smooth hψ _ _ _)
-    (modulatedCutoff_hasCompactSupport hψ0 (by norm_num) _ _) with hE
-  set W₀ : ℝ := Real.exp 2 + 3 * (Kψ : ℝ) ^ (2 * Kψ) + 1 with hW₀
-  refine ⟨2 * Kψ, W₀, E, by omega, by
-    rw [hW₀]; have : (0 : ℝ) ≤ 3 * (Kψ : ℝ) ^ (2 * Kψ) := by positivity
-    linarith, ?_, ?_⟩
-  · intro y
-    rw [hE, mkQuadraticChart_atom]
-    simp only [zero_mul, add_zero, AddChar.map_zero_eq_one, Circle.coe_one, one_mul]
-    rw [tsum_eq_single 0]
-    · simp [modulatedCutoff, tensorCutoff, chartMatrixPhase, hψ1 0 (by norm_num)]
-    · intro n hn
-      have hn0 : n 0 ≠ 0 := fun h => hn (funext fun l => by
-        rw [Subsingleton.elim l 0]; exact h)
-      have h1 : (1 : ℝ) ≤ |(n 0 : ℝ)| := by
-        rw [← Int.cast_abs]; exact_mod_cast Int.one_le_abs hn0
-      have hz : modulatedCutoff ψ (1 / 3) 1 0
-          ((fun _ : Fin 1 => (0 : ℝ)) - fun l : Fin 1 => (n l : ℝ)) = 0 := by
-        unfold modulatedCutoff tensorCutoff
-        rw [Fin.prod_univ_one]
-        have h3 : 2 ≤ |((fun _ : Fin 1 => (0 : ℝ)) - fun l : Fin 1 => (n l : ℝ)) 0 / (1 / 3)| := by
-          simp only [Pi.sub_apply, zero_sub, abs_div, abs_neg]
-          norm_num
-          linarith
-        rw [hψ0 _ h3]; simp
-      rw [hz, zero_mul]
-  · intro W hW
-    have hK0 : (0 : ℝ) ≤ 3 * (Kψ : ℝ) ^ (2 * Kψ) := by positivity
-    have hW2 : Real.exp 2 ≤ W := by
-      have : Real.exp 2 ≤ W₀ := by rw [hW₀]; linarith
-      linarith
-    exact modulatedChart_complexity hψ hψ1' hψ0 hKψ hψd (by norm_num) one_pos 0 _ 0 0 0 _ _ hW2
-      (by
-        have := Real.log_le_log (Real.exp_pos 2) hW2
-        rw [Real.log_exp] at this; push_cast; linarith)
-      (fun i j => by simp [chartRationalHeight]; linarith [Real.add_one_le_exp (2 : ℝ)])
-      (by linarith [Real.add_one_le_exp (2 : ℝ)])
-      (by
-        simp only [Nat.cast_one, one_mul, Pi.zero_apply, Int.cast_zero, abs_zero, zero_div,
-          Finset.sum_const_zero, mul_zero, add_zero]
-        rw [div_le_iff₀ (by norm_num)]
-        have : (0 : ℝ) ≤ (Kψ : ℝ) ^ (2 * Kψ) := by positivity
-        nlinarith [Real.add_one_le_exp (2 : ℝ)])
-
-/-- Padding a chart to positive dimension without changing its atom. -/
-theorem exists_pad_chart : ∃ (c : ℕ) (W₀ : ℝ), 1 ≤ c ∧ Real.exp 2 ≤ W₀ ∧
-    ∀ {d c₀ : ℕ} {H : ℝ} (A : QuadraticChartData d), QuadraticChartComplexity c₀ H A →
-      1 ≤ c₀ → ∃ A' : QuadraticChartData (d + 1), (∀ y, quadraticChartAtom A' y =
-        quadraticChartAtom A y) ∧
-        QuadraticChartComplexity (max c₀ c) (max H W₀ ^ 6) A' ∧
-        (IsBoundedQuadraticChart A → IsBoundedQuadraticChart A') := by
-  obtain ⟨c, W₀, E, hc, hW₀, hE1, hEc⟩ := exists_unit_chart
-  refine ⟨c, W₀, hc, hW₀, ?_⟩
-  intro d c₀ H A hA hc₀
-  refine ⟨productQuadraticChart A E, fun y => by rw [productQuadraticChart_atom, hE1, mul_one],
-    ?_, fun hb y => by rw [productQuadraticChart_atom, hE1, mul_one]; exact hb y⟩
-  have hA' : QuadraticChartComplexity (max c₀ c) (max H W₀) A :=
-    quadraticChartComplexity_order_mono (quadraticChartComplexity_mono hA (le_max_left _ _))
-      (le_max_left _ _)
-  have hE' : QuadraticChartComplexity (max c₀ c) (max H W₀) E :=
-    quadraticChartComplexity_order_mono (hEc _ (le_max_right _ _)) (le_max_right _ _)
-  exact productQuadraticChart_complexity hA' hE' (le_trans hc₀ (le_max_left _ _))
 
 /-- The quasipolynomial budget shape `a ≤ exp(K Y^K)` used in lem:detection. -/
 def QPLe (Y : ℝ) (K : ℕ) (a : ℝ) : Prop := a ≤ Real.exp (K * Y ^ K)

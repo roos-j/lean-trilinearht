@@ -6649,15 +6649,15 @@ variable {Tg : Type*}
 
 /-- A residual `R` in slot `t` passes at level `β` against the pure sources whose tag satisfies
 `M` (the common shape of main and helper tests, blueprint eq:catalog-test with spectators). -/
-def ResidPass (G : RealDyadicGrid) {Mc : ℕ} (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ)
+def ResidPass (G : RealDyadicGrid) {V : Type} [Fintype V] (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ)
     (tagOf : Tg → ChartTag) (wI : ℝ × ℝ → ℂ) (t : Fin 4) (M : Tg → Prop)
-    (R : ColumnL2 (Fin Mc)) (β : ℝ) : Prop :=
+    (R : ColumnL2 V) (β : ℝ) : Prop :=
   ∀ x, M x → ∀ {u a b : Fin 4}, u ≠ t → u ≠ a → u ≠ b → t ≠ a → t ≠ b → a ≠ b →
     ∀ A : QuadraticChartData (tagOf x).dim, QuadraticChartComplexity c₀ H A →
       A.horizontal = (tagOf x).θ → A.matrix = (slotCoeff u : ℚ) • (tagOf x).C →
       A.quadratic = slotCoeff u * (tagOf x).lam →
     ∀ z : Fin 4 → ℝ → ℂ, z u = quadraticChartAtom A →
-      z t = (fun y => (R : ℝ → ColumnHilbert (Fin Mc)) y none) →
+      z t = (fun y => (R : ℝ → ColumnHilbert V) y none) →
       Measurable (z a) → Measurable (z b) →
       eLpNorm (z a) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1)) ≤ 1 →
@@ -6726,7 +6726,8 @@ end AttemptParams
 end ActiveSetup
 
 section CellPass
-variable {Tg : Type*} {G : RealDyadicGrid} {Mc : ℕ} {I : ℤ × ℤ} {κ : LocalKernelClass}
+variable {Tg : Type*} {G : RealDyadicGrid} {V : Type} [Fintype V] {I : ℤ × ℤ}
+  {κ : LocalKernelClass}
   {wI : ℝ × ℝ → ℂ}
 
 /-! ### Passing residuals at the cell-form level and their averages (lines 1810-1811) -/
@@ -6736,26 +6737,26 @@ source whose tag lies in the mask, in another slot, and two spectators of normal
 `S_a, S_b`, the cell form is at most `β S_a S_b` (blueprint eq:catalog-test). -/
 def CellPass (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)
     wI) (c₀ : ℕ) (H : ℝ) (tagOf : Tg → ChartTag) (t : Fin 4) (M : Tg → Prop)
-    (R : ColumnL2 (Fin Mc)) (β : ℝ) : Prop :=
+    (R : ColumnL2 V) (β : ℝ) : Prop :=
   ∀ x, M x → ∀ {u a b : Fin 4}, u ≠ t → u ≠ a → u ≠ b → t ≠ a → t ≠ b → a ≠ b →
     ∀ A : QuadraticChartData (tagOf x).dim, QuadraticChartComplexity c₀ H A →
       A.horizontal = (tagOf x).θ → A.matrix = (slotCoeff u : ℚ) • (tagOf x).C →
       A.quadratic = slotCoeff u * (tagOf x).lam →
-    ∀ X : Fin 4 → ColumnL2 (Fin Mc),
+    ∀ X : Fin 4 → ColumnL2 V,
       (∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 → augPhys (X u) y = quadraticChartAtom A y) →
       X t = R → ∀ {Sa Sb : ℝ}, 0 < Sa → 0 < Sb →
       eLpNorm (augPhys (X a)) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1)) ≤ ENNReal.ofReal Sa →
       eLpNorm (augPhys (X b)) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1)) ≤ ENNReal.ofReal Sb →
-      ‖cellForm (dyadicGridLength_pos G I.1) hwI (Fin Mc) X‖ ≤ β * Sa * Sb
+      ‖cellForm (dyadicGridLength_pos G I.1) hwI V X‖ ≤ β * Sa * Sb
 
 variable (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) wI)
 
 /-- Blueprint lines 1810-1811 ("histories include every individual pad choice, so the tests also
 hold for averages"): an average of residuals passing at level `β` passes at level `β`. -/
 theorem CellPass.avg {c₀ : ℕ} {H : ℝ} {tagOf : Tg → ChartTag} {t : Fin 4} {M : Tg → Prop}
-    {ι : Type*} (s : Finset ι) (hs : s.Nonempty) (R : ι → ColumnL2 (Fin Mc)) {β : ℝ}
+    {ι : Type*} (s : Finset ι) (hs : s.Nonempty) (R : ι → ColumnL2 V) {β : ℝ}
     (h : ∀ i ∈ s, CellPass hwI c₀ H tagOf t M (R i) β) :
     CellPass hwI c₀ H tagOf t M (((s.card : ℂ))⁻¹ • ∑ i ∈ s, R i) β := by
   intro x hx u a b hut hua hub hta htb hab A hA hAθ hAM hAq X hXu hXt Sa Sb hSa hSb hXa hXb
@@ -6797,13 +6798,13 @@ variable {Tg : Type*}
 /-! ### Far bands: the helper band above the complement band (blueprint lines 2253-2254) -/
 
 /-- The zero residual passes at level zero against every mask. -/
-theorem ResidPass.zero (G : RealDyadicGrid) {Mc : ℕ} (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ)
+theorem ResidPass.zero (G : RealDyadicGrid) {V : Type} [Fintype V] (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ)
     (tagOf : Tg → ChartTag) (wI : ℝ × ℝ → ℂ) (t : Fin 4) (M : Tg → Prop) :
-    ResidPass G I c₀ H tagOf wI t M (0 : ColumnL2 (Fin Mc)) 0 := by
+    ResidPass G I c₀ H tagOf wI t M (0 : ColumnL2 V) 0 := by
   intro x _ u a b _ _ _ _ _ _ A _ _ _ _ z _ hzt _ _ _ _
   have h0 : z t =ᵐ[volume] 0 := by
     rw [hzt]
-    filter_upwards [Lp.coeFn_zero (ColumnHilbert (Fin Mc)) 2 volume] with y hy
+    filter_upwards [Lp.coeFn_zero (ColumnHilbert V) 2 volume] with y hy
     rw [hy]; rfl
   have hz : localProgressionForm (dyadicGridLength G I.1) wI z =
       localProgressionForm (dyadicGridLength G I.1) wI (Function.update z t 0) := by
