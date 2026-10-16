@@ -1787,6 +1787,31 @@ theorem HasChartsOn.mono {P : BasicProjection G R CF} {S S' : Set (ℤ × ℤ)} 
   exact ⟨d, Φ, quadraticChartComplexity_order_mono (quadraticChartComplexity_mono h1 hH) hc, h2,
     h3⟩
 
+/-- The input of a basic projection has energy at most `CF |c|` on every cell `c` of `S`
+(blueprint prop:base, lines 1607-1608: the basic inputs keep bounded normalized `L²` sizes on the
+cells, the original inputs being normalized on every cell of the tree). -/
+def CellEnergyOn (P : BasicProjection G R CF) (S : Set (ℤ × ℤ)) : Prop :=
+  ∀ c ∈ S, ∫ y in dyadicGridCell G c.1 c.2, ‖(P.Z : ℝ → ColumnHilbert P.V) y‖ ^ 2 ≤
+    CF * dyadicGridLength G c.1
+
+theorem CellEnergyOn.mono {P : BasicProjection G R CF} {S S' : Set (ℤ × ℤ)}
+    (h : P.CellEnergyOn S) (hS : S' ⊆ S) : P.CellEnergyOn S' := fun c hc => h c (hS hc)
+
+theorem CellEnergyOn.mono_cf {P : BasicProjection G R CF} {S : Set (ℤ × ℤ)}
+    (h : P.CellEnergyOn S) {CF' : ℝ} (hCF : CF ≤ CF') : (P.mono hCF).CellEnergyOn S :=
+  fun c hc => (h c hc).trans (mul_le_mul_of_nonneg_right hCF (dyadicGridLength_pos G c.1).le)
+
+theorem zero_cellEnergyOn (P : BasicProjection G R CF) (hCF : 0 ≤ CF) (S : Set (ℤ × ℤ)) :
+    (P.zero hCF).CellEnergyOn S := fun c _ => by
+  have : ∫ y in dyadicGridCell G c.1 c.2, ‖((0 : ColumnL2 P.V) : ℝ → ColumnHilbert P.V) y‖ ^ 2
+      = 0 := by
+    refine integral_eq_zero_of_ae (Filter.Eventually.of_forall fun y => ?_)
+    simp
+  change ∫ y in dyadicGridCell G c.1 c.2, ‖((0 : ColumnL2 P.V) : ℝ → ColumnHilbert P.V) y‖ ^ 2 ≤
+    _
+  rw [this]
+  exact mul_nonneg hCF (dyadicGridLength_pos G c.1).le
+
 end BasicProjection
 
 namespace ActiveSetup
@@ -1802,18 +1827,20 @@ noncomputable def colBudget : ℝ := 2 + Fintype.card A.L * (1 + A.Dc)
 /-- The column representation of the basic arguments of an active setup (blueprint prop:base,
 lines 1607 and 1611-1613): on every cell of the setup each basic argument `B_l` is, almost
 everywhere on the cell, the difference of two current basic projections below the root, with
-inputs of energy at most `CF |R|` on the root, column budgets at most `A.colBudget`, and columns
-that are charts of order `c₀` and complexity at most `A.H` on the cells of the setup. -/
+inputs of energy at most `CF |R|` on the root and at most `CF |I|` on every cell `I` of the setup,
+column budgets at most `A.colBudget`, and columns that are charts of order `c₀` and complexity at
+most `A.H` on the cells of the setup. -/
 def HasColumnRep (CF : ℝ) : Prop :=
   ∀ l : Fin 4, ∃ P₁ P₂ : BasicProjection A.G A.R CF, P₁.Ψ.D.budget ≤ A.colBudget ∧
     P₂.Ψ.D.budget ≤ A.colBudget ∧ P₁.HasChartsOn ↑A.cells c₀ A.H ∧
-    P₂.HasChartsOn ↑A.cells c₀ A.H ∧ ∀ I ∈ A.cells,
+    P₂.HasChartsOn ↑A.cells c₀ A.H ∧ P₁.CellEnergyOn ↑A.cells ∧ P₂.CellEnergyOn ↑A.cells ∧
+    ∀ I ∈ A.cells,
     ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 → A.B l I y = P₁.val I y - P₂.val I y
 
 theorem HasColumnRep.mono {A : ActiveSetup κ c₀} {CF CF' : ℝ} (h : A.HasColumnRep CF)
     (hCF : CF ≤ CF') : A.HasColumnRep CF' := fun l => by
-  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := h l
-  exact ⟨P₁.mono hCF, P₂.mono hCF, h₁, h₂, c₁, c₂, hP⟩
+  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h l
+  exact ⟨P₁.mono hCF, P₂.mono hCF, h₁, h₂, c₁, c₂, e₁.mono_cf hCF, e₂.mono_cf hCF, hP⟩
 
 /-- The column representation below a sub-root `R'`: on every cell of the setup below `R'` each
 basic argument is the difference of two current basic projections below `R'` with column budgets
@@ -1825,15 +1852,20 @@ def ColumnRepBelow (R' : ℤ × ℤ) (CF : ℝ) : Prop :=
     P₁.HasChartsOn {I | I ∈ A.cells ∧ dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2}
       c₀ A.H ∧
     P₂.HasChartsOn {I | I ∈ A.cells ∧ dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2}
-      c₀ A.H ∧ ∀ I ∈ A.cells,
+      c₀ A.H ∧
+    P₁.CellEnergyOn {I | I ∈ A.cells ∧ dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2} ∧
+    P₂.CellEnergyOn {I | I ∈ A.cells ∧ dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2} ∧
+    ∀ I ∈ A.cells,
     dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2 →
     ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 → A.B l I y = P₁.val I y - P₂.val I y
 
 theorem hasColumnRep_of_below {CF : ℝ} (h : A.ColumnRepBelow A.R CF) : A.HasColumnRep CF :=
   fun l => by
-    obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := h l
+    obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h l
     exact ⟨P₁, P₂, h₁, h₂, c₁.mono (fun I hI => ⟨hI, A.sub I hI⟩) le_rfl le_rfl,
-      c₂.mono (fun I hI => ⟨hI, A.sub I hI⟩) le_rfl le_rfl, fun I hI => hP I hI (A.sub I hI)⟩
+      c₂.mono (fun I hI => ⟨hI, A.sub I hI⟩) le_rfl le_rfl,
+      e₁.mono (fun I hI => ⟨hI, A.sub I hI⟩), e₂.mono (fun I hI => ⟨hI, A.sub I hI⟩),
+      fun I hI => hP I hI (A.sub I hI)⟩
 
 open Classical in
 /-- The sub-root properties of an active setup (blueprint prop:base, lines 1611-1622, asserted on
@@ -2866,6 +2898,8 @@ theorem baseActiveSetup_columnRepBelow {c₀' : ℕ} (R : ℤ × ℤ) (cells : F
         H' ∧
       P₂.HasChartsOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} c₀'
         H' ∧
+      P₁.CellEnergyOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
+      P₂.CellEnergyOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
       ∀ I ∈ cells,
       dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
       y ∈ dyadicGridCell G I.1 I.2 → Xi.val I y = P₁.val I y - P₂.val I y)
@@ -2874,6 +2908,8 @@ theorem baseActiveSetup_columnRepBelow {c₀' : ℕ} (R : ℤ × ℤ) (cells : F
         H' ∧
       P₂.HasChartsOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} c₀'
         H' ∧
+      P₁.CellEnergyOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
+      P₂.CellEnergyOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
       ∀ I ∈ cells,
       dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
       y ∈ dyadicGridCell G I.1 I.2 → Xk.val I y = P₁.val I y - P₂.val I y)
@@ -2882,6 +2918,8 @@ theorem baseActiveSetup_columnRepBelow {c₀' : ℕ} (R : ℤ × ℤ) (cells : F
         H' ∧
       P₂.HasChartsOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} c₀'
         H' ∧
+      P₁.CellEnergyOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
+      P₂.CellEnergyOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
       ∀ I ∈ cells,
       dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
       y ∈ dyadicGridCell G I.1 I.2 → ∑ v, Pa.coef I Za v * Pa.scalarAt I v y -
@@ -2891,6 +2929,8 @@ theorem baseActiveSetup_columnRepBelow {c₀' : ℕ} (R : ℤ × ℤ) (cells : F
         H' ∧
       P₂.HasChartsOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} c₀'
         H' ∧
+      P₁.CellEnergyOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
+      P₂.CellEnergyOn {I | I ∈ cells ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
       ∀ I ∈ cells,
       dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
       y ∈ dyadicGridCell G I.1 I.2 → ∑ v, Pb.coef I Zb v * Pb.scalarAt I v y -
@@ -2909,32 +2949,32 @@ theorem baseActiveSetup_columnRepBelow {c₀' : ℕ} (R : ℤ × ℤ) (cells : F
     ring
   intro l
   rcases fin_four_cover hia.symm hka.symm hab hik hib hkb l with h | h | h | h <;> rw [h]
-  · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := hra
-    refine ⟨P₁, P₂, h₁.trans hXc, h₂.trans hXc, c₁, c₂, fun I hI hIR => ?_⟩
+  · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := hra
+    refine ⟨P₁, P₂, h₁.trans hXc, h₂.trans hXc, c₁, c₂, e₁, e₂, fun I hI hIR => ?_⟩
     filter_upwards [hP I hI hIR] with y hy hyI
     rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
           hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
             hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
               hYbm S hS hUa hUb hUa' hUb' η hsmall hI a)]
     exact (baseB_a Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hia hka hab I y).trans (hy hyI)
-  · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := hri
-    refine ⟨P₁, P₂, h₁.trans hXc, h₂.trans hXc, c₁, c₂, fun I hI hIR => ?_⟩
+  · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := hri
+    refine ⟨P₁, P₂, h₁.trans hXc, h₂.trans hXc, c₁, c₂, e₁, e₂, fun I hI hIR => ?_⟩
     filter_upwards [hP I hI hIR] with y hy hyI
     rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
           hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
             hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
               hYbm S hS hUa hUb hUa' hUb' η hsmall hI i)]
     exact (baseB_i Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hia hib I y).trans (hy hyI)
-  · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := hrk
-    refine ⟨P₁, P₂, h₁.trans hXc, h₂.trans hXc, c₁, c₂, fun I hI hIR => ?_⟩
+  · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := hrk
+    refine ⟨P₁, P₂, h₁.trans hXc, h₂.trans hXc, c₁, c₂, e₁, e₂, fun I hI hIR => ?_⟩
     filter_upwards [hP I hI hIR] with y hy hyI
     rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
           hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
             hdef Dc hDc hPac hPbc hcga hcgb Ya Yb hYam
               hYbm S hS hUa hUb hUa' hUb' η hsmall hI k)]
     exact (baseB_k Xi Xk Pa Pb Za Zb cga aga cgb agb i k a b hik hka hkb I y).trans (hy hyI)
-  · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := hrb
-    refine ⟨P₁, P₂, h₁.trans hXc, h₂.trans hXc, c₁, c₂, fun I hI hIR => ?_⟩
+  · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := hrb
+    refine ⟨P₁, P₂, h₁.trans hXc, h₂.trans hXc, c₁, c₂, e₁, e₂, fun I hI hIR => ?_⟩
     filter_upwards [hP I hI hIR] with y hy hyI
     rw [(baseActiveSetup_B κ Xi Xk Pa Pb Za Zb cga aga cgb agb R cells hsub w hw hik hia hib hka hkb
           hab hagm hagb hbgm hbgb H' hXi hXk hPa hPb hga hgb
@@ -3066,10 +3106,12 @@ theorem IsBasicOn.basicProjection {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ
     {Hc : ℝ} {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF Bd c Hc w z)
     {R : ℤ × ℤ} (hR : R ∈ dyadicFiniteTree G J N) (hRH : kernelHull G J N w R) :
     ∃ P : BasicProjection G R CF, P.Ψ.D.budget ≤ Bd ∧
-      P.HasChartsOn {c' | c' ∈ dyadicFiniteTree G J N} c Hc ∧ ∀ I, z I = P.val I := by
+      P.HasChartsOn {c' | c' ∈ dyadicFiniteTree G J N} c Hc ∧
+      P.CellEnergyOn {c' | c' ∈ dyadicFiniteTree G J N ∧ kernelHull G J N w c'} ∧
+      ∀ I, z I = P.val I := by
   obtain ⟨V, _, Ψ, Z, hG, hJ, hb, hch, hE, hz⟩ := h
   exact ⟨⟨V, Ψ, Z, hG, (((dyadicFiniteTree_mem_iff G J R N).mp hR).1).trans hJ,
-    hE R hR hRH⟩, hb, fun c' hc' => hch c' hc', hz⟩
+    hE R hR hRH⟩, hb, fun c' hc' => hch c' hc', fun c' hc' => hE c' hc'.1 hc'.2, hz⟩
 
 /-- Enlarging the column budget of a basic family. -/
 theorem IsBasicOn.mono_budget {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF Bd Bd' : ℝ} {c : ℕ}
@@ -3504,11 +3546,14 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
       have hPc : P.HasChartsOn
           {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} c' H' :=
         hPch.mono (fun I hI => hTtree I hI.1) hcB hHB
+      have hPe : P.CellEnergyOn
+          {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} := fun c hc =>
+        absurd hc.2 (hne c hc.1)
       apply baseActiveSetup_columnRepBelow (hX := le_rfl)
-        (hri := ⟨P, P, hPX, hPX, hPc, hPc, fun I hI hIR => absurd hIR (hne I hI)⟩)
-        (hrk := ⟨P, P, hPX, hPX, hPc, hPc, fun I hI hIR => absurd hIR (hne I hI)⟩)
-        (hra := ⟨P, P, hPX, hPX, hPc, hPc, fun I hI hIR => absurd hIR (hne I hI)⟩)
-        (hrb := ⟨P, P, hPX, hPX, hPc, hPc, fun I hI hIR => absurd hIR (hne I hI)⟩)
+        (hri := ⟨P, P, hPX, hPX, hPc, hPc, hPe, hPe, fun I hI hIR => absurd hIR (hne I hI)⟩)
+        (hrk := ⟨P, P, hPX, hPX, hPc, hPc, hPe, hPe, fun I hI hIR => absurd hIR (hne I hI)⟩)
+        (hra := ⟨P, P, hPX, hPX, hPc, hPc, hPe, hPe, fun I hI hIR => absurd hIR (hne I hI)⟩)
+        (hrb := ⟨P, P, hPX, hPX, hPc, hPc, hPe, hPe, fun I hI hIR => absurd hIR (hne I hI)⟩)
     obtain ⟨I₀, hI₀, hI₀R'⟩ := hne
     have hR'tree : R' ∈ dyadicFiniteTree G J N := (dyadicFiniteTree_mem_iff G J R' N).mpr
       ⟨hR'.trans hRJ, (dyadicGridCell_depth_le_of_subset G I₀ R' hI₀R').trans
@@ -3567,10 +3612,13 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
           1 * dyadicGridLength G R'.1 := by
         rw [one_mul]
         exact hSb.energy_cell_le hR'tree hR'H
-      obtain ⟨Pga, hPgab, hPgac, hPga⟩ := hrga.basicProjection hR'tree hR'H
-      obtain ⟨Pgb, hPgbb, hPgbc, hPgb⟩ := hrgb.basicProjection hR'tree hR'H
+      obtain ⟨Pga, hPgab, hPgac, hPgae, hPga⟩ := hrga.basicProjection hR'tree hR'H
+      obtain ⟨Pgb, hPgbb, hPgbc, hPgbe, hPgb⟩ := hrgb.basicProjection hR'tree hR'H
       have hTs : {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ⊆
           {c | c ∈ dyadicFiniteTree G J N} := fun I hI => hTtree I hI.1
+      have hTH' : {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ⊆
+          {c | c ∈ dyadicFiniteTree G J N ∧ kernelHull G J N w c} := fun I hI =>
+        ⟨hTtree I hI.1, hTH I hI.1⟩
       have hpair : ∀ {X : ℤ × ℤ → ℝ → ℂ}, (∃ z₁ z₂, IsBasicOn G J N 1 Bd cB HB w z₁ ∧
           IsBasicOn G J N 1 Bd cB HB w z₂ ∧ ∀ I ∈ T, ∀ᵐ y ∂volume,
             y ∈ dyadicGridCell G I.1 I.2 → X I y = z₁ I y - z₂ I y) →
@@ -3578,15 +3626,18 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
             P₁.HasChartsOn {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2}
               c' H' ∧
             P₂.HasChartsOn {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2}
-              c' H' ∧ ∀ I ∈ T,
+              c' H' ∧
+            P₁.CellEnergyOn {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
+            P₂.CellEnergyOn {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
+            ∀ I ∈ T,
             dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
               y ∈ dyadicGridCell G I.1 I.2 → X I y = P₁.val I y - P₂.val I y := by
         intro X hX
         obtain ⟨z₁, z₂, h₁, h₂, h₃⟩ := hX
-        obtain ⟨P₁, hb₁, hc₁, hP₁⟩ := h₁.basicProjection hR'tree hR'H
-        obtain ⟨P₂, hb₂, hc₂, hP₂⟩ := h₂.basicProjection hR'tree hR'H
+        obtain ⟨P₁, hb₁, hc₁, he₁, hP₁⟩ := h₁.basicProjection hR'tree hR'H
+        obtain ⟨P₂, hb₂, hc₂, he₂, hP₂⟩ := h₂.basicProjection hR'tree hR'H
         refine ⟨P₁, P₂, hb₁.trans hBdX, hb₂.trans hBdX, hc₁.mono hTs hcB hHB,
-          hc₂.mono hTs hcB hHB, fun I hI _ => ?_⟩
+          hc₂.mono hTs hcB hHB, he₁.mono hTH', he₂.mono hTH', fun I hI _ => ?_⟩
         filter_upwards [h₃ I hI] with y hy hyI
         rw [hy hyI, hP₁ I, hP₂ I]
       have hPach : (Pa.basicProjection hR'tree Sa.Z hEa).HasChartsOn
@@ -3611,9 +3662,13 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
         exact congrFun h3 y
       apply baseActiveSetup_columnRepBelow (hX := le_rfl) (hri := hpair hri) (hrk := hpair hrk)
         (hra := ⟨Pa.basicProjection hR'tree Sa.Z hEa, Pga, hPaX, hPgab.trans hBdX, hPach,
-          hPgac.mono hTs hcB hHB, fun I hI hIR => ?_⟩)
+          hPgac.mono hTs hcB hHB, fun c hc => by
+            rw [one_mul]; exact hSa.energy_cell_le (hTtree c hc.1) (hTH c hc.1),
+          hPgae.mono hTH', fun I hI hIR => ?_⟩)
         (hrb := ⟨Pb.basicProjection hR'tree Sb.Z hEb, Pgb, hPbX, hPgbb.trans hBdX, hPbch,
-          hPgbc.mono hTs hcB hHB, fun I hI hIR => ?_⟩)
+          hPgbc.mono hTs hcB hHB, fun c hc => by
+            rw [one_mul]; exact hSb.energy_cell_le (hTtree c hc.1) (hTH c hc.1),
+          hPgbe.mono hTH', fun I hI hIR => ?_⟩)
       · filter_upwards [Pa.basicProjection_val_ae hR'tree (hTtree I hI) hIR Sa.Z hEa,
           (hT I hI).2.2.2.2.1] with y h1 h2 hyI
         rw [← hPga I, h2 hyI]
@@ -5230,11 +5285,14 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
       have hPc : P.HasChartsOn
           {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} c' H' :=
         hPch.mono (fun I hI => hTtree I hI.1) hcB hHB
+      have hPe : P.CellEnergyOn
+          {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} := fun c hc =>
+        absurd hc.2 (hne c hc.1)
       apply baseActiveSetup_columnRepBelow (hX := le_rfl)
-        (hri := ⟨P, P, hPX, hPX, hPc, hPc, fun I hI hIR => absurd hIR (hne I hI)⟩)
-        (hrk := ⟨P, P, hPX, hPX, hPc, hPc, fun I hI hIR => absurd hIR (hne I hI)⟩)
-        (hra := ⟨P, P, hPX, hPX, hPc, hPc, fun I hI hIR => absurd hIR (hne I hI)⟩)
-        (hrb := ⟨P, P, hPX, hPX, hPc, hPc, fun I hI hIR => absurd hIR (hne I hI)⟩)
+        (hri := ⟨P, P, hPX, hPX, hPc, hPc, hPe, hPe, fun I hI hIR => absurd hIR (hne I hI)⟩)
+        (hrk := ⟨P, P, hPX, hPX, hPc, hPc, hPe, hPe, fun I hI hIR => absurd hIR (hne I hI)⟩)
+        (hra := ⟨P, P, hPX, hPX, hPc, hPc, hPe, hPe, fun I hI hIR => absurd hIR (hne I hI)⟩)
+        (hrb := ⟨P, P, hPX, hPX, hPc, hPc, hPe, hPe, fun I hI hIR => absurd hIR (hne I hI)⟩)
     obtain ⟨I₀, hI₀, hI₀R'⟩ := hne
     have hK1 : (1 : ℝ) ≤ K₀ := by
       have h1 := (hT I₀ hI₀).2.2.2
@@ -5277,10 +5335,13 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
         _ ≤ η₀ / 2 * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1 +
             (K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1) := by gcongr <;> exact hside _
         _ = _ := by ring
-    · obtain ⟨Pga, hPgab, hPgac, hPga⟩ := hrga.basicProjection hR'tree hR'H
-      obtain ⟨Pgb, hPgbb, hPgbc, hPgb⟩ := hrgb.basicProjection hR'tree hR'H
+    · obtain ⟨Pga, hPgab, hPgac, hPgae, hPga⟩ := hrga.basicProjection hR'tree hR'H
+      obtain ⟨Pgb, hPgbb, hPgbc, hPgbe, hPgb⟩ := hrgb.basicProjection hR'tree hR'H
       have hTs : {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ⊆
           {c | c ∈ dyadicFiniteTree G J N} := fun I hI => hTtree I hI.1
+      have hTH' : {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ⊆
+          {c | c ∈ dyadicFiniteTree G J N ∧ kernelHull G J N w c} := fun I hI =>
+        ⟨hTtree I hI.1, hTH I hI.1⟩
       have hpair : ∀ {X : ℤ × ℤ → ℝ → ℂ}, (∃ z₁ z₂, IsBasicOn G J N 1 Bd cB HB w z₁ ∧
           IsBasicOn G J N 1 Bd cB HB w z₂ ∧ ∀ I ∈ T, ∀ᵐ y ∂volume,
             y ∈ dyadicGridCell G I.1 I.2 → X I y = z₁ I y - z₂ I y) →
@@ -5288,22 +5349,27 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
             P₁.HasChartsOn {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2}
               c' H' ∧
             P₂.HasChartsOn {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2}
-              c' H' ∧ ∀ I ∈ T,
+              c' H' ∧
+            P₁.CellEnergyOn {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
+            P₂.CellEnergyOn {I | I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2} ∧
+            ∀ I ∈ T,
             dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 → ∀ᵐ y ∂volume,
               y ∈ dyadicGridCell G I.1 I.2 → X I y = P₁.val I y - P₂.val I y := by
         intro X hX
         obtain ⟨z₁, z₂, h₁, h₂, h₃⟩ := hX
-        obtain ⟨P₁, hb₁, hc₁, hP₁⟩ := h₁.basicProjection hR'tree hR'H
-        obtain ⟨P₂, hb₂, hc₂, hP₂⟩ := h₂.basicProjection hR'tree hR'H
+        obtain ⟨P₁, hb₁, hc₁, he₁, hP₁⟩ := h₁.basicProjection hR'tree hR'H
+        obtain ⟨P₂, hb₂, hc₂, he₂, hP₂⟩ := h₂.basicProjection hR'tree hR'H
         refine ⟨P₁, P₂, hb₁.trans hBdX, hb₂.trans hBdX, hc₁.mono hTs hcB hHB,
-          hc₂.mono hTs hcB hHB, fun I hI _ => ?_⟩
+          hc₂.mono hTs hcB hHB, he₁.mono hTH', he₂.mono hTH', fun I hI _ => ?_⟩
         filter_upwards [h₃ I hI] with y hy hyI
         rw [hy hyI, hP₁ I, hP₂ I]
       apply baseActiveSetup_columnRepBelow (hX := le_rfl) (hri := hpair hri) (hrk := hpair hrk)
         (hra := ⟨Pga.zero zero_le_one, Pga, hPgab.trans hBdX, hPgab.trans hBdX,
-          hPgac.mono hTs hcB hHB, hPgac.mono hTs hcB hHB, fun I hI hIR => ?_⟩)
+          hPgac.mono hTs hcB hHB, hPgac.mono hTs hcB hHB, Pga.zero_cellEnergyOn zero_le_one _,
+          hPgae.mono hTH', fun I hI hIR => ?_⟩)
         (hrb := ⟨Pgb.zero zero_le_one, Pgb, hPgbb.trans hBdX, hPgbb.trans hBdX,
-          hPgbc.mono hTs hcB hHB, hPgbc.mono hTs hcB hHB, fun I hI hIR => ?_⟩)
+          hPgbc.mono hTs hcB hHB, hPgbc.mono hTs hcB hHB, Pgb.zero_cellEnergyOn zero_le_one _,
+          hPgbe.mono hTH', fun I hI hIR => ?_⟩)
       · filter_upwards [Pga.zero_val zero_le_one I, hzga I hI] with y h1 h2 hyI
         rw [← hPga I, h2 hyI, h1]
         simp [Pa, emptyPathColumnSystem, LowList.val]

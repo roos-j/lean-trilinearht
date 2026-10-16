@@ -4899,6 +4899,2710 @@ end AttemptParams
 
 end ActiveSetup
 
+/-! ## Counting setup on the side states (blueprint lines 2709-2717) -/
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+  (hA : 6 ≤ S.A0) (SP : SideParams)
+
+open Classical in
+/-- A final class `F` at height `h` of the node `(b, J)`: the CURRENT component of a mode good at
+`h` (a successful component, blueprint line 2172). -/
+def HasGoodRep (b : ℤ) (J : ℤ × ℤ) (h : ℕ) (F : Finset Ms.Md) : Prop :=
+  ∃ m : Ms.alive (ancAt Gd J (b - 4 * S.K)),
+    (Ms.blockComps S hA b J).Good SP.Δ (Ms.goodP S SP b) h m ∧
+      ((Ms.blockComps S hA b J).F h m).map ⟨Subtype.val, Subtype.val_injective⟩ = F
+
+open Classical in
+/-- The modes good at `h` whose CURRENT component is the final class `F`. -/
+noncomputable def goodModesOf (b : ℤ) (J : ℤ × ℤ) (h : ℕ) (F : Finset Ms.Md) :
+    Finset (Ms.alive (ancAt Gd J (b - 4 * S.K))) :=
+  Finset.univ.filter fun m => (Ms.blockComps S hA b J).Good SP.Δ (Ms.goodP S SP b) h m ∧
+    ((Ms.blockComps S hA b J).F h m).map ⟨Subtype.val, Subtype.val_injective⟩ = F
+
+theorem goodModesOf_nonempty {b : ℤ} {J : ℤ × ℤ} {h : ℕ} {F : Finset Ms.Md}
+    (hF : Ms.HasGoodRep S hA SP b J h F) : (Ms.goodModesOf S hA SP b J h F).Nonempty := by
+  classical
+  obtain ⟨m, hm1, hm2⟩ := hF
+  exact ⟨m, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hm1, hm2⟩⟩
+
+/-- The good mode chosen in a successful final class: the good mode of least index whose CURRENT
+component is the class (a function of the node, the height and the class only; it is the mode of
+the successful component, `succModes`). -/
+noncomputable def goodRep {b : ℤ} {J : ℤ × ℤ} {h : ℕ} {F : Finset Ms.Md}
+    (hF : Ms.HasGoodRep S hA SP b J h F) : Ms.alive (ancAt Gd J (b - 4 * S.K)) :=
+  ((Ms.goodModesOf S hA SP b J h F).exists_min_image (fun m => Ms.modeIdx m.1)
+    (Ms.goodModesOf_nonempty S hA SP hF)).choose
+
+open Classical in
+theorem goodRep_spec {b : ℤ} {J : ℤ × ℤ} {h : ℕ} {F : Finset Ms.Md}
+    (hF : Ms.HasGoodRep S hA SP b J h F) :
+    (Ms.blockComps S hA b J).Good SP.Δ (Ms.goodP S SP b) h (Ms.goodRep S hA SP hF) ∧
+      ((Ms.blockComps S hA b J).F h (Ms.goodRep S hA SP hF)).map
+        ⟨Subtype.val, Subtype.val_injective⟩ = F :=
+  (Finset.mem_filter.mp ((Ms.goodModesOf S hA SP b J h F).exists_min_image
+    (fun m => Ms.modeIdx m.1) (Ms.goodModesOf_nonempty S hA SP hF)).choose_spec.1).2
+
+open Classical in
+/-- The chosen good mode has the least index among the good modes of its class. -/
+theorem goodRep_min {b : ℤ} {J : ℤ × ℤ} {h : ℕ} {F : Finset Ms.Md}
+    (hF : Ms.HasGoodRep S hA SP b J h F) (m : Ms.alive (ancAt Gd J (b - 4 * S.K)))
+    (hm : (Ms.blockComps S hA b J).Good SP.Δ (Ms.goodP S SP b) h m)
+    (hmF : ((Ms.blockComps S hA b J).F h m).map ⟨Subtype.val, Subtype.val_injective⟩ = F) :
+    Ms.modeIdx (Ms.goodRep S hA SP hF).1 ≤ Ms.modeIdx m.1 :=
+  ((Ms.goodModesOf S hA SP b J h F).exists_min_image (fun m => Ms.modeIdx m.1)
+    (Ms.goodModesOf_nonempty S hA SP hF)).choose_spec.2 m
+    (Finset.mem_filter.mpr ⟨Finset.mem_univ _, hm, hmF⟩)
+
+theorem goodRep_val_eq {b b' : ℤ} {J J' : ℤ × ℤ} {h : ℕ} {F : Finset Ms.Md} (hb : b = b')
+    (hJ : J = J') (hF : Ms.HasGoodRep S hA SP b J h F) (hF' : Ms.HasGoodRep S hA SP b' J' h F) :
+    (Ms.goodRep S hA SP hF).1 = (Ms.goodRep S hA SP hF').1 := by
+  subst hb hJ
+  rfl
+
+open Classical in
+/-- Distinct successful classes of one node have good modes in different CURRENT components. -/
+theorem goodRep_node_dist {b b' : ℤ} {J J' : ℤ × ℤ} {h : ℕ} {F F' : Finset Ms.Md}
+    (hb : b = b') (hJ : J = J') (hF : Ms.HasGoodRep S hA SP b J h F)
+    (hF' : Ms.HasGoodRep S hA SP b' J' h F')
+    (hm : (Ms.goodRep S hA SP hF').1 ∈ Ms.alive (ancAt Gd J (b - 4 * S.K)))
+    (hmem : (⟨(Ms.goodRep S hA SP hF').1, hm⟩ : Ms.alive (ancAt Gd J (b - 4 * S.K))) ∈
+      (Ms.blockComps S hA b J).F h (Ms.goodRep S hA SP hF)) : F = F' := by
+  subst hb hJ
+  have e : (⟨(Ms.goodRep S hA SP hF').1, hm⟩ : Ms.alive (ancAt Gd J (b - 4 * S.K))) =
+      Ms.goodRep S hA SP hF' := rfl
+  rw [e] at hmem
+  obtain ⟨-, hFe⟩ := Ms.goodRep_spec S hA SP hF
+  obtain ⟨-, hFe'⟩ := Ms.goodRep_spec S hA SP hF'
+  rw [← hFe, ← hFe', (Ms.blockComps S hA b J).F_comp h _ _ hmem]
+
+end ModeSystem
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+theorem hasGoodRep_of_mem_goodCls {G : bf.Grp} {I : ℤ × ℤ} {j : Fin 4} {h : ℕ}
+    {F : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) :
+    (D.Ms j G).HasGoodRep D.S D.hA D.SP (A.blkStart D.S.K I.1) (D.preAt I) h F :=
+  D.mem_goodCls hF
+
+/-- The mode node `(b, J, m)` of a successful final class `F` at the cell `I` (`b` the block,
+`J` the pre-cell, `m` its chosen good mode). -/
+noncomputable def classNode (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4) (h : ℕ)
+    {F : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) : ℤ × (ℤ × ℤ) × (D.Ms j G).Md :=
+  (A.blkStart D.S.K I.1, D.preAt I,
+    ((D.Ms j G).goodRep D.S D.hA D.SP (D.hasGoodRep_of_mem_goodCls hF)).1)
+
+open Classical in
+/-- The mode nodes of the successful final classes at height `h` of the role `j` on the cells
+`Cs`. -/
+noncomputable def classNodes (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × ℤ)) :
+    Finset (ℤ × (ℤ × ℤ) × (D.Ms j G).Md) :=
+  Cs.biUnion fun I => (D.goodCls G I j h).attach.image fun F => D.classNode G I j h F.2
+
+open Classical in
+theorem mem_classNodes {G : bf.Grp} {j : Fin 4} {h : ℕ} {Cs : Finset (ℤ × ℤ)}
+    {c : ℤ × (ℤ × ℤ) × (D.Ms j G).Md} :
+    c ∈ D.classNodes G j h Cs ↔
+      ∃ I ∈ Cs, ∃ F, ∃ hF : F ∈ D.goodCls G I j h, c = D.classNode G I j h hF := by
+  unfold classNodes
+  simp only [Finset.mem_biUnion, Finset.mem_image, Finset.mem_attach, true_and]
+  constructor
+  · rintro ⟨I, hI, ⟨F, hF⟩, rfl⟩
+    exact ⟨I, hI, F, hF, rfl⟩
+  · rintro ⟨I, hI, F, hF, rfl⟩
+    exact ⟨I, hI, ⟨F, hF⟩, rfl⟩
+
+theorem classNode_alive {G : bf.Grp} {I : ℤ × ℤ} {j : Fin 4} {h : ℕ}
+    {F : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) :
+    (D.classNode G I j h hF).2.2 ∈ (D.Ms j G).alive
+      (ancAt A.G (D.classNode G I j h hF).2.1 ((D.classNode G I j h hF).1 - 4 * D.S.K)) :=
+  ((D.Ms j G).goodRep D.S D.hA D.SP (D.hasGoodRep_of_mem_goodCls hF)).2
+
+open Classical in
+/-- The mode nodes of the successful classes satisfy the node hypotheses of the hereditary
+representatives (`attempt_representatives3`): pre-cells two block lengths up, alive good modes,
+and distinct nodes on one pre-cell in different CURRENT components. -/
+theorem classNodes_props (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × ℤ)) :
+    (∀ c ∈ D.classNodes G j h Cs, c.2.1.1 = c.1 - 2 * D.S.K) ∧
+    (∀ c ∈ D.classNodes G j h Cs,
+      c.2.2 ∈ (D.Ms j G).alive (ancAt A.G c.2.1 (c.1 - 4 * D.S.K))) ∧
+    (∀ c ∈ D.classNodes G j h Cs, ∃ hm : c.2.2 ∈ (D.Ms j G).alive
+        (ancAt A.G c.2.1 (c.1 - 4 * D.S.K)),
+      ((D.Ms j G).blockComps D.S D.hA c.1 c.2.1).Good D.SP.Δ ((D.Ms j G).goodP D.S D.SP c.1) h
+        ⟨c.2.2, hm⟩) ∧
+    (∀ c ∈ D.classNodes G j h Cs, ∀ c' ∈ D.classNodes G j h Cs, c.1 = c'.1 → c.2.1 = c'.2.1 →
+      ∀ (hm : c.2.2 ∈ (D.Ms j G).alive (ancAt A.G c.2.1 (c.1 - 4 * D.S.K)))
+      (hm' : c'.2.2 ∈ (D.Ms j G).alive (ancAt A.G c.2.1 (c.1 - 4 * D.S.K))), c ≠ c' →
+      (⟨c'.2.2, hm'⟩ : (D.Ms j G).alive (ancAt A.G c.2.1 (c.1 - 4 * D.S.K))) ∉
+        ((D.Ms j G).blockComps D.S D.hA c.1 c.2.1).F h ⟨c.2.2, hm⟩) := by
+  refine ⟨fun c hc => ?_, fun c hc => ?_, fun c hc => ?_, fun c hc c' hc' h1 h2 hm hm' hne => ?_⟩
+  · obtain ⟨I, -, F, hF, rfl⟩ := D.mem_classNodes.mp hc
+    rfl
+  · obtain ⟨I, -, F, hF, rfl⟩ := D.mem_classNodes.mp hc
+    exact D.classNode_alive hF
+  · obtain ⟨I, -, F, hF, rfl⟩ := D.mem_classNodes.mp hc
+    exact ⟨D.classNode_alive hF,
+      ((D.Ms j G).goodRep_spec D.S D.hA D.SP (D.hasGoodRep_of_mem_goodCls hF)).1⟩
+  · obtain ⟨I, -, F, hF, rfl⟩ := D.mem_classNodes.mp hc
+    obtain ⟨I', -, F', hF', rfl⟩ := D.mem_classNodes.mp hc'
+    intro hmem
+    have hFF := (D.Ms j G).goodRep_node_dist D.S D.hA D.SP h1 h2
+      (D.hasGoodRep_of_mem_goodCls hF) (D.hasGoodRep_of_mem_goodCls hF') hm' hmem
+    subst hFF
+    apply hne
+    refine Prod.ext h1 (Prod.ext h2 ?_)
+    exact (D.Ms j G).goodRep_val_eq D.S D.hA D.SP h1 h2 _ _
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint lines 2172-2191 on the side states (`THT.Modes.hereditaryRepresentatives` for the
+successful final classes): for a height `h ≤ J_*`, a role and a group, there are representatives
+for every type class of the class nodes on the cells `Cs`. They lie in the predecessors of the
+nodes, are inherited under predecessor inclusion along comparable nodes, and different
+representatives on comparable nodes have disjoint predecessors in different later CURRENT
+components (`typed_representatives_sched`). -/
+theorem side_typed_representatives {Cj CA CT CK : ℕ} {δs W : ℝ}
+    (hV : D.S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax)
+    (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar) (hQ : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs)
+    (G : bf.Grp) (j : Fin 4) (hdim : ∀ p, (D.Ms j G).dvOf p + (D.Ms j G).zc.dim ≤ D.S.dmax)
+    (hBσ : 2 * (D.S.Q0 * (3 * ((D.Ms j G).Bσ * (D.Ms j G).Bσ) ^ 2)) ^ 2 ≤ (⌊D.S.Dstar⌋₊ : ℝ))
+    (Cs : Finset (ℤ × ℤ))
+    (hcard : ∀ I ∈ Cs, (((D.Ms j G).alive (ancAt A.G (D.preAt I)
+      (A.blkStart D.S.K I.1 - 4 * D.S.K))).card : ℝ) ≤ D.S.Dstar)
+    {h : ℕ} (hh : h ≤ D.SP.Jst) :
+    ∃ rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md, ∀ k₁ k₂,
+      let Nk := (D.classNodes G j h Cs).filter fun c =>
+        (D.Ms j G).nodeType1 D.S D.hA 10 h c = k₁ ∧ (D.Ms j G).nodeType2 D.S D.hA 10 h c = k₂
+      (∀ c, rep k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c) ∧
+      (∀ c c', ModeSystem.nodeLt3 (D.Ms j G) Nk c c' →
+        (D.Ms j G).predOfMode D.S D.hA 10 h c ⊆ (D.Ms j G).predOfMode D.S D.hA 10 h c' →
+          rep k₁ k₂ c' = rep k₁ k₂ c) ∧
+      (∀ c c', ModeSystem.nodeLt3 (D.Ms j G) Nk c c' → rep k₁ k₂ c ≠ rep k₁ k₂ c' →
+        Disjoint ((D.Ms j G).predOfMode D.S D.hA 10 h c)
+          ((D.Ms j G).predOfMode D.S D.hA 10 h c')) ∧
+      (∀ c c', ModeSystem.nodeLt3 (D.Ms j G) Nk c c' → rep k₁ k₂ c ≠ rep k₁ k₂ c' →
+        ∀ z z' : (D.Ms j G).alive (ancAt A.G c'.2.1 (c'.1 - 4 * D.S.K)),
+          z.1 ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c →
+          z'.1 ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c' →
+          z ∉ ((D.Ms j G).blockComps D.S D.hA c'.1 c'.2.1).F h z') := by
+  obtain ⟨hNd, halive, hgood, hdist⟩ := D.classNodes_props G j h Cs
+  set Nd := D.classNodes G j h Cs
+  have hJst : D.SP.Jst = D.S.Jstar := by rw [hSP]; rfl
+  have hΔ : D.SP.Δ = 10 := by rw [hSP]; rfl
+  by_cases hne : Nd.Nonempty
+  · obtain ⟨c₀, hc₀⟩ := hne
+    have hBmin : ∀ c ∈ Nd, (Nd.image Prod.fst).min' ⟨c₀.1, Finset.mem_image_of_mem _ hc₀⟩ ≤ c.1 :=
+      fun c hc => Finset.min'_le _ _ (Finset.mem_image_of_mem _ hc)
+    have hcardN : ∀ c ∈ Nd, (((D.Ms j G).alive (ancAt A.G c.2.1 (c.1 - 4 * D.S.K))).card : ℝ) ≤
+        D.S.Dstar := by
+      intro c hc
+      obtain ⟨I, hI, F, hF, rfl⟩ := D.mem_classNodes.mp hc
+      exact hcard I hI
+    have hgood' : ∀ c (hc : c ∈ Nd), ((D.Ms j G).blockComps D.S D.hA c.1 c.2.1).Good 10
+        ((D.Ms j G).goodP D.S (D.S.sideParams δs) c.1) h ⟨c.2.2, halive c hc⟩ := by
+      intro c hc
+      obtain ⟨hm, hg⟩ := hgood c hc
+      rw [hSP] at hg
+      exact hg
+    exact (D.Ms j G).typed_representatives_sched D.S D.hA hV hCA hCT hd2 hD hB hQ hdim hBσ Nd hNd
+      hBmin hcardN (by rw [← hJst]; exact hh) halive hgood'
+      (fun c hc c' hc' h1 h2 hcc => hdist c hc c' hc' h1 h2 (halive c hc) _ hcc) c₀.2.2
+  · refine ⟨fun _ _ c => c.2.2, fun k₁ k₂ => ⟨fun c => ?_, fun c c' hcc => ?_, fun c c' hcc => ?_,
+      fun c c' hcc => ?_⟩⟩
+    · unfold ModeSystem.predOfMode
+      split_ifs with hm
+      · exact Finset.mem_map_of_mem _ (ModeComponents.E_self _ _ _)
+      · exact Finset.mem_singleton_self _
+    all_goals exact absurd ⟨c, (Finset.mem_filter.mp hcc.1).1⟩ hne
+
+open Classical in
+/-- The anchor of a successful final class at the cell `I` given by representatives `rep` of the
+type classes of the class nodes (blueprint line 2467: "let `a_j` be its representative"). -/
+noncomputable def repAnchor (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4) (h : ℕ)
+    (rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ k₁ k₂ c, rep k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c)
+    {F : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) :
+    (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K)) :=
+  ⟨rep ((D.Ms j G).nodeType1 D.S D.hA 10 h (D.classNode G I j h hF))
+      ((D.Ms j G).nodeType2 D.S D.hA 10 h (D.classNode G I j h hF)) (D.classNode G I j h hF),
+    (D.Ms j G).mem_alive_of_mem_predOfMode D.S D.hA 10 h (D.classNode_alive hF) (hrep _ _ _)⟩
+
+open Classical in
+/-- The anchors at a cell from per-height representatives (a default alive mode `d₀` for the
+classes that are not successful). -/
+noncomputable def repAnc (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4)
+    (rep : ℕ → ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs, ∀ k₁ k₂ c,
+      rep h k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c)
+    (d₀ : (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))) (h : ℕ)
+    (F : Finset (D.Ms j G).Md) :
+    (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K)) :=
+  if hh : h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs then
+    if hF : F ∈ D.goodCls G I j h then D.repAnchor G I j h (rep h) (hrep h hh) hF else d₀
+  else d₀
+
+open Classical in
+/-- Blueprint line 2467 for the representatives: the anchors `repAnc` of the final classes satisfy
+`AnchorOKAt`; every mode of a core component good at `h` lies in the PRE predecessor of the
+representative of its class (the predecessor of the chosen good mode, `selected_in_pred_of_rep`). -/
+theorem repAnc_ok (hstab : D.Stab) (hΔ : D.SP.Δ = 10) (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4)
+    (rep : ℕ → ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs, ∀ k₁ k₂ c,
+      rep h k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c)
+    (d₀ : (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))) :
+    D.AnchorOKAt G I j (D.repAnc G I j rep hrep d₀) := by
+  intro h hh K hK hg x hxK
+  set C := (D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I) with hC
+  have hhJ : h ≤ D.SP.Jst := by
+    have := (Finset.mem_filter.mp hh).1
+    rw [Finset.mem_range] at this
+    omega
+  set F := (D.Ms j G).compClass D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I) h K with hFdef
+  have hF : F ∈ D.goodCls G I j h := Finset.mem_image.mpr ⟨K, Finset.mem_filter.mpr ⟨hK, hg⟩, rfl⟩
+  have e : D.repAnc G I j rep hrep d₀ h F = D.repAnchor G I j h (rep h) (hrep h hh) hF := by
+    unfold repAnc
+    simp only [hh, hF, ↓reduceDIte]
+  rw [e]
+  obtain ⟨hgm, hFm⟩ := (D.Ms j G).goodRep_spec D.S D.hA D.SP (D.hasGoodRep_of_mem_goodCls hF)
+  set m := (D.Ms j G).goodRep D.S D.hA D.SP (D.hasGoodRep_of_mem_goodCls hF)
+  -- the selected mode lies in the predecessor of the good mode of its class
+  have hxm : x ∈ C.E (h - D.SP.Δ) m :=
+    D.selected_in_pred_of_rep hstab G I j hhJ hg hgm hFm (C.E_self _ m) x hxK
+  -- the representative lies in the same predecessor
+  have hrm : D.repAnchor G I j h (rep h) (hrep h hh) hF ∈ C.E (h - D.SP.Δ) m := by
+    have hr := hrep h hh ((D.Ms j G).nodeType1 D.S D.hA 10 h (D.classNode G I j h hF))
+      ((D.Ms j G).nodeType2 D.S D.hA 10 h (D.classNode G I j h hF)) (D.classNode G I j h hF)
+    rw [(D.Ms j G).predOfMode_eq D.S D.hA 10 h (D.classNode_alive hF)] at hr
+    obtain ⟨z, hz, hzv⟩ := Finset.mem_map.mp hr
+    have hz' : z = D.repAnchor G I j h (rep h) (hrep h hh) hF := Subtype.ext hzv
+    rw [← hz', hΔ]
+    exact hz
+  rw [C.E_comp _ _ _ hrm]
+  exact hxm
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- The class nodes of one type class `(k₁, k₂)`. -/
+noncomputable def typedNodes (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (k₁ k₂ : ℕ) : Finset (ℤ × (ℤ × ℤ) × (D.Ms j G).Md) :=
+  (D.classNodes G j h Cs).filter fun c =>
+    (D.Ms j G).nodeType1 D.S D.hA 10 h c = k₁ ∧ (D.Ms j G).nodeType2 D.S D.hA 10 h c = k₂
+
+open Classical in
+/-- Blueprint lines 2711-2712 and `eq:representative-separation` on the side states: two
+different representatives of one type class on class nodes whose pre-cells contain the path
+point `x*` have slopes at `x*` separated by `(Ξ/2) max(r⁻¹, r'⁻¹)` against all shifts `N·ζ`,
+`ζ = c_q θ/(Q₀ L_h)`, `|N| ≤ Q`, `c_q Q ≤ E_h` (`role_label_separation3`, `sep_of_scaled`). -/
+theorem rep_slope_sep (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × ℤ)) (k₁ k₂ : ℕ)
+    (rep : ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ c, rep c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c)
+    (hsepF : ∀ c c', ModeSystem.nodeLt3 (D.Ms j G) (D.typedNodes G j h Cs k₁ k₂) c c' →
+      rep c ≠ rep c' →
+      ∀ z z' : (D.Ms j G).alive (ancAt A.G c'.2.1 (c'.1 - 4 * D.S.K)),
+        z.1 ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c →
+        z'.1 ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c' →
+        z ∉ ((D.Ms j G).blockComps D.S D.hA c'.1 c'.2.1).F h z')
+    (hΛ : 8 * (D.Ms j G).Λ ≤ D.S.Ξ) {xs : ℝ} {c c' : ℤ × (ℤ × ℤ) × (D.Ms j G).Md}
+    (hc : c ∈ D.typedNodes G j h Cs k₁ k₂) (hc' : c' ∈ D.typedNodes G j h Cs k₁ k₂)
+    (hxc : xs ∈ dyadicGridCell A.G c.2.1.1 c.2.1.2)
+    (hxc' : xs ∈ dyadicGridCell A.G c'.2.1.1 c'.2.1.2)
+    (hne : rep c ≠ rep c') {rI rI' : ℝ} (hrI : dyadicGridLength A.G (max c.1 c'.1 + D.S.K) ≤ rI)
+    (hrI' : dyadicGridLength A.G (max c.1 c'.1 + D.S.K) ≤ rI') (cq : ℕ) {Q : ℝ}
+    (hcQ : cq * Q ≤ D.S.Eh h) (N : Fin (D.Ms j G).zc.dim → ℤ) (hN : ∀ k, |(N k : ℝ)| ≤ Q) :
+    D.S.Ξ / 2 * max rI⁻¹ rI'⁻¹ < |(D.Ms j G).slope (rep c) xs - (D.Ms j G).slope (rep c') xs +
+      ∑ k, (N k : ℝ) * ((cq : ℝ) * ((D.Ms j G).zc.θ k / D.S.Q0 / ModeSchedule.Lh h))| := by
+  obtain ⟨hNd, halive, -, hdist⟩ := D.classNodes_props G j h Cs
+  set Np := (D.typedNodes G j h Cs k₁ k₂).filter fun c => xs ∈ dyadicGridCell A.G c.2.1.1 c.2.1.2
+  have hsub : ∀ c ∈ Np, c ∈ D.classNodes G j h Cs := fun c hc =>
+    (Finset.mem_filter.mp (Finset.mem_filter.mp hc).1).1
+  have hsep := fun (n : Fin (D.Ms j G).zc.dim → ℤ) (hn : ∀ k, |(n k : ℝ)| ≤ D.S.Eh h) =>
+    (D.Ms j G).role_label_separation3 D.S D.hA Np (fun c hc => hNd c (hsub c hc)) 10 h
+      (fun c hc => halive c (hsub c hc))
+      (fun c hc c' hc' h1 h2 hcc => hdist c (hsub c hc) c' (hsub c' hc') h1 h2 _ _ hcc) rep hrep
+      (fun c c' hcc => hsepF c c' ⟨(Finset.mem_filter.mp hcc.1).1,
+        (Finset.mem_filter.mp hcc.2.1).1, hcc.2.2⟩) hΛ (fun c hc => (Finset.mem_filter.mp hc).2)
+      (Finset.mem_filter.mpr ⟨hc, hxc⟩) (Finset.mem_filter.mpr ⟨hc', hxc'⟩) hne n hn hrI hrI'
+  refine sep_of_scaled (fun k => (D.Ms j G).zc.θ k / D.S.Q0 / ModeSchedule.Lh h) cq hcQ
+    (fun n hn => ?_) N hN
+  have := hsep n hn
+  convert this using 3
+  rw [Finset.sum_div]
+  exact Finset.sum_congr rfl fun k _ => by ring
+
+open Classical in
+/-- The type `(⌊log₂ |π(E)|⌋, ⌊log₂ |E|⌋)` of the predecessor `E` of a successful final class at a
+cell (blueprint line 2172), `(0, 0)` for other classes. -/
+noncomputable def classTypeOf (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4) (h : ℕ)
+    (F : Finset (D.Ms j G).Md) : ℕ × ℕ :=
+  if hF : F ∈ D.goodCls G I j h then
+    ((D.Ms j G).nodeType1 D.S D.hA 10 h (D.classNode G I j h hF),
+      (D.Ms j G).nodeType2 D.S D.hA 10 h (D.classNode G I j h hF))
+  else (0, 0)
+
+open Classical in
+theorem classNode_mem_typedNodes {G : bf.Grp} {I : ℤ × ℤ} {j : Fin 4} {h : ℕ}
+    {Cs : Finset (ℤ × ℤ)} (hI : I ∈ Cs) {F : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) :
+    D.classNode G I j h hF ∈ D.typedNodes G j h Cs (D.classTypeOf G I j h F).1
+      (D.classTypeOf G I j h F).2 := by
+  refine Finset.mem_filter.mpr ⟨D.mem_classNodes.mpr ⟨I, hI, F, hF, rfl⟩, ?_⟩
+  unfold classTypeOf
+  simp only [hF, ↓reduceDIte, and_self]
+
+open Classical in
+/-- Blueprint lines 2711-2712 on the side states (labels of representatives along a path): the
+anchors `repAnchor` of successful classes of one type at two cells containing the path point
+`x*` have different slopes at `x*` only if they are separated by `(Ξ/2) max(|I|⁻¹, |I'|⁻¹)`
+against all shifts `N·ζ`, `ζ = c_q θ/(Q₀ L_h)`, `|N| ≤ Q`, `c_q Q ≤ E_h` (the larger reciprocal
+scale permits comparison across different cells). -/
+theorem path_label_sep (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ k₁ k₂ c, rep k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c)
+    (hsepF : ∀ k₁ k₂ c c', ModeSystem.nodeLt3 (D.Ms j G) (D.typedNodes G j h Cs k₁ k₂) c c' →
+      rep k₁ k₂ c ≠ rep k₁ k₂ c' →
+      ∀ z z' : (D.Ms j G).alive (ancAt A.G c'.2.1 (c'.1 - 4 * D.S.K)),
+        z.1 ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c →
+        z'.1 ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c' →
+        z ∉ ((D.Ms j G).blockComps D.S D.hA c'.1 c'.2.1).F h z')
+    (hΛ : 8 * (D.Ms j G).Λ ≤ D.S.Ξ) {I I' : ℤ × ℤ} (hI : I ∈ Cs) (hI' : I' ∈ Cs) {xs : ℝ}
+    (hxI : xs ∈ dyadicGridCell A.G I.1 I.2) (hxI' : xs ∈ dyadicGridCell A.G I'.1 I'.2)
+    {F F' : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) (hF' : F' ∈ D.goodCls G I' j h)
+    (hκ : D.classTypeOf G I j h F = D.classTypeOf G I' j h F')
+    (hne : (D.Ms j G).slope (D.repAnchor G I j h rep hrep hF).1 xs ≠
+      (D.Ms j G).slope (D.repAnchor G I' j h rep hrep hF').1 xs)
+    (cq : ℕ) {Q : ℝ} (hcQ : cq * Q ≤ D.S.Eh h) (N : Fin (D.Ms j G).zc.dim → ℤ)
+    (hN : ∀ k, |(N k : ℝ)| ≤ Q) :
+    D.S.Ξ / 2 * max (dyadicGridLength A.G I.1)⁻¹ (dyadicGridLength A.G I'.1)⁻¹ <
+      |(D.Ms j G).slope (D.repAnchor G I j h rep hrep hF).1 xs -
+        (D.Ms j G).slope (D.repAnchor G I' j h rep hrep hF').1 xs +
+      ∑ k, (N k : ℝ) * ((cq : ℝ) * ((D.Ms j G).zc.θ k / D.S.Q0 / ModeSchedule.Lh h))| := by
+  set κ := D.classTypeOf G I j h F with hκdef
+  have hcN := D.classNode_mem_typedNodes hI hF
+  have hcN' := D.classNode_mem_typedNodes hI' hF'
+  rw [← hκ] at hcN'
+  have htype : ∀ {J : ℤ × ℤ} {E : Finset (D.Ms j G).Md} (hE : E ∈ D.goodCls G J j h),
+      (D.repAnchor G J j h rep hrep hE).1 =
+        rep (D.classTypeOf G J j h E).1 (D.classTypeOf G J j h E).2 (D.classNode G J j h hE) := by
+    intro J E hE
+    unfold repAnchor classTypeOf
+    simp only [hE, ↓reduceDIte]
+  rw [htype hF, htype hF'] at hne ⊢
+  rw [← hκ] at hne ⊢
+  have hb := blkStart_bounds D.hK I.1 (A := A)
+  have hb' := blkStart_bounds D.hK I'.1 (A := A)
+  have hmono := (dyadicGridLength_strictAnti A.G).antitone
+  refine D.rep_slope_sep G j h Cs κ.1 κ.2 (rep κ.1 κ.2) (hrep κ.1 κ.2) (hsepF κ.1 κ.2) hΛ hcN hcN'
+    (D.subset_preAt I hxI) (D.subset_preAt I' hxI') (fun e => hne (by rw [e]))
+    (hmono (show I.1 ≤ max (D.classNode G I j h hF).1 (D.classNode G I' j h hF').1 + D.S.K by
+      simp only [classNode]; omega))
+    (hmono (show I'.1 ≤ max (D.classNode G I j h hF).1 (D.classNode G I' j h hF').1 + D.S.K by
+      simp only [classNode]; omega)) cq hcQ N hN
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-- The separation vector `ζ = 6^{Δ-2} ϑ/L_h` of the counting lemma in the chart `z` (blueprint line
+2733, `Δ = 10`), so that `36 ζ = ξ = ϑ/L_{h-Δ}`. -/
+noncomputable def zetaVec (z : ChartTag) (Q0 : ℕ) (h : ℕ) : Fin z.dim → ℝ :=
+  fun k => ((6 ^ 8 : ℕ) : ℝ) * (z.θ k / Q0 / ModeSchedule.Lh h)
+
+namespace ModeSystem
+variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
+
+theorem torusξ_eq_zeta {h : ℕ} (hh : 10 ≤ h) (i : Fin Ms.zc.dim) :
+    Ms.torusξ S (h - 10) i = 36 * zetaVec Ms.zc S.Q0 h i := by
+  unfold torusξ zetaVec ModeSchedule.Lh
+  have e : (6 : ℝ) ^ h = 6 ^ (h - 10) * 6 ^ 10 := by
+    rw [← pow_add, Nat.sub_add_cancel hh]
+  rw [e]
+  push_cast
+  ring
+
+end ModeSystem
+
+namespace ModeSchedule
+variable {S : ModeSchedule} {Cj CA CT CK : ℕ} {δs W : ℝ}
+
+/-- The shift reserve of the counting arguments (blueprint lines 2716 and 2735): `A₀ ≥ 6^{30} D_*`,
+so `288 · 6^8 D_*^5 E_{h-Δ} ≤ E_h` for `h ≥ Δ = 10`. -/
+theorem Valid.shift_reserve (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) {h : ℕ} (hh : 10 ≤ h) :
+    288 * 6 ^ 8 * S.Dstar ^ 5 * S.Eh (h - 10) ≤ S.Eh h := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have hR := hV.thirty_le_Rht hd2 hD
+  have hbase := hV.base_le_A0 hCA hd2 hD hB
+  have h6 : (6 : ℝ) ^ 30 ≤ 6 ^ S.Rht := pow_le_pow_right₀ (by norm_num) hR
+  have hA : 6 ^ 30 * S.Dstar ≤ S.A0 := by
+    have h60 : (0 : ℝ) ≤ 6 ^ 30 := by positivity
+    have hCB : (1 : ℝ) ≤ S.Cstar * S.Bstar := by nlinarith
+    calc 6 ^ 30 * S.Dstar ≤ (S.Cstar * S.Bstar) * 6 ^ S.Rht * S.Dstar := by
+          have : (6 : ℝ) ^ 30 ≤ (S.Cstar * S.Bstar) * 6 ^ S.Rht := by nlinarith
+          exact mul_le_mul_of_nonneg_right this (by linarith)
+      _ = S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar := by ring
+      _ ≤ S.A0 := hbase
+  have hA0 : 0 ≤ S.A0 := le_trans (by positivity) hA
+  have hE : S.Eh h = S.A0 ^ 10 * S.Eh (h - 10) := by
+    unfold Eh
+    rw [← pow_add]
+    congr 1
+    omega
+  have hEn : 0 ≤ S.Eh (h - 10) := by unfold Eh; positivity
+  have hD5 : S.Dstar ^ 5 ≤ S.Dstar ^ 10 := pow_le_pow_right₀ (by linarith) (by norm_num)
+  have hA10 : 288 * 6 ^ 8 * S.Dstar ^ 5 ≤ S.A0 ^ 10 := by
+    have h1 : (6 ^ 30 * S.Dstar) ^ 10 ≤ S.A0 ^ 10 :=
+      pow_le_pow_left₀ (by positivity) hA 10
+    have h2 : (288 * 6 ^ 8 : ℝ) ≤ (6 ^ 30) ^ 10 := by norm_num
+    have hD10 : 0 ≤ S.Dstar ^ 5 := by positivity
+    calc 288 * 6 ^ 8 * S.Dstar ^ 5 ≤ (6 ^ 30) ^ 10 * S.Dstar ^ 10 :=
+          mul_le_mul h2 hD5 hD10 (by positivity)
+      _ = (6 ^ 30 * S.Dstar) ^ 10 := by ring
+      _ ≤ S.A0 ^ 10 := h1
+  rw [hE]
+  exact mul_le_mul_of_nonneg_right hA10 hEn
+
+end ModeSchedule
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint lines 2713-2714 (the reference equations of `eq:four-tests` for the label tuple): the
+labels `x_j = ω_{a_j}(x*)` of a four-core tuple passing the test have the reference data
+`FourRef` with `ζ = ξ/36`, shifts in the full box `B'_{h-Δ} = D_*^5 E_{h-Δ}`, `μ` and `2ν` the
+dyadic bands, and `R = |I|⁻¹`. -/
+theorem fourRef_of_passes (hD : 0 ≤ D.S.Dstar) (hU : 1 ≤ D.U0) (hΔ : D.SP.Δ = 10) {G : bf.Grp}
+    {I : ℤ × ℤ} {xs : ℝ} {h : ℕ} (hh : 10 ≤ h) (z : ChartTag) (hz : (D.Ms 0 G).zc = z)
+    {a : ∀ j, (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))}
+    (hp : D.fourPasses G I xs (h - D.SP.Δ) a) :
+    FourRef (zetaVec z D.S.Q0 h) (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))
+      (D.fourMuBand G I xs (h - D.SP.Δ) a) (2 * D.fourNuBand G I xs (h - D.SP.Δ) a)
+      (dyadicGridLength A.G I.1)⁻¹ (fun j => (D.Ms j G).slope (a j).1 xs) := by
+  subst hz
+  obtain ⟨hne, hin⟩ := hp
+  obtain ⟨hn, hm, -, -⟩ := D.fourRef_spec hD hne
+  obtain ⟨hμ1, -, -, -, -, hν2, -, -⟩ := D.fourBands_spec hD hU ⟨hne, hin⟩
+  set r := dyadicGridLength A.G I.1 with hrdef
+  have hr : 0 < r := dyadicGridLength_pos A.G I.1
+  have hξ : ∀ i, (D.Ms 0 G).torusξ D.S (h - D.SP.Δ) i =
+      36 * zetaVec (D.Ms 0 G).zc D.S.Q0 h i := fun i => by
+    rw [hΔ]; exact (D.Ms 0 G).torusξ_eq_zeta D.S hh i
+  have hq : D.fourQ' G I xs (h - D.SP.Δ) a = ∑ r, (D.Ms r G).slope (a r).1 xs +
+      36 * ∑ p, ((D.fourRef G I xs (h - D.SP.Δ) a).1 p : ℝ) * zetaVec (D.Ms 0 G).zc D.S.Q0 h p := by
+    unfold fourQ' fourQ
+    rw [Finset.mul_sum]
+    congr 1
+    exact Finset.sum_congr rfl fun p _ => by rw [hξ]; ring
+  have ht : D.fourT' G I xs (h - D.SP.Δ) a =
+      ∑ r : Fin 4, ((r : ℕ) : ℝ) * (D.Ms r G).slope (a r).1 xs +
+      36 * ∑ p, ((D.fourRef G I xs (h - D.SP.Δ) a).2 p : ℝ) * zetaVec (D.Ms 0 G).zc D.S.Q0 h p := by
+    unfold fourT' fourT
+    rw [Finset.mul_sum]
+    congr 1
+    exact Finset.sum_congr rfl fun p _ => by rw [hξ]; ring
+  have hνq : r * |D.fourQ' G I xs (h - D.SP.Δ) a| <
+      2 * D.fourNuBand G I xs (h - D.SP.Δ) a :=
+    lt_of_le_of_lt ((le_max_left _ _).trans (le_max_right _ _)) hν2
+  have hνt : r * |D.fourT' G I xs (h - D.SP.Δ) a| <
+      2 * D.fourNuBand G I xs (h - D.SP.Δ) a :=
+    lt_of_le_of_lt ((le_max_right _ _).trans (le_max_right _ _)) hν2
+  refine ⟨(D.fourRef G I xs (h - D.SP.Δ) a).1, (D.fourRef G I xs (h - D.SP.Δ) a).2, hn, hm,
+    ?_, ?_, fun j => ?_⟩
+  · rw [← hq, ← div_eq_mul_inv, le_div_iff₀ hr, mul_comm]; exact hνq.le
+  · rw [← ht, ← div_eq_mul_inv, le_div_iff₀ hr, mul_comm]; exact hνt.le
+  · rw [← hq, ← ht, ← div_eq_mul_inv, div_le_iff₀ hr]
+    have hinf : fourMu r (D.fourQ' G I xs (h - D.SP.Δ) a) (D.fourT' G I xs (h - D.SP.Δ) a) ≤
+        r * |D.fourT' G I xs (h - D.SP.Δ) a - ((j : ℕ) : ℝ) * D.fourQ' G I xs (h - D.SP.Δ) a| :=
+      (min_le_right _ _).trans (Finset.inf'_le _ (Finset.mem_image_of_mem _ (Finset.mem_univ j)))
+    have := hμ1.trans hinf
+    linarith [mul_comm r |D.fourT' G I xs (h - D.SP.Δ) a -
+      ((j : ℕ) : ℝ) * D.fourQ' G I xs (h - D.SP.Δ) a|]
+
+open Classical in
+/-- Blueprint lines 2713-2715 (the `T_l` reference equation of a passing three-core tuple): the
+slopes `x_j` (side entry `0`) have the reference data `ThreeRef` with `ζ = ξ/36`, the full box,
+`μ` and `2ν` the dyadic bands, and `R = |I|⁻¹`. -/
+theorem threeRef_of_passes (hD : 0 ≤ D.S.Dstar) (hU : 1 ≤ D.U0) (hΔ : D.SP.Δ = 10) {G : bf.Grp}
+    {I : ℤ × ℤ} {xs : ℝ} {h : ℕ} (hh : 10 ≤ h) (z : ChartTag) (hz : (D.Ms 0 G).zc = z)
+    {l : Fin 4} {a : Fin 4 → ℝ} (hp : D.threePasses G I xs (h - D.SP.Δ) l a) :
+    ThreeRef (zetaVec z D.S.Q0 h) l (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))
+      (D.threeMuBand G I xs (h - D.SP.Δ) l a) (2 * D.threeNuBand G I xs (h - D.SP.Δ) l a)
+      (dyadicGridLength A.G I.1)⁻¹ a := by
+  subst hz
+  obtain ⟨hne, hin⟩ := hp
+  obtain ⟨hm, -⟩ := D.threeRef_spec hD hne
+  obtain ⟨hμ1, -, -, -, -, hν2, -, -⟩ := D.threeBands_spec hD hU ⟨hne, hin⟩
+  set r := dyadicGridLength A.G I.1 with hrdef
+  have hr : 0 < r := dyadicGridLength_pos A.G I.1
+  have hξ : ∀ i, (D.Ms 0 G).torusξ D.S (h - D.SP.Δ) i =
+      36 * zetaVec (D.Ms 0 G).zc D.S.Q0 h i := fun i => by
+    rw [hΔ]; exact (D.Ms 0 G).torusξ_eq_zeta D.S hh i
+  have hβ : D.threeBeta G I xs (h - D.SP.Δ) l a = r * (∑ i ∈ Finset.univ.erase l,
+      (roleCoeff i l : ℝ) * a i +
+      36 * ∑ p, ((D.threeRef G I xs (h - D.SP.Δ) l a) p : ℝ) *
+        zetaVec (D.Ms 0 G).zc D.S.Q0 h p) := by
+    unfold threeBeta threeT roleCoeff
+    congr 1
+    rw [Finset.mul_sum]
+    congr 1
+    · exact Finset.sum_congr rfl fun i _ => by push_cast; ring
+    · exact Finset.sum_congr rfl fun p _ => by rw [hξ]; ring
+  set T := ∑ i ∈ Finset.univ.erase l, (roleCoeff i l : ℝ) * a i +
+      36 * ∑ p, ((D.threeRef G I xs (h - D.SP.Δ) l a) p : ℝ) * zetaVec (D.Ms 0 G).zc D.S.Q0 h p
+  have hβa : |D.threeBeta G I xs (h - D.SP.Δ) l a| = r * |T| := by
+    rw [hβ, abs_mul, abs_of_pos hr]
+  refine ⟨D.threeRef G I xs (h - D.SP.Δ) l a, hm, ?_, ?_⟩
+  · rw [← div_eq_mul_inv, div_le_iff₀ hr]
+    have := hμ1.trans (min_le_right _ _)
+    rw [hβa] at this
+    linarith [mul_comm r |T|]
+  · rw [← div_eq_mul_inv, le_div_iff₀ hr]
+    have := lt_of_le_of_lt (le_max_right _ _) hν2
+    rw [hβa] at this
+    linarith [mul_comm r |T|]
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+/-- The typed hereditary properties used for the counting: representatives in the predecessors of
+the nodes, and different representatives on comparable nodes of one type class in different later
+CURRENT components. -/
+def RepOK (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md) : Prop :=
+  (∀ k₁ k₂ c, rep k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c) ∧
+  ∀ k₁ k₂ c c', ModeSystem.nodeLt3 (D.Ms j G) (D.typedNodes G j h Cs k₁ k₂) c c' →
+    rep k₁ k₂ c ≠ rep k₁ k₂ c' →
+    ∀ z z' : (D.Ms j G).alive (ancAt A.G c'.2.1 (c'.1 - 4 * D.S.K)),
+      z.1 ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c →
+      z'.1 ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c' →
+      z ∉ ((D.Ms j G).blockComps D.S D.hA c'.1 c'.2.1).F h z'
+
+open Classical in
+/-- `path_label_sep` in a common chart `z` with the separation vector `ζ = 6^{Δ-2} ϑ/L_h` and the
+shift bound `Q` with `6^{Δ-2} Q ≤ E_h` (blueprint lines 2716 and 2733). -/
+theorem path_label_sep' (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md) (hrep : D.RepOK G j h Cs rep)
+    (hΛ : 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag) (hz : (D.Ms j G).zc = z) {I I' : ℤ × ℤ}
+    (hI : I ∈ Cs) (hI' : I' ∈ Cs) {xs : ℝ} (hxI : xs ∈ dyadicGridCell A.G I.1 I.2)
+    (hxI' : xs ∈ dyadicGridCell A.G I'.1 I'.2) {F F' : Finset (D.Ms j G).Md}
+    (hF : F ∈ D.goodCls G I j h) (hF' : F' ∈ D.goodCls G I' j h)
+    (hκ : D.classTypeOf G I j h F = D.classTypeOf G I' j h F')
+    (hne : (D.Ms j G).slope (D.repAnchor G I j h rep hrep.1 hF).1 xs ≠
+      (D.Ms j G).slope (D.repAnchor G I' j h rep hrep.1 hF').1 xs) {Q : ℝ}
+    (hcQ : ((6 ^ 8 : ℕ) : ℝ) * Q ≤ D.S.Eh h) (N : Fin z.dim → ℤ)
+    (hN : ∀ k, |(N k : ℝ)| ≤ Q) :
+    D.S.Ξ / 2 * max (dyadicGridLength A.G I.1)⁻¹ (dyadicGridLength A.G I'.1)⁻¹ <
+      |(D.Ms j G).slope (D.repAnchor G I j h rep hrep.1 hF).1 xs -
+        (D.Ms j G).slope (D.repAnchor G I' j h rep hrep.1 hF').1 xs +
+      ∑ k, (N k : ℝ) * zetaVec z D.S.Q0 h k| := by
+  subst hz
+  exact D.path_label_sep G j h Cs rep hrep.1 hrep.2 hΛ hI hI' hxI hxI' hF hF' hκ hne (6 ^ 8) hcQ
+    N hN
+
+open Classical in
+/-- The representative of a successful final class lies in the class. -/
+theorem repAnchor_mem (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4) (h : ℕ)
+    (rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ k₁ k₂ c, rep k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c)
+    {F : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) :
+    (D.repAnchor G I j h rep hrep hF).1 ∈ F := by
+  set C := (D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)
+  obtain ⟨hgm, hFm⟩ := (D.Ms j G).goodRep_spec D.S D.hA D.SP (D.hasGoodRep_of_mem_goodCls hF)
+  have hr := hrep ((D.Ms j G).nodeType1 D.S D.hA 10 h (D.classNode G I j h hF))
+    ((D.Ms j G).nodeType2 D.S D.hA 10 h (D.classNode G I j h hF)) (D.classNode G I j h hF)
+  rw [(D.Ms j G).predOfMode_eq D.S D.hA 10 h (D.classNode_alive hF)] at hr
+  obtain ⟨z, hz, hzv⟩ := Finset.mem_map.mp hr
+  have hmem : (D.repAnchor G I j h rep hrep hF).1 ∈
+      (C.F h ((D.Ms j G).goodRep D.S D.hA D.SP (D.hasGoodRep_of_mem_goodCls hF))).map
+        ⟨Subtype.val, Subtype.val_injective⟩ :=
+    Finset.mem_map.mpr ⟨z, C.F_mono _ h _ (Nat.sub_le _ _) (C.E_le_F _ _ hz), hzv⟩
+  rwa [hFm] at hmem
+
+open Classical in
+/-- Two successful final classes of one cell sharing a mode are equal (they are CURRENT
+components). -/
+theorem goodCls_eq_of_mem {G : bf.Grp} {I : ℤ × ℤ} {j : Fin 4} {h : ℕ}
+    {F F' : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) (hF' : F' ∈ D.goodCls G I j h)
+    {y : (D.Ms j G).Md} (hy : y ∈ F) (hy' : y ∈ F') : F = F' := by
+  set C := (D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)
+  obtain ⟨m, -, hmF⟩ := D.mem_goodCls hF
+  obtain ⟨m', -, hmF'⟩ := D.mem_goodCls hF'
+  subst hmF hmF'
+  unfold finCls at hy hy' ⊢
+  obtain ⟨z, hz, rfl⟩ := Finset.mem_map.mp hy
+  obtain ⟨z', hz', hzz⟩ := Finset.mem_map.mp hy'
+  have : z' = z := Subtype.val_injective hzz
+  subst this
+  rw [← C.F_comp h m z' hz, ← C.F_comp h m' z' hz']
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint line 2711 ("distinct labels in a fixed role and type have distinct values by
+`eq:representative-separation` at zero shift"): on a cell containing the path point, the
+representatives of distinct successful classes of one type have distinct slopes at `x*`. -/
+theorem repAnchor_slope_inj (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md) (hrep : D.RepOK G j h Cs rep)
+    (hΛ : 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (hD : 0 < D.S.Dstar) {I : ℤ × ℤ} (hI : I ∈ Cs) {xs : ℝ}
+    (hxI : xs ∈ dyadicGridCell A.G I.1 I.2) {F F' : Finset (D.Ms j G).Md}
+    (hF : F ∈ D.goodCls G I j h) (hF' : F' ∈ D.goodCls G I j h)
+    (hκ : D.classTypeOf G I j h F = D.classTypeOf G I j h F')
+    (heq : (D.Ms j G).slope (D.repAnchor G I j h rep hrep.1 hF).1 xs =
+      (D.Ms j G).slope (D.repAnchor G I j h rep hrep.1 hF').1 xs) : F = F' := by
+  by_contra hne
+  have htype : ∀ {E : Finset (D.Ms j G).Md} (hE : E ∈ D.goodCls G I j h),
+      (D.repAnchor G I j h rep hrep.1 hE).1 =
+        rep (D.classTypeOf G I j h E).1 (D.classTypeOf G I j h E).2 (D.classNode G I j h hE) := by
+    intro E hE
+    unfold repAnchor classTypeOf
+    simp only [hE, ↓reduceDIte]
+  have hval : (D.repAnchor G I j h rep hrep.1 hF).1 ≠ (D.repAnchor G I j h rep hrep.1 hF').1 := by
+    intro he
+    exact hne (D.goodCls_eq_of_mem hF hF' (D.repAnchor_mem G I j h rep hrep.1 hF)
+      (he ▸ D.repAnchor_mem G I j h rep hrep.1 hF'))
+  rw [htype hF, htype hF', ← hκ] at hval heq
+  set κ := D.classTypeOf G I j h F
+  have hcN := D.classNode_mem_typedNodes hI hF
+  have hcN' := D.classNode_mem_typedNodes hI hF'
+  rw [← hκ] at hcN'
+  have hb := blkStart_bounds D.hK I.1 (A := A)
+  have hle : dyadicGridLength A.G (max (D.classNode G I j h hF).1 (D.classNode G I j h hF').1 +
+      D.S.K) ≤ dyadicGridLength A.G I.1 :=
+    (dyadicGridLength_strictAnti A.G).antitone
+      (show I.1 ≤ max (D.classNode G I j h hF).1 (D.classNode G I j h hF').1 + D.S.K by
+        simp only [classNode]; omega)
+  have hEh : (0 : ℝ) ≤ D.S.Eh h := by
+    unfold ModeSchedule.Eh; exact pow_nonneg (by linarith [D.hA]) _
+  have hs := D.rep_slope_sep G j h Cs κ.1 κ.2 (rep κ.1 κ.2) (hrep.1 κ.1 κ.2) (hrep.2 κ.1 κ.2) hΛ
+    hcN hcN' (D.subset_preAt I hxI) (D.subset_preAt I hxI) hval hle hle 0 (Q := 0)
+    (by simpa using hEh) (fun _ => 0) (fun _ => by simp)
+  rw [heq] at hs
+  simp only [sub_self, zero_add, Int.cast_zero, zero_mul, Finset.sum_const_zero, abs_zero,
+    max_self] at hs
+  have hr := dyadicGridLength_pos A.G I.1
+  have hΞ : 0 < D.S.Ξ := by unfold ModeSchedule.Ξ; positivity
+  have : 0 < D.S.Ξ / 2 * (dyadicGridLength A.G I.1)⁻¹ := by positivity
+  linarith
+
+open Classical in
+/-- Blueprint lines 2713-2716 (pair determination for four cores on the side states): two tested
+four-core tuples at cells containing the path point, of the same types, with reference data in
+the same bands, whose label tuples agree in two roles, have equal label tuples. The two remaining
+label differences solve a two-by-two system with determinant at most `3`, and the separation of
+the representatives forces them to vanish (`four_core_pair`, `path_label_sep'`). -/
+theorem four_core_pair_side (G : bf.Grp) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) {Q : ℝ} (hcQ : ((6 ^ 8 : ℕ) : ℝ) * Q ≤ D.S.Eh h)
+    {I I' : ℤ × ℤ} (hI : I ∈ Cs) (hI' : I' ∈ Cs) {xs : ℝ}
+    (hxI : xs ∈ dyadicGridCell A.G I.1 I.2) (hxI' : xs ∈ dyadicGridCell A.G I'.1 I'.2)
+    {p p' : ∀ j, Finset (D.Ms j G).Md} (hp : ∀ j, p j ∈ D.goodCls G I j h)
+    (hp' : ∀ j, p' j ∈ D.goodCls G I' j h)
+    (hκ : ∀ j, D.classTypeOf G I j h (p j) = D.classTypeOf G I' j h (p' j)) {B μ ν : ℝ}
+    (hx : FourRef (zetaVec z D.S.Q0 h) B μ ν (dyadicGridLength A.G I.1)⁻¹
+      (fun j => (D.Ms j G).slope (D.repAnchor G I j h (rep j) (hrep j).1 (hp j)).1 xs))
+    (hx' : FourRef (zetaVec z D.S.Q0 h) B μ ν (dyadicGridLength A.G I'.1)⁻¹
+      (fun j => (D.Ms j G).slope (D.repAnchor G I' j h (rep j) (hrep j).1 (hp' j)).1 xs))
+    (hQ : 288 * B ≤ Q) (hSg : 8 * ν ≤ D.S.Ξ / 2) (hν : 0 ≤ ν) {i k : Fin 4} (hik : i ≠ k)
+    (hxi : (D.Ms i G).slope (D.repAnchor G I i h (rep i) (hrep i).1 (hp i)).1 xs =
+      (D.Ms i G).slope (D.repAnchor G I' i h (rep i) (hrep i).1 (hp' i)).1 xs)
+    (hxk : (D.Ms k G).slope (D.repAnchor G I k h (rep k) (hrep k).1 (hp k)).1 xs =
+      (D.Ms k G).slope (D.repAnchor G I' k h (rep k) (hrep k).1 (hp' k)).1 xs) :
+    (fun j => (D.Ms j G).slope (D.repAnchor G I j h (rep j) (hrep j).1 (hp j)).1 xs) =
+      fun j => (D.Ms j G).slope (D.repAnchor G I' j h (rep j) (hrep j).1 (hp' j)).1 xs :=
+  four_core_pair (zetaVec z D.S.Q0 h) hik hxi hxk hx hx'
+    (fun r hr N hN => D.path_label_sep' G r h Cs (rep r) (hrep r) (hΛ r) z (hz r) hI hI' hxI hxI'
+      (hp r) (hp' r) (hκ r) hr hcQ N hN) hQ hSg hν
+    (inv_nonneg.mpr (dyadicGridLength_pos A.G I.1).le)
+
+/-- The label tuple of a three-core tuple with side role `l` from representatives: the slopes at
+`x*` of the representatives in the core roles, `0` in the side role. -/
+noncomputable def threeLabels (G : bf.Grp) (I : ℤ × ℤ) (h : ℕ) (l : Fin 4) (xs : ℝ)
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j k₁ k₂ c, rep j k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c)
+    (p : ∀ j, Finset (D.Ms j G).Md) (hp : ∀ j, j ≠ l → p j ∈ D.goodCls G I j h) : Fin 4 → ℝ :=
+  fun j => if hj : j = l then 0 else
+    (D.Ms j G).slope (D.repAnchor G I j h (rep j) (hrep j) (hp j hj)).1 xs
+
+open Classical in
+/-- Blueprint lines 2713-2716 (pair determination for three cores on the side states): the single
+`T_l` equation determines the remaining core label, so two tested three-core tuples of the same
+types and bands whose labels agree in two core roles have equal label tuples (`three_core_pair`,
+`path_label_sep'`). -/
+theorem three_core_pair_side (G : bf.Grp) (h : ℕ) (Cs : Finset (ℤ × ℤ)) (l : Fin 4)
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) {Q : ℝ} (hcQ : ((6 ^ 8 : ℕ) : ℝ) * Q ≤ D.S.Eh h)
+    {I I' : ℤ × ℤ} (hI : I ∈ Cs) (hI' : I' ∈ Cs) {xs : ℝ}
+    (hxI : xs ∈ dyadicGridCell A.G I.1 I.2) (hxI' : xs ∈ dyadicGridCell A.G I'.1 I'.2)
+    {p p' : ∀ j, Finset (D.Ms j G).Md} (hp : ∀ j, j ≠ l → p j ∈ D.goodCls G I j h)
+    (hp' : ∀ j, j ≠ l → p' j ∈ D.goodCls G I' j h)
+    (hκ : ∀ j, j ≠ l → D.classTypeOf G I j h (p j) = D.classTypeOf G I' j h (p' j))
+    {B μ ν : ℝ}
+    (hx : ThreeRef (zetaVec z D.S.Q0 h) l B μ ν (dyadicGridLength A.G I.1)⁻¹
+      (D.threeLabels G I h l xs rep (fun j => (hrep j).1) p hp))
+    (hx' : ThreeRef (zetaVec z D.S.Q0 h) l B μ ν (dyadicGridLength A.G I'.1)⁻¹
+      (D.threeLabels G I' h l xs rep (fun j => (hrep j).1) p' hp'))
+    (hQ : 72 * B ≤ Q) (hSg : 2 * ν ≤ D.S.Ξ / 2) (hν : 0 ≤ ν) {i k : Fin 4} (hik : i ≠ k)
+    (hil : i ≠ l) (hkl : k ≠ l)
+    (hxi : D.threeLabels G I h l xs rep (fun j => (hrep j).1) p hp i =
+      D.threeLabels G I' h l xs rep (fun j => (hrep j).1) p' hp' i)
+    (hxk : D.threeLabels G I h l xs rep (fun j => (hrep j).1) p hp k =
+      D.threeLabels G I' h l xs rep (fun j => (hrep j).1) p' hp' k) :
+    D.threeLabels G I h l xs rep (fun j => (hrep j).1) p hp =
+      D.threeLabels G I' h l xs rep (fun j => (hrep j).1) p' hp' := by
+  refine three_core_pair (zetaVec z D.S.Q0 h) (by simp [threeLabels]) (by simp [threeLabels]) hik
+    hil hkl hxi hxk hx hx' (fun r hr N hN => ?_) hQ hSg hν
+    (inv_nonneg.mpr (dyadicGridLength_pos A.G I.1).le)
+  have hrl : r ≠ l := fun hrl => hr (by simp [threeLabels, hrl])
+  simp only [threeLabels, hrl, ↓reduceDIte] at hr ⊢
+  exact D.path_label_sep' G r h Cs (rep r) (hrep r) (hΛ r) z (hz r) hI hI' hxI hxI'
+    (hp r hrl) (hp' r hrl) (hκ r hrl) hr hcQ N hN
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint lines 2172-2191 and 2711 on the side states: at the chosen schedule, for every height
+`h ≤ J_*`, role and group, there are representatives of the type classes of the class nodes on the
+cells `Cs` with the properties `RepOK` (`side_typed_representatives`). -/
+theorem exists_repOK {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 5 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar)
+    (hQ : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs) (G : bf.Grp) (j : Fin 4)
+    (hdim : ∀ p, (D.Ms j G).dvOf p + (D.Ms j G).zc.dim ≤ D.S.dmax)
+    (hBσ : 2 * (D.S.Q0 * (3 * ((D.Ms j G).Bσ * (D.Ms j G).Bσ) ^ 2)) ^ 2 ≤ (⌊D.S.Dstar⌋₊ : ℝ))
+    (Cs : Finset (ℤ × ℤ))
+    (hcard : ∀ I ∈ Cs, (((D.Ms j G).alive (ancAt A.G (D.preAt I)
+      (A.blkStart D.S.K I.1 - 4 * D.S.K))).card : ℝ) ≤ D.S.Dstar)
+    {h : ℕ} (hh : h ≤ D.SP.Jst) :
+    ∃ rep : ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md, D.RepOK G j h Cs rep := by
+  obtain ⟨rep, hrep⟩ := D.side_typed_representatives hV hCA hCT hd2 hD hB hQ hSP G j hdim hBσ Cs
+    hcard hh
+  exact ⟨rep, fun k₁ k₂ c => (hrep k₁ k₂).1 c, fun k₁ k₂ c c' hcc hne =>
+    (hrep k₁ k₂).2.2.2 c c' hcc hne⟩
+
+open Classical in
+/-- The anchors `repAnc` of successful classes at an upper height are the representatives. -/
+theorem repAnc_eq (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4)
+    (rep : ℕ → ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs, ∀ k₁ k₂ c,
+      rep h k₁ k₂ c ∈ (D.Ms j G).predOfMode D.S D.hA 10 h c)
+    (d₀ : (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))) {h : ℕ}
+    (hh : h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs) {F : Finset (D.Ms j G).Md}
+    (hF : F ∈ D.goodCls G I j h) :
+    D.repAnc G I j rep hrep d₀ h F = D.repAnchor G I j h (rep h) (hrep h hh) hF := by
+  unfold repAnc
+  simp only [hh, hF, ↓reduceDIte]
+
+/-- Blueprint line 2711 ("in a side role a nonzero use has `b_Λ ≥ σ_l`, so Parseval also gives
+`M_l^G ≥ 1`"): the window size of a side is at most its normalized size `‖S‖_{2,I}`, so a side bin
+`σ_l ≤ b_Λ` gives `σ_l² ≤ r⁻¹ ∫_I |S|²` (each nonzero use contributes at least `1` to `M_l^G`). -/
+theorem winB_le_sideSize (G : bf.Grp) (I : ℤ × ℤ) (xs : ℝ) (h' : ℕ) (l : Fin 4)
+    (a : Fin 4 → ℝ) (X : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (i : ℕ) :
+    D.winB G I xs h' l a X i ≤ Real.sqrt ((dyadicGridLength A.G I.1)⁻¹ *
+      ∫ y in (dyadicGridLeft A.G I.1 I.2)..dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1,
+        ‖augPhys X y‖ ^ 2) := by
+  have hr := dyadicGridLength_pos A.G I.1
+  unfold winB
+  rw [← inv_mul_sqrt_mul hr]
+  exact mul_le_mul_of_nonneg_left (window_root_le (D.Ms 0 G).zc l X I _)
+    (inv_nonneg.mpr hr.le)
+
+theorem side_bin_le (G : bf.Grp) (I : ℤ × ℤ) (xs : ℝ) (h' : ℕ) (l : Fin 4)
+    (a : Fin 4 → ℝ) (X : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (i : ℕ)
+    (hb : 0 < D.winB G I xs h' l a X i) :
+    dyadicBand (D.winB G I xs h' l a X i) ^ 2 ≤ (dyadicGridLength A.G I.1)⁻¹ *
+      ∫ y in (dyadicGridLeft A.G I.1 I.2)..dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1,
+        ‖augPhys X y‖ ^ 2 := by
+  have hr := dyadicGridLength_pos A.G I.1
+  have h1 := (dyadicBand_le hb).trans (D.winB_le_sideSize G I xs h' l a X i)
+  have h0 := (dyadicBand_pos (D.winB G I xs h' l a X i)).le
+  have hX : 0 ≤ (dyadicGridLength A.G I.1)⁻¹ *
+      ∫ y in (dyadicGridLeft A.G I.1 I.2)..dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1,
+        ‖augPhys X y‖ ^ 2 :=
+    mul_nonneg (inv_nonneg.mpr hr.le) (intervalIntegral.integral_nonneg (by linarith)
+      fun _ _ => sq_nonneg _)
+  calc dyadicBand (D.winB G I xs h' l a X i) ^ 2 ≤ (Real.sqrt _) ^ 2 :=
+        pow_le_pow_left₀ h0 h1 2
+    _ = _ := Real.sq_sqrt hX
+
+/-- The band reserve of the pair determination (blueprint line 2716, `ν ≤ C U₀ ≪ Ξ`):
+`16 U₀ ≤ Ξ / 2` for `D_* ≥ 2` (`U₀ = D_*^{250}`, `Ξ = D_*^{1000}`). -/
+theorem U0_reserve (hD : 2 ≤ D.S.Dstar) : 16 * D.U0 ≤ D.S.Ξ / 2 := by
+  unfold U0 ModeSchedule.Ξ
+  have hD1 : (1 : ℝ) ≤ D.S.Dstar := by linarith
+  have h5 : (32 : ℝ) ≤ D.S.Dstar ^ 5 := by
+    have := pow_le_pow_left₀ (by norm_num : (0 : ℝ) ≤ 2) hD 5
+    norm_num at this
+    linarith
+  have h32 : (32 : ℝ) ≤ D.S.Dstar ^ 750 :=
+    h5.trans (pow_le_pow_right₀ hD1 (by norm_num))
+  have hpos : 0 ≤ D.S.Dstar ^ 250 := by positivity
+  have e : D.S.Dstar ^ 1000 = D.S.Dstar ^ 750 * D.S.Dstar ^ 250 := by rw [← pow_add]
+  rw [e]
+  nlinarith
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## The triple tests and the scale multiplicity on the side states (`eq:triple-test`) -/
+
+namespace ModeSchedule
+variable {S : ModeSchedule} {Cj CA CT CK : ℕ} {δs W : ℝ}
+
+/-- The full box `B'_{h-Δ} = D_*^5 E_{h-Δ}` of a height `h ≤ J_*` is at most `D_*^5 H` (the height
+`H` dominates `E_{J_*}`, `Valid.H_ge`). -/
+theorem Valid.fullBox_le_H (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
+    (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {h' : ℕ} (hh : h' ≤ S.Jstar) :
+    S.Dstar ^ 5 * S.Eh h' ≤ S.Dstar ^ 5 * S.H := by
+  have hHg := hV.H_ge hd2 hD hB hQ
+  have hA := hV.one_le_A0 hd2 hD hB
+  have hE1 : 1 ≤ S.Eh S.Jstar := one_le_pow₀ hA
+  have hL1 : (1 : ℝ) ≤ Lh S.Jstar := one_le_pow₀ (by norm_num)
+  have hEE : S.Eh h' ≤ S.Eh S.Jstar := pow_le_pow_right₀ hA (by omega)
+  have hEL : S.Eh S.Jstar ≤ (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := by
+    have h1 : S.Eh S.Jstar ≤ S.Eh S.Jstar * Lh S.Jstar := le_mul_of_one_le_right (by linarith) hL1
+    exact h1.trans (le_self_pow₀ (le_trans hE1 h1) (by norm_num))
+  have hD4 : (1 : ℝ) ≤ 27 * S.Dstar ^ 4 := by
+    have : (1 : ℝ) ≤ S.Dstar ^ 4 := one_le_pow₀ (by linarith)
+    linarith
+  have hEH : S.Eh h' ≤ S.H := by
+    have h0 : 0 ≤ (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := sq_nonneg _
+    nlinarith
+  exact mul_le_mul_of_nonneg_left hEH (by positivity)
+
+end ModeSchedule
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+/-- The alive sets of the four roles of the group at the decision cell of the cell `I` are
+nonempty: anchors of the classes of the cell exist. -/
+def AncNe (G : bf.Grp) (I : ℤ × ℤ) : Prop :=
+  ∀ j, ((D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))).Nonempty
+
+/-- The alive sets of the core roles `j ≠ l` of the group at the decision cell of the cell `I` are
+nonempty: anchors of the core classes of the cell exist. -/
+def AncNe3 (G : bf.Grp) (I : ℤ × ℤ) (l : Fin 4) : Prop :=
+  ∀ j, j ≠ l →
+    ((D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))).Nonempty
+
+open Classical in
+/-- The tested four-core label tuples at the scale `s` of a path (blueprint line 2709, "fix the path
+point `x*`, final height, all role types, and the frequency and amplitude bins"): the slopes at
+`x*` of the anchors of the tested tuples of final classes at the cell `cellOf s` in the bin `c`
+with the role types `κ`. -/
+noncomputable def fourPathE (G : bf.Grp) (h : ℕ) (xs : ℝ) (cellOf : ℤ → ℤ × ℤ)
+    (ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K)))
+    (c : ℝ × ℝ × (Fin 4 → ℝ)) (κ : Fin 4 → ℕ × ℕ) (s : ℤ) : Finset (Fin 4 → ℝ) :=
+  if hs : D.AncNe G (cellOf s) then
+    ((D.fourTested G (cellOf s) xs (ancOf s hs) h).filter fun p =>
+        D.fourBinOf G (cellOf s) xs (ancOf s hs) h p = c ∧
+          ∀ j, D.classTypeOf G (cellOf s) j h (p j) = κ j).image
+      fun p j => (D.Ms j G).slope (ancOf s hs h j (p j)).1 xs
+  else ∅
+
+open Classical in
+theorem mem_fourPathE {G : bf.Grp} {h : ℕ} {xs : ℝ} {cellOf : ℤ → ℤ × ℤ}
+    {ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    {c : ℝ × ℝ × (Fin 4 → ℝ)} {κ : Fin 4 → ℕ × ℕ} {s : ℤ} {x : Fin 4 → ℝ} :
+    x ∈ D.fourPathE G h xs cellOf ancOf c κ s ↔
+      ∃ hs : D.AncNe G (cellOf s), ∃ p, (∀ j, p j ∈ D.goodCls G (cellOf s) j h) ∧
+        D.fourPasses G (cellOf s) xs (h - D.SP.Δ) (fun j => ancOf s hs h j (p j)) ∧
+        (∀ j, 0 < D.clsSize G (cellOf s) j (p j)) ∧
+        D.fourBinOf G (cellOf s) xs (ancOf s hs) h p = c ∧
+        (∀ j, D.classTypeOf G (cellOf s) j h (p j) = κ j) ∧
+        x = fun j => (D.Ms j G).slope (ancOf s hs h j (p j)).1 xs := by
+  unfold fourPathE
+  split_ifs with hs
+  · unfold fourTested fourTestedOf
+    simp only [Finset.mem_image, Finset.mem_filter, Fintype.mem_piFinset]
+    constructor
+    · rintro ⟨p, ⟨⟨hp, hpass, hpos⟩, hc, hκ⟩, rfl⟩
+      exact ⟨hs, p, hp, hpass, hpos, hc, hκ, rfl⟩
+    · rintro ⟨_, p, hp, hpass, hpos, hc, hκ, rfl⟩
+      exact ⟨p, ⟨⟨hp, hpass, hpos⟩, hc, hκ⟩, rfl⟩
+  · simp only [Finset.notMem_empty, false_iff]
+    rintro ⟨hs', -⟩
+    exact hs hs'
+
+open Classical in
+/-- Blueprint lines 2713-2714 and `eq:triple-test`: the label tuples tested at the scale `s` of a
+path in the bin `c = (μ, ν, σ)` have the reference data `FourRef` with the full box, the bands
+`μ, 2ν` and `R_s = |I_s|⁻¹`. -/
+theorem fourPathE_ref (hD : 2 ≤ D.S.Dstar) (hΔ : D.SP.Δ = 10) {G : bf.Grp} (z : ChartTag)
+    (hz : (D.Ms 0 G).zc = z) {h : ℕ} (hh : 10 ≤ h) {xs : ℝ} {cellOf : ℤ → ℤ × ℤ}
+    {ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    {c : ℝ × ℝ × (Fin 4 → ℝ)} {κ : Fin 4 → ℕ × ℕ} {s : ℤ} {x : Fin 4 → ℝ}
+    (hx : x ∈ D.fourPathE G h xs cellOf ancOf c κ s) :
+    FourRef (zetaVec z D.S.Q0 h) (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1)
+      (dyadicGridLength A.G (cellOf s).1)⁻¹ x := by
+  obtain ⟨hAp, p, -, hpass, -, hc, -, rfl⟩ := D.mem_fourPathE.mp hx
+  have hr := D.fourRef_of_passes (by linarith) (D.one_le_U0 hD) hΔ hh z hz hpass
+  rw [← hc]
+  exact hr
+
+open Classical in
+/-- Blueprint `eq:triple-test` for four cores (lines 2718-2722, "for four cores this is
+`t' - l' q'`"): for every triple of roles with excluded anchor `l'`, a label tuple tested at the
+scale `s` has a witness `|n|_∞ ≤ 4 B'_{h-Δ}` with
+`μ R_s ≤ |Σ_{i ≠ l'} (i - l') x_i + n·ξ| ≤ 8 ν R_s` (`four_core_ann`; `ξ = 36 ζ`). -/
+theorem four_core_triple_side (hD : 2 ≤ D.S.Dstar) (hΔ : D.SP.Δ = 10) {G : bf.Grp}
+    (z : ChartTag) (hz : (D.Ms 0 G).zc = z) {h : ℕ} (hh : 10 ≤ h) {xs : ℝ}
+    {cellOf : ℤ → ℤ × ℤ}
+    {ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    {c : ℝ × ℝ × (Fin 4 → ℝ)} {κ : Fin 4 → ℕ × ℕ} {s : ℤ} {x : Fin 4 → ℝ}
+    (hx : x ∈ D.fourPathE G h xs cellOf ancOf c κ s) (l' : Fin 4) :
+    ∃ n : Fin z.dim → ℤ, (∀ k, |(n k : ℝ)| ≤ 4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) ∧
+      c.1 * (dyadicGridLength A.G (cellOf s).1)⁻¹ ≤
+        |∑ i ∈ Finset.univ.erase l', (roleCoeff i l' : ℝ) * x i +
+          36 * ∑ k, (n k : ℝ) * zetaVec z D.S.Q0 h k| ∧
+      |∑ i ∈ Finset.univ.erase l', (roleCoeff i l' : ℝ) * x i +
+          36 * ∑ k, (n k : ℝ) * zetaVec z D.S.Q0 h k| ≤
+        4 * (2 * c.2.1) * (dyadicGridLength A.G (cellOf s).1)⁻¹ :=
+  four_core_ann _ (D.fourPathE_ref hD hΔ z hz hh hx)
+    (by rw [Finset.card_erase_of_mem (Finset.mem_univ _)]; rfl) (Finset.notMem_erase l' _)
+
+open Classical in
+/-- Blueprint lines 2722-2724 (`lem:height` for the scale occurrences): a label tuple is tested on
+a path at at most `L₀ = 32 (d + 5)⁴ (log(288 B'_{h-Δ}) + log(16 ν/μ))` scales (`tested_scale_mult`
+applied to the triple test omitting the anchor `0`). -/
+theorem fourPathE_mult (hD : 2 ≤ D.S.Dstar) (hΔ : D.SP.Δ = 10) {G : bf.Grp} (z : ChartTag)
+    (hz : (D.Ms 0 G).zc = z) {h : ℕ} (hh : 10 ≤ h) {xs : ℝ} {cellOf : ℤ → ℤ × ℤ}
+    (hcell : ∀ s, (cellOf s).1 = s)
+    (ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K)))
+    (c : ℝ × ℝ × (Fin 4 → ℝ)) (κ : Fin 4 → ℕ × ℕ) (hμ : 0 < c.1) (hμν : c.1 ≤ 8 * c.2.1)
+    (S : Finset ℤ) (x : Fin 4 → ℝ) :
+    ((S.filter fun s => x ∈ D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤
+      32 * ((4 + z.dim : ℕ) + 1 : ℝ) ^ 4 *
+        (Real.log (2 * (36 * (4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))))) +
+          Real.log (2 * (4 * (2 * c.2.1)) / c.1)) := by
+  have hA : (1 : ℝ) ≤ D.S.A0 := le_trans (by norm_num) D.hA
+  have hB : 1 ≤ 4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) := by
+    have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
+    have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
+    nlinarith
+  have hR₀ : 0 < A.G.baseLength⁻¹ := inv_pos.mpr A.G.baseLength_pos
+  refine le_trans ?_ (tested_scale_mult (zetaVec z D.S.Q0 h) x (Finset.univ.erase 0) 0
+    (B := 4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) (ν := 4 * (2 * c.2.1)) hB hμ
+    (by linarith) hR₀ S)
+  refine Nat.cast_le.mpr (Finset.card_le_card fun s hs => ?_)
+  obtain ⟨hsS, hxs⟩ := Finset.mem_filter.mp hs
+  obtain ⟨n, hn, h1, h2⟩ := D.four_core_triple_side hD hΔ z hz hh hxs 0
+  have hRs : (dyadicGridLength A.G (cellOf s).1)⁻¹ = A.G.baseLength⁻¹ * 2 ^ s := by
+    rw [hcell s, baseLength_inv_zpow]
+  rw [hRs] at h1 h2
+  exact Finset.mem_filter.mpr ⟨hsS, n, hn, h1, h2⟩
+
+/-- Blueprint lines 2723-2724 (`L₀ ≤ P^C (1 + log(ν/μ))^C`, `L₀ ≥ 1`): at the chosen schedule the
+multiplicity of `fourPathE_mult` is at most
+`32 (d_max + 5)⁴ (log(288 D_*^5 H) + log 2 + 1) (1 + log(8ν/μ))`. The factor before
+`1 + log(8ν/μ)` is polynomial in `d_max`, `log D_*` and `log H`, the rational heights and dimensions
+of the frequency vector. -/
+theorem fourMult_le_sched {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar) (hQ : 1 ≤ D.S.Q0)
+    (hSP : D.SP = D.S.sideParams δs) {h : ℕ} (hh : h ≤ D.SP.Jst) {d : ℕ} (hd : d ≤ D.S.dmax)
+    {μ ν : ℝ} (hμ : 0 < μ) (hμν : μ ≤ 8 * ν) :
+    32 * ((4 + d : ℕ) + 1 : ℝ) ^ 4 *
+        (Real.log (2 * (36 * (4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))))) +
+          Real.log (2 * (4 * (2 * ν)) / μ)) ≤
+      32 * ((D.S.dmax : ℝ) + 5) ^ 4 * (Real.log (288 * (D.S.Dstar ^ 5 * D.S.H)) + Real.log 2 + 1) *
+        (1 + Real.log (8 * ν / μ)) := by
+  have hJst : D.SP.Jst = D.S.Jstar := by rw [hSP]; rfl
+  have hA : (1 : ℝ) ≤ D.S.A0 := le_trans (by norm_num) D.hA
+  have hB1 : 1 ≤ 4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) := by
+    have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
+    have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
+    nlinarith
+  have key := tested_mult_le (d := d) hB1 hμ hμν
+  have e : 2 * (4 * (2 * ν)) / μ = 2 * (8 * ν) / μ := by ring
+  rw [e]
+  refine key.trans ?_
+  have hBH := hV.fullBox_le_H hd2 hD hB hQ (h' := h - D.SP.Δ) (by rw [← hJst]; omega)
+  have hνμ : 1 ≤ 8 * ν / μ := by rw [le_div_iff₀ hμ]; linarith
+  have hl0 : 0 ≤ 1 + Real.log (8 * ν / μ) := by linarith [Real.log_nonneg hνμ]
+  have hlog : Real.log (72 * (4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)))) ≤
+      Real.log (288 * (D.S.Dstar ^ 5 * D.S.H)) := by
+    refine Real.log_le_log (by positivity) ?_
+    nlinarith
+  have hd5 : ((4 + d : ℕ) + 1 : ℝ) ^ 4 ≤ ((D.S.dmax : ℝ) + 5) ^ 4 := by
+    refine pow_le_pow_left₀ (by positivity) ?_ 4
+    have : (d : ℝ) ≤ D.S.dmax := by exact_mod_cast hd
+    push_cast; linarith
+  have hl2 : 0 ≤ Real.log 2 := Real.log_nonneg (by norm_num)
+  have hlB : 0 ≤ Real.log (72 * (4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)))) :=
+    Real.log_nonneg (by linarith)
+  have hX0 : 0 ≤ Real.log (72 * (4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)))) + Real.log 2 + 1 := by
+    linarith
+  calc 32 * ((4 + d : ℕ) + 1 : ℝ) ^ 4 *
+        (Real.log (72 * (4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)))) + Real.log 2 + 1) *
+        (1 + Real.log (8 * ν / μ))
+      ≤ 32 * ((D.S.dmax : ℝ) + 5) ^ 4 *
+        (Real.log (288 * (D.S.Dstar ^ 5 * D.S.H)) + Real.log 2 + 1) *
+        (1 + Real.log (8 * ν / μ)) := by
+        gcongr
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- The tested three-core label tuples at the scale `s` of a path (side role `l`): the slope tuples
+(`0` in the side role) of the tested tuples and shells at the cell `cellOf s` in the bin `c` with
+the core role types `κ`. -/
+noncomputable def threePathE (G : bf.Grp) (h : ℕ) (xs : ℝ) (l : Fin 4) (cellOf : ℤ → ℤ × ℤ)
+    (ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K)))
+    (Iw : ℕ) (c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)) (κ : Fin 4 → ℕ × ℕ) (s : ℤ) :
+    Finset (Fin 4 → ℝ) :=
+  if hs : D.AncNe3 G (cellOf s) l then
+    ((D.threeTested G (cellOf s) xs l (ancOf s hs) (D.toLeaf.sv l G (cellOf s)) Iw h).filter
+        fun q => D.threeBinOf G (cellOf s) xs l (ancOf s hs) (D.toLeaf.sv l G (cellOf s)) h q = c ∧
+          ∀ j, j ≠ l → D.classTypeOf G (cellOf s) j h (q.1 j) = κ j).image
+      fun q => D.slopes3 G (cellOf s) xs l (ancOf s hs) h q.1
+  else ∅
+
+open Classical in
+theorem mem_threePathE {G : bf.Grp} {h : ℕ} {xs : ℝ} {l : Fin 4} {cellOf : ℤ → ℤ × ℤ}
+    {ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    {Iw : ℕ} {c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)} {κ : Fin 4 → ℕ × ℕ} {s : ℤ} {x : Fin 4 → ℝ} :
+    x ∈ D.threePathE G h xs l cellOf ancOf Iw c κ s ↔
+      ∃ hs : D.AncNe3 G (cellOf s) l,
+      ∃ q ∈ D.threeTested G (cellOf s) xs l (ancOf s hs) (D.toLeaf.sv l G (cellOf s)) Iw h,
+        D.threeBinOf G (cellOf s) xs l (ancOf s hs) (D.toLeaf.sv l G (cellOf s)) h q = c ∧
+        (∀ j, j ≠ l → D.classTypeOf G (cellOf s) j h (q.1 j) = κ j) ∧
+        x = D.slopes3 G (cellOf s) xs l (ancOf s hs) h q.1 := by
+  unfold threePathE
+  split_ifs with hs
+  · simp only [Finset.mem_image, Finset.mem_filter]
+    constructor
+    · rintro ⟨q, ⟨hq, hc, hκ⟩, rfl⟩
+      exact ⟨hs, q, hq, hc, hκ, rfl⟩
+    · rintro ⟨_, q, hq, hc, hκ, rfl⟩
+      exact ⟨q, ⟨hq, hc, hκ⟩, rfl⟩
+  · simp only [Finset.notMem_empty, false_iff]
+    rintro ⟨hs', -⟩
+    exact hs hs'
+
+open Classical in
+/-- Blueprint `eq:triple-test` for three cores (lines 2718-2722, "for three it is the nonzero `T_l`
+test"): the label tuples tested at the scale `s` of a path in the bin `c = (μ, ν, Λ, b, σ)` have
+the reference data `ThreeRef` (`μ R_s ≤ |T_l + n·ξ| ≤ 2ν R_s`, `|n| ≤ B'_{h-Δ}`). -/
+theorem threePathE_ref (hD : 2 ≤ D.S.Dstar) (hΔ : D.SP.Δ = 10) {G : bf.Grp} (z : ChartTag)
+    (hz : (D.Ms 0 G).zc = z) {h : ℕ} (hh : 10 ≤ h) {xs : ℝ} {l : Fin 4} {cellOf : ℤ → ℤ × ℤ}
+    {ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    {Iw : ℕ} {c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)} {κ : Fin 4 → ℕ × ℕ} {s : ℤ} {x : Fin 4 → ℝ}
+    (hx : x ∈ D.threePathE G h xs l cellOf ancOf Iw c κ s) :
+    ThreeRef (zetaVec z D.S.Q0 h) l (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1)
+      (dyadicGridLength A.G (cellOf s).1)⁻¹ x := by
+  obtain ⟨hAq, q, hq, hc, -, rfl⟩ := D.mem_threePathE.mp hx
+  unfold threeTested threeTestedOf at hq
+  obtain ⟨-, hpass, -, -⟩ := Finset.mem_filter.mp hq
+  have hr := D.threeRef_of_passes (by linarith) (D.one_le_U0 hD) hΔ hh z hz hpass
+  rw [← hc]
+  exact hr
+
+/-- The multiplicity bound of `lem:height` at the chosen schedule (blueprint lines 2723-2724,
+`L₀ ≤ P^C (1 + log(ν/μ))^C`): for box sizes `1 ≤ B ≤ 4 D_*^5 E_{h-Δ}`,
+`32 (d + 5)⁴ (log(72 B) + log(2ν/μ))` is at most
+`32 (d_max + 5)⁴ (log(288 D_*^5 H) + log 2 + 1)(1 + log(ν/μ))`;
+the first factor is polynomial in the dimension and the logarithmic heights `log D_*, log H`. -/
+theorem mult_le_sched {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar) (hQ : 1 ≤ D.S.Q0)
+    (hSP : D.SP = D.S.sideParams δs) {h : ℕ} (hh : h ≤ D.SP.Jst) {d : ℕ} (hd : d ≤ D.S.dmax)
+    {B μ ν : ℝ} (hB1 : 1 ≤ B) (hBE : B ≤ 4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)))
+    (hμ : 0 < μ) (hμν : μ ≤ ν) :
+    32 * ((4 + d : ℕ) + 1 : ℝ) ^ 4 * (Real.log (2 * (36 * B)) + Real.log (2 * ν / μ)) ≤
+      32 * ((D.S.dmax : ℝ) + 5) ^ 4 * (Real.log (288 * (D.S.Dstar ^ 5 * D.S.H)) + Real.log 2 + 1) *
+        (1 + Real.log (ν / μ)) := by
+  have hJst : D.SP.Jst = D.S.Jstar := by rw [hSP]; rfl
+  refine (tested_mult_le (d := d) hB1 hμ hμν).trans ?_
+  have hBH := hV.fullBox_le_H hd2 hD hB hQ (h' := h - D.SP.Δ) (by rw [← hJst]; omega)
+  have hνμ : 1 ≤ ν / μ := by rw [le_div_iff₀ hμ]; linarith
+  have hl0 : 0 ≤ 1 + Real.log (ν / μ) := by linarith [Real.log_nonneg hνμ]
+  have hlog : Real.log (72 * B) ≤ Real.log (288 * (D.S.Dstar ^ 5 * D.S.H)) := by
+    refine Real.log_le_log (by positivity) ?_
+    nlinarith
+  have hd5 : ((4 + d : ℕ) + 1 : ℝ) ^ 4 ≤ ((D.S.dmax : ℝ) + 5) ^ 4 := by
+    refine pow_le_pow_left₀ (by positivity) ?_ 4
+    have : (d : ℝ) ≤ D.S.dmax := by exact_mod_cast hd
+    push_cast; linarith
+  have hl2 : 0 ≤ Real.log 2 := Real.log_nonneg (by norm_num)
+  have hlB : 0 ≤ Real.log (72 * B) := Real.log_nonneg (by linarith)
+  gcongr
+
+open Classical in
+/-- Blueprint lines 2722-2724 for three cores: a label tuple is tested on a path at at most
+`32 (d + 5)⁴ (log(72 B'_{h-Δ}) + log(4ν/μ))` scales (`tested_scale_mult` for the `T_l` test). -/
+theorem threePathE_mult (hD : 2 ≤ D.S.Dstar) (hΔ : D.SP.Δ = 10) {G : bf.Grp} (z : ChartTag)
+    (hz : (D.Ms 0 G).zc = z) {h : ℕ} (hh : 10 ≤ h) {xs : ℝ} {l : Fin 4} {cellOf : ℤ → ℤ × ℤ}
+    (hcell : ∀ s, (cellOf s).1 = s)
+    (ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K)))
+    (Iw : ℕ) (c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)) (κ : Fin 4 → ℕ × ℕ) (hμ : 0 < c.1)
+    (hμν : c.1 ≤ 2 * c.2.1) (S : Finset ℤ) (x : Fin 4 → ℝ) :
+    ((S.filter fun s => x ∈ D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+      32 * ((4 + z.dim : ℕ) + 1 : ℝ) ^ 4 *
+        (Real.log (2 * (36 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)))) +
+          Real.log (2 * (2 * c.2.1) / c.1)) := by
+  have hA : (1 : ℝ) ≤ D.S.A0 := le_trans (by norm_num) D.hA
+  have hB : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
+    have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
+    have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
+    nlinarith
+  have hR₀ : 0 < A.G.baseLength⁻¹ := inv_pos.mpr A.G.baseLength_pos
+  refine le_trans ?_ (tested_scale_mult (zetaVec z D.S.Q0 h) x (Finset.univ.erase l) l
+    (B := D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) (ν := 2 * c.2.1) hB hμ hμν hR₀ S)
+  refine Nat.cast_le.mpr (Finset.card_le_card fun s hs => ?_)
+  obtain ⟨hsS, hxs⟩ := Finset.mem_filter.mp hs
+  obtain ⟨n, hn, h1, h2⟩ := D.threePathE_ref hD hΔ z hz hh hxs
+  have hRs : (dyadicGridLength A.G (cellOf s).1)⁻¹ = A.G.baseLength⁻¹ * 2 ^ s := by
+    rw [hcell s, baseLength_inv_zpow]
+  rw [hRs] at h1 h2
+  exact Finset.mem_filter.mpr ⟨hsS, n, hn, h1, h2⟩
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## The total counts on the side states (`eq:total-count`) -/
+
+open Classical in
+/-- Blueprint `eq:total-count` for four cores, abstract form: label tuples `E_s` with reference data
+at the scales `R₀ 2^s`, labels in the sets `A_j`, and same-role labels separated against the
+reserved shifts. Then two labels determine the tuple across all scales (`four_core_pair`), each
+tuple occurs at at most `L₀ = fourMult` scales (`tested_scale_mult`), so
+`Σ_s N_s ≤ L₀ |A_i| |A_j|` and `N_s ≤ |A_i| |A_j|` for distinct roles `i, j`. -/
+theorem four_core_total_abstract {d : ℕ} (ζ : Fin d → ℝ) (S : Finset ℤ)
+    (E : ℤ → Finset (Fin 4 → ℝ)) (Al : Fin 4 → Finset ℝ)
+    (hAl : ∀ s ∈ S, ∀ x ∈ E s, ∀ j, x j ∈ Al j) {B μ ν R₀ Q Sg : ℝ} (hB : 1 ≤ B)
+    (hμ : 0 < μ) (hμν : μ ≤ ν) (hR₀ : 0 < R₀)
+    (href : ∀ s ∈ S, ∀ x ∈ E s, FourRef ζ B μ ν (R₀ * 2 ^ s) x)
+    (hsep : ∀ r, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s', x r ≠ x' r →
+      ∀ N : Fin d → ℤ, (∀ p, |(N p : ℝ)| ≤ Q) →
+        Sg * max (R₀ * 2 ^ s) (R₀ * 2 ^ s') < |x r - x' r + ∑ p, (N p : ℝ) * ζ p|)
+    (hQ : 288 * B ≤ Q) (hSg : 8 * ν ≤ Sg) :
+    (∀ i j, i ≠ j → ∑ s ∈ S, ((E s).card : ℝ) ≤ fourMult d B μ ν * (Al i).card * (Al j).card) ∧
+    (∀ i j, i ≠ j → ∀ s ∈ S, ((E s).card : ℝ) ≤ (Al i).card * (Al j).card) := by
+  have hRs : ∀ s : ℤ, 0 ≤ R₀ * 2 ^ s := fun s => by positivity
+  have hT : (Finset.univ.erase (0 : Fin 4)).card = 3 := by
+    rw [Finset.card_erase_of_mem (Finset.mem_univ _), Finset.card_univ, Fintype.card_fin]
+  have hmult : ∀ x, ((S.filter fun s => x ∈ E s).card : ℝ) ≤ fourMult d B μ ν := by
+    intro x
+    refine le_trans ?_ (tested_scale_mult ζ x (Finset.univ.erase 0) 0
+      (B := 4 * B) (ν := 4 * ν) (by linarith) hμ (by linarith) hR₀ S)
+    refine Nat.cast_le.mpr (Finset.card_le_card fun s hs => ?_)
+    obtain ⟨hsS, hxE⟩ := Finset.mem_filter.mp hs
+    exact Finset.mem_filter.mpr ⟨hsS, four_core_ann _ (href s hsS x hxE) hT
+      (Finset.notMem_erase 0 _)⟩
+  have hpair : ∀ i j, i ≠ j → ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s',
+      x i = x' i → x j = x' j → x = x' := fun i j hij s hs s' hs' x hx x' hx' hxi hxj =>
+    four_core_pair ζ hij hxi hxj (href s hs x hx) (href s' hs' x' hx')
+      (fun r hr N hN => hsep r s hs s' hs' x hx x' hx' hr N hN) hQ hSg (by linarith) (hRs s)
+  refine ⟨fun i j hij => total_count_real S E Al (fun s hs x hx => ⟨hAl s hs x hx i,
+    hAl s hs x hx j⟩) (hpair i j hij) hmult, fun i j hij s hs => ?_⟩
+  have hc := scale_count_le (E s) (fun x => (x i, x j)) (Al i ×ˢ Al j)
+    (fun x hx => Finset.mem_product.mpr ⟨hAl s hs x hx i, hAl s hs x hx j⟩)
+    (fun x hx x' hx' he => by
+      simp only [Prod.mk.injEq] at he
+      exact hpair i j hij s hs s hs x hx x' hx' he.1 he.2)
+  rw [Finset.card_product] at hc
+  exact_mod_cast hc
+
+open Classical in
+/-- Blueprint `eq:total-count` for three cores (side role `l`), abstract form: label tuples with
+side entry `0` and the `T_l` reference data at the scales `R₀ 2^s`, core labels in the sets `A_j`,
+same-role labels separated against the reserved shifts, and for every core label `a` at most
+`w_s` tuples at the scale `s` incident to it (side incidence). Then `Σ_s N_s ≤ L₀ |A_i| |A_j|`
+for core roles, `Σ_s N_s ≤ |A_i| Σ_s w_s` for a core/side pair, and `N_s ≤ |A_i| |A_j|`. -/
+theorem three_core_total_abstract {d : ℕ} (ζ : Fin d → ℝ) (l : Fin 4) (S : Finset ℤ)
+    (E : ℤ → Finset (Fin 4 → ℝ)) (Al : Fin 4 → Finset ℝ)
+    (hAl : ∀ s ∈ S, ∀ x ∈ E s, ∀ j, j ≠ l → x j ∈ Al j)
+    (hxl : ∀ s ∈ S, ∀ x ∈ E s, x l = 0) {B μ ν R₀ Q Sg : ℝ} (hB : 1 ≤ B) (hμ : 0 < μ)
+    (hμν : μ ≤ ν) (hR₀ : 0 < R₀)
+    (href : ∀ s ∈ S, ∀ x ∈ E s, ThreeRef ζ l B μ ν (R₀ * 2 ^ s) x)
+    (hsep : ∀ r, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s', x r ≠ x' r →
+      ∀ N : Fin d → ℤ, (∀ p, |(N p : ℝ)| ≤ Q) →
+        Sg * max (R₀ * 2 ^ s) (R₀ * 2 ^ s') < |x r - x' r + ∑ p, (N p : ℝ) * ζ p|)
+    (hQ : 72 * B ≤ Q) (hSg : 2 * ν ≤ Sg) (w : ℤ → ℝ)
+    (hinc : ∀ s ∈ S, ∀ i, i ≠ l → ∀ a, (((E s).filter fun x => x i = a).card : ℝ) ≤ w s) :
+    (∀ i j, i ≠ j → i ≠ l → j ≠ l →
+      ∑ s ∈ S, ((E s).card : ℝ) ≤ threeMult d B μ ν * (Al i).card * (Al j).card) ∧
+    (∀ i, i ≠ l → ∑ s ∈ S, ((E s).card : ℝ) ≤ (Al i).card * ∑ s ∈ S, w s) ∧
+    (∀ i j, i ≠ j → i ≠ l → j ≠ l → ∀ s ∈ S, ((E s).card : ℝ) ≤ (Al i).card * (Al j).card) := by
+  have hRs : ∀ s : ℤ, 0 ≤ R₀ * 2 ^ s := fun s => by positivity
+  have hmult : ∀ x, ((S.filter fun s => x ∈ E s).card : ℝ) ≤ threeMult d B μ ν := by
+    intro x
+    refine le_trans ?_ (tested_scale_mult ζ x (Finset.univ.erase l) l hB hμ hμν hR₀ S)
+    refine Nat.cast_le.mpr (Finset.card_le_card fun s hs => ?_)
+    obtain ⟨hsS, hxE⟩ := Finset.mem_filter.mp hs
+    exact Finset.mem_filter.mpr ⟨hsS, href s hsS x hxE⟩
+  have hpair : ∀ i j, i ≠ j → i ≠ l → j ≠ l → ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s',
+      x i = x' i → x j = x' j → x = x' := fun i j hij hil hjl s hs s' hs' x hx x' hx' hxi hxj =>
+    three_core_pair ζ (hxl s hs x hx) (hxl s' hs' x' hx') hij hil hjl hxi hxj
+      (href s hs x hx) (href s' hs' x' hx')
+      (fun r hr N hN => hsep r s hs s' hs' x hx x' hx' hr N hN) hQ hSg (by linarith) (hRs s)
+  refine ⟨fun i j hij hil hjl => total_count_real S E Al
+    (fun s hs x hx => ⟨hAl s hs x hx i hil, hAl s hs x hx j hjl⟩)
+    (hpair i j hij hil hjl) hmult, fun i hil => ?_, fun i j hij hil hjl s hs => ?_⟩
+  · rw [Finset.mul_sum]
+    refine Finset.sum_le_sum fun s hs => ?_
+    rw [Finset.card_eq_sum_card_fiberwise (f := fun x => x i) (t := Al i)
+      (fun x hx => hAl s hs x hx i hil), Nat.cast_sum]
+    calc ∑ a ∈ Al i, (((E s).filter fun x => x i = a).card : ℝ) ≤ ∑ _a ∈ Al i, w s :=
+          Finset.sum_le_sum fun a _ => hinc s hs i hil a
+      _ = _ := by rw [Finset.sum_const, nsmul_eq_mul]
+  · have hc := scale_count_le (E s) (fun x => (x i, x j)) (Al i ×ˢ Al j)
+      (fun x hx => Finset.mem_product.mpr ⟨hAl s hs x hx i hil, hAl s hs x hx j hjl⟩)
+      (fun x hx x' hx' he => by
+        simp only [Prod.mk.injEq] at he
+        exact hpair i j hij hil hjl s hs s hs x hx x' hx' he.1 he.2)
+    rw [Finset.card_product] at hc
+    exact_mod_cast hc
+
+theorem ThreeRef.mono {d : ℕ} {ζ : Fin d → ℝ} {l : Fin 4} {B B' μ ν R : ℝ} {x : Fin 4 → ℝ}
+    (hx : ThreeRef ζ l B μ ν R x) (hB : B ≤ B') : ThreeRef ζ l B' μ ν R x := by
+  obtain ⟨m, hm, h1, h2⟩ := hx
+  exact ⟨m, fun p => (hm p).trans hB, h1, h2⟩
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+/-- The anchors along a path are the representatives of the successful classes (four cores). -/
+def FourPathAnc (G : bf.Grp) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (cellOf : ℤ → ℤ × ℤ)
+    (ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))) (S : Finset ℤ) : Prop :=
+  ∀ s ∈ S, ∀ (hs : D.AncNe G (cellOf s)) j F (hF : F ∈ D.goodCls G (cellOf s) j h),
+    ancOf s hs h j F = D.repAnchor G (cellOf s) j h (rep j) (hrep j).1 hF
+
+open Classical in
+/-- Blueprint lines 2711-2716 along a path (four cores): distinct same-role labels of tuples tested
+at the scales `s, s'` are separated by `(Ξ/2) max(R_s, R_{s'})` against all reserved shifts. -/
+theorem four_path_sep (G : bf.Grp) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) {Q : ℝ} (hcQ : ((6 ^ 8 : ℕ) : ℝ) * Q ≤ D.S.Eh h)
+    {S : Finset ℤ} {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    (hcell : ∀ s, (cellOf s).1 = s)
+    {ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.FourPathAnc G h Cs rep hrep cellOf ancOf S) (c : ℝ × ℝ × (Fin 4 → ℝ))
+    (κ : Fin 4 → ℕ × ℕ) :
+    ∀ r, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ D.fourPathE G h xs cellOf ancOf c κ s,
+      ∀ x' ∈ D.fourPathE G h xs cellOf ancOf c κ s', x r ≠ x' r →
+      ∀ N : Fin z.dim → ℤ, (∀ p, |(N p : ℝ)| ≤ Q) →
+        D.S.Ξ / 2 * max (A.G.baseLength⁻¹ * 2 ^ s) (A.G.baseLength⁻¹ * 2 ^ s') <
+          |x r - x' r + ∑ p, (N p : ℝ) * zetaVec z D.S.Q0 h p| := by
+  intro r s hs s' hs' x hx x' hx' hne N hN
+  obtain ⟨hAp, p, hp, -, -, -, hκ, rfl⟩ := D.mem_fourPathE.mp hx
+  obtain ⟨hAp', p', hp', -, -, -, hκ', rfl⟩ := D.mem_fourPathE.mp hx'
+  simp only at hne ⊢
+  rw [hanc s hs hAp r (p r) (hp r), hanc s' hs' hAp' r (p' r) (hp' r)] at hne ⊢
+  have := D.path_label_sep' G r h Cs (rep r) (hrep r) (hΛ r) z (hz r) (hpath s hs).1
+    (hpath s' hs').1 (hpath s hs).2 (hpath s' hs').2 (hp r) (hp' r) ((hκ r).trans (hκ' r).symm)
+    hne hcQ N hN
+  have hR : ∀ t, (dyadicGridLength A.G (cellOf t).1)⁻¹ = A.G.baseLength⁻¹ * 2 ^ t := fun t => by
+    rw [hcell t, baseLength_inv_zpow]
+  rwa [hR s, hR s'] at this
+
+open Classical in
+/-- Blueprint `eq:total-count` for four cores on the side states (lines 2726-2729): along a path,
+with the anchors given by the representatives, fixed height, types and bin, the tested label sets
+`E_s` satisfy `Σ_s N_s ≤ L₀ |A_i| |A_j|` (`L₀ = fourMult`) and `N_s ≤ |A_i| |A_j|` for distinct
+roles `i, j`, where `A_j` is the set of labels of role `j` along the path. -/
+theorem four_core_total_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 1 ≤ CA) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar)
+    (hΔ : D.SP.Δ = 10) (G : bf.Grp) (h : ℕ) (hh : 10 ≤ h) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) {S : Finset ℤ} {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    (hcell : ∀ s, (cellOf s).1 = s)
+    {ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.FourPathAnc G h Cs rep hrep cellOf ancOf S) (c : ℝ × ℝ × (Fin 4 → ℝ))
+    (κ : Fin 4 → ℕ × ℕ) :
+    (∀ i j, i ≠ j → ∑ s ∈ S, ((D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤
+      fourMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) *
+        (S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image fun x => x i).card *
+        (S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image fun x => x j).card) ∧
+    (∀ i j, i ≠ j → ∀ s ∈ S, ((D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤
+      (S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image fun x => x i).card *
+        (S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image fun x => x j).card) := by
+  set E := D.fourPathE G h xs cellOf ancOf c κ with hEdef
+  have hAl : ∀ s ∈ S, ∀ x ∈ E s, ∀ j, x j ∈ S.biUnion fun s => (E s).image fun x => x j :=
+    fun s hs x hx j => Finset.mem_biUnion.mpr ⟨s, hs, Finset.mem_image_of_mem _ hx⟩
+  by_cases hne : ∃ s ∈ S, (E s).Nonempty
+  · obtain ⟨s₀, -, x₀, hx₀⟩ := hne
+    obtain ⟨hAp₀, p₀, -, hpass₀, -, hc₀, -, -⟩ := D.mem_fourPathE.mp hx₀
+    have hD0 : (0 : ℝ) ≤ D.S.Dstar := by linarith
+    have hU := D.one_le_U0 hD
+    obtain ⟨-, -, hμ3, hμ4, -, -, hν3, hν4⟩ := D.fourBands_spec hD0 hU hpass₀
+    have hc1 : c.1 = D.fourMuBand G (cellOf s₀) xs (h - D.SP.Δ)
+        (fun j => ancOf s₀ hAp₀ h j (p₀ j)) := by rw [← hc₀]; rfl
+    have hc2 : c.2.1 = D.fourNuBand G (cellOf s₀) xs (h - D.SP.Δ)
+        (fun j => ancOf s₀ hAp₀ h j (p₀ j)) := by rw [← hc₀]; rfl
+    have hU0i : 0 < D.U0⁻¹ := inv_pos.mpr (by linarith)
+    have hμ : 0 < c.1 := by rw [hc1]; linarith
+    have hμν : c.1 ≤ 2 * c.2.1 := by rw [hc1, hc2]; linarith
+    have hνU : 2 * c.2.1 ≤ 2 * D.U0 := by rw [hc2]; linarith
+    have hA : (1 : ℝ) ≤ D.S.A0 := le_trans (by norm_num) D.hA
+    have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
+      have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
+      have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
+      nlinarith
+    have hres := hV.shift_reserve hCA hd2 hD hB hh
+    rw [← hΔ] at hres
+    have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
+    have hR₀ : 0 < A.G.baseLength⁻¹ := inv_pos.mpr A.G.baseLength_pos
+    refine four_core_total_abstract (zetaVec z D.S.Q0 h) S E _ hAl hB1 hμ hμν hR₀
+      (Q := D.S.Eh h / ((6 ^ 8 : ℕ) : ℝ)) (Sg := D.S.Ξ / 2) (fun s hs x hx => ?_)
+      (D.four_path_sep G h Cs rep hrep hΛ z hz (by rw [mul_div_cancel₀ _ hQ6.ne']) hpath hcell
+        hanc c κ) ?_ ?_
+    · have := D.fourPathE_ref hD hΔ z (hz 0) hh hx
+      rwa [hcell s, ← baseLength_inv_zpow] at this
+    · rw [le_div_iff₀ hQ6]
+      push_cast
+      linarith
+    · have := D.U0_reserve hD
+      linarith
+  · push Not at hne
+    have hAl0 : ∀ j, (S.biUnion fun s => (E s).image fun x => x j) = ∅ := fun j =>
+      Finset.eq_empty_of_forall_notMem fun a ha => by
+        obtain ⟨s, hs, ha'⟩ := Finset.mem_biUnion.mp ha
+        rw [hne s hs, Finset.image_empty] at ha'
+        exact Finset.notMem_empty a ha'
+    refine ⟨fun i j _ => ?_, fun i j _ s hs => ?_⟩
+    · rw [Finset.sum_eq_zero fun s hs => by rw [hne s hs, Finset.card_empty, Nat.cast_zero],
+        hAl0 i, Finset.card_empty]
+      simp
+    · rw [hne s hs, hAl0 i, Finset.card_empty]
+      simp
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ModeSchedule
+variable {S : ModeSchedule} {Cj CA CT CK : ℕ} {δs W : ℝ}
+
+/-- The window shift reserve of the side incidence (blueprint lines 2726-2727, windows with the box
+`16 B'_{h-Δ}`): `1152 · 16 · 6^8 D_*^5 E_{h-Δ} ≤ E_h` for `h ≥ Δ = 10` (`A₀ ≥ 6^{30} D_*`). -/
+theorem Valid.window_reserve (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) {h : ℕ} (hh : 10 ≤ h) :
+    18432 * 6 ^ 8 * S.Dstar ^ 5 * S.Eh (h - 10) ≤ S.Eh h := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have hR := hV.thirty_le_Rht hd2 hD
+  have hbase := hV.base_le_A0 hCA hd2 hD hB
+  have h6 : (6 : ℝ) ^ 30 ≤ 6 ^ S.Rht := pow_le_pow_right₀ (by norm_num) hR
+  have hA : 6 ^ 30 * S.Dstar ≤ S.A0 := by
+    have h60 : (0 : ℝ) ≤ 6 ^ 30 := by positivity
+    have hCB : (1 : ℝ) ≤ S.Cstar * S.Bstar := by nlinarith
+    calc 6 ^ 30 * S.Dstar ≤ (S.Cstar * S.Bstar) * 6 ^ S.Rht * S.Dstar := by
+          have : (6 : ℝ) ^ 30 ≤ (S.Cstar * S.Bstar) * 6 ^ S.Rht := by nlinarith
+          exact mul_le_mul_of_nonneg_right this (by linarith)
+      _ = S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar := by ring
+      _ ≤ S.A0 := hbase
+  have hA0 : 0 ≤ S.A0 := le_trans (by positivity) hA
+  have hE : S.Eh h = S.A0 ^ 10 * S.Eh (h - 10) := by
+    unfold Eh
+    rw [← pow_add]
+    congr 1
+    omega
+  have hEn : 0 ≤ S.Eh (h - 10) := by unfold Eh; positivity
+  have hD5 : S.Dstar ^ 5 ≤ S.Dstar ^ 10 := pow_le_pow_right₀ (by linarith) (by norm_num)
+  have hA10 : 18432 * 6 ^ 8 * S.Dstar ^ 5 ≤ S.A0 ^ 10 := by
+    have h1 : (6 ^ 30 * S.Dstar) ^ 10 ≤ S.A0 ^ 10 :=
+      pow_le_pow_left₀ (by positivity) hA 10
+    have h2 : (18432 * 6 ^ 8 : ℝ) ≤ (6 ^ 30) ^ 10 := by norm_num
+    have hD10 : 0 ≤ S.Dstar ^ 5 := by positivity
+    calc 18432 * 6 ^ 8 * S.Dstar ^ 5 ≤ (6 ^ 30) ^ 10 * S.Dstar ^ 10 :=
+          mul_le_mul h2 hD5 hD10 (by positivity)
+      _ = (6 ^ 30 * S.Dstar) ^ 10 := by ring
+      _ ≤ S.A0 ^ 10 := h1
+  rw [hE]
+  exact mul_le_mul_of_nonneg_right hA10 hEn
+
+end ModeSchedule
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+/-- The band reserve of the side incidence (blueprint line 2727, `ν, Λ ≤ C U₀ ≪ Ξ`):
+`128 U₀ ≤ Ξ / 2` for `D_* ≥ 2` (`U₀ = D_*^{250}`, `Ξ = D_*^{1000}`). -/
+theorem U0_window_reserve (hD : 2 ≤ D.S.Dstar) : 128 * D.U0 ≤ D.S.Ξ / 2 := by
+  unfold U0 ModeSchedule.Ξ
+  have hD1 : (1 : ℝ) ≤ D.S.Dstar := by linarith
+  have h8 : (256 : ℝ) ≤ D.S.Dstar ^ 8 := by
+    have := pow_le_pow_left₀ (by norm_num : (0 : ℝ) ≤ 2) hD 8
+    norm_num at this
+    linarith
+  have h256 : (256 : ℝ) ≤ D.S.Dstar ^ 750 :=
+    h8.trans (pow_le_pow_right₀ hD1 (by norm_num))
+  have hpos : 0 ≤ D.S.Dstar ^ 250 := by positivity
+  have e : D.S.Dstar ^ 1000 = D.S.Dstar ^ 750 * D.S.Dstar ^ 250 := by rw [← pow_add]
+  rw [e]
+  nlinarith
+
+/-- The three-core side windows are the abstract side windows `sideWindow` (blueprint lines
+2556-2560 and 2726): for a tuple with side entry `0`, `Q = Σ_{j ≠ l} a_j = Σ_j a_j` and
+`n·ξ = 36 n·ζ` (`ξ = ϑ/L_{h-Δ}`, `ζ = 6^{Δ-2} ϑ/L_h`), with the box `16 B'_{h-Δ}`. -/
+theorem threeWin_eq_sideWindow (hD : 0 ≤ D.S.Dstar) (hΔ : D.SP.Δ = 10) {G : bf.Grp}
+    (z : ChartTag) (hz : (D.Ms 0 G).zc = z) {h : ℕ} (hh : 10 ≤ h) (I : ℤ × ℤ) (xs : ℝ)
+    {l : Fin 4} {a : Fin 4 → ℝ} (hal : a l = 0) (Λ : ℝ) :
+    D.threeWin G I xs (h - D.SP.Δ) l a Λ = sideWindow (zetaVec z D.S.Q0 h)
+      (dyadicGridLength A.G I.1) Λ (16 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) a := by
+  subst hz
+  have hB : 0 ≤ 16 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) :=
+    mul_nonneg (by norm_num) (mul_nonneg (pow_nonneg hD 5) (pow_nonneg (by linarith [D.hA]) _))
+  have hQ : threeQ l a = ∑ i, a i := by
+    unfold threeQ
+    rw [← Finset.add_sum_erase _ _ (Finset.mem_univ l), hal, zero_add]
+  have e : ∀ n : Fin (D.Ms 0 G).zc.dim → ℤ,
+      ∑ i, (n i : ℝ) * (D.Ms 0 G).torusξ D.S (h - D.SP.Δ) i =
+        36 * ∑ p, (n p : ℝ) * zetaVec (D.Ms 0 G).zc D.S.Q0 h p := fun n => by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun p _ => ?_
+    rw [hΔ, (D.Ms 0 G).torusξ_eq_zeta D.S hh p]
+    ring
+  unfold threeWin sideWindow frequencyBox
+  rw [Int.natCast_floor_eq_floor hB, hQ]
+  simp only [e]
+
+/-- The anchors along a path are the representatives of the successful classes (three cores with
+side role `l`). -/
+def ThreePathAnc (G : bf.Grp) (h : ℕ) (l : Fin 4) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (cellOf : ℤ → ℤ × ℤ)
+    (ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))) (S : Finset ℤ) : Prop :=
+  ∀ s ∈ S, ∀ (hs : D.AncNe3 G (cellOf s) l) j (hj : j ≠ l) F (hF : F ∈ D.goodCls G (cellOf s) j h),
+    ancOf s hs h j hj F = D.repAnchor G (cellOf s) j h (rep j) (hrep j).1 hF
+
+open Classical in
+/-- Blueprint lines 2711-2716 along a path (three cores, side role `l`): distinct same-role labels
+of tuples tested at the cells of the scales `s, s'` are separated by `(Ξ/2) max(R_s, R_{s'})`
+against all reserved shifts (the side entries are `0`). -/
+theorem three_path_sep (G : bf.Grp) (h : ℕ) (l : Fin 4) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) {Q : ℝ} (hcQ : ((6 ^ 8 : ℕ) : ℝ) * Q ≤ D.S.Eh h)
+    {S : Finset ℤ} {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    {ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.ThreePathAnc G h l Cs rep hrep cellOf ancOf S) (Iw : ℕ)
+    (c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)) (κ : Fin 4 → ℕ × ℕ) :
+    ∀ r, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ D.threePathE G h xs l cellOf ancOf Iw c κ s,
+      ∀ x' ∈ D.threePathE G h xs l cellOf ancOf Iw c κ s', x r ≠ x' r →
+      ∀ N : Fin z.dim → ℤ, (∀ p, |(N p : ℝ)| ≤ Q) →
+        D.S.Ξ / 2 * max (dyadicGridLength A.G (cellOf s).1)⁻¹
+            (dyadicGridLength A.G (cellOf s').1)⁻¹ <
+          |x r - x' r + ∑ p, (N p : ℝ) * zetaVec z D.S.Q0 h p| := by
+  intro r s hs s' hs' x hx x' hx' hne N hN
+  obtain ⟨hAq, q, hq, -, hκ, rfl⟩ := D.mem_threePathE.mp hx
+  obtain ⟨hAq', q', hq', -, hκ', rfl⟩ := D.mem_threePathE.mp hx'
+  by_cases hrl : r = l
+  · subst hrl
+    simp [slopes3] at hne
+  have hgood : ∀ {t : ℤ} {ht : D.AncNe3 G (cellOf t) l} {qq : (∀ j, Finset (D.Ms j G).Md) × ℕ},
+      qq ∈ D.threeTested G (cellOf t) xs l (ancOf t ht) (D.toLeaf.sv l G (cellOf t)) Iw h →
+      qq.1 r ∈ D.goodCls G (cellOf t) r h := fun {t ht qq} hqq => by
+    unfold threeTested threeTestedOf at hqq
+    have := Fintype.mem_piFinset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hqq).1).1 r
+    simpa only [hrl, ↓reduceIte] using this
+  have hp := hgood hq
+  have hp' := hgood hq'
+  simp only [slopes3, hrl, ↓reduceDIte] at hne ⊢
+  rw [hanc s hs hAq r hrl (q.1 r) hp, hanc s' hs' hAq' r hrl (q'.1 r) hp'] at hne ⊢
+  exact D.path_label_sep' G r h Cs (rep r) (hrep r) (hΛ r) z (hz r) (hpath s hs).1
+    (hpath s' hs').1 (hpath s hs).2 (hpath s' hs').2 hp hp' ((hκ r hrl).trans (hκ' r hrl).symm)
+    hne hcQ N hN
+
+/-- The side incidence weight `w_s = σ_l^{-2} ‖S_{l,G,s}‖²_{2,I_s}` of the scale `s` of a path
+(blueprint line 2728), with `‖S‖²_{2,I} = r⁻¹ ∫_I |S_phys|²`. -/
+noncomputable def sideWeight (G : bf.Grp) (l : Fin 4) (cellOf : ℤ → ℤ × ℤ) (σl : ℝ) (s : ℤ) :
+    ℝ :=
+  (σl ^ 2)⁻¹ * ((dyadicGridLength A.G (cellOf s).1)⁻¹ *
+    ∫ y in (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2)..dyadicGridLeft A.G (cellOf s).1
+      (cellOf s).2 + dyadicGridLength A.G (cellOf s).1,
+      ‖augPhys (D.toLeaf.sv l G (cellOf s)) y‖ ^ 2)
+
+theorem sideWeight_nonneg (G : bf.Grp) (l : Fin 4) (cellOf : ℤ → ℤ × ℤ) (σl : ℝ) (s : ℤ) :
+    0 ≤ D.sideWeight G l cellOf σl s := by
+  have hr := dyadicGridLength_pos A.G (cellOf s).1
+  exact mul_nonneg (inv_nonneg.mpr (sq_nonneg _)) (mul_nonneg (inv_nonneg.mpr hr.le)
+    (intervalIntegral.integral_nonneg (by linarith) fun _ _ => sq_nonneg _))
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint lines 2726-2728 (side incidence on the side states): at one scale `s` of a path, the
+tested three-core tuples of the bin `c = (μ, ν, i, σ_l, σ)` incident to a fixed core label `a` in
+the role `i ≠ l` have pairwise disjoint side windows (`sideWindow_disjoint`: window box
+`16 B'_{h-Δ}`, `Λ = 2^i ≤ 2^{I_w} ≤ 2 U₀`), each of window energy at least `(r σ_l)²`; Bessel for
+each offset and the expectation bound their number by `w_s = σ_l^{-2} ‖S_{l,G,s}‖²_{2,I_s}`. -/
+theorem three_side_incidence {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 1 ≤ CA) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar)
+    (hΔ : D.SP.Δ = 10) (G : bf.Grp) (h : ℕ) (hh : 10 ≤ h) (l : Fin 4) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) {S : Finset ℤ} {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    {ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.ThreePathAnc G h l Cs rep hrep cellOf ancOf S) {Iw : ℕ}
+    (hIw : (2 : ℝ) ^ Iw ≤ 2 * D.U0) (c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)) (κ : Fin 4 → ℕ × ℕ)
+    {s : ℤ} (hs : s ∈ S) {i : Fin 4} (hil : i ≠ l) (a : ℝ) :
+    (((D.threePathE G h xs l cellOf ancOf Iw c κ s).filter fun x => x i = a).card : ℝ) ≤
+      D.sideWeight G l cellOf c.2.2.2.1 s := by
+  have hr := dyadicGridLength_pos A.G (cellOf s).1
+  rcases Finset.eq_empty_or_nonempty ((D.threePathE G h xs l cellOf ancOf Iw c κ s).filter
+    fun x => x i = a) with h0 | ⟨x₀, hx₀⟩
+  · rw [h0, Finset.card_empty, Nat.cast_zero]
+    exact D.sideWeight_nonneg G l cellOf _ s
+  have hdat : ∀ x ∈ D.threePathE G h xs l cellOf ancOf Iw c κ s, x l = 0 ∧
+      c.2.2.2.1 ≤ (dyadicGridLength A.G (cellOf s).1)⁻¹ * Real.sqrt (∫ ρ', sideWinE
+        (D.Ms 0 G).zc l (augPhys (D.toLeaf.sv l G (cellOf s)))
+        (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2) (dyadicGridLength A.G (cellOf s).1)
+        (D.threeWin G (cellOf s) xs (h - D.SP.Δ) l x (2 ^ c.2.2.1)) ρ'
+        ∂offsetMeasure (D.Ms 0 G).zc.dim) ∧ c.2.2.1 ≤ Iw ∧ c.2.1 ≤ D.U0 ∧ 0 < c.2.2.2.1 := by
+    intro x hx
+    obtain ⟨hAq, q, hq, hc, -, rfl⟩ := D.mem_threePathE.mp hx
+    unfold threeTested threeTestedOf at hq
+    obtain ⟨hmem, hpass, hwin, -⟩ := Finset.mem_filter.mp hq
+    have hi : c.2.2.1 = q.2 := by rw [← hc]; rfl
+    have hb : c.2.2.2.1 = dyadicBand (D.winB G (cellOf s) xs (h - D.SP.Δ) l
+        (D.slopes3 G (cellOf s) xs l (ancOf s hAq) h q.1) (D.toLeaf.sv l G (cellOf s)) q.2) := by
+      rw [← hc]; rfl
+    have hν : c.2.1 = D.threeNuBand G (cellOf s) xs (h - D.SP.Δ) l
+        (D.slopes3 G (cellOf s) xs l (ancOf s hAq) h q.1) := by rw [← hc]; rfl
+    have hq2 := Finset.mem_range.mp (Finset.mem_product.mp hmem).2
+    obtain ⟨-, -, -, -, -, -, -, hνU⟩ := D.threeBands_spec (by linarith) (D.one_le_U0 hD) hpass
+    refine ⟨by simp [slopes3], ?_, by omega, by rw [hν]; exact hνU,
+      by rw [hb]; exact dyadicBand_pos _⟩
+    rw [hb, hi]
+    exact dyadicBand_le hwin
+  obtain ⟨-, -, hiI, hνU, hσ0⟩ := hdat x₀ (Finset.mem_filter.mp hx₀).1
+  have hD0 : (0 : ℝ) ≤ D.S.Dstar := by linarith
+  have hA : (1 : ℝ) ≤ D.S.A0 := le_trans (by norm_num) D.hA
+  have hB0 : 0 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) :=
+    mul_nonneg (pow_nonneg hD0 5) (pow_nonneg (by linarith) _)
+  have hB16 : D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) ≤ 16 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) := by
+    linarith
+  have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
+  have hcQ : ((6 ^ 8 : ℕ) : ℝ) * (D.S.Eh h / ((6 ^ 8 : ℕ) : ℝ)) ≤ D.S.Eh h := by
+    rw [mul_div_cancel₀ _ hQ6.ne']
+  have hres := hV.window_reserve hCA hd2 hD hB hh
+  rw [← hΔ] at hres
+  have hQ : 1152 * (16 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) ≤
+      D.S.Eh h / ((6 ^ 8 : ℕ) : ℝ) := by
+    rw [le_div_iff₀ hQ6]
+    push_cast
+    linarith
+  have hΛI : (2 : ℝ) ^ c.2.2.1 ≤ 2 ^ Iw := pow_le_pow_right₀ (by norm_num) hiI
+  have hSg : 8 * (2 * c.2.1) + 48 * (2 : ℝ) ^ c.2.2.1 ≤ D.S.Ξ / 2 := by
+    have := D.U0_window_reserve hD
+    have := D.one_le_U0 hD
+    linarith
+  have hXm : Measurable (augPhys (D.toLeaf.sv l G (cellOf s))) := columnPhys_measurable _
+  have hL2X : MemLp (augPhys (D.toLeaf.sv l G (cellOf s))) 2
+      (volume.restrict (Set.Ioc (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2)
+        (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2 + dyadicGridLength A.G (cellOf s).1))) :=
+    (memLp_column_coord _ none).restrict _
+  have hwe := window_energy_integrable (D.Ms 0 G).zc l hXm hr hL2X
+  have key := side_incidence_le (offsetMeasure (D.Ms 0 G).zc.dim)
+    ((D.threePathE G h xs l cellOf ancOf Iw c κ s).filter fun x => x i = a)
+    (fun x => D.threeWin G (cellOf s) xs (h - D.SP.Δ) l x (2 ^ c.2.2.1))
+    (fun t ht t' ht' hne => by
+      obtain ⟨htE, hta⟩ := Finset.mem_filter.mp ht
+      obtain ⟨ht'E, ht'a⟩ := Finset.mem_filter.mp ht'
+      obtain ⟨htl, -⟩ := hdat t htE
+      obtain ⟨ht'l, -⟩ := hdat t' ht'E
+      rw [D.threeWin_eq_sideWindow hD0 hΔ z (hz 0) hh _ xs htl,
+        D.threeWin_eq_sideWindow hD0 hΔ z (hz 0) hh _ xs ht'l]
+      exact sideWindow_disjoint (zetaVec z D.S.Q0 h) hil htl ht'l (hta.trans ht'a.symm) hne hr
+        ((D.threePathE_ref hD hΔ z (hz 0) hh htE).mono hB16)
+        ((D.threePathE_ref hD hΔ z (hz 0) hh ht'E).mono hB16)
+        (fun j hj N hN => by
+          have := D.three_path_sep G h l Cs rep hrep hΛ z hz hcQ hpath hanc Iw c κ j s hs s hs
+            t htE t' ht'E hj N hN
+          rwa [max_self] at this)
+        hQ hSg)
+    (fun ρ k => ‖∫ y in Set.Ico (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2)
+      (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2 + dyadicGridLength A.G (cellOf s).1),
+        sideSd (D.Ms 0 G).zc ρ l (augPhys (D.toLeaf.sv l G (cellOf s))) y *
+        Complex.exp (2 * Real.pi * Complex.I * k * y / dyadicGridLength A.G (cellOf s).1)‖ ^ 2)
+    (fun k => by simpa only [Finset.sum_singleton] using (hwe {k}).1)
+    (fun _ => dyadicGridLength A.G (cellOf s).1 *
+      ∫ y in (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2)..dyadicGridLeft A.G (cellOf s).1
+        (cellOf s).2 + dyadicGridLength A.G (cellOf s).1,
+        ‖augPhys (D.toLeaf.sv l G (cellOf s)) y‖ ^ 2) (integrable_const _)
+    (fun ρ U => (hwe U).2 ρ) (σ := dyadicGridLength A.G (cellOf s).1 * c.2.2.2.1)
+    (fun t ht => by
+      obtain ⟨-, hle, -⟩ := hdat t (Finset.mem_filter.mp ht).1
+      have hint : 0 ≤ ∫ ρ', sideWinE (D.Ms 0 G).zc l (augPhys (D.toLeaf.sv l G (cellOf s)))
+          (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2) (dyadicGridLength A.G (cellOf s).1)
+          (D.threeWin G (cellOf s) xs (h - D.SP.Δ) l t (2 ^ c.2.2.1)) ρ'
+          ∂offsetMeasure (D.Ms 0 G).zc.dim :=
+        integral_nonneg fun ρ => Finset.sum_nonneg fun _ _ => sq_nonneg _
+      have h1 : dyadicGridLength A.G (cellOf s).1 * c.2.2.2.1 ≤ Real.sqrt (∫ ρ', sideWinE
+          (D.Ms 0 G).zc l (augPhys (D.toLeaf.sv l G (cellOf s)))
+          (dyadicGridLeft A.G (cellOf s).1 (cellOf s).2) (dyadicGridLength A.G (cellOf s).1)
+          (D.threeWin G (cellOf s) xs (h - D.SP.Δ) l t (2 ^ c.2.2.1)) ρ'
+          ∂offsetMeasure (D.Ms 0 G).zc.dim) := by
+        have := mul_le_mul_of_nonneg_left hle hr.le
+        rwa [← mul_assoc, mul_inv_cancel₀ hr.ne', one_mul] at this
+      calc (dyadicGridLength A.G (cellOf s).1 * c.2.2.2.1) ^ 2 ≤ (Real.sqrt _) ^ 2 :=
+            pow_le_pow_left₀ (mul_pos hr hσ0).le h1 2
+        _ = _ := Real.sq_sqrt hint)
+  simp only [integral_const, probReal_univ, one_smul] at key
+  have hσ2 : 0 < (dyadicGridLength A.G (cellOf s).1 * c.2.2.2.1) ^ 2 := pow_pos (mul_pos hr hσ0) 2
+  unfold sideWeight
+  calc _ = _ * (dyadicGridLength A.G (cellOf s).1 * c.2.2.2.1) ^ 2 /
+        (dyadicGridLength A.G (cellOf s).1 * c.2.2.2.1) ^ 2 :=
+        (mul_div_cancel_right₀ _ hσ2.ne').symm
+    _ ≤ _ / (dyadicGridLength A.G (cellOf s).1 * c.2.2.2.1) ^ 2 :=
+        div_le_div_of_nonneg_right key hσ2.le
+    _ = _ := by
+        field_simp
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint `eq:total-count` for three cores on the side states (lines 2726-2729, side role `l`):
+along a path, with the anchors given by the representatives, fixed height, core types and bin
+`c = (μ, ν, i, σ_l, σ)`, the tested label sets `E_s` (tuples tested with the shell `Λ = 2^i` of
+the bin) satisfy `Σ_s N_s ≤ L₀ |A_i| |A_j|` (`L₀ = threeMult`) and `N_s ≤ |A_i| |A_j|` for
+distinct core roles `i, j`, and `Σ_s N_s ≤ |A_i| Σ_s w_s` for a core role `i` and the side
+(`w_s = σ_l^{-2} ‖S_{l,G,s}‖²_{2,I_s}`, `Σ_s w_s = M_l^G`); here `A_j` is the set of labels of
+role `j` along the path. -/
+theorem three_core_total_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 1 ≤ CA) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar)
+    (hΔ : D.SP.Δ = 10) (G : bf.Grp) (h : ℕ) (hh : 10 ≤ h) (l : Fin 4) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) {S : Finset ℤ} {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    (hcell : ∀ s, (cellOf s).1 = s)
+    {ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.ThreePathAnc G h l Cs rep hrep cellOf ancOf S) {Iw : ℕ}
+    (hIw : (2 : ℝ) ^ Iw ≤ 2 * D.U0) (c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)) (κ : Fin 4 → ℕ × ℕ) :
+    (∀ i j, i ≠ j → i ≠ l → j ≠ l →
+      ∑ s ∈ S, ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+        threeMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) *
+          (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+            fun x => x i).card *
+          (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+            fun x => x j).card) ∧
+    (∀ i, i ≠ l → ∑ s ∈ S, ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+      (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+        fun x => x i).card * ∑ s ∈ S, D.sideWeight G l cellOf c.2.2.2.1 s) ∧
+    (∀ i j, i ≠ j → i ≠ l → j ≠ l → ∀ s ∈ S,
+      ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+        (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+          fun x => x i).card *
+        (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+          fun x => x j).card) := by
+  set E := D.threePathE G h xs l cellOf ancOf Iw c κ with hEdef
+  have hAl : ∀ s ∈ S, ∀ x ∈ E s, ∀ j, j ≠ l →
+      x j ∈ S.biUnion fun s => (E s).image fun x => x j :=
+    fun s hs x hx j _ => Finset.mem_biUnion.mpr ⟨s, hs, Finset.mem_image_of_mem _ hx⟩
+  have hxl : ∀ s ∈ S, ∀ x ∈ E s, x l = 0 := fun s _ x hx => by
+    obtain ⟨hAq, q, -, -, -, rfl⟩ := D.mem_threePathE.mp hx
+    simp [slopes3]
+  have hR : ∀ t, (dyadicGridLength A.G (cellOf t).1)⁻¹ = A.G.baseLength⁻¹ * 2 ^ t := fun t => by
+    rw [hcell t, baseLength_inv_zpow]
+  by_cases hne : ∃ s ∈ S, (E s).Nonempty
+  · obtain ⟨s₀, -, x₀, hx₀⟩ := hne
+    obtain ⟨hAq₀, q₀, hq₀, hc₀, -, -⟩ := D.mem_threePathE.mp hx₀
+    unfold threeTested threeTestedOf at hq₀
+    obtain ⟨-, hpass₀, -, -⟩ := Finset.mem_filter.mp hq₀
+    have hD0 : (0 : ℝ) ≤ D.S.Dstar := by linarith
+    have hU := D.one_le_U0 hD
+    obtain ⟨-, -, hμ3, hμ4, -, -, hν3, hν4⟩ := D.threeBands_spec hD0 hU hpass₀
+    have hc1 : c.1 = D.threeMuBand G (cellOf s₀) xs (h - D.SP.Δ) l
+        (D.slopes3 G (cellOf s₀) xs l (ancOf s₀ hAq₀) h q₀.1) := by rw [← hc₀]; rfl
+    have hc2 : c.2.1 = D.threeNuBand G (cellOf s₀) xs (h - D.SP.Δ) l
+        (D.slopes3 G (cellOf s₀) xs l (ancOf s₀ hAq₀) h q₀.1) := by rw [← hc₀]; rfl
+    have hU0i : 0 < D.U0⁻¹ := inv_pos.mpr (by linarith)
+    have hμ : 0 < c.1 := by rw [hc1]; linarith
+    have hμν : c.1 ≤ 2 * c.2.1 := by rw [hc1, hc2]; linarith
+    have hνU : c.2.1 ≤ D.U0 := by rw [hc2]; exact hν4
+    have hA : (1 : ℝ) ≤ D.S.A0 := le_trans (by norm_num) D.hA
+    have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
+      have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
+      have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
+      nlinarith
+    have hres := hV.shift_reserve hCA hd2 hD hB hh
+    rw [← hΔ] at hres
+    have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
+    have hR₀ : 0 < A.G.baseLength⁻¹ := inv_pos.mpr A.G.baseLength_pos
+    refine three_core_total_abstract (zetaVec z D.S.Q0 h) l S E _ hAl hxl hB1 hμ hμν hR₀
+      (Q := D.S.Eh h / ((6 ^ 8 : ℕ) : ℝ)) (Sg := D.S.Ξ / 2) (fun s hs x hx => ?_)
+      (fun r s hs s' hs' x hx x' hx' hne N hN => ?_) ?_ ?_ (D.sideWeight G l cellOf c.2.2.2.1)
+      (fun s hs i hil a => D.three_side_incidence hV hCA hd2 hD hB hΔ G h hh l Cs rep hrep hΛ z
+        hz hpath hanc hIw c κ hs hil a)
+    · have := D.threePathE_ref hD hΔ z (hz 0) hh hx
+      rwa [hR s] at this
+    · have := D.three_path_sep G h l Cs rep hrep hΛ z hz (by rw [mul_div_cancel₀ _ hQ6.ne'])
+        hpath hanc Iw c κ r s hs s' hs' x hx x' hx' hne N hN
+      rwa [hR s, hR s'] at this
+    · rw [le_div_iff₀ hQ6]
+      push_cast
+      linarith
+    · have := D.U0_reserve hD
+      linarith
+  · push Not at hne
+    have hAl0 : ∀ j, (S.biUnion fun s => (E s).image fun x => x j) = ∅ := fun j =>
+      Finset.eq_empty_of_forall_notMem fun a ha => by
+        obtain ⟨s, hs, ha'⟩ := Finset.mem_biUnion.mp ha
+        rw [hne s hs, Finset.image_empty] at ha'
+        exact Finset.notMem_empty a ha'
+    have hsum : ∑ s ∈ S, ((E s).card : ℝ) = 0 :=
+      Finset.sum_eq_zero fun s hs => by rw [hne s hs, Finset.card_empty, Nat.cast_zero]
+    refine ⟨fun i j _ _ _ => ?_, fun i _ => ?_, fun i j _ _ _ s hs => ?_⟩
+    · rw [hsum, hAl0 i, Finset.card_empty]
+      simp
+    · rw [hsum, hAl0 i, Finset.card_empty]
+      simp
+    · rw [hne s hs, hAl0 i, Finset.card_empty]
+      simp
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint line 2711 ("identify a representative with its fixed real value"), four cores: along
+a path with the representatives as anchors, distinct tested tuples of one type in one bin have
+distinct label tuples, so `N_s = |E_s|` is the number of tested tuples in the bin. -/
+theorem fourPathE_card (G : bf.Grp) (h : ℕ) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ)
+    (hD : 0 < D.S.Dstar) {S : Finset ℤ} {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    {ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.FourPathAnc G h Cs rep hrep cellOf ancOf S) (c : ℝ × ℝ × (Fin 4 → ℝ))
+    (κ : Fin 4 → ℕ × ℕ) {s : ℤ} (hs : s ∈ S) (hA : D.AncNe G (cellOf s)) :
+    (D.fourPathE G h xs cellOf ancOf c κ s).card =
+      ((D.fourTested G (cellOf s) xs (ancOf s hA) h).filter fun p =>
+        D.fourBinOf G (cellOf s) xs (ancOf s hA) h p = c ∧
+          ∀ j, D.classTypeOf G (cellOf s) j h (p j) = κ j).card := by
+  unfold fourPathE
+  rw [dite_eq_left hA]
+  refine Finset.card_image_of_injOn fun p hp p' hp' he => ?_
+  obtain ⟨hpT, -, hκ⟩ := Finset.mem_filter.mp (Finset.mem_coe.mp hp)
+  obtain ⟨hpT', -, hκ'⟩ := Finset.mem_filter.mp (Finset.mem_coe.mp hp')
+  have hgood : ∀ {p : ∀ j, Finset (D.Ms j G).Md},
+      p ∈ D.fourTested G (cellOf s) xs (ancOf s hA) h → ∀ j, p j ∈ D.goodCls G (cellOf s) j h :=
+    fun {p} hp j => by
+      unfold fourTested fourTestedOf at hp
+      exact Fintype.mem_piFinset.mp (Finset.mem_filter.mp hp).1 j
+  funext j
+  have hj := congrFun he j
+  rw [hanc s hs hA j (p j) (hgood hpT j), hanc s hs hA j (p' j) (hgood hpT' j)] at hj
+  exact D.repAnchor_slope_inj G j h Cs (rep j) (hrep j) (hΛ j) hD (hpath s hs).1 (hpath s hs).2
+    (hgood hpT j) (hgood hpT' j) ((hκ j).trans (hκ' j).symm) hj
+
+open Classical in
+/-- Blueprint line 2711 for three cores (side role `l`): along a path with the representatives as
+anchors, distinct tested tuples and shells of one type in one bin have distinct label tuples, so
+`N_s = |E_s|` is the number of tested tuples and shells in the bin. -/
+theorem threePathE_card (G : bf.Grp) (h : ℕ) (l : Fin 4) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ)
+    (hD : 0 < D.S.Dstar) {S : Finset ℤ} {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    {ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.ThreePathAnc G h l Cs rep hrep cellOf ancOf S) (Iw : ℕ)
+    (c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)) (κ : Fin 4 → ℕ × ℕ) {s : ℤ} (hs : s ∈ S)
+    (hA : D.AncNe3 G (cellOf s) l) :
+    (D.threePathE G h xs l cellOf ancOf Iw c κ s).card =
+      ((D.threeTested G (cellOf s) xs l (ancOf s hA) (D.toLeaf.sv l G (cellOf s)) Iw h).filter
+        fun q => D.threeBinOf G (cellOf s) xs l (ancOf s hA) (D.toLeaf.sv l G (cellOf s)) h q = c ∧
+          ∀ j, j ≠ l → D.classTypeOf G (cellOf s) j h (q.1 j) = κ j).card := by
+  unfold threePathE
+  rw [dite_eq_left hA]
+  refine Finset.card_image_of_injOn fun q hq q' hq' he => ?_
+  obtain ⟨hqT, hc, hκ⟩ := Finset.mem_filter.mp (Finset.mem_coe.mp hq)
+  obtain ⟨hqT', hc', hκ'⟩ := Finset.mem_filter.mp (Finset.mem_coe.mp hq')
+  have hmem : ∀ {q : (∀ j, Finset (D.Ms j G).Md) × ℕ},
+      q ∈ D.threeTested G (cellOf s) xs l (ancOf s hA) (D.toLeaf.sv l G (cellOf s)) Iw h →
+      ∀ j, q.1 j ∈ (if j = l then {∅} else D.goodCls G (cellOf s) j h) := fun {q} hq j => by
+    unfold threeTested threeTestedOf at hq
+    exact Fintype.mem_piFinset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hq).1).1 j
+  have hi : q.2 = q'.2 := by
+    have e1 : c.2.2.1 = q.2 := by rw [← hc]; rfl
+    have e2 : c.2.2.1 = q'.2 := by rw [← hc']; rfl
+    rw [← e1, ← e2]
+  refine Prod.ext (funext fun j => ?_) hi
+  by_cases hjl : j = l
+  · have h1 := hmem hqT l
+    have h2 := hmem hqT' l
+    simp only [↓reduceIte, Finset.mem_singleton] at h1 h2
+    rw [hjl, h1, h2]
+  have h1 := hmem hqT j
+  have h2 := hmem hqT' j
+  simp only [hjl, ↓reduceIte] at h1 h2
+  have hj := congrFun he j
+  simp only [slopes3, hjl, ↓reduceDIte] at hj
+  rw [hanc s hs hA j hjl (q.1 j) h1, hanc s hs hA j hjl (q'.1 j) h2] at hj
+  exact D.repAnchor_slope_inj G j h Cs (rep j) (hrep j) (hΛ j) hD (hpath s hs).1 (hpath s hs).2
+    h1 h2 ((hκ j hjl).trans (hκ' j hjl).symm) hj
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+/-! ## The applied sparse count on the side states (`eq:applied-sparse`) -/
+
+/-- `four_core_sparse_count` with the explicit constants `C = 3 · 10^{11}`, `C_res = 7200000` of
+`sparse_count_explicit` (blueprint `eq:applied-sparse`, lines 2731-2741). -/
+theorem four_core_sparse_explicit :
+    ∀ (d : ℕ) (ζ : Fin d → ℝ) (A : Fin 4 → Finset ℝ) (M L : ℝ), 1 ≤ M → 1 ≤ L →
+    (∀ i, ((A i).card : ℝ) ≤ M) →
+    ∀ (B Sg Q μ ν R₀ : ℝ), 1 ≤ B → 0 < μ → μ ≤ 1 → 1 ≤ ν → 0 < R₀ →
+    ∀ (S : Finset ℤ) (E : ℤ → Finset (Fin 4 → ℝ)),
+    (∀ s ∈ S, ∀ x ∈ E s, ∀ i, x i ∈ A i) →
+    (∀ x, ((S.filter fun s => x ∈ E s).card : ℝ) ≤ L) →
+    (∀ s ∈ S, ∀ x ∈ E s, FourRef ζ B μ ν (R₀ * 2 ^ s) x) →
+    (∀ i, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s', x i ≠ x' i →
+      ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
+        Sg * max (R₀ * 2 ^ s) (R₀ * 2 ^ s') < |x i - x' i + ∑ k, (n k : ℝ) * ζ k|) →
+    (∀ s ∈ S, (E s).Nonempty → ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
+      |∑ k, (n k : ℝ) * ζ k| ∉ Set.Icc (μ * (R₀ * 2 ^ s) / 1000) (1000 * (4 * ν) * (R₀ * 2 ^ s))) →
+    7200000 * ((d : ℝ) + 1) ^ 2 * (4 * B) ≤ Q → 288 * B ≤ Q →
+    7200000 * ((d : ℝ) + 1) ^ 2 * (4 * ν) ≤ Sg → 8 * ν ≤ Sg →
+    ∀ δ : ℝ, 0 < δ → δ ≤ 1 →
+      ∑ s ∈ S.filter (fun s => ((E s).card : ℝ) ≤ δ * M ^ 2), ((E s).card : ℝ) ≤
+        3 * 10 ^ 11 * (1 + Real.logb 2 (2 + ((d : ℝ) + 1) ^ 2 * (4 * ν) / μ)) * L ^ 12 *
+          δ ^ (1 / 300 : ℝ) * M ^ 2 := by
+  have hsc := sparse_count_explicit
+  intro d ζ A M L hM hL hA B Sg Q μ ν R₀ hB hμ hμ1 hν hR₀ S E hE hmult href hsep hgap hQ hQ'
+    hSg hSg' δ hδ0 hδ1
+  have hc : (Finset.univ : Finset (Fin 4)).card = 4 := by simp
+  refine hsc d ζ Finset.univ (Or.inr hc) A M L hM hL (fun i _ => hA i) (4 * B) Sg Q μ (4 * ν)
+    R₀ (by linarith) hμ hμ1 (by linarith) hR₀ S E
+    (fun s hs x hx => ⟨fun i _ => hE s hs x hx i, fun i hi => absurd (Finset.mem_univ i) hi⟩)
+    (fun i _ j _ hij s hs s' hs' x hx x' hx' hxi hxj => ?_) hmult
+    (fun h => by rw [hc] at h; norm_num at h) (fun i _ s hs s' hs' x hx x' hx' => hsep i s hs s'
+      hs' x hx x' hx') (fun T _ hT l hl s hs x hx => ?_) hgap hQ hSg δ hδ0 hδ1
+  · have hRs : 0 ≤ R₀ * 2 ^ s := by positivity
+    exact four_core_pair ζ hij hxi hxj (href s hs x hx) (href s' hs' x' hx')
+      (fun r hr N hN => hsep r s hs s' hs' x hx x' hx' hr N hN) hQ' hSg' (by linarith) hRs
+  · obtain ⟨n, hn, h1, h2⟩ := four_core_ann ζ (href s hs x hx) hT hl
+    exact ⟨n, hn, h1, by linarith⟩
+
+/-- `three_core_sparse_count` with the explicit constants `C = 3 · 10^{11}`, `C_res = 7200000` of
+`sparse_count_explicit` (blueprint `eq:applied-sparse`, lines 2731-2741). -/
+theorem three_core_sparse_explicit :
+    ∀ (d : ℕ) (ζ : Fin d → ℝ) (l : Fin 4) (A : Fin 4 → Finset ℝ) (M L : ℝ), 1 ≤ M → 1 ≤ L →
+    (∀ i, i ≠ l → ((A i).card : ℝ) ≤ M) →
+    ∀ (B Sg Q μ ν R₀ : ℝ), 1 ≤ B → 0 < μ → μ ≤ 1 → 1 ≤ ν → 0 < R₀ →
+    ∀ (S : Finset ℤ) (E : ℤ → Finset (Fin 4 → ℝ)),
+    (∀ s ∈ S, ∀ x ∈ E s, (∀ i, i ≠ l → x i ∈ A i) ∧ x l = 0) →
+    (∀ x, ((S.filter fun s => x ∈ E s).card : ℝ) ≤ L) →
+    (∃ w : ℤ → ℝ, (∀ s, 0 ≤ w s) ∧ ∑ s ∈ S, w s ≤ M ∧
+      ∀ s ∈ S, ∀ i, i ≠ l → ∀ a, (((E s).filter fun x => x i = a).card : ℝ) ≤ w s) →
+    (∀ s ∈ S, ∀ x ∈ E s, ThreeRef ζ l B μ ν (R₀ * 2 ^ s) x) →
+    (∀ i, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s', x i ≠ x' i →
+      ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
+        Sg * max (R₀ * 2 ^ s) (R₀ * 2 ^ s') < |x i - x' i + ∑ k, (n k : ℝ) * ζ k|) →
+    (∀ s ∈ S, (E s).Nonempty → ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
+      |∑ k, (n k : ℝ) * ζ k| ∉ Set.Icc (μ * (R₀ * 2 ^ s) / 1000) (1000 * ν * (R₀ * 2 ^ s))) →
+    7200000 * ((d : ℝ) + 1) ^ 2 * B ≤ Q → 72 * B ≤ Q →
+    7200000 * ((d : ℝ) + 1) ^ 2 * ν ≤ Sg → 2 * ν ≤ Sg →
+    ∀ δ : ℝ, 0 < δ → δ ≤ 1 →
+      ∑ s ∈ S.filter (fun s => ((E s).card : ℝ) ≤ δ * M ^ 2), ((E s).card : ℝ) ≤
+        3 * 10 ^ 11 * (1 + Real.logb 2 (2 + ((d : ℝ) + 1) ^ 2 * ν / μ)) * L ^ 12 *
+          δ ^ (1 / 300 : ℝ) * M ^ 2 := by
+  have hsc := sparse_count_explicit
+  intro d ζ l A M L hM hL hA B Sg Q μ ν R₀ hB hμ hμ1 hν hR₀ S E hE hmult hw href hsep hgap hQ
+    hQ' hSg hSg' δ hδ0 hδ1
+  have hc : (Finset.univ.erase l).card = 3 := by simp
+  have hmemc : ∀ i, i ∈ Finset.univ.erase l ↔ i ≠ l := fun i => by simp
+  obtain ⟨w, hw0, hwsum, hwinc⟩ := hw
+  refine hsc d ζ (Finset.univ.erase l) (Or.inl hc) A M L hM hL
+    (fun i hi => hA i ((hmemc i).mp hi)) B Sg Q μ ν R₀ hB hμ hμ1 hν hR₀ S E
+    (fun s hs x hx => ⟨fun i hi => (hE s hs x hx).1 i ((hmemc i).mp hi), fun i hi => by
+      have : i = l := by by_contra h; exact hi ((hmemc i).mpr h)
+      rw [this]; exact (hE s hs x hx).2⟩)
+    (fun i hi j hj hij s hs s' hs' x hx x' hx' hxi hxj => ?_) hmult
+    (fun _ => ⟨w, hw0, hwsum, fun s hs i hi a => hwinc s hs i ((hmemc i).mp hi) a⟩)
+    (fun i _ s hs s' hs' x hx x' hx' => hsep i s hs s' hs' x hx x' hx')
+    (fun T hT hT3 l' hl' s hs x hx => ?_) hgap hQ hSg δ hδ0 hδ1
+  · have hRs : 0 ≤ R₀ * 2 ^ s := by positivity
+    exact three_core_pair ζ (hE s hs x hx).2 (hE s' hs' x' hx').2 hij ((hmemc i).mp hi)
+      ((hmemc j).mp hj) hxi hxj (href s hs x hx) (href s' hs' x' hx')
+      (fun r hr N hN => hsep r s hs s' hs' x hx x' hx' hr N hN) hQ' hSg' (by linarith) hRs
+  · have hTe : T = Finset.univ.erase l :=
+      Finset.eq_of_subset_of_card_le hT (by rw [hc, hT3])
+    have hll : l' = l := by
+      by_contra h; exact hl' (hTe ▸ (hmemc l').mpr h)
+    subst hTe hll
+    exact href s hs x hx
+
+open Classical in
+/-- Blueprint lines 2722-2724: a four-core label tuple with the reference data `FourRef` at the
+scales `R₀ 2^s` occurs at at most `L₀ = fourMult` scales (`tested_scale_mult`). -/
+theorem fourRef_mult {d : ℕ} (ζ : Fin d → ℝ) (S : Finset ℤ) (E : ℤ → Finset (Fin 4 → ℝ))
+    {B μ ν R₀ : ℝ} (hB : 1 ≤ B) (hμ : 0 < μ) (hμν : μ ≤ ν) (hR₀ : 0 < R₀)
+    (href : ∀ s ∈ S, ∀ x ∈ E s, FourRef ζ B μ ν (R₀ * 2 ^ s) x) (x : Fin 4 → ℝ) :
+    ((S.filter fun s => x ∈ E s).card : ℝ) ≤ fourMult d B μ ν := by
+  have hT : (Finset.univ.erase (0 : Fin 4)).card = 3 := by
+    rw [Finset.card_erase_of_mem (Finset.mem_univ _), Finset.card_univ, Fintype.card_fin]
+  refine le_trans ?_ (tested_scale_mult ζ x (Finset.univ.erase 0) 0
+    (B := 4 * B) (ν := 4 * ν) (by linarith) hμ (by linarith) hR₀ S)
+  refine Nat.cast_le.mpr (Finset.card_le_card fun s hs => ?_)
+  obtain ⟨hsS, hxE⟩ := Finset.mem_filter.mp hs
+  exact Finset.mem_filter.mpr ⟨hsS, four_core_ann _ (href s hsS x hxE) hT
+    (Finset.notMem_erase 0 _)⟩
+
+open Classical in
+/-- Blueprint lines 2722-2724: a three-core label tuple with the reference data `ThreeRef` at the
+scales `R₀ 2^s` occurs at at most `L₀ = threeMult` scales (`tested_scale_mult`). -/
+theorem threeRef_mult {d : ℕ} (ζ : Fin d → ℝ) (l : Fin 4) (S : Finset ℤ)
+    (E : ℤ → Finset (Fin 4 → ℝ)) {B μ ν R₀ : ℝ} (hB : 1 ≤ B) (hμ : 0 < μ) (hμν : μ ≤ ν)
+    (hR₀ : 0 < R₀) (href : ∀ s ∈ S, ∀ x ∈ E s, ThreeRef ζ l B μ ν (R₀ * 2 ^ s) x)
+    (x : Fin 4 → ℝ) :
+    ((S.filter fun s => x ∈ E s).card : ℝ) ≤ threeMult d B μ ν := by
+  refine le_trans ?_ (tested_scale_mult ζ x (Finset.univ.erase l) l hB hμ hμν hR₀ S)
+  refine Nat.cast_le.mpr (Finset.card_le_card fun s hs => ?_)
+  obtain ⟨hsS, hxE⟩ := Finset.mem_filter.mp hs
+  exact Finset.mem_filter.mpr ⟨hsS, href s hsS x hxE⟩
+
+namespace ModeSchedule
+variable {S : ModeSchedule} {Cj CA CT CK : ℕ} {δs W : ℝ}
+
+/-- The shift reserve of `eq:applied-sparse` (blueprint lines 2733-2736, "the choice of `A₀` and
+`B'_h = D_*^5 E_{h-Δ}` gives `Q ≥ C_res (d+1)² C B'_h`"): with `C_res = 7200000` and the factor `4`
+of the four-core annuli, `7200000 (d_max+1)² · 4 · 6^8 D_*^5 E_{h-Δ} ≤ E_h` for `h ≥ Δ = 10`
+(`A₀ ≥ 6^{30} C_* D_*` and `d_max ≤ C_*`). -/
+theorem Valid.sparse_reserve (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hd2 : 2 ≤ S.dmax)
+    (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) {h : ℕ} (hh : 10 ≤ h) :
+    7200000 * ((S.dmax : ℝ) + 1) ^ 2 * 4 * 6 ^ 8 * S.Dstar ^ 5 * S.Eh (h - 10) ≤ S.Eh h := by
+  have hC := hV.two_le_Cstar hd2 hD
+  have hdC := hV.dmax_le_Cstar hd2 hD
+  have hR := hV.thirty_le_Rht hd2 hD
+  have hbase := hV.base_le_A0 hCA hd2 hD hB
+  have h6 : (6 : ℝ) ^ 30 ≤ 6 ^ S.Rht := pow_le_pow_right₀ (by norm_num) hR
+  have hCD : 0 ≤ S.Cstar * S.Dstar := mul_nonneg (by linarith) (by linarith)
+  have hA : 6 ^ 30 * (S.Cstar * S.Dstar) ≤ S.A0 := by
+    have h1 : (6 : ℝ) ^ 30 ≤ 6 ^ S.Rht * S.Bstar := by
+      have : (0 : ℝ) ≤ 6 ^ S.Rht := by positivity
+      nlinarith
+    calc 6 ^ 30 * (S.Cstar * S.Dstar) ≤ (6 ^ S.Rht * S.Bstar) * (S.Cstar * S.Dstar) :=
+          mul_le_mul_of_nonneg_right h1 hCD
+      _ = S.Cstar * 6 ^ S.Rht * S.Bstar * S.Dstar := by ring
+      _ ≤ S.A0 := hbase
+  have hA0 : 0 ≤ S.A0 := le_trans (mul_nonneg (by norm_num) hCD) hA
+  have hE : S.Eh h = S.A0 ^ 10 * S.Eh (h - 10) := by
+    unfold Eh
+    rw [← pow_add]
+    congr 1
+    omega
+  have hEn : 0 ≤ S.Eh (h - 10) := by unfold Eh; positivity
+  have hd1 : ((S.dmax : ℝ) + 1) ^ 2 ≤ 4 * S.Cstar ^ 2 := by
+    have h2 : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
+    have : (S.dmax : ℝ) + 1 ≤ 2 * S.Cstar := by linarith
+    nlinarith
+  have hD1 : (1 : ℝ) ≤ S.Dstar := by linarith
+  have hD5 : S.Dstar ^ 5 ≤ S.Dstar ^ 10 := pow_le_pow_right₀ hD1 (by norm_num)
+  have hC2 : S.Cstar ^ 2 ≤ S.Cstar ^ 10 := pow_le_pow_right₀ (by linarith) (by norm_num)
+  have hD5n : 0 ≤ S.Dstar ^ 5 := pow_nonneg (by linarith) 5
+  have hD10n : 0 ≤ S.Dstar ^ 10 := by positivity
+  have hk : (7200000 * 4 * 6 ^ 8 * 4 : ℝ) ≤ (6 ^ 30) ^ 10 := by norm_num
+  have hA10 : 7200000 * ((S.dmax : ℝ) + 1) ^ 2 * 4 * 6 ^ 8 * S.Dstar ^ 5 ≤ S.A0 ^ 10 := by
+    have h1 : (6 ^ 30 * (S.Cstar * S.Dstar)) ^ 10 ≤ S.A0 ^ 10 :=
+      pow_le_pow_left₀ (mul_nonneg (by norm_num) hCD) hA 10
+    calc 7200000 * ((S.dmax : ℝ) + 1) ^ 2 * 4 * 6 ^ 8 * S.Dstar ^ 5 =
+          (7200000 * 4 * 6 ^ 8) * (((S.dmax : ℝ) + 1) ^ 2 * S.Dstar ^ 5) := by ring
+      _ ≤ (7200000 * 4 * 6 ^ 8) * ((4 * S.Cstar ^ 2) * S.Dstar ^ 10) :=
+          mul_le_mul_of_nonneg_left (mul_le_mul hd1 hD5 hD5n (by positivity)) (by norm_num)
+      _ = (7200000 * 4 * 6 ^ 8 * 4) * (S.Cstar ^ 2 * S.Dstar ^ 10) := by ring
+      _ ≤ (6 ^ 30) ^ 10 * (S.Cstar ^ 10 * S.Dstar ^ 10) :=
+          mul_le_mul hk (mul_le_mul_of_nonneg_right hC2 hD10n)
+            (mul_nonneg (by positivity) hD10n) (by positivity)
+      _ = (6 ^ 30 * (S.Cstar * S.Dstar)) ^ 10 := by ring
+      _ ≤ S.A0 ^ 10 := h1
+  rw [hE]
+  calc 7200000 * ((S.dmax : ℝ) + 1) ^ 2 * 4 * 6 ^ 8 * S.Dstar ^ 5 * S.Eh (h - 10) =
+        (7200000 * ((S.dmax : ℝ) + 1) ^ 2 * 4 * 6 ^ 8 * S.Dstar ^ 5) * S.Eh (h - 10) := by ring
+    _ ≤ S.A0 ^ 10 * S.Eh (h - 10) := mul_le_mul_of_nonneg_right hA10 hEn
+
+end ModeSchedule
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+/-- The band reserve of `eq:applied-sparse` (blueprint line 2736, "`Ξ = D_*^{1000}` and
+`ν ≤ C D_*^{250}` give the required `Σ` reserve"): `7200000 (d_max+1)² · 8 U₀ ≤ Ξ/2` when the
+budget `D_* ≥ 2` also covers the dimension, `d_max ≤ D_*`. -/
+theorem U0_sparse_reserve (hD : 2 ≤ D.S.Dstar) (hdD : (D.S.dmax : ℝ) ≤ D.S.Dstar) :
+    7200000 * ((D.S.dmax : ℝ) + 1) ^ 2 * (8 * D.U0) ≤ D.S.Ξ / 2 := by
+  unfold U0 ModeSchedule.Ξ
+  have hD1 : (1 : ℝ) ≤ D.S.Dstar := by linarith
+  have hd0 : (0 : ℝ) ≤ D.S.dmax := Nat.cast_nonneg _
+  have hd1 : ((D.S.dmax : ℝ) + 1) ^ 2 ≤ D.S.Dstar ^ 2 * 4 := by nlinarith
+  have h30 : (2 : ℝ) ^ 30 ≤ D.S.Dstar ^ 30 := pow_le_pow_left₀ (by norm_num) hD 30
+  have h748 : D.S.Dstar ^ 30 ≤ D.S.Dstar ^ 748 := pow_le_pow_right₀ hD1 (by norm_num)
+  have e : D.S.Dstar ^ 1000 = D.S.Dstar ^ 748 * (D.S.Dstar ^ 2 * D.S.Dstar ^ 250) := by
+    rw [← pow_add, ← pow_add]
+  have hpos : 0 ≤ D.S.Dstar ^ 2 * D.S.Dstar ^ 250 := by positivity
+  rw [e]
+  calc 7200000 * ((D.S.dmax : ℝ) + 1) ^ 2 * (8 * D.S.Dstar ^ 250) ≤
+        7200000 * (D.S.Dstar ^ 2 * 4) * (8 * D.S.Dstar ^ 250) := by gcongr
+    _ = 230400000 * (D.S.Dstar ^ 2 * D.S.Dstar ^ 250) := by ring
+    _ ≤ 2 ^ 30 / 2 * (D.S.Dstar ^ 2 * D.S.Dstar ^ 250) :=
+        mul_le_mul_of_nonneg_right (by norm_num) hpos
+    _ ≤ D.S.Dstar ^ 748 / 2 * (D.S.Dstar ^ 2 * D.S.Dstar ^ 250) :=
+        mul_le_mul_of_nonneg_right (by linarith) hpos
+    _ = D.S.Dstar ^ 748 * (D.S.Dstar ^ 2 * D.S.Dstar ^ 250) / 2 := by ring
+
+open Classical in
+/-- Blueprint lines 2736-2738 (the pure-shift gap on the side states): a mode good at the height
+`h` on the cell `I` lies in a successful component, which contains a nonexceptional primary; its
+gap `eq:gap` (thresholds `T⁻¹/r_{v_b}`, `T/r_{t_b}`), applied to the pure shifts `n·ζ`
+(`ζ = 6^{Δ-2} ϑ/L_h`, integer `|n|_∞ ≤ E_h/6^8 < H`), excludes the whole annulus
+`[μ R/1000, 1000 ν R]` (`R = |I|⁻¹`) for `U₀⁻¹/2 < μ` and `ν ≤ 8 U₀`. -/
+theorem side_pure_gap {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 1 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar)
+    (hB : 2 ≤ D.S.Bstar) (hQ : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs) (I : ℤ × ℤ)
+    (G : bf.Grp) (j : Fin 4) (z : ChartTag) (hz : (D.Ms j G).zc = z) (hdim : z.dim ≤ D.S.dmax)
+    {h : ℕ} (hh : 10 ≤ h) (hhJ : h ≤ D.SP.Jst)
+    {m : (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))}
+    (hgood : ((D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).Good D.SP.Δ
+      ((D.Ms j G).goodP D.S D.SP (A.blkStart D.S.K I.1)) h m)
+    {μ ν : ℝ} (hμ : D.U0⁻¹ / 2 < μ) (hν : ν ≤ 8 * D.U0) (n : Fin z.dim → ℤ)
+    (hn : ∀ k, |(n k : ℝ)| ≤ D.S.Eh h / ((6 ^ 8 : ℕ) : ℝ)) :
+    |∑ k, (n k : ℝ) * zetaVec z D.S.Q0 h k| ∉
+      Set.Icc (μ * (dyadicGridLength A.G I.1)⁻¹ / 1000)
+        (1000 * ν * (dyadicGridLength A.G I.1)⁻¹) := by
+  subst hz
+  have hHn : D.SP.Hn = ⌊D.S.H⌋₊ := by rw [hSP]; rfl
+  have hJst : D.SP.Jst = D.S.Jstar := by rw [hSP]; rfl
+  have hA := hV.one_le_A0 hd2 hD hB
+  have hE1 : 1 ≤ D.S.Eh h := one_le_pow₀ hA
+  have hEH : D.S.Eh h < D.S.H := by
+    have := hV.box_lt_H hCA hd2 hD hB hQ (h := h) (by rw [← hJst]; exact hhJ)
+    have hD5 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
+    nlinarith
+  have hH1 : 1 ≤ D.SP.Hn := by
+    rw [hHn]
+    exact Nat.le_floor (by push_cast; linarith)
+  have hTt := D.Tt_ge_U0_four hV hCT hd2 hD hB hQ hSP hhJ
+  have hU := D.one_le_U0 hD
+  have hLh : (6 : ℝ) ^ 10 ≤ ModeSchedule.Lh h := by
+    unfold ModeSchedule.Lh
+    exact pow_le_pow_right₀ (by norm_num) hh
+  have hT : 0 < D.SP.Tt := lt_of_lt_of_le (by positivity) hTt
+  have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
+  have hL : 0 < ModeSchedule.Lh h / ((6 ^ 8 : ℕ) : ℝ) := by positivity
+  obtain ⟨p, -, -, hdich⟩ := D.frequency_dichotomy I j G hgood hH1 hT
+    (D.tinySmall_of_valid hV hCT hd2 hD hB hQ hSP hdim _) hL
+  have hheight : vecHeight (fun i => (n i : ℚ)) ≤ D.SP.Hn := by
+    refine Finset.sup_le fun i _ => ?_
+    rw [hHn]
+    refine Nat.le_floor ?_
+    have h1 := rationalHeight_intCast_bound (n i) hE1 ((hn i).trans
+      (div_le_self (by linarith) (by norm_num)))
+    linarith
+  have hζ : ∑ k, (n k : ℝ) * zetaVec (D.Ms j G).zc D.S.Q0 h k =
+      ∑ i, (n i : ℝ) * ((D.Ms j G).zc.θ i / D.S.Q0 /
+        (ModeSchedule.Lh h / ((6 ^ 8 : ℕ) : ℝ))) := by
+    refine Finset.sum_congr rfl fun k _ => ?_
+    unfold zetaVec
+    rw [div_div_eq_mul_div]
+    ring
+  obtain ⟨h1, h2⟩ := hdich n hheight
+  rw [hζ]
+  set X := |∑ i, (n i : ℝ) * ((D.Ms j G).zc.θ i / D.S.Q0 /
+    (ModeSchedule.Lh h / ((6 ^ 8 : ℕ) : ℝ)))| with hX
+  set L := ModeSchedule.Lh h / ((6 ^ 8 : ℕ) : ℝ) with hLdef
+  have hr := dyadicGridLength_pos A.G I.1
+  have hU0 : 0 < D.U0 := by linarith
+  have hLh0 : 0 < ModeSchedule.Lh h := by linarith [show (0 : ℝ) < 6 ^ 10 by norm_num]
+  have hL36 : 36 ≤ L := by
+    rw [hLdef, le_div_iff₀ hQ6]
+    push_cast
+    nlinarith
+  intro hmem
+  obtain ⟨hlo, hhi⟩ := Set.mem_Icc.mp hmem
+  by_cases hK : n ∈ rationalIntegerIntersection (tinySpan (fun i => (D.Ms j G).zc.θ i / D.S.Q0)
+    D.SP.Hn (D.SP.Tt⁻¹ / dyadicGridLength A.G (A.blkStart D.S.K I.1 - 2 * D.S.K)))
+  · have ht := h1 hK
+    have e1 : dyadicGridLength A.G I.1 * (μ * (dyadicGridLength A.G I.1)⁻¹ / 1000) = μ / 1000 := by
+      field_simp
+    have hμT : μ / 1000 ≤ D.SP.Tt⁻¹ / L := by
+      calc μ / 1000 = dyadicGridLength A.G I.1 * (μ * (dyadicGridLength A.G I.1)⁻¹ / 1000) :=
+            e1.symm
+        _ ≤ dyadicGridLength A.G I.1 * X := mul_le_mul_of_nonneg_left hlo hr.le
+        _ ≤ D.SP.Tt⁻¹ / L := ht
+    rw [div_le_div_iff₀ (by norm_num) (by linarith)] at hμT
+    have hTinv : D.SP.Tt⁻¹ * D.SP.Tt = 1 := inv_mul_cancel₀ hT.ne'
+    -- `μ L T ≤ 1000`, but `μ L T > (U₀⁻¹/2) L_h (U₀ + 4) L ≥ L_h L / 2 > 1000`
+    have h3 : μ * L * D.SP.Tt ≤ 1000 := by
+      have := mul_le_mul_of_nonneg_right hμT hT.le
+      nlinarith
+    have h4 : D.U0⁻¹ / 2 * (ModeSchedule.Lh h * (D.U0 + 4)) ≥ ModeSchedule.Lh h / 2 := by
+      have : D.U0⁻¹ * D.U0 = 1 := inv_mul_cancel₀ hU0.ne'
+      have hi : 0 ≤ D.U0⁻¹ := inv_nonneg.mpr hU0.le
+      nlinarith
+    have h5 : D.U0⁻¹ / 2 * (ModeSchedule.Lh h * (D.U0 + 4)) ≤ μ * D.SP.Tt := by
+      have hi : 0 ≤ D.U0⁻¹ / 2 := by positivity
+      exact mul_le_mul hμ.le hTt (by positivity) (by linarith)
+    have h6 : ModeSchedule.Lh h / 2 * 36 ≤ μ * D.SP.Tt * L := by
+      have h7 : ModeSchedule.Lh h / 2 ≤ μ * D.SP.Tt := by linarith
+      exact mul_le_mul h7 hL36 (by norm_num) (by nlinarith)
+    have h8 : (6 : ℝ) ^ 10 / 2 * 36 ≤ ModeSchedule.Lh h / 2 * 36 := by linarith
+    norm_num at h8
+    nlinarith
+  · have ht := h2 hK
+    have e1 : dyadicGridLength A.G I.1 * (1000 * ν * (dyadicGridLength A.G I.1)⁻¹) =
+        1000 * ν := by
+      field_simp
+    have hνT : D.SP.Tt / L ≤ 1000 * ν := by
+      calc D.SP.Tt / L ≤ dyadicGridLength A.G I.1 * X := ht
+        _ ≤ dyadicGridLength A.G I.1 * (1000 * ν * (dyadicGridLength A.G I.1)⁻¹) :=
+            mul_le_mul_of_nonneg_left hhi hr.le
+        _ = 1000 * ν := e1
+    rw [div_le_iff₀ (by linarith)] at hνT
+    -- `T ≤ 1000 ν L ≤ 8000 U₀ L_h / 6^8 < L_h (U₀ + 4) ≤ T`
+    have h3 : 1000 * ν * L ≤ 8000 * D.U0 * L := by nlinarith
+    have h4 : 8000 * D.U0 * L < ModeSchedule.Lh h * (D.U0 + 4) := by
+      have h68 : ((6 ^ 8 : ℕ) : ℝ) = 1679616 := by norm_num
+      rw [hLdef, h68]
+      have hUL : 0 < D.U0 * ModeSchedule.Lh h := mul_pos hU0 hLh0
+      nlinarith
+    linarith
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+theorem sparse_rhs_nonneg {d : ℕ} {μ ν L δ M : ℝ} (hμ : 0 < μ) (hν : 0 ≤ ν) (hδ : 0 ≤ δ) :
+    0 ≤ 3 * 10 ^ 11 * (1 + Real.logb 2 (2 + ((d : ℝ) + 1) ^ 2 * ν / μ)) * L ^ 12 *
+      δ ^ (1 / 300 : ℝ) * M ^ 2 := by
+  have hy : 0 ≤ ((d : ℝ) + 1) ^ 2 * ν / μ := div_nonneg (mul_nonneg (sq_nonneg _) hν) hμ.le
+  have hℓ : 0 ≤ 1 + Real.logb 2 (2 + ((d : ℝ) + 1) ^ 2 * ν / μ) := by
+    have := Real.logb_nonneg (b := 2) (by norm_num) (by linarith : (1 : ℝ) ≤ 2 + _)
+    linarith
+  have hL : 0 ≤ L ^ 12 := by positivity
+  exact mul_nonneg (mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) hℓ) hL)
+    (Real.rpow_nonneg hδ _)) (sq_nonneg M)
+
+open Classical in
+/-- Blueprint `eq:applied-sparse` for four cores on the side states (lines 2731-2742): along a
+path with the representatives as anchors, at a fixed height `h ≤ J_*`, types and bin
+`c = (μ, ν, σ)`, `lem:sparse-count` applies with `ζ = 6^{Δ-2} ϑ/L_h`, `Q = E_h/6^8`, `Σ = Ξ/2`,
+`B = B'_{h-Δ}`, the bands `μ, 4 · 2ν` (absorbing the constants of `eq:triple-test`), `L = L₀` and
+any `M ≥ M_i^G = |A_i|`: pair determination and multiplicity (`eq:total-count`), separation, the
+reserves (`Valid.shift_reserve`, `Valid.sparse_reserve`, `U0_sparse_reserve` with `d_max ≤ D_*`)
+and the pure-shift gap of the nonexceptional primary (`side_pure_gap`) hold, so
+`Σ_{N_s ≤ δ M²} N_s ≤ C ℓ L₀^{12} δ^{1/300} M²` with `ℓ = 1 + log₂(2 + (d+1)² 8ν/μ)`. -/
+theorem four_core_applied_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 1 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar)
+    (hB : 2 ≤ D.S.Bstar) (hQ0 : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs)
+    (hdD : (D.S.dmax : ℝ) ≤ D.S.Dstar) (G : bf.Grp) (h : ℕ) (hh : 10 ≤ h) (hhJ : h ≤ D.SP.Jst)
+    (Cs : Finset (ℤ × ℤ)) (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) (hdim : z.dim ≤ D.S.dmax) {S : Finset ℤ}
+    {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    (hcell : ∀ s, (cellOf s).1 = s)
+    {ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.FourPathAnc G h Cs rep hrep cellOf ancOf S) (c : ℝ × ℝ × (Fin 4 → ℝ))
+    (hc : 0 < c.1 ∧ 0 ≤ c.2.1) (κ : Fin 4 → ℕ × ℕ) {M : ℝ}
+    (hM : ∀ i, ((S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image
+      fun x => x i).card : ℝ) ≤ M) {δ : ℝ} (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) :
+    ∑ s ∈ S.filter (fun s => ((D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤ δ * M ^ 2),
+        ((D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤
+      3 * 10 ^ 11 * (1 + Real.logb 2 (2 + ((z.dim : ℝ) + 1) ^ 2 * (4 * (2 * c.2.1)) / c.1)) *
+        fourMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) ^ 12 *
+        δ ^ (1 / 300 : ℝ) * M ^ 2 := by
+  have hΔ : D.SP.Δ = 10 := by rw [hSP]; rfl
+  set E := D.fourPathE G h xs cellOf ancOf c κ with hEdef
+  have hR : ∀ t, (dyadicGridLength A.G (cellOf t).1)⁻¹ = A.G.baseLength⁻¹ * 2 ^ t := fun t => by
+    rw [hcell t, baseLength_inv_zpow]
+  by_cases hne : ∃ s ∈ S, (E s).Nonempty
+  · obtain ⟨s₀, hs₀, x₀, hx₀⟩ := hne
+    obtain ⟨hAp₀, p₀, -, hpass₀, -, hc₀, -, -⟩ := D.mem_fourPathE.mp hx₀
+    have hD0 : (0 : ℝ) ≤ D.S.Dstar := by linarith
+    have hU := D.one_le_U0 hD
+    obtain ⟨-, -, hμ3, hμ4, -, -, hν3, hν4⟩ := D.fourBands_spec hD0 hU hpass₀
+    have hc1 : c.1 = D.fourMuBand G (cellOf s₀) xs (h - D.SP.Δ)
+        (fun j => ancOf s₀ hAp₀ h j (p₀ j)) := by rw [← hc₀]; rfl
+    have hc2 : c.2.1 = D.fourNuBand G (cellOf s₀) xs (h - D.SP.Δ)
+        (fun j => ancOf s₀ hAp₀ h j (p₀ j)) := by rw [← hc₀]; rfl
+    have hμU : D.U0⁻¹ / 2 < c.1 := by rw [hc1]; exact hμ3
+    have hμ1 : c.1 ≤ 1 := by rw [hc1]; exact hμ4
+    have hν1 : 1 ≤ c.2.1 := by rw [hc2]; exact hν3
+    have hνU : c.2.1 ≤ D.U0 := by rw [hc2]; exact hν4
+    have hU0i : 0 < D.U0⁻¹ := inv_pos.mpr (by linarith)
+    have hμ : 0 < c.1 := by linarith
+    have hA : (1 : ℝ) ≤ D.S.A0 := le_trans (by norm_num) D.hA
+    have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
+      have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
+      have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
+      nlinarith
+    have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
+    have hR₀ : 0 < A.G.baseLength⁻¹ := inv_pos.mpr A.G.baseLength_pos
+    have hM1 : 1 ≤ M := by
+      refine le_trans ?_ (hM 0)
+      exact_mod_cast Finset.card_pos.mpr ⟨x₀ 0, Finset.mem_biUnion.mpr
+        ⟨s₀, hs₀, Finset.mem_image_of_mem _ hx₀⟩⟩
+    have hdd : ((z.dim : ℝ) + 1) ^ 2 ≤ ((D.S.dmax : ℝ) + 1) ^ 2 :=
+      pow_le_pow_left₀ (by positivity)
+        (by have := (Nat.cast_le (α := ℝ)).mpr hdim; linarith) 2
+    have href : ∀ s ∈ S, ∀ x ∈ E s, FourRef (zetaVec z D.S.Q0 h)
+        (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1)
+        (A.G.baseLength⁻¹ * 2 ^ s) x := fun s hs x hx => by
+      have := D.fourPathE_ref hD hΔ z (hz 0) hh hx
+      rwa [hR s] at this
+    have hres := hV.shift_reserve hCA hd2 hD hB hh
+    have hres' := hV.sparse_reserve hCA hd2 hD hB hh
+    rw [← hΔ] at hres hres'
+    refine four_core_sparse_explicit z.dim (zetaVec z D.S.Q0 h)
+      (fun i => S.biUnion fun s => (E s).image fun x => x i) M
+      (fourMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1)) hM1
+      (one_le_fourMult _ hB1 hμ (by linarith)) hM (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))
+      (D.S.Ξ / 2) (D.S.Eh h / ((6 ^ 8 : ℕ) : ℝ)) c.1 (2 * c.2.1) A.G.baseLength⁻¹ hB1 hμ hμ1
+      (by linarith) hR₀ S E (fun s hs x hx i => Finset.mem_biUnion.mpr
+        ⟨s, hs, Finset.mem_image_of_mem _ hx⟩)
+      (fourRef_mult _ S E hB1 hμ (by linarith) hR₀ href) href
+      (D.four_path_sep G h Cs rep hrep hΛ z hz (by rw [mul_div_cancel₀ _ hQ6.ne']) hpath hcell
+        hanc c κ) (fun s hs hEs n hn => ?_) ?_ ?_ ?_ ?_ δ hδ0 hδ1
+    · obtain ⟨x, hx⟩ := hEs
+      obtain ⟨hAp, p, hp, -, -, -, -, -⟩ := D.mem_fourPathE.mp hx
+      obtain ⟨m, hm, -⟩ := D.mem_goodCls (hp 0)
+      have := D.side_pure_gap hV hCA hCT hd2 hD hB hQ0 hSP (cellOf s) G 0 z (hz 0) hdim hh hhJ
+        hm hμU (ν := 4 * (2 * c.2.1)) (by linarith) n hn
+      rwa [hR s] at this
+    · rw [le_div_iff₀ hQ6]
+      push_cast
+      have hB0 : 0 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by linarith
+      have : 7200000 * ((z.dim : ℝ) + 1) ^ 2 * (4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) *
+          6 ^ 8 ≤ 7200000 * ((D.S.dmax : ℝ) + 1) ^ 2 * 4 * 6 ^ 8 * D.S.Dstar ^ 5 *
+            D.S.Eh (h - D.SP.Δ) := by
+        calc _ = (7200000 * 4 * 6 ^ 8 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) *
+              ((z.dim : ℝ) + 1) ^ 2 := by ring
+          _ ≤ (7200000 * 4 * 6 ^ 8 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) *
+              ((D.S.dmax : ℝ) + 1) ^ 2 := mul_le_mul_of_nonneg_left hdd (by positivity)
+          _ = _ := by ring
+      linarith
+    · rw [le_div_iff₀ hQ6]
+      push_cast
+      linarith
+    · have hres2 := D.U0_sparse_reserve hD hdD
+      calc 7200000 * ((z.dim : ℝ) + 1) ^ 2 * (4 * (2 * c.2.1)) ≤
+            7200000 * ((D.S.dmax : ℝ) + 1) ^ 2 * (8 * D.U0) :=
+          mul_le_mul (mul_le_mul_of_nonneg_left hdd (by norm_num)) (by linarith)
+            (by linarith) (by positivity)
+        _ ≤ D.S.Ξ / 2 := hres2
+    · have := D.U0_reserve hD
+      linarith
+  · push Not at hne
+    rw [Finset.sum_eq_zero fun s hs => by
+      rw [hne s (Finset.mem_filter.mp hs).1, Finset.card_empty, Nat.cast_zero]]
+    exact sparse_rhs_nonneg hc.1 (by linarith [hc.2]) hδ0.le
+
+open Classical in
+/-- Blueprint `eq:applied-sparse` for three cores on the side states (side role `l`, lines
+2731-2742): as `four_core_applied_side`, with the `T_l` reference, the bands `μ, 2ν`,
+`L = L₀ = threeMult`, any `M` with `M ≥ |A_i|` for the core roles and `M ≥ M_l^G = Σ_s w_s`
+(side incidence, `three_side_incidence`; shells `2^{I_w} ≤ 2 U₀`), giving
+`Σ_{N_s ≤ δ M²} N_s ≤ C ℓ L₀^{12} δ^{1/300} M²` with `ℓ = 1 + log₂(2 + (d+1)² 2ν/μ)`. -/
+theorem three_core_applied_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 1 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar)
+    (hB : 2 ≤ D.S.Bstar) (hQ0 : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs)
+    (hdD : (D.S.dmax : ℝ) ≤ D.S.Dstar) (G : bf.Grp) (h : ℕ) (hh : 10 ≤ h) (hhJ : h ≤ D.SP.Jst)
+    (l : Fin 4) (Cs : Finset (ℤ × ℤ))
+    (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) (hdim : z.dim ≤ D.S.dmax) {S : Finset ℤ}
+    {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    (hcell : ∀ s, (cellOf s).1 = s)
+    {ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l → Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+      (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))}
+    (hanc : D.ThreePathAnc G h l Cs rep hrep cellOf ancOf S) {Iw : ℕ}
+    (hIw : (2 : ℝ) ^ Iw ≤ 2 * D.U0) (c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ))
+    (hc : 0 < c.1 ∧ 0 ≤ c.2.1) (κ : Fin 4 → ℕ × ℕ) {M : ℝ}
+    (hM : ∀ i, i ≠ l → ((S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+      fun x => x i).card : ℝ) ≤ M)
+    (hMl : ∑ s ∈ S, D.sideWeight G l cellOf c.2.2.2.1 s ≤ M) {δ : ℝ} (hδ0 : 0 < δ)
+    (hδ1 : δ ≤ 1) :
+    ∑ s ∈ S.filter (fun s =>
+        ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤ δ * M ^ 2),
+        ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+      3 * 10 ^ 11 * (1 + Real.logb 2 (2 + ((z.dim : ℝ) + 1) ^ 2 * (2 * c.2.1) / c.1)) *
+        threeMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) ^ 12 *
+        δ ^ (1 / 300 : ℝ) * M ^ 2 := by
+  have hΔ : D.SP.Δ = 10 := by rw [hSP]; rfl
+  set E := D.threePathE G h xs l cellOf ancOf Iw c κ with hEdef
+  have hR : ∀ t, (dyadicGridLength A.G (cellOf t).1)⁻¹ = A.G.baseLength⁻¹ * 2 ^ t := fun t => by
+    rw [hcell t, baseLength_inv_zpow]
+  have hgoodT : ∀ {t : ℤ} {ht : D.AncNe3 G (cellOf t) l} {q : (∀ j, Finset (D.Ms j G).Md) × ℕ},
+      q ∈ D.threeTested G (cellOf t) xs l (ancOf t ht) (D.toLeaf.sv l G (cellOf t)) Iw h →
+      ∀ j, j ≠ l → q.1 j ∈ D.goodCls G (cellOf t) j h := fun {t ht q} hq j hjl => by
+    unfold threeTested threeTestedOf at hq
+    have := Fintype.mem_piFinset.mp (Finset.mem_product.mp (Finset.mem_filter.mp hq).1).1 j
+    simpa only [hjl, ↓reduceIte] using this
+  obtain ⟨j₀, hj₀⟩ := exists_ne l
+  by_cases hne : ∃ s ∈ S, (E s).Nonempty
+  · obtain ⟨s₀, hs₀, x₀, hx₀⟩ := hne
+    obtain ⟨hAq₀, q₀, hq₀, hc₀, -, -⟩ := D.mem_threePathE.mp hx₀
+    have hq₀' := hq₀
+    unfold threeTested threeTestedOf at hq₀'
+    obtain ⟨-, hpass₀, -, -⟩ := Finset.mem_filter.mp hq₀'
+    have hD0 : (0 : ℝ) ≤ D.S.Dstar := by linarith
+    have hU := D.one_le_U0 hD
+    obtain ⟨-, -, hμ3, hμ4, -, -, hν3, hν4⟩ := D.threeBands_spec hD0 hU hpass₀
+    have hc1 : c.1 = D.threeMuBand G (cellOf s₀) xs (h - D.SP.Δ) l
+        (D.slopes3 G (cellOf s₀) xs l (ancOf s₀ hAq₀) h q₀.1) := by rw [← hc₀]; rfl
+    have hc2 : c.2.1 = D.threeNuBand G (cellOf s₀) xs (h - D.SP.Δ) l
+        (D.slopes3 G (cellOf s₀) xs l (ancOf s₀ hAq₀) h q₀.1) := by rw [← hc₀]; rfl
+    have hμU : D.U0⁻¹ / 2 < c.1 := by rw [hc1]; exact hμ3
+    have hμ1 : c.1 ≤ 1 := by rw [hc1]; exact hμ4
+    have hν1 : 1 ≤ c.2.1 := by rw [hc2]; exact hν3
+    have hνU : c.2.1 ≤ D.U0 := by rw [hc2]; exact hν4
+    have hU0i : 0 < D.U0⁻¹ := inv_pos.mpr (by linarith)
+    have hμ : 0 < c.1 := by linarith
+    have hA : (1 : ℝ) ≤ D.S.A0 := le_trans (by norm_num) D.hA
+    have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
+      have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
+      have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
+      nlinarith
+    have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
+    have hR₀ : 0 < A.G.baseLength⁻¹ := inv_pos.mpr A.G.baseLength_pos
+    have hM1 : 1 ≤ M := by
+      refine le_trans ?_ (hM j₀ hj₀)
+      exact_mod_cast Finset.card_pos.mpr ⟨x₀ j₀, Finset.mem_biUnion.mpr
+        ⟨s₀, hs₀, Finset.mem_image_of_mem _ hx₀⟩⟩
+    have hdd : ((z.dim : ℝ) + 1) ^ 2 ≤ ((D.S.dmax : ℝ) + 1) ^ 2 :=
+      pow_le_pow_left₀ (by positivity)
+        (by have := (Nat.cast_le (α := ℝ)).mpr hdim; linarith) 2
+    have href : ∀ s ∈ S, ∀ x ∈ E s, ThreeRef (zetaVec z D.S.Q0 h) l
+        (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1)
+        (A.G.baseLength⁻¹ * 2 ^ s) x := fun s hs x hx => by
+      have := D.threePathE_ref hD hΔ z (hz 0) hh hx
+      rwa [hR s] at this
+    have hres := hV.shift_reserve hCA hd2 hD hB hh
+    have hres' := hV.sparse_reserve hCA hd2 hD hB hh
+    rw [← hΔ] at hres hres'
+    refine three_core_sparse_explicit z.dim (zetaVec z D.S.Q0 h) l
+      (fun i => S.biUnion fun s => (E s).image fun x => x i) M
+      (threeMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1)) hM1
+      (one_le_threeMult _ hB1 hμ (by linarith)) hM (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))
+      (D.S.Ξ / 2) (D.S.Eh h / ((6 ^ 8 : ℕ) : ℝ)) c.1 (2 * c.2.1) A.G.baseLength⁻¹ hB1 hμ hμ1
+      (by linarith) hR₀ S E (fun s hs x hx => ⟨fun i _ => Finset.mem_biUnion.mpr
+        ⟨s, hs, Finset.mem_image_of_mem _ hx⟩, by
+          obtain ⟨hAq, q, -, -, -, rfl⟩ := D.mem_threePathE.mp hx
+          simp [slopes3]⟩)
+      (threeRef_mult _ l S E hB1 hμ (by linarith) hR₀ href)
+      ⟨D.sideWeight G l cellOf c.2.2.2.1, fun s => D.sideWeight_nonneg G l cellOf _ s, hMl,
+        fun s hs i hil a => D.three_side_incidence hV hCA hd2 hD hB hΔ G h hh l Cs rep hrep hΛ
+          z hz hpath hanc hIw c κ hs hil a⟩ href
+      (fun r s hs s' hs' x hx x' hx' hne N hN => by
+        have := D.three_path_sep G h l Cs rep hrep hΛ z hz (by rw [mul_div_cancel₀ _ hQ6.ne'])
+          hpath hanc Iw c κ r s hs s' hs' x hx x' hx' hne N hN
+        rwa [hR s, hR s'] at this)
+      (fun s hs hEs n hn => ?_) ?_ ?_ ?_ ?_ δ hδ0 hδ1
+    · obtain ⟨x, hx⟩ := hEs
+      obtain ⟨hAq, q, hq, -, -, -⟩ := D.mem_threePathE.mp hx
+      obtain ⟨m, hm, -⟩ := D.mem_goodCls (hgoodT hq j₀ hj₀)
+      have := D.side_pure_gap hV hCA hCT hd2 hD hB hQ0 hSP (cellOf s) G j₀ z (hz j₀) hdim hh
+        hhJ hm hμU (ν := 2 * c.2.1) (by linarith) n hn
+      rwa [hR s] at this
+    · rw [le_div_iff₀ hQ6]
+      push_cast
+      have hB0 : 0 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by linarith
+      have : 7200000 * ((z.dim : ℝ) + 1) ^ 2 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) *
+          6 ^ 8 ≤ 7200000 * ((D.S.dmax : ℝ) + 1) ^ 2 * 4 * 6 ^ 8 * D.S.Dstar ^ 5 *
+            D.S.Eh (h - D.SP.Δ) := by
+        calc _ = (7200000 * 6 ^ 8 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) *
+              ((z.dim : ℝ) + 1) ^ 2 := by ring
+          _ ≤ (7200000 * 6 ^ 8 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) *
+              (4 * ((D.S.dmax : ℝ) + 1) ^ 2) := by
+            refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+            nlinarith [sq_nonneg ((D.S.dmax : ℝ) + 1)]
+          _ = _ := by ring
+      linarith
+    · rw [le_div_iff₀ hQ6]
+      push_cast
+      linarith
+    · have hres2 := D.U0_sparse_reserve hD hdD
+      calc 7200000 * ((z.dim : ℝ) + 1) ^ 2 * (2 * c.2.1) ≤
+            7200000 * ((D.S.dmax : ℝ) + 1) ^ 2 * (8 * D.U0) :=
+          mul_le_mul (mul_le_mul_of_nonneg_left hdd (by norm_num)) (by linarith)
+            (by linarith) (by positivity)
+        _ ≤ D.S.Ξ / 2 := hres2
+    · have := D.U0_reserve hD
+      linarith
+  · push Not at hne
+    rw [Finset.sum_eq_zero fun s hs => by
+      rw [hne s (Finset.mem_filter.mp hs).1, Finset.card_empty, Nat.cast_zero]]
+    exact sparse_rhs_nonneg hc.1 (by linarith [hc.2]) hδ0.le
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup.BasicFamilies.FamParams
+variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
+  {fp : bf.FamParams}
+
+namespace SideInput
+variable (D : fp.SideInput)
+
+open Classical in
+/-- Blueprint declaration `tested-counts` (`THT.Core.testedTupleCounts`, line 2744) on the side
+states. Fix a group `G`, a final height `10 ≤ h ≤ J_*`, hereditary representatives `rep` of the
+successful classes (`RepOK`), and a path: scales `S` with cells `cellOf s` of length `2^{-s}`
+containing the path point `x*`. Then
+* four cores, with the representatives as anchors, for every bin `c = (μ, ν, σ)` and role types
+  `κ`: `N_s = |E_s|` is the number of tested tuples in the bin; `eq:total-count`
+  (`Σ_s N_s ≤ L₀ M_i M_j`, `N_s ≤ M_i M_j`, `M_i = |A_i|`, `L₀ = fourMult`); and
+  `eq:applied-sparse` (`Σ_{N_s ≤ δM²} N_s ≤ C ℓ L₀^{12} δ^{1/300} M²` for every `M ≥ M_i`,
+  `C = 3 · 10^{11}`, `ℓ = 1 + log₂(2 + (d+1)² 8ν/μ)`);
+* three cores with side role `l` and shells `2^{I_w} ≤ 2U₀`, for every bin `c = (μ, ν, i, σ_l, σ)`
+  and core types `κ`: `N_s` is the number of tested tuples and shells in the bin;
+  `eq:total-count` for core pairs and `Σ_s N_s ≤ M_i Σ_s w_s` for a core/side pair
+  (`w_s = σ_l^{-2} ‖S_{l,G,s}‖²_{2,I_s}`); and `eq:applied-sparse` for every `M ≥ M_i` with
+  `M ≥ M_l = Σ_s w_s` (`L₀ = threeMult`, `ℓ = 1 + log₂(2 + (d+1)² 2ν/μ)`).
+The budget is assumed to cover the dimension, `d_max ≤ D_*`. -/
+theorem testedTupleCounts {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
+    (hCA : 1 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar)
+    (hB : 2 ≤ D.S.Bstar) (hQ0 : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs)
+    (hdD : (D.S.dmax : ℝ) ≤ D.S.Dstar) (G : bf.Grp) (h : ℕ) (hh : 10 ≤ h) (hhJ : h ≤ D.SP.Jst)
+    (Cs : Finset (ℤ × ℤ)) (rep : ∀ j, ℕ → ℕ → ℤ × (ℤ × ℤ) × (D.Ms j G).Md → (D.Ms j G).Md)
+    (hrep : ∀ j, D.RepOK G j h Cs (rep j)) (hΛ : ∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) (z : ChartTag)
+    (hz : ∀ j, (D.Ms j G).zc = z) (hdim : z.dim ≤ D.S.dmax) {S : Finset ℤ}
+    {cellOf : ℤ → ℤ × ℤ} {xs : ℝ}
+    (hpath : ∀ s ∈ S, cellOf s ∈ Cs ∧ xs ∈ dyadicGridCell A.G (cellOf s).1 (cellOf s).2)
+    (hcell : ∀ s, (cellOf s).1 = s) :
+    (∀ (ancOf : ∀ s, D.AncNe G (cellOf s) → ℕ → ∀ j, Finset (D.Ms j G).Md →
+      (D.Ms j G).alive (ancAt A.G
+        (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))),
+      D.FourPathAnc G h Cs rep hrep cellOf ancOf S → ∀ (c : ℝ × ℝ × (Fin 4 → ℝ)),
+      0 < c.1 ∧ 0 ≤ c.2.1 → ∀ κ : Fin 4 → ℕ × ℕ,
+      (∀ s ∈ S, ∀ hA : D.AncNe G (cellOf s), (D.fourPathE G h xs cellOf ancOf c κ s).card =
+        ((D.fourTested G (cellOf s) xs (ancOf s hA) h).filter fun p =>
+          D.fourBinOf G (cellOf s) xs (ancOf s hA) h p = c ∧
+            ∀ j, D.classTypeOf G (cellOf s) j h (p j) = κ j).card) ∧
+      (∀ i j, i ≠ j → ∑ s ∈ S, ((D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤
+        fourMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) *
+          (S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image fun x => x i).card *
+          (S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image fun x => x j).card) ∧
+      (∀ i j, i ≠ j → ∀ s ∈ S, ((D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤
+        (S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image fun x => x i).card *
+          (S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image fun x => x j).card) ∧
+      ∀ M : ℝ, (∀ i, ((S.biUnion fun s => (D.fourPathE G h xs cellOf ancOf c κ s).image
+          fun x => x i).card : ℝ) ≤ M) → ∀ δ : ℝ, 0 < δ → δ ≤ 1 →
+        ∑ s ∈ S.filter (fun s => ((D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤ δ * M ^ 2),
+            ((D.fourPathE G h xs cellOf ancOf c κ s).card : ℝ) ≤
+          3 * 10 ^ 11 * (1 + Real.logb 2 (2 + ((z.dim : ℝ) + 1) ^ 2 * (4 * (2 * c.2.1)) / c.1)) *
+            fourMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) ^ 12 *
+            δ ^ (1 / 300 : ℝ) * M ^ 2) ∧
+    (∀ (l : Fin 4) (ancOf : ∀ s, D.AncNe3 G (cellOf s) l → ℕ → ∀ j, j ≠ l →
+        Finset (D.Ms j G).Md → (D.Ms j G).alive
+        (ancAt A.G (D.preAt (cellOf s)) (A.blkStart D.S.K (cellOf s).1 - 4 * D.S.K))),
+      D.ThreePathAnc G h l Cs rep hrep cellOf ancOf S → ∀ Iw : ℕ, (2 : ℝ) ^ Iw ≤ 2 * D.U0 →
+      ∀ (c : ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)), 0 < c.1 ∧ 0 ≤ c.2.1 → ∀ κ : Fin 4 → ℕ × ℕ,
+      (∀ s ∈ S, ∀ hA : D.AncNe3 G (cellOf s) l,
+        (D.threePathE G h xs l cellOf ancOf Iw c κ s).card =
+        ((D.threeTested G (cellOf s) xs l (ancOf s hA) (D.toLeaf.sv l G (cellOf s)) Iw h).filter
+          fun q =>
+            D.threeBinOf G (cellOf s) xs l (ancOf s hA) (D.toLeaf.sv l G (cellOf s)) h q = c ∧
+            ∀ j, j ≠ l → D.classTypeOf G (cellOf s) j h (q.1 j) = κ j).card) ∧
+      (∀ i j, i ≠ j → i ≠ l → j ≠ l →
+        ∑ s ∈ S, ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+          threeMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) *
+            (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+              fun x => x i).card *
+            (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+              fun x => x j).card) ∧
+      (∀ i, i ≠ l → ∑ s ∈ S, ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+        (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+          fun x => x i).card * ∑ s ∈ S, D.sideWeight G l cellOf c.2.2.2.1 s) ∧
+      (∀ i j, i ≠ j → i ≠ l → j ≠ l → ∀ s ∈ S,
+        ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+          (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+            fun x => x i).card *
+          (S.biUnion fun s => (D.threePathE G h xs l cellOf ancOf Iw c κ s).image
+            fun x => x j).card) ∧
+      ∀ M : ℝ, (∀ i, i ≠ l → ((S.biUnion fun s =>
+          (D.threePathE G h xs l cellOf ancOf Iw c κ s).image fun x => x i).card : ℝ) ≤ M) →
+        ∑ s ∈ S, D.sideWeight G l cellOf c.2.2.2.1 s ≤ M →
+        ∀ δ : ℝ, 0 < δ → δ ≤ 1 →
+        ∑ s ∈ S.filter (fun s =>
+            ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤ δ * M ^ 2),
+            ((D.threePathE G h xs l cellOf ancOf Iw c κ s).card : ℝ) ≤
+          3 * 10 ^ 11 * (1 + Real.logb 2 (2 + ((z.dim : ℝ) + 1) ^ 2 * (2 * c.2.1) / c.1)) *
+            threeMult z.dim (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) ^ 12 *
+            δ ^ (1 / 300 : ℝ) * M ^ 2) := by
+  have hΔ : D.SP.Δ = 10 := by rw [hSP]; rfl
+  have hD0 : 0 < D.S.Dstar := by linarith
+  refine ⟨fun ancOf hanc c hc κ => ?_, fun l ancOf hanc Iw hIw c hc κ => ?_⟩
+  · obtain ⟨h1, h2⟩ := D.four_core_total_side hV hCA hd2 hD hB hΔ G h hh Cs rep hrep hΛ z hz
+      hpath hcell hanc c κ
+    exact ⟨fun s hs hA => D.fourPathE_card G h Cs rep hrep hΛ hD0 hpath hanc c κ hs hA, h1, h2,
+      fun M hM δ hδ0 hδ1 => D.four_core_applied_side hV hCA hCT hd2 hD hB hQ0 hSP hdD G h hh hhJ
+        Cs rep hrep hΛ z hz hdim hpath hcell hanc c hc κ hM hδ0 hδ1⟩
+  · obtain ⟨h1, h2, h3⟩ := D.three_core_total_side hV hCA hd2 hD hB hΔ G h hh l Cs rep hrep hΛ
+      z hz hpath hcell hanc hIw c κ
+    exact ⟨fun s hs hA => D.threePathE_card G h l Cs rep hrep hΛ hD0 hpath hanc Iw c κ hs hA, h1,
+      h2, h3, fun M hM hMl δ hδ0 hδ1 => D.three_core_applied_side hV hCA hCT hd2 hD hB hQ0 hSP hdD
+        G h hh hhJ l Cs rep hrep hΛ z hz hdim hpath hcell hanc hIw c hc κ hM hMl hδ0 hδ1⟩
+
+end SideInput
+
+end ActiveSetup.BasicFamilies.FamParams
+
 end Auto
 
 end

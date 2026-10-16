@@ -381,7 +381,7 @@ expectations equal to given cell quantities `T_I`, bounds `Σ_I |I| T_I` by the 
 constant. -/
 theorem piece_random_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     {C4 : ℝ} (hC4 : 0 ≤ C4) :
-    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ), K ≤ Nd →
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ) (d₀ : ℤ),
       ∀ (T : ShortBlockTree G K) (z : Fin 4 → ℝ → ℝ), (∀ j, Measurable (z j)) →
       ∀ sv : Fin 4 → ℝ, (∀ j, 0 ≤ sv j) →
       (∀ j, ∀ L ∈ T.leaves, ∫⁻ y in dyadicGridCell G L.1 L.2, ‖z j y‖ₑ ^ 2 ≤
@@ -392,23 +392,25 @@ theorem piece_random_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 
         ENNReal.ofReal C4 * ‖z j y‖ₑ) →
       ∀ (kernel : ℤ × ℤ → ℝ × ℝ → ℂ), (∀ I ∈ T.internal, IsAdmissibleLocalKernel κ
         (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (kernel I)) →
-      ∀ cells ⊆ T.internal, ∀ ε : ℤ × ℤ → Ω → ℂ, (∀ I ω, ‖ε I ω‖ ≤ 1) →
-      ∀ Tc : ℤ × ℤ → ℂ, (∀ I ∈ cells, (Fintype.card Ω : ℂ)⁻¹ * ∑ ω, ε I ω *
+      ∀ cells ⊆ T.internal, (∀ I ∈ cells, kernel I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + Nd) →
+      ∀ ε : ℤ × ℤ → Ω → ℂ, (∀ I ω, ‖ε I ω‖ ≤ 1) → ∀ Tc : ℤ × ℤ → ℂ,
+      (∀ I ∈ cells, (Fintype.card Ω : ℂ)⁻¹ * ∑ ω, ε I ω *
         localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j ω) = Tc I) →
       ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * Tc I‖ ≤
         Cq * (1 + finiteDepthConstant κ q Nd) * (1 + Real.log ((K : ℝ) + 2)) *
           ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * dyadicGridLength G T.root.1 * ∏ j, sv j := by
-  obtain ⟨Cq, hCq, hsbc⟩ := short_block_comparison κ hq2 hq3 hC4
+  obtain ⟨Cq, hCq, hsbc⟩ := short_block_comparison_nz κ hq2 hq3 hC4
   refine ⟨Cq, hCq, ?_⟩
-  intro G K Nd hKN T z hz sv hsv hleaf Ω _ _ _ _ zσ hzσ hmom kernel hker cells hcells ε hε1 Tc hTc
+  intro G K Nd d₀ T z hz sv hsv hleaf Ω _ _ _ _ zσ hzσ hmom kernel hker cells hcells hwin ε hε1 Tc
+    hTc
   have hzm : ∀ j, Measurable fun y => ‖z j y‖ := fun j => (hz j).norm
   have hzσm : ∀ j, Measurable (Function.uncurry (zσ j)) := fun j =>
     measurable_from_prod_countable_right fun ω => hzσ j ω
   have hmom' : ∀ j y, (∫⁻ ω, ‖zσ j ω y‖ₑ ^ (4 : ℝ) ∂(unifMeasure Ω)) ^ (1 / 4 : ℝ) ≤
       ENNReal.ofReal C4 * ‖z j y‖ₑ := fun j y => by
     rw [lintegral_unifMeasure]; exact hmom j y
-  have hmain := hsbc G K Nd hKN T z hzm sv hsv hleaf (unifMeasure Ω) zσ hzσm hmom' kernel
-    hker cells hcells ε (fun I => Measurable.of_discrete) hε1
+  have hmain := hsbc G K Nd d₀ T z hzm sv hsv hleaf (unifMeasure Ω) zσ hzσm hmom' kernel
+    hker cells hcells hwin ε (fun I => Measurable.of_discrete) hε1
   set X : Ω → ℂ := fun ω => ∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I ω *
     localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j ω)
   have havg : (Fintype.card Ω : ℂ)⁻¹ * ∑ ω, X ω =
@@ -5238,7 +5240,8 @@ theorem varCap_basicOut (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset ({G // G ∈ Gs} × (bf.Lab ⊕ Fin fp.Mc))).filter
-      fun q => ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      fun q => ∃ I ∈ A.cells, (∃ k', fp.Cert k' q.1.1 I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I q.1.1 j (p + 1)) d).card ≤ N)
     (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)

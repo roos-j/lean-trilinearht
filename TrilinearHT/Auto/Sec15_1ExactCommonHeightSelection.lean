@@ -3456,37 +3456,62 @@ theorem restored_eq (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md)
   · rfl
 
 open Classical in
+/-- `form_expand` for the leaf data with per-group clearing integers. -/
+theorem form_expandQ (qG : bf.Grp → ℕ) (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md)
+    {I : ℤ × ℤ} (hI : I ∈ A.cells) (G : bf.Grp)
+    (hrep : ∀ l, D.u ≠ some l → (D.withQ0 (qG G)).RepAt L l G I) :
+    fp.Λc I (fun l => (D.toLeafQ qG).out l G I) = ∑ σ : Fin 4 → Fin 3,
+      fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+        (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) σ) := by
+  simp only [D.toLeafQ_out, D.toLeafQ_sv]
+  exact (D.withQ0 (qG G)).form_expand L hI G hrep
+
+open Classical in
+/-- `restored_eq` for the leaf data with per-group clearing integers. -/
+theorem restored_eqQ (qG : bf.Grp → ℕ) (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md)
+    {I : ℤ × ℤ} (hI : I ∈ A.cells) (G : bf.Grp)
+    (hrep : ∀ l, D.u ≠ some l → (D.withQ0 (qG G)).RepAt L l G I) (σ : Fin 4 → Fin 3) :
+    fp.Λc I (fun l => if σ l = 0 then (D.withQ0 (qG G)).coreAt l G I + (D.toLeafQ qG).sv l G I +
+      (D.withQ0 (qG G)).errAt L l G I else (D.toLeafQ qG).sv l G I) =
+    fp.Λc I (fun l => if σ l = 0 then (D.toLeafQ qG).out l G I else (D.toLeafQ qG).sv l G I) := by
+  simp only [D.toLeafQ_out, D.toLeafQ_sv]
+  exact (D.withQ0 (qG G)).restored_eq L hI G hrep σ
+
+open Classical in
 /-- Blueprint line 2461 on one cell: the form of the whole leaf outputs summed over the groups is
 at most the restored two-side patterns of the whole outputs and sides, `82` times the error
 patterns and the patterns with at least three sides, and the patterns with at least three cores
 (a basic `U` role remains a side: its core and error vanish). -/
-theorem cell_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md) {I : ℤ × ℤ}
+theorem cell_reduction (qG : bf.Grp → ℕ) (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md)
+    {I : ℤ × ℤ}
     (hI : I ∈ A.cells) (gsI : Finset bf.Grp)
-    (hrep : ∀ G ∈ gsI, ∀ l, D.u ≠ some l → D.RepAt L l G I) :
-    ‖∑ G ∈ gsI, fp.Λc I (fun l => D.toLeaf.out l G I)‖ ≤
+    (hrep : ∀ G ∈ gsI, ∀ l, D.u ≠ some l → (D.withQ0 (qG G)).RepAt L l G I) :
+    ‖∑ G ∈ gsI, fp.Λc I (fun l => (D.toLeafQ qG).out l G I)‖ ≤
       ‖∑ σ ∈ Finset.univ.filter (fun σ : Fin 4 → Fin 3 => (∀ l, σ l ≠ 2) ∧
             (Finset.univ.filter fun l => σ l = 0).card = 2 ∧
             (Finset.univ.filter fun l => σ l = 1).card = 2),
           ∑ G ∈ gsI, fp.Λc I
-            (fun l => if σ l = 0 then D.toLeaf.out l G I else D.toLeaf.sv l G I)‖ +
+            (fun l => if σ l = 0 then (D.toLeafQ qG).out l G I else (D.toLeafQ qG).sv l G I)‖ +
         82 * ∑ τ ∈ Finset.univ.filter (fun τ : Fin 4 → Fin 3 => ∃ l, τ l = 2),
-          ‖∑ G ∈ gsI, fp.Λc I (patternPiece (fun l => D.coreAt l G I)
-            (fun l => D.toLeaf.sv l G I) (fun l => D.errAt L l G I) τ)‖ +
+          ‖∑ G ∈ gsI, fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+            (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) τ)‖ +
         82 * ∑ τ ∈ Finset.univ.filter (fun τ : Fin 4 → Fin 3 => (∀ l, τ l ≠ 2) ∧
           3 ≤ patternCount τ 1),
-          ‖∑ G ∈ gsI, fp.Λc I (patternPiece (fun l => D.coreAt l G I)
-            (fun l => D.toLeaf.sv l G I) (fun l => D.errAt L l G I) τ)‖ +
+          ‖∑ G ∈ gsI, fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+            (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) τ)‖ +
         ‖∑ τ ∈ Finset.univ.filter (fun τ : Fin 4 → Fin 3 => (∀ l, τ l ≠ 2) ∧
           3 ≤ patternCount τ 0),
-          ∑ G ∈ gsI, fp.Λc I (patternPiece (fun l => D.coreAt l G I)
-            (fun l => D.toLeaf.sv l G I) (fun l => D.errAt L l G I) τ)‖ := by
-  set a : bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun G l => D.coreAt l G I
-  set s : bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun G l => D.toLeaf.sv l G I
-  set e : bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun G l => D.errAt L l G I
+          ∑ G ∈ gsI, fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+            (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) τ)‖ := by
+  set a : bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun G l => (D.withQ0 (qG G)).coreAt l G
+      I
+  set s : bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun G l => (D.toLeafQ qG).sv l G I
+  set e : bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun G l => (D.withQ0 (qG G)).errAt L l
+      G I
   set F : (Fin 4 → Fin 3) → ℂ := fun σ => ∑ G ∈ gsI, fp.Λc I (patternPiece (a G) (s G) (e G) σ)
-  have hsum : ∑ G ∈ gsI, fp.Λc I (fun l => D.toLeaf.out l G I) = ∑ σ, F σ := by
+  have hsum : ∑ G ∈ gsI, fp.Λc I (fun l => (D.toLeafQ qG).out l G I) = ∑ σ, F σ := by
     rw [Finset.sum_comm]
-    exact Finset.sum_congr rfl fun G hG => D.form_expand L hI G (hrep G hG)
+    exact Finset.sum_congr rfl fun G hG => D.form_expandQ qG L hI G (hrep G hG)
   have h22 := two_two_cell_le gsI (fp.Λc I) a s e
   have hrest : ∑ σ ∈ Finset.univ.filter (fun σ : Fin 4 → Fin 3 => (∀ l, σ l ≠ 2) ∧
         patternCount σ 0 = 2 ∧ patternCount σ 1 = 2),
@@ -3495,9 +3520,9 @@ theorem cell_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
           (Finset.univ.filter fun l => σ l = 0).card = 2 ∧
           (Finset.univ.filter fun l => σ l = 1).card = 2),
         ∑ G ∈ gsI, fp.Λc I
-          (fun l => if σ l = 0 then D.toLeaf.out l G I else D.toLeaf.sv l G I) :=
+          (fun l => if σ l = 0 then (D.toLeafQ qG).out l G I else (D.toLeafQ qG).sv l G I) :=
     Finset.sum_congr rfl fun σ _ => Finset.sum_congr rfl fun G hG =>
-      D.restored_eq L hI G (hrep G hG) σ
+      D.restored_eqQ qG L hI G (hrep G hG) σ
   rw [hrest] at h22
   rw [hsum, form_pattern_split F]
   set E := ∑ τ ∈ Finset.univ.filter (fun τ : Fin 4 → Fin 3 => ∃ l, τ l = 2), ‖F τ‖
@@ -3529,7 +3554,7 @@ theorem cell_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
           (Finset.univ.filter fun l => σ l = 0).card = 2 ∧
           (Finset.univ.filter fun l => σ l = 1).card = 2),
         ∑ G ∈ gsI, fp.Λc I
-          (fun l => if σ l = 0 then D.toLeaf.out l G I else D.toLeaf.sv l G I)‖ +
+          (fun l => if σ l = 0 then (D.toLeafQ qG).out l G I else (D.toLeafQ qG).sv l G I)‖ +
         81 * E + 81 * T := h22
   linarith
 
@@ -3610,11 +3635,11 @@ noncomputable def pV (l : Fin 4) (G : bf.Grp) (h : ℤ) : ColumnL2 (bf.Lab ⊕ F
 open Classical in
 /-- Blueprint line 2159 (rolling sides): the rolling increments of a basic slot on the cells of
 all groups have total square at most `K (20 G₀ + 32) |R|` (`rolling_budget`). -/
-theorem roll_cell_energy (hanc : A.AncClosed) (hne : A.cells.Nonempty) (l : Fin 4)
+theorem roll_cell_energy (qG : bf.Grp → ℕ) (hanc : A.AncClosed) (hne : A.cells.Nonempty) (l : Fin 4)
     (S : Finset (ℤ × ℤ)) (hS : S ⊆ A.cells) (gs : ℤ × ℤ → Finset bf.Grp)
     (gset : Finset bf.Grp) (hgs : ∀ I ∈ S, gs I ⊆ gset) (k : ℕ)
     (hcertS : ∀ I ∈ S, ∀ G ∈ gs I, fp.Cert k G I)
-    (B : D.toLeaf.BallData gset) {ra rb : ℝ}
+    (B : (D.toLeafQ qG).BallData gset) {ra rb : ℝ}
     (hroot' : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
     {τ' : ℝ} (hτ' : 0 < τ') (hτ1 : τ' ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ'⁻¹) ^ A.Dg) ≤ fp.Hed)
@@ -3670,14 +3695,14 @@ open Classical in
 /-- Blueprint line 2159 ("a fixed `V_{l,G,b}` is counted at most `K` times"): the physical linear
 sides of a basic slot on the cells of all groups have total square at most `K V_l |R|` under the
 linear-side bound. -/
-theorem V_cell_energy (l : Fin 4) (S : Finset (ℤ × ℤ)) (hS : S ⊆ A.cells)
+theorem V_cell_energy (qG : bf.Grp → ℕ) (l : Fin 4) (S : Finset (ℤ × ℤ)) (hS : S ⊆ A.cells)
     (gs : ℤ × ℤ → Finset bf.Grp) (gset : Finset bf.Grp) (hgs : ∀ I ∈ S, gs I ⊆ gset) (Bn : ℕ)
-    (hBn : ∀ I ∈ S, D.toLeaf.bk I < Bn) {Vl : ℝ}
-    (hlin : ∑ G ∈ gset, ∑ β ∈ Finset.range Bn, ‖(D.Ms l G).blockSide D.S D.hA D.SP
+    (hBn : ∀ I ∈ S, (D.toLeafQ qG).bk I < Bn) {Vl : ℝ}
+    (hlin : ∑ G ∈ gset, ∑ β ∈ Finset.range Bn, ‖(D.Ms l G).blockSide (D.S.withQ0 (qG G)) D.hA D.SP
         (A.R.1 + ((D.S.K * β : ℕ) : ℤ)) (fp.retainedV G (A.R.1 + ((D.S.K * β : ℕ) : ℤ)) D.S.K)
         (D.c l G (A.R.1 + ((D.S.K * β : ℕ) : ℤ)))‖ ^ 2 ≤ Vl * dyadicGridLength A.G A.R.1) :
     ∑ I ∈ S, ∑ G ∈ gs I, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
-        (dyadicGridCell_measurable A.G I.1 I.2) (D.pV l G I.1)‖ ^ 2 ≤
+        (dyadicGridCell_measurable A.G I.1 I.2) ((D.withQ0 (qG G)).pV l G I.1)‖ ^ 2 ≤
       D.S.K * (Vl * dyadicGridLength A.G A.R.1) := by
   have hK := D.hK
   have hdep : ∀ I ∈ S, A.R.1 ≤ I.1 := fun I hI =>
@@ -3685,24 +3710,25 @@ theorem V_cell_energy (l : Fin 4) (S : Finset (ℤ × ℤ)) (hS : S ⊆ A.cells)
   set Sd : Finset ℕ := S.image (fun I => (I.1 - A.R.1).toNat) with hSd_def
   set Ec : {G // G ∈ gset} → ℕ → Finset (ℤ × ℤ) := fun G t =>
     S.filter fun I => I.1 = A.R.1 + t ∧ G.1 ∈ gs I with hEc_def
-  have heq := cell_budget_eq A.G S (fun (G : {G // G ∈ gset}) h => D.pV l G.1 h)
+  have heq := cell_budget_eq A.G S (fun (G : {G // G ∈ gset}) h => (D.withQ0 (qG G.1)).pV l G.1 h)
     (fun G I => G.1 ∈ gs I) Sd A.R.1 Ec (fun G t => rfl) (fun I hI => ⟨(I.1 - A.R.1).toNat,
       Finset.mem_image_of_mem _ hI, by have := hdep I hI; omega⟩)
-  set f : ℕ → ℝ := fun b => ∑ G : {G // G ∈ gset}, ‖(D.Ms l G.1).blockSide D.S D.hA D.SP
+  set f : ℕ → ℝ := fun b => ∑ G : {G // G ∈ gset}, ‖(D.Ms l G.1).blockSide (D.S.withQ0 (qG G.1))
+      D.hA D.SP
     (A.R.1 + (b : ℤ)) (fp.retainedV G.1 (A.R.1 + (b : ℤ)) D.S.K)
     (D.c l G.1 (A.R.1 + (b : ℤ)))‖ ^ 2 with hf
   have hf0 : ∀ b, 0 ≤ f b := fun b => Finset.sum_nonneg fun _ _ => sq_nonneg _
   calc ∑ I ∈ S, ∑ G ∈ gs I, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
-        (dyadicGridCell_measurable A.G I.1 I.2) (D.pV l G I.1)‖ ^ 2
+        (dyadicGridCell_measurable A.G I.1 I.2) ((D.withQ0 (qG G)).pV l G I.1)‖ ^ 2
       = ∑ I ∈ S, ∑ G : {G // G ∈ gset}, (if G.1 ∈ gs I then
           ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
-            (D.pV l G.1 I.1)‖ ^ 2 else 0) := by
+            ((D.withQ0 (qG G.1)).pV l G.1 I.1)‖ ^ 2 else 0) := by
         refine Finset.sum_congr rfl fun I hI => ?_
         rw [sum_sub_eq_ite (hgs I hI)]
     _ = ∑ t ∈ Sd, ∑ G : {G // G ∈ gset}, ‖columnL2Restriction
           (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
           (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
-          (D.pV l G.1 (A.R.1 + t))‖ ^ 2 := by
+          ((D.withQ0 (qG G.1)).pV l G.1 (A.R.1 + t))‖ ^ 2 := by
         refine Eq.trans ?_ heq
         refine Finset.sum_congr rfl fun I _ => Finset.sum_congr rfl fun G _ => ?_
         split_ifs <;> rfl
@@ -3715,7 +3741,7 @@ theorem V_cell_energy (l : Fin 4) (S : Finset (ℤ × ℤ)) (hS : S ⊆ A.cells)
     _ ≤ D.S.K * ∑ b ∈ Sd.image (fun t => D.S.K * (t / D.S.K)), f b :=
         sum_block_le Sd (by omega) f hf0
     _ ≤ D.S.K * (Vl * dyadicGridLength A.G A.R.1) := by
-        refine mul_le_mul_of_nonneg_left ((D.V_sum_le l gset Bn _ fun t' ht' => ?_).trans hlin)
+        refine mul_le_mul_of_nonneg_left ((D.V_sum_le qG l gset Bn _ fun t' ht' => ?_).trans hlin)
           (Nat.cast_nonneg _)
         obtain ⟨t, ht, rfl⟩ := Finset.mem_image.mp ht'
         obtain ⟨I, hI, rfl⟩ := Finset.mem_image.mp ht
@@ -3856,6 +3882,23 @@ variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : 
 namespace SideInput
 variable (D : fp.SideInput)
 
+open Classical in
+/-- `sizes_at` for the group's own schedule, with the output of the family leaf `toLeafQ`. -/
+theorem sizes_atQ (qG : bf.Grp → ℕ) (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md)
+    {I : ℤ × ℤ} (hI : I ∈ A.cells) (G : bf.Grp) (huse : fp.ActualUse G I) (l : Fin 4)
+    (hrep : (D.withQ0 (qG G)).RepAt L l G I) {B₀ T : ℝ} (hB₀ : 0 ≤ B₀)
+    (hout : ‖(D.toLeafQ qG).out l G I‖ ≤ B₀ * Real.sqrt (dyadicGridLength A.G I.1))
+    (hroll : ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (D.roll l G I.1)‖ ≤
+        Real.sqrt T * Real.sqrt (dyadicGridLength A.G I.1))
+    (hpV : ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) ((D.withQ0 (qG G)).pV l G I.1)‖ ≤
+        Real.sqrt T * Real.sqrt (dyadicGridLength A.G I.1)) :
+    ‖(D.withQ0 (qG G)).coreAt l G I‖ ≤ coreBd B₀ T * Real.sqrt (dyadicGridLength A.G I.1) ∧
+      ‖(D.withQ0 (qG G)).errAt L l G I‖ ≤ errBd B₀ T * Real.sqrt (dyadicGridLength A.G I.1) := by
+  rw [D.toLeafQ_out] at hout
+  exact (D.withQ0 (qG G)).sizes_at L hI G huse l hrep hB₀ hout hroll hpV
+
 /-- The cap of the rolling increments and the physical linear sides on the retained paths of the
 second cut: `Σ_l (K (20 G₀ + 32) + K V_l) / ρ₂` over the basic slots. -/
 noncomputable def T2 (cc : ℕ) (kk : ℝ) (Vl : Fin 4 → ℝ) (ρ₂ : ℝ) : ℝ :=
@@ -3873,12 +3916,12 @@ retained sizes `coreBd`, `errBd` and `√T_c` (the lift is pointwise bounded), a
 active minimum of the whole leaf outputs is at most `B₂`, `82` times the error patterns (bounded by
 `eq:physical-error`, the active multiplicity `M` and Cauchy-Schwarz), `82 B₃` and the weighted
 active minimum of the patterns with at least three cores. A basic `U` role remains a side. -/
-theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md)
+theorem core_reduction (qG : bf.Grp → ℕ) (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md)
     (hanc : A.AncClosed) (hne : A.cells.Nonempty) (S : Finset (ℤ × ℤ)) (hS : S ⊆ A.cells)
     (gs : ℤ × ℤ → Finset bf.Grp) (gset : Finset bf.Grp) (hgs : ∀ I ∈ S, gs I ⊆ gset) (k Bn : ℕ)
     (hcertS : ∀ I ∈ S, ∀ G ∈ gs I, fp.Cert k G I)
-    (huse : ∀ I ∈ S, ∀ G ∈ gs I, fp.ActualUse G I) (hBn : ∀ I ∈ S, D.toLeaf.bk I < Bn)
-    (B : D.toLeaf.BallData gset) {ra rb : ℝ}
+    (huse : ∀ I ∈ S, ∀ G ∈ gs I, fp.ActualUse G I) (hBn : ∀ I ∈ S, (D.toLeafQ qG).bk I < Bn)
+    (B : (D.toLeafQ qG).BallData gset) {ra rb : ℝ}
     (hroot' : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
     {τ' : ℝ} (hτ' : 0 < τ') (hτ1 : τ' ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ'⁻¹) ^ A.Dg) ≤ fp.Hed)
@@ -3886,15 +3929,16 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
     (hDm : ∀ l, Real.log (2 * (D.mbs l).B) ≤ kk ^ cc)
     (hDb : Real.log (2 * A.colBudget) ≤ kk ^ cc)
     (hLs : ∀ l, ((D.Lf.layers l).length : ℝ) ≤ cc * (Real.log kk + 1)) {Vl : Fin 4 → ℝ}
-    (hlin : ∀ l, D.u ≠ some l → ∑ G ∈ gset, ∑ β ∈ Finset.range Bn, ‖(D.Ms l G).blockSide D.S
+    (hlin : ∀ l, D.u ≠ some l → ∑ G ∈ gset, ∑ β ∈ Finset.range Bn, ‖(D.Ms l G).blockSide
+        (D.S.withQ0 (qG G))
         D.hA D.SP (A.R.1 + ((D.S.K * β : ℕ) : ℤ))
           (fp.retainedV G (A.R.1 + ((D.S.K * β : ℕ) : ℤ)) D.S.K)
           (D.c l G (A.R.1 + ((D.S.K * β : ℕ) : ℤ)))‖ ^ 2 ≤
         Vl l * dyadicGridLength A.G A.R.1)
-    (hrep : ∀ I ∈ S, ∀ G ∈ gs I, ∀ l, D.u ≠ some l → D.RepAt L l G I)
+    (hrep : ∀ I ∈ S, ∀ G ∈ gs I, ∀ l, D.u ≠ some l → (D.withQ0 (qG G)).RepAt L l G I)
     {B₀ : ℝ} (hB₀ : 0 ≤ B₀)
     (hout : ∀ I ∈ S, ∀ G ∈ gs I, ∀ l,
-      ‖D.toLeaf.out l G I‖ ≤ B₀ * Real.sqrt (dyadicGridLength A.G I.1))
+      ‖(D.toLeafQ qG).out l G I‖ ≤ B₀ * Real.sqrt (dyadicGridLength A.G I.1))
     -- the outputs of the side estimate on its cut family `C`
     (C : Finset (ℤ × ℤ)) {η : ℝ} (hη : 0 ≤ η) {B₂ Tc : ℝ}
     (htwo : ∑ I ∈ S.filter (fun I => ¬ ∃ e ∈ C,
@@ -3904,10 +3948,10 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
             (Finset.univ.filter fun l => σ l = 0).card = 2 ∧
             (Finset.univ.filter fun l => σ l = 1).card = 2),
           ∑ G ∈ gs I, fp.Λc I
-            (fun l => if σ l = 0 then D.toLeaf.out l G I else D.toLeaf.sv l G I)‖ ≤ B₂)
+            (fun l => if σ l = 0 then (D.toLeafQ qG).out l G I else (D.toLeafQ qG).sv l G I)‖ ≤ B₂)
     (hcap : ∀ x, ∑ I ∈ (S.filter (fun I => ¬ ∃ e ∈ C,
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)).filter
-          (fun I => x ∈ dyadicGridCell A.G I.1 I.2), ∑ G ∈ gs I, D.toLeaf.s2 G I ≤ Tc)
+          (fun I => x ∈ dyadicGridCell A.G I.1 I.2), ∑ G ∈ gs I, (D.toLeafQ qG).s2 G I ≤ Tc)
     {B₃ : ℝ → ℝ}
     (hthree : ∀ (core err : ℤ × ℤ → bf.Grp → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
         (S' : Finset (ℤ × ℤ)), S' ⊆ S.filter (fun I => ¬ ∃ e ∈ C,
@@ -3917,9 +3961,9 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
         ∑ I ∈ S', dyadicGridLength A.G I.1 * min η (∑ σ ∈ Finset.univ.filter
           (fun σ : Fin 4 → Fin 3 => (∀ l, σ l ≠ 2) ∧ 3 ≤ patternCount σ 1),
             ‖∑ G ∈ gs I, fp.Λc I
-              (patternPiece (core I G) (fun l => D.toLeaf.sv l G I) (err I G) σ)‖) ≤ B₃ Bc)
+              (patternPiece (core I G) (fun l => (D.toLeafQ qG).sv l G I) (err I G) σ)‖) ≤ B₃ Bc)
     -- the physical errors (`eq:physical-error`) and the active multiplicity
-    {Ee M : ℝ} (hEe : ∑ I ∈ S, ∑ G ∈ gs I, ∑ l, ‖D.errAt L l G I‖ ^ 2 ≤ Ee)
+    {Ee M : ℝ} (hEe : ∑ I ∈ S, ∑ G ∈ gs I, ∑ l, ‖(D.withQ0 (qG G)).errAt L l G I‖ ^ 2 ≤ Ee)
     (hM : ∑ I ∈ S, dyadicGridLength A.G I.1 * (gs I).card ≤ M)
     {ρ₂ : ℝ} (hρ₂ : 0 < ρ₂) (hρ₂1 : ρ₂ < 1) :
     ∃ C₂ : Finset (ℤ × ℤ), C₂ ⊆ S ∧ dyadicRootLength A.G C₂ ≤ ρ₂ * dyadicGridLength A.G A.R.1 ∧
@@ -3927,13 +3971,15 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)).filter
           (fun I => ¬ ∃ e ∈ C₂, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
         ∀ G ∈ gs I, ∀ l,
-        ‖D.coreAt l G I‖ ≤ coreBd B₀ (D.T2 cc kk Vl ρ₂) * Real.sqrt (dyadicGridLength A.G I.1) ∧
-        ‖D.errAt L l G I‖ ≤ errBd B₀ (D.T2 cc kk Vl ρ₂) * Real.sqrt (dyadicGridLength A.G I.1) ∧
-        ‖D.toLeaf.sv l G I‖ ≤ Real.sqrt Tc * Real.sqrt (dyadicGridLength A.G I.1)) ∧
+        ‖(D.withQ0 (qG G)).coreAt l G I‖ ≤ coreBd B₀ (D.T2 cc kk Vl ρ₂) * Real.sqrt
+            (dyadicGridLength A.G I.1) ∧
+        ‖(D.withQ0 (qG G)).errAt L l G I‖ ≤ errBd B₀ (D.T2 cc kk Vl ρ₂) * Real.sqrt
+            (dyadicGridLength A.G I.1) ∧
+        ‖(D.toLeafQ qG).sv l G I‖ ≤ Real.sqrt Tc * Real.sqrt (dyadicGridLength A.G I.1)) ∧
       ∑ I ∈ (S.filter (fun I => ¬ ∃ e ∈ C,
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)).filter
           (fun I => ¬ ∃ e ∈ C₂, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
-        dyadicGridLength A.G I.1 * min η ‖∑ G ∈ gs I, fp.Λc I (fun l => D.toLeaf.out l G I)‖ ≤
+        dyadicGridLength A.G I.1 * min η ‖∑ G ∈ gs I, fp.Λc I (fun l => (D.toLeafQ qG).out l G I)‖ ≤
       B₂ + 82 * (81 * (localFormUniformConstant κ' * (coreBd B₀ (D.T2 cc kk Vl ρ₂) +
           errBd B₀ (D.T2 cc kk Vl ρ₂) + Real.sqrt Tc) ^ 3) * (Real.sqrt (4 * M) * Real.sqrt Ee)) +
         82 * B₃ (coreBd B₀ (D.T2 cc kk Vl ρ₂)) +
@@ -3942,8 +3988,9 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
             (fun I => ¬ ∃ e ∈ C₂, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
           dyadicGridLength A.G I.1 * min η ‖∑ τ ∈ Finset.univ.filter
             (fun τ : Fin 4 → Fin 3 => (∀ l, τ l ≠ 2) ∧ 3 ≤ patternCount τ 0),
-            ∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => D.coreAt l G I)
-              (fun l => D.toLeaf.sv l G I) (fun l => D.errAt L l G I) τ)‖ := by
+            ∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+              (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) τ)‖ :=
+                  by
   set G0 := Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 3) *
     (1 + Real.log (2 * kk)) ^ 2)
   -- the second cut for the rolling and linear sides
@@ -3951,7 +3998,7 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
     ∑ G ∈ gs I, (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
       (dyadicGridCell_measurable A.G I.1 I.2) (D.roll l G I.1)‖ ^ 2 +
       ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
-        (dyadicGridCell_measurable A.G I.1 I.2) (D.pV l G I.1)‖ ^ 2) /
+        (dyadicGridCell_measurable A.G I.1 I.2) ((D.withQ0 (qG G)).pV l G I.1)‖ ^ 2) /
       dyadicGridLength A.G I.1 with ha_def
   have ha : ∀ l, ∀ I ∈ S, 0 ≤ a l I := fun l I _ => by
     simp only [ha_def]
@@ -3966,19 +4013,19 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
       by_cases hl : D.u = some l
       · simp [ha_def, hBv_def, hl]
       · simp only [ha_def, hBv_def, hl, ↓reduceIte]
-        have h1 := D.roll_cell_energy hanc hne l S hS gs gset hgs k hcertS B hroot' hτ' hτ1 hHed
+        have h1 := D.roll_cell_energy qG hanc hne l S hS gs gset hgs k hcertS B hroot' hτ' hτ1 hHed
           hτN cc hc hk hDm hDb hLs
-        have h2 := D.V_cell_energy l S hS gs gset hgs Bn hBn (hlin l hl)
+        have h2 := D.V_cell_energy qG l S hS gs gset hgs Bn hBn (hlin l hl)
         calc ∑ I ∈ S, dyadicGridLength A.G I.1 * ∑ G ∈ gs I,
               (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
                 (dyadicGridCell_measurable A.G I.1 I.2) (D.roll l G I.1)‖ ^ 2 +
               ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
-                (dyadicGridCell_measurable A.G I.1 I.2) (D.pV l G I.1)‖ ^ 2) /
+                (dyadicGridCell_measurable A.G I.1 I.2) ((D.withQ0 (qG G)).pV l G I.1)‖ ^ 2) /
               dyadicGridLength A.G I.1
             = ∑ I ∈ S, ∑ G ∈ gs I, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
                 (dyadicGridCell_measurable A.G I.1 I.2) (D.roll l G I.1)‖ ^ 2 +
               ∑ I ∈ S, ∑ G ∈ gs I, ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
-                (dyadicGridCell_measurable A.G I.1 I.2) (D.pV l G I.1)‖ ^ 2 := by
+                (dyadicGridCell_measurable A.G I.1 I.2) ((D.withQ0 (qG G)).pV l G I.1)‖ ^ 2 := by
               rw [← Finset.sum_add_distrib]
               refine Finset.sum_congr rfl fun I _ => ?_
               rw [Finset.mul_sum, ← Finset.sum_add_distrib]
@@ -4001,23 +4048,25 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
   have hS₁ : S₁ ⊆ S := Finset.filter_subset _ _
   -- the sides on retained cells (the side cap)
   have hsv : ∀ I ∈ S₁, ∀ G ∈ gs I, ∀ l,
-      ‖D.toLeaf.sv l G I‖ ≤ Real.sqrt Tc * Real.sqrt (dyadicGridLength A.G I.1) := by
+      ‖(D.toLeafQ qG).sv l G I‖ ≤ Real.sqrt Tc * Real.sqrt (dyadicGridLength A.G I.1) := by
     intro I hI G hG l
     have hr := dyadicGridLength_pos A.G I.1
     have hIx := dyadicGridCell_left_mem A.G I.1 I.2
-    have h1 : D.toLeaf.ns l G I ^ 2 ≤ Tc := by
+    have h1 : (D.toLeafQ qG).ns l G I ^ 2 ≤ Tc := by
       refine le_trans ?_ (hcap (dyadicGridLeft A.G I.1 I.2))
-      refine le_trans ?_ (Finset.single_le_sum (f := fun I => ∑ G ∈ gs I, D.toLeaf.s2 G I)
-        (fun J _ => Finset.sum_nonneg fun G _ => D.toLeaf.s2_nonneg G J)
+      refine le_trans ?_ (Finset.single_le_sum (f := fun I => ∑ G ∈ gs I, (D.toLeafQ qG).s2 G I)
+        (fun J _ => Finset.sum_nonneg fun G _ => (D.toLeafQ qG).s2_nonneg G J)
         (Finset.mem_filter.mpr ⟨hI, hIx⟩))
-      refine le_trans ?_ (Finset.single_le_sum (f := fun G => D.toLeaf.s2 G I)
-        (fun G _ => D.toLeaf.s2_nonneg G I) hG)
-      exact Finset.single_le_sum (f := fun l => D.toLeaf.ns l G I ^ 2) (fun l _ => sq_nonneg _)
+      refine le_trans ?_ (Finset.single_le_sum (f := fun G => (D.toLeafQ qG).s2 G I)
+        (fun G _ => (D.toLeafQ qG).s2_nonneg G I) hG)
+      exact Finset.single_le_sum (f := fun l => (D.toLeafQ qG).ns l G I ^ 2) (fun l _ => sq_nonneg
+          _)
         (Finset.mem_univ l)
-    have h2 : D.toLeaf.ns l G I ≤ Real.sqrt Tc := by
-      rw [← Real.sqrt_sq (D.toLeaf.ns_nonneg l G I)]
+    have h2 : (D.toLeafQ qG).ns l G I ≤ Real.sqrt Tc := by
+      rw [← Real.sqrt_sq ((D.toLeafQ qG).ns_nonneg l G I)]
       exact Real.sqrt_le_sqrt h1
-    have h3 : ‖D.toLeaf.sv l G I‖ = D.toLeaf.ns l G I * Real.sqrt (dyadicGridLength A.G I.1) := by
+    have h3 : ‖(D.toLeafQ qG).sv l G I‖ = (D.toLeafQ qG).ns l G I * Real.sqrt (dyadicGridLength A.G
+        I.1) := by
       unfold SideLeafM.ns
       rw [div_mul_cancel₀ _ (Real.sqrt_pos.mpr hr).ne']
     rw [h3]
@@ -4027,7 +4076,7 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
       ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
         (D.roll l G I.1)‖ ≤ Real.sqrt T₂ * Real.sqrt (dyadicGridLength A.G I.1) ∧
       ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
-        (D.pV l G I.1)‖ ≤ Real.sqrt T₂ * Real.sqrt (dyadicGridLength A.G I.1) := by
+        ((D.withQ0 (qG G)).pV l G I.1)‖ ≤ Real.sqrt T₂ * Real.sqrt (dyadicGridLength A.G I.1) := by
     intro I hI G hG l hl
     have hr := dyadicGridLength_pos A.G I.1
     have hIS := hS₁ (hS₂₁ hI)
@@ -4041,14 +4090,14 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
     set x := ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
       (dyadicGridCell_measurable A.G I.1 I.2) (D.roll l G I.1)‖
     set y := ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
-      (dyadicGridCell_measurable A.G I.1 I.2) (D.pV l G I.1)‖
+      (dyadicGridCell_measurable A.G I.1 I.2) ((D.withQ0 (qG G)).pV l G I.1)‖
     have hxy : (x ^ 2 + y ^ 2) / dyadicGridLength A.G I.1 ≤ T₂ := by
       refine le_trans ?_ haI
       simp only [ha_def, hl, ↓reduceIte]
       exact Finset.single_le_sum (f := fun G => (‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
         (dyadicGridCell_measurable A.G I.1 I.2) (D.roll l G I.1)‖ ^ 2 +
         ‖columnL2Restriction (dyadicGridCell A.G I.1 I.2)
-          (dyadicGridCell_measurable A.G I.1 I.2) (D.pV l G I.1)‖ ^ 2) /
+          (dyadicGridCell_measurable A.G I.1 I.2) ((D.withQ0 (qG G)).pV l G I.1)‖ ^ 2) /
         dyadicGridLength A.G I.1) (fun G _ => div_nonneg (by positivity) hr.le) hG
     have hb : ∀ z : ℝ, 0 ≤ z → z ^ 2 ≤ T₂ * dyadicGridLength A.G I.1 →
         z ≤ Real.sqrt T₂ * Real.sqrt (dyadicGridLength A.G I.1) := fun z hz hz2 => by
@@ -4060,48 +4109,48 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
       hb y (norm_nonneg _) (by nlinarith [sq_nonneg x])⟩
   -- the retained sizes
   have hsizes : ∀ I ∈ S₂, ∀ G ∈ gs I, ∀ l,
-      ‖D.coreAt l G I‖ ≤ coreBd B₀ T₂ * Real.sqrt (dyadicGridLength A.G I.1) ∧
-      ‖D.errAt L l G I‖ ≤ errBd B₀ T₂ * Real.sqrt (dyadicGridLength A.G I.1) ∧
-      ‖D.toLeaf.sv l G I‖ ≤ Real.sqrt Tc * Real.sqrt (dyadicGridLength A.G I.1) := by
+      ‖(D.withQ0 (qG G)).coreAt l G I‖ ≤ coreBd B₀ T₂ * Real.sqrt (dyadicGridLength A.G I.1) ∧
+      ‖(D.withQ0 (qG G)).errAt L l G I‖ ≤ errBd B₀ T₂ * Real.sqrt (dyadicGridLength A.G I.1) ∧
+      ‖(D.toLeafQ qG).sv l G I‖ ≤ Real.sqrt Tc * Real.sqrt (dyadicGridLength A.G I.1) := by
     intro I hI G hG l
     have hIS := hS₁ (hS₂₁ hI)
     refine ⟨?_, ?_, hsv I (hS₂₁ hI) G hG l⟩ <;>
     · by_cases hl : D.u = some l
       · have hT := Real.sqrt_nonneg T₂
         have h5 := Real.sqrt_nonneg 5
-        simp only [coreAt, errAt, hl, ↓reduceIte, norm_zero, coreBd, errBd]
+        simp only [coreAt, errAt, SideInput.withQ0_u, hl, ↓reduceIte, norm_zero, coreBd, errBd]
         positivity
-      · have h := D.sizes_at L (hS hIS) G (huse I hIS G hG) l (hrep I hIS G hG l hl) hB₀
+      · have h := D.sizes_atQ qG L (hS hIS) G (huse I hIS G hG) l (hrep I hIS G hG l hl) hB₀
           (hout I hIS G hG l) (hrv I hI G hG l hl).1 (hrv I hI G hG l hl).2
         first | exact h.1 | exact h.2
   refine ⟨C₂, hC₂S, hlen₂, hsizes, ?_⟩
   -- the cell inequality
   set E : ℤ × ℤ → ℝ := fun I => ∑ τ ∈ Finset.univ.filter (fun τ : Fin 4 → Fin 3 => ∃ l, τ l = 2),
-    ‖∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => D.coreAt l G I)
-      (fun l => D.toLeaf.sv l G I) (fun l => D.errAt L l G I) τ)‖ with hE_def
+    ‖∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+      (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) τ)‖ with hE_def
   set Tt : ℤ × ℤ → ℝ := fun I => ∑ τ ∈ Finset.univ.filter (fun τ : Fin 4 → Fin 3 =>
     (∀ l, τ l ≠ 2) ∧ 3 ≤ patternCount τ 1),
-    ‖∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => D.coreAt l G I)
-      (fun l => D.toLeaf.sv l G I) (fun l => D.errAt L l G I) τ)‖ with hT_def
+    ‖∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+      (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) τ)‖ with hT_def
   set Rr : ℤ × ℤ → ℝ := fun I => ‖∑ σ ∈ Finset.univ.filter
     (fun σ : Fin 4 → Fin 3 => (∀ l, σ l ≠ 2) ∧
       (Finset.univ.filter fun l => σ l = 0).card = 2 ∧
       (Finset.univ.filter fun l => σ l = 1).card = 2),
     ∑ G ∈ gs I, fp.Λc I
-      (fun l => if σ l = 0 then D.toLeaf.out l G I else D.toLeaf.sv l G I)‖ with hR_def
+      (fun l => if σ l = 0 then (D.toLeafQ qG).out l G I else (D.toLeafQ qG).sv l G I)‖ with hR_def
   set Cc : ℤ × ℤ → ℝ := fun I => ‖∑ τ ∈ Finset.univ.filter
     (fun τ : Fin 4 → Fin 3 => (∀ l, τ l ≠ 2) ∧ 3 ≤ patternCount τ 0),
-    ∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => D.coreAt l G I)
-      (fun l => D.toLeaf.sv l G I) (fun l => D.errAt L l G I) τ)‖ with hC_def
+    ∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+      (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) τ)‖ with hC_def
   have hcell : ∀ I ∈ S₂, dyadicGridLength A.G I.1 *
-      min η ‖∑ G ∈ gs I, fp.Λc I (fun l => D.toLeaf.out l G I)‖ ≤
+      min η ‖∑ G ∈ gs I, fp.Λc I (fun l => (D.toLeafQ qG).out l G I)‖ ≤
       dyadicGridLength A.G I.1 * min η (Rr I) + 82 * (dyadicGridLength A.G I.1 * E I) +
         82 * (dyadicGridLength A.G I.1 * min η (Tt I)) +
         dyadicGridLength A.G I.1 * min η (Cc I) := by
     intro I hI
     have hIS := hS₁ (hS₂₁ hI)
     have hr := dyadicGridLength_pos A.G I.1
-    have h1 := D.cell_reduction L (hS hIS) (gs I) (fun G hG l hl => hrep I hIS G hG l hl)
+    have h1 := D.cell_reduction qG L (hS hIS) (gs I) (fun G hG l hl => hrep I hIS G hG l hl)
     have h2 := min_four_le (a := Rr I) (e := E I) (t := Tt I) (c := Cc I) hη (norm_nonneg _)
       (Finset.sum_nonneg fun _ _ => norm_nonneg _) (Finset.sum_nonneg fun _ _ => norm_nonneg _)
       (norm_nonneg _)
@@ -4125,8 +4174,8 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
           (fun I _ => dyadicGridLength_pos A.G I.1) gs fp.Λc
           (localFormUniformConstant_nonneg κ')
           (by unfold coreBd errBd; positivity : 0 ≤ coreBd B₀ T₂ + errBd B₀ T₂ + Real.sqrt Tc)
-          (fun I _ x => fp.norm_Λc_leM I x) (fun I G l => D.coreAt l G I)
-          (fun I G l => D.toLeaf.sv l G I) (fun I G l => D.errAt L l G I)
+          (fun I _ x => fp.norm_Λc_leM I x) (fun I G l => (D.withQ0 (qG G)).coreAt l G I)
+          (fun I G l => (D.toLeafQ qG).sv l G I) (fun I G l => (D.withQ0 (qG G)).errAt L l G I)
           (fun I hI G hG l => by
             obtain ⟨h1, h2, h3⟩ := hsizes I hI G hG l
             have hsq := Real.sqrt_nonneg (dyadicGridLength A.G I.1)
@@ -4139,7 +4188,8 @@ theorem core_reduction (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).
             mul_nonneg (dyadicGridLength_pos A.G I.1).le (Nat.cast_nonneg _)) hM)
           (le_trans (Finset.sum_le_sum_of_subset_of_nonneg (hS₂₁.trans hS₁) fun I _ _ =>
             Finset.sum_nonneg fun G _ => Finset.sum_nonneg fun l _ => sq_nonneg _) hEe)
-        have hTh := hthree (fun I G l => D.coreAt l G I) (fun I G l => D.errAt L l G I) S₂ hS₂₁
+        have hTh := hthree (fun I G l => (D.withQ0 (qG G)).coreAt l G I) (fun I G l => (D.withQ0
+            (qG G)).errAt L l G I) S₂ hS₂₁
           (by unfold coreBd; positivity : (0 : ℝ) ≤ coreBd B₀ T₂)
           (fun I hI G hG l => (hsizes I hI G hG l).1)
         linarith
@@ -4159,27 +4209,31 @@ open Classical in
 /-- Blueprint line 2461 with the side estimate (lines 2446-2456): on one localization leaf of the
 guarded search, after the cut family of the side estimate (root fraction `2ρ`) and the second cut
 for the rolling and linear sides (root fraction `ρ₂`), the cores, errors and sides have the
-retained sizes `coreBd`, `errBd`, `√T_c`, and the weighted active minimum of the whole leaf
+retained sizes `coreBd`, `errBd`, `√T_c`, the side cap of the side estimate holds along the
+retained paths, and the weighted active minimum of the whole leaf
 outputs is at most the two-side bound of the side estimate, `82` times the error patterns
 (`eq:physical-error`, the active multiplicity and Cauchy-Schwarz), `82` times the three-side power
 bound with cores of size `coreBd`, and the weighted active minimum of the patterns with at least
 three cores (`core_reduction`, `side_estimate_leaf`). -/
-theorem core_reduction_leaf {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncClosed)
+theorem core_reduction_leaf (qG : bf.Grp → ℕ) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
+    (hanc : A.AncClosed)
     (hne : A.cells.Nonempty)
     -- the leaf of the guarded search, its cells, groups and counts
     {fuel : ℕ} {up₀ : Fin 4} {s : ℕ} (hLf : D.Lf = leafAt fuel fp.Lc up₀ s)
     (hmH : 2 * fuel + 2 ≤ fp.mH)
-    {Nd N : ℕ} (hKNd : D.S.K ≤ Nd) (hKN : D.S.K ≤ 2 ^ N) (S : Finset (ℤ × ℤ))
+    {Nd N : ℕ} (hKNd : A.DepthWin Nd) (hKN : D.S.K ≤ 2 ^ N) (S : Finset (ℤ × ℤ))
     (hS : S ⊆ A.cells)
     (hroot : ∀ I ∈ S, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2)
     (gs : ℤ × ℤ → Finset bf.Grp) (gset : Finset bf.Grp) (hgs : ∀ I ∈ S, gs I ⊆ gset)
-    (Lp Jm Bn k : ℕ) (hBn : ∀ I ∈ S, D.toLeaf.bk I < Bn) (hLp : ∀ l, (D.toLeaf.pe l).length ≤ Lp)
-    (hJm : ∀ c d i i', (D.toLeaf.desc c d (D.toLeaf.tOf c i) (D.toLeaf.tOf d i')).length ≤ Jm)
+    (Lp Jm Bn k : ℕ) (hBn : ∀ I ∈ S, (D.toLeafQ qG).bk I < Bn)
+    (hLp : ∀ l, ((D.toLeafQ qG).pe l).length ≤ Lp)
+    (hJm : ∀ c d i i',
+      ((D.toLeafQ qG).desc c d ((D.toLeafQ qG).tOf c i) ((D.toLeafQ qG).tOf d i')).length ≤ Jm)
     (Act : Finset (ℤ × ℤ)) (hact : ∀ I ∈ S, I ∈ Act ∧ ∀ G ∈ gs I, G ∈ fp.groupsAt I k)
     {Mp : ℝ} (hMp : ∀ y, ((Act.filter fun c => y ∈ dyadicGridCell A.G c.1 c.2).card : ℝ) ≤ Mp)
     (hcertS : ∀ I ∈ S, ∀ G ∈ gs I, fp.Cert k G I)
     (huse : ∀ I ∈ S, ∀ G ∈ gs I, fp.ActualUse G I)
-    {Np : ℝ} (hNp : ∀ c d, ((D.toLeaf.pe d).length * (D.toLeaf.pe c).length : ℝ) ≤ Np)
+    {Np : ℝ} (hNp : ∀ c d, (((D.toLeafQ qG).pe d).length * ((D.toLeafQ qG).pe c).length : ℝ) ≤ Np)
     -- the finite base data
     {τ : ℝ} (hτ : 0 ≤ τ)
     (hpair : ∀ I ∈ S, ∀ c d, c ≠ d → D.u ≠ some c → D.u ≠ some d →
@@ -4191,13 +4245,14 @@ theorem core_reduction_leaf {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncC
     {η₀ E : ℝ} (hsub : A.SubRootProps η₀ E)
     -- the catalogs and the instantiated helper catalog
     {τr : ℕ → ℝ}
-    (hpass : ∀ I ∈ S, ∀ l (w : fp.TestName I Unit),
+    (hpass : ∀ I ∈ S, ∀ l, D.u ≠ some l → ∀ w : fp.TestName I Unit, fp.MainRk w →
       (fp.testOf l I (fun _ => bf.basicIn fp.Mc l I) w).Pass A.G (bf.origCols l) I A.csrc A.Hsrc
         bf.vtag (A.w I) (τr (fp.testOf l I (fun _ => bf.basicIn fp.Mc l I) w).r) fp.mH (D.cat l))
-    {τH : ℝ} (hτH : 0 ≤ τH)
-    (hhpass : ∀ I ∈ S, ∀ a, ∀ w : fp.HelperName I (Fin 4 × bf.Grp),
-      (fp.helperOf a I (fun q => D.toLeaf.sv q.1 q.2 I) w).Pass A.G (bf.origCols a) I A.csrc
-        A.Hsrc bf.vtag (A.w I) τH fp.mH (D.cat a))
+    {τH : ℝ} (hτH : 0 ≤ τH) {Bh : Type} (gE : ℤ × ℤ → Bh → bf.Grp)
+    (hgE : ∀ I ∈ S, ∀ G ∈ gs I, ∃ i, gE I i = G)
+    (hhpass : ∀ I ∈ S, ∀ a, ∀ w : fp.HelperName I Bh,
+      (fp.helperOf a I (fun i => (D.toLeafQ qG).sv a (gE I i) I) w).Pass A.G (bf.origCols a) I
+        A.csrc A.Hsrc bf.vtag (A.w I) τH fp.mH (D.cat a))
     {τ₃ Sz : ℝ} (hτ0 : ∀ R, 0 ≤ τr R) (n : ℕ → ℝ) (hn : Monotone n)
     (hn0 : 2 * A.colBudget ≤ n 0)
     (hτr : ∀ R, 1 ≤ R → R ≤ fp.Lc + 4 → τr R * (A.colBudget * Real.sqrt (n (R - 1))) ≤ τ₃)
@@ -4211,7 +4266,7 @@ theorem core_reduction_leaf {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncC
     (hτ₂' : τ₂ * (A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt NH)) ≤ τ₃)
     (hHed₂ : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ₂⁻¹) ^ A.Dg) ≤ fp.Hed)
     -- the joint group budgets of the ball levels
-    (G₀ : bf.Grp) (B : D.toLeaf.BallData gset) {ra rb : ℝ}
+    (G₀ : bf.Grp) (B : (D.toLeafQ qG).BallData gset) {ra rb : ℝ}
     (hroot' : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
     {τ' : ℝ} (hτ' : 0 < τ') (hτ1 : τ' ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ'⁻¹) ^ A.Dg) ≤ fp.Hed)
@@ -4222,7 +4277,8 @@ theorem core_reduction_leaf {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncC
     (hLs : ∀ l, ((D.Lf.layers l).length : ℝ) ≤ cc * (Real.log kk + 1))
     -- the linear-side bound
     {Vl : Fin 4 → ℝ}
-    (hlin : ∀ l, D.u ≠ some l → ∑ G ∈ gset, ∑ β ∈ Finset.range Bn, ‖(D.Ms l G).blockSide D.S
+    (hlin : ∀ l, D.u ≠ some l → ∑ G ∈ gset, ∑ β ∈ Finset.range Bn, ‖(D.Ms l G).blockSide
+        (D.S.withQ0 (qG G))
         D.hA D.SP (A.R.1 + ((D.S.K * β : ℕ) : ℤ))
           (fp.retainedV G (A.R.1 + ((D.S.K * β : ℕ) : ℤ)) D.S.K)
           (D.c l G (A.R.1 + ((D.S.K * β : ℕ) : ℤ)))‖ ^ 2 ≤
@@ -4230,17 +4286,17 @@ theorem core_reduction_leaf {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncC
     -- the stack energies of the near bands
     (hP : 1 ≤ fp.P) (Γa Γb : Fin 4 → ℝ) (ΓU : ℝ)
     (hΓa : ∀ a, D.u ≠ some a → fp.stackEA (SideLeafM.nOs Lp Jm) (D.cat a) (D.mbs a)
-        D.toLeaf.Dpre N (capV A cc kk) (D.sideB cc kk (Vl a)) ≤
+        (D.toLeafQ qG).Dpre N (capV A cc kk) (sideB0 A cc kk (Vl a)) ≤
       (fp.P + 2) * Γa a * dyadicGridLength A.G A.R.1)
     (hΓb : ∀ b, D.u ≠ some b →
-      (SideLeafM.nOs Lp Jm).card * (N * capV A cc kk + D.sideB cc kk (Vl b)) ≤
+      (SideLeafM.nOs Lp Jm).card * (N * capV A cc kk + sideB0 A cc kk (Vl b)) ≤
         Γb b * dyadicGridLength A.G A.R.1)
     (hΓU : (SideLeafM.nOs Lp Jm).card * (2 * (4 * E * dyadicGridLength A.G A.R.1)) ≤
       ΓU * dyadicGridLength A.G A.R.1)
     -- the frozen lifts and their coefficients, the physical errors and the active multiplicity
     (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md)
-    (hrep : ∀ I ∈ S, ∀ G ∈ gs I, ∀ l, D.u ≠ some l → D.RepAt L l G I)
-    {Ee M : ℝ} (hEe : ∑ I ∈ S, ∑ G ∈ gs I, ∑ l, ‖D.errAt L l G I‖ ^ 2 ≤ Ee)
+    (hrep : ∀ I ∈ S, ∀ G ∈ gs I, ∀ l, D.u ≠ some l → (D.withQ0 (qG G)).RepAt L l G I)
+    {Ee M : ℝ} (hEe : ∑ I ∈ S, ∑ G ∈ gs I, ∑ l, ‖(D.withQ0 (qG G)).errAt L l G I‖ ^ 2 ≤ Ee)
     (hM : ∑ I ∈ S, dyadicGridLength A.G I.1 * (gs I).card ≤ M)
     {ρ₂ : ℝ} (hρ₂ : 0 < ρ₂) (hρ₂1 : ρ₂ < 1)
     {η p ρ : ℝ} (hη : 0 ≤ η) (hp : 2 / 3 < p) (hp1 : p ≤ 1) (hρ : 0 < ρ) (hρ1 : ρ < 1) :
@@ -4251,66 +4307,73 @@ theorem core_reduction_leaf {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncC
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)).filter
           (fun I => ¬ ∃ e ∈ C₂, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)),
         ∀ G ∈ gs I, ∀ l,
-        ‖D.coreAt l G I‖ ≤ coreBd (max (2 * Real.sqrt CF) A.S) (D.T2 cc kk Vl ρ₂) * Real.sqrt
+        ‖(D.withQ0 (qG G)).coreAt l G I‖ ≤ coreBd (max (2 * Real.sqrt CF) A.S) (D.T2 cc kk Vl ρ₂) *
+            Real.sqrt
             (dyadicGridLength A.G I.1) ∧
-        ‖D.errAt L l G I‖ ≤ errBd (max (2 * Real.sqrt CF) A.S) (D.T2 cc kk Vl ρ₂) * Real.sqrt
+        ‖(D.withQ0 (qG G)).errAt L l G I‖ ≤ errBd (max (2 * Real.sqrt CF) A.S) (D.T2 cc kk Vl ρ₂) *
+            Real.sqrt
             (dyadicGridLength A.G I.1) ∧
-        ‖D.toLeaf.sv l G I‖ ≤ Real.sqrt (D.Tside Lp Jm CF E cc kk Vl ρ) * Real.sqrt
+        ‖(D.toLeafQ qG).sv l G I‖ ≤ Real.sqrt (D.Tside qG Lp Jm CF E cc kk Vl ρ) * Real.sqrt
             (dyadicGridLength A.G I.1)) ∧
+      (∀ x, ∑ I ∈ (S.filter (fun I => ¬ ∃ e ∈ C,
+          dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)).filter
+          (fun I => x ∈ dyadicGridCell A.G I.1 I.2), ∑ G ∈ gs I, (D.toLeafQ qG).s2 G I ≤
+        D.Tside qG Lp Jm CF E cc kk Vl ρ) ∧
       ∑ I ∈ ((S.filter (fun I => ¬ ∃ e ∈ C,
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)).filter
           (fun I => ¬ ∃ e ∈ C₂, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)),
-        dyadicGridLength A.G I.1 * min η ‖∑ G ∈ gs I, fp.Λc I (fun l => D.toLeaf.out l G I)‖ ≤
-      (6 * 256 * Np * (τ + fp.farC fuel τ₃ Sz) * D.Tside Lp Jm CF E cc kk Vl ρ *
+        dyadicGridLength A.G I.1 * min η ‖∑ G ∈ gs I, fp.Λc I (fun l => (D.toLeafQ qG).out l G I)‖ ≤
+      (6 * 256 * Np * (τ + fp.farC fuel τ₃ Sz) * D.Tside qG Lp Jm CF E cc kk Vl ρ *
           dyadicGridLength A.G A.R.1 +
         6 * ∑ a : Fin 4, ∑ b : Fin 4, ∑ e : Fin 4,
-          D.toLeaf.nearBnd hq2 hq3 Nd N Lp Jm Mp (2 * Real.sqrt CF) (ρ / 64) Γa Γb ΓU a b e +
-        η ^ (1 - p) * (D.Tside Lp Jm CF E cc kk Vl ρ ^ (p / 2) * D.Tside Lp Jm CF E cc kk Vl ρ ^
-            (p / 2) * D.Tside Lp Jm CF E cc kk Vl ρ ^ (p / 2) *
+          (D.toLeafQ qG).nearBnd hq2 hq3 Nd N Lp Jm Mp (2 * Real.sqrt CF) (ρ / 64) Γa Γb ΓU a b e +
+        η ^ (1 - p) * (D.Tside qG Lp Jm CF E cc kk Vl ρ ^ (p / 2) * D.Tside qG Lp Jm CF E cc kk Vl
+            ρ ^
+            (p / 2) * D.Tside qG Lp Jm CF E cc kk Vl ρ ^ (p / 2) *
           dyadicGridLength A.G A.R.1)) +
       82 * (81 * (localFormUniformConstant κ' * (coreBd (max (2 * Real.sqrt CF) A.S) (D.T2 cc kk
           Vl ρ₂) + errBd (max (2 * Real.sqrt CF) A.S) (D.T2 cc kk Vl ρ₂) +
-        Real.sqrt (D.Tside Lp Jm CF E cc kk Vl ρ)) ^ 3) * (Real.sqrt (4 * M) * Real.sqrt Ee)) +
+        Real.sqrt (D.Tside qG Lp Jm CF E cc kk Vl ρ)) ^ 3) * (Real.sqrt (4 * M) * Real.sqrt Ee)) +
       82 * (η ^ (1 - p) * (81 * localFormUniformConstant κ' *
-          max (coreBd (max (2 * Real.sqrt CF) A.S) (D.T2 cc kk Vl ρ₂)) (Real.sqrt (D.Tside Lp Jm
+          max (coreBd (max (2 * Real.sqrt CF) A.S) (D.T2 cc kk Vl ρ₂)) (Real.sqrt (D.Tside qG Lp Jm
               CF E cc kk Vl ρ))) ^ p *
-        (D.Tside Lp Jm CF E cc kk Vl ρ ^ (p / 2) * D.Tside Lp Jm CF E cc kk Vl ρ ^ (p / 2) *
-            D.Tside Lp Jm CF E cc kk Vl ρ ^ (p / 2) * dyadicGridLength A.G A.R.1)) +
+        (D.Tside qG Lp Jm CF E cc kk Vl ρ ^ (p / 2) * D.Tside qG Lp Jm CF E cc kk Vl ρ ^ (p / 2) *
+            D.Tside qG Lp Jm CF E cc kk Vl ρ ^ (p / 2) * dyadicGridLength A.G A.R.1)) +
       ∑ I ∈ ((S.filter (fun I => ¬ ∃ e ∈ C,
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)).filter
           (fun I => ¬ ∃ e ∈ C₂, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2)),
         dyadicGridLength A.G I.1 * min η ‖∑ τ ∈ Finset.univ.filter
           (fun τ : Fin 4 → Fin 3 => (∀ l, τ l ≠ 2) ∧ 3 ≤ patternCount τ 0),
-          ∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => D.coreAt l G I)
-            (fun l => D.toLeaf.sv l G I) (fun l => D.errAt L l G I) τ)‖ := by
+          ∑ G ∈ gs I, fp.Λc I (patternPiece (fun l => (D.withQ0 (qG G)).coreAt l G I)
+            (fun l => (D.toLeafQ qG).sv l G I) (fun l => (D.withQ0 (qG G)).errAt L l G I) τ)‖ := by
   have hS0 : 0 ≤ A.S := le_trans ENNReal.toReal_nonneg (A.U_le 0 A.R)
   have hbasic : ∀ J ∈ A.cells, ∀ l, ‖bf.basicIn fp.Mc l J‖ ≤
       2 * Real.sqrt CF * Real.sqrt (dyadicGridLength A.G J.1) := fun J hJ l =>
     bf.norm_basicIn_le fp.Mc l hJ hCF.le fun jb => hnormF l jb J hJ
-  have hout : ∀ I ∈ S, ∀ G ∈ gs I, ∀ l, ‖D.toLeaf.out l G I‖ ≤
+  have hout : ∀ I ∈ S, ∀ G ∈ gs I, ∀ l, ‖(D.toLeafQ qG).out l G I‖ ≤
       max (2 * Real.sqrt CF) A.S * Real.sqrt (dyadicGridLength A.G I.1) := by
     intro I hI G _ l
-    refine (D.toLeaf.norm_out_le l G I).trans ?_
+    refine ((D.toLeafQ qG).norm_out_le l G I).trans ?_
     change ‖(if D.u = some l then bf.Ucol fp.Mc l I else bf.basicIn fp.Mc l I)‖ ≤ _
     split_ifs
     · exact (bf.norm_Ucol_le fp.Mc l I).trans
         (mul_le_mul_of_nonneg_right (le_max_right _ _) (Real.sqrt_nonneg _))
     · exact (hbasic I (hS hI) l).trans
         (mul_le_mul_of_nonneg_right (le_max_left _ _) (Real.sqrt_nonneg _))
-  obtain ⟨C, hC, hlen, htwo, hthree, hcap⟩ := D.side_estimate_leaf hq2 hq3 hanc hne hLf hmH hKNd
+  obtain ⟨C, hC, hlen, htwo, hthree, hcap⟩ := D.side_estimate_leaf qG hq2 hq3 hanc hne hLf hmH hKNd
     hKN S hS hroot gs gset hgs Lp Jm Bn k hBn hLp hJm Act hact hMp hcertS huse hNp hτ hpair hCF
-    hnormF hsub hpass hτH hhpass hτ0 n hn hn0 hτr hτH' hSz d₀ hNl hNH hτ₂ hτ₂1 hτ₂' hHed₂ G₀ B
-    hroot' hτ' hτ1 hHed hτN cc hc hk hDm hDb hJc hLs hlin hP Γa Γb ΓU hΓa hΓb hΓU hη hp hp1 hρ
+    hnormF hsub hpass hτH gE hgE hhpass hτ0 n hn hn0 hτr hτH' hSz d₀ hNl hNH hτ₂ hτ₂1 hτ₂' hHed₂
+    G₀ B hroot' hτ' hτ1 hHed hτN cc hc hk hDm hDb hJc hLs hlin hP Γa Γb ΓU hΓa hΓb hΓU hη hp hp1 hρ
     hρ1
-  obtain ⟨C₂, hC₂, hlen₂, hsizes, hmain⟩ := D.core_reduction L hanc hne S hS gs gset hgs k Bn
+  obtain ⟨C₂, hC₂, hlen₂, hsizes, hmain⟩ := D.core_reduction qG L hanc hne S hS gs gset hgs k Bn
     hcertS huse hBn B hroot' hτ' hτ1 hHed hτN cc hc hk hDm hDb hLs hlin hrep
     (le_max_of_le_left (by positivity)) hout C hη htwo hcap
     (B₃ := fun Bc => η ^ (1 - p) * (81 * localFormUniformConstant κ' *
-      max Bc (Real.sqrt (D.Tside Lp Jm CF E cc kk Vl ρ))) ^ p *
-      (D.Tside Lp Jm CF E cc kk Vl ρ ^ (p / 2) * D.Tside Lp Jm CF E cc kk Vl ρ ^ (p / 2) *
-        D.Tside Lp Jm CF E cc kk Vl ρ ^ (p / 2) * dyadicGridLength A.G A.R.1))
+      max Bc (Real.sqrt (D.Tside qG Lp Jm CF E cc kk Vl ρ))) ^ p *
+      (D.Tside qG Lp Jm CF E cc kk Vl ρ ^ (p / 2) * D.Tside qG Lp Jm CF E cc kk Vl ρ ^ (p / 2) *
+        D.Tside qG Lp Jm CF E cc kk Vl ρ ^ (p / 2) * dyadicGridLength A.G A.R.1))
     (fun core err S' hS' Bc hBc hcore => hthree core err S' hS' hBc hcore) hEe hM hρ₂ hρ₂1
-  exact ⟨C, C₂, hC, hlen, hC₂, hlen₂, hsizes, hmain.trans (by linarith)⟩
+  exact ⟨C, C₂, hC, hlen, hC₂, hlen₂, hsizes, hcap, hmain.trans (by linarith)⟩
 
 end SideInput
 

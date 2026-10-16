@@ -501,19 +501,24 @@ structure BasicFamilies where
   P : Fin 4 → Fin 2 → BasicProjection A.G A.R 1
   budget : ∀ l j, (P l j).Ψ.D.budget ≤ A.colBudget
   charts : ∀ l j, (P l j).HasChartsOn ↑A.cells c₀ A.H
+  energy : ∀ l j, (P l j).CellEnergyOn ↑A.cells
   rep : ∀ l, ∀ I ∈ A.cells, ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 →
     A.B l I y = (P l 0).val I y - (P l 1).val I y
 
 variable {A} in
 theorem HasColumnRep.families (h : A.HasColumnRep 1) : Nonempty A.BasicFamilies := by
-  choose P₁ P₂ h₁ h₂ c₁ c₂ hP using h
-  refine ⟨⟨fun l j => ![P₁ l, P₂ l] j, fun l j => ?_, fun l j => ?_, fun l I hI => hP l I hI⟩⟩
+  choose P₁ P₂ h₁ h₂ c₁ c₂ e₁ e₂ hP using h
+  refine ⟨⟨fun l j => ![P₁ l, P₂ l] j, fun l j => ?_, fun l j => ?_, fun l j => ?_,
+    fun l I hI => hP l I hI⟩⟩
   · fin_cases j
     · exact h₁ l
     · exact h₂ l
   · fin_cases j
     · exact c₁ l
     · exact c₂ l
+  · fin_cases j
+    · exact e₁ l
+    · exact e₂ l
 
 /-- The vertex bound `D` of an attempt on the original basic columns: the original columns
 available at a cell number at most `8` column budgets of the setup (blueprint line 1679: at most
@@ -558,6 +563,7 @@ noncomputable def admT : AdmTree bf.Vtx :=
   admTree (G := A.G) (R := A.R) (N := A.treeDepth) bf.occAvail
 
 theorem exists_vchart (x : bf.Vtx) : ∃ p : Σ d, QuadraticChartData d, 1 ≤ p.1 ∧
+    QuadraticChartComplexity (max c₀ (2 * tagKρ)) (max A.H ActiveSetup.padW) p.2 ∧
     (bf.occAvail x.2.1 x.1 →
       QuadraticChartComplexity (max c₀ (2 * tagKρ)) (max A.H ActiveSetup.padW) p.2 ∧
       IsBoundedQuadraticChart p.2 ∧ ∀ y ∈ dyadicGridCell A.G x.2.1.1 x.2.1.2,
@@ -571,12 +577,30 @@ theorem exists_vchart (x : bf.Vtx) : ∃ p : Σ d, QuadraticChartData d, 1 ≤ p
         le_trans (le_max_left _ _) (le_max_right _ _)
       obtain ⟨B', hc, hb, ha, -, -, -⟩ := chart_pad B h2 hW
         (le_trans (le_max_right _ _) (le_max_right _ _))
-      exact ⟨⟨1, B'⟩, le_rfl, fun _ => ⟨quadraticChartComplexity_mono_order hc
-        (le_max_right _ _), hb, fun y hy => by rw [h3 y hy, ha]⟩⟩
-    · exact ⟨⟨d, B⟩, hd, fun _ => ⟨quadraticChartComplexity_mono_order
-        (quadraticChartComplexity_mono h1 (le_max_left _ _)) (le_max_left _ _), h2, h3⟩⟩
-  · exact ⟨⟨1, ⟨fun _ => 0, 0, 0, 0, fun _ => 0, contDiff_const, HasCompactSupport.zero⟩⟩,
-      le_rfl, fun h' => absurd h' h⟩
+      have hcB := quadraticChartComplexity_mono_order hc (le_max_right c₀ (2 * tagKρ))
+      exact ⟨⟨1, B'⟩, le_rfl, hcB, fun _ => ⟨hcB, hb, fun y hy => by rw [h3 y hy, ha]⟩⟩
+    · have hcB := quadraticChartComplexity_mono_order
+        (quadraticChartComplexity_mono h1 (le_max_left A.H ActiveSetup.padW))
+        (le_max_left c₀ (2 * tagKρ))
+      exact ⟨⟨d, B⟩, hd, hcB, fun _ => ⟨hcB, h2, h3⟩⟩
+  · have hW : Real.exp 2 ≤ max A.H ActiveSetup.padW :=
+      le_trans (le_max_left _ _) (le_max_right _ _)
+    have hH0 : 0 < max A.H ActiveSetup.padW := lt_of_lt_of_le (Real.exp_pos 2) hW
+    refine ⟨⟨1, ⟨fun _ => 0, 0, 0, 0, fun _ => 0, contDiff_const, HasCompactSupport.zero⟩⟩,
+      le_rfl, ⟨hW, ?_, fun i j => ?_, fun z hz => (hz rfl).elim, fun m word z => ?_⟩,
+      fun h' => absurd h' h⟩
+    · have h2 : (2 : ℝ) ≤ Real.log (max A.H ActiveSetup.padW) := by
+        rw [Real.le_log_iff_exp_le hH0]; exact hW
+      push_cast
+      linarith
+    · have h1 : (1 : ℝ) ≤ max A.H ActiveSetup.padW :=
+        le_trans (by have := Real.add_one_le_exp (2 : ℝ); linarith) hW
+      simpa [chartRationalHeight] using h1
+    · have h0 : coordinateWordDerivative m (fun _ : Fin 1 → ℝ => (0 : ℂ)) word z = 0 := by
+        simp [coordinateWordDerivative, iteratedFDeriv_fun_zero]
+      change ‖coordinateWordDerivative m (fun _ : Fin 1 → ℝ => (0 : ℂ)) word z‖ ≤ _
+      rw [h0, norm_zero]
+      positivity
 
 /-- The chart of a vertex at its admission cell (a fixed default when unavailable). -/
 noncomputable def vchart (x : bf.Vtx) : Σ d, QuadraticChartData d :=
@@ -586,10 +610,16 @@ theorem vchart_spec (x : bf.Vtx) (h : bf.occAvail x.2.1 x.1) :
     QuadraticChartComplexity (max c₀ (2 * tagKρ)) (max A.H ActiveSetup.padW) (bf.vchart x).2 ∧
       IsBoundedQuadraticChart (bf.vchart x).2 ∧ ∀ y ∈ dyadicGridCell A.G x.2.1.1 x.2.1.2,
         (bf.P x.1.1 x.1.2.1).Ψ.D.scalar x.1.2.2 y = quadraticChartAtom (bf.vchart x).2 y :=
-  (Classical.choose_spec (bf.exists_vchart x)).2 h
+  (Classical.choose_spec (bf.exists_vchart x)).2.2 h
 
 theorem one_le_vchart_dim (x : bf.Vtx) : 1 ≤ (bf.vchart x).1 :=
   (Classical.choose_spec (bf.exists_vchart x)).1
+
+/-- The chart of every vertex (available or not) has the complexity of the setup's charts: the
+default chart of an unavailable vertex is the zero chart of dimension one. -/
+theorem vchart_complexity (x : bf.Vtx) :
+    QuadraticChartComplexity (max c₀ (2 * tagKρ)) (max A.H ActiveSetup.padW) (bf.vchart x).2 :=
+  (Classical.choose_spec (bf.exists_vchart x)).2.1
 
 /-- The normalized tag of a vertex: its slot multiplier `c_l` is removed from the matrix and the
 quadratic coefficient (blueprint line 1677). -/
@@ -2049,34 +2079,35 @@ their slot born at the active cells, with rank and tag of a named test there, pa
 tests; the rank-`r` insertions at one cell number at most `K n_{r-1}`; at every cell lying in at
 most `M_p` active cells the main labels of rank at most `r ≤ L + 5` number at most `n_r`. The
 counts do not involve the edge threshold `H_ed` (blueprint line 1820). -/
-theorem main_closure (fp : bf.FamParams) {cS Dst : ℕ} (hst : SameTagBound κ cS Dst) {HS : ℝ}
+theorem main_closure (fp : bf.FamParams) (Tc : Finset (ℤ × ℤ)) (hTc : Tc ⊆ A.cells)
+    {cS Dst : ℕ} (hst : SameTagBound κ cS Dst) {HS : ℝ}
     (hHS : Real.exp 2 ≤ HS) (W : Fin 4 → ℤ × ℤ → Type*) [∀ l I, Fintype (W l I)]
     (tests : ∀ l I, W l I → MainTest bf.Vtx bf.Lab fp.Mc)
     (ht : ∀ l I w, (tests l I w).t = l)
     (hr : ∀ l I w, 1 ≤ (tests l I w).r ∧ (tests l I w).r ≤ fp.Lc + 5)
-    (hbase : ∀ l, ∀ I ∈ A.cells, ∀ w, MainFresh fp.Mc 0 (tests l I w).base ∧
+    (hbase : ∀ l, ∀ I ∈ Tc, ∀ w, MainFresh fp.Mc 0 (tests l I w).base ∧
       ∀ᵐ y ∂volume, y ∉ dyadicGridCell A.G I.1 I.2 →
         ((tests l I w).base : ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) y = 0)
     {Kt : ℕ} (hKt : ∀ l I, Fintype.card (W l I) ≤ Kt) {Mp : ℕ} (hMp : 1 ≤ Mp)
     {τ₃ : ℝ} (hτ₃ : 0 < τ₃) {Tmax : ℕ} (n : ℕ → ℝ) (hn0 : 2 * A.colBudget ≤ n 0)
     (hratio : ∀ r, (1 + (fp.Lc + 6) * Mp * closureRatio A.famVtxBound Kt fp.mH Tmax
       (Real.exp (Dst * (1 + Real.log HS) ^ Dst)) τ₃) * n r ≤ n (r + 1))
-    (hT : n (fp.Lc + 5) ≤ Tmax) (hMc : A.cells.card * Tmax ≤ fp.Mc) :
+    (hT : n (fp.Lc + 5) ≤ Tmax) (hMc : Tc.card * Tmax ≤ fp.Mc) :
     ∃ cat : Fin 4 → List (CatCol bf.Vtx), ∀ l,
-      (∀ I ∈ A.cells, ∀ w, (tests l I w).Pass A.G (bf.origCols l) I cS HS bf.vtag (A.w I)
+      (∀ I ∈ Tc, ∀ w, (tests l I w).Pass A.G (bf.origCols l) I cS HS bf.vtag (A.w I)
         (catThreshold A.famVtxBound τ₃ n (tests l I w).r) fp.mH (cat l)) ∧
-      (∀ d ∈ cat l, d.birth ∈ A.cells ∧
+      (∀ d ∈ cat l, d.birth ∈ Tc ∧
         (∃ w, d.rank = (tests l d.birth w).r ∧ (tests l d.birth w).M d.tag) ∧
         ∃ R ∈ residueBox (bf.vtag d.tag).dim 9, ∃ γ : ℝ,
           d = templateCol (bf.vtag d.tag) l R γ d.birth d.rank d.tag) ∧
-      (∀ I ∈ A.cells, ∀ r,
+      (∀ I ∈ Tc, ∀ r,
         (((cat l).filter (fun d => decide (d.birth = I ∧ d.rank = r))).length : ℝ) ≤
           closureRatio A.famVtxBound Kt fp.mH Tmax (Real.exp (Dst * (1 + Real.log HS) ^ Dst)) τ₃ *
             n (r - 1)) ∧
-      (∀ I, (A.cells.filter fun I' : ℤ × ℤ =>
+      (∀ I, (Tc.filter fun I' : ℤ × ℤ =>
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp →
         ∀ r ≤ fp.Lc + 5, ((mainLabels A.G fp.Mc (bf.origCols l) (cat l) I r).card : ℝ) ≤ n r) ∧
-      (cat l).length ≤ A.cells.card * Tmax := by
+      (cat l).length ≤ Tc.card * Tmax := by
   classical
   set H₀ := Real.exp (Dst * (1 + Real.log HS) ^ Dst) with hH₀
   set Dv := A.famVtxBound with hDv
@@ -2142,14 +2173,14 @@ theorem main_closure (fp : bf.FamParams) {cS Dst : ℕ} (hst : SameTagBound κ c
           nlinarith
       _ ≤ n (fp.Lc + 5) := hratio (fp.Lc + 4)
       _ ≤ Tmax := hT
-  obtain ⟨L, hnd, hmem, hord⟩ := exists_coarse_first A.G A.cells
-  have hLlen : L.length = A.cells.card := by
+  obtain ⟨L, hnd, hmem, hord⟩ := exists_coarse_first A.G Tc
+  have hLlen : L.length = Tc.card := by
     rw [← List.toFinset_card_of_nodup hnd]
     congr 1
     ext I
     rw [List.mem_toFinset, hmem]
   have h := fun l : Fin 4 => main_tree_closure (O := bf.origCols l) hst hHS (tagOf := bf.vtag)
-    bf.one_le_vchart_dim L hnd hord A.w (fun I hI => A.adm I ((hmem I).mp hI)) (W l) (tests l)
+    bf.one_le_vchart_dim L hnd hord A.w (fun I hI => A.adm I (hTc ((hmem I).mp hI))) (W l) (tests l)
     fp.mH (catThreshold Dv τ₃ n) (fun I w => hτp _) []
     (fun I hI w => ⟨(hbase l I ((hmem I).mp hI) w).1,
       (norm_eq_cellNorm_of_support A.G I _ (hbase l I ((hmem I).mp hI) w).2).le⟩)
@@ -2158,7 +2189,7 @@ theorem main_closure (fp : bf.FamParams) {cS Dst : ℕ} (hst : SameTagBound κ c
   refine ⟨cat, fun l => ?_⟩
   obtain ⟨hpass, hbirth, hcount, hlen⟩ := hcat l
   -- the rank counts at one cell
-  have hcnt : ∀ I ∈ A.cells, ∀ r,
+  have hcnt : ∀ I ∈ Tc, ∀ r,
       (((cat l).filter (fun d => decide (d.birth = I ∧ d.rank = r))).length : ℝ) ≤
         Kc * n (r - 1) := by
     intro I hI r
@@ -2181,7 +2212,7 @@ theorem main_closure (fp : bf.FamParams) {cS Dst : ℕ} (hst : SameTagBound κ c
     rw [ht, ← hrk] at hd'
     exact hd'
   -- the path counts
-  set C := A.cells.filter fun I' : ℤ × ℤ =>
+  set C := Tc.filter fun I' : ℤ × ℤ =>
     dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2 with hC
   have hT' : ∀ d ∈ cat l, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G d.birth.1 d.birth.2 →
       d.rank ≤ r → (d.birth, d.rank) ∈ C ×ˢ Finset.Icc 1 r := by
@@ -2234,28 +2265,29 @@ the cell whose coordinates avoid the fresh helper labels beyond the catalog, hel
 rank `L + 5` born at the active cells close the helper tests at the thresholds
 `τ₃ / (D √n_{L+4})`, with at most `K n_{L+4}` insertions per cell, whenever this allowance stays
 below the trial cap. -/
-theorem helper_closure (fp : bf.FamParams) {cS Dst : ℕ} (hst : SameTagBound κ cS Dst) {HS : ℝ}
+theorem helper_closure (fp : bf.FamParams) (Tc : Finset (ℤ × ℤ)) (hTc : Tc ⊆ A.cells)
+    {cS Dst : ℕ} (hst : SameTagBound κ cS Dst) {HS : ℝ}
     (hHS : Real.exp 2 ≤ HS) (cat : Fin 4 → List (CatCol bf.Vtx)) (W : Fin 4 → ℤ × ℤ → Type*)
     [∀ l I, Fintype (W l I)] (tests : ∀ l I, W l I → MainTest bf.Vtx bf.Lab fp.Mc)
     (ht : ∀ l I w, (tests l I w).t = l) (hr : ∀ l I w, (tests l I w).r = fp.Lc + 5)
-    (hbase : ∀ l, ∀ I ∈ A.cells, ∀ w, MainFresh fp.Mc (cat l).length (tests l I w).base ∧
+    (hbase : ∀ l, ∀ I ∈ Tc, ∀ w, MainFresh fp.Mc (cat l).length (tests l I w).base ∧
       ∀ᵐ y ∂volume, y ∉ dyadicGridCell A.G I.1 I.2 →
         ((tests l I w).base : ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) y = 0)
     {Kt : ℕ} (hKt : ∀ l I, Fintype.card (W l I) ≤ Kt) {τ₃ : ℝ} (hτ₃ : 0 < τ₃) {Tmax : ℕ}
     (n : ℕ → ℝ) (hn : 0 < n (fp.Lc + 4))
     (hcapH : closureRatio A.famVtxBound Kt fp.mH Tmax
       (Real.exp (Dst * (1 + Real.log HS) ^ Dst)) τ₃ * n (fp.Lc + 4) < Tmax)
-    (hMc : ∀ l, (cat l).length + A.cells.card * Tmax ≤ fp.Mc) :
+    (hMc : ∀ l, (cat l).length + Tc.card * Tmax ≤ fp.Mc) :
     ∃ hcat : Fin 4 → List (CatCol bf.Vtx), ∀ l,
-      (∀ I ∈ A.cells, ∀ w, (tests l I w).Pass A.G (bf.origCols l) I cS HS bf.vtag (A.w I)
+      (∀ I ∈ Tc, ∀ w, (tests l I w).Pass A.G (bf.origCols l) I cS HS bf.vtag (A.w I)
         (catThreshold A.famVtxBound τ₃ n (fp.Lc + 5)) fp.mH (cat l ++ hcat l)) ∧
-      (∀ d ∈ hcat l, d.birth ∈ A.cells ∧ d.rank = fp.Lc + 5 ∧ (∃ w, (tests l d.birth w).M d.tag) ∧
+      (∀ d ∈ hcat l, d.birth ∈ Tc ∧ d.rank = fp.Lc + 5 ∧ (∃ w, (tests l d.birth w).M d.tag) ∧
         ∃ R ∈ residueBox (bf.vtag d.tag).dim 9, ∃ γ : ℝ,
           d = templateCol (bf.vtag d.tag) l R γ d.birth d.rank d.tag) ∧
-      (∀ I ∈ A.cells, (((hcat l).filter (fun d => decide (d.birth = I))).length : ℝ) ≤
+      (∀ I ∈ Tc, (((hcat l).filter (fun d => decide (d.birth = I))).length : ℝ) ≤
           closureRatio A.famVtxBound Kt fp.mH Tmax (Real.exp (Dst * (1 + Real.log HS) ^ Dst)) τ₃ *
             n (fp.Lc + 4)) ∧
-      (hcat l).length ≤ A.cells.card * Tmax := by
+      (hcat l).length ≤ Tc.card * Tmax := by
   classical
   set H₀ := Real.exp (Dst * (1 + Real.log HS) ^ Dst) with hH₀
   set Dv := A.famVtxBound with hDv
@@ -2292,14 +2324,14 @@ theorem helper_closure (fp : bf.FamParams) {cS Dst : ℕ} (hst : SameTagBound κ
           Finset.sum_le_sum_of_subset_of_nonneg hsub fun r _ _ => by positivity
       _ ≤ Kc * n (fp.Lc + 4) := by rw [Finset.sum_singleton]; exact hterm l I
       _ < Tmax := hcapH
-  obtain ⟨L, hnd, hmem, hord⟩ := exists_coarse_first A.G A.cells
-  have hLlen : L.length = A.cells.card := by
+  obtain ⟨L, hnd, hmem, hord⟩ := exists_coarse_first A.G Tc
+  have hLlen : L.length = Tc.card := by
     rw [← List.toFinset_card_of_nodup hnd]
     congr 1
     ext I
     rw [List.mem_toFinset, hmem]
   have h := fun l : Fin 4 => main_tree_closure (O := bf.origCols l) hst hHS (tagOf := bf.vtag)
-    bf.one_le_vchart_dim L hnd hord A.w (fun I hI => A.adm I ((hmem I).mp hI)) (W l) (tests l)
+    bf.one_le_vchart_dim L hnd hord A.w (fun I hI => A.adm I (hTc ((hmem I).mp hI))) (W l) (tests l)
     fp.mH (catThreshold Dv τ₃ n) (fun I w => by rw [hr]; exact hτp) (cat l)
     (fun I hI w => ⟨(hbase l I ((hmem I).mp hI) w).1,
       (norm_eq_cellNorm_of_support A.G I _ (hbase l I ((hmem I).mp hI) w).2).le⟩)

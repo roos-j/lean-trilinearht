@@ -2216,19 +2216,20 @@ height, or amplitude choice is a helper base."): for fixed degrees there are `C`
 for `k ≥ k₀` and every attempt with the closure data `exp(k^{O(1)})` (`closure_poly`), at most
 `exp(k^c)` groups, and room for `exp(k^C)` helper insertions per active cell in the main columns:
 the helper tests of rank `L + 5` (all target masks and named histories, `HelperName`) on the
-whole side states `S_{l,G,s}` of the groups (`sideState`, restricted to the active cell) close
-with helper templates such that every main test of ranks at most `L + 4` that passed still passes,
-the ball and cumulative filters are unchanged, and the helper insertions per cell are at most
-`n_{L+5}` with `log n_{L+5} ≤ k^C`. The bases are entire side states, never individual modes. -/
+whole side states of the groups, restricted to the active cell, close with helper templates such
+that every main test of ranks at most `L + 4` that passed still passes, the ball and cumulative
+filters are unchanged, and the helper insertions per cell are at most `n_{L+5}` with
+`log n_{L+5} ≤ k^C`. The bases are entire side states (`S_{l,G,s}`, `sideState_restrict_base`, or
+the whole output of a basic `U` slot), never individual modes; all that is used of them is that
+their restrictions avoid the fresh labels of the slot catalog. -/
 theorem helper_sides (c Dst : ℕ) :
-    ∃ C : ℕ, ∃ k₀ : ℝ, 2 ≤ k₀ ∧ ∀ {k : ℝ}, k₀ ≤ k → ∀ (fp : bf.FamParams) {cS : ℕ}
+    ∃ C : ℕ, ∃ k₀ : ℝ, 2 ≤ k₀ ∧ ∀ {k : ℝ}, k₀ ≤ k → ∀ (fp : bf.FamParams)
+      (Tc : Finset (ℤ × ℤ)), Tc ⊆ A.cells → ∀ {cS : ℕ}
       (_ : SameTagBound κ cS Dst) {HS τ₃ : ℝ} {Mp : ℕ} (ι : Type) [Fintype ι]
       (cat : Fin 4 → List (CatCol bf.Vtx))
       (st : Fin 4 → ι → ℤ × ℤ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
-      (_ : ∀ l G (I : ℤ × ℤ), ∃ (n : ℕ) (Ms : ModeSystem A.G n) (s : List (CatCol bf.Vtx))
-        (mb : bf.MainBudget s) (Gp : bf.Grp) (j : ℕ) (ls : List (ℕ × Bool)) (S : ModeSchedule)
-        (hA : 6 ≤ S.A0) (SP : SideParams) (cf : ℤ × ℤ → Ms.Md → ℂ) (b : ℤ),
-          st l G I = fp.sideState Ms l s mb Gp j ls S hA SP cf b I.1)
+      (_ : ∀ l G (I : ℤ × ℤ), MainFresh fp.Mc (cat l).length (columnL2Restriction
+        (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2) (st l G I)))
       {Wm : Type} (main : Wm → Fin 4 × (ℤ × ℤ) × MainTest bf.Vtx bf.Lab fp.Mc)
       (_ : ∀ i, (main i).2.2.r ≤ fp.Lc + 4 ∧ ∀ l < (main i).2.2.m, (main i).2.2.hr l ≤ fp.Lc + 4)
       (τm : Wm → ℝ)
@@ -2239,10 +2240,10 @@ theorem helper_sides (c Dst : ℕ) :
       Real.exp 2 ≤ HS → Real.log HS ≤ k ^ c → 0 < τ₃ → τ₃⁻¹ ≤ Real.exp (k ^ c) →
       1 ≤ Mp → (Mp : ℝ) ≤ Real.exp (k ^ c) → 2 * A.colBudget ≤ Real.exp (k ^ c) →
       (Fintype.card ι : ℝ) ≤ Real.exp (k ^ c) →
-      (∀ l, ((cat l).length : ℝ) + A.cells.card * Real.exp (k ^ C) ≤ fp.Mc) →
+      (∀ l, ((cat l).length : ℝ) + Tc.card * Real.exp (k ^ C) ≤ fp.Mc) →
       ∃ (n : ℕ → ℝ) (hcat : Fin 4 → List (CatCol bf.Vtx)),
         Real.log (n (fp.Lc + 5)) ≤ k ^ C ∧
-        (∀ l, ∀ I ∈ A.cells, ∀ w : fp.HelperName I ι,
+        (∀ l, ∀ I ∈ Tc, ∀ w : fp.HelperName I ι,
           (fp.helperOf l I (fun G => columnL2Restriction (dyadicGridCell A.G I.1 I.2)
             (dyadicGridCell_measurable A.G I.1 I.2) (st l G I)) w).Pass A.G (bf.origCols l) I cS HS
             bf.vtag (A.w I) (catThreshold A.famVtxBound τ₃ n (fp.Lc + 5)) fp.mH
@@ -2251,12 +2252,16 @@ theorem helper_sides (c Dst : ℕ) :
           (A.w (main i).2.1) (τm i) fp.mH (cat (main i).1 ++ hcat (main i).1)) ∧
         (∀ l I G j, j ≤ 4 → fp.ballFilt l (cat l ++ hcat l) I G j = fp.ballFilt l (cat l) I G j) ∧
         (∀ l I m, fp.cumFilt l (cat l ++ hcat l) I m = fp.cumFilt l (cat l) I m) ∧
-        (∀ l, ∀ I ∈ A.cells,
-          (((hcat l).filter (fun d => decide (d.birth = I))).length : ℝ) ≤ n (fp.Lc + 5)) := by
+        (∀ l, ∀ I ∈ Tc,
+          (((hcat l).filter (fun d => decide (d.birth = I))).length : ℝ) ≤ n (fp.Lc + 5)) ∧
+        (∀ l, ∀ d ∈ hcat l, d.birth ∈ Tc ∧ d.rank = fp.Lc + 5 ∧
+          (∃ M : fp.MaskName d.birth, fp.maskOf d.birth M d.tag) ∧
+          ∃ R ∈ residueBox (bf.vtag d.tag).dim 9, ∃ γ : ℝ,
+            d = templateCol (bf.vtag d.tag) l R γ d.birth d.rank d.tag) := by
   obtain ⟨C, k₀, hk₀, hpoly⟩ := closure_poly (A := A) (bf := bf) c Dst
   refine ⟨C, k₀, hk₀, ?_⟩
-  intro k hk fp cS hst HS τ₃ Mp ι _ cat st hside Wm main hmain τm hpass hL hDv hH hm hHS hlog hτ
-    hτ' hMp1 hMp hcb hι hMc
+  intro k hk fp Tc hTc cS hst HS τ₃ Mp ι _ cat st hside Wm main hmain τm hpass hL hDv hH hm hHS
+    hlog hτ hτ' hMp1 hMp hcb hι hMc
   obtain ⟨Kt, n, Tmax, -, hKh, -, hn0, hgrow, hnT, hcapH, hlogn, hlogT⟩ :=
     hpoly hk fp ι ι hL hDv hH hm hHS hlog hτ hτ' hMp1 hMp hcb hι hι
   -- the path counts are positive and increasing
@@ -2279,12 +2284,12 @@ theorem helper_sides (c Dst : ℕ) :
     have hT0 : 0 < (Tmax : ℝ) := lt_of_lt_of_le (hpos _) hnT
     rw [← Real.exp_log hT0]
     exact Real.exp_le_exp.mpr hlogT
-  have hMc' : ∀ l, (cat l).length + A.cells.card * Tmax ≤ fp.Mc := fun l => by
-    have h2 : ((cat l).length : ℝ) + A.cells.card * Tmax ≤ fp.Mc :=
+  have hMc' : ∀ l, (cat l).length + Tc.card * Tmax ≤ fp.Mc := fun l => by
+    have h2 : ((cat l).length : ℝ) + Tc.card * Tmax ≤ fp.Mc :=
       le_trans (by gcongr) (hMc l)
     exact_mod_cast h2
   -- the helper bases are the side states at the active cells
-  have hbase : ∀ l, ∀ I ∈ A.cells, ∀ w : fp.HelperName I ι,
+  have hbase : ∀ l, ∀ I ∈ Tc, ∀ w : fp.HelperName I ι,
       MainFresh fp.Mc (cat l).length (fp.helperOf l I (fun G => columnL2Restriction
         (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2) (st l G I)) w).base ∧
       ∀ᵐ y ∂volume, y ∉ dyadicGridCell A.G I.1 I.2 →
@@ -2292,17 +2297,22 @@ theorem helper_sides (c Dst : ℕ) :
           (dyadicGridCell_measurable A.G I.1 I.2) (st l G I)) w).base :
             ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) y = 0 := by
     intro l I _ w
-    obtain ⟨n', Ms, s, mb, Gp, j, ls, S, hA, SP, cf, b, he⟩ := hside l w.2.2 I
     simp only [helperOf]
-    rw [he]
-    exact fp.sideState_restrict_base Ms l s mb Gp j ls S hA SP cf b I.1 _ I
-  obtain ⟨hcat, hh1, hh2, hh3, hh4, hh5⟩ := fp.helper_instantiation_main hst hHS cat
+    refine ⟨hside l w.2.2 I, ?_⟩
+    filter_upwards [columnL2Restriction_coeFn (dyadicGridCell A.G I.1 I.2)
+      (dyadicGridCell_measurable A.G I.1 I.2) (st l w.2.2 I)] with y hy hyI
+    rw [hy, Set.indicator_of_notMem hyI]
+  obtain ⟨hcat, hh1, hh2, hh3, hh4, hh5, hh6⟩ := fp.helper_instantiation_main Tc hTc hst hHS cat
     (fun l I => fp.HelperName I ι)
     (fun l I w => fp.helperOf l I (fun G => columnL2Restriction (dyadicGridCell A.G I.1 I.2)
       (dyadicGridCell_measurable A.G I.1 I.2) (st l G I)) w)
     (fun _ _ _ => rfl) (fun _ _ _ => rfl) hbase (fun _ I => hKh I) hτ n (hpos _) hcapH hMc'
     main hmain τm hpass
-  refine ⟨n, hcat, hlogn, hh1, hh2, hh3, hh4, fun l I hI => (hh5 l I hI).trans ?_⟩
+  refine ⟨n, hcat, hlogn, hh1, hh2, hh3, hh4, fun l I hI => (hh5 l I hI).trans ?_,
+    fun l d hd => ?_⟩
+  swap
+  · obtain ⟨h1, h2, ⟨w, hw⟩, h4⟩ := hh6 l d hd
+    exact ⟨h1, h2, ⟨w.1, hw⟩, h4⟩
   -- one insertion allowance is below the next path count
   have hg := hgrow (fp.Lc + 4)
   have hn4 := (hpos (fp.Lc + 4)).le
@@ -3888,16 +3898,33 @@ theorem srcDataM_basic (o : Fin 4) (s : List (CatCol bf.Vtx))
         gcongr
     _ = A.colBudget * Real.sqrt (2 * A.colBudget) * S := by ring
 
+/-- A test name of main rank: target rank and history ranks at most `L + 4` (blueprint lines
+1815 and 1828: the main ranks are `1, …, L + 4`, the rank `L + 5` is reserved for the helper
+tests). -/
+def MainRk {I : ℤ × ℤ} {Bn : Type} (w : fp.TestName I Bn) : Prop :=
+  (w.1 : ℕ) + 1 ≤ fp.Lc + 4 ∧ ∀ i, ((w.2.2.1.2 i).1 : ℕ) ≤ fp.Lc + 4
+
+/-- The layer test names of a target rank at most `L + 4` have main rank (their history ranks
+are cumulative ranks `L - m + 1 ≤ L + 1`). -/
+theorem mainRk_layerName (I : ℤ × ℤ) (r : Fin (fp.Lc + 5)) (Mt : fp.MaskName I)
+    (ls : List (ℕ × Bool)) (hls : ∀ e ∈ ls, e.1 ≤ fp.Lc) (hlen : ls.length ≤ fp.mH)
+    (c : Fin ls.length → Fin fp.P) (hr : (r : ℕ) + 1 ≤ fp.Lc + 4) :
+    fp.MainRk (fp.layerName I r Mt ls hls hlen c) := by
+  refine ⟨hr, fun i => ?_⟩
+  change fp.crank ls[(i : ℕ)].1 ≤ fp.Lc + 4
+  unfold crank
+  omega
+
 open Classical in
 /-- Blueprint lines 1807-1811 and 2254 on a positive chain (the main test of a transfer step):
 if the named main tests of the slot pass, the residual of a single named target projection of
 rank `r + 1` on the chain value of the basic argument passes at level `τ_{r+1} ‖z‖_{2,I}`. -/
 theorem chain_passM (l : Fin 4) (s : List (CatCol bf.Vtx)) {I : ℤ × ℤ} (hI : I ∈ A.cells)
     (z : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {τ : ℕ → ℝ}
-    (hpass : ∀ w : fp.TestName I Unit, (fp.testOf l I (fun _ => z) w).Pass A.G (bf.origCols l) I
-      A.csrc A.Hsrc bf.vtag (A.w I) (τ (fp.testOf l I (fun _ => z) w).r) fp.mH s)
+    (hpass : ∀ w : fp.TestName I Unit, fp.MainRk w → (fp.testOf l I (fun _ => z) w).Pass A.G
+      (bf.origCols l) I A.csrc A.Hsrc bf.vtag (A.w I) (τ (fp.testOf l I (fun _ => z) w).r) fp.mH s)
     (ch : List ℕ) (hch : ∀ m ∈ ch, m ≤ fp.Lc) (hlen : ch.length ≤ fp.mH)
-    (r : Fin (fp.Lc + 5)) (Mt : fp.MaskName I) :
+    (r : Fin (fp.Lc + 5)) (hr : (r : ℕ) + 1 ≤ fp.Lc + 4) (Mt : fp.MaskName I) :
     CellPass (A.adm I hI) A.csrc A.Hsrc bf.vtag l (fp.maskOf I Mt)
       (chainOp (fun m => fp.cumFilt l s I m) ch z -
         mainProj A.G fp.Mc (bf.origCols l) s I ((r : ℕ) + 1) (fp.maskOf I Mt)
@@ -3914,7 +3941,8 @@ theorem chain_passM (l : Fin 4) (s : List (CatCol bf.Vtx)) {I : ℤ × ℤ} (hI 
       List.length_reverse]
     exact hlen
   have h := fp.layer_residOK (A.adm I hI) l s z (ActiveSetup.AttemptParams.chainHist ch 0) hls
-    hlen' r (fun _ => Mt) (τ := τ ((r : ℕ) + 1)) (fun pc => hpass _)
+    hlen' r (fun _ => Mt) (τ := τ ((r : ℕ) + 1))
+    (fun pc => hpass _ (fp.mainRk_layerName I r Mt _ hls hlen' pc.2 hr))
   rw [opAvg_const fp.hP, layerOp_chainHist, List.drop_zero] at h
   refine ResidPass.cellPass (A.adm I hI) ?_
   exact h.mono (fun x hx _ => hx) le_rfl
@@ -4033,20 +4061,20 @@ variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.
   (fp : bf.FamParams)
 
 open Classical in
-/-- `chain_passM` with the target rank `R`, `1 ≤ R ≤ L + 5`. -/
+/-- `chain_passM` with the target rank `R`, `1 ≤ R ≤ L + 4`. -/
 theorem chain_passR (l : Fin 4) (s : List (CatCol bf.Vtx)) {I : ℤ × ℤ} (hI : I ∈ A.cells)
     (z : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) {τ : ℕ → ℝ}
-    (hpass : ∀ w : fp.TestName I Unit, (fp.testOf l I (fun _ => z) w).Pass A.G (bf.origCols l) I
-      A.csrc A.Hsrc bf.vtag (A.w I) (τ (fp.testOf l I (fun _ => z) w).r) fp.mH s)
+    (hpass : ∀ w : fp.TestName I Unit, fp.MainRk w → (fp.testOf l I (fun _ => z) w).Pass A.G
+      (bf.origCols l) I A.csrc A.Hsrc bf.vtag (A.w I) (τ (fp.testOf l I (fun _ => z) w).r) fp.mH s)
     (ch : List ℕ) (hch : ∀ m ∈ ch, m ≤ fp.Lc) (hlen : ch.length ≤ fp.mH)
-    {R : ℕ} (hR1 : 1 ≤ R) (hR : R ≤ fp.Lc + 5) (Mt : fp.MaskName I) :
+    {R : ℕ} (hR1 : 1 ≤ R) (hR : R ≤ fp.Lc + 4) (Mt : fp.MaskName I) :
     CellPass (A.adm I hI) A.csrc A.Hsrc bf.vtag l (fp.maskOf I Mt)
       (chainOp (fun m => fp.cumFilt l s I m) ch z -
         mainProj A.G fp.Mc (bf.origCols l) s I R (fp.maskOf I Mt)
           (chainOp (fun m => fp.cumFilt l s I m) ch z))
       (τ R * cellNorm A.G I z) := by
   obtain ⟨R', rfl⟩ : ∃ R', R = R' + 1 := ⟨R - 1, by omega⟩
-  exact fp.chain_passM l s hI z hpass ch hch hlen ⟨R', by omega⟩ Mt
+  exact fp.chain_passM l s hI z hpass ch hch hlen ⟨R', by omega⟩ (by simp only; omega) Mt
 
 /-- The far step bound with canceled thresholds: if the helper threshold cancels the main
 expansion of the removed filter, the main threshold of the removed rank cancels the expansion of
@@ -4090,7 +4118,7 @@ theorem leaf_farM (cat : Fin 4 → List (CatCol bf.Vtx))
     (htag : ∀ l, ∀ e ∈ cat l, bf.occAvail e.tag.2.1 e.tag.1)
     {I : ℤ × ℤ} (hI : I ∈ A.cells) {a b c d : Fin 4} (hca : c ≠ a) (hcd : c ≠ d) (hcb : c ≠ b)
     (hda : d ≠ a) (hdb : d ≠ b) (hab : a ≠ b) {τ : ℕ → ℝ}
-    (hpass : ∀ l (w : fp.TestName I Unit),
+    (hpass : ∀ l, (l = c ∨ l = d) → ∀ w : fp.TestName I Unit, fp.MainRk w →
       (fp.testOf l I (fun _ => bf.basicIn fp.Mc l I) w).Pass A.G (bf.origCols l) I A.csrc A.Hsrc
         bf.vtag (A.w I) (τ (fp.testOf l I (fun _ => bf.basicIn fp.Mc l I) w).r) fp.mH (cat l))
     {Bh : Type} (base : Bh → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (b₀ : Bh) {τH : ℝ} (hτH : 0 ≤ τH)
@@ -4169,7 +4197,7 @@ theorem leaf_farM (cat : Fin 4 → List (CatCol bf.Vtx))
       have hmm : m = m' := by omega
       exact htt' m hm (hmm ▸ hm')
   -- the main tests of the removed filters
-  have hmainL : ∀ (l : Fin 4) (j : ℕ), 1 ≤ j → j ≤ 4 → ∀ u : List ℕ,
+  have hmainL : ∀ (l : Fin 4), (l = c ∨ l = d) → ∀ (j : ℕ), 1 ≤ j → j ≤ 4 → ∀ u : List ℕ,
       (∀ m ∈ u, 1 ≤ m ∧ m ≤ fp.Lc) → u.length ≤ fp.mH → ∀ f xs',
       (f :: xs') <:+ fp.slotFiltM G j I u → fp.FiltOK I f ∧
         ∀ k : Fin fp.P, CellPass (A.adm I hI) A.csrc A.Hsrc bf.vtag l (f.2 k)
@@ -4177,7 +4205,7 @@ theorem leaf_farM (cat : Fin 4 → List (CatCol bf.Vtx))
             mainProj A.G fp.Mc (bf.origCols l) (cat l) I f.1 (f.2 k)
               (applyAll (xs'.map (fp.filtAvgM l (cat l) I)) (bf.basicIn fp.Mc l I)))
           (τ f.1 * Sz) := by
-    intro l j hj1 hj4 u hu hul f xs' hf
+    intro l hlcd j hj1 hj4 u hu hul f xs' hf
     have hlev : ∀ R, τ R * cellNorm A.G I (bf.basicIn fp.Mc l I) ≤ τ R * Sz := fun R =>
       mul_le_mul_of_nonneg_left ((cellNorm_le A.G I _).trans (hSzl l)) (hτ0 R)
     have hu' : ∀ m ∈ u, m ≤ fp.Lc := fun m hm => (hu m hm).2
@@ -4185,7 +4213,7 @@ theorem leaf_farM (cat : Fin 4 → List (CatCol bf.Vtx))
     · refine ⟨fp.filtOK_ball I hv₀ hs₀ hj4, fun p => ?_⟩
       rw [fp.applyAll_cumM]
       obtain ⟨Mt, hMt⟩ := fp.bmask_named I hv₀ hj4 (p := (p : ℕ) + 1) (by have := p.2; omega)
-      have h := fp.chain_passR l (cat l) hI _ (hpass l) u hu' hul (R := fp.brank j)
+      have h := fp.chain_passR l (cat l) hI _ (hpass l hlcd) u hu' hul (R := fp.brank j)
         (by unfold brank; omega) (by unfold brank; omega) Mt
       rw [hMt] at h
       exact h.mono (hlev _)
@@ -4195,7 +4223,7 @@ theorem leaf_farM (cat : Fin 4 → List (CatCol bf.Vtx))
       rw [fp.applyAll_cumM]
       obtain ⟨Mt, hMt⟩ := fp.cmask_named I (m := u.getD k 0) (p := (p : ℕ) + 1) (hu' _ hmem)
         (by have := p.2; omega)
-      have h := fp.chain_passR l (cat l) hI _ (hpass l) (u.drop (k + 1))
+      have h := fp.chain_passR l (cat l) hI _ (hpass l hlcd) (u.drop (k + 1))
         (fun m hm => hu' m (List.mem_of_mem_drop hm))
         (by rw [List.length_drop]; omega) (R := fp.crank (u.getD k 0))
         (by unfold crank; omega) (by unfold crank; omega) Mt
@@ -4261,7 +4289,8 @@ theorem leaf_farM (cat : Fin 4 → List (CatCol bf.Vtx))
     linarith
   refine fp.chainPair_farM cat hT htag hI hca hcd hcb hda hdb hab (fp.Lc + 5) _ _ _ _
     (fun R => τ R * Sz) (fun R => mul_nonneg (hτ0 R) hSz.le)
-    (hmainL c jc hjc hjc4 t ht (by omega)) (hmainL d jd hjd hjd4 t' ht' (by omega)) hdist
+    (hmainL c (Or.inl rfl) jc hjc hjc4 t ht (by omega))
+    (hmainL d (Or.inr rfl) jd hjd hjd4 t' ht' (by omega)) hdist
     (fun f hf => (hrank jc hjc hjc4 t ht f hf).1) (fun g hg => (hrank jd hjd hjd4 t' ht' g hg).1)
     (fun R => A.colBudget * Real.sqrt (n R) * Sz) hSz (hsrcL c jc hjc hjc4 t ht)
     (hsrcL d jd hjd hjd4 t' ht') (hSzl c) (hSzl d) x (by positivity) hhelp d₀
@@ -4518,7 +4547,7 @@ theorem leaf_far_search (cat : Fin 4 → List (CatCol bf.Vtx))
     (htag : ∀ l, ∀ e ∈ cat l, bf.occAvail e.tag.2.1 e.tag.1)
     {I : ℤ × ℤ} (hI : I ∈ A.cells) {a b c d : Fin 4} (hca : c ≠ a) (hcd : c ≠ d) (hcb : c ≠ b)
     (hda : d ≠ a) (hdb : d ≠ b) (hab : a ≠ b) {τ : ℕ → ℝ}
-    (hpass : ∀ l (w : fp.TestName I Unit),
+    (hpass : ∀ l, (l = c ∨ l = d) → ∀ w : fp.TestName I Unit, fp.MainRk w →
       (fp.testOf l I (fun _ => bf.basicIn fp.Mc l I) w).Pass A.G (bf.origCols l) I A.csrc A.Hsrc
         bf.vtag (A.w I) (τ (fp.testOf l I (fun _ => bf.basicIn fp.Mc l I) w).r) fp.mH (cat l))
     {Bh : Type} (base : Bh → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (b₀ : Bh) {τH : ℝ} (hτH : 0 ≤ τH)

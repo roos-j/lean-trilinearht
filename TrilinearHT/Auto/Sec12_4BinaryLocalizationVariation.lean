@@ -4091,9 +4091,10 @@ the main count (line 1854), and `H_ed` is large for it (lem:graph). The catalogs
 the closure counts of lem:closure (ranks at most `L + 5`, at most `n_r` main labels of rank at most
 `r` at cells in at most `M_p` active cells, length at most `#cells · T`), which give the main
 budget of line 1859. -/
-theorem attempt_localization {Dst : ℕ} (hst : SameTagBound κ A.csrc Dst)
+theorem attempt_localization (Tc : Finset (ℤ × ℤ)) (hTc : Tc ⊆ A.cells) {Dst : ℕ}
+    (hst : SameTagBound κ A.csrc Dst)
     (x : ℤ × ℤ → Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc))
-    (hxb : ∀ l, ∀ I ∈ A.cells, MainFresh fp.Mc 0 (x I l) ∧
+    (hxb : ∀ l, ∀ I ∈ Tc, MainFresh fp.Mc 0 (x I l) ∧
       ∀ᵐ y ∂volume, y ∉ dyadicGridCell A.G I.1 I.2 →
         (x I l : ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) y = 0)
     {Kt : ℕ} (hKt : ∀ I, Fintype.card (fp.TestName I Unit) ≤ Kt) {Mp : ℕ} (hMp : 1 ≤ Mp)
@@ -4101,25 +4102,26 @@ theorem attempt_localization {Dst : ℕ} (hst : SameTagBound κ A.csrc Dst)
     (hn0 : 2 * A.colBudget ≤ n 0)
     (hratio : ∀ r, (1 + (fp.Lc + 6) * Mp * closureRatio A.famVtxBound Kt fp.mH Tmax
       (Real.exp (Dst * (1 + Real.log A.Hsrc) ^ Dst)) τ₃) * n r ≤ n (r + 1))
-    (hT : n (fp.Lc + 5) ≤ Tmax) (hMc : A.cells.card * Tmax ≤ fp.Mc)
+    (hT : n (fp.Lc + 5) ≤ Tmax) (hMc : Tc.card * Tmax ≤ fp.Mc)
     {fuel : ℕ} {up₀ : Fin 4} (hL1 : 1 ≤ fp.Lc) (hfuel : fp.Lc - 1 < 2 ^ fuel)
     (hmH : fuel ≤ fp.mH)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc +
       Real.log (τ₃ / ((A.famVtxBound : ℝ) ^ 2 * n (fp.Lc + 1)))⁻¹) ^ A.Dg) ≤ fp.Hed)
     (d : bf.Vtx) :
     ∃ cat : Fin 4 → List (CatCol bf.Vtx),
-      (∀ l, (∀ I ∈ A.cells, ∀ w : fp.TestName I Unit, (fp.testOf l I (fun _ : Unit => x I l) w).Pass
+      (∀ l, (∀ I ∈ Tc, ∀ w : fp.TestName I Unit, (fp.testOf l I (fun _ : Unit => x I l) w).Pass
           A.G (bf.origCols l) I A.csrc A.Hsrc bf.vtag (A.w I)
             (catThreshold A.famVtxBound τ₃ n (fp.testOf l I (fun _ : Unit => x I l) w).r) fp.mH
               (cat l)) ∧
-        (∀ e ∈ cat l, e.birth ∈ A.cells ∧ e.rank ≤ fp.Lc + 5 ∧
+        (∀ e ∈ cat l, e.birth ∈ Tc ∧ e.rank ≤ fp.Lc + 5 ∧
           ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
             e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag) ∧
-        (∀ I, (A.cells.filter fun I' : ℤ × ℤ =>
+        (∀ e ∈ cat l, bf.occAvail e.tag.2.1 e.tag.1) ∧
+        (∀ I, (Tc.filter fun I' : ℤ × ℤ =>
             dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp →
           ∀ r ≤ fp.Lc + 5, ((mainLabels A.G fp.Mc (bf.origCols l) (cat l) I r).card : ℝ) ≤ n r) ∧
-        (cat l).length ≤ A.cells.card * Tmax) ∧
-      ∀ cs ⊆ A.cells, (∀ I ∈ cs, (A.cells.filter fun I' : ℤ × ℤ =>
+        (cat l).length ≤ Tc.card * Tmax) ∧
+      ∀ cs ⊆ Tc, (∀ I ∈ cs, (Tc.filter fun I' : ℤ × ℤ =>
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp) →
         (∀ I ∈ cs, ∀ w ∈ bf.admT.X (bf.admAt I),
           fp.K.Success (fp.K.colorData (bf.admT.st (bf.admAt I)) w)) →
@@ -4138,12 +4140,23 @@ theorem attempt_localization {Dst : ℕ} (hst : SameTagBound κ A.csrc Dst)
             (∑ I ∈ cs, dyadicGridLength A.G I.1) * ((searchList fuel fp.Lc up₀).length *
               (9 * ((A.famVtxBound : ℝ) + 1) * τ₃ * Sz ^ 4)) := by
   classical
-  obtain ⟨cat, hcat⟩ := fp.main_closure hst A.exp_two_le_Hsrc (fun _ I => fp.TestName I Unit)
+  obtain ⟨cat, hcat⟩ := fp.main_closure Tc hTc hst A.exp_two_le_Hsrc (fun _ I => fp.TestName I Unit)
     (fun l I => fp.testOf l I (fun _ => x I l)) (fun l I w => fp.testOf_t l I _ w)
     (fun l I w => fp.testOf_r l I _ w) (fun l I hI w => hxb l I hI) (fun _ I => hKt I) hMp hτ₃ n
     hn0 hratio hT hMc
+  have htag0 : ∀ l, ∀ e ∈ cat l, bf.occAvail e.tag.2.1 e.tag.1 := by
+    intro l e he
+    obtain ⟨hb, ⟨w, -, hM⟩, -⟩ := (hcat l).2.1 e he
+    refine bf.occAvail_of_mem (c := bf.admAt e.birth) ?_
+    rcases hw : w.2.1 with ⟨m, h⟩ | ⟨v, h⟩
+    · have hM' : fp.maskOf e.birth w.2.1 e.tag := hM
+      rw [hw] at hM'
+      exact hM'.1
+    · have hM' : fp.maskOf e.birth w.2.1 e.tag := hM
+      rw [hw] at hM'
+      exact hM'.1
   refine ⟨cat, fun l => ⟨(hcat l).1, fun e he => ⟨((hcat l).2.1 e he).1, ?_,
-    ((hcat l).2.1 e he).2.2⟩, (hcat l).2.2.2.1, (hcat l).2.2.2.2⟩, ?_⟩
+    ((hcat l).2.1 e he).2.2⟩, htag0 l, (hcat l).2.2.2.1, (hcat l).2.2.2.2⟩, ?_⟩
   · obtain ⟨w, hw, -⟩ := ((hcat l).2.1 e he).2.1
     rw [hw]
     exact (fp.testOf_r l e.birth _ w).2
@@ -4197,7 +4210,8 @@ theorem attempt_localization {Dst : ℕ} (hst : SameTagBound κ A.csrc Dst)
   have hτnn : ∀ r, 0 ≤ catThreshold A.famVtxBound τ₃ n r := fun r => by
     unfold catThreshold; positivity
   -- the localized sum
-  have h := fp.localized_sum cat hT' htag cs hcs x (τ := catThreshold A.famVtxBound τ₃ n)
+  have h := fp.localized_sum cat hT' htag cs (hcs.trans hTc) x
+    (τ := catThreshold A.famVtxBound τ₃ n)
     (fun I hI l w => (hcat l).1 I (hcs hI) w) hsucc hLcol
     (fun I hI => by
       obtain ⟨cb, hcb'⟩ := hbasic I hI
@@ -7782,7 +7796,8 @@ theorem main_wr1 (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (p : Fin fp.P) (x : ι × ι' → ColumnL2 (bf.RLab fp.Mc s)) :
@@ -7858,22 +7873,24 @@ theorem main_wr1 (l : Fin 4) (s : List (CatCol bf.Vtx))
         have := hrt i; simp only at hId; omega)
       exact ⟨hanc I hIc _ hIJ (ancAt_subset (A.sub I hIc) (by omega)), hIJ⟩
     · exact ⟨hIc, subset_rfl⟩
+  have hcu : ∀ G, ∀ q ∈ T G, fp.Cert k (grp G) (u G q) := by
+    intro G q hq
+    obtain ⟨hq1, -⟩ := Finset.mem_product.mp hq
+    obtain ⟨-, hI⟩ := Finset.mem_sigma.mp hq1
+    exact (hcert G q.1.1 q.1.2 hI).mono fp (hu G q hq).2
   refine fp.mainRange_wholeRanges l s hT htag d grp hgrp k T u (fun G q hq => (hu G q hq).1)
     (fun _ _ => fp.brank j) (fun _ _ => fp.bbase j + (p + 1)) (fun _ _ => by have := p.2; omega)
-    w ?_ ?_ hroot hτ hτ1 hHed ?_
+    w ?_ hcu hroot hτ hτ1 hHed ?_
   · intro G q _
     rcases q with ⟨⟨i, I⟩, b⟩
     cases b
     · exact Submodule.neg_mem _ (Submodule.starProjection_apply_mem _ _)
     · exact Submodule.starProjection_apply_mem _ _
-  · intro G q hq
-    obtain ⟨hq1, -⟩ := Finset.mem_product.mp hq
-    obtain ⟨-, hI⟩ := Finset.mem_sigma.mp hq1
-    exact (hcert G q.1.1 q.1.2 hI).mono fp (hu G q hq).2
   · intro y
     refine le_trans (Finset.card_le_card fun q hq => ?_) (hN y)
     obtain ⟨-, e, he, hy, hv⟩ := Finset.mem_filter.mp hq
-    exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, u q.1 e, (hu q.1 e he).1, p, hy, hv⟩
+    exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, u q.1 e, (hu q.1 e he).1, ⟨k, hcu q.1 e he⟩,
+      p, hy, hv⟩
 
 open Classical in
 /-- `eq:whole-ranges` for the outer ball rows at a common right endpoint on the main columns
@@ -7891,7 +7908,8 @@ theorem main_wr2 (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (p : Fin fp.P) (x : ι → ColumnL2 (bf.RLab fp.Mc s)) :
@@ -7931,7 +7949,8 @@ theorem main_wr2 (l : Fin 4) (s : List (CatCol bf.Vtx))
   intro y
   refine le_trans (Finset.card_le_card fun q hq => ?_) (hN y)
   obtain ⟨-, e, he, hy, hv⟩ := Finset.mem_filter.mp hq
-  exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, e, (hEc q.1 e he).1, p, hy, hv⟩
+  exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, e, (hEc q.1 e he).1, ⟨k, hcert q.1 e he⟩, p, hy,
+    hv⟩
 
 end ActiveSetup.BasicFamilies.FamParams
 
@@ -8021,7 +8040,8 @@ theorem main_variation (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (z : ColumnL2 (bf.RLab fp.Mc s)) :
@@ -8292,7 +8312,8 @@ theorem main_joint (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (w : ColumnL2 (bf.RLab fp.Mc s)) :
@@ -8360,7 +8381,8 @@ theorem main_variation_basic (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (jb : Fin 2) (Z : ColumnL2 (bf.P l jb).V) :
@@ -8688,7 +8710,8 @@ theorem basic_variation (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N) :
     ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
@@ -9037,7 +9060,8 @@ theorem basic_onetime (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N) :
     ∑ G, ‖columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
@@ -9112,7 +9136,8 @@ theorem basic_variation_overlap (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N) :
     ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
@@ -9168,7 +9193,8 @@ theorem basic_variation_G0 (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)

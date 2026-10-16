@@ -2672,7 +2672,8 @@ theorem basic_variation_ballP (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)

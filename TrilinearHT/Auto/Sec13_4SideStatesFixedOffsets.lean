@@ -4129,8 +4129,9 @@ theorem leaf_linear_mass (hK1 : 1 ≤ D.S.K) (cat : Fin 4 → List (CatCol A.Vtx
     ((leafAt ap.fuel ap.Lc ap.up₀ s₀).layers l) P₁.Ψ P₂.Ψ P₁.grid P₂.grid P₁.root_sub
     P₂.root_sub (hr P₁) (hr P₂) _ _ (inst := inst) hfrozen' (by positivity) hrows hcert hPH
     hroot hτ hτ1 hHed hN
-  exact linear_side_of_events Ms D.S D.hA D.SP Bs (fun G => D.cells l (grp G)) hdepth
-    (fun G => D.c l (grp G)) (inst := inst) hδ hΛ hΞ hQ0 Kf hbox hε hεw hD0 hD1 hD2 hκ hκ0 hev
+  exact linear_side_of_events Ms D.S D.hA D.SP (fun _ => D.S.Q0) (fun _ => ⟨hQ0, le_rfl⟩) Bs
+    (fun G => D.cells l (grp G)) hdepth (fun G => D.c l (grp G)) (inst := inst) hδ hΛ hΞ hQ0 Kf
+    hbox hε hεw hD0 hD1 hD2 hκ hκ0 hev
 
 end LeafSplit
 
@@ -6213,7 +6214,8 @@ theorem basic_variation_overlap_G0 (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)
@@ -6266,7 +6268,8 @@ theorem rolling_budget (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)
@@ -6395,6 +6398,163 @@ theorem rolling_budget (l : Fin 4) (s : List (CatCol bf.Vtx))
           4 * K * (8 * dyadicGridLength A.G A.R.1) := add_le_add hlate hearly
     _ = K * (20 * G0 + 32) * dyadicGridLength A.G A.R.1 := by push_cast; ring
 
+
+open Classical in
+/-- Blueprint lines 2393-2399 and 2415-2419 (eq:stack-energy, "its base term uses
+Lemma variation on `[u_b, b]`, whose overlap over blocks is bounded"): at the block starts
+`t ∈ K ℕ` (blocks `[b, b + K)` starting on `R.1 + K ℤ`, `u_b = b - 4K`, the frozen output zero
+before the attempt) the rolling block inputs `Z_{l,G,b} - Z_{l,G,u_b}` on certified cells have total
+square at most `(20 G₀ + 32) |R|`: the intervals `[u_b, b]` of block starts are colored by `b / K`
+modulo `5` (`eq:variation` per color), and at most four block starts lie in the first `4K` depths
+(one-time projection estimate). -/
+theorem rolling_budget_blocks (l : Fin 4) (s : List (CatCol bf.Vtx))
+    (hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
+      e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
+    (htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx) (mb : bf.MainBudget s)
+    (hanc : A.AncClosed) (hne : A.cells.Nonempty) {ι : Type*} [Fintype ι]
+    (grp : ι → bf.Grp) (hgrp : Function.Injective grp) (k j : ℕ)
+    (hPH : fp.bbase j + fp.P ≤ fp.Hmax) (ls : List (ℕ × Bool)) {K : ℕ} (hK : 1 ≤ K)
+    (Sd : Finset ℕ) (hSd : ∀ t ∈ Sd, t ≤ A.treeDepth) (hSdK : ∀ t ∈ Sd, K ∣ t)
+    (Ec : ι → ℕ → Finset (ℤ × ℤ))
+    (hEc : ∀ G t, ∀ I ∈ Ec G t, I ∈ A.cells ∧ I.1 = A.R.1 + t)
+    (hcert : ∀ G t, ∀ I ∈ Ec G t, fp.Cert k (grp G) I)
+    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
+    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
+    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
+    {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
+          (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
+    (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)
+    (hDm : Real.log (2 * mb.B) ≤ kk ^ c) (hDb : Real.log (2 * A.colBudget) ≤ kk ^ c)
+    (hn : (ls.length : ℝ) ≤ c * (Real.log kk + 1)) :
+    ∑ t ∈ Sd, ∑ G, ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOut l s mb (grp G) j ls (A.R.1 + t) -
+          fp.frozenZ l s mb (grp G) j ls (A.R.1 + ((K * (t / K) : ℕ) : ℤ) - 4 * K))‖ ^ 2 ≤
+      (20 * Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
+        (1 + Real.log (2 * kk)) ^ 2) + 32) * dyadicGridLength A.G A.R.1 := by
+  set G0 := Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
+    (1 + Real.log (2 * kk)) ^ 2)
+  have hG0 : 0 ≤ G0 := (Real.exp_pos _).le
+  have hR := dyadicGridLength_pos A.G A.R.1
+  set F : ℕ → ℝ := fun t => ∑ G, ‖columnL2Restriction (⋃ I ∈ Ec G t,
+    dyadicGridCell A.G I.1 I.2) (Finset.measurableSet_biUnion _ fun I _ =>
+      dyadicGridCell_measurable A.G I.1 I.2)
+      (fp.basicOut l s mb (grp G) j ls (A.R.1 + t) -
+        fp.frozenZ l s mb (grp G) j ls (A.R.1 + ((K * (t / K) : ℕ) : ℤ) - 4 * K))‖ ^ 2
+  change ∑ t ∈ Sd, F t ≤ _
+  rw [← Finset.sum_filter_add_sum_filter_not Sd (fun t => 4 * K ≤ t)]
+  -- the early depths: the frozen output vanishes (one-time estimate)
+  have hearly : ∑ t ∈ Sd.filter (fun t => ¬ 4 * K ≤ t), F t ≤
+      4 * (8 * dyadicGridLength A.G A.R.1) := by
+    have hone : ∀ t ∈ Sd.filter (fun t => ¬ 4 * K ≤ t), F t ≤ 8 * dyadicGridLength A.G A.R.1 := by
+      intro t ht
+      have ht4 : t < 4 * K := not_le.mp (Finset.mem_filter.mp ht).2
+      have hz : ∀ G, fp.frozenZ l s mb (grp G) j ls (A.R.1 + ((K * (t / K) : ℕ) : ℤ) - 4 * K) =
+          0 := by
+        intro G
+        have h1 : K * (t / K) < 4 * K := lt_of_le_of_lt (Nat.mul_div_le t K) ht4
+        have h2 : (((K * (t / K) : ℕ) : ℤ)) < 4 * K := by exact_mod_cast h1
+        simp only [frozenZ]
+        exact ite_eq_left_iff.mpr fun h => absurd (by omega) h
+      simp only [F, hz, sub_zero]
+      refine (fp.basic_onetime l s hT htag d mb hne grp hgrp k j hPH ls t (fun G => Ec G t)
+        (fun G => hEc G t) (fun G => hcert G t) hroot hτ hτ1 hHed hN).trans ?_
+      rw [Fin.sum_univ_two]
+      have h0 := famInput_energy (bf := bf) l 0
+      have h1 := famInput_energy (bf := bf) l 1
+      have hC : 1 + τ * N * A.colBudget ^ 2 ≤ 2 := by linarith
+      have hC0 : 0 ≤ 1 + τ * N * A.colBudget ^ 2 := by positivity
+      nlinarith [mul_le_mul hC h0 (sq_nonneg _) (by norm_num : (0 : ℝ) ≤ 2),
+        mul_le_mul hC h1 (sq_nonneg _) (by norm_num : (0 : ℝ) ≤ 2)]
+    have hcard : (Sd.filter fun t => ¬ 4 * K ≤ t).card ≤ 4 := by
+      have hsub : (Sd.filter fun t => ¬ 4 * K ≤ t) ⊆ (Finset.range 4).image fun m => K * m := by
+        intro t ht
+        obtain ⟨htS, ht4⟩ := Finset.mem_filter.mp ht
+        obtain ⟨m, rfl⟩ := hSdK t htS
+        refine Finset.mem_image.mpr ⟨m, Finset.mem_range.mpr ?_, rfl⟩
+        by_contra hm
+        have := Nat.mul_le_mul_left K (not_lt.mp hm)
+        exact ht4 (by linarith)
+      exact (Finset.card_le_card hsub).trans (Finset.card_image_le.trans (Finset.card_range 4).le)
+    calc ∑ t ∈ Sd.filter (fun t => ¬ 4 * K ≤ t), F t
+        ≤ ∑ _t ∈ Sd.filter (fun t => ¬ 4 * K ≤ t), 8 * dyadicGridLength A.G A.R.1 :=
+          Finset.sum_le_sum hone
+      _ = (Sd.filter fun t => ¬ 4 * K ≤ t).card * (8 * dyadicGridLength A.G A.R.1) := by
+          rw [Finset.sum_const, nsmul_eq_mul]
+      _ ≤ 4 * (8 * dyadicGridLength A.G A.R.1) := by
+          gcongr
+          exact_mod_cast hcard
+  -- the later block starts: `eq:variation` with intervals colored by `b / K` modulo `5`
+  have hlate : ∑ t ∈ Sd.filter (fun t => 4 * K ≤ t), F t ≤
+      (5 : ℕ) * (G0 * (4 * dyadicGridLength A.G A.R.1)) := by
+    set ι' := {t // t ∈ Sd.filter fun t => 4 * K ≤ t}
+    have hK5 : 0 < 5 * K := by omega
+    have hrt : ∀ i : ι', K * (i.1 / K) - 4 * K ≤ i.1 := fun i =>
+      le_trans (Nat.sub_le _ _) (Nat.mul_div_le _ _)
+    have hz : ∀ (i : ι') G, fp.frozenZ l s mb (grp G) j ls
+        (A.R.1 + ((K * (i.1 / K) : ℕ) : ℤ) - 4 * K) =
+          fp.basicOut l s mb (grp G) j ls (A.R.1 + ((K * (i.1 / K) - 4 * K : ℕ) : ℤ)) := by
+      intro i G
+      have h4 : 4 * K ≤ i.1 := (Finset.mem_filter.mp i.2).2
+      have h1 : 4 * K ≤ K * (i.1 / K) := by
+        have := Nat.mul_le_mul_left K (Nat.le_div_iff_mul_le hK |>.mpr (by linarith : 4 * K ≤ i.1))
+        linarith
+      have h2 : (((K * (i.1 / K) - 4 * K : ℕ) : ℤ)) = ((K * (i.1 / K) : ℕ) : ℤ) - 4 * K := by
+        push_cast [h1]; ring
+      have hlt : ¬ A.R.1 + ((K * (i.1 / K) : ℕ) : ℤ) - 4 * K < A.R.1 := by
+        push_cast at h2 ⊢; omega
+      simp only [frozenZ, hlt, ite_false, h2]
+      congr 1; ring
+    have hdis : ∀ i i' : ι', i ≠ i' → (⟨(i.1 / K) % 5, Nat.mod_lt _ (by norm_num)⟩ : Fin 5) =
+        ⟨(i'.1 / K) % 5, Nat.mod_lt _ (by norm_num)⟩ →
+        Disjoint (Finset.Ioc (K * (i.1 / K) - 4 * K) i.1)
+          (Finset.Ioc (K * (i'.1 / K) - 4 * K) i'.1) := by
+      intro i i' hne hcol
+      have hm : (i.1 / K) % 5 = (i'.1 / K) % 5 := congrArg Fin.val hcol
+      obtain ⟨a, ha⟩ := hSdK i.1 (Finset.mem_filter.mp i.2).1
+      obtain ⟨b, hb⟩ := hSdK i'.1 (Finset.mem_filter.mp i'.2).1
+      have hia : i.1 / K = a := by rw [ha]; exact Nat.mul_div_cancel_left a hK
+      have hib : i'.1 / K = b := by rw [hb]; exact Nat.mul_div_cancel_left b hK
+      rw [hia, hib] at hm
+      have hab : a ≠ b := fun h => hne (Subtype.ext (by rw [ha, hb, h]))
+      have key : ∀ x y : ℕ, x < y → x % 5 = y % 5 → x + 5 ≤ y := by
+        intro x y hxy hxy'
+        omega
+      rw [Finset.disjoint_left]
+      intro x hx hx'
+      rw [Finset.mem_Ioc, hia, ← ha] at hx
+      rw [Finset.mem_Ioc, hib, ← hb] at hx'
+      rcases lt_or_gt_of_ne hab with h | h
+      · have h5 := key _ _ h hm
+        have : K * a + 5 * K ≤ K * b := by nlinarith
+        omega
+      · have h5 := key _ _ h hm.symm
+        have : K * b + 5 * K ≤ K * a := by nlinarith
+        omega
+    have hb := fp.basic_variation_overlap_G0 (ι' := ι') l s hT htag d mb hanc hne grp hgrp k j hPH
+      ls (fun i => K * (i.1 / K) - 4 * K) (fun i => i.1) hrt
+      (fun i => ⟨(i.1 / K) % 5, Nat.mod_lt _ (by norm_num)⟩) hdis
+      (fun i => hSd i.1 (Finset.mem_filter.mp i.2).1) (fun G i => Ec G i.1)
+      (fun G i => hEc G i.1) (fun G i => hcert G i.1) hroot hτ hτ1 hHed hN hτN c hc hk hDm hDb hn
+    calc ∑ t ∈ Sd.filter (fun t => 4 * K ≤ t), F t = ∑ i : ι', F i.1 :=
+          (Finset.sum_coe_sort _ F).symm
+      _ = ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2.1, dyadicGridCell A.G I.1 I.2)
+          (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+          (fp.basicOut l s mb (grp q.1) j ls (A.R.1 + q.2.1) -
+            fp.basicOut l s mb (grp q.1) j ls (A.R.1 + ((K * (q.2.1 / K) - 4 * K : ℕ) : ℤ)))‖ ^
+            2 := by
+          rw [Fintype.sum_prod_type_right]
+          refine Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun G _ => ?_
+          rw [hz i G]
+      _ ≤ _ := hb
+  calc ∑ t ∈ Sd.filter (fun t => 4 * K ≤ t), F t + ∑ t ∈ Sd.filter (fun t => ¬ 4 * K ≤ t), F t
+      ≤ (5 : ℕ) * (G0 * (4 * dyadicGridLength A.G A.R.1)) +
+          4 * (8 * dyadicGridLength A.G A.R.1) := add_le_add hlate hearly
+    _ = (20 * G0 + 32) * dyadicGridLength A.G A.R.1 := by push_cast; ring
+
 end ActiveSetup.BasicFamilies.FamParams
 
 namespace ActiveSetup.BasicFamilies.FamParams
@@ -6419,7 +6579,8 @@ theorem uslot_budget (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (w : ℕ → ColumnL2 (bf.RLab fp.Mc s)) {CU : ℝ}
@@ -6453,7 +6614,7 @@ theorem sideState_budget (l : Fin 4) (s : List (CatCol bf.Vtx))
     (hanc : A.AncClosed) (hne : A.cells.Nonempty) {ι : Type*} [Fintype ι]
     (grp : ι → bf.Grp) (hgrp : Function.Injective grp) (k j : ℕ)
     (hPH : fp.bbase j + fp.P ≤ fp.Hmax) (ls : List (ℕ × Bool)) (S : ModeSchedule)
-    (hA : 6 ≤ S.A0) (SP : SideParams) (hK : 1 ≤ S.K) {n : ℕ} (Ms : ι → ModeSystem A.G n)
+    (hA : 6 ≤ S.A0) (SP : SideParams) (hK : 1 ≤ S.K) {n : ℕ} (Ms : ι → ModeSystem A.G n) (q : ι → ℕ)
     (c : ∀ G, ℤ → ℤ × ℤ → (Ms G).Md → ℂ)
     (Sd : Finset ℕ) (hSd : ∀ t ∈ Sd, t ≤ A.treeDepth) (Ec : ι → ℕ → Finset (ℤ × ℤ))
     (hEc : ∀ G t, ∀ I ∈ Ec G t, I ∈ A.cells ∧ I.1 = A.R.1 + t)
@@ -6462,7 +6623,8 @@ theorem sideState_budget (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (cc : ℕ) (hcc : 1 ≤ cc) {kk : ℝ} (hk : 1 ≤ kk)
@@ -6470,24 +6632,25 @@ theorem sideState_budget (l : Fin 4) (s : List (CatCol bf.Vtx))
     (hn : (ls.length : ℝ) ≤ cc * (Real.log kk + 1)) :
     ∑ t ∈ Sd, ∑ G, ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
         (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
-        (fp.sideState (Ms G) l s mb (grp G) j ls S hA SP
+        (fp.sideState (Ms G) l s mb (grp G) j ls (S.withQ0 (q G)) hA SP
           (c G (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)))
           (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)) (A.R.1 + t))‖ ^ 2 ≤
       2 * (S.K * (20 * Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 3) *
         (1 + Real.log (2 * kk)) ^ 2) + 32) * dyadicGridLength A.G A.R.1) +
       2 * (S.K * ∑ b ∈ Sd.image (fun t => S.K * (t / S.K)), ∑ G,
-        ‖(Ms G).blockSide S hA SP (A.R.1 + (b : ℤ)) (fp.retainedV (grp G) (A.R.1 + (b : ℤ)) S.K)
+        ‖(Ms G).blockSide (S.withQ0 (q G)) hA SP (A.R.1 + (b : ℤ)) (fp.retainedV (grp G) (A.R.1 +
+            (b : ℤ)) S.K)
           (c G (A.R.1 + (b : ℤ)))‖ ^ 2) := by
   have hroll := fp.rolling_budget l s hT htag d mb hanc hne grp hgrp k j hPH ls hK Sd hSd Ec hEc
     hcert hroot hτ hτ1 hHed hN hτN cc hcc hk hDm hDb hn
-  set V : ι → ℕ → ℝ := fun G b => ‖(Ms G).blockSide S hA SP (A.R.1 + (b : ℤ))
+  set V : ι → ℕ → ℝ := fun G b => ‖(Ms G).blockSide (S.withQ0 (q G)) hA SP (A.R.1 + (b : ℤ))
     (fp.retainedV (grp G) (A.R.1 + (b : ℤ)) S.K) (c G (A.R.1 + (b : ℤ)))‖ ^ 2
   have hV := sum_block_le Sd (K := S.K) (by omega) (fun b => ∑ G, V G b)
     (fun b => Finset.sum_nonneg fun G _ => sq_nonneg _)
   -- each term: the rolling part and the side subtotal
   have hterm : ∀ t G, ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
       (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
-      (fp.sideState (Ms G) l s mb (grp G) j ls S hA SP
+      (fp.sideState (Ms G) l s mb (grp G) j ls (S.withQ0 (q G)) hA SP
         (c G (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)))
         (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)) (A.R.1 + t))‖ ^ 2 ≤
       2 * ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
@@ -6501,14 +6664,15 @@ theorem sideState_budget (l : Fin 4) (s : List (CatCol bf.Vtx))
       Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2
     set X := fp.basicOut l s mb (grp G) j ls (A.R.1 + t) -
       fp.frozenZ l s mb (grp G) j ls (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ) - 4 * S.K)
-    set Vb := (Ms G).blockSide S hA SP (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ))
+    set Vb := (Ms G).blockSide (S.withQ0 (q G)) hA SP (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ))
       (fp.retainedV (grp G) (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)) S.K)
       (c G (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)))
-    have e : fp.sideState (Ms G) l s mb (grp G) j ls S hA SP
+    have e : fp.sideState (Ms G) l s mb (grp G) j ls (S.withQ0 (q G)) hA SP
         (c G (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)))
         (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)) (A.R.1 + t) =
         fp.physMain (bf.Lab ⊕ Fin fp.Mc) X + fp.physMain (Ms G).Md Vb := by
       unfold sideState
+      simp only [ModeSchedule.withQ0_K]
       rw [map_sub]
     have h1 : ‖columnL2Restriction E hE (fp.physMain (bf.Lab ⊕ Fin fp.Mc) X)‖ ≤
         ‖columnL2Restriction E hE X‖ := by
@@ -6544,6 +6708,116 @@ theorem sideState_budget (l : Fin 4) (s : List (CatCol bf.Vtx))
         refine add_le_add (mul_le_mul_of_nonneg_left hroll (by norm_num))
           (mul_le_mul_of_nonneg_left (le_of_eq_of_le ?_ hV) (by norm_num))
         rfl
+
+
+open Classical in
+/-- Blueprint lines 2393-2399 and 2415-2419 (eq:stack-energy) for the block inputs of a basic `B`
+role: at the block starts `t ∈ K ℕ` the side states are the block inputs
+`W_{l,G,b} = Z_b - Z_{u_b} + V_{l,G,b}`, and on certified cells
+`Σ_{b,G} ‖1_E W_{l,G,b}‖² ≤ 2 (20 G₀ + 32) |R| + 2 Σ_{b,G} ‖V_{l,G,b}‖²`: the rolling block inputs
+by `rolling_budget_blocks` (bounded overlap of the intervals `[u_b, b]`) and each fixed
+`V_{l,G,b}` once. -/
+theorem sideState_budget_blocks (l : Fin 4) (s : List (CatCol bf.Vtx))
+    (hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
+      e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
+    (htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx) (mb : bf.MainBudget s)
+    (hanc : A.AncClosed) (hne : A.cells.Nonempty) {ι : Type*} [Fintype ι]
+    (grp : ι → bf.Grp) (hgrp : Function.Injective grp) (k j : ℕ)
+    (hPH : fp.bbase j + fp.P ≤ fp.Hmax) (ls : List (ℕ × Bool)) (S : ModeSchedule)
+    (hA : 6 ≤ S.A0) (SP : SideParams) (hK : 1 ≤ S.K) {n : ℕ} (Ms : ι → ModeSystem A.G n) (q : ι → ℕ)
+    (c : ∀ G, ℤ → ℤ × ℤ → (Ms G).Md → ℂ)
+    (Sd : Finset ℕ) (hSd : ∀ t ∈ Sd, t ≤ A.treeDepth) (hSdK : ∀ t ∈ Sd, S.K ∣ t)
+    (Ec : ι → ℕ → Finset (ℤ × ℤ))
+    (hEc : ∀ G t, ∀ I ∈ Ec G t, I ∈ A.cells ∧ I.1 = A.R.1 + t)
+    (hcert : ∀ G t, ∀ I ∈ Ec G t, fp.Cert k (grp G) I)
+    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
+    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
+    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
+    {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
+          (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
+    (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (cc : ℕ) (hcc : 1 ≤ cc) {kk : ℝ} (hk : 1 ≤ kk)
+    (hDm : Real.log (2 * mb.B) ≤ kk ^ cc) (hDb : Real.log (2 * A.colBudget) ≤ kk ^ cc)
+    (hn : (ls.length : ℝ) ≤ cc * (Real.log kk + 1)) :
+    ∑ t ∈ Sd, ∑ G, ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.sideState (Ms G) l s mb (grp G) j ls (S.withQ0 (q G)) hA SP
+          (c G (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)))
+          (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)) (A.R.1 + t))‖ ^ 2 ≤
+      2 * ((20 * Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 3) *
+        (1 + Real.log (2 * kk)) ^ 2) + 32) * dyadicGridLength A.G A.R.1) +
+      2 * (∑ b ∈ Sd, ∑ G,
+        ‖(Ms G).blockSide (S.withQ0 (q G)) hA SP (A.R.1 + (b : ℤ)) (fp.retainedV (grp G) (A.R.1 +
+            (b : ℤ)) S.K)
+          (c G (A.R.1 + (b : ℤ)))‖ ^ 2) := by
+  have hroll := fp.rolling_budget_blocks l s hT htag d mb hanc hne grp hgrp k j hPH ls hK Sd hSd
+    hSdK Ec hEc hcert hroot hτ hτ1 hHed hN hτN cc hcc hk hDm hDb hn
+  set V : ι → ℕ → ℝ := fun G b => ‖(Ms G).blockSide (S.withQ0 (q G)) hA SP (A.R.1 + (b : ℤ))
+    (fp.retainedV (grp G) (A.R.1 + (b : ℤ)) S.K) (c G (A.R.1 + (b : ℤ)))‖ ^ 2
+  -- each term: the rolling part and the side subtotal
+  have hterm : ∀ t G, ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
+      (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+      (fp.sideState (Ms G) l s mb (grp G) j ls (S.withQ0 (q G)) hA SP
+        (c G (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)))
+        (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)) (A.R.1 + t))‖ ^ 2 ≤
+      2 * ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOut l s mb (grp G) j ls (A.R.1 + t) -
+          fp.frozenZ l s mb (grp G) j ls (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ) - 4 * S.K))‖ ^ 2 +
+        2 * V G (S.K * (t / S.K)) := by
+    intro t G
+    set E := ⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2
+    have hE : MeasurableSet E :=
+      Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2
+    set X := fp.basicOut l s mb (grp G) j ls (A.R.1 + t) -
+      fp.frozenZ l s mb (grp G) j ls (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ) - 4 * S.K)
+    set Vb := (Ms G).blockSide (S.withQ0 (q G)) hA SP (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ))
+      (fp.retainedV (grp G) (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)) S.K)
+      (c G (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)))
+    have e : fp.sideState (Ms G) l s mb (grp G) j ls (S.withQ0 (q G)) hA SP
+        (c G (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)))
+        (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ)) (A.R.1 + t) =
+        fp.physMain (bf.Lab ⊕ Fin fp.Mc) X + fp.physMain (Ms G).Md Vb := by
+      unfold sideState
+      simp only [ModeSchedule.withQ0_K]
+      rw [map_sub]
+    have h1 : ‖columnL2Restriction E hE (fp.physMain (bf.Lab ⊕ Fin fp.Mc) X)‖ ≤
+        ‖columnL2Restriction E hE X‖ := by
+      rw [← physEmbed_restrict]; exact norm_physEmbed_apply_le _
+    have h2 : ‖columnL2Restriction E hE (fp.physMain (Ms G).Md Vb)‖ ≤ ‖Vb‖ := by
+      rw [← physEmbed_restrict]
+      refine (norm_physEmbed_apply_le _).trans ?_
+      have := columnL2Restriction_norm_sq_le E hE Vb
+      exact (pow_le_pow_iff_left₀ (norm_nonneg _) (norm_nonneg _) two_ne_zero).mp this
+    have hV' : V G (S.K * (t / S.K)) = ‖Vb‖ ^ 2 := by
+      simp only [V, Vb]
+    rw [e, map_add, hV']
+    have htri := norm_add_le (columnL2Restriction E hE (fp.physMain (bf.Lab ⊕ Fin fp.Mc) X))
+      (columnL2Restriction E hE (fp.physMain (Ms G).Md Vb))
+    have ha := norm_nonneg (columnL2Restriction E hE X)
+    have hb := norm_nonneg Vb
+    nlinarith [sq_nonneg (‖columnL2Restriction E hE X‖ - ‖Vb‖),
+      norm_nonneg (columnL2Restriction E hE (fp.physMain (bf.Lab ⊕ Fin fp.Mc) X) +
+        columnL2Restriction E hE (fp.physMain (Ms G).Md Vb))]
+  calc _ ≤ ∑ t ∈ Sd, ∑ G, (2 * ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOut l s mb (grp G) j ls (A.R.1 + t) -
+          fp.frozenZ l s mb (grp G) j ls (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ) - 4 * S.K))‖ ^ 2 +
+        2 * V G (S.K * (t / S.K))) :=
+        Finset.sum_le_sum fun t _ => Finset.sum_le_sum fun G _ => hterm t G
+    _ = 2 * ∑ t ∈ Sd, ∑ G, ‖columnL2Restriction (⋃ I ∈ Ec G t, dyadicGridCell A.G I.1 I.2)
+        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
+        (fp.basicOut l s mb (grp G) j ls (A.R.1 + t) -
+          fp.frozenZ l s mb (grp G) j ls (A.R.1 + ((S.K * (t / S.K) : ℕ) : ℤ) - 4 * S.K))‖ ^ 2 +
+        2 * ∑ t ∈ Sd, ∑ G, V G (S.K * (t / S.K)) := by
+        simp only [Finset.sum_add_distrib, Finset.mul_sum]
+    _ ≤ _ := by
+        refine add_le_add (mul_le_mul_of_nonneg_left hroll (by norm_num)) (le_of_eq ?_)
+        congr 1
+        refine Finset.sum_congr rfl fun t ht => ?_
+        rw [Nat.mul_div_cancel' (hSdK t ht)]
 
 end ActiveSetup.BasicFamilies.FamParams
 
@@ -7026,40 +7300,45 @@ on the extended catalogs, every main test of ranks at most `L + 4` that passed s
 the ball filters of the levels `j ≤ 4` and the cumulative filters are unchanged (so are the main
 projections, offsets and side states built from them); the insertions per cell are counted as in
 `lem:closure` (`helper_closure`). -/
-theorem helper_instantiation_main {cS Dst : ℕ} (hst : SameTagBound κ cS Dst) {HS : ℝ}
+theorem helper_instantiation_main (Tc : Finset (ℤ × ℤ)) (hTc : Tc ⊆ A.cells) {cS Dst : ℕ}
+    (hst : SameTagBound κ cS Dst) {HS : ℝ}
     (hHS : Real.exp 2 ≤ HS) (cat : Fin 4 → List (CatCol bf.Vtx)) (W : Fin 4 → ℤ × ℤ → Type*)
     [∀ l I, Fintype (W l I)] (tests : ∀ l I, W l I → MainTest bf.Vtx bf.Lab fp.Mc)
     (ht : ∀ l I w, (tests l I w).t = l) (hr : ∀ l I w, (tests l I w).r = fp.Lc + 5)
-    (hbase : ∀ l, ∀ I ∈ A.cells, ∀ w, MainFresh fp.Mc (cat l).length (tests l I w).base ∧
+    (hbase : ∀ l, ∀ I ∈ Tc, ∀ w, MainFresh fp.Mc (cat l).length (tests l I w).base ∧
       ∀ᵐ y ∂volume, y ∉ dyadicGridCell A.G I.1 I.2 →
         ((tests l I w).base : ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) y = 0)
     {Kt : ℕ} (hKt : ∀ l I, Fintype.card (W l I) ≤ Kt) {τ₃ : ℝ} (hτ₃ : 0 < τ₃) {Tmax : ℕ}
     (n : ℕ → ℝ) (hn : 0 < n (fp.Lc + 4))
     (hcapH : closureRatio A.famVtxBound Kt fp.mH Tmax
       (Real.exp (Dst * (1 + Real.log HS) ^ Dst)) τ₃ * n (fp.Lc + 4) < Tmax)
-    (hMc : ∀ l, (cat l).length + A.cells.card * Tmax ≤ fp.Mc)
+    (hMc : ∀ l, (cat l).length + Tc.card * Tmax ≤ fp.Mc)
     {Wm : Type*} (main : Wm → Fin 4 × (ℤ × ℤ) × MainTest bf.Vtx bf.Lab fp.Mc)
     (hmain : ∀ i, (main i).2.2.r ≤ fp.Lc + 4 ∧ ∀ l < (main i).2.2.m, (main i).2.2.hr l ≤ fp.Lc + 4)
     (τm : Wm → ℝ)
     (hpass : ∀ i, (main i).2.2.Pass A.G (bf.origCols (main i).1) (main i).2.1 cS HS bf.vtag
       (A.w (main i).2.1) (τm i) fp.mH (cat (main i).1)) :
     ∃ hcat : Fin 4 → List (CatCol bf.Vtx),
-      (∀ l, ∀ I ∈ A.cells, ∀ w, (tests l I w).Pass A.G (bf.origCols l) I cS HS bf.vtag (A.w I)
+      (∀ l, ∀ I ∈ Tc, ∀ w, (tests l I w).Pass A.G (bf.origCols l) I cS HS bf.vtag (A.w I)
         (catThreshold A.famVtxBound τ₃ n (fp.Lc + 5)) fp.mH (cat l ++ hcat l)) ∧
       (∀ i, (main i).2.2.Pass A.G (bf.origCols (main i).1) (main i).2.1 cS HS bf.vtag
         (A.w (main i).2.1) (τm i) fp.mH (cat (main i).1 ++ hcat (main i).1)) ∧
       (∀ l I G j, j ≤ 4 → fp.ballFilt l (cat l ++ hcat l) I G j = fp.ballFilt l (cat l) I G j) ∧
       (∀ l I m, fp.cumFilt l (cat l ++ hcat l) I m = fp.cumFilt l (cat l) I m) ∧
-      (∀ l, ∀ I ∈ A.cells, (((hcat l).filter (fun d => decide (d.birth = I))).length : ℝ) ≤
+      (∀ l, ∀ I ∈ Tc, (((hcat l).filter (fun d => decide (d.birth = I))).length : ℝ) ≤
           closureRatio A.famVtxBound Kt fp.mH Tmax (Real.exp (Dst * (1 + Real.log HS) ^ Dst)) τ₃ *
-            n (fp.Lc + 4)) := by
-  obtain ⟨hcat, hh⟩ := fp.helper_closure hst hHS cat W tests ht hr hbase hKt hτ₃ n hn hcapH hMc
+            n (fp.Lc + 4)) ∧
+      (∀ l, ∀ d ∈ hcat l, d.birth ∈ Tc ∧ d.rank = fp.Lc + 5 ∧ (∃ w, (tests l d.birth w).M d.tag) ∧
+        ∃ R ∈ residueBox (bf.vtag d.tag).dim 9, ∃ γ : ℝ,
+          d = templateCol (bf.vtag d.tag) l R γ d.birth d.rank d.tag) := by
+  obtain ⟨hcat, hh⟩ := fp.helper_closure Tc hTc hst hHS cat W tests ht hr hbase hKt hτ₃ n hn hcapH
+    hMc
   have hrk : ∀ l, ∀ d ∈ hcat l, fp.hrank ≤ d.rank := fun l d hd => by
     rw [((hh l).2.1 d hd).2.1]; rfl
   refine ⟨hcat, fun l => (hh l).1, fun i => ?_, fun l I G j hj =>
     fp.ballFilt_append_helper l (cat l) (hcat l) I G hj (hrk l),
     fun l I m => fp.cumFilt_append_helper l (cat l) (hcat l) I m (hrk l),
-    fun l => (hh l).2.2.1⟩
+    fun l => (hh l).2.2.1, fun l => (hh l).2.1⟩
   refine ((main i).2.2.pass_append_highRank (G := A.G) (O := bf.origCols (main i).1) _ cS HS
     bf.vtag _ _ fp.mH _ _ fun d hd => ?_).mpr (hpass i)
   have h5 := hrk (main i).1 d hd

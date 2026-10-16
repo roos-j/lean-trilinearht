@@ -4652,6 +4652,7 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
       ∃ (Md : Type) (_ : Fintype Md) (L : LiftData (bf.Lab ⊕ Fin fp.Mc) Md)
         (ψ : Md → ℝ → ℂ),
         (∀ Φ, L.εP Φ = mainWeight fp.Mc (bf.origCols l) Φ) ∧ L.δ = δc ∧ (∀ m, 0 < L.εM m) ∧
+        (∀ m, L.εM m ≤ L.εP (L.own m)) ∧
         (∀ m, (L.εM m)⁻¹ ≤ A.colBudget ^ 2 * (Real.exp (D * X ^ D) ^ 2 + 1)) ∧
         (∀ y, ∑ Φ, ‖L.q Φ y‖ ^ 2 / L.εP Φ ≤ δc ^ 2 * N * A.colBudget ^ 2) ∧
         (∀ y, L.s y = ((centerCut (bf.vtag z) δ ρ y : ℝ) : ℂ) ^ 2) ∧
@@ -4842,6 +4843,11 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
     simp only [εM]
     rw [mul_inv, inv_inv]
     exact mul_le_mul (hwinv _) (by linarith [hcoef2 m.1]) (by positivity) (by positivity)
+  have hεMle : ∀ m, εM m ≤ w m.1.1.1 := fun m => by
+    simp only [εM]
+    refine mul_le_of_le_one_right (hw _).le (inv_le_one_of_one_le₀ ?_)
+    have := Finset.sum_nonneg (fun i (_ : i ∈ Finset.univ) => sq_nonneg ‖coef m.1 i‖)
+    linarith
   have hweights : ∀ Φ y, ∑ m ∈ Finset.univ.filter
       (fun m : (Σ k : {k // k ∈ K}, Ny k) => m.1.1.1 = Φ), εM m * ‖am m y‖ ^ 2 ≤ w Φ := by
     intro Φ y
@@ -4949,7 +4955,8 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
       q_sum := fun y => (hqsum y).trans hδcN
       εM_nonneg := fun m => (hεMpos m).le
       weights := hweights }, ψ,
-    fun _ => rfl, rfl, hεMpos, hεMinv, hqsum, fun _ => rfl, hψm, ?_, hqform, ?_, hcoefsum, ?_,
+    fun _ => rfl, rfl, hεMpos, hεMle, hεMinv, hqsum, fun _ => rfl, hψm, ?_, hqform, ?_, hcoefsum,
+    ?_,
     fun y => ?_⟩
   · intro Φ y hy
     have hy' : y ∉ E Φ := fun h => by
@@ -6919,13 +6926,54 @@ variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.
 
 /-! ### The enlarged budget `D_*` and the common cutoff `B_*` (blueprint line 1944) -/
 
+/-- The height bound of the key differences of the modes of every group (the bound `B_σ` of
+`exists_mainModeSystem`), `max(1, B (1 + 4 (2 d_B + 1) max(1, 4B/δ_c)))` at the largest curvature
+bound `B = exp(D X_max^D)`. -/
+noncomputable def keyHgt (D dB : ℕ) (H δc : ℝ) : ℝ :=
+  max 1 (Real.exp (D * fp.Xmax dB H ^ D) * (1 + 4 * (2 * dB + 1) *
+    max 1 (4 * Real.exp (D * fp.Xmax dB H ^ D) / δc)))
+
+/-- The heights of the rescaled differences of mode differences (blueprint line 1934: `D_*` covers
+the rational heights of `eq:mode-differences` and `Q₀`): `2 (Q₀ (3 B_σ²)²)² + 1` with
+`Q₀ ≤ H_ed^(d_B²) + 1`. -/
+noncomputable def hgtStar (D dB : ℕ) (H δc : ℝ) : ℝ :=
+  2 * ((fp.Hed ^ (dB * dB) + 1) * (3 * (fp.keyHgt D dB H δc * fp.keyHgt D dB H δc) ^ 2)) ^ 2 + 1
+
+theorem one_le_keyHgt (D dB : ℕ) (H δc : ℝ) : 1 ≤ fp.keyHgt D dB H δc := le_max_left _ _
+
+theorem one_le_hgtStar (D dB : ℕ) (H δc : ℝ) : 1 ≤ fp.hgtStar D dB H δc := by
+  unfold hgtStar; have := sq_nonneg ((fp.Hed ^ (dB * dB) + 1) *
+    (3 * (fp.keyHgt D dB H δc * fp.keyHgt D dB H δc) ^ 2)); linarith
+
+/-- The key heights and the clearing bound are at most `modeStar + 1`. -/
+theorem keyHgt_le_modeStar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) (hHed : 2 ≤ fp.Hed) (_hH : 1 ≤ H)
+    (_hδc : 0 < δc) (hN0 : 0 ≤ N) :
+    fp.keyHgt D dB H δc ≤ fp.modeStar D dB H δc N k + 1 ∧
+      fp.Hed ^ (dB * dB) + 1 ≤ fp.modeStar D dB H δc N k + 1 := by
+  set Bm := Real.exp (D * fp.Xmax dB H ^ D)
+  have hBm : 0 < Bm := Real.exp_pos _
+  have hmax : 0 ≤ max 1 (4 * Bm / δc) := le_trans zero_le_one (le_max_left _ _)
+  have hcb : (2 : ℝ) ≤ A.colBudget := by
+    have := A.Dc_nonneg; unfold ActiveSetup.colBudget
+    have : (0 : ℝ) ≤ Fintype.card A.L * (1 + A.Dc) := by positivity
+    linarith
+  have h1 : (0 : ℝ) ≤ A.famVtxBound * (fp.K.potMax A.famVtxBound + 1) * (N + 1) *
+      (Bm * (4 * max 1 (4 * Bm / δc) + 1) ^ (4 * dB)) := by positivity
+  have h2 : (0 : ℝ) ≤ A.colBudget ^ 2 * (Bm ^ 2 + 1) := by positivity
+  have h3 : (0 : ℝ) ≤ (Real.sqrt N + 1) * A.colBudget * Bm := by positivity
+  have h4 : (0 : ℝ) ≤ Bm * (1 + 4 * (2 * dB + 1) * max 1 (4 * Bm / δc)) := by positivity
+  have h5 : (0 : ℝ) ≤ fp.Hed ^ (dB * dB) := pow_nonneg (by linarith) _
+  have h6 := Real.exp_pos k
+  unfold keyHgt modeStar
+  refine ⟨max_le (by linarith) (by linarith), by linarith⟩
+
 /-- Blueprint line 1944 ("enlarge `D_*` to cover these full Fourier norms, including `(ζ^ρ)²`"):
 the budget `modeStar` of line 1934 plus the full Fourier norm bounds of the gauge multipliers
 (enlarged cutoff `δ/2`, centers of dimension at most `d_B`, `Q₀ ≤ H_ed^(d_B²)`, entries at most
 `H_ed`) and of the squared gauge `(ζ^ρ)²` (cutoff `δ`). -/
 noncomputable def modeStarG (D dB : ℕ) (H δc N k δ : ℝ) : ℝ :=
   fp.modeStar D dB H δc N k + gaugeMultNorm dB (fp.Hed ^ (dB * dB)) fp.Hed (δ / 2) +
-    gaugeSqNorm dB δ
+    gaugeSqNorm dB δ + fp.hgtStar D dB H δc
 
 theorem gaugeMultNorm_nonneg (d : ℕ) {Q0 Cm δ : ℝ} (hδ : 0 < δ) (hQ0 : 0 ≤ Q0) (hCm : 0 ≤ Cm) :
     0 ≤ gaugeMultNorm d Q0 Cm δ := by
@@ -6949,14 +6997,17 @@ theorem le_modeStarG (D dB : ℕ) {H δc N : ℝ} (k : ℝ) {δ : ℝ} (hδ : 0 
     Real.exp k ≤ fp.modeStarG D dB H δc N k δ ∧
       fp.modeStar D dB H δc N k ≤ fp.modeStarG D dB H δc N k δ ∧
       gaugeMultNorm dB (fp.Hed ^ (dB * dB)) fp.Hed (δ / 2) ≤ fp.modeStarG D dB H δc N k δ ∧
-      gaugeSqNorm dB δ ≤ fp.modeStarG D dB H δc N k δ := by
+      gaugeSqNorm dB δ ≤ fp.modeStarG D dB H δc N k δ ∧
+      fp.hgtStar D dB H δc ≤ fp.modeStarG D dB H δc N k δ := by
   obtain ⟨hk, -⟩ := fp.le_modeStar D dB k hHed hH hδc hN0 (le_refl (0 : ℤ)) (Nat.zero_le 4)
   have h1 := gaugeMultNorm_nonneg dB (Q0 := fp.Hed ^ (dB * dB)) (Cm := fp.Hed) (half_pos hδ)
     (pow_nonneg (by linarith) _) (by linarith)
   have h2 := gaugeSqNorm_nonneg dB hδ
   have h0 := Real.exp_pos k
+  have h3 := fp.one_le_hgtStar D dB H δc
+  have h4 : 0 ≤ fp.modeStar D dB H δc N k := h0.le.trans hk
   unfold modeStarG
-  refine ⟨by linarith, by linarith, by linarith, by linarith⟩
+  refine ⟨by linarith, by linarith, by linarith, by linarith, by linarith⟩
 
 /-- The uniform truncation constant of the multipliers and of `(ζ^ρ)²`. -/
 noncomputable def tailStar (dB : ℕ) (δ : ℝ) : ℝ :=
@@ -6973,7 +7024,7 @@ theorem tail_le_Kstar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) {δ : ℝ} (hδ : 0
     (hH : 1 ≤ H) (hδc : 0 < δc) (hN0 : 0 ≤ N) {T : ℝ} (hT0 : 0 ≤ T)
     (hT : T ≤ fp.tailStar dB δ) :
     2 * T / 2 ^ fp.Kstar D dB H δc N k δ ≤ (fp.modeStarG D dB H δc N k δ ^ 300)⁻¹ := by
-  obtain ⟨hk, -, -, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
+  obtain ⟨hk, -, -, -, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
   set Ds := fp.modeStarG D dB H δc N k δ
   have hDs : 0 < Ds := (Real.exp_pos k).trans_le hk
   set x := 2 * (fp.tailStar dB δ + 1) * Ds ^ 300
@@ -6997,7 +7048,7 @@ theorem log_Bstar_le (D dB : ℕ) {H δc N : ℝ} {k : ℝ} (hk0 : 0 ≤ k) {δ 
     (hHed : 2 ≤ fp.Hed) (hH : 1 ≤ H) (hδc : 0 < δc) (hN0 : 0 ≤ N) :
     Real.log ((2 : ℝ) ^ (fp.Kstar D dB H δc N k δ + 1)) ≤
       301 * Real.log (fp.modeStarG D dB H δc N k δ) + 3 := by
-  obtain ⟨hk, -, hGM, hGS⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
+  obtain ⟨hk, -, hGM, hGS, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
   set Ds := fp.modeStarG D dB H δc N k δ
   have hDs1 : 1 ≤ Ds := (Real.one_le_exp hk0).trans hk
   have hT0 : 0 ≤ fp.tailStar dB δ := by
@@ -7023,7 +7074,8 @@ theorem log_Bstar_le (D dB : ℕ) {H δc N : ℝ} {k : ℝ} (hk0 : 0 ≤ k) {δ 
     have hms : 0 ≤ fp.modeStar D dB H δc N k := (Real.exp_pos k).le.trans
       (fp.le_modeStar D dB k hHed hH hδc hN0 (le_refl (0 : ℤ)) (Nat.zero_le 4)).1
     have : Ds = fp.modeStar D dB H δc N k + gaugeMultNorm dB (fp.Hed ^ (dB * dB)) fp.Hed (δ / 2) +
-        gaugeSqNorm dB δ := rfl
+        gaugeSqNorm dB δ + fp.hgtStar D dB H δc := rfl
+    have := fp.one_le_hgtStar D dB H δc
     linarith
   set x := 2 * (fp.tailStar dB δ + 1) * Ds ^ 300
   have hx1 : 1 ≤ x := by
@@ -7111,7 +7163,7 @@ theorem gaugeMult_star (D dB : ℕ) {H δc N : ℝ} (k : ℝ) {δ : ℝ} (hδ : 
     (gaugeMult (δ / 2) Q0 l' C ρ) (gaugeMult_contDiff hδ2 Q0 l' C ρ)
     (gaugeMult_periodic (δ / 2) Q0 l' C ρ hQ) hA0 hder
     (gaugeMult_norm_le (δ / 2) Q0 l' C ρ)
-  obtain ⟨-, -, hGM, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
+  obtain ⟨-, -, hGM, -, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
   have hnorm : gaugeMultNorm (bf.vtag z).dim Q0 fp.Hed (δ / 2) ≤
       gaugeMultNorm dB (fp.Hed ^ (dB * dB)) fp.Hed (δ / 2) :=
     gaugeMultNorm_mono hδ2 hδ21 hdB1 (hdim z) (Nat.cast_nonneg _) hQ0le hQ1 (by linarith) le_rfl
@@ -7152,7 +7204,7 @@ theorem gaugeSq_star (D dB : ℕ) {H δc N : ℝ} (k : ℝ) {δ : ℝ} (hδ : 0 
     (fun w => gaugeSq_iteratedFDeriv_le hδ ρ w (d + 1)) (fun w => gaugeSq_norm_le δ ρ w)
     (fp.Kstar D dB H δc N k δ)
   obtain ⟨hhas, -, -⟩ := gaugeSq_fourier hd1 hδ ρ
-  obtain ⟨-, -, -, hGS⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
+  obtain ⟨-, -, -, hGS, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
   have hnorm : gaugeSqNorm d δ ≤ gaugeSqNorm dB δ := gaugeSqNorm_mono hδ hδ1 hd
   have htail : gaugeTail d δ ≤ fp.tailStar dB δ := by
     unfold tailStar
@@ -7206,7 +7258,7 @@ theorem log_modeStarG_poly (c D : ℕ) :
         Real.log ((2 : ℝ) ^ (fp.Kstar D dB H δc N k δ + 1)) ≤ C * (k * fp.P) ^ C := by
   obtain ⟨C0, hC0⟩ := log_modeStar_poly c D
   set K1 : ℕ := ⌈5 * Real.log bumpConst + 4682⌉₊ with hK1
-  set C1 : ℕ := C0 + K1 + 4 * c + 4 with hC1
+  set C1 : ℕ := 10 * C0 + K1 + 4 * c + 15 with hC1
   refine ⟨301 * C1 + 3, ?_⟩
   intro κ c₀ A bf fp dB H δc N k δ hk hL hHm hdB hHed hHedk hH hHk hδc0 hδck hN0 hNk hcB hδ hδk
   set E := k ^ c with hE
@@ -7234,17 +7286,59 @@ theorem log_modeStarG_poly (c D : ℕ) :
       (Nat.zero_le 4)).1
   have hMle : fp.modeStar D dB H δc N k ≤ Real.exp TM := by
     rw [← Real.exp_log hMpos]; exact Real.exp_le_exp.mpr hM
-  set T := TM + TG + TS + 2
+  -- the height term: at most `19 (modeStar + 1)^10 ≤ exp(10 T_M + 13)`
+  have hhgt : fp.hgtStar D dB H δc ≤ Real.exp (10 * TM + 13) := by
+    obtain ⟨hkh, hQh⟩ := fp.keyHgt_le_modeStar D dB k hHed hH hδc0 hN0
+    set M1 := fp.modeStar D dB H δc N k + 1
+    have hM1 : 1 ≤ M1 := by linarith
+    have hM1e : M1 ≤ Real.exp (TM + 1) := by
+      rw [Real.exp_add]
+      have he1 : (2 : ℝ) ≤ Real.exp 1 := by linarith [Real.add_one_le_exp (1 : ℝ)]
+      have := Real.one_le_exp hTM0
+      nlinarith
+    have hk1 := fp.one_le_keyHgt D dB H δc
+    have hH0 : 0 ≤ fp.Hed ^ (dB * dB) + 1 := by positivity
+    have hbase : (fp.Hed ^ (dB * dB) + 1) * (3 * (fp.keyHgt D dB H δc *
+        fp.keyHgt D dB H δc) ^ 2) ≤ M1 * (3 * (M1 * M1) ^ 2) := by
+      gcongr
+    have hstep : fp.hgtStar D dB H δc ≤ 19 * M1 ^ 10 := by
+      unfold hgtStar
+      have h0 : 0 ≤ (fp.Hed ^ (dB * dB) + 1) * (3 * (fp.keyHgt D dB H δc *
+          fp.keyHgt D dB H δc) ^ 2) := by positivity
+      have hsq := pow_le_pow_left₀ h0 hbase 2
+      have hM10 : (1 : ℝ) ≤ M1 ^ 10 := one_le_pow₀ hM1
+      have e : (M1 * (3 * (M1 * M1) ^ 2)) ^ 2 = 9 * M1 ^ 10 := by ring
+      rw [e] at hsq
+      linarith
+    have he : M1 ^ 10 ≤ Real.exp (10 * TM + 10) := by
+      calc M1 ^ 10 ≤ Real.exp (TM + 1) ^ 10 := pow_le_pow_left₀ (by linarith) hM1e 10
+        _ = Real.exp (10 * TM + 10) := by rw [← Real.exp_nat_mul]; push_cast; ring_nf
+    have h19 : (19 : ℝ) ≤ Real.exp 3 := by
+      have h7 := exp_bounds_small.2.1
+      have e3 : Real.exp 3 = Real.exp 2 * Real.exp 1 := by rw [← Real.exp_add]; norm_num
+      have he1 : (2.718 : ℝ) ≤ Real.exp 1 := by linarith [Real.exp_one_gt_d9]
+      have hm : (7 : ℝ) * 2.718 ≤ Real.exp 2 * Real.exp 1 :=
+        mul_le_mul h7 he1 (by norm_num) (Real.exp_pos 2).le
+      rw [e3]; linarith
+    calc fp.hgtStar D dB H δc ≤ 19 * M1 ^ 10 := hstep
+      _ ≤ Real.exp 3 * Real.exp (10 * TM + 10) := by
+          have := (Real.exp_pos (10 * TM + 10)).le
+          have : (0 : ℝ) ≤ M1 ^ 10 := by positivity
+          nlinarith
+      _ = Real.exp (10 * TM + 13) := by rw [← Real.exp_add]; ring_nf
+  set T := 10 * TM + TG + TS + 13
   have hsum : fp.modeStarG D dB H δc N k δ ≤ Real.exp (T + 2) := by
     have h1 : Real.exp TM ≤ Real.exp T := Real.exp_le_exp.mpr (by linarith)
     have h2 : Real.exp (TG + 2) ≤ Real.exp T := Real.exp_le_exp.mpr (by linarith)
     have h3 : Real.exp (TS + 2) ≤ Real.exp T := Real.exp_le_exp.mpr (by linarith)
+    have h4 : Real.exp (10 * TM + 13) ≤ Real.exp T := Real.exp_le_exp.mpr (by linarith)
     have he2 : (7 : ℝ) ≤ Real.exp 2 := exp_bounds_small.2.1
     have : fp.modeStarG D dB H δc N k δ = fp.modeStar D dB H δc N k +
-        gaugeMultNorm dB (fp.Hed ^ (dB * dB)) fp.Hed (δ / 2) + gaugeSqNorm dB δ := rfl
+        gaugeMultNorm dB (fp.Hed ^ (dB * dB)) fp.Hed (δ / 2) + gaugeSqNorm dB δ +
+          fp.hgtStar D dB H δc := rfl
     rw [this, Real.exp_add T 2]
     linarith [mul_le_mul_of_nonneg_left he2 (Real.exp_pos T).le, Real.exp_pos T]
-  obtain ⟨hk', -, -, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc0 hN0
+  obtain ⟨hk', -, -, -, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc0 hN0
   have hDpos : 0 < fp.modeStarG D dB H δc N k δ := (Real.exp_pos k).trans_le hk'
   have hlogD : Real.log (fp.modeStarG D dB H δc N k δ) ≤ T + 2 := by
     rw [Real.log_le_iff_le_exp hDpos]; exact hsum
@@ -7264,9 +7358,11 @@ theorem log_modeStarG_poly (c D : ℕ) :
             (by positivity) (Nat.cast_nonneg _)
     have a3 : (4 : ℝ) ≤ 4 * u ^ C1 := by
       have := one_le_pow₀ (n := C1) hu1; linarith
-    have hC1r : (C1 : ℝ) = C0 + K1 + 4 * c + 4 := by simp only [C1]; push_cast; ring
+    have hC1r : (C1 : ℝ) = 10 * C0 + K1 + 4 * c + 15 := by simp only [C1]; push_cast; ring
     have a4 : (0 : ℝ) ≤ 4 * c * u ^ C1 := by positivity
-    calc Real.log (fp.modeStarG D dB H δc N k δ) ≤ TM + TG + TS + 4 := by linarith
+    have a5 : (15 : ℝ) ≤ 15 * u ^ C1 := by
+      have := one_le_pow₀ (n := C1) hu1; linarith
+    calc Real.log (fp.modeStarG D dB H δc N k δ) ≤ 10 * TM + TG + TS + 15 := by linarith
       _ ≤ C1 * u ^ C1 := by rw [hC1r]; linarith
   have hB := fp.log_Bstar_le D dB (by linarith) hδ hHed hH hδc0 hN0 (k := k)
   have hupw' : u ^ C1 ≤ u ^ (301 * C1 + 3) := pow_le_pow_right₀ hu1 (by omega)
@@ -7779,6 +7875,7 @@ structure MainLiftExports (l : Fin 4) (s : List (CatCol bf.Vtx)) (G : bf.Grp) (j
   first : ∀ m, cellOf m ∈ fp.firstCells A.cells l s G j d (L.own m)
   ind : ∀ m y, L.a m y = (dyadicGridCell A.G (cellOf m).1 (cellOf m).2).indicator
     (fun _ => L.a m (dyadicGridLeft A.G (cellOf m).1 (cellOf m).2)) y
+  εM_le : ∀ m, L.εM m ≤ L.εP (L.own m)
 
 end ActiveSetup.BasicFamilies.FamParams
 
@@ -7816,10 +7913,14 @@ theorem exists_mainModeSystem (κ : LocalKernelClass) (c₀ : ℕ) :
       ∃ (Ms : ModeSystem A.G (Fintype.card (bf.Lab ⊕ Fin fp.Mc)))
         (L : LiftData (bf.Lab ⊕ Fin fp.Mc) Ms.Md),
         fp.MainLiftExports l s G j d D dB H g L Ms.wave Ms.cellOf ∧
-        (∀ m, L.εM m = Ms.L.εM m) ∧ L.δ = δc ∧
+        (∀ m, L.εM m = Ms.L.εM m) ∧ (∀ m m', Ms.L.own m = Ms.L.own m' ↔ L.own m = L.own m') ∧
+        L.δ = δc ∧
         (∀ y, L.s y = ((centerCut (bf.vtag z) δ ρ y : ℝ) : ℂ) ^ 2) ∧
         (∀ y, ∑ Φ, ‖L.q Φ y‖ ^ 2 / L.εP Φ ≤ δc ^ 2 * N * A.colBudget ^ 2) ∧
-        Ms.zc = bf.vtag z ∧ Ms.δc = δ ∧ Ms.Λ = B ∧ (∀ p, Ms.dvOf p ≤ dB) ∧
+        Ms.zc = bf.vtag z ∧ Ms.δc = δ ∧ Ms.cl = slotCoeff l ∧
+        (∀ i, Ms.ρ i ∈ Set.Icc (0 : ℝ) 1) ∧ Ms.Λ = B ∧
+        Ms.Bσ = max 1 (B * (1 + 4 * (2 * dB + 1) * max 1 (4 * B / δc))) ∧
+        (∀ p, Ms.dvOf p ≤ dB) ∧
         (∀ m, (Ms.L.εM m)⁻¹ ≤ A.colBudget ^ 2 * (B ^ 2 + 1)) ∧
         (∀ y, ((Finset.univ.filter fun m =>
             y ∈ dyadicGridCell A.G (Ms.cellOf m).1 (Ms.cellOf m).2).card : ℝ) ≤
@@ -7830,7 +7931,7 @@ theorem exists_mainModeSystem (κ : LocalKernelClass) (c₀ : ℕ) :
   refine ⟨D, hD, ?_⟩
   intro A bf fp l s hT htag d G j ρ₀ z g hG hg hHed dB hdim hC δ hδ hδ' ρ hρ H hHs hdz hCz hHδ
     δc hδc N hN0 hN hδcN X B
-  obtain ⟨Md, hfinMd, L, ψ, hεP, hLδ, hεMpos, hεMinv, hq, hs, -, -, -, hsyn, hcoef,
+  obtain ⟨Md, hfinMd, L, ψ, hεP, hLδ, hεMpos, hεMle, hεMinv, hq, hs, -, -, -, hsyn, hcoef,
     ⟨cellOf, lamOf, γOf, hcell, hcount, Key, keyOf, dvOf, θvOf, -, -, hok, hkl, hdv, -, -, hkoc,
       hkd⟩, -⟩ := hfin A bf fp l s hT htag d A.cells subset_rfl hG hHed hdim hC hδ hδ' ρ hρ
     hHs hdz hCz hHδ hδc hN0 hN hδcN
@@ -7873,7 +7974,8 @@ theorem exists_mainModeSystem (κ : LocalKernelClass) (c₀ : ℕ) :
       y ∈ dyadicGridCell A.G (Ms.cellOf m).1 (Ms.cellOf m).2).card : ℝ) ≤
         N * (B * (4 * max 1 (4 * B / δc) + 1) ^ (4 * dB)) := hcount
   refine ⟨Ms, L, ⟨hg, hεP, fun y β hβ => ?_, hcoef, fun m => (hcell m).1,
-    fun m => (hcell m).2.1⟩, fun m => rfl, hLδ, hs, hq, rfl, rfl, rfl, hdv, hεMinv, hpt,
+    fun m => (hcell m).2.1, hεMle⟩, fun m => rfl,
+    fun m m' => e.injective.eq_iff, hLδ, hs, hq, rfl, rfl, rfl, hρ, rfl, rfl, hdv, hεMinv, hpt,
     fun U => ?_⟩
   · rw [hsyn y β hβ]
     simp only [hwave]

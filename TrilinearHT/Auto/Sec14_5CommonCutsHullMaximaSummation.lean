@@ -1057,14 +1057,14 @@ theorem randSlot_moment {ι κ : Type*} [DecidableEq ι] (s : Finset ι)
 piece, the cell sum of the forms with two slots selected from position stacks at each use (and
 arbitrary signs) is bounded by the short-block constant times the stack and slot sizes. -/
 theorem piece_select_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
-    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ), K ≤ Nd →
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ) (d₀ : ℤ),
       ∀ (T : ShortBlockTree G K) {ι κ' : Type} [DecidableEq ι] [DecidableEq κ']
         (s : Finset ι) (t : Finset κ') {a b : Fin 4}, a ≠ b →
       ∀ (f : Fin 4 → ℝ → ℂ) (x : ι → ℝ → ℂ) (w : κ' → ℝ → ℂ), (∀ j, Measurable (f j)) →
       (∀ i, Measurable (x i)) → (∀ k, Measurable (w k)) →
       ∀ (kernel : ℤ × ℤ → ℝ × ℝ → ℂ), (∀ I ∈ T.internal, IsAdmissibleLocalKernel κ
         (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (kernel I)) →
-      ∀ cells ⊆ T.internal,
+      ∀ cells ⊆ T.internal, (∀ I ∈ cells, kernel I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + Nd) →
       (∀ I ∈ cells, ∀ j, eLpNorm (f j) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1)) ≠ ⊤) →
       (∀ I ∈ cells, ∀ i, eLpNorm (x i) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
@@ -1085,10 +1085,10 @@ theorem piece_select_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 
             (Function.update (Function.update f a (x (sa I))) b (w (sb I)))‖ ≤
         Cq * (1 + finiteDepthConstant κ q Nd) * (1 + Real.log ((K : ℝ) + 2)) *
           ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * dyadicGridLength G T.root.1 * ∏ j, sv j := by
-  obtain ⟨Cq, hCq, hsbc⟩ := short_block_comparison κ hq2 hq3 (C4 := 4) (by norm_num)
+  obtain ⟨Cq, hCq, hsbc⟩ := short_block_comparison_nz κ hq2 hq3 (C4 := 4) (by norm_num)
   refine ⟨Cq, hCq, ?_⟩
-  intro G K Nd hKN T ι κ' _ _ s t a b hab f x w hf hx hw kernel hker cells hcells hff hxf hwf sv
-    hsv hla hlb hlo sa sb hsa hsb sg hsg
+  intro G K Nd d₀ T ι κ' _ _ s t a b hab f x w hf hx hw kernel hker cells hcells hwin hff hxf hwf
+    sv hsv hla hlb hlo sa sb hsa hsb sg hsg
   classical
   -- the deterministic sizes and the randomized slots
   set z : Fin 4 → ℝ → ℝ := fun j y => if j = a then Real.sqrt (∑ i ∈ s, ‖x i y‖ ^ 2)
@@ -1197,8 +1197,8 @@ theorem piece_select_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 
       unfold patternSign; split_ifs <;> simp
     simp only [ε, norm_mul, h1, h2, mul_one]
     exact hsg I
-  have hmain := hsbc G K Nd hKN T z hzm sv hsv hleaf P zσ hzσm hmom kernel hker cells hcells ε
-    hεm hε1
+  have hmain := hsbc G K Nd d₀ T z hzm sv hsv hleaf P zσ hzσm hmom kernel hker cells hcells hwin
+    ε hεm hε1
   -- the average over the signs selects the positions
   have hsel : ∀ I ∈ cells, ((2 : ℂ) ^ s.card)⁻¹ * ∑ σ₁ : SignPattern s, (((2 : ℂ) ^ t.card)⁻¹ *
       ∑ σ₂ : SignPattern t, (patternSign σ₁.1 (sa I) : ℂ) * patternSign σ₂.1 (sb I) *
@@ -2149,7 +2149,7 @@ indexed by positions and bands, the second side stack by positions and the compl
 stack by bands, the cell sum of the matched band forms (positions selected at each use, arbitrary
 signs) is bounded by the short-block constant times the stack sizes. -/
 theorem piece_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
-    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ), K ≤ Nd →
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ) (d₀ : ℤ),
       ∀ (T : ShortBlockTree G K) {ι κ' ν : Type} [DecidableEq ι] [DecidableEq κ']
         [DecidableEq ν] (s : Finset ι) (t : Finset κ') (u : Finset ν) {a b c : Fin 4},
       a ≠ b → a ≠ c → b ≠ c →
@@ -2158,7 +2158,7 @@ theorem piece_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : 
       (∀ p, Measurable (y p)) →
       ∀ (kernel : ℤ × ℤ → ℝ × ℝ → ℂ), (∀ I ∈ T.internal, IsAdmissibleLocalKernel κ
         (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (kernel I)) →
-      ∀ cells ⊆ T.internal,
+      ∀ cells ⊆ T.internal, (∀ I ∈ cells, kernel I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + Nd) →
       (∀ I ∈ cells, ∀ j, eLpNorm (f j) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1)) ≠ ⊤) →
       (∀ I ∈ cells, ∀ i p, eLpNorm (x i p) 2 (normalizedIntervalMeasure
@@ -2186,8 +2186,8 @@ theorem piece_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : 
           ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * dyadicGridLength G T.root.1 * ∏ j, sv j := by
   obtain ⟨Cq, hCq, hrb⟩ := piece_random_bound κ hq2 hq3 (C4 := 16) (by norm_num)
   refine ⟨Cq, hCq, ?_⟩
-  intro G K Nd hKN T ι κ' ν _ _ _ s t u a b c hab hac hbc f x w y hf hx hw hy kernel hker cells
-    hcells hff hxf hwf hyf sv hsv hla hlb hlc hlo sa sb hsa hsb sg hsg
+  intro G K Nd d₀ T ι κ' ν _ _ _ s t u a b c hab hac hbc f x w y hf hx hw hy kernel hker cells
+    hcells hwin hff hxf hwf hyf sv hsv hla hlb hlc hlo sa sb hsa hsb sg hsg
   classical
   set Ω := SignPattern s × SignPattern t × SignPattern u
   set z : Fin 4 → ℝ → ℝ := fun j r => if j = a then Real.sqrt (∑ i ∈ s, ∑ p ∈ u, ‖x i p r‖ ^ 2)
@@ -2320,7 +2320,8 @@ theorem piece_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : 
     refine Finset.sum_congr rfl fun v₁ _ => Finset.sum_congr rfl fun v₂ _ =>
       Finset.sum_congr rfl fun v₃ _ => ?_
     ring
-  exact hrb G K Nd hKN T z hzm sv hsv hleaf zσ hzσm hmom kernel hker cells hcells ε hε1 _ hTc
+  exact hrb G K Nd d₀ T z hzm sv hsv hleaf zσ hzσm hmom kernel hker cells hcells hwin ε hε1 _
+    hTc
 
 end PieceBand
 
@@ -2361,7 +2362,7 @@ the two side stacks `g_a = Σ_{i,p} |x_{ip}|²`, `g_b = Σ_k |w_k|²` and summat
 `B_d²` on the internal cells, the selected matched band forms over `C` (arbitrary signs) are at
 most a short-block constant times `|Q| a_Q b_Q B_c B_d`. -/
 theorem sparse_piece_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
-    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ), K ≤ Nd → 1 ≤ K →
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ) (d₀ : ℤ), 1 ≤ K →
       ∀ (H : Finset (ℤ × ℤ)) (Q : ℤ × ℤ) (C : Finset (ℤ × ℤ)),
       (∀ c ∈ C, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G Q.1 Q.2) →
       (∀ c ∈ C, c.1 < Q.1 + K) →
@@ -2381,6 +2382,7 @@ theorem sparse_piece_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 
       dyadicEnergyAverage G (fun z => ENNReal.ofReal (∑ k ∈ t, ‖w k z‖ ^ 2)) Q ≠ ⊤ →
       ∀ (kernel : ℤ × ℤ → ℝ × ℝ → ℂ), (∀ I ∈ pieceInternal G Q C, IsAdmissibleLocalKernel κ
         (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (kernel I)) →
+      (∀ I ∈ C, kernel I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + Nd) →
       (∀ I ∈ C, ∀ j, eLpNorm (f j) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1)) ≠ ⊤) →
       (∀ I ∈ C, ∀ i p, eLpNorm (x i p) 2 (normalizedIntervalMeasure
@@ -2408,8 +2410,8 @@ theorem sparse_piece_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 
             Q) ^ (1 / 2 : ℝ))) := by
   obtain ⟨Cq, hCq, hpb⟩ := piece_band_bound κ hq2 hq3
   refine ⟨Cq, hCq, ?_⟩
-  intro G K Nd hKN hK H Q C hC hdepth ι κ' ν _ _ _ s t u a b c hab hac hbc f x w y hf hx hw hy
-    hown hhull hAa hAb kernel hker hff hxf hwf hyf Bc Bd hBc hBd hcB hdB sa sb hsa hsb sg hsg
+  intro G K Nd d₀ hK H Q C hC hdepth ι κ' ν _ _ _ s t u a b c hab hac hbc f x w y hf hx hw hy
+    hown hhull hAa hAb kernel hker hwin hff hxf hwf hyf Bc Bd hBc hBd hcB hdB sa sb hsa hsb sg hsg
   set ga : ℝ → ℝ≥0∞ := fun z => ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖x i p z‖ ^ 2)
   set gb : ℝ → ℝ≥0∞ := fun z => ENNReal.ofReal (∑ k ∈ t, ‖w k z‖ ^ 2)
   set Aa := (dyadicEnergyAverage G ga Q).toReal
@@ -2433,8 +2435,9 @@ theorem sparse_piece_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 
     piece_leaf_energy G H ga gb Q C hC hown hhull (L := L) hL
   have hint : ∀ L ∈ T.leaves, ∃ p ∈ pieceInternal G Q C, L ∈ dyadicChildren G p := fun L hL =>
     (mem_pieceLeaves.mp hL).2
-  have h := hpb G K Nd hKN T s t u hab hac hbc f x w y hf hx hw hy kernel hker C
-    (pieceTree_internal_sup hC hK hdepth) hff hxf hwf hyf sv hsv ?_ ?_ ?_ ?_ sa sb hsa hsb sg hsg
+  have h := hpb G K Nd d₀ T s t u hab hac hbc f x w y hf hx hw hy kernel hker C
+    (pieceTree_internal_sup hC hK hdepth) hwin hff hxf hwf hyf sv hsv ?_ ?_ ?_ ?_ sa sb hsa hsb sg
+    hsg
   rotate_left
   · intro L hL
     have := hleafE L hL ga hAa (hpl L hL).1
@@ -2648,7 +2651,7 @@ matched band sums with arbitrary signs satisfy
 `7 Σ_n |Σ_{I ∈ U_n} |I| ε_I Σ_p Λ_I(…)| ≤ 8 C (1+C_N) log K K^{2(q-2)/(q-1)} B_c B_d √(AB) |R|`
 under the joint hull caps `Σ_n m_{a,n} ≤ A`, `Σ_n m_{b,n} ≤ B` on `R`. -/
 theorem near_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
-    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ), K ≤ Nd → 1 ≤ K →
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ), 1 ≤ K →
       ∀ {N : Type*} (Ns : Finset N) (H Rt U : N → Finset (ℤ × ℤ)) {R : Set ℝ},
       MeasurableSet R → (∀ n ∈ Ns, Rt n ⊆ H n) →
       (∀ n ∈ Ns, (Rt n : Set (ℤ × ℤ)).PairwiseDisjoint fun c => dyadicGridCell G c.1 c.2) →
@@ -2677,6 +2680,9 @@ theorem near_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q
         (fun r => ENNReal.ofReal (∑ k ∈ t n, ‖w n k r‖ ^ 2)) d ≠ ⊤) →
       ∀ (kernel : N → ℤ × ℤ → ℝ × ℝ → ℂ), (∀ n ∈ Ns, ∀ I ∈ H n, IsAdmissibleLocalKernel κ
         (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (kernel n I)) →
+      (∀ n ∈ Ns, ∀ Q : ℤ × ℤ, ∃ d₀ : ℤ, ∀ I ∈ U n,
+        dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G Q.1 Q.2 → I.1 < Q.1 + K → kernel n I ≠ 0 →
+          d₀ ≤ I.1 ∧ I.1 < d₀ + Nd) →
       (∀ n ∈ Ns, ∀ I ∈ U n, ∀ j, eLpNorm (f n j) 2 (normalizedIntervalMeasure
         (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)) ≠ ⊤) →
       (∀ n ∈ Ns, ∀ I ∈ U n, ∀ i p, eLpNorm (x n i p) 2 (normalizedIntervalMeasure
@@ -2702,8 +2708,8 @@ theorem near_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q
             (64 * Bc * Bd)) * ((A * B) ^ (1 / 2 : ℝ) * volume R) := by
   obtain ⟨Cq, hCq, hsp⟩ := sparse_piece_bound κ hq2 hq3
   refine ⟨Cq, hCq, ?_⟩
-  intro G K Nd hKN hK N Ns H Rt U R hRm hRtH hRtdis hRtR hUH hUr hdep hclos ι κ' β _ _ _ s t u
-    a b c hab hac hbc f x w y hf hx hw hy A B hA hB hAf hBf kernel hker hff hxf hwf hyf Bc Bd
+  intro G K Nd hK N Ns H Rt U R hRm hRtH hRtdis hRtR hUH hUr hdep hclos ι κ' β _ _ _ s t u
+    a b c hab hac hbc f x w y hf hx hw hy A B hA hB hAf hBf kernel hker hwin hff hxf hwf hyf Bc Bd
     hBc hBd hcB hdB sa sb hsa hsb sg hsg
   refine sparse_root_sum G Ns K H Rt U
     (fun n r => ENNReal.ofReal (∑ i ∈ s n, ∑ p ∈ u n, ‖x n i p r‖ ^ 2))
@@ -2711,9 +2717,11 @@ theorem near_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q
     hclos hA hB _ _ ?_
   intro n hn Q C hQ hCU hC hdepth hown hhull
   have hint := pieceInternal_sub_hull hQ hC hhull
-  exact hsp G K Nd hKN hK (H n) Q C hC hdepth (s n) (t n) (u n) hab hac hbc (f n) (x n) (w n)
+  obtain ⟨d₀, hd₀⟩ := hwin n hn Q
+  exact hsp G K Nd d₀ hK (H n) Q C hC hdepth (s n) (t n) (u n) hab hac hbc (f n) (x n) (w n)
     (y n) (hf n) (hx n) (hw n) (hy n) hown hhull (hAf n hn Q hQ) (hBf n hn Q hQ) (kernel n)
-    (fun I hI => hker n hn I (hint hI)) (fun I hI => hff n hn I (hCU hI))
+    (fun I hI => hker n hn I (hint hI)) (fun I hI hk => hd₀ I (hCU hI) (hC I hI) (hdepth I hI) hk)
+    (fun I hI => hff n hn I (hCU hI))
     (fun I hI => hxf n hn I (hCU hI)) (fun I hI => hwf n hn I (hCU hI))
     (fun I hI => hyf n hn I (hCU hI)) hBc hBd (fun d hd => hcB n hn d (hint hd))
     (fun j h1 h2 h3 d hd => hdB n hn j h1 h2 h3 d (hint hd)) (sa n) (sb n)
@@ -3008,6 +3016,12 @@ theorem augPhys_normalized_ne_top {V : Type*} [Fintype V] (G : RealDyadicGrid) (
       (dyadicGridLength G I.1)) ≠ ⊤ :=
   ne_top_of_le_ne_top ENNReal.ofReal_ne_top (augPhys_normalized_le G I x)
 
+/-- Blueprint line 2836 and the depth hypothesis of `prop:normalized`: the cells of the setup with
+nonzero kernel lie in `N_d` consecutive depths `[d₀, d₀ + N_d)` of the original range. -/
+def ActiveSetup.DepthWin {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀) (Nd : ℕ) :
+    Prop :=
+  ∃ d₀ : ℤ, ∀ I ∈ A.cells, A.w I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + Nd
+
 open Classical in
 /-- Blueprint lines 2430-2444 (`eq:near-band`) on the column stacks of an attempt: the near-band
 bound of `near_band_bound` for the cell forms `Λ_c` of the attempt, applied to fixed column inputs
@@ -3062,12 +3076,15 @@ theorem leaf_near_band (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q 
   intro c₀ A ap K Nd hKN hK N Ns H Rt U R hRm hRtH hRtdis hRtR hUH hUr hdep hclos hHc ι κ' β
     _ _ _ s t u a b c hab hac hbc F X W Y Aa Bb hA hB hAf hBf Bc Bd hBc hBd hcB hdB sa sb hsa
     hsb sg hsg
-  have h := hnb A.G K Nd hKN hK Ns H Rt U hRm hRtH hRtdis hRtR hUH hUr hdep hclos s t u hab hac
+  have h := hnb A.G K Nd hK Ns H Rt U hRm hRtH hRtdis hRtR hUH hUr hdep hclos s t u hab hac
     hbc (fun n l => augPhys (F n l)) (fun n i p => augPhys (X n i p)) (fun n k => augPhys (W n k))
     (fun n p => augPhys (Y n p)) (fun n j => columnPhys_measurable _)
     (fun n i p => columnPhys_measurable _) (fun n k => columnPhys_measurable _)
     (fun n p => columnPhys_measurable _) hA hB hAf hBf (fun _ => A.w)
-    (fun n hn I hI => A.adm I (hHc n hn hI))
+    (fun n hn I hI => A.adm I (hHc n hn hI)) (fun n _ Q => ⟨Q.1, fun I _ hIQ hIK _ =>
+      ⟨(dyadicGridLength_strictAnti A.G).le_iff_ge.mp (dyadicGridLength_le_of_subset A.G hIQ),
+        by have : (K : ℤ) ≤ Nd := by exact_mod_cast hKN
+           omega⟩⟩)
     (fun n _ I _ j => augPhys_normalized_ne_top A.G I _)
     (fun n _ I _ i p => augPhys_normalized_ne_top A.G I _)
     (fun n _ I _ k => augPhys_normalized_ne_top A.G I _)
@@ -4906,7 +4923,7 @@ stack `Y`, on hulls of active cells. -/
 theorem leaf_near_bandM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
     ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
         bf.FamParams) (K Nd : ℕ),
-      K ≤ Nd → 1 ≤ K →
+      A.DepthWin Nd → 1 ≤ K →
       ∀ {N : Type*} (Ns : Finset N) (H Rt U : N → Finset (ℤ × ℤ)) {R : Set ℝ},
       MeasurableSet R → (∀ n ∈ Ns, Rt n ⊆ H n) →
       (∀ n ∈ Ns, (Rt n : Set (ℤ × ℤ)).PairwiseDisjoint fun c => dyadicGridCell A.G c.1 c.2) →
@@ -4951,15 +4968,17 @@ theorem leaf_near_bandM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q
             (64 * Bc * Bd)) * ((Aa * Bb) ^ (1 / 2 : ℝ) * volume R) := by
   obtain ⟨Cq, hCq, hnb⟩ := near_band_bound κ hq2 hq3
   refine ⟨Cq, hCq, ?_⟩
-  intro c₀ A bf fp K Nd hKN hK N Ns H Rt U R hRm hRtH hRtdis hRtR hUH hUr hdep hclos hHc ι κ' β
+  intro c₀ A bf fp K Nd hwin hK N Ns H Rt U R hRm hRtH hRtdis hRtR hUH hUr hdep hclos hHc ι κ' β
     _ _ _ s t u a b c hab hac hbc F X W Y Aa Bb hA hB hAf hBf Bc Bd hBc hBd hcB hdB sa sb hsa
     hsb sg hsg
-  have h := hnb A.G K Nd hKN hK Ns H Rt U hRm hRtH hRtdis hRtR hUH hUr hdep hclos s t u hab hac
+  obtain ⟨d₀, hd₀⟩ := hwin
+  have h := hnb A.G K Nd hK Ns H Rt U hRm hRtH hRtdis hRtR hUH hUr hdep hclos s t u hab hac
     hbc (fun n l => augPhys (F n l)) (fun n i p => augPhys (X n i p)) (fun n k => augPhys (W n k))
     (fun n p => augPhys (Y n p)) (fun n j => columnPhys_measurable _)
     (fun n i p => columnPhys_measurable _) (fun n k => columnPhys_measurable _)
     (fun n p => columnPhys_measurable _) hA hB hAf hBf (fun _ => A.w)
     (fun n hn I hI => A.adm I (hHc n hn hI))
+    (fun n hn _ => ⟨d₀, fun I hI _ _ hw => hd₀ I (hHc n hn (hUH n hn hI)) hw⟩)
     (fun n _ I _ j => augPhys_normalized_ne_top A.G I _)
     (fun n _ I _ i p => augPhys_normalized_ne_top A.G I _)
     (fun n _ I _ k => augPhys_normalized_ne_top A.G I _)
@@ -4984,7 +5003,7 @@ and the near-band sums over the uses below no cut cell obey `eq:near-band`. -/
 theorem near_band_cutM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
     ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
         bf.FamParams) (K Nd : ℕ),
-      K ≤ Nd → 1 ≤ K → A.AncClosed →
+      A.DepthWin Nd → 1 ≤ K → A.AncClosed →
       ∀ {N : Type*} (Ns : Finset N) (U : N → Finset (ℤ × ℤ)) (bs : N → ℤ),
       (∀ n ∈ Ns, U n ⊆ A.cells) → (∀ n ∈ Ns, ∀ c ∈ U n, bs n ≤ c.1 ∧ c.1 < bs n + K) →
       ∀ {ι κ' β : Type} [DecidableEq ι] [DecidableEq κ'] [DecidableEq β]
@@ -5148,7 +5167,7 @@ the other side) and the hull mass `|K_a| |K_b| M_u |R|` of the indices `(m, k_a,
 theorem near_band_stacksM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
     ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
         bf.FamParams) (K Nd : ℕ),
-      K ≤ Nd → 1 ≤ K → A.AncClosed →
+      A.DepthWin Nd → 1 ≤ K → A.AncClosed →
       ∀ {M : Type*} (Ms : Finset M) (U : M → Finset (ℤ × ℤ)) (bs : M → ℤ),
       (∀ m ∈ Ms, U m ⊆ A.cells) → (∀ m ∈ Ms, ∀ c ∈ U m, bs m ≤ c.1 ∧ c.1 < bs m + K) →
       ∀ {Ka Kb : Type} [Fintype Ka] [Fintype Kb] {ι κ' β : Type}
@@ -5380,7 +5399,7 @@ the block starts). -/
 theorem near_band_positionsM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
     ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
         bf.FamParams) (K Nd N : ℕ),
-      K ≤ Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
+      A.DepthWin Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
       ∀ {M : Type} (Ms : Finset M) (U : M → Finset (ℤ × ℤ)) (bs : M → ℤ) (off : ℤ × ℤ → ℕ),
       (∀ m ∈ Ms, U m ⊆ A.cells) →
       (∀ m ∈ Ms, ∀ I ∈ U m, I.1 = bs m + (off I : ℤ) ∧ off I < K) →
@@ -5479,7 +5498,7 @@ of one offset in one block are distinct cells of one depth). -/
 theorem near_band_positions_UM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
     ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp :
         bf.FamParams) (K Nd N : ℕ),
-      K ≤ Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
+      A.DepthWin Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
       ∀ {M : Type} (Ms : Finset M) (U : M → Finset (ℤ × ℤ)) (bs : M → ℤ) (off : ℤ × ℤ → ℕ),
       (∀ m ∈ Ms, U m ⊆ A.cells) →
       (∀ m ∈ Ms, ∀ I ∈ U m, I.1 = bs m + (off I : ℤ) ∧ off I < K) →
@@ -5611,7 +5630,8 @@ bound of `near_band_positionsM` with the stack energies `stackEA` (banded, `≈ 
 the hull mass `(N + 1)² |Ω| M_p D |R|` (active multiplicity, group count, configurations). -/
 theorem near_band_actualM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
     ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
-      (fp : bf.FamParams) (K Nd N : ℕ), K ≤ Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
+      (fp : bf.FamParams) (K Nd N : ℕ), A.DepthWin Nd → 1 ≤ K → K ≤ 2 ^ N →
+      A.AncClosed →
       ∀ {Ω : Type} (Os : Finset Ω) (Gs : Finset bf.Grp) (Bs : Finset ℕ) (k : ℕ)
         (Act : Finset (ℤ × ℤ)) (U : bf.Grp → ℕ → Finset (ℤ × ℤ)) (off : ℤ × ℤ → ℕ),
       (∀ (J : ℤ × ℤ) (β m : ℕ), m < K → J.1 = A.R.1 + ((K * β + m : ℕ) : ℤ) → off J = m) →
@@ -5812,7 +5832,8 @@ banded stack energy is at most `(P + 2) Γ_a |R|` and the untouched one at most 
 configurations. -/
 theorem near_band_criticalM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) :
     ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ {c₀ : ℕ} (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
-      (fp : bf.FamParams) (K Nd N : ℕ), K ≤ Nd → 1 ≤ K → K ≤ 2 ^ N → A.AncClosed →
+      (fp : bf.FamParams) (K Nd N : ℕ), A.DepthWin Nd → 1 ≤ K → K ≤ 2 ^ N →
+      A.AncClosed →
       ∀ {Ω : Type} (Os : Finset Ω) (Gs : Finset bf.Grp) (Bs : Finset ℕ) (k : ℕ)
         (Act : Finset (ℤ × ℤ)) (U : bf.Grp → ℕ → Finset (ℤ × ℤ)) (off : ℤ × ℤ → ℕ),
       (∀ (J : ℤ × ℤ) (β m : ℕ), m < K → J.1 = A.R.1 + ((K * β + m : ℕ) : ℤ) → off J = m) →

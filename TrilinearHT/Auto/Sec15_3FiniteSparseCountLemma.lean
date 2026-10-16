@@ -3481,17 +3481,16 @@ theorem sparse_count_final_arith {X δ L μ ν M : ℝ} {d : ℕ} (hδ0 : 0 < δ
   refine h.trans (h4.trans (le_of_eq ?_))
   ring
 
-/-- Blueprint `lem:sparse-count` (lines 2587-2705), `eq:sparse-count`: there are absolute
-constants `C, C_res` such that for real labels `A_i` (`|A_i| ≤ M`, `M, L ≥ 1`), frequencies
-`ζ ∈ ℝ^d`, `B ≥ 1`, `0 < μ ≤ 1 ≤ ν`, scales `R_s = R₀ 2^s` and tuple sets `E_s` satisfying
-(1) pair determination with at most `L` scale occurrences, (2) side incidence, (3) separation,
-(4) annular witnesses for every triple, and (5) the pure-shift gap, the reserves
-`Q ≥ C_res (d+1)² B`, `Σ ≥ C_res (d+1)² ν` imply, for `0 < δ ≤ 1`,
+/-- Blueprint `lem:sparse-count` (lines 2587-2705), `eq:sparse-count`, with the explicit absolute
+constants `C = 3 · 10^{11}`, `C_res = 7200000`: for real labels `A_i` (`|A_i| ≤ M`,
+`M, L ≥ 1`), frequencies `ζ ∈ ℝ^d`, `B ≥ 1`, `0 < μ ≤ 1 ≤ ν`, scales `R_s = R₀ 2^s` and tuple
+sets `E_s` satisfying (1) pair determination with at most `L` scale occurrences, (2) side
+incidence, (3) separation, (4) annular witnesses for every triple, and (5) the pure-shift gap,
+the reserves `Q ≥ C_res (d+1)² B`, `Σ ≥ C_res (d+1)² ν` imply, for `0 < δ ≤ 1`,
 `Σ_{s : N_s ≤ δ M²} N_s ≤ C ℓ L¹² δ^{1/300} M²` with `ℓ = 1 + log₂(2 + (d+1)² ν/μ)`.
 Tuples are functions on the four roles vanishing off the core roles; a role coefficient is
 `α_i = i - l'`. -/
-theorem sparse_count :
-    ∃ C Cres : ℝ, 0 < C ∧ 0 < Cres ∧
+theorem sparse_count_explicit :
     ∀ (d : ℕ) (ζ : Fin d → ℝ) (core : Finset (Fin 4)), (core.card = 3 ∨ core.card = 4) →
     ∀ (A : Fin 4 → Finset ℝ) (M L : ℝ), 1 ≤ M → 1 ≤ L → (∀ i ∈ core, ((A i).card : ℝ) ≤ M) →
     ∀ (B Sg Q μ ν R₀ : ℝ), 1 ≤ B → 0 < μ → μ ≤ 1 → 1 ≤ ν → 0 < R₀ →
@@ -3511,12 +3510,11 @@ theorem sparse_count :
         |∑ i ∈ T, (roleCoeff i l : ℝ) * x i + 36 * ∑ k, (n k : ℝ) * ζ k| ≤ ν * (R₀ * 2 ^ s)) →
     (∀ s ∈ S, (E s).Nonempty → ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
       |∑ k, (n k : ℝ) * ζ k| ∉ Set.Icc (μ * (R₀ * 2 ^ s) / 1000) (1000 * ν * (R₀ * 2 ^ s))) →
-    Cres * ((d : ℝ) + 1) ^ 2 * B ≤ Q → Cres * ((d : ℝ) + 1) ^ 2 * ν ≤ Sg →
+    7200000 * ((d : ℝ) + 1) ^ 2 * B ≤ Q → 7200000 * ((d : ℝ) + 1) ^ 2 * ν ≤ Sg →
     ∀ δ : ℝ, 0 < δ → δ ≤ 1 →
       ∑ s ∈ S.filter (fun s => ((E s).card : ℝ) ≤ δ * M ^ 2), ((E s).card : ℝ) ≤
-        C * (1 + Real.logb 2 (2 + ((d : ℝ) + 1) ^ 2 * ν / μ)) * L ^ 12 *
+        3 * 10 ^ 11 * (1 + Real.logb 2 (2 + ((d : ℝ) + 1) ^ 2 * ν / μ)) * L ^ 12 *
           δ ^ (1 / 300 : ℝ) * M ^ 2 := by
-  refine ⟨3 * 10 ^ 11, 7200000, by norm_num, by norm_num, ?_⟩
   intro d ζ core hcore A M L hM hL hA B Sg Q μ ν R₀ hB hμ hμ1 hν hR₀ S E hE hpair hmult hside
     hsep hann hgap hQ hSg δ hδ0 hδ1
   have hd1 : (1 : ℝ) ≤ ((d : ℝ) + 1) ^ 2 := by
@@ -3788,6 +3786,36 @@ theorem sparse_count :
     exact Finset.sum_congr rfl fun s hs => by rw [hcardE s (Finset.mem_filter.mp hs).1]
   rw [hsum] at hfinal
   exact sparse_count_final_arith hδ0 hL hμ (by linarith) hfinal
+
+/-- Blueprint `lem:sparse-count` (lines 2587-2705), `eq:sparse-count`, with absolute constants
+`C, C_res` (`sparse_count_explicit` gives `C = 3 · 10^{11}`, `C_res = 7200000`). -/
+theorem sparse_count :
+    ∃ C Cres : ℝ, 0 < C ∧ 0 < Cres ∧
+    ∀ (d : ℕ) (ζ : Fin d → ℝ) (core : Finset (Fin 4)), (core.card = 3 ∨ core.card = 4) →
+    ∀ (A : Fin 4 → Finset ℝ) (M L : ℝ), 1 ≤ M → 1 ≤ L → (∀ i ∈ core, ((A i).card : ℝ) ≤ M) →
+    ∀ (B Sg Q μ ν R₀ : ℝ), 1 ≤ B → 0 < μ → μ ≤ 1 → 1 ≤ ν → 0 < R₀ →
+    ∀ (S : Finset ℤ) (E : ℤ → Finset (Fin 4 → ℝ)),
+    (∀ s ∈ S, ∀ x ∈ E s, (∀ i ∈ core, x i ∈ A i) ∧ ∀ i ∉ core, x i = 0) →
+    (∀ i ∈ core, ∀ j ∈ core, i ≠ j → ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s',
+      x i = x' i → x j = x' j → x = x') →
+    (∀ x, ((S.filter fun s => x ∈ E s).card : ℝ) ≤ L) →
+    (core.card = 3 → ∃ w : ℤ → ℝ, (∀ s, 0 ≤ w s) ∧ ∑ s ∈ S, w s ≤ M ∧
+      ∀ s ∈ S, ∀ i ∈ core, ∀ a, (((E s).filter fun x => x i = a).card : ℝ) ≤ w s) →
+    (∀ i ∈ core, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s', x i ≠ x' i →
+      ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
+        Sg * max (R₀ * 2 ^ s) (R₀ * 2 ^ s') < |x i - x' i + ∑ k, (n k : ℝ) * ζ k|) →
+    (∀ T ⊆ core, T.card = 3 → ∀ l, l ∉ T → ∀ s ∈ S, ∀ x ∈ E s, ∃ n : Fin d → ℤ,
+      (∀ k, |(n k : ℝ)| ≤ B) ∧
+        μ * (R₀ * 2 ^ s) ≤ |∑ i ∈ T, (roleCoeff i l : ℝ) * x i + 36 * ∑ k, (n k : ℝ) * ζ k| ∧
+        |∑ i ∈ T, (roleCoeff i l : ℝ) * x i + 36 * ∑ k, (n k : ℝ) * ζ k| ≤ ν * (R₀ * 2 ^ s)) →
+    (∀ s ∈ S, (E s).Nonempty → ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
+      |∑ k, (n k : ℝ) * ζ k| ∉ Set.Icc (μ * (R₀ * 2 ^ s) / 1000) (1000 * ν * (R₀ * 2 ^ s))) →
+    Cres * ((d : ℝ) + 1) ^ 2 * B ≤ Q → Cres * ((d : ℝ) + 1) ^ 2 * ν ≤ Sg →
+    ∀ δ : ℝ, 0 < δ → δ ≤ 1 →
+      ∑ s ∈ S.filter (fun s => ((E s).card : ℝ) ≤ δ * M ^ 2), ((E s).card : ℝ) ≤
+        C * (1 + Real.logb 2 (2 + ((d : ℝ) + 1) ^ 2 * ν / μ)) * L ^ 12 *
+          δ ^ (1 / 300 : ℝ) * M ^ 2 :=
+  ⟨3 * 10 ^ 11, 7200000, by norm_num, by norm_num, sparse_count_explicit⟩
 
 end Auto
 

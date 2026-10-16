@@ -1284,3 +1284,369 @@ Formulation and departures:
 - Assignments of a failed trial to the side slot leave no masked tuples, so they contribute nothing (proof of `three_core_principal`).
 
 Full lake build passed; standard axioms.
+
+## 2026-10-15T14:18:57-04:00
+
+Row lines 2709-2717 (counting setup and pair determination on the side states). File: TrilinearHT/Auto/Sec15_4VerificationCountingHypotheses.lean.
+
+Formulation and departures:
+- "Representatives": the mode nodes are the successful final classes of the cells (one chosen good mode per class and pre-cell). Their hereditary representatives come from `typed_representatives_sched` for each type class; the counting uses these representatives as the anchors of eq:principal-core (`repAnc`, `AnchorOKAt`).
+- "Identify a representative with its fixed real value": the label of a class is the slope `ω_a(x*)` of its representative. Distinct classes of one type at one cell have distinct labels (`repAnchor_slope_inj`). Across cells, distinct labels of one type are separated by `(Ξ/2) max(R_s, R_t)` against shifts `N·ζ`, `|N| ≤ Q` (`path_label_sep'`).
+- Separation vector and reserves: `ζ = 6^{Δ-2} ϑ/L_h` with `36 ζ = ξ = ϑ/L_{h-Δ}` (`torusξ_eq_zeta`; good classes have `h ≥ Δ = 10`). The shift reserve is `Q = E_h/6^8 ≥ 288 D_*^5 E_{h-Δ}` (`Valid.shift_reserve`, from `A₀ ≥ 6^{30} D_*`) and the band reserve is `8 · 2ν ≤ 16 U₀ ≤ Ξ/2`. These replace the blueprint's "the shift reserves include those fixed denominators" and "ν ≤ C U₀ ≪ Ξ" by explicit inequalities.
+- Pair determination is stated for tested tuples with reference data in common bands `μ, 2ν` (the dyadic bins of eq:principal-core), at two cells containing the path point.
+- `M_l^G ≥ 1`: a nonzero side use in the side bin `σ_l = band(b_Λ) ≤ b_Λ` has `σ_l² ≤ r⁻¹ ∫_I |S|²` (`side_bin_le`, Bessel via `window_root_le`).
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T14:26:56-04:00
+
+Row eq:triple-test (lines 2718-2724). File: TrilinearHT/Auto/Sec15_4VerificationCountingHypotheses.lean.
+
+Formulation and departures:
+- The constants of eq:triple-test are explicit: `c = 1`, `C = 8` (four cores: `|t' - l'q'| ≤ 4 · 2ν R_s` with the band `2ν ≥ ν`) and the witness box `|n| ≤ 4 B'_{h-Δ}`; for three cores the test is the `T_l` test with `2ν` and `B'_{h-Δ}`.
+- "`L₀ ≤ P^C (1 + log(ν/μ))^C` ... absorbed in `P^C` for the chosen `P`" is formalized as `L₀ ≤ K (1 + log(8ν/μ))` with the explicit factor `K = 32 (d_max + 5)^4 (log(288 D_*^5 H) + log 2 + 1)`, polynomial in the dimension and the logarithmic heights `log D_*`, `log H` (`mult_le_sched`). The parameter `P` is fixed only in the attempt (line 1668). Bounding `K ≤ P^C` uses `log D_* ≤ P^C` (line 1934) and `log H ≤ M Λ^{12}` (`chooseSchedule`, line 1976); this step is carried out at eq:core-final, where `P` is available.
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T14:46:52-04:00
+
+Row eq:total-count (lines 2726-2729), side states. File: TrilinearHT/Auto/Sec15_4VerificationCountingHypotheses.lean.
+
+Formulation and departures:
+- The counts are stated along a path (scales `S`, cells `cellOf s` with `(cellOf s).1 = s`, path point `x*`) for one group, height, role types and bin. The anchors along the path are hypothesised to be the hereditary representatives (`FourPathAnc`, `ThreePathAnc`); these are the anchors `repAnc` built in row 2709-2717. `M_i^G = |A_i^G|` is the number of distinct labels of role `i` along the path.
+- `L₀` is the explicit multiplicity bound `fourMult` / `threeMult` of `lem:height` at the bands of the bin; row eq:triple-test bounds it by the schedule (`mult_le_sched`).
+- Side incidence: the blueprint says "the windows defining `b_Λ` for different incident triples are disjoint" and "`ν, Λ ≤ C U₀ ≪ Ξ`". The windows use the box `16 B'_{h-Δ}`, so the shift reserve used is `1152 · 16 · 6^8 D_*^5 E_{h-Δ} ≤ E_h` (`Valid.window_reserve`, from `A₀ ≥ 6^{30} D_*`). The shells are required to satisfy `2^{I_w} ≤ 2 U₀` (hypothesis `hIw`), which is the blueprint's `Λ ≤ C U₀`; the band reserve is `16 U₀ + 96 U₀ ≤ 128 U₀ ≤ Ξ/2`. The downstream choice of `I_w` (least with `2^{I_w} ≥ U₀/2`) satisfies `hIw`.
+- `w_s = σ_l^{-2} ‖S_{l,G,s}‖²_{2,I_s}` with `‖S‖²_{2,I} = r⁻¹ ∫_I |S_phys|²` (`sideWeight`); Bessel is applied for each offset (`window_energy_integrable`) and averaged (`side_incidence_le`). The bound holds on every subset of scales because it is per scale.
+- `N_s` is the number of label tuples in `E_s`; `fourPathE_card` / `threePathE_card` show it equals the number of tested tuples (and shells) in the bin, by injectivity of representative labels (`repAnchor_slope_inj`).
+- The representative-anchor hypothesis `hrep` is required for all four roles; in three-core statements the side role's representatives are not used.
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T14:59:05-04:00
+
+Row eq:applied-sparse (lines 2731-2742), side states. Files: TrilinearHT/Auto/Sec15_3FiniteSparseCountLemma.lean (refactor), TrilinearHT/Auto/Sec15_4VerificationCountingHypotheses.lean.
+
+Formulation and departures:
+- `sparse_count` had existential constants. Its proof already used `C = 3 · 10^{11}` and `C_res = 7200000`; these are now exposed as `sparse_count_explicit`, and `sparse_count` is derived from it with an unchanged statement. The reserve `Q ≥ C_res (d+1)² C B'_h` can only be checked against an explicit `C_res`. The older `sparseC4/sparseCres4` (Classical.choose) are not used by the side-state application.
+- Reserves: `Q = E_h/6^8` (the blueprint's `⌊E_h/6^{Δ-2}⌋`; the floor is not needed because the lemma only uses `|n| ≤ Q`), `B = D_*^5 E_{h-Δ}` with the factor 4 of the four-core annuli, `Σ = Ξ/2`. `Valid.sparse_reserve` uses `A₀ ≥ C_* 6^{R_*} B_* D_*` and `d_max ≤ C_*`.
+- New budget condition `d_max ≤ D_*` (hypothesis `hdD`) for the `Σ` reserve `7200000 (d+1)² · 8U₀ ≤ Ξ/2`. The blueprint asserts that `Ξ = D_*^{1000}` and `ν ≤ C D_*^{250}` give the reserve `Σ ≥ C_res (d+1)² ν`, which needs `(d+1)² ≲ D_*^{750}`. It takes `d_max ≤ k^{O(1)}`, `D_* ≥ e^k`, and "the finite number of dimensions is already in those budgets" (line 2567). The condition must be discharged where `D_*` is chosen (enlarging `D_*` to `max(D_*, d_max)` keeps `log D_* ≤ P^C`).
+- Pure-shift gap: "any successful component contains a nonexceptional primary": a nonempty `E_s` has a tested tuple whose core class contains a mode good at `h` on the cell (`mem_goodCls`). Its `frequency_dichotomy` (`eq:gap` at height `H`, thresholds `T⁻¹/r_{v_b}`, `T/r_{t_b}`) applies to integer `|n|_∞ ≤ E_h/6^8 < H` (`Valid.box_lt_H`) and excludes `[μR/1000, 1000νR]` for `μ > U₀⁻¹/2` and `ν ≤ 8U₀`, using `T ≥ L_h(U₀+4)` (`Tt_ge_U0_four`).
+- "Absorb the absolute constants in eq:triple-test into μ, ν": the four-core application uses the bands `μ` and `4 · 2ν` (`four_core_ann`), so `ℓ = 1 + log₂(2 + (d+1)² · 8ν/μ)`; the three-core one uses `μ, 2ν`.
+- `M` is any common upper bound of the counts `M_i^G = |A_i|` (and of `M_l^G = Σ_s w_s` for three cores). `M = M'` is the blueprint case, and `M ≥ 1` follows from a nonempty `E_s`. For empty paths the bound is trivial, given a genuine bin (`0 < μ`, `0 ≤ ν`; hypothesis `hc`).
+- The three-core application keeps the shell condition `2^{I_w} ≤ 2U₀` from `eq:total-count`; `L = L₀ = fourMult / threeMult`.
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T15:16:30-04:00
+
+Row lines 2772-2774 (negligible amplitudes), side states. File: TrilinearHT/Auto/Sec15_5OneDistributionCalculationFinalSums.lean.
+
+Formulation and departures:
+- "Retained amplitudes satisfy `σ_j ≤ P^{C₀}`" is a hypothesis `σ_j ≤ U` on the class sizes, and for three cores also on the side sizes `(r⁻¹ ∫_I |S|²)^{1/2}`. It is discharged later from the retained sizes (`compSize_le`, `winB_le_sideSize`, and the core and side caps of `core_reduction_leaf`).
+- The length-weighted incidence count is left as `D_*^4 · Σ_I |I| |G_I|` (or `D_*^3 (I_w+1) Σ_I |I| |G_I|` for three cores, counting shells as frequency choices). The heights enter through the average `|H|⁻¹ Σ_h` of `eq:principal-core`, so no height count is needed.
+- `μ ν^{-J} Λ^{-(A+1)} ≤ 1` is used through `μ ≤ 1 ≤ ν` (`fourBands_spec`, `threeBands_spec`) and `Λ = 2^i ≥ 1`.
+- "Choose the fixed integer `B > C₁ + 3C₀ + 2`; this is `O(e^{-k}|R|)`" is `negligible_exp_small` with `B ≥ C₁ + 3C₀ + 1` and `D_* ≥ e^k`. "Leaves the minimum by eq:min-subadd" is applied in eq:core-final.
+- Amplitude quadruples: four cores use `(σ_j)_j`; three cores use `threeAmp = (b_Λ in the side role, σ_j in the core roles)`. All are dyadic (`2^k`), and those in `[ε, U]` number at most `(log₂(U/ε)+1)^4`.
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T15:34:37-04:00
+
+Row lines 2783-2800 (powered group sums), side states. File: TrilinearHT/Auto/Sec15_5OneDistributionCalculationFinalSums.lean.
+
+Formulation and departures:
+- The group sum is stated at one path point, height, type tuple and bin. `M'` is replaced by `Σ_k M_k^G` (allowed by `path_count_four`, which "expands `M'` into its four possible maximizing roles"). Groups with empty paths contribute zero and are omitted ("omit zero-count groups").
+- `L₀` and `ℓ` depend on the chart dimension of the group. They are bounded uniformly at `d_max` (monotonicity), so one constant serves all groups.
+- Path caps: eq:top-count enters as the hypothesis `Σ_G |A_j^G| ≤ K σ_j^{-2}` for the distinct used representatives `A_j^G` (`fourUsedReps`, `threeUsedReps`), and the side cap as `Σ_G Σ_s ‖S_{l,G,s}‖²_{2,I_s} ≤ K` (`sideWeight_cap`).
+- These sets are contained in the count sets of `first_top_count_main` (prop:tops): `A_j^G ⊆ {R.rep(node) : (I, node) ∈ useInst, x* ∈ I, σ_j² ≤ nodeSize}`. This holds once the representatives of type `κ_j` are those of `R`, the class nodes of that type lie in `R.Nd`, the path cells are actual-use cells, and the coefficients of the side states are those of the tops statement. These identifications belong to the construction of one attempt (sec:completion, line 2839).
+- "The finite amplitude-bin count absorbs all their sums, including the 24 orderings": the ordering is internal to `path_count_four_sorted`; the sum over amplitude bins is carried out in eq:core-final with the count of `four_retained_amps_card` / `three_retained_amps_card`.
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T16:14:34-04:00
+
+Row eq:core-final (lines 2808-2817), side states. File: TrilinearHT/Auto/Sec15_5OneDistributionCalculationFinalSums.lean.
+
+Formulation and departures:
+- Stated separately for the four-core pattern and for each three-core pattern with side role `l`. `core_final_patterns` (subadditivity of `min(η,·)`) adds them, which covers the core quantity of the patterns with at least three cores.
+- Inputs that are conclusions of earlier rows enter as hypotheses:
+  - the principal bounds of eq:principal-core (`hP`, in the form of `four_core_principal_bins` / `three_core_principal_bins`, with the anchors equal to the representatives);
+  - the path caps of eq:top-count and the side cap along every retained path (`hcap`);
+  - the retained amplitude bound `σ ≤ U` and `≤ D_*` alive modes.
+- eq:top-count is required at every point `y` for the cells of the path of `y` that lie in `T`. This is the blueprint's "for every retained path". Note: `first_top_count_main` states its bound only at points outside its cuts, for all depths. The retained-path form (cells above the first crossing) follows from the first-crossing construction but is not literally its conclusion. This must be reconciled in the assembly; possibly first_top_count_main needs a retained-path version.
+- `M_p` is an explicit product of polynomial factors (`multPoly`, `ellPoly`, `|H|`, the role-type count `(log₂ D_*+1)^8`, `(log₂(U/ε)+1)^4`, the shell count `I_w+1`, `K`, constants). Its conversion to `C_q P^{C₄}`, and of the separated errors to `O(e^{-k}|R|)` (`negligible_exp_small`, the `D_*^{-100}` numerical errors), is part of the exported core estimate (lines 2820-2822).
+- Three-core shells are counted, giving the factor `I_w+1`, instead of summed with the factor `Λ^{-Jp}`. This is a weaker, still polynomial, bound. The heights enter through `|H| ≥ |H|^{1-p}`.
+- The group-sum lemmas `four_group_sum_side` / `three_group_sum_side` now take per-group scale sets `S G` (the depths at which the group is used along the path).
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T17:42:28-04:00
+
+Row line 2836 (depth bookkeeping). Files: TrilinearHT/Auto/Sec14_2bShortBlockSummation.lean, Sec14_4FixedStacksTwoVaryingSides.lean, Sec14_5CommonCutsHullMaximaSummation.lean, Sec14_5bExportedSideEstimate.lean, Sec15_1ExactCommonHeightSelection.lean.
+
+Correction to lem:shortblock (statement fidelity):
+- Before this change, short_block_comparison obtained C_N from the hypothesis K ≤ N. The blueprint's hypothesis is instead that the internal summation cells lie in at most K consecutive depths of the original N-depth range. Under that hypothesis K may exceed N, so the old form was a strengthened hypothesis.
+- The lemma now takes a depth window: the summation cells lie in [d₀, d₀ + N). This is the only input `main_bound` uses.
+- short_block_comparison_nz requires the window only for cells of nonzero kernel, since zero-kernel cells contribute nothing.
+- piece_random_bound, piece_select_bound, piece_band_bound and sparse_piece_bound take the window (d₀ and nonzero-kernel cells in [d₀, d₀ + N)) in place of K ≤ N.
+- near_band_bound takes a window for each sparse piece.
+
+Line 2836 itself:
+- The side-state chain now takes `A.DepthWin N` in place of K ≤ N. It runs from leaf_near_bandM and the near-band cut, stack, position, actual and critical lemmas, through the T-level side lemmas, side_estimate_leaf and core_reduction_leaf.
+- `A.DepthWin N` says that the cells of the setup with nonzero weight lie in N consecutive depths. This is exactly the depth hypothesis of RetainedMin, `∀ I ∈ B.cells, B.w I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + N`.
+- Consequently every C_N(q) in the side-state estimates is the constant of the original N depths, as in the blueprint.
+
+Legacy AttemptParams system:
+- leaf_near_band and Sec16_1 still assume K ≤ N, now justified per piece by the piece root's depth.
+- They keep their C_K conclusions. They are not on the fp side-state route.
+
+Full lake build passed; standard axioms (short_block_comparison, short_block_comparison_nz, near_band_bound, leaf_near_bandM, near_band_criticalM, near_band_critical_UM).
+
+## 2026-10-15T18:37:37-04:00
+
+Rows of line 2839 (one attempt on the fp system): basic input sizes, catalogs on test cells, certified groups. Files: Sec11_2cFiniteBaseDataAssembly.lean, Sec12_3bCatalogsMainColumns.lean, Sec12_4BinaryLocalizationVariation.lean, Sec13_4SideStatesFixedOffsets.lean, Sec14_1TransferPairedDefects.lean, Sec14_5bExportedSideEstimate.lean, Sec16_1OneAttemptRestarts.lean, Sec16_3SummingUpdateLevels.lean.
+
+prop:base statement fidelity (basic projection inputs normalized on every cell):
+- `HasColumnRep CF` and `ColumnRepBelow R' CF` now also assert that the inputs of the two basic projections have energy at most `CF |I|` on every cell `I` of the setup (`BasicProjection.CellEnergyOn`). Previously only the root energy was recorded.
+- This is the blueprint's "their normalized L² sizes are bounded": the original inputs are normalized on every cell of the tree.
+- The data was already available (`IsBasicOn` carries energies on all kernel-hull cells; the setup cells lie in the hull, `hTH`). `IsBasicOn.basicProjection` now exports it, and both base constructions pass it on.
+- `BasicFamilies` has a new field `energy`. `BasicFamilies.normF` is the `hnormF` input of `core_reduction_leaf` with `C_F = 1`.
+
+Catalogs on the active cells (lem:closure: "these main tests terminate on every active cell"):
+- `main_closure`, `helper_closure`, `attempt_localization`, `helper_instantiation_main` and `helper_sides` now take a test-cell set `Tc ⊆ A.cells`. Previously the tests were imposed on all of `A.cells`.
+- With `Tc` the active cells, the path-multiplicity hypothesis of the label counts holds at every cell.
+- `A.cells` itself stays ancestor-closed, as the hulls of the side estimate need.
+- Equivalent organization; no change of mathematical content.
+
+Pattern inputs:
+- `uslot p` is the marked slot of a side pattern.
+- `patIn` gives the U column in that slot and the basic inputs elsewhere.
+- `Λc_patIn`: the cell form of the pattern inputs is `A.Hf I (A.z p I)`.
+- `norm_patIn_le`: normalized size at most `max 2 S`.
+
+Certified groups:
+- `groupsAt_cert_use` (port of the ap `groupsAt_cert`): at a cell where every present vertex succeeds, each current group has `Cert` and `ActualUse`.
+- `FamParams.failure_cut` gives success below no failure root.
+
+Full lake build passed; standard axioms.
+
+## 2026-10-15T18:50:45-04:00
+
+Discrepancy found while assembling line 2839 (fixed in the combination layer, in progress): the clearing integer Q₀ of sec:core.
+
+Blueprint:
+- Line 1890: "For group center z, choose an integer Q₀ in the main budget clearing C_z, and put ϑ = θ_z/Q₀".
+- Q₀ is per group center.
+- Lines 1934 and 1958 only need D_* ≥ Q₀ and Q₀ inside the bound H > (d_max C_* E_{J_*} B_* L_{J_*} Q₀ Ξ)^{10} of eq:mode-parameters.
+
+Lean before the fix:
+- The sec:core development reads the clearing integer from the leaf schedule `D.S.Q0`: torus frequencies `torusξ D.S`, `xiH`, the tests `fourRefSet`/`fourPasses`, and the hypotheses `hQC : Q₀·C_z integral`.
+- One schedule serves all groups of a leaf. Its Q₀ would have to clear the curvature matrices of all group centers.
+- A common multiple of the clearing integers of all centers has logarithm of the order of the number of distinct centers. That number is not bounded independently of the tree. So it is outside the main budget, and K ≤ C P^{C₅} (eq:mode-parameters through log Q₀) would fail.
+
+Fix:
+- Per-group schedules: `SideInput.withQ0 q` replaces only the clearing integer of the schedule.
+- `ModeSchedule.Valid` persists for 1 ≤ q ≤ S.Q₀, since Q₀ enters only as a factor of the H bound.
+- Every other component of the side input (blocks, side states, cores, errors, modes) is unchanged, definitionally.
+- The per-group sec:core results (torus forms, tests, principal bins, counts) are applied to `D.withQ0 (q G)` with `q G` the clearing integer of the center of G.
+- The cross-group combination lemmas of Sec15_5 (path totals, eq:core-final) are generalized to a per-group clearing integer.
+- The leaf schedule keeps Q₀ := a common upper bound (≤ D_*), as in eq:mode-parameters.
+- The per-group statements of sec:core are unchanged; they were already stated for one group.
+
+## 2026-10-15T20:14:15-04:00
+
+Resolution of the Q₀ discrepancy of 2026-10-15T18:50:45-04:00 (per-group clearing integer, blueprint line 1890). Fixed.
+
+- Placement: `ModeSchedule.withQ0`, `ModeSchedule.Valid.withQ0` and their simp lemmas are in Sec13_3. `SideInput.withQ0` and its simp lemmas are in Sec14_5b.
+- Generic cross-group lemmas take `(q : ι → ℕ) (hq : ∀ G, 1 ≤ q G ∧ q G ≤ S.Q0)` and use `S.withQ0 (q G)` per group:
+  - `linear_side_of_events`, `side_errors_negligible` and `linear_energy` (Sec13_3);
+  - `sideState_budget` (Sec13_4);
+  - `tops_energy`, `first_top_count`, `first_top_count_main` and `usedReps_le_Dstar` (Sec13_5).
+- Side-input lemmas take `(qG : bf.Grp → ℕ)`.
+  - They work on the family leaf `D.toLeafQ qG`, whose group-`G` side values, sides and blocks are those of `D.withQ0 (qG G)`.
+  - Lemmas: `V_sum_le`, `basic_side_energy`, `block_energy`, `U_side_energy`, `toLeaf_cap`, `side_estimate`, `Tside` and `side_estimate_leaf` (Sec14_5b); `cell_reduction`, `core_reduction` and `core_reduction_leaf` (Sec15_1), through the wrappers `form_expandQ`, `restored_eqQ` and `sizes_atQ`.
+- The Sec15_5 path totals and eq:core-final take `(qG) (hqG)`.
+- No statement gained an assumption beyond the family `qG` and its bounds `1 ≤ qG G ≤ Q₀`. Lemmas that do not need those bounds hold for every `qG`.
+
+Full lake build passed (9083 jobs). Standard axioms: a global audit of all 13915 `Auto` declarations found only propext, Classical.choice and Quot.sound.
+
+## 2026-10-15T21:11:13-04:00
+
+Gap found while assembling line 2839 (linear sides and first top counts), fixed: the enlarged budget `D_*` did not cover the heights used by the representatives.
+
+Blueprint:
+- Line 1934: `D_*` covers "all mode counts, rational heights in eq:mode-differences, inverse private weights, Q₀, ...".
+
+Lean before the fix:
+- `typed_representatives_sched`, `first_top_count_main` and their callers take `hBσ : 2 (Q₀ (3 B_σ²)²)² ≤ ⌊D_*⌋`. This bounds the heights of the rescaled differences of key differences.
+- `modeStarG` (the enlarged `D_*`) covered `B_σ` itself, but not this polynomial in `B_σ` and `Q₀`. So `hBσ` could not be discharged at `D_* = modeStarG`.
+
+Fix (Sec13_1):
+- `keyHgt` is the largest key height `max(1, B_m (1 + 4(2d_B+1) max(1, 4B_m/δ_c)))`, with `B_m = exp(D X_max^D)`.
+- `hgtStar = 2((H_ed^(d_B²)+1)(3 keyHgt⁴))² + 1`.
+- `modeStarG` now adds `hgtStar`, before `K_*` is chosen. The tails stay `≤ D_*^(-300)` for the final `D_*`.
+- `le_modeStarG` exports `hgtStar ≤ D_*`.
+- The degree bound `log_modeStarG_poly` keeps its form, via `hgtStar ≤ 19 (modeStar+1)^10` (`keyHgt_le_modeStar`); only its constant changes.
+- `exists_mainModeSystem` exports `B_σ` and the reindexing of the primaries. `FamParams.ModeExports.hBσ_le` derives `hBσ` for every clearing integer `Q ≤ H_ed^(d_B²)+1`.
+
+This is the blueprint's choice of `D_*` covering the heights: a polynomial enlargement, so `log D_* ≤ P^C` is unchanged.
+
+Full lake build passed (9083 jobs). Global audit: standard axioms only.
+
+## 2026-10-15T21:31:13-04:00
+
+Gap found while assembling line 2839 (first top counts for the core), fixed: `eq:top-count` along retained paths.
+
+Blueprint:
+- Lines 2226-2229: first crossings of the partial top counts give `Σ_tops 1_I(y) ≤ P^C σ^-2` "outside a small root fraction".
+- Line 2808 (`eq:core-final`): the path caps are used along every retained path.
+
+Lean before the fix:
+- `tops_cut_many` and `first_top_count(_main)` bounded the count only at points `y` outside the cut cells.
+- `four/three_core_final_side` take the caps `hcap` for every `y`, summed over the retained cells `T` containing `y`.
+- A retained cell above a cut contains points of the cut. Its count at such points was not controlled; and a retained cell can be covered entirely by cut cells.
+
+Fix (Sec13_5, Sec15_5):
+- `tops_cut_many` now states, for every point, the count of the tops on cells not inside any cut cell. These cells are retained cells of every choice (`dyadicRetainedCells_iff`).
+- `card_reps_le_firstTops_of` is `card_reps_le_firstTops` restricted to an upward closed family of cells (`[DecidablePred P]`, so the filter instances agree).
+- `first_top_count` and `first_top_count_main` now bound, for every `y`, the representatives used at instances on cells not inside any cut cell. This implies the old form.
+- `four/three_usedReps_subset_tops` now record that the instance cell lies in the path family `Cs`. With `Cs` the retained cells, the core caps follow for every `y`.
+
+Full lake build passed (9083 jobs). Global audit: standard axioms only.
+
+## 2026-10-15T22:05:06-04:00
+
+Proof-route changes for the helper catalogs of line 2839 (blueprint lines 2167-2169: "helper ranks exceed every main rank, so their insertion leaves all previously fixed main projections, offsets and side states unchanged").
+
+1. Invariance only on active cells (Sec16_1).
+- The global main outputs `basicOut` live on the relevant labels of the catalog (`RLab s`). Their global invariance under appended templates would need a transport of the depth families between label types.
+- What is proved instead is the restricted form:
+  - `basicOut_restrict_append`: on an active cell of its depth (`basicOut_restrict` with the unchanged ball and cumulative filters).
+  - `frozenZ_restrict_append`: through the active ancestor at the frozen depth.
+  - `sideState_restrict_append`.
+- The side input of the leaf uses the extended catalogs: `SideInput.appendCat`, with a main budget of the extension.
+- Every object that enters the leaf estimates through the main catalog is a restriction to an active cell. The transfer lemmas are `toLeafQ_sv_appendCat`, `toLeafQ_out_appendCat`, `repAt_appendCat` and `errAt_appendCat`.
+
+2. Helper bases indexed by the groups of the leaf.
+- `far_bound`, `side_estimate_leaf` and `core_reduction_leaf` took helper tests with base index `Fin 4 × bf.Grp`, an infinite type. The closure (lem:closure) needs finitely many tests.
+- Only the side of the tested slot is used as a base, at an actual-use group of the cell.
+- The base index is now `gset` (the groups of the leaf), with base `G ↦ T.sv a G I` for the test slot `a`. `far_bound` takes `gset` and `hgs : gs I ⊆ gset`.
+
+3. `helper_sides` now requires only what it uses of its bases: their restrictions to the active cells avoid the fresh labels of the slot catalog.
+- Side states are physical (`sideState_restrict_base`).
+- The whole output of a basic `U` slot is a ball filter output of its own catalog (`ballFilt_fresh`, `restrict_ballFilt_self`).
+- `helper_instantiation_main` and `helper_sides` also export the births, rank `L + 5`, mask tags and template form of the inserted templates.
+- Tags are available occurrences (`maskOf_mem_X`, `occAvail_of_mem_X`), which gives `BallData` for the extended leaf (`ballDataAppend`, with `mainLabelsM_append_highRank`).
+
+Full lake build passed (9083 jobs). Global audit (13999 Auto declarations): standard axioms only.
+
+## 2026-10-15T22:42:24-04:00
+
+Interface defect found while assembling the core estimate of line 2844 (eq:core-final on a leaf); fix in progress.
+
+The defect:
+- `four_core_final_side`, `four_path_total`, `four_path_bin_bound` (and the three-core analogs) take the anchors of the final classes as total functions `anc : ∀ (I : ℤ × ℤ) (G : bf.Grp), ℕ → ∀ j, Finset (Ms j G).Md → (Ms j G).alive U_I`.
+- The path layer (`four_group_sum_side`, `fourPathE`, `fourUsedReps`, `FourPathAnc` and the three-core analogs) takes `ancOf : ∀ s, … → alive U_(cellOf s)`.
+- Here `U_I` is the decision cell of `I`. It lies above the root for every cell of the first blocks (`b - 4K < R.1`), where no mode is alive, and the alive set can also be empty below the root.
+- When it is empty, the function type is empty, since the domain `Finset Md` is nonempty. So these statements cannot be instantiated as stated.
+- The anchors are only ever evaluated at cells and groups with successful classes, where the alive sets are nonempty. So the content is unaffected.
+
+Fix (this session, in progress):
+- The path and global layers take anchors depending on a proof `AncNe G I`: the alive sets of the core roles at the decision cell are nonempty.
+- Quantities at cells without that proof are set by case split. They are empty there: no alive modes, no classes, no core subtotal.
+- The per-cell layer (tests, bins, principal bounds) is unchanged.
+
+## 2026-10-15T23:02:41-04:00
+
+Anchor defect of 2026-10-15T22:42:24-04:00: fix completed. Full build passes; the axiom audit is standard.
+- Path layer (Sec15_4, Sec15_5): `ancOf : ∀ s, AncNe G (cellOf s) → …` (`AncNe3 G (cellOf s) l` for three cores).
+- `fourPathE`, `threePathE`, `fourUsedReps` and `threeUsedReps` are empty at scales without that proof (case split by `dite`).
+- `FourPathAnc` and `ThreePathAnc` quantify over the proof; `fourPathE_card` and `threePathE_card` take it as a hypothesis.
+- Global layer (Sec15_5): `anc : ∀ I G, AncNe G I → …`.
+- The per-cell quantities of the global layer are `fourRetBinsA`, `fourCntA` and `fourBinSumA` (three cores: `threeRetBinsA`, `threeCntA`, `threeBinSumA`). Each is the per-cell quantity at the anchors when `AncNe` holds, and empty or zero otherwise.
+- `four_principal_splitA` and `three_principal_splitA`: the per-cell split in this form.
+- The principal-bound hypothesis `hP` of `four/three_core_final_side` is stated with `fourBinSumA`/`threeBinSumA`.
+- Consequence for the leaf assembly: where `AncNe` fails, some core role has no alive mode at the decision cell, so its core vanishes and so does the pattern form. That vanishing is to be proved there.
+- Unchanged: the per-cell layer (tests, bins, `four/three_core_principal_bins`). The standalone lemmas `four/three_negligible_side` and `four/three_retained_amps_card` are also unchanged; they hold for arbitrary anchors.
+
+## 2026-10-15T23:50:38-04:00
+
+Quantitative defect in the stack energies (eq:stack-energy, lines 2393-2399) of the side estimate on the side states. Fix in progress.
+
+The defect:
+- `block_energy` (Sec14_5b) bounds the energies of the block inputs `W_{G,b} = Z_b - Z_{u_b} + V_{G,b}` at the block starts by `sideB = 2 K (20 G₀ + 32) |R| + 2 K V_l |R|`.
+- The bound comes from `sideState_budget`, which is the side budget of eq:side-cap at all depths of a block, hence the factor `K`.
+- These energies are the `E_W` of the stacks. The hypotheses `hΓa`, `hΓb` of `side_estimate`, `side_estimate_leaf`, `core_reduction_leaf` and `leaf_bound` use `sideB`.
+- As a result, `Γ_a`, `Γ_b` and the near-band term carry a factor of about `K`.
+- The blueprint's eq:stack-energy is `Σ_{G,b} ‖stack‖² ≤ G₀ |R|`, free of `K`. Its block inputs use eq:variation on the intervals `[u_b, b]`, whose overlap over blocks is bounded, and each `V_{G,b}` once.
+- `K ≤ C P^{C₅}` with `log D_* ≈ P^{C}`. So the extra factor would cancel the `P^{-1/2}` gain of eq:near-band in the final absorption (line 2876).
+
+Fix:
+- `rolling_budget_blocks`: for depths that are multiples of `K` (block starts), the rolling energy is at most `(20 G₀ + 32) |R|`. Color `t / K` modulo `5`: five colors instead of `5K`, and at most four early block starts.
+- `sideState_budget_blocks`: at block starts, `2 (20 G₀ + 32) |R| + 2 Σ_b ‖V_{G,b}‖²`, each `V` counted once.
+- `sideB0 = 2 (20 G₀ + 32) |R| + 2 V_l |R|` replaces `sideB` in `block_energy` and in the stack-energy hypotheses `hΓa`, `hΓb`.
+- `sideB` (with `K`) remains the side budget `sideBs` of the side caps (eq:side-cap), where the blueprint also has `K`.
+
+## 2026-10-16T00:05:56-04:00
+
+Stack-energy defect of 2026-10-15T23:50:38-04:00: fixed.
+- Sec13_4: `rolling_budget_blocks` and `sideState_budget_blocks`.
+- Sec14_5b: `sideB0`. `block_energy` is now bounded by `sideB0`, and `side_estimate` passes `sideB0` as the block energy.
+- The hypotheses `hΓa`, `hΓb` of `side_estimate`, `side_estimate_leaf`, `core_reduction_leaf` (Sec15_1) and `leaf_bound` (Sec16_2) use `sideB0`.
+- The side caps keep `sideBs` with `sideB`, where the factor `K` is the blueprint's.
+- The near-band term is now `(1 + C_N) P^{-1/2}` times `K`-free stack energies, logarithms of `K`, and `(K + 2)^{2(q-2)/(q-1)}`, as in eq:near-band.
+
+## 2026-10-16T00:05:56-04:00
+
+Interface correction (main tests of the far bound, lines 2252-2258).
+- Previously, `leaf_farM`, `leaf_far_search`, `far_bound`, `side_estimate_leaf`, `core_reduction_leaf` and `leaf_bound` required the main tests with the basic input `basicIn` to pass in every slot, including the basic `U` slot.
+- The attempt's catalogs (`exists_attempt`, `attempt_localization`) close the tests of the pattern inputs. In the `U` slot that input is `U`, not `basicIn`.
+- The far bound only uses the two transfer slots `c, d`, which are basic: `¬ Ucase c d`.
+- The hypothesis is now restricted. In `leaf_farM` and `leaf_far_search` it is required for `l = c ∨ l = d`; from `far_bound` up through `leaf_bound`, for the slots with `D.u ≠ some l`.
+- In those slots the pattern input equals `basicIn` (`patIn_of_ne`).
+- This is not a change of mathematics: the blueprint's tests are those of the actual pattern inputs.
+
+## 2026-10-16T00:28:09-04:00
+
+Interface additions for the leaf assembly. Full build passes.
+- `exists_vchart` (Sec12_3b) has an unconditional complexity component. For unavailable vertices the chart is the zero chart of dimension one, which has that complexity.
+- New `vchart_complexity`: every vertex tag has dimension at most `log(max H padW)` and rational heights at most `max H padW`.
+- This gives the hypotheses `∀ w, (bf.vtag w).dim ≤ d_B` and the center height bounds used by `exists_leaf_modes` and `first_top_count_main`, which quantify over all vertices.
+- `attempt_localization` (Sec12_4) and `exists_attempt` (Sec16_1) export `occAvail` of the tags of the main catalog columns. This is derived from the masks in `main_closure` and is used by `BallData` and `first_top_count_main`.
+- New `helper_sides_closure` (Sec16_1): the helper catalogs on the closure counts of the attempt's main catalogs. Blueprint line 1828 has one sequence `n_r` for all `L + 5` ranks.
+- Previously `helper_sides` recomputed its own counts with `closure_poly`. Its helper thresholds `catThreshold … n (L+5)` were then not tied to the main counts `n(L+4)` of the far bound (`hτH'` of `leaf_bound`).
+
+## 2026-10-16T00:54:09-04:00
+
+Interface corrections found while assembling one leaf (blueprint lines 1777-1789, 1828, 2167-2169).
+- Helper base names (lines 1828, 2167-2169: "for one active cell there are only the already bounded main groups"). `far_bound`, `side_estimate_leaf`, `core_reduction_leaf`, `leaf_bound` and `hhpass_appendCat` used helper names `HelperName I gset`. That indexes the bases by all groups of the leaf, whose number is not bounded per cell. The closure counts `n_r`, `T` and the helper name bound `K_t` would then depend on the number of cells.
+- Fix: these lemmas take a base-name type `Bh` and an enumeration `gE I : Bh → Grp` of the groups of each cell (`hgE`). The attempt uses `Bh = Fin famVtxBound`. The far bound uses only the base of the group at hand.
+- Ball-label overlap counts (lem:whole-ranges: "usable endpoint cells whose masks contain their tags"; "group and label counts on paths"). In `main_wr1`, `main_wr2` and every statement above them, through `BallData` and `first_top_count_main` (31 statements), the count of group-label pairs at a point ranged over all cells containing the point.
+- Fix: the count now ranges over cells with a downstream use certificate of the group (`∃ k', fp.Cert k' G I`), which are the only cells used.
+- Separation (lem:masks) applies only to certified endpoints, and without certificates the count is not bounded. With them, `card_ballPairs_le` bounds it by the main labels on the path (`card_pathLabels_le`: `8 colBudget` plus the template path count).
+
+## 2026-10-16T01:03:20-04:00
+
+Two further interface corrections for the leaf assembly.
+- Main test ranks (lines 1815, 1828: main ranks `1, …, L + 4`, helper rank `L + 5` reserved). The test names `TestName` (Sec12_3b) allow target and history ranks up to `L + 5`, so the main catalogs of `exists_attempt` close tests of the helper rank too. After the helper templates are appended, only main tests of rank at most `L + 4` keep passing (`helper_instantiation_main`).
+- The far bound needs only target ranks `brank j ≤ L + 4` and `crank m ≤ L + 1`, with cumulative histories.
+- Fix: new predicate `MainRk` (Sec14_1). The hypothesis `hpass` of `chain_passM`, `chain_passR`, `leaf_farM`, `leaf_far_search`, `far_bound`, `side_estimate_leaf`, `core_reduction_leaf` and `leaf_bound` is restricted to names of main rank (`mainRk_layerName`). This weakens the hypotheses only; the attempt's closure is unchanged.
+- Type-class nodes (`hNdR` of `leafRep_repOK`, `leafNd_mem`, `leaf_core_estimate`, `leaf_bound`). Previously required at every height. `first_top_count_main` provides the type classes for heights `h ≤ J_*`, and the core estimate uses only the upper heights (`⊆ [0, J_*]`). The hypothesis is now `∀ h ≤ J_*`.
+
+## 2026-10-16T05:06:25-04:00
+
+Exports added for the explicit leaf bound (no change to the blueprint statements).
+- `MainLiftExports.εM_le` (Sec13_1): the private mode weights are at most the main weights,
+  as constructed (`εM = w(own) (Σ‖coef‖² + 1)⁻¹`). Needed for the class sizes (`clsSize_le`).
+- `exists_leaf_modes` (Sec16_1): also returns the trivial mode systems off the used groups
+  (`Bσ = 1`, no alive modes). Stabilization (`stab_of_valid`) quantifies over all groups.
+- `leaf_bound` (Sec16_2): also returns the local side sizes `√T_c ≤ U` on the retained cells.
+  These feed the three-core tuple errors (`threeErr_le`).
+- The core-error accuracy is `ε = (U³ D_*⁵ e^k (1 + M_p V))⁻¹`, not `(U³ D_*⁴ e^k)⁻¹`.
+  The core errors are summed over at most `M_p V` groups per point (`M_p` the active
+  multiplicity, `V = famVtxBound`). The extra factor enters the main terms only through
+  `log(U/ε)`.
+- The enlarged budget `D_*` is built at an accuracy `k_D ≥ k` (`modeStarG … k_D …`).
+  Its `e^{k_D}` summand then dominates the active multiplicity in the `D_*^{-90}` errors.
+  All degree bounds (`log_modeStarG_poly`) hold at `k_D`, as in the blueprint ("increase the
+  starting logarithm").

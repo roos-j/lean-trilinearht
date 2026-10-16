@@ -5056,39 +5056,104 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
+/-! ### Per-group clearing integers (blueprint line 1890) -/
+
+namespace ModeSchedule
+
+/-- The schedule with the clearing integer `Q₀` replaced by `q` (blueprint line 1890: `Q₀` is
+chosen for each group center; eq:mode-parameters only uses an upper bound for it). -/
+def withQ0 (S : ModeSchedule) (q : ℕ) : ModeSchedule := { S with Q0 := q }
+
+/-- `eq:mode-parameters` persists when the clearing integer is replaced by a smaller one: `Q₀`
+enters only as a factor of the lower bound for `H`. -/
+theorem Valid.withQ0 {S : ModeSchedule} {Cj CA CT CK : ℕ} {δs W : ℝ}
+    (hV : S.Valid Cj CA CT CK δs W) (hD : 0 ≤ S.Dstar) (hB : 0 ≤ S.Bstar) {q : ℕ}
+    (hq : q ≤ S.Q0) : (S.withQ0 q).Valid Cj CA CT CK δs W where
+  Cstar_ge := hV.Cstar_ge
+  Rht_ge := hV.Rht_ge
+  Jstar_ge := hV.Jstar_ge
+  A0_ge := hV.A0_ge
+  H_gt := by
+    refine lt_of_le_of_lt ?_ hV.H_gt
+    have hC : 0 ≤ S.Cstar :=
+      le_trans (pow_nonneg (mul_nonneg (by positivity) hD) _) hV.Cstar_ge
+    have hA : 0 ≤ S.A0 := le_trans
+      (pow_nonneg (mul_nonneg (mul_nonneg (mul_nonneg hC (by positivity)) hB) hD) _) hV.A0_ge
+    have hq' : (q : ℝ) ≤ S.Q0 := by exact_mod_cast hq
+    have hEh : 0 ≤ S.Eh S.Jstar := by unfold ModeSchedule.Eh; positivity
+    have hΞ : 0 ≤ S.Ξ := by unfold ModeSchedule.Ξ; positivity
+    have hL : 0 ≤ ModeSchedule.Lh S.Jstar := by unfold ModeSchedule.Lh; positivity
+    change (S.dmax * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar * (q : ℝ) *
+      S.Ξ) ^ 10 ≤ (S.dmax * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar *
+        S.Q0 * S.Ξ) ^ 10
+    gcongr
+  T_gt := hV.T_gt
+  K_dyadic := hV.K_dyadic
+  K_ge := hV.K_ge
+
+variable (S : ModeSchedule) (q : ℕ)
+
+@[simp] theorem withQ0_dmax : (S.withQ0 q).dmax = S.dmax := rfl
+@[simp] theorem withQ0_Dstar : (S.withQ0 q).Dstar = S.Dstar := rfl
+@[simp] theorem withQ0_Bstar : (S.withQ0 q).Bstar = S.Bstar := rfl
+@[simp] theorem withQ0_Dm : (S.withQ0 q).Dm = S.Dm := rfl
+@[simp] theorem withQ0_Q0 : (S.withQ0 q).Q0 = q := rfl
+@[simp] theorem withQ0_Cstar : (S.withQ0 q).Cstar = S.Cstar := rfl
+@[simp] theorem withQ0_Rht : (S.withQ0 q).Rht = S.Rht := rfl
+@[simp] theorem withQ0_Jstar : (S.withQ0 q).Jstar = S.Jstar := rfl
+@[simp] theorem withQ0_A0 : (S.withQ0 q).A0 = S.A0 := rfl
+@[simp] theorem withQ0_H : (S.withQ0 q).H = S.H := rfl
+@[simp] theorem withQ0_T : (S.withQ0 q).T = S.T := rfl
+@[simp] theorem withQ0_K : (S.withQ0 q).K = S.K := rfl
+@[simp] theorem withQ0_Eh (h : ℕ) : (S.withQ0 q).Eh h = S.Eh h := rfl
+@[simp] theorem withQ0_Ξ : (S.withQ0 q).Ξ = S.Ξ := rfl
+
+
+/-- Per-group box condition: a clearing integer below `Q₀` inherits the frequency-box bound. -/
+theorem withQ0_box {S : ModeSchedule} {q : ℕ} (hq : q ≤ S.Q0) {X Y : ℝ} (hX : 0 ≤ X)
+    (h : (S.Q0 : ℝ) * X ≤ Y) : ((S.withQ0 q).Q0 : ℝ) * X ≤ Y :=
+  le_trans (mul_le_mul_of_nonneg_right (by exact_mod_cast hq) hX) h
+
+end ModeSchedule
+
 /-! ### Linear sides from bounded frozen event projections (blueprint lines 2112-2118, 2160) -/
 
 open Classical in
 /-- Blueprint `eq:linear-energy` from any bound `B_ev` on the frozen event projections of all
 groups: `Σ_{G,b} ‖V_{G,b}‖² ≤ 2 (1 + κ D³) (B_ev + Σ eventErr²)`. -/
 theorem linear_side_of_events {Gd : RealDyadicGrid} {Mc : ℕ} {ι : Type*} [Fintype ι]
-    (Ms : ι → ModeSystem Gd Mc) (S : ModeSchedule) (hA : 6 ≤ S.A0) (SP : SideParams)
+    (Ms : ι → ModeSystem Gd Mc) (S : ModeSchedule) (hA : 6 ≤ S.A0) (SP : SideParams) (q : ι → ℕ)
+        (hq : ∀ G, 1 ≤ q G ∧ q G ≤ S.Q0)
     (Bs : ι → Finset ℤ) (cells : ι → ℤ → Finset (ℤ × ℤ))
     (hdepth : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ cells G b, J.1 = b - 2 * S.K)
     (c : ∀ G, ℤ → ℤ × ℤ → (Ms G).Md → ℂ)
     [inst : ∀ G (J : ℤ × ℤ) (E : Finset (Ms G).Md),
       (Submodule.span ℂ (((Ms G).cellMode J) '' (E : Set (Ms G).Md))).HasOrthogonalProjection]
-    (hδ : ∀ G, 0 < (Ms G).δc) (hΛ : ∀ G, 8 * (Ms G).Λ ≤ S.Ξ) (hΞ : 0 < S.Ξ) (hQ0 : 0 < S.Q0)
+    (hδ : ∀ G, 0 < (Ms G).δc) (hΛ : ∀ G, 8 * (Ms G).Λ ≤ S.Ξ) (hΞ : 0 < S.Ξ) (_hQ0 : 0 < S.Q0)
     (Kf : ℕ) (hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0) {ε D κ : ℝ} (hε : 0 < ε)
     (hεw : ∀ G m, ε ≤ (Ms G).L.εM m) (hD0 : 0 ≤ D)
     (hD1 : ∀ G, (Fintype.card (Ms G).Md : ℝ) ≤ D)
     (hD2 : ∀ G, (Fintype.card (Ms G).Md : ℝ) ≤ ε * D ^ 2)
     (hκ : ∀ G, pairConst (Ms G).zc.dim (Ms G).δc S.Ξ Kf ≤ κ) (hκ0 : 0 ≤ κ) {Bev : ℝ}
-    (hev : ∑ G, ∑ b ∈ Bs G, ∑ J ∈ cells G b, ∑ E ∈ (Ms G).sideEvents S hA SP b J,
+    (hev : ∑ G, ∑ b ∈ Bs G, ∑ J ∈ cells G b, ∑ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) hA SP b J,
       ‖(Submodule.span ℂ (((Ms G).cellMode J) '' (E : Set (Ms G).Md))).starProjection
-        ((Ms G).frozenEval S b J (c G b J))‖ ^ 2 ≤ Bev) :
-    ∑ G, ∑ b ∈ Bs G, ‖(Ms G).blockSide S hA SP b (cells G b) (c G b)‖ ^ 2 ≤
+        ((Ms G).frozenEval (S.withQ0 (q G)) b J (c G b J))‖ ^ 2 ≤ Bev) :
+    ∑ G, ∑ b ∈ Bs G, ‖(Ms G).blockSide (S.withQ0 (q G)) hA SP b (cells G b) (c G b)‖ ^ 2 ≤
       2 * (1 + κ * D ^ 3) * (Bev + ∑ G, ∑ b ∈ Bs G, ∑ J ∈ cells G b,
-        ∑ E ∈ (Ms G).sideEvents S hA SP b J, (Ms G).eventErr S Kf ε b J E (c G b J) ^ 2) := by
-  have hgroup : ∀ G, ∑ b ∈ Bs G, ‖(Ms G).blockSide S hA SP b (cells G b) (c G b)‖ ^ 2 ≤
-      2 * (1 + κ * D ^ 3) * (∑ b ∈ Bs G, ∑ J ∈ cells G b, ∑ E ∈ (Ms G).sideEvents S hA SP b J,
+        ∑ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) hA SP b J, (Ms G).eventErr (S.withQ0 (q G)) Kf ε b
+            J E (c G b J) ^ 2) := by
+  have hgroup : ∀ G, ∑ b ∈ Bs G, ‖(Ms G).blockSide (S.withQ0 (q G)) hA SP b (cells G b) (c G b)‖ ^
+      2 ≤
+      2 * (1 + κ * D ^ 3) * (∑ b ∈ Bs G, ∑ J ∈ cells G b, ∑ E ∈ (Ms G).sideEvents (S.withQ0 (q G))
+          hA SP b J,
         ‖(Submodule.span ℂ (((Ms G).cellMode J) '' (E : Set (Ms G).Md))).starProjection
-          ((Ms G).frozenEval S b J (c G b J))‖ ^ 2 +
-        ∑ b ∈ Bs G, ∑ J ∈ cells G b, ∑ E ∈ (Ms G).sideEvents S hA SP b J,
-          (Ms G).eventErr S Kf ε b J E (c G b J) ^ 2) := by
+          ((Ms G).frozenEval (S.withQ0 (q G)) b J (c G b J))‖ ^ 2 +
+        ∑ b ∈ Bs G, ∑ J ∈ cells G b, ∑ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) hA SP b J,
+          (Ms G).eventErr (S.withQ0 (q G)) Kf ε b J E (c G b J) ^ 2) := by
     intro G
-    have h := (Ms G).group_side_energy S hA SP (Bs G) (cells G) (hdepth G) (c G)
-      (inst := inst G) (hδ G) (hΛ G) hΞ hQ0 Kf hbox hε (hεw G) hD0
+    have h := (Ms G).group_side_energy (S.withQ0 (q G)) hA SP (Bs G) (cells G) (hdepth G) (c G)
+      (inst := inst G) (hδ G) (hΛ G) hΞ (lt_of_lt_of_le zero_lt_one (hq G).1) Kf
+      (ModeSchedule.withQ0_box (hq G).2 (by positivity) hbox) hε (hεw G) hD0
       (fun y => ((Ms G).ptSet_card_le y).trans (hD1 G))
       (fun y => ((Ms G).ptSet_card_le y).trans (hD2 G))
     refine h.trans ?_
@@ -5671,7 +5736,8 @@ theorem main_rows_joint (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (x : ColumnL2 (bf.RLab fp.Mc s)) :
@@ -5711,8 +5777,8 @@ theorem main_rows_joint (l : Fin 4) (s : List (CatCol bf.Vtx))
     intro y
     refine le_trans (Finset.card_le_card fun q hq => ?_) (hN y)
     obtain ⟨-, e, -, hy, hv⟩ := Finset.mem_filter.mp hq
-    refine Finset.mem_filter.mpr ⟨Finset.mem_univ _, u q.1 e, hu _ _, ⟨fp.P - 1, by
-      have := fp.hP; omega⟩, hy, ?_⟩
+    refine Finset.mem_filter.mpr ⟨Finset.mem_univ _, u q.1 e, hu _ _, ⟨k, hcert q.1 e⟩,
+      ⟨fp.P - 1, by have := fp.hP; omega⟩, hy, ?_⟩
     have he : ((⟨fp.P - 1, by have := fp.hP; omega⟩ : Fin fp.P) : ℕ) + 1 = fp.P := by
       exact Nat.sub_add_cancel fp.hP
     rw [he]
@@ -5875,7 +5941,8 @@ theorem lift_composition_global (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N) :
     ∑ G, ∑ e, ‖P G e ((L G).op (fp.basicOut l s mb (grp G) j ls (u G e).1))‖ ^ 2 ≤
@@ -5981,7 +6048,8 @@ theorem lift_composition (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N) :
     ∑ G, ∑ e, ‖P G e ((L G).op (fp.ballFilt l s (u G e) (grp G) j
@@ -6117,7 +6185,8 @@ theorem lift_composition_G0 (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N)
     (hτN : τ * N * A.colBudget ^ 2 ≤ 1) (cc : ℕ) (hcc : 1 ≤ cc) {kk : ℝ} (hk : 1 ≤ kk)
@@ -6463,9 +6532,10 @@ blocks, pre-cells inside the root and side events is at most
 `3 (⌊180 d_max log(2 D_m)/δ_*⌋ + 1) B_c |R| / D_*^{396}`. -/
 theorem ModeSystem.side_errors_negligible (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : ℝ}
     (hV : S.Valid Cj CA CT CK δs W) (hCj : 340 ≤ Cj) (hCA : 1 ≤ CA) (hδs : 0 < δs)
-    (hδ1 : δs ≤ 1) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0)
+    (hδ1 : δs ≤ 1) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (_hQ : 1 ≤ S.Q0)
     (hDm : 2 ≤ S.Dm) (hW : 8 * ((S.dmax : ℝ) + 1) ^ 3 * Real.log (2 * S.H) / Real.log 2 ≤ W)
-    {Gd : RealDyadicGrid} {Mc : ℕ} {ι : Type*} [Fintype ι] (Ms : ι → ModeSystem Gd Mc)
+    {Gd : RealDyadicGrid} {Mc : ℕ} {ι : Type*} [Fintype ι] (Ms : ι → ModeSystem Gd Mc) (q : ι → ℕ)
+        (hq : ∀ G, 1 ≤ q G ∧ q G ≤ S.Q0)
     (hdim : ∀ G p, (Ms G).dvOf p + (Ms G).zc.dim ≤ S.dmax) {M : ℕ} (hM1 : 1 ≤ M)
     (hMD : (M : ℝ) ≤ 2 * S.Dm)
     (hM : ∀ G (U : ℤ × ℤ), (((Ms G).alive U).image (Ms G).keyOf).card ≤ M)
@@ -6481,12 +6551,12 @@ theorem ModeSystem.side_errors_negligible (S : ModeSchedule) {Cj CA CT CK : ℕ}
     (hc : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ cells G b,
       ∑ m ∈ (Ms G).alive (ancAt Gd J (b - 4 * S.K)), ‖c G b J m‖ ^ 2 ≤ Bc) :
     (∀ G, ∀ b ∈ Bs G, ∀ J ∈ cells G b,
-      ∀ E ∈ (Ms G).sideEvents S (hV.six_le_A0 hCA hd2 hD hB) (S.sideParams δs) b J,
-        (Ms G).eventErr S Kf S.Dstar⁻¹ b J E (c G b J) ^ 2 * S.Dstar ^ 397 ≤
+      ∀ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) (hV.six_le_A0 hCA hd2 hD hB) (S.sideParams δs) b J,
+        (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ b J E (c G b J) ^ 2 * S.Dstar ^ 397 ≤
           Bc * dyadicGridLength Gd J.1) ∧
     (∑ G, ∑ b ∈ Bs G, ∑ J ∈ cells G b,
-      ∑ E ∈ (Ms G).sideEvents S (hV.six_le_A0 hCA hd2 hD hB) (S.sideParams δs) b J,
-        (Ms G).eventErr S Kf S.Dstar⁻¹ b J E (c G b J) ^ 2) * S.Dstar ^ 396 ≤
+      ∑ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) (hV.six_le_A0 hCA hd2 hD hB) (S.sideParams δs) b J,
+        (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ b J E (c G b J) ^ 2) * S.Dstar ^ 396 ≤
       3 * (⌊180 * S.dmax * Real.log (2 * S.Dm) / δs⌋₊ + 1) * Bc *
         dyadicGridLength Gd R.1 := by
   have hA := hV.six_le_A0 hCA hd2 hD hB
@@ -6496,13 +6566,14 @@ theorem ModeSystem.side_errors_negligible (S : ModeSchedule) {Cj CA CT CK : ℕ}
   have hD1 : (1 : ℝ) ≤ S.Dstar := by linarith
   have hΞ : 0 < S.Ξ := pow_pos hDp 1000
   -- the error of one event
-  have hone : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ cells G b, ∀ E ∈ (Ms G).sideEvents S hA SP b J,
-      (Ms G).eventErr S Kf S.Dstar⁻¹ b J E (c G b J) ^ 2 * S.Dstar ^ 397 ≤
+  have hone : ∀ G, ∀ b ∈ Bs G, ∀ J ∈ cells G b, ∀ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) hA SP b J,
+      (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ b J E (c G b J) ^ 2 * S.Dstar ^ 397 ≤
         Bc * dyadicGridLength Gd J.1 := by
     intro G b hb J hJ E hE
     have hJu : b - 4 * S.K ≤ J.1 := by rw [hdepth G b hb J hJ]; omega
-    have h := (Ms G).eventErr_sq_le S Kf (inv_pos.mpr hDp) b J E
-      ((Ms G).sideEvents_subset_alive S hA SP hE) (c G b J) (halive G _) (hc G b hb J hJ)
+    have h := (Ms G).eventErr_sq_le (S.withQ0 (q G)) Kf (inv_pos.mpr hDp) b J E
+      ((Ms G).sideEvents_subset_alive (S.withQ0 (q G)) hA SP hE) (c G b J) (halive G _) (hc G b hb
+          J hJ)
     have hP := S.pairConst_mul_le hD (hDg G) (hKf G)
     have hP0 := pairConst_nonneg (Ms G).zc.dim (hδc G) hΞ Kf
     set P := pairConst (Ms G).zc.dim (Ms G).δc S.Ξ Kf
@@ -6515,7 +6586,7 @@ theorem ModeSystem.side_errors_negligible (S : ModeSchedule) {Cj CA CT CK : ℕ}
     have hP2 : (P * S.Dstar ^ 200) ^ 2 ≤ 1 := by
       have : 0 ≤ P * S.Dstar ^ 200 := mul_nonneg hP0 (pow_nonneg hDp.le _)
       nlinarith
-    calc (Ms G).eventErr S Kf S.Dstar⁻¹ b J E (c G b J) ^ 2 * S.Dstar ^ 397 ≤
+    calc (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ b J E (c G b J) ^ 2 * S.Dstar ^ 397 ≤
         P ^ 2 * dyadicGridLength Gd J.1 * S.Dstar ^ 2 * Bc / S.Dstar⁻¹ * S.Dstar ^ 397 :=
           mul_le_mul_of_nonneg_right h (pow_nonneg hDp.le _)
       _ = (P * S.Dstar ^ 200) ^ 2 * (Bc * dyadicGridLength Gd J.1) := e
@@ -6524,45 +6595,50 @@ theorem ModeSystem.side_errors_negligible (S : ModeSchedule) {Cj CA CT CK : ℕ}
       _ = _ := one_mul _
   refine ⟨hone, ?_⟩
   -- the events through a point, across the groups (path budget)
-  have hcount : ∀ y, ∑ G, (((Ms G).events S hA SP (Bs G) (cells G)).filter
+  have hcount : ∀ y, ∑ G, (((Ms G).events (S.withQ0 (q G)) hA SP (Bs G) (cells G)).filter
       fun e => y ∈ (Ms G).evCell e).card ≤ 3 * (L + 1) * ⌊S.Dstar⌋₊ := by
     intro y
     have hfl : ∑ G, ((Ms G).ptSet y).card ≤ ⌊S.Dstar⌋₊ :=
       Nat.le_floor (by exact_mod_cast hpath y)
-    calc ∑ G, (((Ms G).events S hA SP (Bs G) (cells G)).filter
+    calc ∑ G, (((Ms G).events (S.withQ0 (q G)) hA SP (Bs G) (cells G)).filter
           fun e => y ∈ (Ms G).evCell e).card ≤
         ∑ G, 3 * (L + 1) * ((Ms G).ptSet y).card := Finset.sum_le_sum fun G _ =>
-          (Ms G).group_count S hV hCj hCA hδs hδ1 hd2 hD hB hQ hDm hW (hdim G) hM1 hMD (hM G) R₀
+          (Ms G).group_count (S.withQ0 (q G)) (hV.withQ0 (by linarith) (by linarith) (hq G).2) hCj
+              hCA hδs hδ1 hd2 hD hB
+            (hq G).1 hDm hW (hdim G) hM1 hMD (hM G) R₀
             (Bs G) (cells G) (hdepth G) (hgrid G) y
       _ = 3 * (L + 1) * ∑ G, ((Ms G).ptSet y).card := (Finset.mul_sum _ _ _).symm
       _ ≤ 3 * (L + 1) * ⌊S.Dstar⌋₊ := Nat.mul_le_mul_left _ hfl
   have hpack := sum_sum_measureReal_le_of_count Finset.univ
-    (fun G => (Ms G).events S hA SP (Bs G) (cells G)) (fun G (e : (Ms G).Event) => (Ms G).evCell e)
+    (fun G => (Ms G).events (S.withQ0 (q G)) hA SP (Bs G) (cells G)) (fun G (e : (Ms G).Event) =>
+        (Ms G).evCell e)
     (fun G e => dyadicGridCell_measurable Gd _ _) (R := dyadicGridCell Gd R.1 R.2)
     (dyadicGridCell_volume_ne_top Gd R) (fun G _ e he => ?_) (N := 3 * (L + 1) * ⌊S.Dstar⌋₊)
     (fun y _ => hcount y)
   swap
-  · obtain ⟨h1, h2, -⟩ := (Ms G).mem_events S hA SP he
+  · obtain ⟨h1, h2, -⟩ := (Ms G).mem_events (S.withQ0 (q G)) hA SP he
     exact hcR G e.1 h1 e.2.1 h2
   have hvol : ∀ G (e : (Ms G).Event), volume.real ((Ms G).evCell e) =
       dyadicGridLength Gd e.2.1.1 := fun G e => by
     rw [ModeSystem.evCell, measureReal_def, dyadicGridCell_volume,
       ENNReal.toReal_ofReal (dyadicGridLength_pos Gd _).le]
   -- the total as a sum over the events of each group
-  have hsum : (∑ G, ∑ b ∈ Bs G, ∑ J ∈ cells G b, ∑ E ∈ (Ms G).sideEvents S hA SP b J,
-      (Ms G).eventErr S Kf S.Dstar⁻¹ b J E (c G b J) ^ 2) =
-      ∑ G, ∑ e ∈ (Ms G).events S hA SP (Bs G) (cells G),
-        (Ms G).eventErr S Kf S.Dstar⁻¹ e.1 e.2.1 e.2.2 (c G e.1 e.2.1) ^ 2 :=
-    Finset.sum_congr rfl fun G _ => ((Ms G).sum_events S hA SP (Bs G) (cells G)
-      fun e => (Ms G).eventErr S Kf S.Dstar⁻¹ e.1 e.2.1 e.2.2 (c G e.1 e.2.1) ^ 2).symm
+  have hsum : (∑ G, ∑ b ∈ Bs G, ∑ J ∈ cells G b, ∑ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) hA SP b J,
+      (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ b J E (c G b J) ^ 2) =
+      ∑ G, ∑ e ∈ (Ms G).events (S.withQ0 (q G)) hA SP (Bs G) (cells G),
+        (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ e.1 e.2.1 e.2.2 (c G e.1 e.2.1) ^ 2 :=
+    Finset.sum_congr rfl fun G _ => ((Ms G).sum_events (S.withQ0 (q G)) hA SP (Bs G) (cells G)
+      fun e => (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ e.1 e.2.1 e.2.2 (c G e.1 e.2.1) ^
+          2).symm
   rw [hsum]
-  set X := ∑ G, ∑ e ∈ (Ms G).events S hA SP (Bs G) (cells G),
-    (Ms G).eventErr S Kf S.Dstar⁻¹ e.1 e.2.1 e.2.2 (c G e.1 e.2.1) ^ 2
-  have h1 : X * S.Dstar ^ 397 ≤ Bc * ∑ G, ∑ e ∈ (Ms G).events S hA SP (Bs G) (cells G),
+  set X := ∑ G, ∑ e ∈ (Ms G).events (S.withQ0 (q G)) hA SP (Bs G) (cells G),
+    (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ e.1 e.2.1 e.2.2 (c G e.1 e.2.1) ^ 2
+  have h1 : X * S.Dstar ^ 397 ≤ Bc * ∑ G, ∑ e ∈ (Ms G).events (S.withQ0 (q G)) hA SP (Bs G)
+      (cells G),
       volume.real ((Ms G).evCell e) := by
     simp only [X, Finset.sum_mul, Finset.mul_sum]
     refine Finset.sum_le_sum fun G _ => Finset.sum_le_sum fun e he => ?_
-    obtain ⟨h1, h2, h3⟩ := (Ms G).mem_events S hA SP he
+    obtain ⟨h1, h2, h3⟩ := (Ms G).mem_events (S.withQ0 (q G)) hA SP he
     rw [hvol]
     exact hone G e.1 h1 e.2.1 h2 e.2.2 h3
   have hN : ((3 * (L + 1) * ⌊S.Dstar⌋₊ : ℕ) : ℝ) ≤ 3 * (L + 1) * S.Dstar := by
@@ -6612,7 +6688,8 @@ theorem lift_composition_finset (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N) :
     ∑ G, ∑ e ∈ T G, ‖P G e ((L G).op (fp.basicOut l s mb (grp G) j ls (u G e).1))‖ ^ 2 ≤
@@ -6665,7 +6742,8 @@ theorem lift_composition_finset (l : Fin 4) (s : List (CatCol bf.Vtx))
     · exact hcert G.1 e.1 h
     · exact hcert G.1 (e₀ G) (he₀ G)
   have hN' : ∀ y, ((Finset.univ : Finset ({G // (T G).Nonempty} × (bf.Lab ⊕ Fin fp.Mc))).filter
-      fun q => ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      fun q => ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1.1) j (p + 1)) d).card ≤ N := by
     intro y
@@ -6726,7 +6804,8 @@ theorem lift_composition_dep (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N) :
     ∑ G, ∑ e ∈ T G, ‖P G e ((L G).op (fp.basicOut l s mb (grp G) j ls (u G e).1))‖ ^ 2 ≤
@@ -7066,7 +7145,8 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
     (D dB : ℕ) {H δc N kk : ℝ} (hHed : 2 ≤ fp.Hed) (hH : 1 ≤ H) (hδc : 0 < δc) (hN0 : 0 ≤ N)
     (hNl : ∀ I ∈ A.cells,
       ((mainLabels A.G fp.Mc (bf.origCols l) s I (fp.brank j)).card : ℝ) ≤ N)
-    {n : ℕ} (Ms : ι → ModeSystem A.G n) (L : ∀ G, LiftData (bf.Lab ⊕ Fin fp.Mc) (Ms G).Md)
+    {n : ℕ} (Ms : ι → ModeSystem A.G n) (q : ι → ℕ) (hq : ∀ G, 1 ≤ q G ∧ q G ≤ S.Q0) (L : ∀ G,
+        LiftData (bf.Lab ⊕ Fin fp.Mc) (Ms G).Md)
     (gs : ι → ℤ)
     (hex : ∀ G, fp.MainLiftExports l s (grp G) j d D dB H (gs G) (L G) (Ms G).wave (Ms G).cellOf)
     (hεM : ∀ G m, (L G).εM m = (Ms G).L.εM m)
@@ -7088,7 +7168,8 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
     {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
     (hHτ : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
     {Nq : ℕ} (hNq : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
+        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
           (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ Nq)
     (hτN : τ * Nq * A.colBudget ^ 2 ≤ 1) (cc : ℕ) (hcc : 1 ≤ cc) {kq : ℝ} (hkq : 1 ≤ kq)
@@ -7096,12 +7177,14 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
     (hn : (ls.length : ℝ) ≤ cc * (Real.log kq + 1)) :
     ∃ c : ∀ G, ℤ → ℤ × ℤ → (Ms G).Md → ℂ,
       (∀ G, ∀ b ∈ Bs, ∀ J ∈ fp.retainedV (grp G) b S.K,
-        (Ms G).frozenEval S b J (c G b J) = columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+        (Ms G).frozenEval (S.withQ0 (q G)) b J (c G b J) = columnL2Restriction (dyadicGridCell A.G
+            J.1 J.2)
           (dyadicGridCell_measurable A.G J.1 J.2)
           ((L G).op (fp.frozenZ l s mb (grp G) j ls (b - 4 * S.K)))) ∧
       (∀ G, ∀ b ∈ Bs, ∀ J ∈ fp.retainedV (grp G) b S.K,
         ∑ m ∈ (Ms G).alive (ancAt A.G J (b - 4 * S.K)), ‖c G b J m‖ ^ 2 ≤ 4 * S.Dstar ^ 2 * CF) ∧
-      ∑ G, ∑ b ∈ Bs, ‖(Ms G).blockSide S (hV.six_le_A0 hCA hd2 hD hB) (S.sideParams δs) b
+      ∑ G, ∑ b ∈ Bs, ‖(Ms G).blockSide (S.withQ0 (q G)) (hV.six_le_A0 hCA hd2 hD hB)
+          (S.sideParams δs) b
           (fp.retainedV (grp G) b S.K) (c G b)‖ ^ 2 ≤
         24 * (⌊180 * S.dmax * Real.log (2 * S.Dm) / δs⌋₊ + 1) *
           (Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
@@ -7114,7 +7197,7 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
   have hR0 : 0 < dyadicGridLength A.G A.R.1 := dyadicGridLength_pos A.G A.R.1
   -- the frozen coefficients
   have hcex : ∀ G (b : ℤ) (J : ℤ × ℤ), ∃ β : (Ms G).Md → ℂ, J ∈ fp.retainedV (grp G) b S.K →
-      (Ms G).frozenEval S b J β = columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+      (Ms G).frozenEval (S.withQ0 (q G)) b J β = columnL2Restriction (dyadicGridCell A.G J.1 J.2)
           (dyadicGridCell_measurable A.G J.1 J.2)
           ((L G).op (fp.frozenZ l s mb (grp G) j ls (b - 4 * S.K))) ∧
         ∑ m ∈ (Ms G).alive (ancAt A.G J (b - 4 * S.K)), ‖β m‖ ^ 2 ≤
@@ -7122,7 +7205,7 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
     intro G b J
     by_cases hJ : J ∈ fp.retainedV (grp G) b S.K
     · obtain ⟨β, h1, h2⟩ := fp.frozen_coeffs l s mb hanc (grp G) hj ls d D dB kk hHed hH hδc
-        hN0 hNl (Ms G) (L G) (hex G) (hεM G) S hCF hstar hnorm hJ
+        hN0 hNl (Ms G) (L G) (hex G) (hεM G) (S.withQ0 (q G)) hCF hstar hnorm hJ
       exact ⟨β, fun _ => ⟨h1, h2⟩⟩
     · exact ⟨0, fun h => absurd h hJ⟩
   choose c hc using hcex
@@ -7177,19 +7260,21 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
     have h3 : S.Dstar ^ 3 ≤ S.Dstar ^ 200 := pow_le_pow_right₀ hD1 (by norm_num)
     exact (mul_le_mul_of_nonneg_left h3 h0).trans h
   -- the energy of each group: side events and their errors (`group_side_energy`)
-  have hgroup : ∀ G, ∑ b ∈ Bs, ‖(Ms G).blockSide S hA (S.sideParams δs) b
+  have hgroup : ∀ G, ∑ b ∈ Bs, ‖(Ms G).blockSide (S.withQ0 (q G)) hA (S.sideParams δs) b
       (fp.retainedV (grp G) b S.K) (c G b)‖ ^ 2 ≤
-      4 * (∑ e ∈ ((Ms G).events S hA (S.sideParams δs) Bs
+      4 * (∑ e ∈ ((Ms G).events (S.withQ0 (q G)) hA (S.sideParams δs) Bs
           fun b => fp.retainedV (grp G) b S.K).filter (fun e => A.R.1 ≤ e.1 - 4 * S.K),
         ‖(Submodule.span ℂ (((Ms G).cellMode e.2.1) '' (e.2.2 : Set (Ms G).Md))).starProjection
           ((L G).op (fp.basicOut l s mb (grp G) j ls (ancAt A.G e.2.1 (e.1 - 4 * S.K)).1))‖ ^ 2 +
         ∑ b ∈ Bs, ∑ J ∈ fp.retainedV (grp G) b S.K,
-          ∑ E ∈ (Ms G).sideEvents S hA (S.sideParams δs) b J,
-            (Ms G).eventErr S Kf S.Dstar⁻¹ b J E (c G b J) ^ 2) := by
+          ∑ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) hA (S.sideParams δs) b J,
+            (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ b J E (c G b J) ^ 2) := by
     intro G
-    refine ((Ms G).group_side_energy S hA (S.sideParams δs) Bs
+    refine ((Ms G).group_side_energy (S.withQ0 (q G)) hA (S.sideParams δs) Bs
       (fun b => fp.retainedV (grp G) b S.K) (hdepth G) (c G) (inst := inst G) (hδ G) (hΛ8 G)
-      hΞ hQ0 Kf hbox hε (hεw G) hDp.le (hpt G) (hpt2 G)).trans ?_
+      hΞ (lt_of_lt_of_le zero_lt_one (hq G).1) Kf
+      (ModeSchedule.withQ0_box (hq G).2 (by positivity) hbox) hε (hεw G) hDp.le (hpt G) (hpt2
+          G)).trans ?_
     have h4 : 2 * (1 + pairConst (Ms G).zc.dim (Ms G).δc S.Ξ Kf * S.Dstar ^ 3) ≤ 4 := by
       linarith [hη G]
     refine (mul_le_mul_of_nonneg_right h4 (Finset.sum_nonneg fun b _ =>
@@ -7198,12 +7283,13 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
     simp only [Finset.sum_add_distrib]
     congr 1
     -- the row outputs on the frozen evaluations are the lifted coarse outputs at `u_b`
-    rw [← (Ms G).sum_events S hA (S.sideParams δs) Bs (fun b => fp.retainedV (grp G) b S.K)
+    rw [← (Ms G).sum_events (S.withQ0 (q G)) hA (S.sideParams δs) Bs (fun b => fp.retainedV (grp G)
+        b S.K)
       fun e => ‖(Submodule.span ℂ (((Ms G).cellMode e.2.1) ''
           (e.2.2 : Set (Ms G).Md))).starProjection
-        ((Ms G).frozenEval S e.1 e.2.1 (c G e.1 e.2.1))‖ ^ 2, Finset.sum_filter]
+        ((Ms G).frozenEval (S.withQ0 (q G)) e.1 e.2.1 (c G e.1 e.2.1))‖ ^ 2, Finset.sum_filter]
     refine Finset.sum_congr rfl fun e he => ?_
-    obtain ⟨hb, hJ, -⟩ := (Ms G).mem_events S hA (S.sideParams δs) he
+    obtain ⟨hb, hJ, -⟩ := (Ms G).mem_events (S.withQ0 (q G)) hA (S.sideParams δs) he
     rw [(hc G e.1 e.2.1 hJ).1, (Ms G).eventProj_restrict e.2.1 e.2.2 _ le_rfl]
     split_ifs with hR
     · have hz : fp.frozenZ l s mb (grp G) j ls (e.1 - 4 * S.K) =
@@ -7217,30 +7303,34 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
   -- the row outputs: lem:lift-composition with the event rows of `group_event_rows_schedule`
   have hrows := fp.lift_composition_dep l s hT htag d mb hne (ρ := fun G => (Ms G).Event) grp hgrp
     k j hPH ls (fun G => (Ms G).Md) L (fun G => ColumnL2 (Ms G).Md)
-    (fun G => ((Ms G).events S hA (S.sideParams δs) Bs
+    (fun G => ((Ms G).events (S.withQ0 (q G)) hA (S.sideParams δs) Bs
       fun b => fp.retainedV (grp G) b S.K).filter (fun e => A.R.1 ≤ e.1 - 4 * S.K))
     (fun G e => (Submodule.span ℂ (((Ms G).cellMode e.2.1) ''
       (e.2.2 : Set (Ms G).Md))).starProjection)
     (c := 6 * (⌊180 * S.dmax * Real.log (2 * S.Dm) / δs⌋₊ + 1)) (by positivity)
     (fun G x => (Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
-      fun _ _ _ => sq_nonneg _).trans ((Ms G).group_event_rows_schedule S hV hCj hCA hδs hδ1
-        hd2 hD hB hQ hDm hW (hdim G) hM1 hMD (hM G) R₀ Bs (fun b => fp.retainedV (grp G) b S.K)
-        (hdepth G) hgrid (hδ G) (hΛ G) Kf (hDg G) (hKf G) hBox (hεw G) (hpt G)
+      fun _ _ _ => sq_nonneg _).trans ((Ms G).group_event_rows_schedule (S.withQ0 (q G)) (hV.withQ0
+          (by linarith) (by linarith) (hq G).2) hCj hCA hδs
+        hδ1 hd2 hD hB (hq G).1 hDm hW (hdim G) hM1 hMD (hM G) R₀ Bs (fun b => fp.retainedV (grp G)
+            b S.K)
+        (hdepth G) hgrid (hδ G) (hΛ G) Kf (hDg G) (hKf G)
+        (ModeSchedule.withQ0_box (hq G).2 (by positivity) hBox) (hεw G) (hpt G)
         (inst := inst G) x))
     (fun G e => ancAt A.G e.2.1 (e.1 - 4 * S.K))
     (fun G e he => by
       obtain ⟨he1, hR⟩ := Finset.mem_filter.mp he
-      exact (fp.retained_decision hanc ((Ms G).mem_events S hA (S.sideParams δs) he1).2.1
+      exact (fp.retained_decision hanc ((Ms G).mem_events (S.withQ0 (q G)) hA (S.sideParams δs)
+          he1).2.1
         hR).2.1)
     (fun G e he => by
       obtain ⟨he1, hR⟩ := Finset.mem_filter.mp he
       have hJu := (fp.retained_decision hanc
-        ((Ms G).mem_events S hA (S.sideParams δs) he1).2.1 hR).1
+        ((Ms G).mem_events (S.withQ0 (q G)) hA (S.sideParams δs) he1).2.1 hR).1
       exact ContinuousLinearMap.ext fun w => (Ms G).eventProj_restrict e.2.1 e.2.2 _ hJu w)
     (fun G e he => by
       obtain ⟨he1, hR⟩ := Finset.mem_filter.mp he
       have h := (fp.retained_decision hanc
-        ((Ms G).mem_events S hA (S.sideParams δs) he1).2.1 hR).2.2
+        ((Ms G).mem_events (S.withQ0 (q G)) hA (S.sideParams δs) he1).2.1 hR).2.2
       rwa [hcol G] at h)
     hroot hτ hτ1 hHτ (N := Nq) ?_
   swap
@@ -7249,7 +7339,8 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
     (c := 6 * (⌊180 * S.dmax * Real.log (2 * S.Dm) / δs⌋₊ + 1)) (by positivity) hτ hτN cc hcc
     hkq hDmq hDb hn
   -- the negligible errors of the exact subtotals
-  have herr := (ModeSystem.side_errors_negligible S hV hCj hCA hδs hδ1 hd2 hD hB hQ hDm hW Ms hdim
+  have herr := (ModeSystem.side_errors_negligible S hV hCj hCA hδs hδ1 hd2 hD hB hQ hDm hW Ms q hq
+      hdim
     hM1 hMD hM R₀ (fun _ => Bs) (fun G b => fp.retainedV (grp G) b S.K) hdepth (fun _ => hgrid)
     (R := A.R) (fun G b _ J hJ => ((dyadicFiniteTree_mem_iff A.G A.R J _).mp
       ((fp.mem_retainedV).mp hJ).1).1) hδ Kf hDg hKf halive hpath c
@@ -7259,13 +7350,13 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
   have hLc0 : 0 ≤ Lc := by positivity
   set G0 := Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
     (1 + Real.log (2 * kq)) ^ 2)
-  set X := ∑ G, ∑ e ∈ ((Ms G).events S hA (S.sideParams δs) Bs
+  set X := ∑ G, ∑ e ∈ ((Ms G).events (S.withQ0 (q G)) hA (S.sideParams δs) Bs
       fun b => fp.retainedV (grp G) b S.K).filter (fun e => A.R.1 ≤ e.1 - 4 * S.K),
     ‖(Submodule.span ℂ (((Ms G).cellMode e.2.1) '' (e.2.2 : Set (Ms G).Md))).starProjection
       ((L G).op (fp.basicOut l s mb (grp G) j ls (ancAt A.G e.2.1 (e.1 - 4 * S.K)).1))‖ ^ 2
   set Y := ∑ G, ∑ b ∈ Bs, ∑ J ∈ fp.retainedV (grp G) b S.K,
-    ∑ E ∈ (Ms G).sideEvents S hA (S.sideParams δs) b J,
-      (Ms G).eventErr S Kf S.Dstar⁻¹ b J E (c G b J) ^ 2
+    ∑ E ∈ (Ms G).sideEvents (S.withQ0 (q G)) hA (S.sideParams δs) b J,
+      (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ b J E (c G b J) ^ 2
   have hX : X ≤ 6 * Lc * G0 * dyadicGridLength A.G A.R.1 :=
     hrows.trans (mul_le_mul_of_nonneg_right hG0 hR0.le)
   have hY : Y * S.Dstar ^ 394 ≤ 12 * Lc * CF * dyadicGridLength A.G A.R.1 := by
@@ -7278,7 +7369,7 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
     exact le_of_mul_le_mul_right h hD2
   have hY' : Y ≤ 12 * Lc * CF * dyadicGridLength A.G A.R.1 / S.Dstar ^ 394 := by
     rw [le_div_iff₀ (by positivity)]; exact hY
-  calc ∑ G, ∑ b ∈ Bs, ‖(Ms G).blockSide S hA (S.sideParams δs) b
+  calc ∑ G, ∑ b ∈ Bs, ‖(Ms G).blockSide (S.withQ0 (q G)) hA (S.sideParams δs) b
         (fp.retainedV (grp G) b S.K) (c G b)‖ ^ 2 ≤ 4 * (X + Y) := by
         refine (Finset.sum_le_sum fun G _ => hgroup G).trans (le_of_eq ?_)
         rw [← Finset.mul_sum, Finset.sum_add_distrib]

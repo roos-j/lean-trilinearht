@@ -4538,7 +4538,8 @@ theorem rect_apply (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMeasure P
     (hC4 : 0 ≤ C4) (hmom : ∀ j y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤
       ENNReal.ofReal C4 * ‖z j y‖ₑ)
     (ε : ℤ × ℤ → Ω → ℂ) (hε : ∀ I, Measurable (ε I)) (hε1 : ∀ I σ, ‖ε I σ‖ ≤ 1)
-    {q : ℝ} (hq : 2 < q) {Nd : ℕ} (hKN : K ≤ Nd) (Cs Cd : ℝ≥0∞)
+    {q : ℝ} (hq : 2 < q) {Nd : ℕ} (d₀ : ℤ) (hwin : ∀ I ∈ cells, d₀ ≤ I.1 ∧ I.1 < d₀ + Nd)
+    (Cs Cd : ℝ≥0∞)
     (hCs : ∀ f : ℝ × ((Ω × ℝ) × FastCircle) → ℂ, Measurable f →
       mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pStar q) 4 (maximalQ q f) ≤
         Cs * mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pStar q) 4
@@ -4580,9 +4581,7 @@ theorem rect_apply (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMeasure P
     (fun I hI j => T.rect_loc κ cells hcells kernel hker z hz zσ hzσ hL R hI j)
     (T.rect_weights κ cells hcells kernel hker z hz zσ hzσ R)
     (fun j hj n => T.rect_reg κ cells hcells kernel hker z hz zσ hzσ hL R hj n) hA hq.le
-    T.first (fun I hI => by
-      have := T.internal_depth I (hcells (Finset.mem_filter.mp hI).1)
-      constructor <;> omega)
+    d₀ (fun I hI => hwin I (Finset.mem_filter.mp hI).1)
     (pexp q R) (fun j => by unfold pexp; split_ifs; exacts [two_le_pStar hq, two_le_pReg hq])
     (sum_inv_pexp hq hv) _ (fun j f hf => by
       unfold pexp; split_ifs with h
@@ -4808,7 +4807,8 @@ theorem rect_simplified (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMeas
     (hC4 : 0 ≤ C4) (hmom : ∀ j y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤
       ENNReal.ofReal C4 * ‖z j y‖ₑ)
     (ε : ℤ × ℤ → Ω → ℂ) (hε : ∀ I, Measurable (ε I)) (hε1 : ∀ I σ, ‖ε I σ‖ ≤ 1)
-    {q : ℝ} (hq : 2 < q) {Nd : ℕ} (hKN : K ≤ Nd) (Cs Cd : ℝ≥0∞)
+    {q : ℝ} (hq : 2 < q) {Nd : ℕ} (d₀ : ℤ) (hwin : ∀ I ∈ cells, d₀ ≤ I.1 ∧ I.1 < d₀ + Nd)
+    (Cs Cd : ℝ≥0∞)
     (hCs : ∀ f : ℝ × ((Ω × ℝ) × FastCircle) → ℂ, Measurable f →
       mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pStar q) 4 (maximalQ q f) ≤
         Cs * mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pStar q) 4
@@ -4840,8 +4840,8 @@ theorem rect_simplified (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMeas
   have hab : DepthRect.heavy R ≠ DepthRect.desig R := (DepthRect.desig_ne_heavy hv).symm
   have hMj : ∀ j, ENNReal.ofReal (volume (T.mask R j)).toReal = volume (T.mask R j) :=
     fun j => ENNReal.ofReal_toReal (T.volume_mask_ne_top R j)
-  have h := T.rect_apply κ cells hcells kernel hker z hz zσ hzσ hL P hC4 hmom ε hε hε1 hq hKN
-    Cs Cd hCs hCd hv
+  have h := T.rect_apply κ cells hcells kernel hker z hz zσ hzσ hL P hC4 hmom ε hε hε1 hq d₀
+    hwin Cs Cd hCs hCd hv
   simp only [hMj] at h
   refine h.trans ?_
   have hY : ∑ I ∈ D.cells, ∫⁻ y in Set.Icc (D.left I) (D.left I + D.len I),
@@ -5044,7 +5044,8 @@ theorem short_block_core (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMea
     {C4 : ℝ} (hC4 : 0 ≤ C4) (hmom : ∀ j y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤
       ENNReal.ofReal C4 * ‖z j y‖ₑ)
     (ε : ℤ × ℤ → Ω → ℂ) (hε : ∀ I, Measurable (ε I)) (hε1 : ∀ I σ, ‖ε I σ‖ ≤ 1)
-    {q : ℝ} (hq : 2 < q) {Nd : ℕ} (hKN : K ≤ Nd) (Cs Cd : ℝ≥0∞)
+    {q : ℝ} (hq : 2 < q) {Nd : ℕ} (d₀ : ℤ) (hwin : ∀ I ∈ cells, d₀ ≤ I.1 ∧ I.1 < d₀ + Nd)
+    (Cs Cd : ℝ≥0∞)
     (hCs : ∀ f : ℝ × ((Ω × ℝ) × FastCircle) → ℂ, Measurable f →
       mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pStar q) 4 (maximalQ q f) ≤
         Cs * mixedENorm volume ((P.prod gammaMeasure).prod fastHaar) (pStar q) 4
@@ -5091,7 +5092,7 @@ theorem short_block_core (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMea
             volume (T.mask R (DepthRect.desig R)) ^ (1 / pStar q)) := by
     intro R hR
     refine (T.rect_simplified κ cells hcells kernel hker z hz zσ hzσ hL P hC4 hmom ε hε hε1 hq
-      hKN Cs Cd hCs hCd (Finset.mem_filter.mp hR).2).trans (le_of_eq ?_)
+      d₀ hwin Cs Cd hCs hCd (Finset.mem_filter.mp hR).2).trans (le_of_eq ?_)
     unfold coreX1 coreX2 coreX3
     ring
   refine (Finset.sum_le_sum hsimp).trans ?_
@@ -5288,8 +5289,8 @@ end ShortBlockTree
 
 open Auto.ClassicalMaximal in
 /-- **Lemma `lem:shortblock`** (blueprint lines 2276-2283, `eq:shortblock`). Let a finite dyadic
-tree piece have root `R`, internal summation cells in at most `K` consecutive depths of the
-original `N`-depth range (`K ≤ N`), and leaves in that block or one depth below. Suppose
+tree piece have root `R`, internal summation cells in at most `K` consecutive depths, lying in the
+original `N`-depth range `[d₀, d₀ + N)`, and leaves in that block or one depth below. Suppose
 deterministic inputs `z_j` satisfy `‖z_j‖_{2,L} ≤ s_j` on every leaf, and the scalar
 randomizations satisfy `(E_σ|z_j^σ(y)|⁴)^{1/4} ≤ C₄ ‖z_j(y)‖` (the finite moment used). Then for
 arbitrary measurable `|ε_I(σ)| ≤ 1` and any subcollection of internal cells,
@@ -5297,7 +5298,7 @@ arbitrary measurable `|ε_I(σ)| ≤ 1` and any subcollection of internal cells,
 with `C_q` depending only on the kernel class, `q ∈ (2, 3)` and `C₄`. -/
 theorem short_block_comparison (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     {C4 : ℝ} (hC4 : 0 ≤ C4) :
-    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ), K ≤ Nd →
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ) (d₀ : ℤ),
       ∀ (T : ShortBlockTree G K) {E : Type*} [NormedAddCommGroup E] (z : Fin 4 → ℝ → E),
       (∀ j, Measurable fun y => ‖z j y‖) → ∀ s : Fin 4 → ℝ, (∀ j, 0 ≤ s j) →
       (∀ j, ∀ L ∈ T.leaves, ∫⁻ y in dyadicGridCell G L.1 L.2, ‖z j y‖ₑ ^ 2 ≤
@@ -5307,8 +5308,8 @@ theorem short_block_comparison (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (
       (∀ j y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤ ENNReal.ofReal C4 * ‖z j y‖ₑ) →
       ∀ (kernel : ℤ × ℤ → ℝ × ℝ → ℂ), (∀ I ∈ T.internal, IsAdmissibleLocalKernel κ
         (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (kernel I)) →
-      ∀ cells ⊆ T.internal, ∀ ε : ℤ × ℤ → Ω → ℂ, (∀ I, Measurable (ε I)) →
-      (∀ I σ, ‖ε I σ‖ ≤ 1) →
+      ∀ cells ⊆ T.internal, (∀ I ∈ cells, d₀ ≤ I.1 ∧ I.1 < d₀ + Nd) →
+      ∀ ε : ℤ × ℤ → Ω → ℂ, (∀ I, Measurable (ε I)) → (∀ I σ, ‖ε I σ‖ ≤ 1) →
       ∫⁻ σ, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
         localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ)‖ₑ ∂P ≤
         ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
@@ -5318,7 +5319,8 @@ theorem short_block_comparison (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (
   obtain ⟨Cd, hCd⟩ := oneMixedNorm (pReg q) q hq2 hq3 (q_lt_pReg hq2 hq3)
   refine ⟨ShortBlockTree.shortBlockConst κ C4 Cs Cd,
     ShortBlockTree.shortBlockConst_nonneg κ C4 Cs Cd, ?_⟩
-  intro G K Nd hKN T E _ z hz s hs hleaf Ω _ P _ zσ hzσ hmom kernel hker cells hcells ε hε hε1
+  intro G K Nd d₀ T E _ z hz s hs hleaf Ω _ P _ zσ hzσ hmom kernel hker cells hcells hwin ε hε
+    hε1
   set Cq := ShortBlockTree.shortBlockConst κ C4 (Cs : ℝ≥0∞) Cd
   set X := ∫⁻ σ, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
     localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ)‖ₑ ∂P
@@ -5388,7 +5390,7 @@ theorem short_block_comparison (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (
               ENNReal.ofReal_mul (norm_nonneg _)]
             ring
     have hcore := T.short_block_core κ cells hcells kernel hker z' hz' zσ' hzσ' hL P hC4 hmom' ε
-      hε hε1 hq2 hKN Cs Cd (fun f hf => hCs _ f hf) (fun f hf => hCd _ f hf)
+      hε hε1 hq2 d₀ hwin Cs Cd (fun f hf => hCs _ f hf) (fun f hf => hCd _ f hf)
     rw [dyadicGridCell_volume] at hcore
     have hnum := ShortBlockTree.core_rhs_le κ C4 (Cs := Cs) (Cd := Cd) ENNReal.coe_ne_top
       ENNReal.coe_ne_top hq2 K
@@ -5437,6 +5439,44 @@ theorem short_block_comparison (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (
     simp only [Function.comp_apply, add_zero] at h
     exact h.mono_left nhdsWithin_le_nhds
   exact ge_of_tendsto hcont (eventually_nhdsWithin_of_forall fun η hη => key η hη)
+
+open Auto.ClassicalMaximal in
+/-- `lem:shortblock` with the depth window imposed only on the summation cells of nonzero kernel:
+cells with zero kernel contribute nothing (blueprint line 2836, the used cells of the original
+`N` depths). -/
+theorem short_block_comparison_nz (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
+    {C4 : ℝ} (hC4 : 0 ≤ C4) :
+    ∃ Cq : ℝ, 0 ≤ Cq ∧ ∀ (G : RealDyadicGrid) (K Nd : ℕ) (d₀ : ℤ),
+      ∀ (T : ShortBlockTree G K) {E : Type*} [NormedAddCommGroup E] (z : Fin 4 → ℝ → E),
+      (∀ j, Measurable fun y => ‖z j y‖) → ∀ s : Fin 4 → ℝ, (∀ j, 0 ≤ s j) →
+      (∀ j, ∀ L ∈ T.leaves, ∫⁻ y in dyadicGridCell G L.1 L.2, ‖z j y‖ₑ ^ 2 ≤
+        ENNReal.ofReal (s j ^ 2 * dyadicGridLength G L.1)) →
+      ∀ {Ω : Type*} [MeasurableSpace Ω] (P : Measure Ω) [IsProbabilityMeasure P]
+        (zσ : Fin 4 → Ω → ℝ → ℂ), (∀ j, Measurable (Function.uncurry (zσ j))) →
+      (∀ j y, (∫⁻ σ, ‖zσ j σ y‖ₑ ^ (4 : ℝ) ∂P) ^ (1 / 4 : ℝ) ≤ ENNReal.ofReal C4 * ‖z j y‖ₑ) →
+      ∀ (kernel : ℤ × ℤ → ℝ × ℝ → ℂ), (∀ I ∈ T.internal, IsAdmissibleLocalKernel κ
+        (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) (kernel I)) →
+      ∀ cells ⊆ T.internal, (∀ I ∈ cells, kernel I ≠ 0 → d₀ ≤ I.1 ∧ I.1 < d₀ + Nd) →
+      ∀ ε : ℤ × ℤ → Ω → ℂ, (∀ I, Measurable (ε I)) → (∀ I σ, ‖ε I σ‖ ≤ 1) →
+      ∫⁻ σ, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
+        localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ)‖ₑ ∂P ≤
+        ENNReal.ofReal (Cq * (1 + finiteDepthConstant κ q Nd) *
+          (1 + Real.log ((K : ℝ) + 2)) * ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) *
+          dyadicGridLength G T.root.1 * ∏ j, s j) := by
+  classical
+  obtain ⟨Cq, hCq, h⟩ := short_block_comparison κ hq2 hq3 hC4
+  refine ⟨Cq, hCq, ?_⟩
+  intro G K Nd d₀ T E _ z hz s hs hleaf Ω _ P _ zσ hzσ hmom kernel hker cells hcells hwin ε hε
+    hε1
+  have e : ∀ σ, ∑ I ∈ cells.filter (fun I => kernel I ≠ 0), (dyadicGridLength G I.1 : ℂ) *
+      ε I σ * localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ) =
+      ∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
+        localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ) :=
+    fun σ => Finset.sum_filter_of_ne fun I _ hne hk => hne
+      (by rw [hk, localProgressionForm_zero_kernel, mul_zero])
+  refine (lintegral_congr fun σ => by rw [← e σ]).trans_le (h G K Nd d₀ T z hz s hs hleaf P zσ
+    hzσ hmom kernel hker _ ((Finset.filter_subset _ _).trans hcells) (fun I hI =>
+      hwin I (Finset.mem_filter.mp hI).1 (Finset.mem_filter.mp hI).2) ε hε hε1)
 
 end Auto
 

@@ -5090,9 +5090,9 @@ theorem colBudget_le_pad : A.colBudget ≤ (A.pad v₀ m).colBudget := by
 theorem pad_columnRepBelow {R' : ℤ × ℤ} {CF : ℝ} (h : A.ColumnRepBelow R' CF) :
     (A.pad v₀ m).ColumnRepBelow R' CF := by
   intro l
-  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := h l
+  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h l
   refine ⟨P₁, P₂, h₁.trans (A.colBudget_le_pad v₀ m), h₂.trans (A.colBudget_le_pad v₀ m), c₁,
-    c₂, fun I hI hIR => ?_⟩
+    c₂, e₁, e₂, fun I hI hIR => ?_⟩
   rw [pad_B]
   exact hP I hI hIR
 
@@ -5115,9 +5115,10 @@ theorem LevelProps.pad {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀)
   · rw [pad_z]; exact h11
   · exact hasColumnRep_of_below _ (A.pad_columnRepBelow v₀ m
       (fun l => by
-        obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := h12 l
+        obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h12 l
         exact ⟨P₁, P₂, h₁, h₂, c₁.mono (fun I hI => hI.1) le_rfl le_rfl,
-          c₂.mono (fun I hI => hI.1) le_rfl le_rfl, fun I hI _ => hP I hI⟩))
+          c₂.mono (fun I hI => hI.1) le_rfl le_rfl, e₁.mono (fun I hI => hI.1),
+          e₂.mono (fun I hI => hI.1), fun I hI _ => hP I hI⟩))
 
 end ActiveSetup
 
@@ -5140,9 +5141,10 @@ theorem LevelProps.below {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀
   · have hI' := Finset.mem_filter.mp hI
     exact Finset.mem_filter.mpr ⟨h1 I hI'.1 J' hIJ (hJR.trans hR'), hJR⟩
   · intro l
-    obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := hc l
+    obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := hc l
     exact ⟨P₁, P₂, h₁, h₂, c₁.mono (fun I hI => Finset.mem_filter.mp hI) le_rfl le_rfl,
       c₂.mono (fun I hI => Finset.mem_filter.mp hI) le_rfl le_rfl,
+      e₁.mono (fun I hI => Finset.mem_filter.mp hI), e₂.mono (fun I hI => Finset.mem_filter.mp hI),
       fun I hI => hP I (Finset.mem_filter.mp hI).1 (Finset.mem_filter.mp hI).2⟩
   · change dyadicGridCell A.G R''.1 R''.2 ⊆ dyadicGridCell A.G R'.1 R'.2 at hR''
     obtain ⟨hs', ht', hc'⟩ := h13 R'' (hR''.trans hR')
@@ -5161,10 +5163,12 @@ theorem LevelProps.below {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀
           dyadicGridCell A.G R'.1 R'.2).filter fun I =>
             dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R''.1 R''.2, _ ≤ _
       rw [hf]; exact ht'
-    · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, hP⟩ := hc' l
+    · obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := hc' l
       exact ⟨P₁, P₂, h₁, h₂,
         c₁.mono (fun I hI => ⟨(Finset.mem_filter.mp hI.1).1, hI.2⟩) le_rfl le_rfl,
         c₂.mono (fun I hI => ⟨(Finset.mem_filter.mp hI.1).1, hI.2⟩) le_rfl le_rfl,
+        e₁.mono (fun I hI => ⟨(Finset.mem_filter.mp hI.1).1, hI.2⟩),
+        e₂.mono (fun I hI => ⟨(Finset.mem_filter.mp hI.1).1, hI.2⟩),
         fun I hI hIR => hP I (Finset.mem_filter.mp hI).1 hIR⟩
 
 end ActiveSetup
