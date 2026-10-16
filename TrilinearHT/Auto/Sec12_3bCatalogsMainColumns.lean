@@ -2832,7 +2832,8 @@ below the ratio, so no cap is attained), `n_{L+5} ≤ T`, the helper allowance `
 fixed before `H_ed` (line 1830). With `main_closure` and `helper_closure` this gives lem:closure
 with `log n_{L+5} ≤ k^{O(1)}`. -/
 theorem closure_poly (c Dst : ℕ) :
-    ∃ C : ℕ, ∃ k₀ : ℝ, 2 ≤ k₀ ∧ ∀ {k : ℝ}, k₀ ≤ k → ∀ (fp : bf.FamParams) {HS τ₃ : ℝ} {Mp : ℕ}
+    ∃ C : ℕ, ∃ k₀ : ℝ, 2 ≤ k₀ ∧ ∀ {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀}
+      {bf : A.BasicFamilies} {k : ℝ}, k₀ ≤ k → ∀ (fp : bf.FamParams) {HS τ₃ : ℝ} {Mp : ℕ}
       (Bn Bh : Type) [Fintype Bn] [Fintype Bh],
       (fp.Lc + 6 : ℝ) ≤ k ^ c → (A.famVtxBound : ℝ) ≤ Real.exp (k ^ c) →
       (fp.Hmax + 1 : ℝ) ≤ Real.exp (k ^ c) → (fp.mH : ℝ) ≤ c * (Real.log k + 1) →
@@ -2853,7 +2854,7 @@ theorem closure_poly (c Dst : ℕ) :
   obtain ⟨C₁, k₁, hk₁, hpc⟩ := pathCounts_poly e
   refine ⟨max (c + 3) C₁, max k₁ (max (6 * (c + 1) + 6) (9 + 2 * Dst * 2 ^ Dst)),
     le_trans hk₁ (le_max_left _ _), ?_⟩
-  intro k hk fp HS τ₃ Mp Bn Bh _ _ hL hDv hH hm hHS hlog hτ hτ' hMp1 hMp hcb hBn hBh
+  intro κ c₀ A bf k hk fp HS τ₃ Mp Bn Bh _ _ hL hDv hH hm hHS hlog hτ hτ' hMp1 hMp hcb hBn hBh
   have hk1' : k₁ ≤ k := le_trans (le_max_left _ _) hk
   have hk2 : 6 * (c + 1) + 6 ≤ k := le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) hk
   have hk3 : 9 + 2 * Dst * 2 ^ Dst ≤ k :=

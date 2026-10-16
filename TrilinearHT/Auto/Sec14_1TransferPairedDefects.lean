@@ -2258,7 +2258,7 @@ theorem helper_sides (c Dst : ℕ) :
           (∃ M : fp.MaskName d.birth, fp.maskOf d.birth M d.tag) ∧
           ∃ R ∈ residueBox (bf.vtag d.tag).dim 9, ∃ γ : ℝ,
             d = templateCol (bf.vtag d.tag) l R γ d.birth d.rank d.tag) := by
-  obtain ⟨C, k₀, hk₀, hpoly⟩ := closure_poly (A := A) (bf := bf) c Dst
+  obtain ⟨C, k₀, hk₀, hpoly⟩ := closure_poly c Dst
   refine ⟨C, k₀, hk₀, ?_⟩
   intro k hk fp Tc hTc cS hst HS τ₃ Mp ι _ cat st hside Wm main hmain τm hpass hL hDv hH hm hHS
     hlog hτ hτ' hMp1 hMp hcb hι hMc

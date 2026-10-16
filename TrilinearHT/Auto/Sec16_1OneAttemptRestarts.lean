@@ -2289,7 +2289,8 @@ room `M_c`. The main catalogs, closed on the test cells `T_c` of path multiplici
 then localize the weighted minima of the pattern forms on every set of test cells below no failure
 root to the leaves of the guarded search, up to `Σ |I| · #leaves · 9 (D + 1) τ₃ S⁴`. -/
 theorem exists_attempt (c Dst : ℕ) :
-    ∃ C : ℕ, ∃ k₀ : ℝ, 2 ≤ k₀ ∧ ∀ {k : ℝ}, k₀ ≤ k → ∀ (_ : SameTagBound κ A.csrc Dst)
+    ∃ C : ℕ, ∃ k₀ : ℝ, 2 ≤ k₀ ∧ ∀ {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀}
+      (bf : A.BasicFamilies) {k : ℝ}, k₀ ≤ k → ∀ (_ : SameTagBound κ A.csrc Dst)
       (p : Fin 3) (Tc : Finset (ℤ × ℤ)), Tc ⊆ A.cells → ∀ (_ : bf.Vtx) (P : ℕ) (_ : 0 < P)
       {τ₃ : ℝ} {Mp : ℕ} (Bh : Type) [Fintype Bh] (Hlow : ℕ → (ℕ → ℝ) → ℕ → ℝ)
       (Mx : ℕ → (ℕ → ℝ) → ℕ → ℕ),
@@ -2343,10 +2344,10 @@ theorem exists_attempt (c Dst : ℕ) :
                 ((searchList A.famFuel fp.Lc (A.basicSlot p)).length *
                   (9 * ((A.famVtxBound : ℝ) + 1) * τ₃ * max 2 A.S ^ 4)) := by
   classical
-  obtain ⟨C, k₀, hk₀, hpoly⟩ := FamParams.closure_poly (A := A) (bf := bf) c Dst
+  obtain ⟨C, k₀, hk₀, hpoly⟩ := FamParams.closure_poly c Dst
   refine ⟨C, k₀, hk₀, ?_⟩
-  intro k hk hst p Tc hTc d P hP τ₃ Mp Bh _ Hlow Mx hL hDv hH hm hlog hτ hτ1 hτ' hMp1 hMp hcb
-    hBh hmult
+  intro κ c₀ A bf k hk hst p Tc hTc d P hP τ₃ Mp Bh _ Hlow Mx hL hDv hH hm hlog hτ hτ1 hτ' hMp1
+    hMp hcb hBh hmult
   have hk0 : 0 ≤ k := by linarith
   -- the closure counts on provisional parameters (they do not involve `H_ed`, the delays or `M_c`)
   obtain ⟨Kt, n, Tmax, hKtn, hKth, hlogKt, hn0, hgrow, hnT, hcapH, hlogn, hlogT⟩ :=
@@ -3991,6 +3992,181 @@ theorem helper_sides_closure (Dst : ℕ) (fp : bf.FamParams) (Tc : Finset (ℤ �
   exact this.trans hg
 
 end ActiveSetup.BasicFamilies.FamParams
+
+namespace ActiveSetup
+variable {κ : LocalKernelClass} {c₀ : ℕ}
+
+/-- The setup with its coefficient bound raised to at least `M ≥ 0`. All other data are unchanged,
+so the column budget is at least `M` when there is a label. The vertex bound `D` of an attempt
+can then be taken as large as required (blueprint line 1745: the failure bound of the colors
+"tends to zero as `D` grows"). -/
+def padDc (A : ActiveSetup κ c₀) (M : ℝ) (hM : 0 ≤ M) : ActiveSetup κ c₀ where
+  G := A.G
+  R := A.R
+  cells := A.cells
+  sub := A.sub
+  w := A.w
+  adm := A.adm
+  L := A.L
+  fin := A.fin
+  φ := A.φ
+  φ_meas := A.φ_meas
+  φ_bound := A.φ_bound
+  H := A.H
+  coef := A.coef
+  path_chart := A.path_chart
+  nested_chart := A.nested_chart
+  nested_cons := A.nested_cons
+  Dc := max A.Dc M
+  Dc_nonneg := le_max_of_le_right hM
+  coef_le := fun l I v => (A.coef_le l I v).trans (le_max_left _ _)
+  a := A.a
+  b := A.b
+  hab := A.hab
+  U := A.U
+  U_meas := A.U_meas
+  S := A.S
+  U_L2 := A.U_L2
+  U_le := A.U_le
+  η := A.η
+  small := A.small
+
+variable (A : ActiveSetup κ c₀) {M : ℝ} (hM : 0 ≤ M)
+
+theorem colBudget_le_padDc : A.colBudget ≤ (A.padDc M hM).colBudget := by
+  show 2 + Fintype.card A.L * (1 + A.Dc) ≤ 2 + Fintype.card A.L * (1 + max A.Dc M)
+  have h1 : A.Dc ≤ max A.Dc M := le_max_left _ _
+  gcongr
+
+theorem le_colBudget_padDc (hL : 1 ≤ Fintype.card A.L) : M ≤ (A.padDc M hM).colBudget := by
+  show M ≤ 2 + Fintype.card A.L * (1 + max A.Dc M)
+  have h1 : M ≤ max A.Dc M := le_max_right _ _
+  have h2 : (1 : ℝ) ≤ Fintype.card A.L := by exact_mod_cast hL
+  have h3 : 0 ≤ max A.Dc M := le_max_of_le_right hM
+  nlinarith
+
+theorem colBudget_padDc_le :
+    (A.padDc M hM).colBudget ≤ 2 + Fintype.card A.L * (1 + A.Dc + M) := by
+  show 2 + Fintype.card A.L * (1 + max A.Dc M) ≤ 2 + Fintype.card A.L * (1 + A.Dc + M)
+  have h1 : max A.Dc M ≤ A.Dc + M := max_le (by linarith) (by linarith [A.Dc_nonneg])
+  have h2 : 1 + max A.Dc M ≤ 1 + A.Dc + M := by linarith
+  have h3 := mul_le_mul_of_nonneg_left h2 (Nat.cast_nonneg (α := ℝ) (Fintype.card A.L))
+  linarith
+
+variable {A} in
+theorem HasColumnRep.padDc {CF : ℝ} (h : A.HasColumnRep CF) :
+    (A.padDc M hM).HasColumnRep CF := fun l => by
+  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h l
+  exact ⟨P₁, P₂, h₁.trans (A.colBudget_le_padDc hM), h₂.trans (A.colBudget_le_padDc hM), c₁, c₂,
+    e₁, e₂, hP⟩
+
+variable {A} in
+theorem SubRootProps.padDc {η₀ E : ℝ} (h : A.SubRootProps η₀ E) :
+    (A.padDc M hM).SubRootProps η₀ E := fun R' hR' => by
+  obtain ⟨h1, h2, h3⟩ := h R' hR'
+  refine ⟨h1, h2, fun l => ?_⟩
+  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h3 l
+  exact ⟨P₁, P₂, h₁.trans (A.colBudget_le_padDc hM), h₂.trans (A.colBudget_le_padDc hM), c₁, c₂,
+    e₁, e₂, hP⟩
+
+/-- Without labels no cell is active. -/
+theorem not_active_of_card_eq_zero (hL : Fintype.card A.L = 0) (δ : ℝ) (I : ℤ × ℤ) :
+    ¬ A.active δ I := by
+  rintro ⟨m, v₀, -, -, -, -⟩
+  exact (Fintype.card_eq_zero_iff.mp hL).elim v₀
+
+end ActiveSetup
+
+namespace ActiveSetup
+variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
+
+/-- The attempt parameters of a setup whose height and column budget are at most `e^Y`, `Y ≥ 1`,
+are polynomial in `Y`: the vertex bound is at most `e^{Y+3}`, the colour degree `d₀` at most
+`5000 Y`, the colour count `L = d₀^{30} + 1` at most `5000^{30} Y^{30} + 1`, `2^{fuel} ≤ 4 L`, and
+`log H_src` and `log max(H, padW)` are at most `Y` plus constants. -/
+theorem attempt_param_bounds {Y : ℝ} (hY : 1 ≤ Y) (hH : A.H ≤ Real.exp Y)
+    (hcb : A.colBudget ≤ Real.exp Y) :
+    (A.famVtxBound : ℝ) ≤ Real.exp (Y + 3) ∧ (A.fcd0 : ℝ) ≤ 6000 * Y ∧
+    (A.famLc : ℝ) ≤ 6000 ^ 30 * Y ^ 30 + 1 ∧ (2 : ℝ) ^ A.famFuel ≤ 4 * A.famLc ∧
+    Real.log (max A.H padW) ≤ Real.log padW + Y ∧
+    Real.log A.Hsrc ≤ Real.log ((tagKρ : ℝ) ^ (2 * tagKρ) + 20) + 2 * (Real.log padW + Y) := by
+  have hcb2 := two_le_colBudget (A := A)
+  -- the vertex bound
+  have hV : (A.famVtxBound : ℝ) ≤ Real.exp (Y + 3) := by
+    have h1 : (A.famVtxBound : ℝ) ≤ 8 * A.colBudget + 1 := by
+      unfold famVtxBound
+      push_cast
+      have := Nat.floor_le (by linarith : (0 : ℝ) ≤ 8 * A.colBudget)
+      linarith
+    have he3 : (9 : ℝ) ≤ Real.exp 3 := by
+      have h2 : Real.exp 3 = Real.exp 1 * Real.exp 1 * Real.exp 1 := by
+        rw [← Real.exp_add, ← Real.exp_add]; norm_num
+      have h3 : (2.7 : ℝ) ≤ Real.exp 1 := by linarith [Real.exp_one_gt_d9]
+      rw [h2]
+      have h5 : (2.7 : ℝ) * 2.7 ≤ Real.exp 1 * Real.exp 1 := mul_le_mul h3 h3 (by norm_num)
+        (by linarith)
+      nlinarith
+    rw [Real.exp_add]
+    have hY0 : 1 ≤ Real.exp Y := Real.one_le_exp (by linarith)
+    nlinarith
+  have hV1 : (1 : ℝ) ≤ A.famVtxBound := by exact_mod_cast A.one_le_famVtxBound
+  -- the colour degree
+  have hd0 : (A.fcd0 : ℝ) ≤ 6000 * Y := by
+    unfold fcd0 colorDegree
+    have hpos : 0 ≤ 1000 * Real.log (2 * A.famVtxBound) :=
+      mul_nonneg (by norm_num) (Real.log_nonneg (by linarith))
+    have h1 := Nat.ceil_lt_add_one hpos
+    have h2 : Real.log (2 * A.famVtxBound) ≤ Real.log 2 + (Y + 3) := by
+      rw [Real.log_mul (by norm_num) (by linarith)]
+      have := Real.log_le_log (by linarith) hV
+      rw [Real.log_exp] at this
+      linarith
+    have hl2 : Real.log 2 ≤ 1 := by linarith [Real.log_two_lt_d9]
+    nlinarith
+  have hd00 : (0 : ℝ) ≤ A.fcd0 := Nat.cast_nonneg _
+  -- the colour count and the fuel
+  have hLc : (A.famLc : ℝ) ≤ 6000 ^ 30 * Y ^ 30 + 1 := by
+    unfold famLc
+    push_cast
+    have := pow_le_pow_left₀ hd00 hd0 30
+    rw [mul_pow] at this
+    linarith
+  have hfuel : (2 : ℝ) ^ A.famFuel ≤ 4 * A.famLc := by
+    unfold famFuel
+    have hL1 : 1 ≤ A.famLc := by unfold famLc; omega
+    have h1 : 2 ^ Nat.clog 2 A.famLc < 2 * A.famLc := by
+      rcases Nat.lt_or_ge 1 A.famLc with h | h
+      · have h0 := Nat.pow_pred_clog_lt_self one_lt_two h
+        rw [Nat.pred_eq_sub_one] at h0
+        have hc : 1 ≤ Nat.clog 2 A.famLc := Nat.clog_pos one_lt_two h
+        have e : 2 ^ Nat.clog 2 A.famLc = 2 * 2 ^ (Nat.clog 2 A.famLc - 1) := by
+          rw [← pow_succ']; congr 1; omega
+        omega
+      · have hL : A.famLc = 1 := le_antisymm h hL1
+        rw [hL]; simp
+    have h2 : 2 ^ (Nat.clog 2 A.famLc + 1) ≤ 4 * A.famLc := by rw [pow_succ]; omega
+    exact_mod_cast h2
+  -- the heights
+  have hW1 : 1 ≤ padW := le_trans (by linarith [Real.add_one_le_exp (2 : ℝ)]) (le_max_left _ _)
+  have hmax : Real.log (max A.H padW) ≤ Real.log padW + Y := by
+    rcases le_total A.H padW with h | h
+    · rw [max_eq_right h]; linarith
+    · rw [max_eq_left h]
+      have := Real.log_le_log (by linarith) hH
+      rw [Real.log_exp] at this
+      have := Real.log_nonneg hW1
+      linarith
+  have hHs : Real.log A.Hsrc ≤ Real.log ((tagKρ : ℝ) ^ (2 * tagKρ) + 20) +
+      2 * (Real.log padW + Y) := by
+    unfold Hsrc Hm
+    have h0 : (0 : ℝ) < (tagKρ : ℝ) ^ (2 * tagKρ) + 20 := by positivity
+    have hm0 : (0 : ℝ) < max A.H padW := lt_of_lt_of_le one_pos (hW1.trans (le_max_right _ _))
+    rw [Real.log_mul h0.ne' (by positivity), Real.log_pow]
+    push_cast
+    linarith
+  exact ⟨hV, hd0, hLc, hfuel, hmax, hHs⟩
+
+end ActiveSetup
 
 end Auto
 

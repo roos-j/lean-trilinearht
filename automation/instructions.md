@@ -820,3 +820,12 @@ lem:shortblock completed 2026-10-11T19:43:38-04:00: short_block_comparison in Tr
 - 2026-10-16T05:06:25-04:00: leaf assembly compiled (scratch). Explicit leaf bound in progress: TsideF_le, T2F_le, fourCcF_le, coreM4F_le, coreM3F_le, nearBndF_le, leaf_raw_le (Sec16_2) and the collapse to `C u^C G^C (eta^(1/1200) + eta0 + (P+1)^2 tau3 + e^(C k^c)(sqrt delta + e^(-kD))) |R| + C e^(-k) |R| + near band`, u = kD P (ErrorReport same time).
 - 2026-10-16T07:13:01-04:00: USER (raw.md): asks whether the line-2839 row is stuck. Answered: the open row is the exceptional-root budget (|R|/4), whose fractions are fixed in the attempt-sum assembly after the explicit leaf bound (line 2844); no error there.
 - 2026-10-16T07:13:01-04:00: USER (raw.md): commit and push the current work, then continue the formalization (one-time authorization for this commit and push).
+- 2026-10-16T11:36:19-04:00: explicit leaf bound and retained-attempt estimate complete; thm:main unconditional.
+  Sec16_2 (end): leaf_final (sizes reduced to `B = C_b (k_D P)^{C_b}` and `G`) and the restated
+  leaf_estimate. Sec16_1 (end): ActiveSetup.padDc and attempt_param_bounds. Sec16_3 (end): eventual
+  growth lemmas, retained_arith, root_assembly, Hf_z_eq_zero_of_isEmpty_vtx, retainedMin_holds,
+  activeFinal_holds, normalizedAbsorption_holds, uniform_local_holds and tht_main. Placement: the
+  proof of RetainedMin (lines 2838-2888) is in Sec16_3 because RetainedMin, ActiveMin, ActiveFinal
+  and active_mult_bound are defined there. Full build (9083 jobs) passed; `#print axioms tht_main`
+  gives only propext, Classical.choice, Quot.sound. No open Status rows remain.
+- 2026-10-16T19:45:00-04:00: USER (raw.md): commit and push the completed work (one-time authorization for this commit and push).

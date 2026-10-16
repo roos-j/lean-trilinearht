@@ -2,7 +2,7 @@
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
-old incomplete | 2026-10-14 03:49:26 ET | thm:main, lines 2934-2939 | Uniform L1 bound: statement exact (tht_main_of_activeFinal); proved only from RetainedMin, unproved
+complete | 2026-10-16 11:36:19 ET | thm:main, lines 2934-2939 | Uniform L1 bound, unconditional: tht_main (tht_main_of_activeFinal activeFinal_holds)
 complete | 2026-10-11 11:29:42 ET | thm:main, line 2940, proof 2985-2990 | Pointwise principal value on Schwartz inputs (thtTruncated_tendsto_thtPV)
 complete | 2026-10-11 11:35:58 ET | thm:main, line 2940, proof 2999-3008 | Unique bounded L3 extension given the bound (schwartz_L3_unique_extension)
 
@@ -575,19 +575,19 @@ complete | 2026-10-15 20:33:28 ET | line 2839 | Offsets by the majorant, then mo
 complete | 2026-10-15 21:31:13 ET | line 2839 | One frozen family c: reps, sq sums, eq:linear-energy, retained-path top counts (first_top_count_main); RepAt, hlin forms
 complete | 2026-10-15 22:05:06 ET | line 2839 | Helper catalogs: leaf with cat ++ hcat (appendCat), main objects unchanged on active cells, helper tests (helper_sides), BallData
 complete | 2026-10-15 22:11:47 ET | line 2839 | Stacks cost G0: stackEA_le_G0, bandJumpM <= (n+1)^2 G0^2; counts Lp = 2^fuel, Jm = 2fuel+2 (pe/desc lengths), Ee (errAt_energy_le)
-in progress | 2026-10-15 22:11:47 ET | line 2839 | Exceptional roots <= |R|/4: exceptional_union; fractions of failure roots and leaf cuts to be chosen in the assembly
+complete | 2026-10-16 11:36:19 ET | line 2839 | Exceptional roots <= |R|/4: padded vertex bound (padDc) gives failure roots <= |R|/8, leaf cuts 12 N_l rho <= 1/8 (root_assembly)
 complete | 2026-10-14 03:49:26 ET | lines 2840-2841 | Restarts: retained estimate gives all active cells with factor 4/3 (activeMin_of_retainedMin)
-in progress | 2026-10-16 05:06:25 ET | line 2844 | leaf assembly proved; explicit leaf bound (eq:before-absorption on a leaf) in progress
-not started | 2026-10-14 03:49:26 ET | eq:before-absorption, lines 2846-2853 | Bound on a retained attempt
-not started | 2026-10-14 03:49:26 ET | lines 2854-2866 | Degree bounds for D_base, D_m, D_*, H, T, K, G0 with q-free degrees
+complete | 2026-10-16 11:36:19 ET | line 2844 | Explicit leaf bound: leaf_final (sizes via B = C_b (k_D P)^C_b, G = e^(g(1+log 2k)^2)) and leaf_estimate
+complete | 2026-10-16 11:36:19 ET | eq:before-absorption, lines 2846-2853 | Retained attempt: N_l leaf bounds plus localization error (exists_attempt, root_assembly)
+complete | 2026-10-16 11:36:19 ET | lines 2854-2866 | Absolute degrees c, cc before q (attempt_param_bounds, retained_numeric_poly/exp); q after C_l
 complete | 2026-10-14 03:49:26 ET | lines 2868-2870 | Choice of q with 2 C5 (q-2)/(q-1) < 1/8 (exists_exponent_near_two)
-old incomplete | 2026-10-14 03:49:26 ET | lines 2872-2876 | alpha and P defined; P >> k^C and G0 <= P^(1/8) only hypotheses
+complete | 2026-10-16 11:36:19 ET | lines 2872-2876 | P = ceil(eta0^-alpha) dominates k^C, G^C; G0 <= P^(1/8) (retained_numeric_exp, retained_arith)
 complete | 2026-10-14 03:49:26 ET | lines 2876-2883 | Block term and power absorption (block_term_le, absorption_power_bound)
-old incomplete | 2026-10-14 03:49:26 ET | eq:active-final, lines 2884-2889 | ActiveMin from RetainedMin proved; RetainedMin (2839-2853 on one root) unproved
-old incomplete | 2026-10-14 03:49:26 ET | line 2891 | Minima on original cell sums: consistent so far; final assembly pending
+complete | 2026-10-16 11:36:19 ET | eq:active-final, lines 2884-2889 | RetainedMin proved (retainedMin_holds); ActiveFinal for every class (activeFinal_holds)
+complete | 2026-10-16 11:36:19 ET | line 2891 | Minima on the original cell sums throughout (exists_attempt localization, leaf_estimate, retainedMin_holds)
 complete | 2026-10-14 03:49:26 ET | lines 2893-2900 | Update levels, choice of k_1, cutoff limit: prop:normalized from ActiveFinal
-old incomplete | 2026-10-15 17:10:38 ET | prop:normalized, lines 2827-2833 | Statement exact (NormalizedAbsorption); proved only from RetainedMin, unproved
-old incomplete | 2026-10-14 03:49:26 ET | thm:uniform-local, lines 2906-2908 | Statement exact (uniform_of_activeFinal); proved only from RetainedMin
+complete | 2026-10-16 11:36:19 ET | prop:normalized, lines 2827-2833 | Unconditional: normalizedAbsorption_holds (from activeFinal_holds)
+complete | 2026-10-16 11:36:19 ET | thm:uniform-local, lines 2906-2908 | Unconditional: uniform_local_holds (uniform_of_activeFinal activeFinal_holds)
 complete | 2026-10-14 03:49:26 ET | thm:uniform-local proof, lines 2910-2930 | Stops, piece bound, sparse sum, absorption (uniform_local_of_normalized)
 complete | 2026-10-14 03:49:26 ET | thm:main proof, lines 2943-2983 | Kernel W, partition sum, reconstruction, lattices, scale form given thm:uniform-local
 complete | 2026-10-14 03:49:26 ET | thm:main proof, lines 2985-2990 | Odd-part bound and pointwise principal value (unconditional)

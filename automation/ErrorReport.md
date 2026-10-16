@@ -1650,3 +1650,29 @@ Exports added for the explicit leaf bound (no change to the blueprint statements
   Its `e^{k_D}` summand then dominates the active multiplicity in the `D_*^{-90}` errors.
   All degree bounds (`log_modeStarG_poly`) hold at `k_D`, as in the blueprint ("increase the
   starting logarithm").
+
+## 2026-10-16T11:36:19-04:00
+
+Retained-attempt estimate (`RetainedMin`, lines 2838-2888) and the unconditional main theorem.
+Formulation notes (no change of any blueprint statement):
+- Failure roots. The failure bound of the colours is `100 · 2001⁷ |R| / D` with `D` the vertex
+  bound of the attempt (line 1745: it "tends to zero as `D` grows"). The attempt's `D =
+  famVtxBound = ⌊8 colBudget⌋ + 1` is a function of the setup. The proof therefore runs the attempt
+  on the setup with the coefficient bound raised to `max(D_c, 800 · 2001⁷)` (`ActiveSetup.padDc`).
+  Cells, kernels, basic arguments, forms and activity are unchanged; the column representations
+  transfer (budgets are monotone). Then `D ≥ 8 · 800 · 2001⁷` and the failure roots have length at
+  most `|R|/8`. A setup without labels has no active cells.
+- Setups whose basic families have no columns (no vertices): the basic arguments vanish a.e. on the
+  cells, so every pattern form vanishes (`Hf_z_eq_zero_of_isEmpty_vtx`). `exists_attempt` and
+  `leaf_estimate` use a default vertex only.
+- Parameters: `P = ⌈η₀^{-α}⌉`, `α = (1/1200)/(4(C_l + 2))`, `k_D = (2C_l + 2) k^{cc+1}`,
+  `δ = e^{-k_D}`, `τ₃ = e^{-k^{3C_b+3}}`, `ρ = 1/(96 · 2^{fuel})` (six cuts per leaf, at most
+  `2^{fuel}` leaves), `H_low = e^{k^{cc}}`. Degrees: `c = 90(C_b + 1) + 3C_b + 103` for
+  `exists_attempt` and `cc = (C + c + 2)(D_g + 2)` for `leaf_estimate`; `q` from
+  `exists_exponent_near_two (C_l + 1)`; `c_* = min(ε/2, α/4)`.
+- Absorption: `active_final_arith` with `C₄ = C₅ = C_l + 1`, `K = C_l (k_D P)^{C_l}` and
+  `G₀ = N_l C_l (2 + log(K + 2))⁶ G^{C_l}`. The leaf count `N_l ≤ 2^{fuel} ≤ 4L` is a fixed power of
+  `k`. The remaining errors (closure accuracy, mode accuracy, `e^{-k}`, catalog localization with the
+  active multiplicity) are at most `e^{-k/2} ≤ η₀^{c_*}` for large `k` (`retained_numeric_exp`).
+- `leaf_final`: three unused hypotheses removed (the side-cap and near-band nonnegativity and the
+  accuracy bound `δ⁻¹ ≤ e^{k_D}`).
