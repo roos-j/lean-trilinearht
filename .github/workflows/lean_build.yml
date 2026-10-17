@@ -17,6 +17,18 @@ jobs:
     permissions:
       contents: read
     steps:
+      # The runner's default free space is not enough for the Mathlib cache plus this build.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - uses: actions/checkout@v4
 
       - uses: leanprover/lean-action@v1
