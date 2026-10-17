@@ -3390,8 +3390,1564 @@ noncomputable def leafBnd (Cl : ℕ) (kD : ℝ) (P k cc : ℕ) (η η₀ τ₃ �
       (2 + Real.log (Cl * (kD * P) ^ Cl + 2)) ^ 6 *
       Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl / Real.sqrt P * R
 
-set_option maxHeartbeats 500000 in
--- one long chain of explicit estimates (about 4 * 10^5 heartbeats)
+/-! Steps of `leaf_final`. Each lemma below is one step of that proof, stated over the
+hypotheses and local definitions (as `let`s) of the proof that it uses, so that it is
+elaborated in a small local context instead of the long context of the whole proof. -/
+
+/-- Step `hKB` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hKB :
+    ∀ (Msch : ℝ), (0 : ℝ) < Msch → ∀ (CΛ : ℕ) (eΛ : ℕ) (Cb : ℕ) (S : ModeSchedule) (Λ : ℝ),
+      (0 : ℝ) ≤ Λ → (↑S.K : ℝ) ≤ Msch * Λ ^ (16 : ℕ) → (16 : ℕ) * eΛ ≤ Cb →
+      (⌈Msch⌉₊ + (1 : ℕ)) * CΛ ^ (16 : ℕ) ≤ Cb → ∀ (u : ℝ), Λ ≤ (↑CΛ : ℝ) * u ^ eΛ → (1 : ℝ) ≤ u →
+      ∀ (B : ℝ), (∀ (c : ℝ) (e : ℕ), (0 : ℝ) ≤ c → c ≤ (↑Cb : ℝ) → e ≤ Cb → c * u ^ e ≤ B) →
+      Msch ≤ (↑(⌈Msch⌉₊ + (1 : ℕ)) : ℝ) → (1 : ℝ) ≤ (↑CΛ : ℝ) →
+    (S.K : ℝ) ≤ B := by
+  intro Msch hMsch CΛ eΛ Cb S Λ hΛ0 hK heΛCb hMCb1 u hΛ hu1 B hpowB hMc hCΛ1
+  refine hK.trans ?_
+  have! h1 := pow_le_pow_left₀ hΛ0 hΛ 16
+  have! h2 : Msch * (CΛ * u ^ eΛ) ^ 16 ≤ ((⌈Msch⌉₊ + 1) * CΛ ^ 16 : ℕ) * u ^ (16 * eΛ) := by
+    push_cast
+    rw [mul_pow, ← pow_mul, mul_comm eΛ 16, ← mul_assoc]
+    have! this : (0 : ℝ) ≤ (CΛ : ℝ) ^ 16 * u ^ (16 * eΛ) := by positivity
+    have! h3 := mul_le_mul_of_nonneg_right hMc this
+    push_cast at h3
+    linarith only [h3]
+  refine (mul_le_mul_of_nonneg_left h1 hMsch.le).trans (h2.trans (hpowB _ _ (by positivity)
+    ?_ (by omega)))
+  exact_mod_cast hMCb1
+
+/-- Step `hHB` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hHB :
+    ∀ (Msch : ℝ), (0 : ℝ) < Msch → ∀ (CΛ : ℕ) (eΛ : ℕ) (Cb : ℕ) (S : ModeSchedule) (Λ : ℝ),
+      (0 : ℝ) ≤ Λ → Real.log S.H ≤ Msch * Λ ^ (12 : ℕ) → (16 : ℕ) * eΛ ≤ Cb →
+      (⌈Msch⌉₊ + (1 : ℕ)) * CΛ ^ (16 : ℕ) + (1 : ℕ) ≤ Cb → ∀ (u : ℝ), Λ ≤ (↑CΛ : ℝ) * u ^ eΛ →
+      (1 : ℝ) ≤ u → ∀ (B : ℝ),
+      (∀ (c : ℝ) (e : ℕ), (0 : ℝ) ≤ c → c ≤ (↑Cb : ℝ) → e ≤ Cb → c * u ^ e ≤ B) →
+      (1 : ℝ) ≤ (↑CΛ : ℝ) →
+    Real.log S.H + 1 ≤ B := by
+  intro Msch hMsch CΛ eΛ Cb S Λ hΛ0 hlogH heΛCb hMCb2 u hΛ hu1 B hpowB hCΛ1
+  refine le_trans (show Real.log S.H + 1 ≤ Msch * Λ ^ 12 + 1 by linarith only [hlogH]) ?_
+  have! h1 := pow_le_pow_left₀ hΛ0 hΛ 12
+  have! hu12 : u ^ (12 * eΛ) ≤ u ^ (16 * eΛ) := pow_le_pow_right₀ hu1 (by omega)
+  have! hC12 : (CΛ : ℝ) ^ 12 ≤ CΛ ^ 16 := pow_le_pow_right₀ hCΛ1 (by norm_num)
+  have! h2 : Msch * (CΛ * u ^ eΛ) ^ 12 + 1 ≤
+      (((⌈Msch⌉₊ + 1) * CΛ ^ 16 : ℕ) + 1 : ℝ) * u ^ (16 * eΛ) := by
+    push_cast
+    rw [mul_pow, ← pow_mul, mul_comm eΛ 12]
+    have! h0 : (0 : ℝ) ≤ u ^ (12 * eΛ) := by positivity
+    have! h3 : Msch * ((CΛ : ℝ) ^ 12 * u ^ (12 * eΛ)) ≤
+        ((⌈Msch⌉₊ : ℝ) + 1) * ((CΛ : ℝ) ^ 16 * u ^ (16 * eΛ)) :=
+      mul_le_mul (by linarith only [Nat.le_ceil Msch]) (mul_le_mul hC12 hu12 h0 (by positivity))
+        (by positivity) (by positivity)
+    have! h4 : (1 : ℝ) ≤ u ^ (16 * eΛ) := one_le_pow₀ hu1
+    nlinarith only [h3, h4]
+  have! h3 := mul_le_mul_of_nonneg_left h1 hMsch.le
+  refine le_trans (show Msch * Λ ^ 12 + 1 ≤ Msch * (CΛ * u ^ eΛ) ^ 12 + 1 by
+    linarith only [h3]) (h2.trans (hpowB _ _ (by positivity) ?_ (by omega)))
+  exact_mod_cast hMCb2
+
+/-- Step `hIwB` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hIwB :
+    ∀ (Cg : ℕ) (Cb : ℕ) (S : ModeSchedule) (Iw : ℕ),
+      Iw = ⌊Real.logb (2 : ℝ) (S.Dstar ^ (250 : ℕ))⌋₊ → (500 : ℕ) * Cg + (1 : ℕ) ≤ Cb → ∀ (u : ℝ),
+      Real.log S.Dstar ≤ (↑Cg : ℝ) * u ^ Cg → (1 : ℝ) ≤ u → ∀ (B : ℝ),
+      (∀ (c : ℝ) (e : ℕ), (0 : ℝ) ≤ c → c ≤ (↑Cb : ℝ) → e ≤ Cb → c * u ^ e ≤ B) →
+      (1 : ℝ) ≤ S.Dstar → (0 : ℝ) ≤ Real.log S.Dstar →
+    (Iw : ℝ) + 1 ≤ B := by
+  intro Cg Cb S Iw hIw hCgCb u hlD hu1 B hpowB hD1 hlD0
+  have! h1 : (Iw : ℝ) ≤ Real.logb 2 (S.Dstar ^ 250) := by
+    rw [hIw]; exact Nat.floor_le (Real.logb_nonneg (by norm_num) (one_le_pow₀ hD1))
+  have! h2 : Real.logb 2 (S.Dstar ^ 250) ≤ 500 * Real.log S.Dstar := by
+    have! this := logb_two_le_two_log (one_le_pow₀ hD1 : (1 : ℝ) ≤ S.Dstar ^ 250)
+    rw [Real.log_pow] at this; push_cast at this; linarith only [this]
+  have! h3 : 500 * Real.log S.Dstar + 1 ≤ ((500 * Cg + 1 : ℕ) : ℝ) * u ^ Cg := by
+    push_cast
+    have! this : (1 : ℝ) ≤ u ^ Cg := one_le_pow₀ hu1
+    nlinarith only [hlD, this, hlD0]
+  refine le_trans (by linarith only [h1, h2]) (h3.trans (hpowB _ _ (by positivity) ?_
+    (by omega)))
+  exact_mod_cast (show 500 * Cg + 1 ≤ Cb by omega)
+
+/-- Step `hJmB` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hJmB :
+    ∀ (Cb : ℕ) (k : ℕ) (cc : ℕ), (1 : ℕ) ≤ cc → ∀ (famFuel : ℕ),
+      (↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) ≤ (↑cc : ℝ) * (Real.log (↑k : ℝ) + (1 : ℝ)) →
+      (1 : ℝ) ≤ (↑k : ℝ) → cc + (1 : ℕ) ≤ Cb → (↑k : ℝ) ≤ (↑k : ℝ) ^ cc → ∀ (B : ℝ),
+      (∀ (c : ℝ), (0 : ℝ) ≤ c → c ≤ (↑Cb : ℝ) → c * (↑k : ℝ) ^ cc ≤ B) → (1 : ℝ) ≤ (↑k : ℝ) ^ cc →
+    ((2 * famFuel + 2 : ℕ) : ℝ) + 1 ≤ B := by
+  intro Cb k cc hcc famFuel hkF hk1 hccCb hkcc0 B hkcc hkcc1
+  have! hlk : Real.log k + 1 ≤ k := by
+    have! this := Real.log_le_sub_one_of_pos (show (0 : ℝ) < k by linarith only [hk1])
+    linarith only [this]
+  have! h1 : ((2 * famFuel + 2 : ℕ) : ℝ) + 1 ≤ (cc + 1) * (k : ℝ) ^ cc := by
+    have! hcc0 : (0 : ℝ) ≤ cc := Nat.cast_nonneg _
+    have! this := mul_le_mul_of_nonneg_left hlk hcc0
+    nlinarith only [hkF, this, hkcc0, hcc0, hkcc1]
+  refine h1.trans (hkcc _ (by positivity) ?_)
+  exact_mod_cast (show cc + 1 ≤ Cb by omega)
+
+/-- Step `hVl0B` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hVl0B :
+    ∀ (k : ℕ) (cc : ℕ) (S : ModeSchedule) (Vl0 : ℝ),
+      Vl0 = (24 : ℝ) * ((↑⌊(180 : ℝ) * (↑S.dmax : ℝ) * Real.log ((2 : ℝ) * S.Dm) / (1 /
+        1024 : ℝ)⌋₊ : ℝ) + (1 : ℝ)) * (Real.exp (((6144 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) *
+        ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (4 : ℝ)) * ((1 : ℝ) +
+        Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)) + (2 : ℝ) * (1 : ℝ) / S.Dstar ^ (394 : ℕ)) →
+      ∀ (B : ℝ), (1 : ℝ) ≤ B → ∀ (G : ℝ), (1 : ℝ) ≤ G →
+      Real.exp (((6144 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) + (4 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)) ≤ G →
+      (1 : ℝ) ≤ S.Dstar → (2 : ℝ) ≤ S.Dm → (↑S.dmax : ℝ) + (5 : ℝ) ≤ B →
+      Real.log ((2 : ℝ) * S.Dm) ≤ B →
+    Vl0 ≤ 14000000 * B ^ 2 * G := by
+  intro k cc S Vl0 hVl0 B hBB1 G hG1 hGqG hD1 hDm2 hdmB hDmB
+  rw [hVl0]
+  have! hd0 : (0 : ℝ) ≤ S.dmax := Nat.cast_nonneg _
+  have! hDm2' : (1 : ℝ) ≤ 2 * S.Dm := by linarith only [hDm2]
+  have! hlDm0 : 0 ≤ Real.log (2 * S.Dm) := Real.log_nonneg hDm2'
+  have! hfl : ((⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ : ℕ) : ℝ) ≤
+      184320 * B ^ 2 := by
+    refine (Nat.floor_le (by positivity)).trans ?_
+    have! h1 : (S.dmax : ℝ) ≤ B := by linarith only [hdmB]
+    have! h2 := mul_le_mul h1 hDmB hlDm0 (by linarith only [hBB1])
+    rw [div_div_eq_mul_div, div_one]
+    nlinarith only [h2]
+  have! hGq' : Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+      (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394 ≤ 3 * G := by
+    have! h1 : 2 * 1 / S.Dstar ^ 394 ≤ 2 := by
+      rw [div_le_iff₀ (by positivity)]
+      have! this := one_le_pow₀ (n := 394) hD1
+      linarith only [this]
+    linarith only [h1, hGqG, hG1]
+  have! hBB2' : (1 : ℝ) ≤ B ^ 2 := one_le_pow₀ hBB1
+  have! h0 : (0 : ℝ) ≤ Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+      (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394 := by positivity
+  calc 24 * (((⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ : ℕ) : ℝ) + 1) *
+        (Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+          (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394)
+      ≤ 24 * (184321 * B ^ 2) * (3 * G) := by
+        gcongr; linarith only [hfl, hBB2']
+    _ ≤ 14000000 * B ^ 2 * G := by nlinarith only [hBB2', hG1]
+
+/-- Step `hT` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hT :
+    ∀ (κ : LocalKernelClass) (cT : ℝ) (k : ℕ) (cc : ℕ) (famFuel : ℕ) (E : ℝ) (ρ : ℝ), (0 : ℝ) ≤ E →
+      (0 : ℝ) < ρ → ∀ (S : ModeSchedule), (1 : ℕ) ≤ S.K → ∀ (Vl0 : ℝ) (TT : ℝ),
+      TT ≤ (10 : ℝ) ^ (14 : ℕ) * ((1 : ℝ) + localFormUniformConstant κ) ^ (2 : ℕ) * (↑((2 : ℕ) ^
+        famFuel) : ℝ) ^ (4 : ℕ) * ((1 : ℝ) + (↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ)) ^ (2 : ℕ) *
+        ((1 : ℝ) + (↑S.K : ℝ)) ^ (2 : ℕ) * (Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) *
+        ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) +
+        (3 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)) + E + Vl0 + (1 : ℝ)) / ρ →
+      cT = (10 : ℝ) ^ (22 : ℕ) * ((1 : ℝ) + localFormUniformConstant κ) ^ (2 : ℕ) → ∀ (B : ℝ),
+      (2 : ℝ) ≤ B → (1 : ℝ) ≤ B → ∀ (G : ℝ), (1 : ℝ) ≤ G →
+      Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) *
+        (↑k : ℝ))) ^ (2 : ℕ)) ≤ G → (↑S.K : ℝ) ≤ B → E ≤ B → ρ⁻¹ ≤ B →
+      (↑((2 : ℕ) ^ famFuel) : ℝ) ≤ B → (↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ) ≤ B →
+      (0 : ℝ) ≤ Vl0 → Vl0 ≤ (14000000 : ℝ) * B ^ (2 : ℕ) * G →
+    TT ≤ cT * B ^ 11 * G := by
+  intro κ cT k cc famFuel E ρ hE0 hρ S hK1 Vl0 TT hTTle hcT B hBB2 hBB1 G hG1 hG0G hKB hEB hρB
+    hLpB hJmB hVl00 hVl0B
+  refine hTTle.trans ?_
+  have! hL0 := localFormUniformConstant_nonneg κ
+  have! hK1' : (1 : ℝ) + S.K ≤ 2 * B := by linarith only [hKB, hBB1]
+  have! hW : Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 3) *
+      (1 + Real.log (2 * (k : ℝ))) ^ 2) + E + Vl0 + 1 ≤ 15000000 * B ^ 2 * G := by
+    have! hBB2' : (1 : ℝ) ≤ B ^ 2 := one_le_pow₀ hBB1
+    nlinarith only [hG0G, hEB, hVl0B, hBB2', hG1, hBB1]
+  have! hJ1 : (1 : ℝ) + ((2 * famFuel + 2 : ℕ) : ℝ) ≤ B := by linarith only [hJmB]
+  have! hρ' : 1 / ρ ≤ B := by rw [one_div]; exact hρB
+  rw [div_eq_mul_one_div]
+  calc 10 ^ 14 * (1 + localFormUniformConstant κ) ^ 2 * (((2 ^ famFuel : ℕ) : ℝ)) ^ 4 *
+        (1 + ((2 * famFuel + 2 : ℕ) : ℝ)) ^ 2 * (1 + (S.K : ℝ)) ^ 2 *
+        (Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 3) *
+          (1 + Real.log (2 * (k : ℝ))) ^ 2) + E + Vl0 + 1) * (1 / ρ)
+      ≤ 10 ^ 14 * (1 + localFormUniformConstant κ) ^ 2 * B ^ 4 * B ^ 2 * (2 * B) ^ 2 *
+          (15000000 * B ^ 2 * G) * B := by
+        gcongr
+    _ = 6 * 10 ^ 21 * (1 + localFormUniformConstant κ) ^ 2 * B ^ 11 * G := by ring
+    _ ≤ cT * B ^ 11 * G := by
+        rw [hcT]
+        have! this : (0 : ℝ) ≤ (1 + localFormUniformConstant κ) ^ 2 * B ^ 11 * G := by positivity
+        nlinarith only [this]
+
+/-- Step `hT2` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hT2 :
+    ∀ (k : ℕ) (cc : ℕ) (ρ : ℝ), (0 : ℝ) < ρ → ∀ (S : ModeSchedule) (Vl0 : ℝ) (T2v : ℝ),
+      T2v ≤ (4 : ℝ) * ((↑S.K : ℝ) * ((20 : ℝ) * Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) *
+        ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) +
+        (3 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)) + (32 : ℝ)) + (↑S.K : ℝ) *
+        Vl0) / ρ → ∀ (B : ℝ), (2 : ℝ) ≤ B → (1 : ℝ) ≤ B → ∀ (G : ℝ), (1 : ℝ) ≤ G →
+      Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) *
+        (↑k : ℝ))) ^ (2 : ℕ)) ≤ G → (↑S.K : ℝ) ≤ B → (0 : ℝ) ≤ Vl0 →
+      Vl0 ≤ (14000000 : ℝ) * B ^ (2 : ℕ) * G → (1 : ℝ) / ρ ≤ B →
+    T2v ≤ 60000000 * B ^ 4 * G := by
+  intro k cc ρ hρ S Vl0 T2v hT2le B hBB2 hBB1 G hG1 hG0G hKB hVl00 hVl0B hρ1'
+  refine hT2le.trans ?_
+  have! hK0 : (0 : ℝ) ≤ S.K := Nat.cast_nonneg _
+  have! h1 : (S.K : ℝ) * (20 * Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) +
+      cc ^ 2 + 3) * (1 + Real.log (2 * (k : ℝ))) ^ 2) + 32) ≤ B * (52 * G) :=
+    mul_le_mul hKB (by linarith only [hG0G, hG1]) (by positivity) (by linarith only [hBB1])
+  have! h2 : (S.K : ℝ) * Vl0 ≤ B * (14000000 * B ^ 2 * G) :=
+    mul_le_mul hKB hVl0B hVl00 (by linarith only [hBB1])
+  rw [div_eq_mul_one_div]
+  calc 4 * ((S.K : ℝ) * (20 * Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) +
+        cc ^ 2 + 3) * (1 + Real.log (2 * (k : ℝ))) ^ 2) + 32) + S.K * Vl0) * (1 / ρ)
+      ≤ 4 * (B * (52 * G) + B * (14000000 * B ^ 2 * G)) * B := by
+        gcongr
+    _ ≤ 60000000 * B ^ 4 * G := by
+        have! this : (0 : ℝ) ≤ B ^ 4 * G := by positivity
+        have! h4 : B ^ 2 * G ≤ B ^ 4 * G := mul_le_mul_of_nonneg_right
+          (pow_le_pow_right₀ hBB1 (by norm_num)) (by linarith only [hG1])
+        nlinarith only [this, h4, hBB1, hG1]
+
+/-- Step `hsT2` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hsT2 :
+    ∀ (T2v : ℝ) (B : ℝ) (G : ℝ), (1 : ℝ) ≤ G → T2v ≤ (60000000 : ℝ) * B ^ (4 : ℕ) * G →
+    Real.sqrt T2v ≤ 7746 * B ^ 2 * G := by
+  intro T2v B G hG1 hT2
+  have! h1 : T2v ≤ (7746 * B ^ 2 * G) ^ 2 := by
+    calc T2v ≤ 60000000 * B ^ 4 * G := hT2
+      _ ≤ 60000516 * B ^ 4 * G ^ 2 := by
+          have! h0 : (0 : ℝ) ≤ B ^ 4 := by positivity
+          have! h1 : B ^ 4 * G ≤ B ^ 4 * G ^ 2 :=
+            mul_le_mul_of_nonneg_left (le_self_pow₀ hG1 (by norm_num)) h0
+          have! h2 : 0 ≤ B ^ 4 * G ^ 2 := by positivity
+          linarith only [h1, h2]
+      _ = (7746 * B ^ 2 * G) ^ 2 := by ring
+  calc Real.sqrt T2v ≤ Real.sqrt ((7746 * B ^ 2 * G) ^ 2) := Real.sqrt_le_sqrt h1
+    _ = 7746 * B ^ 2 * G := Real.sqrt_sq (by positivity)
+
+/-- Step `hlogU` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hlogU :
+    ∀ (g : ℕ) (cT : ℝ) (Cb : ℕ) (k : ℕ) (cc : ℕ) (cb : ℝ), (2 : ℝ) ≤ cb →
+      Real.log ((2 : ℝ) * cb) ≤ (↑k : ℝ) ^ cc → ∀ (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar →
+      ∀ (TT : ℝ), (0 : ℝ) ≤ TT → ∀ (U : ℝ),
+      U = max ((2 : ℝ) * (cb + (2 : ℝ)) * S.Dstar ^ (2 : ℕ)) √TT → ∀ (B : ℝ), (20 : ℝ) ≤ (↑Cb : ℝ) →
+      (2 : ℝ) ≤ B → (1 : ℝ) ≤ B → (∀ (c : ℝ), (0 : ℝ) ≤ c → c ≤ (↑Cb : ℝ) → c * (↑k : ℝ) ^ cc ≤ B) →
+      ∀ (X : ℝ), (0 : ℝ) ≤ X → X ≤ (4 : ℝ) * (↑k : ℝ) → ∀ (G : ℝ), G = Real.exp ((↑g : ℝ) * X) →
+      (1 : ℝ) ≤ G → (1 : ℝ) ≤ S.Dstar → Real.log S.Dstar ≤ B → (↑k : ℝ) ≤ B → (0 : ℝ) < U →
+      TT ≤ cT * B ^ (11 : ℕ) * G → (1 : ℝ) ≤ cT → (1 : ℝ) ≤ cT * B ^ (11 : ℕ) * G →
+    Real.log U ≤ (17 + 4 * g + Real.log cT) * B := by
+  intro g cT Cb k cc cb hcb hkb S hD2 TT hT0 U hUdef B hCb20 hBB2 hBB1 hkcc X hX0 hX4 G hGdef hG1
+    hD1 hlDB hkB' hU0 hTT1 hcT1 hBGT
+  have! ha1 : (1 : ℝ) ≤ 2 * (cb + 2) * S.Dstar ^ 2 := by
+    have! this := one_le_pow₀ (n := 2) hD1
+    nlinarith only [this, hcb]
+  have! hsTT : Real.sqrt TT ≤ 2 + TT := by
+    have! this := Real.sqrt_le_sqrt (show TT ≤ (1 + TT) ^ 2 by nlinarith only [hT0])
+    rw [Real.sqrt_sq (by linarith only [hT0])] at this; linarith only [this]
+  have! hUle : U ≤ 2 * (cb + 2) * S.Dstar ^ 2 * (1 + Real.sqrt TT) := by
+    rw [hUdef]
+    have! h0 := Real.sqrt_nonneg TT
+    refine max_le (le_mul_of_one_le_right (by linarith only [ha1]) (by linarith only [h0]))
+      ?_
+    nlinarith only [h0, ha1]
+  have! h1 : Real.log U ≤ Real.log (2 * (cb + 2) * S.Dstar ^ 2) +
+      Real.log (1 + Real.sqrt TT) := by
+    rw [← Real.log_mul (by linarith only [ha1]) (by positivity)]
+    exact Real.log_le_log hU0 hUle
+  have! h2 : Real.log (2 * (cb + 2) * S.Dstar ^ 2) ≤ 1 + (k : ℝ) ^ cc + 2 * B := by
+    have! hcb4 : cb + 2 ≤ 2 * cb := by linarith only [hcb]
+    rw [Real.log_mul (by linarith only [hcb]) (by positivity), Real.log_pow]
+    have! h3 : Real.log (2 * (cb + 2)) ≤ Real.log (2 * (2 * cb)) :=
+      Real.log_le_log (by linarith only [hcb]) (by linarith only [hcb4])
+    have! h4 : Real.log (2 * (2 * cb)) = Real.log 2 + Real.log (2 * cb) := by
+      rw [Real.log_mul (by norm_num) (by linarith only [hcb])]
+    have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
+    push_cast
+    linarith only [h3, h4, hl2, hkb, hlDB]
+  have! h3 : Real.log (1 + Real.sqrt TT) ≤ 2 + Real.log cT + 11 * B + 4 * g * B := by
+    have! h5 : 1 + Real.sqrt TT ≤ 4 * (cT * B ^ 11 * G) := by linarith only [hsTT, hTT1, hBGT]
+    have! h6 := Real.log_le_log (by positivity) h5
+    rw [Real.log_mul (by norm_num) (by positivity), Real.log_mul (by positivity)
+      (by positivity), Real.log_mul (by positivity) (by positivity), Real.log_pow, hGdef,
+      Real.log_exp] at h6
+    have! hl3 : Real.log 4 ≤ 2 := by
+      rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.log_pow]
+      push_cast; linarith only [Real.log_two_lt_d9]
+    have! hlB : Real.log B ≤ B := by
+      have! this := Real.log_le_sub_one_of_pos (show (0 : ℝ) < B by linarith only [hBB1])
+      linarith only [this]
+    have! hgX : (g : ℝ) * X ≤ 4 * g * B := by
+      have! this : X ≤ 4 * B := by linarith only [hX4, hkB']
+      nlinarith only [this, Nat.cast_nonneg (α := ℝ) g, hX0]
+    push_cast at h6
+    linarith only [h6, hl3, hlB, hgX]
+  have! hlc : 0 ≤ Real.log cT := Real.log_nonneg hcT1
+  have! hkB1 := hkcc 1 (by norm_num) (by linarith only [hCb20])
+  have! hg0 : (0 : ℝ) ≤ g := Nat.cast_nonneg g
+  have! hlcB : Real.log cT ≤ Real.log cT * B := le_mul_of_one_le_right hlc hBB1
+  nlinarith only [h1, h2, h3, hkB1, hlcB, hBB1, hg0]
+
+/-- Step `hlogMV` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hlogMV :
+    ∀ (Cb : ℕ) (k : ℕ) (cc : ℕ) (Mp : ℕ) (V : ℕ) (MV : ℝ), MV = (↑Mp : ℝ) * (↑V : ℝ) → ∀ (B : ℝ),
+      (20 : ℝ) ≤ (↑Cb : ℝ) → (1 : ℝ) ≤ B →
+      (∀ (c : ℝ), (0 : ℝ) ≤ c → c ≤ (↑Cb : ℝ) → c * (↑k : ℝ) ^ cc ≤ B) →
+      (↑Mp : ℝ) ≤ Real.exp ((↑k : ℝ) ^ cc) → (↑V : ℝ) ≤ (5 : ℝ) * Real.exp ((↑k : ℝ) ^ cc) →
+      (0 : ℝ) ≤ MV →
+    Real.log (1 + MV) ≤ 4 * B := by
+  intro Cb k cc Mp V MV hMV B hCb20 hBB1 hkcc hMpexp hVexp hMV0
+  have! h1 : 1 + MV ≤ 6 * Real.exp (2 * (k : ℝ) ^ cc) := by
+    rw [hMV]
+    have! h2 : (Mp : ℝ) * V ≤ Real.exp ((k : ℝ) ^ cc) *
+        (5 * Real.exp ((k : ℝ) ^ cc)) := mul_le_mul hMpexp hVexp (Nat.cast_nonneg _)
+          (Real.exp_pos _).le
+    have! h3 : Real.exp (2 * (k : ℝ) ^ cc) =
+        Real.exp ((k : ℝ) ^ cc) * Real.exp ((k : ℝ) ^ cc) := by
+      rw [← Real.exp_add]; ring_nf
+    have! h4 : (1 : ℝ) ≤ Real.exp (2 * (k : ℝ) ^ cc) := Real.one_le_exp (by positivity)
+    nlinarith only [h2, h3, h4]
+  have! h2 := Real.log_le_log (by linarith only [hMV0]) h1
+  rw [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at h2
+  have! hl6 : Real.log 6 ≤ 2 := by
+    have! this := Real.log_lt_sub_one_of_pos (show (0 : ℝ) < 6 by norm_num) (by norm_num)
+    have! h7 : Real.log 6 < 2 := by
+      rw [Real.log_lt_iff_lt_exp (by norm_num)]
+      have := Real.exp_one_gt_d9
+      have! h8 : (2.7 : ℝ) ^ 2 ≤ Real.exp 1 ^ 2 :=
+        pow_le_pow_left₀ (by norm_num) (by linarith only [this]) 2
+      rw [← Real.exp_nat_mul] at h8; norm_num at h8; linarith only [h8]
+    exact h7.le
+  have! this := hkcc 1 (by norm_num) (by linarith only [hCb20])
+  linarith only [h2, hl6, this, hBB1]
+
+/-- Step `hlogUε` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hlogUε :
+    ∀ (g : ℕ) (cT : ℝ) (k : ℕ) (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar → ∀ (U : ℝ) (MV : ℝ) (ε : ℝ)
+      (B : ℝ), (2 : ℝ) ≤ B → (1 : ℝ) ≤ B → Real.log S.Dstar ≤ B → (↑k : ℝ) ≤ B → (16 : ℝ) ≤ U →
+      (0 : ℝ) ≤ MV → (1 : ℝ) ≤ cT →
+      U / ε = U ^ (4 : ℕ) * S.Dstar ^ (5 : ℕ) * Real.exp (↑k : ℝ) * ((1 : ℝ) + MV) →
+      Real.log U ≤ ((17 : ℝ) + (4 : ℝ) * (↑g : ℝ) + Real.log cT) * B →
+      Real.log ((1 : ℝ) + MV) ≤ (4 : ℝ) * B →
+    Real.log (U / ε) ≤ (78 + 16 * g + 4 * Real.log cT) * B := by
+  intro g cT k S hD2 U MV ε B hBB2 hBB1 hlDB hkB' hU16 hMV0 hcT1 hUε hlogU hlogMV
+  rw [hUε, Real.log_mul (by positivity) (by linarith only [hMV0]), Real.log_mul (by positivity)
+    (Real.exp_pos _).ne', Real.log_mul (by positivity) (by positivity), Real.log_pow,
+    Real.log_pow, Real.log_exp]
+  have! hlc : 0 ≤ Real.log cT := Real.log_nonneg hcT1
+  have! hlcB : Real.log cT ≤ Real.log cT * B := le_mul_of_one_le_right hlc hBB1
+  push_cast
+  linarith only [hlogU, hlDB, hkB', hlogMV, hBB2, hlcB]
+
+/-- Step `hcL0` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hcL0 :
+    ∀ (g : ℕ) (cT : ℝ) (cL : ℝ), cL = (159 : ℝ) + (32 : ℝ) * (↑g : ℝ) + (8 : ℝ) * Real.log cT →
+      (1 : ℝ) ≤ cT →
+    0 ≤ cL := by
+  intro g cT cL hcL hcT1
+  rw [hcL]; have := Real.log_nonneg hcT1; positivity
+
+/-- Step `hMtB` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hMtB :
+    ∀ (cL : ℝ) (k : ℕ) (cc : ℕ) (ρ : ℝ), (0 : ℝ) < ρ → ∀ (S : ModeSchedule) (Vl0 : ℝ) (U : ℝ)
+      (ε : ℝ) (Mt : ℝ) (B : ℝ), (1 : ℝ) ≤ B → ∀ (G : ℝ), (1 : ℝ) ≤ G → (↑S.K : ℝ) ≤ B →
+      (↑S.Jstar : ℝ) + (1 : ℝ) ≤ B → (0 : ℝ) ≤ Vl0 → Vl0 ≤ (14000000 : ℝ) * B ^ (2 : ℕ) * G →
+      (1 : ℝ) / ρ ≤ B → (0 : ℝ) ≤ cL →
+    let Gq : ℝ := Real.exp (((6144 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (4 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^
+        (2 : ℕ));
+    Gq ≤ G →
+    let Ts : Finset (ℕ × ℕ) := Finset.range (Nat.log (2 : ℕ) ⌊S.Dstar⌋₊ + (1 : ℕ)) ×ˢ Finset.range
+        (Nat.log (2 : ℕ) ⌊S.Dstar⌋₊ + (1 : ℕ));
+    Mt = (24 : ℝ) * ((2 : ℝ) * Gq + (2 : ℝ) * (↑S.K : ℝ) * Vl0) * (↑(Finset.range (S.Jstar +
+        (1 : ℕ)) ×ˢ Ts ×ˢ dyThr ε U S.Dstar).card : ℝ) / ρ →
+      (↑Ts.card : ℝ) ≤ ((3 : ℝ) * B) ^ (2 : ℕ) →
+      (↑(dyThr ε U S.Dstar).card : ℝ) ≤ cL * B + (2 : ℝ) →
+    Mt ≤ 7000000000 * B ^ 7 * G * (cL * B + 2) := by
+  intro cL k cc ρ hρ S Vl0 U ε Mt B hBB1 G hG1 hKB hJB hVl00 hVl0B hρ1' hcL0 Gq hGqG Ts hMt
+    hcardTs hcardThr
+  rw [hMt, Finset.card_product, Finset.card_product, Finset.card_range]
+  push_cast
+  have! hK0 : (0 : ℝ) ≤ S.K := Nat.cast_nonneg _
+  have! h1 : 2 * Gq + 2 * (S.K : ℝ) * Vl0 ≤ 28000002 * B ^ 3 * G := by
+    have! h2 : (S.K : ℝ) * Vl0 ≤ B * (14000000 * B ^ 2 * G) :=
+      mul_le_mul hKB hVl0B hVl00 (by linarith only [hBB1])
+    have! h3 : (1 : ℝ) ≤ B ^ 3 := one_le_pow₀ hBB1
+    have! h4 : G ≤ B ^ 3 * G := le_mul_of_one_le_left (by linarith only [hG1]) h3
+    nlinarith only [h2, h4, hGqG]
+  have! hJ0 : (0 : ℝ) ≤ (S.Jstar : ℝ) + 1 := by positivity
+  have! hT0' : (0 : ℝ) ≤ Ts.card := Nat.cast_nonneg _
+  have! hThr0' : (0 : ℝ) ≤ (dyThr ε U S.Dstar).card := Nat.cast_nonneg _
+  rw [div_eq_mul_one_div]
+  calc 24 * (2 * Gq + 2 * (S.K : ℝ) * Vl0) * (((S.Jstar : ℝ) + 1) *
+        ((Ts.card : ℝ) * ((dyThr ε U S.Dstar).card : ℝ))) * (1 / ρ)
+      ≤ 24 * (28000002 * B ^ 3 * G) * (B * ((3 * B) ^ 2 * (cL * B + 2))) * B := by
+        have! hBnn : 0 ≤ B := by linarith only [hBB1]
+        have! hcLB : 0 ≤ cL * B + 2 := by nlinarith only [hcL0, hBnn]
+        have! hc0 : (0 : ℝ) ≤ (Ts.card : ℝ) * ((dyThr ε U S.Dstar).card : ℝ) :=
+          mul_nonneg hT0' hThr0'
+        refine mul_le_mul (mul_le_mul (by linarith only [h1]) (mul_le_mul hJB
+            (mul_le_mul hcardTs hcardThr hThr0' (sq_nonneg _)) hc0 hBnn) (mul_nonneg hJ0 hc0)
+            (by positivity)) hρ1' (by rw [one_div]; exact (inv_pos.mpr hρ).le) ?_
+        exact mul_nonneg (by positivity) (mul_nonneg hBnn (mul_nonneg (sq_nonneg _) hcLB))
+    _ = 6048000432 * B ^ 7 * G * (cL * B + 2) := by ring
+    _ ≤ 7000000000 * B ^ 7 * G * (cL * B + 2) := by
+        have! this : (0 : ℝ) ≤ B ^ 7 * G * (cL * B + 2) := by positivity
+        nlinarith only [this]
+
+/-- Step `hKcB` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hKcB :
+    ∀ (cT : ℝ) (cL : ℝ) (cK : ℝ) (TT : ℝ), (0 : ℝ) ≤ TT → ∀ (Mt : ℝ),
+      cK = ((1 : ℝ) + (7 : ℝ) * (10 : ℝ) ^ (9 : ℕ) + cT) * (cL + (2 : ℝ)) → ∀ (B : ℝ), (1 : ℝ) ≤ B →
+      ∀ (G : ℝ), (1 : ℝ) ≤ G → TT ≤ cT * B ^ (11 : ℕ) * G → (1 : ℝ) ≤ cT → (0 : ℝ) ≤ cL →
+      Mt ≤ (7000000000 : ℝ) * B ^ (7 : ℕ) * G * (cL * B + (2 : ℝ)) → (0 : ℝ) ≤ Mt →
+    let Kc : ℝ := max (max (1 : ℝ) Mt) TT;
+    Kc ≤ cK * B ^ 12 * G := by
+  intro cT cL cK TT hT0 Mt hcK B hBB1 G hG1 hT hcT1 hcL0 hMtB hMt0 Kc
+  have! hB12 : (1 : ℝ) ≤ B ^ 12 * G := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hBB1) hG1
+  have! h1 : Mt ≤ 7000000000 * (cL + 2) * (B ^ 12 * G) := by
+    refine hMtB.trans ?_
+    have! h2 : B ^ 7 * B ≤ B ^ 12 := by
+      rw [← pow_succ]; exact pow_le_pow_right₀ hBB1 (by norm_num)
+    have! h3 : cL * B + 2 ≤ (cL + 2) * B := by nlinarith only [hBB1, hcL0]
+    have! h4 : 0 ≤ B ^ 7 * G := by positivity
+    calc 7000000000 * B ^ 7 * G * (cL * B + 2) ≤ 7000000000 * B ^ 7 * G * ((cL + 2) * B) :=
+          mul_le_mul_of_nonneg_left h3 (by positivity)
+      _ = 7000000000 * (cL + 2) * (B ^ 7 * B * G) := by ring
+      _ ≤ 7000000000 * (cL + 2) * (B ^ 12 * G) := by gcongr
+  have! h2 : TT ≤ cT * (B ^ 12 * G) := by
+    refine hT.trans ?_
+    have! this : B ^ 11 ≤ B ^ 12 := pow_le_pow_right₀ hBB1 (by norm_num)
+    have! h0 : 0 ≤ cT := by linarith only [hcT1]
+    calc cT * B ^ 11 * G = cT * (B ^ 11 * G) := by ring
+      _ ≤ cT * (B ^ 12 * G) := by gcongr
+  have! hle : Kc ≤ 1 + Mt + TT := max_le (max_le (by linarith only [hMt0, hT0])
+    (by linarith only [hT0])) (by linarith only [hMt0])
+  have! hcK' : (1 + 7000000000 * (cL + 2) + cT) ≤ cK := by
+    rw [hcK]; nlinarith only [hcL0, hcT1]
+  have! hBG0 : 0 ≤ B ^ 12 * G := by positivity
+  calc Kc ≤ 1 + Mt + TT := hle
+    _ ≤ (1 + 7000000000 * (cL + 2) + cT) * (B ^ 12 * G) := by nlinarith only [h1, h2, hB12]
+    _ ≤ cK * (B ^ 12 * G) := mul_le_mul_of_nonneg_right hcK' hBG0
+    _ = cK * B ^ 12 * G := by ring
+
+/-- Step `hcMtot` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hcMtot :
+    ∀ (κ : LocalKernelClass) (cL : ℝ) (cK : ℝ) (cMc : ℝ) (TT : ℝ) (Mt : ℝ) (cM4 : ℝ) (cM3 : ℝ),
+      cMc = (C4c κ + (4 : ℝ) * C3c κ) * cL ^ (4 : ℕ) * cK ^ (2 : ℕ) → ∀ (B : ℝ), (1 : ℝ) ≤ B →
+      ∀ (G : ℝ),
+    let Kc : ℝ := max (max (1 : ℝ) Mt) TT;
+    (1 : ℝ) ≤ Kc → Kc ≤ cK * B ^ (12 : ℕ) * G →
+      cM4 ≤ C4c κ * B ^ (30 : ℕ) * (cL * B) ^ (4 : ℕ) * Kc ^ (2 : ℕ) →
+      cM3 ≤ (4 : ℝ) * (C3c κ * B ^ (30 : ℕ) * B * (cL * B) ^ (4 : ℕ) * Kc ^ (2 : ℕ)) →
+    cM4 + cM3 ≤ cMc * B ^ 59 * G ^ 2 := by
+  intro κ cL cK cMc TT Mt cM4 cM3 hcMc B hBB1 G Kc hKc1 hKcB hcM4' hcM3'
+  have! h4 := C4c_nonneg κ
+  have! h3 := C3c_nonneg κ
+  have! hK2 : Kc ^ 2 ≤ (cK * B ^ 12 * G) ^ 2 := pow_le_pow_left₀ (by linarith only [hKc1]) hKcB 2
+  have! hB30 : B ^ 30 ≤ B ^ 30 * B := le_mul_of_one_le_right (by positivity) hBB1
+  have! hX0' : 0 ≤ (cL * B) ^ 4 * Kc ^ 2 := by positivity
+  calc cM4 + cM3
+      ≤ C4c κ * B ^ 30 * (cL * B) ^ 4 * Kc ^ 2 +
+          4 * (C3c κ * B ^ 30 * B * (cL * B) ^ 4 * Kc ^ 2) := add_le_add hcM4' hcM3'
+    _ ≤ (C4c κ + 4 * C3c κ) * (B ^ 30 * B) * ((cL * B) ^ 4 * Kc ^ 2) := by
+        have! this := mul_le_mul_of_nonneg_left hB30 h4
+        nlinarith only [this, hX0']
+    _ ≤ (C4c κ + 4 * C3c κ) * (B ^ 30 * B) * ((cL * B) ^ 4 * (cK * B ^ 12 * G) ^ 2) := by
+        gcongr
+    _ = cMc * B ^ 59 * G ^ 2 := by rw [hcMc]; ring
+
+/-- Step `hME` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hME :
+    ∀ (κ : LocalKernelClass) (k : ℕ) (cc : ℕ) (cb : ℝ) (Nl : ℝ) (Mp : ℕ) (V : ℕ), (2 : ℝ) ≤ cb →
+      (4 : ℝ) ≤ Nl → ∀ (dB : ℕ), (1 : ℕ) ≤ dB → ∀ (δ : ℝ) (R : ℝ), (0 : ℝ) < δ → δ ≤ (1 / 8 : ℝ) →
+      (0 : ℝ) < R → ∀ (S : ModeSchedule) (Iw : ℕ) (U : ℝ) (ε : ℝ) (cE : ℝ),
+      cE ≤ ((16 : ℝ) * fourErrC κ (3 : ℕ) * ((S.Dstar ^ (100 : ℕ))⁻¹ * S.Dstar ^ (10 : ℕ)) + K1c *
+        ((2 : ℝ) * fourKC κ (3 : ℕ) * (12 : ℝ) ^ (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) +
+        (4 : ℝ) * ((81 : ℝ) * threeErrC κ (3 : ℕ) (1 : ℕ) * ((S.Dstar ^ (100 : ℕ))⁻¹ * S.Dstar ^
+        (10 : ℕ)) * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) * (2 : ℝ) ^ ((1 : ℕ) +
+        (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^ (3 : ℕ) * ((↑Iw : ℝ) +
+        (1 : ℝ)))))) * ((↑(Mp * V) : ℝ) * R) → ∀ (Ee : ℝ), (0 : ℝ) ≤ Ee →
+      Ee ≤ ((8 : ℝ) * (↑dB : ℝ) * δ + (2 : ℝ) * δ ^ (2 : ℕ)) * ((4 : ℝ) * Nl * cb ^ (2 : ℕ) *
+        (1 : ℝ)) * (↑((4 : ℕ) * (Mp * V)) : ℝ) * R → (0 : ℝ) ≤ Nl → ∀ (E1 : ℝ),
+      E1 = Real.exp ((↑k : ℝ) ^ cc) → (1 : ℝ) ≤ E1 → (↑Mp : ℝ) ≤ E1 → (↑V : ℝ) ≤ (5 : ℝ) * E1 →
+      cb ≤ E1 → Nl ≤ E1 → (↑dB : ℝ) ≤ E1 →
+    Real.sqrt (4 * (((Mp * V : ℕ) : ℝ) * R)) *
+    Real.sqrt Ee ≤ 288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ * R := by
+  intro κ k cc cb Nl Mp V hcb hNl4 dB hdB1 δ R hδ hδ8 hRl0 S Iw U ε cE hcEsum Ee hEe0 hEeb hNl0 E1
+    hE1 hE11 hMpE hVE1 hcbE hNlE hdBE
+  have hEe00 : 0 ≤ Ee := hEe0
+  have! hMV' : (((Mp * V : ℕ) : ℝ)) ≤ 5 * E1 ^ 2 := by
+    push_cast
+    have! this := mul_le_mul hMpE hVE1 (Nat.cast_nonneg _) (by linarith only [hE11])
+    nlinarith only [this]
+  have! hMV0' : (0 : ℝ) ≤ (((Mp * V : ℕ) : ℝ)) := Nat.cast_nonneg _
+  have! hδ1 : δ ≤ 1 := by linarith only [hδ8]
+  have! hdB1' : (1 : ℝ) ≤ dB := by exact_mod_cast hdB1
+  have! hc : Nl * (8 * dB * δ + 2 * δ ^ 2) ≤ 10 * E1 ^ 2 * δ := by
+    have! h1 : 8 * dB * δ + 2 * δ ^ 2 ≤ 10 * dB * δ := by nlinarith only [hδ, hδ1, hdB1']
+    have! h2 : Nl * (10 * dB * δ) ≤ E1 * (10 * E1 * δ) :=
+      mul_le_mul hNlE (by nlinarith only [hdBE, hδ]) (by positivity) (by linarith only [hE11])
+    have! h3 : Nl * (8 * dB * δ + 2 * δ ^ 2) ≤ Nl * (10 * dB * δ) :=
+      mul_le_mul_of_nonneg_left h1 hNl0
+    nlinarith only [h2, h3]
+  have! hb : cb ^ 2 ≤ E1 ^ 2 := pow_le_pow_left₀ (by linarith only [hcb]) hcbE 2
+  have! hprod : 4 * (((Mp * V : ℕ) : ℝ) * R) * Ee ≤
+      (288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ * R) ^ 2 := by
+    have! hE4 : Real.exp (4 * (k : ℝ) ^ cc) = E1 ^ 4 := by
+      rw [hE1, ← Real.exp_nat_mul]; norm_num
+    have! hsδ : Real.sqrt δ ^ 2 = δ := Real.sq_sqrt hδ.le
+    rw [hE4, mul_pow, mul_pow, mul_pow, hsδ]
+    set! m := (((Mp * V : ℕ) : ℝ)) with hm
+    rewrite [← hm] at hcEsum hMV' hMV0' ⊢
+    have! hEe1 : Ee ≤ (Nl * (8 * dB * δ + 2 * δ ^ 2)) * (16 * cb ^ 2) * m * R := by
+      refine hEeb.trans (le_of_eq ?_)
+      rw [hm]
+      push_cast
+      ring
+    have! h1 : 4 * (m * R) * Ee ≤ 4 * (m * R) * ((Nl * (8 * dB * δ + 2 * δ ^ 2)) *
+        (16 * cb ^ 2) * m * R) := mul_le_mul_of_nonneg_left hEe1 (by positivity)
+    have! h2 : 4 * (m * R) * ((Nl * (8 * dB * δ + 2 * δ ^ 2)) * (16 * cb ^ 2) * m * R) =
+        64 * (m * m) * (Nl * (8 * dB * δ + 2 * δ ^ 2)) * cb ^ 2 * R ^ 2 := by ring
+    have! hmm : m * m ≤ (5 * E1 ^ 2) * (5 * E1 ^ 2) := mul_le_mul hMV' hMV' hMV0' (by positivity)
+    have! hnn : 0 ≤ Nl * (8 * dB * δ + 2 * δ ^ 2) := by positivity
+    have! h3 : 64 * (m * m) * (Nl * (8 * dB * δ + 2 * δ ^ 2)) * cb ^ 2 * R ^ 2 ≤
+        64 * ((5 * E1 ^ 2) * (5 * E1 ^ 2)) * (10 * E1 ^ 2 * δ) * E1 ^ 2 * R ^ 2 := by
+      gcongr
+    have! h4 : 64 * ((5 * E1 ^ 2) * (5 * E1 ^ 2)) * (10 * E1 ^ 2 * δ) * E1 ^ 2 * R ^ 2 ≤
+        288 ^ 2 * (E1 ^ 4) ^ 2 * δ * R ^ 2 := by
+      have! this : 0 ≤ E1 ^ 8 * δ * R ^ 2 := by positivity
+      nlinarith only [this]
+    linarith only [h1, h2, h3, h4]
+  rw [← Real.sqrt_mul (by positivity)]
+  calc Real.sqrt (4 * (((Mp * V : ℕ) : ℝ) * R) * Ee)
+      ≤ Real.sqrt ((288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ *
+        R) ^ 2) := Real.sqrt_le_sqrt hprod
+    _ = _ := Real.sqrt_sq (by positivity)
+
+/-- Step `hQe0` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hQe0 :
+    ∀ (κ : LocalKernelClass) (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar → ∀ (Iw : ℕ) (U : ℝ) (ε : ℝ),
+      (16 : ℝ) ≤ U → (0 : ℝ) < ε → ∀ (ι : ℝ), (0 : ℝ) ≤ ι →
+    let Qe : ℝ := (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) *
+        (12 : ℝ) ^ (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) *
+        threeErrC κ (3 : ℕ) (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) *
+        (2 : ℝ) ^ ((1 : ℕ) + (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^
+        (3 : ℕ) * ((↑Iw : ℝ) + (1 : ℝ)))));
+    Qe = (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) * (12 : ℝ) ^
+        (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) * threeErrC κ (3 : ℕ)
+        (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) * (2 : ℝ) ^ ((1 : ℕ) +
+        (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^ (3 : ℕ) * ((↑Iw : ℝ) +
+        (1 : ℝ))))) →
+    0 ≤ Qe := by
+  intro κ S hD2 Iw U ε hU16 hε0 ι hι0 Qe hQe
+  rw [hQe]
+  have! this := fourErrC_nonneg κ 3; have := threeErrC_nonneg κ 3 1; have := fourKC_nonneg κ 3
+  have! this := entryCU_nonneg' κ 3 1; have := K1c_pos
+  positivity
+
+/-- Step `hε4` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hε4 :
+    ∀ (k : ℕ) (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar → ∀ (U : ℝ) (MV : ℝ) (ε : ℝ),
+      ε = (U ^ (3 : ℕ) * S.Dstar ^ (5 : ℕ) * Real.exp (↑k : ℝ) * ((1 : ℝ) + MV))⁻¹ →
+      (1 : ℝ) ≤ S.Dstar → (16 : ℝ) ≤ U → (0 : ℝ) ≤ MV →
+    ε * U ^ 3 * S.Dstar ^ 4 * MV ≤ Real.exp (-(k : ℝ)) := by
+  intro k S hD2 U MV ε hεdef hD1 hU16 hMV0
+  have! e : ε * U ^ 3 * S.Dstar ^ 4 * MV =
+      MV / (1 + MV) * (S.Dstar⁻¹ * (Real.exp k)⁻¹) := by
+    rw [hεdef]; field_simp
+  rw [e, Real.exp_neg]
+  have! h1 : MV / (1 + MV) ≤ 1 := by
+    rw [div_le_one (by linarith only [hMV0])]; linarith only []
+  have! h2 : S.Dstar⁻¹ ≤ 1 := inv_le_one_of_one_le₀ hD1
+  have! h0 : 0 ≤ MV / (1 + MV) := by positivity
+  calc MV / (1 + MV) * (S.Dstar⁻¹ * (Real.exp k)⁻¹) ≤ 1 * (1 * (Real.exp k)⁻¹) := by
+        gcongr
+    _ = (Real.exp k)⁻¹ := by ring
+
+/-- Step `hε3` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hε3 :
+    ∀ (k : ℕ) (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar → ∀ (Iw : ℕ) (U : ℝ) (MV : ℝ) (ε : ℝ),
+      ε = (U ^ (3 : ℕ) * S.Dstar ^ (5 : ℕ) * Real.exp (↑k : ℝ) * ((1 : ℝ) + MV))⁻¹ → (16 : ℝ) ≤ U →
+      (0 : ℝ) ≤ MV → (↑Iw : ℝ) + (1 : ℝ) ≤ (501 : ℝ) * S.Dstar ^ (2 : ℕ) →
+    ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)) * MV ≤ 501 * Real.exp (-(k : ℝ)) := by
+  intro k S hD2 Iw U MV ε hεdef hU16 hMV0 hIwD
+  have! e : ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)) * MV =
+      MV / (1 + MV) * (((Iw : ℝ) + 1) / S.Dstar ^ 2 * (Real.exp k)⁻¹) := by
+    rw [hεdef]; field_simp
+  rw [e, Real.exp_neg]
+  have! h1 : MV / (1 + MV) ≤ 1 := by
+    rw [div_le_one (by linarith only [hMV0])]; linarith only []
+  have! h2 : ((Iw : ℝ) + 1) / S.Dstar ^ 2 ≤ 501 := by
+    rw [div_le_iff₀ (by positivity)]; exact hIwD
+  have! h0 : 0 ≤ MV / (1 + MV) := by positivity
+  have! h3 : 0 ≤ ((Iw : ℝ) + 1) / S.Dstar ^ 2 := by positivity
+  calc MV / (1 + MV) * (((Iw : ℝ) + 1) / S.Dstar ^ 2 * (Real.exp k)⁻¹)
+      ≤ 1 * (501 * (Real.exp k)⁻¹) := by gcongr
+    _ = 501 * (Real.exp k)⁻¹ := by ring
+
+/-- Step `hE14` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hE14 :
+    ∀ (k : ℕ) (cc : ℕ), (1 : ℕ) ≤ cc → (2 : ℝ) ≤ (↑k : ℝ) → (1 : ℝ) ≤ (↑k : ℝ) → ∀ (E1 : ℝ),
+      E1 = Real.exp ((↑k : ℝ) ^ cc) →
+    4 ≤ E1 := by
+  intro k cc hcc hk2 hk1 E1 hE1
+  rw [hE1]
+  have! this := Real.quadratic_le_exp_of_nonneg (show (0 : ℝ) ≤ (k : ℝ) ^ cc by positivity)
+  have! h2 : (2 : ℝ) ≤ (k : ℝ) ^ cc := le_trans hk2 (le_self_pow₀ hk1 (by omega))
+  nlinarith only [this, h2]
+
+/-- Step `hιU` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hιU :
+    ∀ (cb : ℝ), (2 : ℝ) ≤ cb → ∀ (S : ModeSchedule) (TT : ℝ) (U : ℝ),
+      U = max ((2 : ℝ) * (cb + (2 : ℝ)) * S.Dstar ^ (2 : ℕ)) √TT → ∀ (ι : ℝ), (0 : ℝ) ≤ ι →
+      ι ≤ S.Dstar⁻¹ → ι * S.Dstar ^ (2 : ℕ) ≤ S.Dstar⁻¹ →
+    ι * U ≤ S.Dstar⁻¹ * (2 * (cb + 2) + Real.sqrt TT) := by
+  intro cb hcb S TT U hUdef ι hι0 hιD hιD2
+  have! hU' : U ≤ 2 * (cb + 2) * S.Dstar ^ 2 + Real.sqrt TT := by
+    rw [hUdef]
+    exact max_le (by linarith only [Real.sqrt_nonneg TT]) (by
+      have! this : 0 ≤ 2 * (cb + 2) * S.Dstar ^ 2 := by
+        have := hcb; positivity
+      linarith only [this])
+  have! h1 := mul_le_mul_of_nonneg_left hU' hι0
+  have! h2 : ι * (2 * (cb + 2) * S.Dstar ^ 2) ≤ S.Dstar⁻¹ * (2 * (cb + 2)) := by
+    have! this := mul_le_mul_of_nonneg_right hιD2 (show 0 ≤ 2 * (cb + 2) by
+      linarith only [hcb])
+    linarith only [this]
+  have! h3 : ι * Real.sqrt TT ≤ S.Dstar⁻¹ * Real.sqrt TT :=
+    mul_le_mul_of_nonneg_right hιD (Real.sqrt_nonneg _)
+  linarith only [h1, h2, h3]
+
+/-- Step `hsTT` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hsTT :
+    ∀ (cT : ℝ) (TT : ℝ) (B : ℝ), (1 : ℝ) ≤ B → ∀ (G : ℝ), (1 : ℝ) ≤ G → TT ≤ cT * B ^ (11 : ℕ) * G →
+      (1 : ℝ) ≤ cT →
+    Real.sqrt TT ≤ Real.sqrt cT * B ^ 6 * G := by
+  intro cT TT B hBB1 G hG1 hT hcT1
+  have! h1 : TT ≤ (Real.sqrt cT * B ^ 6 * G) ^ 2 := by
+    have! hc := Real.sq_sqrt (show 0 ≤ cT by linarith only [hcT1])
+    have! h11 : B ^ 11 * G ≤ B ^ 12 * G ^ 2 := by
+      have! this := pow_le_pow_right₀ hBB1 (show 11 ≤ 12 by norm_num)
+      have! hG2 : G ≤ G ^ 2 := le_self_pow₀ hG1 (by norm_num)
+      exact mul_le_mul this hG2 (by linarith only [hG1]) (by positivity)
+    calc TT ≤ cT * B ^ 11 * G := hT
+      _ ≤ cT * (B ^ 12 * G ^ 2) := by
+          rw [mul_assoc]; exact mul_le_mul_of_nonneg_left h11 (by linarith only [hcT1])
+      _ = (Real.sqrt cT * B ^ 6 * G) ^ 2 := by rw [mul_pow, mul_pow, hc]; ring
+  calc Real.sqrt TT ≤ Real.sqrt ((Real.sqrt cT * B ^ 6 * G) ^ 2) := Real.sqrt_le_sqrt h1
+    _ = Real.sqrt cT * B ^ 6 * G := Real.sqrt_sq (by positivity)
+
+/-- Step `hQeMV` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hQeMV :
+    ∀ (κ : LocalKernelClass) (cT : ℝ) (ce2 : ℝ) (k : ℕ) (cc : ℕ) (kD : ℝ) (cb : ℝ), (2 : ℝ) ≤ cb →
+      ∀ (S : ModeSchedule) (Iw : ℕ) (TT : ℝ) (U : ℝ) (MV : ℝ) (ε : ℝ),
+      ce2 = K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) * (12 : ℝ) ^ (4 : ℕ)) + (4 : ℝ) * (K1c * ((8 : ℝ) *
+        entryCU κ (3 : ℕ) (1 : ℕ) * (2 : ℝ) ^ ((1 : ℕ) + (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ))) *
+        (501 : ℝ) → ∀ (B : ℝ), (2 : ℝ) ≤ B → (1 : ℝ) ≤ B → ∀ (G : ℝ), (1 : ℝ) ≤ G →
+      (2 : ℝ) * cb ≤ Real.exp ((↑k : ℝ) ^ cc) → (0 : ℝ) ≤ MV → ∀ (E1 : ℝ),
+      E1 = Real.exp ((↑k : ℝ) ^ cc) → (1 : ℝ) ≤ E1 → cb ≤ E1 → S.Dstar⁻¹ ≤ Real.exp (-kD) →
+      ∀ (ι : ℝ), ι ≤ S.Dstar⁻¹ →
+    let Qe : ℝ := (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) *
+        (12 : ℝ) ^ (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) *
+        threeErrC κ (3 : ℕ) (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) *
+        (2 : ℝ) ^ ((1 : ℕ) + (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^
+        (3 : ℕ) * ((↑Iw : ℝ) + (1 : ℝ)))));
+    Qe = (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) * (12 : ℝ) ^
+        (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) * threeErrC κ (3 : ℕ)
+        (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) * (2 : ℝ) ^ ((1 : ℕ) +
+        (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^ (3 : ℕ) * ((↑Iw : ℝ) +
+        (1 : ℝ))))) → MV ≤ (5 : ℝ) * E1 ^ (2 : ℕ) →
+      ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ) * MV ≤ Real.exp (-(↑k : ℝ)) →
+      ε * U ^ (3 : ℕ) * (S.Dstar ^ (3 : ℕ) * ((↑Iw : ℝ) + (1 : ℝ))) * MV ≤ (501 : ℝ) * Real.exp
+        (-(↑k : ℝ)) → (4 : ℝ) ≤ E1 → ι * U ≤ S.Dstar⁻¹ * ((2 : ℝ) * (cb + (2 : ℝ)) + √TT) →
+      √TT ≤ √cT * B ^ (6 : ℕ) * G →
+    Qe * MV ≤ 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
+    324 * threeErrC κ 3 1 * Real.sqrt cT) * Real.exp (3 * (k : ℝ) ^ cc) * B ^ 6 * G *
+    Real.exp (-kD) + ce2 * Real.exp (-(k : ℝ)) := by
+  intro κ cT ce2 k cc kD cb hcb S Iw TT U MV ε hce2 B hBB2 hBB1 G hG1 hcbexp hMV0 E1 hE1 hE11 hcbE
+    hDinv ι hιD Qe hQe hMVE hε4 hε3 hE14 hιU hsTT
+  have! hf := fourErrC_nonneg κ 3
+  have! ht := threeErrC_nonneg κ 3 1
+  have! hfk := fourKC_nonneg κ 3
+  have! hen := entryCU_nonneg' κ 3 1
+  have hK1p := K1c_pos
+  -- the powers of `D_*`
+  have! hA1 : 16 * fourErrC κ 3 * ι * MV + 4 * (81 * threeErrC κ 3 1 * ι * U) * MV ≤
+      S.Dstar⁻¹ * MV * (16 * fourErrC κ 3 + 324 * threeErrC κ 3 1 *
+        (2 * (cb + 2) + Real.sqrt TT)) := by
+    have! h1 : 16 * fourErrC κ 3 * ι * MV ≤ 16 * fourErrC κ 3 * S.Dstar⁻¹ * MV :=
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hιD (by positivity)) hMV0
+    have! h2 : 81 * threeErrC κ 3 1 * (ι * U) * MV ≤
+        81 * threeErrC κ 3 1 * (S.Dstar⁻¹ * (2 * (cb + 2) + Real.sqrt TT)) * MV :=
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hιU (by positivity)) hMV0
+    have! e1 : 4 * (81 * threeErrC κ 3 1 * ι * U) * MV =
+        4 * (81 * threeErrC κ 3 1 * (ι * U) * MV) := by
+      ring
+    rw [e1]
+    nlinarith only [h1, h2]
+  -- the bound by `e^{3 k^c} B^6 G e^{-k_D}`
+  have! hcb2 : 2 * (cb + 2) ≤ 2 * E1 := by linarith only [hcbE, hE14, hcbexp, hE1]
+  have! hBG : 1 ≤ B ^ 6 * G := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hBB1) hG1
+  have! hE3 : Real.exp (3 * (k : ℝ) ^ cc) = E1 ^ 3 := by
+    rw [hE1, ← Real.exp_nat_mul]; norm_num
+  have! hA2 : S.Dstar⁻¹ * MV * (16 * fourErrC κ 3 + 324 * threeErrC κ 3 1 *
+      (2 * (cb + 2) + Real.sqrt TT)) ≤ 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
+        324 * threeErrC κ 3 1 * Real.sqrt cT) * Real.exp (3 * (k : ℝ) ^ cc) * B ^ 6 * G *
+          Real.exp (-kD) := by
+    rw [hE3]
+    have! h1 : 16 * fourErrC κ 3 + 324 * threeErrC κ 3 1 * (2 * (cb + 2) + Real.sqrt TT) ≤
+        (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 * Real.sqrt cT) *
+          (E1 * (B ^ 6 * G)) := by
+      have! hsc : 0 ≤ Real.sqrt cT := Real.sqrt_nonneg _
+      have! hEBG : 1 ≤ E1 * (B ^ 6 * G) := one_le_mul_of_one_le_of_one_le hE11 hBG
+      have! h2 : 2 * (cb + 2) + Real.sqrt TT ≤ 2 * (E1 * (B ^ 6 * G)) +
+          Real.sqrt cT * (E1 * (B ^ 6 * G)) := by
+        have! h3 : 2 * E1 ≤ 2 * (E1 * (B ^ 6 * G)) := by nlinarith only [hBG, hE11]
+        have! h4 : Real.sqrt cT * B ^ 6 * G ≤ Real.sqrt cT * (E1 * (B ^ 6 * G)) := by
+          have! this := mul_le_mul_of_nonneg_left (le_mul_of_one_le_left (by positivity) hE11 :
+            B ^ 6 * G ≤ E1 * (B ^ 6 * G)) hsc
+          linarith only [this]
+        linarith only [hcb2, hsTT, h3, h4]
+      have! h5 := mul_le_mul_of_nonneg_left h2 (show 0 ≤ 324 * threeErrC κ 3 1 by positivity)
+      have! h6 : 16 * fourErrC κ 3 ≤ 16 * fourErrC κ 3 * (E1 * (B ^ 6 * G)) :=
+        le_mul_of_one_le_right (by positivity) hEBG
+      nlinarith only [h5, h6]
+    have! h7 : S.Dstar⁻¹ * MV ≤ Real.exp (-kD) * (5 * E1 ^ 2) :=
+      mul_le_mul hDinv hMVE hMV0 (Real.exp_pos _).le
+    have! h8 := mul_le_mul h7 h1 (by positivity) (by positivity)
+    calc _ ≤ Real.exp (-kD) * (5 * E1 ^ 2) * ((16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
+          324 * threeErrC κ 3 1 * Real.sqrt cT) * (E1 * (B ^ 6 * G))) := h8
+      _ = _ := by ring
+  have! hA3 : K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε * U ^ 3 * S.Dstar ^ 4) * MV +
+      4 * (K1c * (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 *
+        (S.Dstar ^ 3 * (Iw + 1)))) * MV ≤ ce2 * Real.exp (-(k : ℝ)) := by
+    have! e1 : K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε * U ^ 3 * S.Dstar ^ 4) * MV =
+        K1c * (2 * fourKC κ 3 * 12 ^ 4) * (ε * U ^ 3 * S.Dstar ^ 4 * MV) := by ring
+    have! e2 : 4 * (K1c * (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 *
+        (S.Dstar ^ 3 * (Iw + 1)))) * MV = 4 * (K1c * (8 * entryCU κ 3 1 * 2 ^ (1 + 4) *
+          12 ^ 3)) * (ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)) * MV) := by ring
+    rw [e1, e2, hce2]
+    have! h1 := mul_le_mul_of_nonneg_left hε4 (show 0 ≤ K1c * (2 * fourKC κ 3 * 12 ^ 4) by
+      positivity)
+    have! h2 := mul_le_mul_of_nonneg_left hε3 (show 0 ≤ 4 * (K1c * (8 * entryCU κ 3 1 *
+      2 ^ (1 + 4) * 12 ^ 3)) by positivity)
+    nlinarith only [h1, h2]
+  have! e : Qe * MV = (16 * fourErrC κ 3 * ι * MV + 4 * (81 * threeErrC κ 3 1 * ι * U) * MV) +
+      (K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε * U ^ 3 * S.Dstar ^ 4) * MV +
+      4 * (K1c * (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 *
+        (S.Dstar ^ 3 * (Iw + 1)))) * MV) := by rw [hQe]; ring
+  rw [e]
+  linarith only [hA1, hA2, hA3]
+
+/-- Step `hcMcn` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hcMcn :
+    ∀ (κ : LocalKernelClass) (cL : ℝ) (cK : ℝ) (cMc : ℝ),
+      cMc = (C4c κ + (4 : ℝ) * C3c κ) * cL ^ (4 : ℕ) * cK ^ (2 : ℕ) →
+    0 ≤ cMc := by
+  intro κ cL cK cMc hcMc
+  rw [hcMc]
+  have! h1 := C4c_nonneg κ
+  have! h2 := C3c_nonneg κ
+  exact mul_nonneg (mul_nonneg (by linarith only [h1, h2]) (by positivity)) (by positivity)
+
+/-- Step `hCjg1` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hCjg1 :
+    ∀ (k : ℕ) (cc : ℕ) (famFuel : ℕ),
+    let Cjg : ℝ := ((↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    Cjg = ((↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp ((2 : ℝ) *
+        ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) + (↑cc : ℝ) +
+        (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ))) →
+    1 ≤ Cjg := by
+  intro k cc famFuel Cjg hCjg
+  rw [hCjg]
+  have! h0 := Nat.cast_nonneg (α := ℝ) (2 * famFuel + 2)
+  exact one_le_mul_of_one_le_of_one_le (one_le_pow₀ (by linarith only [h0]))
+    (Real.one_le_exp (by positivity))
+
+/-- Step `hOsk` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hOsk :
+    ∀ (k : ℕ) (cc : ℕ) (famFuel : ℕ) (Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ)),
+      Os = ActiveSetup.BasicFamilies.FamParams.SideLeafM.nOs ((2 : ℕ) ^ famFuel) ((2 : ℕ) *
+        famFuel + (2 : ℕ)) → (↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) ≤ (↑cc : ℝ) * (↑k : ℝ) →
+      (2 : ℝ) ^ famFuel ≤ (3 : ℝ) ^ cc * (↑k : ℝ) ^ cc →
+    (Os.card : ℝ) ≤ 80 * 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1) := by
+  intro k cc famFuel Os hOs hJmk hLpk
+  have! e : (Os.card : ℝ) = 80 * ((2 : ℝ) ^ famFuel) ^ 2 * ((2 * famFuel + 2 : ℕ) : ℝ) := by
+    rw [hOs]
+    unfold ActiveSetup.BasicFamilies.FamParams.SideLeafM.nOs
+    simp only [Finset.card_product, Finset.card_univ, Fintype.card_fin, Finset.card_range]
+    push_cast; ring
+  rw [e]
+  have! h1 : ((2 : ℝ) ^ famFuel) ^ 2 ≤ (3 ^ cc * (k : ℝ) ^ cc) ^ 2 :=
+    pow_le_pow_left₀ (by positivity) hLpk 2
+  have! h2 : (3 ^ cc * (k : ℝ) ^ cc) ^ 2 * (cc * k) = 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1) := by
+    rw [show (9 : ℝ) ^ cc = (3 ^ cc) ^ 2 by rw [← pow_mul, mul_comm, pow_mul]; norm_num]
+    ring
+  have! h3 := mul_le_mul h1 hJmk (Nat.cast_nonneg _) (by positivity)
+  nlinarith only [h3, h2]
+
+/-- Step `hhull` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hhull :
+    ∀ (k : ℕ) (cc : ℕ), (2 : ℝ) ≤ (↑k : ℝ) → ∀ (ρ : ℝ), (0 : ℝ) < ρ → ρ⁻¹ ≤ (↑k : ℝ) ^ cc →
+    hullCutConstant (ρ / 64 / 2) ≤ 65536 * (k : ℝ) ^ (2 * cc) := by
+  intro k cc hk2 ρ hρ hρk
+  unfold hullCutConstant
+  have! hy : 2 / (ρ / 64 / 2) = 256 * ρ⁻¹ := by field_simp; ring
+  rw [hy]
+  have! hy0 : 0 < 256 * ρ⁻¹ := by positivity
+  have! h1 : 1 + Real.log (256 * ρ⁻¹) ≤ 256 * ρ⁻¹ := by
+    have! this := Real.log_le_sub_one_of_pos hy0; linarith only [this]
+  have! h2 : 256 * ρ⁻¹ ≤ 256 * (k : ℝ) ^ cc := by linarith only [hρk]
+  calc 256 * ρ⁻¹ * (1 + Real.log (256 * ρ⁻¹)) ≤ 256 * ρ⁻¹ * (256 * ρ⁻¹) :=
+        mul_le_mul_of_nonneg_left h1 hy0.le
+    _ ≤ (256 * (k : ℝ) ^ cc) * (256 * (k : ℝ) ^ cc) :=
+        mul_le_mul h2 h2 hy0.le (by positivity)
+    _ = 65536 * (k : ℝ) ^ (2 * cc) := by ring
+
+/-- Step `hlogY` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hlogY :
+    ∀ (k : ℕ) (cc : ℕ) (Mp : ℕ) (V : ℕ) (Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ))
+      (E1 : ℝ), E1 = Real.exp ((↑k : ℝ) ^ cc) → (1 : ℝ) ≤ E1 → (↑Mp : ℝ) ≤ E1 →
+      (↑V : ℝ) ≤ (5 : ℝ) * E1 → (↑k : ℝ) ^ cc ≤ (↑k : ℝ) ^ ((2 : ℕ) * cc + (1 : ℕ)) →
+      (1 : ℝ) ≤ (↑k : ℝ) ^ ((2 : ℕ) * cc + (1 : ℕ)) →
+      (↑Os.card : ℝ) ≤ (80 : ℝ) * (9 : ℝ) ^ cc * (↑cc : ℝ) * (↑k : ℝ) ^ ((2 : ℕ) * cc + (1 : ℕ)) →
+      (0 : ℝ) ≤ (↑Os.card : ℝ) →
+    let Yn : ℝ := (↑Os.card : ℝ) * (↑Mp : ℝ) * (↑V : ℝ);
+    Yn = (↑Os.card : ℝ) * (↑Mp : ℝ) * (↑V : ℝ) → (0 : ℝ) ≤ Yn →
+    1 + Real.log (2 + Yn) ≤ (8 + 80 * 9 ^ cc * cc) * (k : ℝ) ^ (2 * cc + 1) := by
+  intro k cc Mp V Os E1 hE1 hE11 hMpE hVE1 hkcc' hk2cc hOsk hOs0' Yn hYn hYn0
+  have! h1 : 2 + Yn ≤ (2 + Os.card) * ((1 + Mp) * (1 + V)) := by
+    rw [hYn]
+    have! this : (0 : ℝ) ≤ Mp := Nat.cast_nonneg _
+    have! this : (0 : ℝ) ≤ V := Nat.cast_nonneg _
+    nlinarith only [hOs0', this, ‹(0 : ℝ) ≤ Mp›, mul_nonneg hOs0' ‹(0 : ℝ) ≤ Mp›,
+      mul_nonneg ‹(0 : ℝ) ≤ Mp› this, mul_nonneg hOs0' this,
+      mul_nonneg (mul_nonneg hOs0' ‹(0 : ℝ) ≤ Mp›) this]
+  have! h2 := Real.log_le_log (by linarith only [hYn0]) h1
+  rw [Real.log_mul (ne_of_gt (by linarith only [hOs0'])) (by positivity),
+    Real.log_mul (by positivity) (by positivity)] at h2
+  have! h3 : Real.log (2 + Os.card) ≤ 1 + Os.card := by
+    have! this := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 2 + Os.card by
+      linarith only [hOs0'])
+    linarith only [this]
+  have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
+  have! h4 : Real.log (1 + Mp) ≤ 1 + (k : ℝ) ^ cc := by
+    have! h5 : 1 + (Mp : ℝ) ≤ 2 * E1 := by linarith only [hMpE, hE11]
+    have! h6 := Real.log_le_log (by positivity) h5
+    rw [Real.log_mul (by norm_num) (by linarith only [hE11]), hE1, Real.log_exp] at h6
+    linarith only [h6, hl2]
+  have! h7 : Real.log (1 + V) ≤ 2 + (k : ℝ) ^ cc := by
+    have! h5 : 1 + (V : ℝ) ≤ 6 * E1 := by linarith only [hVE1, hE11]
+    have! h6 := Real.log_le_log (by positivity) h5
+    rw [Real.log_mul (by norm_num) (by linarith only [hE11]), hE1, Real.log_exp] at h6
+    have! hl6 : Real.log 6 ≤ 2 := by
+      have! h8 : Real.log 6 < 2 := by
+        rw [Real.log_lt_iff_lt_exp (by norm_num)]
+        have! h9 : (2.7 : ℝ) ^ 2 ≤ Real.exp 1 ^ 2 :=
+          pow_le_pow_left₀ (by norm_num) (by linarith only [Real.exp_one_gt_d9]) 2
+        rw [← Real.exp_nat_mul] at h9; norm_num at h9; linarith only [h9]
+      exact h8.le
+    linarith only [h6, hl6]
+  have! h8 : (5 : ℝ) + 2 * (k : ℝ) ^ cc ≤ 7 * (k : ℝ) ^ (2 * cc + 1) := by
+    linarith only [hkcc', hk2cc]
+  have! h9 := mul_le_mul_of_nonneg_left hk2cc (show (0 : ℝ) ≤ 80 * 9 ^ cc * cc by positivity)
+  linarith only [h2, h3, h4, h7, h8, hOsk, hk2cc]
+
+/-- Step `hCjgk` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hCjgk :
+    ∀ (g : ℕ) (k : ℕ) (cc : ℕ) (famFuel : ℕ), (1 : ℝ) ≤ (↑k : ℝ) →
+      (↑g : ℝ) = (8192 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (8 : ℝ) → ∀ (X : ℝ),
+      X = ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ) → ∀ (G : ℝ),
+      (∀ c ≤ (↑g : ℝ), Real.exp (c * X) ≤ G) →
+    let Cjg : ℝ := ((↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    Cjg = ((↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp ((2 : ℝ) *
+        ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) + (↑cc : ℝ) +
+        (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ))) →
+      (↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) ≤ (↑cc : ℝ) * (↑k : ℝ) → (1 : ℝ) ≤ (↑cc : ℝ) →
+    Cjg ≤ 4 * cc ^ 2 * (k : ℝ) ^ 2 * G := by
+  intro g k cc famFuel hk1 hgr X hX G hexpG Cjg hCjg hJmk hcc1
+  rw [hCjg]
+  have! h1 : ((2 * famFuel + 2 : ℕ) : ℝ) + 1 ≤ 2 * cc * k := by
+    have! this : (1 : ℝ) ≤ cc * k := one_le_mul_of_one_le_of_one_le hcc1 hk1
+    linarith only [hJmk, this]
+  have! h2 : (((2 * famFuel + 2 : ℕ) : ℝ) + 1) ^ 2 ≤ (2 * cc * k) ^ 2 :=
+    pow_le_pow_left₀ (by positivity) h1 2
+  have! h3 : Real.exp (2 * (1024 * (cc + 1) * (1024 * (cc + 1) + cc + 7) *
+      (1 + Real.log (2 * (k : ℝ))) ^ 2)) ≤ G := by
+    rw [show 2 * (1024 * ((cc : ℝ) + 1) * (1024 * (cc + 1) + cc + 7) *
+        (1 + Real.log (2 * (k : ℝ))) ^ 2) = (2 * (1024 * ((cc : ℝ) + 1) *
+          (1024 * (cc + 1) + cc + 7))) * X by rw [hX]; ring]
+    refine hexpG _ ?_
+    rw [hgr]
+    nlinarith only [sq_nonneg (cc : ℝ), Nat.cast_nonneg (α := ℝ) cc]
+  calc (((2 * famFuel + 2 : ℕ) : ℝ) + 1) ^ 2 * Real.exp (2 * (1024 * (cc + 1) *
+        (1024 * (cc + 1) + cc + 7) * (1 + Real.log (2 * (k : ℝ))) ^ 2))
+      ≤ (2 * cc * k) ^ 2 * G := mul_le_mul h2 h3 (Real.exp_pos _).le (by positivity)
+    _ = 4 * cc ^ 2 * (k : ℝ) ^ 2 * G := by ring
+
+/-- Step `hWk` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hWk :
+    ∀ (k : ℕ) (cc : ℕ) (Nl : ℝ) (dB : ℕ), (↑dB : ℝ) ≤ (↑k : ℝ) ^ cc → ∀ (E : ℝ), E ≤ (↑k : ℝ) ^ cc →
+      ∀ (S : ModeSchedule), S.dmax = (2 : ℕ) * dB + (2 : ℕ) → S.Dm = max (2 : ℝ) Nl → ∀ (Vl0 : ℝ),
+      (1 : ℝ) ≤ (↑k : ℝ) → ∀ (G : ℝ), (1 : ℝ) ≤ G → (1 : ℝ) ≤ (↑k : ℝ) ^ cc → (1 : ℝ) ≤ S.Dstar →
+      Real.log (max (2 : ℝ) Nl) ≤ (↑k : ℝ) ^ cc → (2 : ℝ) ≤ S.Dm →
+    let Gq : ℝ := Real.exp (((6144 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (4 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^
+        (2 : ℕ));
+    Gq ≤ G →
+      Vl0 = (24 : ℝ) * ((↑⌊(180 : ℝ) * (↑S.dmax : ℝ) * Real.log ((2 : ℝ) * S.Dm) / (1 /
+        1024 : ℝ)⌋₊ : ℝ) + (1 : ℝ)) * (Gq + (2 : ℝ) * (1 : ℝ) / S.Dstar ^ (394 : ℕ)) →
+      Gq = Real.exp (((6144 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) + (4 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)) →
+    let G0e : ℝ := Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ));
+    G0e ≤ G →
+    let W : ℝ := G0e + Vl0 + E + (1 : ℝ);
+    W = G0e + Vl0 + E + (1 : ℝ) →
+    W ≤ 170000000 * (k : ℝ) ^ (2 * cc) * G := by
+  intro k cc Nl dB hdBk E hEk S hSd hSDm Vl0 hk1 G hG1 hkcc1 hD1 hmaxNl hDm2 Gq hGqG hVl0 hGq G0e
+    hG0G W hWdef
+  let Nb : ℕ := Nat.log (2 : ℕ) S.K + (1 : ℕ)
+  let n : ℝ := (↑Nb : ℝ)
+  have! hd' : (S.dmax : ℝ) ≤ 4 * (k : ℝ) ^ cc := by
+    rw [hSd]; push_cast
+    have hdBk' : (dB : ℝ) ≤ (k : ℝ) ^ cc := hdBk
+    linarith only [hdBk', hkcc1]
+  have! hlDm : Real.log (2 * S.Dm) ≤ 2 * (k : ℝ) ^ cc := by
+    rw [hSDm, Real.log_mul (by norm_num) (by positivity)]
+    have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
+    linarith only [hl2, hmaxNl, hkcc1]
+  have! hlDm0 : 0 ≤ Real.log (2 * S.Dm) := Real.log_nonneg (by linarith only [hDm2])
+  have! hk2c : (k : ℝ) ^ (2 * cc) = (k : ℝ) ^ cc * (k : ℝ) ^ cc := by ring
+  have! hVk : Vl0 ≤ 106168392 * (k : ℝ) ^ (2 * cc) * G := by
+    rw [hVl0]
+    have! hfl : ((⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ : ℕ) : ℝ) + 1 ≤
+        1474561 * (k : ℝ) ^ (2 * cc) := by
+      have! h1 := Nat.floor_le (show (0 : ℝ) ≤ 180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024)
+        by positivity)
+      have! h2 : (S.dmax : ℝ) * Real.log (2 * S.Dm) ≤ 4 * (k : ℝ) ^ cc * (2 * (k : ℝ) ^ cc) :=
+        mul_le_mul hd' hlDm hlDm0 (by positivity)
+      rw [div_div_eq_mul_div, div_one] at h1 ⊢
+      have! h3 : (1 : ℝ) ≤ (k : ℝ) ^ (2 * cc) := one_le_pow₀ hk1
+      rw [hk2c] at h3 ⊢
+      linarith only [h1, h2, h3]
+    have! hGq' : Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+        (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394 ≤ 3 * G := by
+      have! h1 : 2 * 1 / S.Dstar ^ 394 ≤ 2 := by
+        rw [div_le_iff₀ (by positivity)]
+        have! this := one_le_pow₀ (n := 394) hD1
+        linarith only [this]
+      have! h2 : Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+          (1 + Real.log (2 * (k : ℝ))) ^ 2) ≤ G := by rw [← hGq]; exact hGqG
+      linarith only [h1, h2, hG1]
+    have! h0 : (0 : ℝ) ≤ Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+        (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394 := by positivity
+    calc 24 * (((⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ : ℕ) : ℝ) + 1) *
+          (Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+            (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394)
+        ≤ 24 * (1474561 * (k : ℝ) ^ (2 * cc)) * (3 * G) := by gcongr
+      _ = 106168392 * (k : ℝ) ^ (2 * cc) * G := by ring
+  have! h1 : (1 : ℝ) ≤ (k : ℝ) ^ (2 * cc) := one_le_pow₀ hk1
+  have! h2 : (k : ℝ) ^ cc ≤ (k : ℝ) ^ (2 * cc) := pow_le_pow_right₀ hk1 (by omega)
+  have! hkG : (k : ℝ) ^ (2 * cc) ≤ (k : ℝ) ^ (2 * cc) * G :=
+    le_mul_of_one_le_right (by positivity) hG1
+  have! hG' : G ≤ (k : ℝ) ^ (2 * cc) * G := le_mul_of_one_le_left (by linarith only [hG1]) h1
+  rw [hWdef]
+  linarith only [hG0G, hVk, hEk, h1, h2, hkG, hG']
+
+/-- Step `hQk` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hQk :
+    ∀ (g : ℕ) (cQ : ℝ) (k : ℕ) (cc : ℕ), (1 : ℕ) ≤ cc → (2 : ℝ) ≤ (↑k : ℝ) → ∀ (Mp : ℕ) (V : ℕ)
+      (famFuel : ℕ) (E : ℝ) (ρ : ℝ), (0 : ℝ) < ρ → ρ < (1 : ℝ) → ∀ (Vl0 : ℝ)
+      (Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ)),
+      cQ = (65536 : ℝ) * ((8 : ℝ) + (80 : ℝ) * (9 : ℝ) ^ cc * (↑cc : ℝ)) * ((80 : ℝ) * (9 : ℝ) ^
+        cc * (↑cc : ℝ)) * ((4 : ℝ) * (↑cc : ℝ) ^ (2 : ℕ)) * ((17 : ℝ) * (10 : ℝ) ^ (7 : ℕ)) →
+      (1 : ℝ) ≤ (↑k : ℝ) → ∀ (X : ℝ), X = ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ) →
+      ∀ (G : ℝ), G = Real.exp ((↑g : ℝ) * X) → (1 : ℝ) ≤ G →
+    let Cjg : ℝ := ((↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    (1 : ℝ) ≤ Cjg →
+    let G0e : ℝ := Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ));
+    let W : ℝ := G0e + Vl0 + E + (1 : ℝ);
+    (1 : ℝ) ≤ W →
+      (↑Os.card : ℝ) ≤ (80 : ℝ) * (9 : ℝ) ^ cc * (↑cc : ℝ) * (↑k : ℝ) ^ ((2 : ℕ) * cc + (1 : ℕ)) →
+      hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) ≤ (65536 : ℝ) * (↑k : ℝ) ^ ((2 : ℕ) * cc) →
+    let Yn : ℝ := (↑Os.card : ℝ) * (↑Mp : ℝ) * (↑V : ℝ);
+    (0 : ℝ) ≤ Yn →
+      (1 : ℝ) + Real.log ((2 : ℝ) + Yn) ≤ ((8 : ℝ) + (80 : ℝ) * (9 : ℝ) ^ cc * (↑cc : ℝ)) *
+        (↑k : ℝ) ^ ((2 : ℕ) * cc + (1 : ℕ)) →
+      Cjg ≤ (4 : ℝ) * (↑cc : ℝ) ^ (2 : ℕ) * (↑k : ℝ) ^ (2 : ℕ) * G →
+      W ≤ (170000000 : ℝ) * (↑k : ℝ) ^ ((2 : ℕ) * cc) * G →
+    let Qk : ℝ := hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) + Yn)) *
+        (↑Os.card : ℝ) * Cjg * W;
+    Qk = hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) + Yn)) *
+        (↑Os.card : ℝ) * Cjg * W → (0 : ℝ) ≤ cQ →
+    Qk ≤ cQ * Real.exp X ^ (8 * cc + 4 + 2 * g) := by
+  intro g cQ k cc hcc hk2 Mp V famFuel E ρ hρ hρ1 Vl0 Os hcQ hk1 X hX G hGdef hG1 Cjg hCjg1 G0e W
+    hW1 hOsk hhull Yn hYn0 hlogY hCjgk hWk Qk hQkdef hcQ0
+  have! hkX : (k : ℝ) ≤ Real.exp X := by rw [hX]; exact le_exp_one_add_log_sq hk1
+  have! hGX : G = Real.exp X ^ g := by rw [hGdef, ← Real.exp_nat_mul]
+  have! hlY0 : 0 ≤ 1 + Real.log (2 + Yn) := by
+    have! this := Real.log_nonneg (show (1 : ℝ) ≤ 2 + Yn by linarith only [hYn0])
+    linarith only [this]
+  have! hh0 : 0 ≤ hullCutConstant (ρ / 64 / 2) :=
+    (hullCutConstant_pos (by positivity) (by linarith only [hρ1, hρ])).le
+  have! hCjg0 : 0 ≤ Cjg := by linarith only [hCjg1]
+  have! hW0 : 0 ≤ W := by linarith only [hW1]
+  have! h1 : Qk ≤ (65536 * (k : ℝ) ^ (2 * cc)) *
+      ((8 + 80 * 9 ^ cc * cc) * (k : ℝ) ^ (2 * cc + 1)) *
+      (80 * 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1)) * (4 * cc ^ 2 * (k : ℝ) ^ 2 * G) *
+        (170000000 * (k : ℝ) ^ (2 * cc) * G) := by
+    rw [hQkdef]
+    have! a1 := mul_le_mul hhull hlogY hlY0 (by positivity)
+    have! a2 := mul_le_mul a1 hOsk (Nat.cast_nonneg _) (by positivity)
+    have! a3 := mul_le_mul a2 hCjgk hCjg0 (by positivity)
+    exact mul_le_mul a3 hWk hW0 (by positivity)
+  have! h2 : (65536 * (k : ℝ) ^ (2 * cc)) * ((8 + 80 * 9 ^ cc * cc) * (k : ℝ) ^ (2 * cc + 1)) *
+      (80 * 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1)) * (4 * cc ^ 2 * (k : ℝ) ^ 2 * G) *
+        (170000000 * (k : ℝ) ^ (2 * cc) * G) = cQ * ((k : ℝ) ^ (8 * cc + 4) * G ^ 2) := by
+    rw [hcQ]; ring
+  have! h3 : (k : ℝ) ^ (8 * cc + 4) * G ^ 2 ≤ Real.exp X ^ (8 * cc + 4 + 2 * g) := by
+    have! h4 : (k : ℝ) ^ (8 * cc + 4) ≤ Real.exp X ^ (8 * cc + 4) :=
+      pow_le_pow_left₀ (by positivity) hkX _
+    have! h5 : G ^ 2 = Real.exp X ^ (2 * g) := by rw [hGX, ← pow_mul, mul_comm]
+    rw [h5, pow_add (Real.exp X) (8 * cc + 4) (2 * g)]
+    exact mul_le_mul_of_nonneg_right h4 (by positivity)
+  rw [h2] at h1
+  exact h1.trans (mul_le_mul_of_nonneg_left h3 hcQ0)
+
+/-- Step `hcore` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hcore :
+    ∀ (k : ℕ) (cc : ℕ) (Mp : ℕ) (V : ℕ) (famFuel : ℕ) (E : ℝ) (ρ : ℝ) (S : ModeSchedule) (Vl0 : ℝ)
+      (Γ : ℝ) (Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ)),
+    let Nb : ℕ := Nat.log (2 : ℕ) S.K + (1 : ℕ);
+    let n : ℝ := (↑Nb : ℝ);
+    let Cjg : ℝ := ((↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    (1 : ℝ) ≤ Cjg →
+    let G0e : ℝ := Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ));
+    let W : ℝ := G0e + Vl0 + E + (1 : ℝ);
+    Γ ≤ (2000 : ℝ) * (↑Os.card : ℝ) * (n ^ (3 : ℕ) * Cjg) * W → (1 : ℝ) ≤ W →
+    let Yn : ℝ := (↑Os.card : ℝ) * (↑Mp : ℝ) * (↑V : ℝ);
+    let Qk : ℝ := hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) + Yn)) *
+        (↑Os.card : ℝ) * Cjg * W;
+    Qk = hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) + Yn)) *
+        (↑Os.card : ℝ) * Cjg * W →
+      ((1 : ℝ) + Real.log ((↑S.K : ℝ) + (2 : ℝ))) * (↑(Nb + (1 : ℕ)) : ℝ) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) + (↑(Nb + (1 : ℕ)) : ℝ) * (↑(Nb + (1 : ℕ)) : ℝ) * Yn)) * (↑Nb : ℝ) ^ (3 : ℕ) ≤
+        (80 : ℝ) * ((2 : ℝ) + Real.log ((↑S.K : ℝ) + (2 : ℝ))) ^ (6 : ℕ) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) + Yn)) → (0 : ℝ) ≤ hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) →
+      (0 : ℝ) ≤ (1 : ℝ) + Real.log ((↑S.K : ℝ) + (2 : ℝ)) → (0 : ℝ) ≤ (↑(Nb + (1 : ℕ)) : ℝ) →
+      (0 : ℝ) ≤ (1 : ℝ) + Real.log ((2 : ℝ) + (↑(Nb + (1 : ℕ)) : ℝ) * (↑(Nb + (1 : ℕ)) : ℝ) * Yn) →
+    (1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
+    (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) * Γ *
+    hullCutConstant (ρ / 64 / 2) ≤ 160000 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk := by
+  intro k cc Mp V famFuel E ρ S Vl0 Γ Os Nb n Cjg hCjg1 G0e W hΓle hW1 Yn Qk hQkdef hlam hh0 hL10
+    hN10 hLY0
+  have! hCjg0 : 0 ≤ Cjg := by linarith only [hCjg1]
+  have! hW0 : 0 ≤ W := by linarith only [hW1]
+  have h1 : Γ ≤ 2000 * Os.card * (n ^ 3 * Cjg) * W := hΓle
+  have! hA0 : 0 ≤ (1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
+      (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) :=
+    mul_nonneg (mul_nonneg hL10 hN10) hLY0
+  have! h2 := mul_le_mul_of_nonneg_left h1 hA0
+  have! h3 : (1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
+      (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) *
+        (2000 * Os.card * (n ^ 3 * Cjg) * W) = 2000 * ((1 + Real.log ((S.K : ℝ) + 2)) *
+          ((Nb + 1 : ℕ) : ℝ) * (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) *
+            n ^ 3) * (Os.card * Cjg * W) := by ring
+  have! h4 := mul_le_mul_of_nonneg_right hlam (show 0 ≤ Os.card * Cjg * W from
+    mul_nonneg (mul_nonneg (Nat.cast_nonneg _) hCjg0) hW0)
+  have! h5 : (2000 * ((1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
+      (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) * n ^ 3) *
+        (Os.card * Cjg * W)) * hullCutConstant (ρ / 64 / 2) ≤
+      (2000 * (80 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * (1 + Real.log (2 + Yn))) *
+        (Os.card * Cjg * W)) * hullCutConstant (ρ / 64 / 2) :=
+    mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right
+      (mul_le_mul_of_nonneg_left hlam (by norm_num))
+      (mul_nonneg (mul_nonneg (Nat.cast_nonneg _) hCjg0) hW0)) hh0
+  have! h6 : (2000 * (80 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * (1 + Real.log (2 + Yn))) *
+      (Os.card * Cjg * W)) * hullCutConstant (ρ / 64 / 2) =
+      160000 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk := by rw [hQkdef]; ring
+  have! h7 := mul_le_mul_of_nonneg_right h2 hh0
+  rw [h3] at h7
+  linarith only [h7, h5, h6]
+
+/-- Step `hNEAR` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hNEAR :
+    ∀ (κ : LocalKernelClass) (q : ℝ) (hq2 : (2 : ℝ) < q) (hq3 : q < (3 : ℝ)) (Nd : ℕ) (Msch : ℝ)
+      (g : ℕ) (cm : ℝ) (ce : ℝ) (ce2 : ℝ) (cQ : ℝ) (CΛ : ℕ) (Cb : ℕ) (Cl : ℕ) (k : ℕ) (cc : ℕ),
+      (1 : ℕ) ≤ cc → ∀ (P : ℕ) (Mp : ℕ) (V : ℕ) (famFuel : ℕ) (E : ℝ) (ρ : ℝ) (R : ℝ)
+      (S : ModeSchedule) (Vl0 : ℝ) (nearS : ℝ) (Γ : ℝ)
+      (Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ)), (0 : ℝ) ≤ R → (20 : ℕ) ≤ Cb →
+      (⌈Msch⌉₊ + (1 : ℕ)) * CΛ ^ (16 : ℕ) + (1 : ℕ) ≤ Cb →
+      ⌈cm * (↑Cb : ℝ) ^ (59 : ℕ) + ce * (↑Cb : ℝ) ^ (18 : ℕ) + ce2 + (3 : ℝ) * (10 : ℝ) ^
+        (11 : ℕ) * cQ⌉₊ + (59 : ℕ) * Cb + (4 : ℕ) * g + (8 : ℕ) * cc + (8 : ℕ) ≤ Cl → ∀ (u : ℝ),
+      (1 : ℝ) ≤ u → ∀ (X : ℝ), (0 : ℝ) ≤ X → (0 : ℝ) ≤ cm → (0 : ℝ) ≤ ce → (0 : ℝ) ≤ ce2 →
+    let Nb : ℕ := Nat.log (2 : ℕ) S.K + (1 : ℕ);
+    let Cjg : ℝ := ((↑((2 : ℕ) * famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    (1 : ℝ) ≤ Cjg →
+    let G0e : ℝ := Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ));
+    let W : ℝ := G0e + Vl0 + E + (1 : ℝ);
+    (1 : ℝ) ≤ W →
+    let Yn : ℝ := (↑Os.card : ℝ) * (↑Mp : ℝ) * (↑V : ℝ);
+    (0 : ℝ) ≤ Yn →
+    let Qk : ℝ := hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) + Yn)) *
+        (↑Os.card : ℝ) * Cjg * W;
+    Qk = hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) + Yn)) *
+        (↑Os.card : ℝ) * Cjg * W → (0 : ℝ) ≤ cQ →
+      Qk ≤ cQ * Real.exp X ^ ((8 : ℕ) * cc + (4 : ℕ) + (2 : ℕ) * g) →
+    let eq' : ℝ := (2 : ℝ) * (q - (2 : ℝ)) / (q - (1 : ℝ));
+    nearS ≤ (64 : ℝ) * ((4 : ℝ) * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) * ((1 : ℝ) +
+        finiteDepthConstant κ q Nd) * ((1 : ℝ) + Real.log ((↑S.K : ℝ) + (2 : ℝ))) * ((↑S.K : ℝ) +
+        (2 : ℝ)) ^ eq' * ((64 : ℝ) * ((2 : ℝ) * ((2 : ℝ) * √(1 : ℝ))) * ((2 : ℝ) * ((2 : ℝ) *
+        √(1 : ℝ))))) * (hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) * (↑(Nb + (1 : ℕ)) : ℝ) *
+        ((1 : ℝ) + Real.log ((2 : ℝ) + (↑(Nb + (1 : ℕ)) : ℝ) * (↑(Nb + (1 : ℕ)) : ℝ) * Yn))) * Γ /
+        √(↑P : ℝ) * R) →
+    let Kb : ℝ := (↑Cl : ℝ) * u ^ Cl;
+    ((↑S.K : ℝ) + (2 : ℝ)) ^ eq' ≤ (Kb + (2 : ℝ)) ^ eq' →
+      ((2 : ℝ) + Real.log ((↑S.K : ℝ) + (2 : ℝ))) ^ (6 : ℕ) ≤ ((2 : ℝ) + Real.log (Kb +
+        (2 : ℝ))) ^ (6 : ℕ) → (0 : ℝ) ≤ ((↑S.K : ℝ) + (2 : ℝ)) ^ eq' →
+      (0 : ℝ) ≤ (1 : ℝ) + finiteDepthConstant κ q Nd → (0 : ℝ) ≤ nbCM κ hq2 hq3 + nbCUM κ hq2 hq3 →
+      (0 : ℝ) ≤ √(↑P : ℝ) → (0 : ℝ) ≤ hullCutConstant (ρ / (64 : ℝ) / (2 : ℝ)) →
+      ((1 : ℝ) + Real.log ((↑S.K : ℝ) + (2 : ℝ))) * (↑(Nb + (1 : ℕ)) : ℝ) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) + (↑(Nb + (1 : ℕ)) : ℝ) * (↑(Nb + (1 : ℕ)) : ℝ) * Yn)) * Γ * hullCutConstant (ρ /
+        (64 : ℝ) / (2 : ℝ)) ≤ (160000 : ℝ) * ((2 : ℝ) + Real.log ((↑S.K : ℝ) + (2 : ℝ))) ^
+        (6 : ℕ) * Qk →
+    6 * nearS ≤
+    (Cl : ℝ) * (1 + finiteDepthConstant κ q Nd) * (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+    (Kb + 2) ^ eq' * (2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl / Real.sqrt P *
+    R := by
+  intro κ q hq2 hq3 Nd Msch g cm ce ce2 cQ CΛ Cb Cl k cc hcc P Mp V famFuel E ρ R S Vl0 nearS Γ Os
+    hR0 hCb20n hMCb2 hClb u hu1 X hX0 hcmn hcen hce2n Nb Cjg hCjg1 G0e W hW1 Yn hYn0 Qk hQkdef
+    hcQ0 hQk eq' hnearS Kb hKp hlamb hKp0 hCN0 hnbc hP0 hh0 hcore
+  set! ZT := 4 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) * (1 + finiteDepthConstant κ q Nd) *
+        (1 + Real.log ((S.K : ℝ) + 2)) * ((S.K : ℝ) + 2) ^ eq' *
+        (64 * (2 * (2 * Real.sqrt 1)) * (2 * (2 * Real.sqrt 1)))) *
+      (hullCutConstant (ρ / 64 / 2) * (Nb + 1 : ℕ) * (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) *
+        ((Nb + 1 : ℕ) : ℝ) * Yn))) * Γ / Real.sqrt P * R with hZT
+  rewrite [← hZT] at hnearS
+  have! hZ : ZT ≤ 655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+      (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
+        ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) / Real.sqrt P *
+          R := by
+    have! e1 : ZT = 4096 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+        (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
+          ((1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
+            (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) * Γ *
+              hullCutConstant (ρ / 64 / 2)) / Real.sqrt P * R := by
+      rw [hZT, Real.sqrt_one]; ring
+    rw [e1]
+    have! hc0 : 0 ≤ 4096 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+        (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') :=
+      mul_nonneg (by norm_num) (mul_nonneg (mul_nonneg hnbc hCN0) hKp0)
+    have! h1 := mul_le_mul_of_nonneg_left hcore hc0
+    have! h2 := div_le_div_of_nonneg_right h1 hP0
+    have! h3 := mul_le_mul_of_nonneg_right h2 hR0
+    refine h3.trans (le_of_eq ?_)
+    ring
+  have! hQkC : 655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+      (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
+        ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) ≤
+      655360000 * cQ * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+        (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq') *
+          ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl) := by
+    have! hX1 : 1 ≤ Real.exp X := Real.one_le_exp hX0
+    have! hXC : Real.exp X ^ (8 * cc + 4 + 2 * g) ≤ Real.exp X ^ Cl :=
+      pow_le_pow_right₀ hX1 (by omega)
+    have! hQk' : Qk ≤ cQ * Real.exp X ^ Cl :=
+      hQk.trans (mul_le_mul_of_nonneg_left hXC hcQ0)
+    have! hQk0 : 0 ≤ Qk := by
+      rw [hQkdef]
+      have! this : 0 ≤ 1 + Real.log (2 + Yn) := by
+        have! this := Real.log_nonneg (show (1 : ℝ) ≤ 2 + Yn by linarith only [hYn0])
+        linarith only [this]
+      have! hCjg0 : 0 ≤ Cjg := by linarith only [hCjg1]
+      have! hW0 : 0 ≤ W := by linarith only [hW1]
+      exact mul_nonneg (mul_nonneg (mul_nonneg (mul_nonneg hh0 this) (Nat.cast_nonneg _)) hCjg0)
+        hW0
+    have! h1 : ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) ≤
+        (2 + Real.log (Kb + 2)) ^ 6 * (cQ * Real.exp X ^ Cl) :=
+      mul_le_mul hlamb hQk' hQk0 (by positivity)
+    have! h2 : (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) * (1 + finiteDepthConstant κ q Nd) *
+        ((S.K : ℝ) + 2) ^ eq' ≤ (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+          (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq' :=
+      mul_le_mul_of_nonneg_left hKp (mul_nonneg hnbc hCN0)
+    have! h3 := mul_le_mul h2 h1 (mul_nonneg (by positivity) hQk0)
+      (mul_nonneg (mul_nonneg hnbc hCN0) (by positivity))
+    calc _ = 655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+          (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq' *
+            ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk)) := mul_assoc _ _ _
+      _ ≤ 655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+          (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq' *
+            ((2 + Real.log (Kb + 2)) ^ 6 * (cQ * Real.exp X ^ Cl))) :=
+          mul_le_mul_of_nonneg_left h3 (by norm_num)
+      _ = _ := by ac_rfl
+  have! hCl3 : 384 * 655360000 * cQ ≤ Cl := by
+    have! h1 : cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ ≤
+        ((⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ : ℕ) : ℝ) := Nat.le_ceil _
+    have! h2 : (((⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ : ℕ) : ℝ)) ≤ Cl := by
+      exact_mod_cast (show ⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ ≤ Cl by
+        omega)
+    have! hcm0 : 0 ≤ cm * Cb ^ 59 := mul_nonneg hcmn (by positivity)
+    have! hce0 : 0 ≤ ce * Cb ^ 18 := mul_nonneg hcen (by positivity)
+    have hce20 : 0 ≤ ce2 := hce2n
+    linarith only [h1, h2, hcm0, hce0, hce20, hcQ0]
+  have! hfin : 6 * (64 * ZT) ≤ 384 * (655360000 * cQ * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+      (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq') *
+        ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl)) / Real.sqrt P *
+          R := by
+    have! h1 := div_le_div_of_nonneg_right hQkC hP0
+    have! h2 := mul_le_mul_of_nonneg_right h1 hR0
+    have! h3 : 6 * (64 * ZT) ≤ 384 * (655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+        (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
+          ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) / Real.sqrt P *
+            R) := by linarith only [hZ]
+    refine h3.trans ?_
+    have! this : 384 * (655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+        (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
+          ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) / Real.sqrt P *
+            R) ≤ 384 * (655360000 * cQ * ((nbCM κ hq2 hq3 +
+              nbCUM κ hq2 hq3) * (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq') *
+                ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl) / Real.sqrt P *
+                  R) := by linarith only [h2]
+    refine this.trans (le_of_eq ?_)
+    ring
+  have! hfin2 : 384 * (655360000 * cQ * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+      (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq') *
+        ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl)) / Real.sqrt P *
+          R ≤
+      (Cl : ℝ) * (1 + finiteDepthConstant κ q Nd) * (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+        (Kb + 2) ^ eq' * (2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl / Real.sqrt P *
+        R := by
+    have! hrest : 0 ≤ ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) * (1 + finiteDepthConstant κ q Nd) *
+        (Kb + 2) ^ eq' * ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl)) / Real.sqrt P *
+          R :=
+      mul_nonneg (div_nonneg (mul_nonneg (mul_nonneg (mul_nonneg hnbc hCN0) (by positivity))
+        (by positivity)) (Real.sqrt_nonneg _)) hR0
+    have! h1 := mul_le_mul_of_nonneg_right hCl3 hrest
+    calc _ = 384 * 655360000 * cQ * (((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+          (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq' * ((2 + Real.log (Kb + 2)) ^ 6 *
+            Real.exp X ^ Cl)) / Real.sqrt P * R) := by ring
+      _ ≤ (Cl : ℝ) * (((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
+          (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq' * ((2 + Real.log (Kb + 2)) ^ 6 *
+            Real.exp X ^ Cl)) / Real.sqrt P * R) := h1
+      _ = _ := by ring
+  linarith only [hnearS, hfin, hfin2]
+
+/-- Step `hceil` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hceil :
+    ∀ (Msch : ℝ) (g : ℕ) (cm : ℝ) (ce : ℝ) (ce2 : ℝ) (cQ : ℝ) (CΛ : ℕ) (Cb : ℕ) (Cl : ℕ) (cc : ℕ),
+      (1 : ℕ) ≤ cc → (⌈Msch⌉₊ + (1 : ℕ)) * CΛ ^ (16 : ℕ) + (1 : ℕ) ≤ Cb →
+      ⌈cm * (↑Cb : ℝ) ^ (59 : ℕ) + ce * (↑Cb : ℝ) ^ (18 : ℕ) + ce2 + (3 : ℝ) * (10 : ℝ) ^
+        (11 : ℕ) * cQ⌉₊ + (59 : ℕ) * Cb + (4 : ℕ) * g + (8 : ℕ) * cc + (8 : ℕ) ≤ Cl →
+    cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ ≤ Cl := by
+  intro Msch g cm ce ce2 cQ CΛ Cb Cl cc hcc hMCb2 hClb
+  have! h2 : cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ ≤
+      ((⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ : ℕ) : ℝ) := Nat.le_ceil _
+  have! h3 : (((⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ : ℕ) : ℝ)) ≤ Cl := by
+    exact_mod_cast (show ⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ ≤ Cl by
+      omega)
+  linarith only [h2, h3]
+
+/-- Step `hCm` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hCm :
+    ∀ (κ : LocalKernelClass) (cT : ℝ) (cMc : ℝ) (cm : ℝ), ℕ →
+      cm = (196608 : ℝ) * cT + (83 : ℝ) * ((1 : ℝ) + (81 : ℝ) * localFormUniformConstant κ *
+        ((30000 : ℝ) + √cT)) * ((1 : ℝ) + cT) ^ (3 : ℕ) + cMc → ∀ (B : ℝ), (1 : ℝ) ≤ B → ∀ (G : ℝ),
+      (1 : ℝ) ≤ G → (0 : ℝ) ≤ localFormUniformConstant κ → (0 : ℝ) ≤ cT → (0 : ℝ) ≤ cMc →
+      (0 : ℝ) ≤ B → (0 : ℝ) ≤ G → √(cT * B ^ (11 : ℕ) * G) ≤ √cT * B ^ (6 : ℕ) * G →
+      (1 : ℝ) ≤ B ^ (6 : ℕ) * G → B ^ (2 : ℕ) * G ≤ B ^ (6 : ℕ) * G →
+    196608 * B ^ 3 * (cT * B ^ 11 * G) + 83 * (1 + 81 * localFormUniformConstant κ *
+    (30000 * B ^ 2 * G + Real.sqrt (cT * B ^ 11 * G))) * (1 + cT * B ^ 11 * G) ^ 3 +
+    cMc * B ^ 59 * G ^ 2 ≤ cm * B ^ 59 * G ^ 4 := by
+  intro κ cT cMc cm t3 hcm B hBB1 G hG1 hL00 hcT0 hcMcn hBn0 hGn0 hsT' hB6G hB2G6
+  have! t1 : B ^ 3 * (cT * B ^ 11 * G) ≤ cT * (B ^ 59 * G ^ 4) := by
+    have! h1 : B ^ 14 * G ≤ B ^ 59 * G ^ 4 := mul_le_mul (pow_le_pow_right₀ hBB1 (by norm_num))
+      (le_self_pow₀ hG1 (by norm_num)) hGn0 (pow_nonneg hBn0 _)
+    calc B ^ 3 * (cT * B ^ 11 * G) = cT * (B ^ 14 * G) := by ring
+      _ ≤ cT * (B ^ 59 * G ^ 4) := mul_le_mul_of_nonneg_left h1 hcT0
+  have! hsc0 : 0 ≤ 81 * localFormUniformConstant κ := mul_nonneg (by norm_num) hL00
+  have! t2a : 1 + 81 * localFormUniformConstant κ * (30000 * B ^ 2 * G +
+      Real.sqrt (cT * B ^ 11 * G)) ≤ (1 + 81 * localFormUniformConstant κ *
+        (30000 + Real.sqrt cT)) * (B ^ 6 * G) := by
+    have! h1 : 30000 * B ^ 2 * G + Real.sqrt (cT * B ^ 11 * G) ≤
+        (30000 + Real.sqrt cT) * (B ^ 6 * G) := by
+      have! this := mul_le_mul_of_nonneg_left hB2G6 (show (0 : ℝ) ≤ 30000 by norm_num)
+      have! e : (30000 + Real.sqrt cT) * (B ^ 6 * G) =
+          30000 * (B ^ 6 * G) + Real.sqrt cT * B ^ 6 * G := by ring
+      rw [e]
+      linarith only [this, hsT']
+    have! h2 := mul_le_mul_of_nonneg_left h1 hsc0
+    have! h3 : 0 ≤ 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT) :=
+      mul_nonneg hsc0 (by positivity)
+    have! h4 := mul_le_mul_of_nonneg_left hB6G h3
+    have! e : (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (B ^ 6 * G) =
+        B ^ 6 * G + 81 * localFormUniformConstant κ * ((30000 + Real.sqrt cT) * (B ^ 6 * G)) :=
+      by ring
+    rw [e]
+    linarith only [h2, hB6G]
+  have! hB11 : 1 ≤ B ^ 11 * G := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hBB1) hG1
+  have! t2b : (1 + cT * B ^ 11 * G) ^ 3 ≤ ((1 + cT) * (B ^ 11 * G)) ^ 3 := by
+    have! h0 : 0 ≤ 1 + cT * B ^ 11 * G := by
+      have! this := mul_nonneg hcT0 (show 0 ≤ B ^ 11 * G by linarith only [hB11])
+      linarith only [this]
+    have! h1 : 1 + cT * B ^ 11 * G ≤ (1 + cT) * (B ^ 11 * G) := by
+      have! e : (1 + cT) * (B ^ 11 * G) = B ^ 11 * G + cT * (B ^ 11 * G) := by ring
+      rw [e, ← mul_assoc]
+      linarith only [hB11]
+    exact pow_le_pow_left₀ h0 h1 3
+  have! t2 : (1 + 81 * localFormUniformConstant κ * (30000 * B ^ 2 * G +
+      Real.sqrt (cT * B ^ 11 * G))) * (1 + cT * B ^ 11 * G) ^ 3 ≤
+      (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (1 + cT) ^ 3 *
+        (B ^ 59 * G ^ 4) := by
+    have! h0a : 0 ≤ (1 + cT * B ^ 11 * G) ^ 3 := by
+      have! this := mul_nonneg hcT0 (show 0 ≤ B ^ 11 * G by linarith only [hB11])
+      exact pow_nonneg (by linarith only [this]) 3
+    have! h0b : 0 ≤ (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) *
+        (B ^ 6 * G) := by
+      have! this : 0 ≤ 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT) :=
+        mul_nonneg hsc0 (by positivity)
+      exact mul_nonneg (by linarith only [this]) (by linarith only [hB6G])
+    have! h1 := mul_le_mul t2a t2b h0a h0b
+    have! h2 : (B ^ 6 * G) * (B ^ 11 * G) ^ 3 ≤ B ^ 59 * G ^ 4 := by
+      calc B ^ 6 * G * (B ^ 11 * G) ^ 3 = B ^ 39 * G ^ 4 := by ring
+        _ ≤ B ^ 59 * G ^ 4 := mul_le_mul_of_nonneg_right
+            (pow_le_pow_right₀ hBB1 (by norm_num)) (pow_nonneg hGn0 _)
+    have! h3 : 0 ≤ (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) *
+        (1 + cT) ^ 3 := by
+      have! this : 0 ≤ 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT) :=
+        mul_nonneg hsc0 (by positivity)
+      exact mul_nonneg (by linarith only [this]) (pow_nonneg (by linarith only [hcT0]) 3)
+    calc _ ≤ (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (B ^ 6 * G) *
+          ((1 + cT) * (B ^ 11 * G)) ^ 3 := h1
+      _ = (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (1 + cT) ^ 3 *
+          ((B ^ 6 * G) * (B ^ 11 * G) ^ 3) := by ring
+      _ ≤ _ := mul_le_mul_of_nonneg_left h2 h3
+  have! t3 : cMc * B ^ 59 * G ^ 2 ≤ cMc * (B ^ 59 * G ^ 4) := by
+    have! this : B ^ 59 * G ^ 2 ≤ B ^ 59 * G ^ 4 := mul_le_mul_of_nonneg_left
+      (pow_le_pow_right₀ hG1 (by norm_num)) (pow_nonneg hBn0 _)
+    calc cMc * B ^ 59 * G ^ 2 = cMc * (B ^ 59 * G ^ 2) := by ring
+      _ ≤ cMc * (B ^ 59 * G ^ 4) := mul_le_mul_of_nonneg_left this hcMcn
+  have! e : cm * B ^ 59 * G ^ 4 = 196608 * (cT * (B ^ 59 * G ^ 4)) +
+      83 * ((1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (1 + cT) ^ 3 *
+        (B ^ 59 * G ^ 4)) + cMc * (B ^ 59 * G ^ 4) := by rw [hcm]; ring
+  rw [e]
+  have! e2 : 196608 * B ^ 3 * (cT * B ^ 11 * G) = 196608 * (B ^ 3 * (cT * B ^ 11 * G)) := by
+    ring
+  have! e3 : 83 * (1 + 81 * localFormUniformConstant κ * (30000 * B ^ 2 * G +
+      Real.sqrt (cT * B ^ 11 * G))) * (1 + cT * B ^ 11 * G) ^ 3 =
+      83 * ((1 + 81 * localFormUniformConstant κ * (30000 * B ^ 2 * G +
+        Real.sqrt (cT * B ^ 11 * G))) * (1 + cT * B ^ 11 * G) ^ 3) := by ring
+  rw [e2, e3]
+  linarith only [t1, t2, t3]
+
+/-- Step `hClm` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hClm :
+    ∀ (Msch : ℝ) (g : ℕ) (cm : ℝ) (ce : ℝ) (ce2 : ℝ) (cQ : ℝ) (CΛ : ℕ) (Cb : ℕ) (Cl : ℕ) (cc : ℕ),
+      (1 : ℕ) ≤ cc → (⌈Msch⌉₊ + (1 : ℕ)) * CΛ ^ (16 : ℕ) + (1 : ℕ) ≤ Cb →
+      ⌈cm * (↑Cb : ℝ) ^ (59 : ℕ) + ce * (↑Cb : ℝ) ^ (18 : ℕ) + ce2 + (3 : ℝ) * (10 : ℝ) ^
+        (11 : ℕ) * cQ⌉₊ + (59 : ℕ) * Cb + (4 : ℕ) * g + (8 : ℕ) * cc + (8 : ℕ) ≤ Cl → ∀ (u : ℝ),
+      (1 : ℝ) ≤ u → ∀ (B : ℝ), B = (↑Cb : ℝ) * u ^ Cb → ∀ (X : ℝ) (G : ℝ), (0 : ℝ) ≤ ce2 →
+      (0 : ℝ) ≤ cQ → (1 : ℝ) ≤ Real.exp X → G = Real.exp X ^ g → (0 : ℝ) ≤ G →
+      cm * (↑Cb : ℝ) ^ (59 : ℕ) + ce * (↑Cb : ℝ) ^ (18 : ℕ) + ce2 + (3 : ℝ) * (10 : ℝ) ^
+        (11 : ℕ) * cQ ≤ (↑Cl : ℝ) → (0 : ℝ) ≤ ce * (↑Cb : ℝ) ^ (18 : ℕ) →
+    cm * B ^ 59 * G ^ 4 ≤ Cl * u ^ Cl * Real.exp X ^ Cl := by
+  intro Msch g cm ce ce2 cQ CΛ Cb Cl cc hcc hMCb2 hClb u hu1 B hBdef X G hce2n hcQ0 hX1 hGX hGn0
+    hceil hce18
+  have! h1 : cm * (Cb : ℝ) ^ 59 ≤ Cl := by
+    have! this : 0 ≤ 3 * 10 ^ 11 * cQ := mul_nonneg (by norm_num) hcQ0
+    linarith only [hceil, hce18, hce2n, this]
+  have! h2 : u ^ (59 * Cb) ≤ u ^ Cl := pow_le_pow_right₀ hu1 (by omega)
+  have! h3 : G ^ 4 ≤ Real.exp X ^ Cl := by
+    rw [hGX, ← pow_mul]; exact pow_le_pow_right₀ hX1 (by omega)
+  have! e : cm * B ^ 59 * G ^ 4 = (cm * (Cb : ℝ) ^ 59) * u ^ (59 * Cb) * G ^ 4 := by
+    rw [hBdef, mul_pow, ← pow_mul]; ring
+  rw [e]
+  exact mul_le_mul (mul_le_mul h1 h2 (pow_nonneg (by linarith only [hu1]) _)
+    (Nat.cast_nonneg _)) h3 (pow_nonneg hGn0 _)
+    (mul_nonneg (Nat.cast_nonneg _) (pow_nonneg (by linarith only [hu1]) _))
+
+/-- Step `hErr` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hErr :
+    ∀ (κ : LocalKernelClass) (Msch : ℝ) (g : ℕ) (cT : ℝ) (cm : ℝ) (ce : ℝ) (ce2 : ℝ) (cQ : ℝ)
+      (CΛ : ℕ) (Cb : ℕ) (Cl : ℕ) (k : ℕ) (cc : ℕ), (1 : ℕ) ≤ cc → ∀ (kD : ℝ) (Mp : ℕ) (V : ℕ)
+      (δ : ℝ) (R : ℝ) (S : ModeSchedule) (Iw : ℕ) (U : ℝ) (MV : ℝ) (ε : ℝ) (cE : ℝ),
+      ce = (6642 : ℝ) * localFormUniformConstant κ * ((60000 : ℝ) + √cT) ^ (3 : ℕ) * (288 : ℝ) +
+        (9 : ℝ) * ((16 : ℝ) * fourErrC κ (3 : ℕ) + (648 : ℝ) * threeErrC κ (3 : ℕ) (1 : ℕ) +
+        (324 : ℝ) * threeErrC κ (3 : ℕ) (1 : ℕ) * √cT) → (0 : ℝ) ≤ R →
+      (⌈Msch⌉₊ + (1 : ℕ)) * CΛ ^ (16 : ℕ) + (1 : ℕ) ≤ Cb →
+      ⌈cm * (↑Cb : ℝ) ^ (59 : ℕ) + ce * (↑Cb : ℝ) ^ (18 : ℕ) + ce2 + (3 : ℝ) * (10 : ℝ) ^
+        (11 : ℕ) * cQ⌉₊ + (59 : ℕ) * Cb + (4 : ℕ) * g + (8 : ℕ) * cc + (8 : ℕ) ≤ Cl → ∀ (u : ℝ),
+      (1 : ℝ) ≤ u → ∀ (B : ℝ), B = (↑Cb : ℝ) * u ^ Cb → (1 : ℝ) ≤ B → ∀ (X : ℝ) (G : ℝ),
+      (1 : ℝ) ≤ G → (1 : ℝ) ≤ (↑k : ℝ) ^ cc → (1 : ℝ) ≤ cT → ∀ (ι : ℝ),
+    let Qe : ℝ := (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) *
+        (12 : ℝ) ^ (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) *
+        threeErrC κ (3 : ℕ) (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) *
+        (2 : ℝ) ^ ((1 : ℕ) + (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^
+        (3 : ℕ) * ((↑Iw : ℝ) + (1 : ℝ)))));
+    cE ≤ Qe * ((↑(Mp * V) : ℝ) * R) → (↑(Mp * V) : ℝ) = MV →
+      Qe * MV ≤ (5 : ℝ) * ((16 : ℝ) * fourErrC κ (3 : ℕ) + (648 : ℝ) * threeErrC κ (3 : ℕ)
+        (1 : ℕ) + (324 : ℝ) * threeErrC κ (3 : ℕ) (1 : ℕ) * √cT) * Real.exp ((3 : ℝ) * (↑k : ℝ) ^
+        cc) * B ^ (6 : ℕ) * G * Real.exp (-kD) + ce2 * Real.exp (-(↑k : ℝ)) →
+      (0 : ℝ) ≤ localFormUniformConstant κ → (0 : ℝ) ≤ ce2 → (0 : ℝ) ≤ cQ → (1 : ℝ) ≤ Real.exp X →
+      G = Real.exp X ^ g → (0 : ℝ) ≤ B → (0 : ℝ) ≤ G →
+      cm * (↑Cb : ℝ) ^ (59 : ℕ) + ce * (↑Cb : ℝ) ^ (18 : ℕ) + ce2 + (3 : ℝ) * (10 : ℝ) ^
+        (11 : ℕ) * cQ ≤ (↑Cl : ℝ) → (0 : ℝ) ≤ cm * (↑Cb : ℝ) ^ (59 : ℕ) →
+      (0 : ℝ) ≤ ce * (↑Cb : ℝ) ^ (18 : ℕ) → √(cT * B ^ (11 : ℕ) * G) ≤ √cT * B ^ (6 : ℕ) * G →
+      (1 : ℝ) ≤ B ^ (6 : ℕ) * G → B ^ (2 : ℕ) * G ≤ B ^ (6 : ℕ) * G →
+    6642 * localFormUniformConstant κ * (2 * (30000 * B ^ 2 * G) +
+    Real.sqrt (cT * B ^ 11 * G)) ^ 3 * (288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ * R) +
+    cE ≤
+    Cl * u ^ Cl * Real.exp X ^ Cl * (Real.exp (Cl * (k : ℝ) ^ cc) * (Real.sqrt δ +
+    Real.exp (-kD))) * R + Cl * Real.exp (-(k : ℝ)) * R := by
+  intro κ Msch g cT cm ce ce2 cQ CΛ Cb Cl k cc hcc kD Mp V δ R S Iw U MV ε cE hce hR0 hMCb2 hClb u
+    hu1 B hBdef hBB1 X G hG1 hkcc1 hcT1 ι Qe hcEsum hMVc hQeMV hL00 hce2n hcQ0 hX1 hGX hBn0 hGn0
+    hceil hcm59 hce18 hsT' hB6G hB2G6
+  obtain ⟨e4, he4⟩ : ∃ x : ℝ, x = Real.exp (4 * (k : ℝ) ^ cc) := ⟨_, rfl⟩
+  obtain ⟨e3, he3⟩ : ∃ x : ℝ, x = Real.exp (3 * (k : ℝ) ^ cc) := ⟨_, rfl⟩
+  rw [← he4]
+  rw [← he3] at hQeMV
+  have! he40 : 0 ≤ e4 := by rw [he4]; exact (Real.exp_pos _).le
+  have! he30 : 0 ≤ e3 := by rw [he3]; exact (Real.exp_pos _).le
+  have! he34 : e3 ≤ e4 := by
+    rw [he3, he4]; exact Real.exp_le_exp.mpr (by linarith only [hkcc1])
+  have! hsd0 : 0 ≤ Real.sqrt δ := Real.sqrt_nonneg _
+  have! hekD : 0 ≤ Real.exp (-kD) := (Real.exp_pos _).le
+  have! hek : 0 ≤ Real.exp (-(k : ℝ)) := (Real.exp_pos _).le
+  have! hB18 : B ^ 6 * G ≤ B ^ 18 * G ^ 3 := mul_le_mul (pow_le_pow_right₀ hBB1 (by norm_num))
+    (le_self_pow₀ hG1 (by norm_num)) hGn0 (pow_nonneg hBn0 _)
+  have! hY0 : 0 ≤ B ^ 18 * G ^ 3 * e4 :=
+    mul_nonneg (mul_nonneg (pow_nonneg hBn0 _) (pow_nonneg hGn0 _)) he40
+  -- the physical errors
+  have! h1 : 2 * (30000 * B ^ 2 * G) + Real.sqrt (cT * B ^ 11 * G) ≤
+      (60000 + Real.sqrt cT) * (B ^ 6 * G) := by
+    have! this := mul_le_mul_of_nonneg_left hB2G6 (show (0 : ℝ) ≤ 60000 by norm_num)
+    have! e : (60000 + Real.sqrt cT) * (B ^ 6 * G) =
+        60000 * (B ^ 6 * G) + Real.sqrt cT * B ^ 6 * G := by ring
+    rw [e]
+    linarith only [this, hsT']
+  have! h0 : 0 ≤ 2 * (30000 * B ^ 2 * G) + Real.sqrt (cT * B ^ 11 * G) :=
+    add_nonneg (mul_nonneg (by norm_num) (mul_nonneg (mul_nonneg (by norm_num)
+      (pow_nonneg hBn0 _)) hGn0)) (Real.sqrt_nonneg _)
+  have! h1' := pow_le_pow_left₀ h0 h1 3
+  have! hL6 : 0 ≤ 6642 * localFormUniformConstant κ := mul_nonneg (by norm_num) hL00
+  have! hp1 : 6642 * localFormUniformConstant κ * (2 * (30000 * B ^ 2 * G) +
+      Real.sqrt (cT * B ^ 11 * G)) ^ 3 * (288 * e4 * Real.sqrt δ * R) ≤
+      (6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288) *
+        (B ^ 18 * G ^ 3 * e4) * Real.sqrt δ * R := by
+    have! h2 := mul_le_mul_of_nonneg_left h1' hL6
+    have! h3 := mul_le_mul_of_nonneg_right h2 (show 0 ≤ 288 * e4 * Real.sqrt δ * R from
+      mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) he40) hsd0) hR0)
+    refine h3.trans (le_of_eq ?_)
+    ring
+  -- the core errors
+  have! hC0 : 0 ≤ 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
+      324 * threeErrC κ 3 1 * Real.sqrt cT) := by
+    have! this := fourErrC_nonneg κ 3; have := threeErrC_nonneg κ 3 1; positivity
+  have! hcE : cE ≤ (5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
+      Real.sqrt cT)) * (B ^ 18 * G ^ 3 * e4) * Real.exp (-kD) * R +
+        ce2 * Real.exp (-(k : ℝ)) * R := by
+    have! h2 : cE ≤ Qe * MV * R := by
+      calc cE ≤ Qe * (((Mp * V : ℕ) : ℝ) * R) := hcEsum
+        _ = Qe * MV * R := by rw [hMVc]; ring
+    have! h4 := mul_le_mul_of_nonneg_right hQeMV hR0
+    have! h5 : e3 * B ^ 6 * G ≤ B ^ 18 * G ^ 3 * e4 := by
+      have! this := mul_le_mul he34 hB18 (by linarith only [hB6G]) he40
+      linarith only [this]
+    have! h6 : 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
+        Real.sqrt cT) * e3 * B ^ 6 * G * Real.exp (-kD) ≤
+        (5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
+          Real.sqrt cT)) * (B ^ 18 * G ^ 3 * e4) * Real.exp (-kD) := by
+      have! this := mul_le_mul_of_nonneg_left h5 hC0
+      have! h7 := mul_le_mul_of_nonneg_right this hekD
+      calc _ = 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
+          Real.sqrt cT) * (e3 * B ^ 6 * G) * Real.exp (-kD) := by ring
+        _ ≤ _ := h7
+    have! h8 := mul_le_mul_of_nonneg_right h6 hR0
+    linarith only [h2, h4, h8]
+  -- the constants
+  have! hce' : ce * B ^ 18 * G ^ 3 * e4 ≤ Cl * u ^ Cl * Real.exp X ^ Cl *
+      Real.exp (Cl * (k : ℝ) ^ cc) := by
+    have! h2 : u ^ (18 * Cb) ≤ u ^ Cl := pow_le_pow_right₀ hu1 (by omega)
+    have! h3 : G ^ 3 ≤ Real.exp X ^ Cl := by
+      rw [hGX, ← pow_mul]; exact pow_le_pow_right₀ hX1 (by omega)
+    have! h4 : e4 ≤ Real.exp (Cl * (k : ℝ) ^ cc) := by
+      rw [he4]
+      refine Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_right ?_ (by linarith only [hkcc1]))
+      exact_mod_cast (show 4 ≤ Cl by omega)
+    have! h5 : ce * (Cb : ℝ) ^ 18 ≤ Cl := by
+      have! this : 0 ≤ 3 * 10 ^ 11 * cQ := mul_nonneg (by norm_num) hcQ0
+      linarith only [hceil, hcm59, hce2n, this]
+    have! e : ce * B ^ 18 * G ^ 3 * e4 = (ce * (Cb : ℝ) ^ 18) * u ^ (18 * Cb) * G ^ 3 * e4 := by
+      rw [hBdef, mul_pow, ← pow_mul]; ring
+    rw [e]
+    have! hu0 : 0 ≤ u := by linarith only [hu1]
+    exact mul_le_mul (mul_le_mul (mul_le_mul h5 h2 (pow_nonneg hu0 _) (Nat.cast_nonneg _)) h3
+      (pow_nonneg hGn0 _) (mul_nonneg (Nat.cast_nonneg _) (pow_nonneg hu0 _))) h4 he40
+      (mul_nonneg (mul_nonneg (Nat.cast_nonneg _) (pow_nonneg hu0 _))
+        (pow_nonneg (by linarith only [hX1]) _))
+  have! hce2' : ce2 ≤ Cl := by
+    have! this : 0 ≤ 3 * 10 ^ 11 * cQ := mul_nonneg (by norm_num) hcQ0
+    linarith only [hceil, hcm59, hce18, this]
+  -- assembly
+  have! hsplit : (6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288) *
+      (B ^ 18 * G ^ 3 * e4) * Real.sqrt δ * R +
+      ((5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 * Real.sqrt cT)) *
+        (B ^ 18 * G ^ 3 * e4) * Real.exp (-kD) * R) ≤
+      ce * B ^ 18 * G ^ 3 * e4 * ((Real.sqrt δ + Real.exp (-kD)) * R) := by
+    have! hA : 0 ≤ 6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288 :=
+      mul_nonneg (mul_nonneg hL6 (by positivity)) (by norm_num)
+    have! hYR : 0 ≤ B ^ 18 * G ^ 3 * e4 * R := mul_nonneg hY0 hR0
+    have hce' : ce = 6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288 +
+        9 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
+          324 * threeErrC κ 3 1 * Real.sqrt cT) := hce
+    have! h5 : 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
+        Real.sqrt cT) ≤ ce := by linarith only [hce', hA, hC0]
+    have! h6 : 6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288 ≤ ce := by
+      linarith only [hce', hC0]
+    have! h7 := mul_le_mul_of_nonneg_right h6 (mul_nonneg hYR hsd0)
+    have! h8 := mul_le_mul_of_nonneg_right h5 (mul_nonneg hYR hekD)
+    calc _ = (6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288) *
+          ((B ^ 18 * G ^ 3 * e4 * R) * Real.sqrt δ) +
+          (5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
+            Real.sqrt cT)) * ((B ^ 18 * G ^ 3 * e4 * R) * Real.exp (-kD)) := by ring
+      _ ≤ ce * ((B ^ 18 * G ^ 3 * e4 * R) * Real.sqrt δ) +
+          ce * ((B ^ 18 * G ^ 3 * e4 * R) * Real.exp (-kD)) := add_le_add h7 h8
+      _ = _ := by ring
+  have! hfin1 := mul_le_mul_of_nonneg_right hce' (show 0 ≤ (Real.sqrt δ + Real.exp (-kD)) * R
+    from mul_nonneg (add_nonneg hsd0 hekD) hR0)
+  have! hfin2 := mul_le_mul_of_nonneg_right hce2' (show 0 ≤ Real.exp (-(k : ℝ)) * R
+    from mul_nonneg hek hR0)
+  have! e6 : Cl * u ^ Cl * Real.exp X ^ Cl * (Real.exp (Cl * (k : ℝ) ^ cc) * (Real.sqrt δ +
+      Real.exp (-kD))) * R = Cl * u ^ Cl * Real.exp X ^ Cl *
+        Real.exp (Cl * (k : ℝ) ^ cc) * ((Real.sqrt δ + Real.exp (-kD)) * R) := by ring
+  have! e7 : ce2 * Real.exp (-(k : ℝ)) * R = ce2 * (Real.exp (-(k : ℝ)) * R) := by ring
+  have! e8 : (Cl : ℝ) * Real.exp (-(k : ℝ)) * R = Cl * (Real.exp (-(k : ℝ)) * R) := by ring
+  rw [e6, e8]
+  rw [e7] at hcE
+  linarith only [hp1, hcE, hsplit, hfin1, hfin2]
+
+/-- Step `hfc0` of `leaf_final`, over the part of its context that it uses. -/
+theorem leaf_final_hfc0 :
+    ∀ (P : ℕ) (famFuel : ℕ) (τ₃ : ℝ), (0 : ℝ) < τ₃ → ∀ (fc : ℝ),
+      fc = ((2 : ℝ) * (↑famFuel : ℝ) + (2 : ℝ)) * (((↑P : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * ((16 : ℝ) *
+        τ₃ * (2 : ℝ) ^ (2 : ℕ))) → (0 : ℝ) ≤ ((↑P : ℝ) + (1 : ℝ)) ^ (2 : ℕ) →
+    0 ≤ fc := by
+  intro P famFuel τ₃ hτ₃ fc hfc hP0'
+  rw [hfc]
+  have! h1 : (0 : ℝ) ≤ 2 * (famFuel : ℝ) + 2 := by positivity
+  exact mul_nonneg h1 (mul_nonneg hP0' (by linarith only [hτ₃]))
+
 /-- The arithmetic of the explicit leaf bound (`eq:before-absorption` on one leaf): the right side
 of `leaf_bound` (in the shape of `leaf_raw_le`), with the side caps, core bounds, near bands, core
 errors and physical errors of a leaf given by their explicit forms or bounds, is at most
@@ -3426,7 +4982,7 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     (hρk : ρ⁻¹ ≤ (k : ℝ) ^ cc) (hδ : 0 < δ) (hδ8 : δ ≤ 1 / 8) (hη0 : 0 ≤ η) (hη₀ : 0 < η₀)
     (hτ₃ : 0 < τ₃) (hRl0 : 0 < R)
     -- the schedule
-    (S : ModeSchedule) (hd2 : 2 ≤ S.dmax) (hD2 : 2 ≤ S.Dstar) (hH2 : 2 ≤ S.H) (hK1 : 1 ≤ S.K)
+    (S : ModeSchedule) (hD2 : 2 ≤ S.Dstar) (hH2 : 2 ≤ S.H) (hK1 : 1 ≤ S.K)
     (hSd : S.dmax = 2 * dB + 2) (hSDm : S.Dm = max 2 Nl) (hJH : (S.Jstar : ℝ) ≤ Real.log S.H)
     {Λ : ℝ} (hΛ0 : 0 ≤ Λ) (hΛ : Λ ≤ CΛ * (kD * P) ^ eΛ) (hK : (S.K : ℝ) ≤ Msch * Λ ^ 16)
     (hlogH : Real.log S.H ≤ Msch * Λ ^ 12) (hlD : Real.log S.Dstar ≤ Cg * (kD * P) ^ Cg)
@@ -3593,39 +5149,10 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     push_cast; linarith only [Nat.le_ceil Msch]
   have! hCΛ1 : (1 : ℝ) ≤ CΛ := by
     rw [hCΛr]; linarith only [Nat.cast_nonneg (α := ℝ) Cg]
-  have! hKB : (S.K : ℝ) ≤ B := by
-    refine hK.trans ?_
-    have! h1 := pow_le_pow_left₀ hΛ0 hΛ 16
-    have! h2 : Msch * (CΛ * u ^ eΛ) ^ 16 ≤ ((⌈Msch⌉₊ + 1) * CΛ ^ 16 : ℕ) * u ^ (16 * eΛ) := by
-      push_cast
-      rw [mul_pow, ← pow_mul, mul_comm eΛ 16, ← mul_assoc]
-      have! this : (0 : ℝ) ≤ (CΛ : ℝ) ^ 16 * u ^ (16 * eΛ) := by positivity
-      have! h3 := mul_le_mul_of_nonneg_right hMc this
-      push_cast at h3
-      linarith only [h3]
-    refine (mul_le_mul_of_nonneg_left h1 hMsch.le).trans (h2.trans (hpowB _ _ (by positivity)
-      ?_ (by omega)))
-    exact_mod_cast hMCb1
-  have! hHB : Real.log S.H + 1 ≤ B := by
-    refine le_trans (show Real.log S.H + 1 ≤ Msch * Λ ^ 12 + 1 by linarith only [hlogH]) ?_
-    have! h1 := pow_le_pow_left₀ hΛ0 hΛ 12
-    have! hu12 : u ^ (12 * eΛ) ≤ u ^ (16 * eΛ) := pow_le_pow_right₀ hu1 (by omega)
-    have! hC12 : (CΛ : ℝ) ^ 12 ≤ CΛ ^ 16 := pow_le_pow_right₀ hCΛ1 (by norm_num)
-    have! h2 : Msch * (CΛ * u ^ eΛ) ^ 12 + 1 ≤
-        (((⌈Msch⌉₊ + 1) * CΛ ^ 16 : ℕ) + 1 : ℝ) * u ^ (16 * eΛ) := by
-      push_cast
-      rw [mul_pow, ← pow_mul, mul_comm eΛ 12]
-      have! h0 : (0 : ℝ) ≤ u ^ (12 * eΛ) := by positivity
-      have! h3 : Msch * ((CΛ : ℝ) ^ 12 * u ^ (12 * eΛ)) ≤
-          ((⌈Msch⌉₊ : ℝ) + 1) * ((CΛ : ℝ) ^ 16 * u ^ (16 * eΛ)) :=
-        mul_le_mul (by linarith only [Nat.le_ceil Msch]) (mul_le_mul hC12 hu12 h0 (by positivity))
-          (by positivity) (by positivity)
-      have! h4 : (1 : ℝ) ≤ u ^ (16 * eΛ) := one_le_pow₀ hu1
-      nlinarith only [h3, h4]
-    have! h3 := mul_le_mul_of_nonneg_left h1 hMsch.le
-    refine le_trans (show Msch * Λ ^ 12 + 1 ≤ Msch * (CΛ * u ^ eΛ) ^ 12 + 1 by
-      linarith only [h3]) (h2.trans (hpowB _ _ (by positivity) ?_ (by omega)))
-    exact_mod_cast hMCb2
+  have! hKB : (S.K : ℝ) ≤ B :=
+    leaf_final_hKB Msch hMsch CΛ eΛ Cb S Λ hΛ0 hK heΛCb hMCb1 u hΛ hu1 B hpowB hMc hCΛ1
+  have! hHB : Real.log S.H + 1 ≤ B :=
+    leaf_final_hHB Msch hMsch CΛ eΛ Cb S Λ hΛ0 hlogH heΛCb hMCb2 u hΛ hu1 B hpowB hCΛ1
   have! hJB : (S.Jstar : ℝ) + 1 ≤ B := le_trans (by linarith only [hJH]) hHB
   have! hlHB : Real.log S.H ≤ B := by linarith only [hHB]
   have! hlDB : Real.log S.Dstar ≤ B :=
@@ -3640,19 +5167,8 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     have! this := hkcc 2 (by norm_num) (by linarith only [hCb20])
     have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
     linarith only [this, hl2, hmaxNl, hkcc1]
-  have! hIwB : (Iw : ℝ) + 1 ≤ B := by
-    have! h1 : (Iw : ℝ) ≤ Real.logb 2 (S.Dstar ^ 250) := by
-      rw [hIw]; exact Nat.floor_le (Real.logb_nonneg (by norm_num) (one_le_pow₀ hD1))
-    have! h2 : Real.logb 2 (S.Dstar ^ 250) ≤ 500 * Real.log S.Dstar := by
-      have! this := logb_two_le_two_log (one_le_pow₀ hD1 : (1 : ℝ) ≤ S.Dstar ^ 250)
-      rw [Real.log_pow] at this; push_cast at this; linarith only [this]
-    have! h3 : 500 * Real.log S.Dstar + 1 ≤ ((500 * Cg + 1 : ℕ) : ℝ) * u ^ Cg := by
-      push_cast
-      have! this : (1 : ℝ) ≤ u ^ Cg := one_le_pow₀ hu1
-      nlinarith only [hlD, this, hlD0]
-    refine le_trans (by linarith only [h1, h2]) (h3.trans (hpowB _ _ (by positivity) ?_
-      (by omega)))
-    exact_mod_cast (show 500 * Cg + 1 ≤ Cb by omega)
+  have! hIwB : (Iw : ℝ) + 1 ≤ B :=
+    leaf_final_hIwB Cg Cb S Iw hIw hCgCb u hlD hu1 B hpowB hD1 hlD0
   have! hkB' : (k : ℝ) ≤ B := by
     have! h1 := hkcc 1 (by norm_num) (by linarith only [hCb20])
     linarith only [h1, hkcc0]
@@ -3668,101 +5184,21 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     have! this : (3 : ℝ) ^ cc = ((3 ^ cc : ℕ) : ℝ) := by push_cast; ring
     rw [this]
     exact_mod_cast h3Cb
-  have! hJmB : ((2 * famFuel + 2 : ℕ) : ℝ) + 1 ≤ B := by
-    have! hlk : Real.log k + 1 ≤ k := by
-      have! this := Real.log_le_sub_one_of_pos (show (0 : ℝ) < k by linarith only [hk1])
-      linarith only [this]
-    have! h1 : ((2 * famFuel + 2 : ℕ) : ℝ) + 1 ≤ (cc + 1) * (k : ℝ) ^ cc := by
-      have! hcc0 : (0 : ℝ) ≤ cc := Nat.cast_nonneg _
-      have! this := mul_le_mul_of_nonneg_left hlk hcc0
-      nlinarith only [hkF, this, hkcc0, hcc0, hkcc1]
-    refine h1.trans (hkcc _ (by positivity) ?_)
-    exact_mod_cast (show cc + 1 ≤ Cb by omega)
+  have! hJmB : ((2 * famFuel + 2 : ℕ) : ℝ) + 1 ≤ B :=
+    leaf_final_hJmB Cb k cc hcc famFuel hkF hk1 hccCb hkcc0 B hkcc hkcc1
   -- the linear sides and the side cap
   have! hVl00 : 0 ≤ Vl0 := by rw [hVl0]; positivity
-  have! hVl0B : Vl0 ≤ 14000000 * B ^ 2 * G := by
-    rw [hVl0]
-    have! hd0 : (0 : ℝ) ≤ S.dmax := Nat.cast_nonneg _
-    have! hDm2' : (1 : ℝ) ≤ 2 * S.Dm := by linarith only [hDm2]
-    have! hlDm0 : 0 ≤ Real.log (2 * S.Dm) := Real.log_nonneg hDm2'
-    have! hfl : ((⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ : ℕ) : ℝ) ≤
-        184320 * B ^ 2 := by
-      refine (Nat.floor_le (by positivity)).trans ?_
-      have! h1 : (S.dmax : ℝ) ≤ B := by linarith only [hdmB]
-      have! h2 := mul_le_mul h1 hDmB hlDm0 (by linarith only [hBB1])
-      rw [div_div_eq_mul_div, div_one]
-      nlinarith only [h2]
-    have! hGq' : Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
-        (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394 ≤ 3 * G := by
-      have! h1 : 2 * 1 / S.Dstar ^ 394 ≤ 2 := by
-        rw [div_le_iff₀ (by positivity)]
-        have! this := one_le_pow₀ (n := 394) hD1
-        linarith only [this]
-      linarith only [h1, hGqG, hG1]
-    have! hBB2' : (1 : ℝ) ≤ B ^ 2 := one_le_pow₀ hBB1
-    have! h0 : (0 : ℝ) ≤ Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
-        (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394 := by positivity
-    calc 24 * (((⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ : ℕ) : ℝ) + 1) *
-          (Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
-            (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394)
-        ≤ 24 * (184321 * B ^ 2) * (3 * G) := by
-          gcongr; linarith only [hfl, hBB2']
-      _ ≤ 14000000 * B ^ 2 * G := by nlinarith only [hBB2', hG1]
-  have! hT : TT ≤ cT * B ^ 11 * G := by
-    refine hTTle.trans ?_
-    have! hL0 := localFormUniformConstant_nonneg κ
-    have! hK1' : (1 : ℝ) + S.K ≤ 2 * B := by linarith only [hKB, hBB1]
-    have! hW : Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 3) *
-        (1 + Real.log (2 * (k : ℝ))) ^ 2) + E + Vl0 + 1 ≤ 15000000 * B ^ 2 * G := by
-      have! hBB2' : (1 : ℝ) ≤ B ^ 2 := one_le_pow₀ hBB1
-      nlinarith only [hG0G, hEB, hVl0B, hBB2', hG1, hBB1]
-    have! hJ1 : (1 : ℝ) + ((2 * famFuel + 2 : ℕ) : ℝ) ≤ B := by linarith only [hJmB]
-    have! hρ' : 1 / ρ ≤ B := by rw [one_div]; exact hρB
-    rw [div_eq_mul_one_div]
-    calc 10 ^ 14 * (1 + localFormUniformConstant κ) ^ 2 * (((2 ^ famFuel : ℕ) : ℝ)) ^ 4 *
-          (1 + ((2 * famFuel + 2 : ℕ) : ℝ)) ^ 2 * (1 + (S.K : ℝ)) ^ 2 *
-          (Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 3) *
-            (1 + Real.log (2 * (k : ℝ))) ^ 2) + E + Vl0 + 1) * (1 / ρ)
-        ≤ 10 ^ 14 * (1 + localFormUniformConstant κ) ^ 2 * B ^ 4 * B ^ 2 * (2 * B) ^ 2 *
-            (15000000 * B ^ 2 * G) * B := by
-          gcongr
-      _ = 6 * 10 ^ 21 * (1 + localFormUniformConstant κ) ^ 2 * B ^ 11 * G := by ring
-      _ ≤ cT * B ^ 11 * G := by
-          rw [hcT]
-          have! this : (0 : ℝ) ≤ (1 + localFormUniformConstant κ) ^ 2 * B ^ 11 * G := by positivity
-          nlinarith only [this]
+  have! hVl0B : Vl0 ≤ 14000000 * B ^ 2 * G :=
+    leaf_final_hVl0B k cc S Vl0 hVl0 B hBB1 G hG1 hGqG hD1 hDm2 hdmB hDmB
+  have! hT : TT ≤ cT * B ^ 11 * G :=
+    leaf_final_hT κ cT k cc famFuel E ρ hE0 hρ S hK1 Vl0 TT hTTle hcT B hBB2 hBB1 G hG1 hG0G hKB
+      hEB hρB hLpB hJmB hVl00 hVl0B
   -- the two-side cap and the core and error sizes
   have! hρ1' : 1 / ρ ≤ B := by rw [one_div]; exact hρB
-  have! hT2 : T2v ≤ 60000000 * B ^ 4 * G := by
-    refine hT2le.trans ?_
-    have! hK0 : (0 : ℝ) ≤ S.K := Nat.cast_nonneg _
-    have! h1 : (S.K : ℝ) * (20 * Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) +
-        cc ^ 2 + 3) * (1 + Real.log (2 * (k : ℝ))) ^ 2) + 32) ≤ B * (52 * G) :=
-      mul_le_mul hKB (by linarith only [hG0G, hG1]) (by positivity) (by linarith only [hBB1])
-    have! h2 : (S.K : ℝ) * Vl0 ≤ B * (14000000 * B ^ 2 * G) :=
-      mul_le_mul hKB hVl0B hVl00 (by linarith only [hBB1])
-    rw [div_eq_mul_one_div]
-    calc 4 * ((S.K : ℝ) * (20 * Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) +
-          cc ^ 2 + 3) * (1 + Real.log (2 * (k : ℝ))) ^ 2) + 32) + S.K * Vl0) * (1 / ρ)
-        ≤ 4 * (B * (52 * G) + B * (14000000 * B ^ 2 * G)) * B := by
-          gcongr
-      _ ≤ 60000000 * B ^ 4 * G := by
-          have! this : (0 : ℝ) ≤ B ^ 4 * G := by positivity
-          have! h4 : B ^ 2 * G ≤ B ^ 4 * G := mul_le_mul_of_nonneg_right
-            (pow_le_pow_right₀ hBB1 (by norm_num)) (by linarith only [hG1])
-          nlinarith only [this, h4, hBB1, hG1]
-  have! hsT2 : Real.sqrt T2v ≤ 7746 * B ^ 2 * G := by
-    have! h1 : T2v ≤ (7746 * B ^ 2 * G) ^ 2 := by
-      calc T2v ≤ 60000000 * B ^ 4 * G := hT2
-        _ ≤ 60000516 * B ^ 4 * G ^ 2 := by
-            have! h0 : (0 : ℝ) ≤ B ^ 4 := by positivity
-            have! h1 : B ^ 4 * G ≤ B ^ 4 * G ^ 2 :=
-              mul_le_mul_of_nonneg_left (le_self_pow₀ hG1 (by norm_num)) h0
-            have! h2 : 0 ≤ B ^ 4 * G ^ 2 := by positivity
-            linarith only [h1, h2]
-        _ = (7746 * B ^ 2 * G) ^ 2 := by ring
-    calc Real.sqrt T2v ≤ Real.sqrt ((7746 * B ^ 2 * G) ^ 2) := Real.sqrt_le_sqrt h1
-      _ = 7746 * B ^ 2 * G := Real.sqrt_sq (by positivity)
+  have! hT2 : T2v ≤ 60000000 * B ^ 4 * G :=
+    leaf_final_hT2 k cc ρ hρ S Vl0 T2v hT2le B hBB2 hBB1 G hG1 hG0G hKB hVl00 hVl0B hρ1'
+  have! hsT2 : Real.sqrt T2v ≤ 7746 * B ^ 2 * G :=
+    leaf_final_hsT2 T2v B G hG1 hT2
   have! hs5 : Real.sqrt 5 ≤ 9 / 4 := by
     rw [Real.sqrt_le_left (by norm_num)]; norm_num
   have! hBG1 : (1 : ℝ) ≤ B ^ 2 * G := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hBB1) hG1
@@ -3816,87 +5252,13 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     exact one_le_mul_of_one_le_of_one_le (one_le_mul_of_one_le_of_one_le
       (one_le_mul_of_one_le_of_one_le (one_le_pow₀ (by linarith only [hU16])) (one_le_pow₀ hD1))
       (Real.one_le_exp (Nat.cast_nonneg _))) (by linarith only [hMV0])
-  have! hlogU : Real.log U ≤ (17 + 4 * g + Real.log cT) * B := by
-    have! ha1 : (1 : ℝ) ≤ 2 * (cb + 2) * S.Dstar ^ 2 := by
-      have! this := one_le_pow₀ (n := 2) hD1
-      nlinarith only [this, hcb]
-    have! hsTT : Real.sqrt TT ≤ 2 + TT := by
-      have! this := Real.sqrt_le_sqrt (show TT ≤ (1 + TT) ^ 2 by nlinarith only [hT0])
-      rw [Real.sqrt_sq (by linarith only [hT0])] at this; linarith only [this]
-    have! hUle : U ≤ 2 * (cb + 2) * S.Dstar ^ 2 * (1 + Real.sqrt TT) := by
-      rw [hUdef]
-      have! h0 := Real.sqrt_nonneg TT
-      refine max_le (le_mul_of_one_le_right (by linarith only [ha1]) (by linarith only [h0]))
-        ?_
-      nlinarith only [h0, ha1]
-    have! h1 : Real.log U ≤ Real.log (2 * (cb + 2) * S.Dstar ^ 2) +
-        Real.log (1 + Real.sqrt TT) := by
-      rw [← Real.log_mul (by linarith only [ha1]) (by positivity)]
-      exact Real.log_le_log hU0 hUle
-    have! h2 : Real.log (2 * (cb + 2) * S.Dstar ^ 2) ≤ 1 + (k : ℝ) ^ cc + 2 * B := by
-      have! hcb4 : cb + 2 ≤ 2 * cb := by linarith only [hcb]
-      rw [Real.log_mul (by linarith only [hcb]) (by positivity), Real.log_pow]
-      have! h3 : Real.log (2 * (cb + 2)) ≤ Real.log (2 * (2 * cb)) :=
-        Real.log_le_log (by linarith only [hcb]) (by linarith only [hcb4])
-      have! h4 : Real.log (2 * (2 * cb)) = Real.log 2 + Real.log (2 * cb) := by
-        rw [Real.log_mul (by norm_num) (by linarith only [hcb])]
-      have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
-      push_cast
-      linarith only [h3, h4, hl2, hkb, hlDB]
-    have! h3 : Real.log (1 + Real.sqrt TT) ≤ 2 + Real.log cT + 11 * B + 4 * g * B := by
-      have! h5 : 1 + Real.sqrt TT ≤ 4 * (cT * B ^ 11 * G) := by linarith only [hsTT, hTT1, hBGT]
-      have! h6 := Real.log_le_log (by positivity) h5
-      rw [Real.log_mul (by norm_num) (by positivity), Real.log_mul (by positivity)
-        (by positivity), Real.log_mul (by positivity) (by positivity), Real.log_pow, hGdef,
-        Real.log_exp] at h6
-      have! hl3 : Real.log 4 ≤ 2 := by
-        rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.log_pow]
-        push_cast; linarith only [Real.log_two_lt_d9]
-      have! hlB : Real.log B ≤ B := by
-        have! this := Real.log_le_sub_one_of_pos (show (0 : ℝ) < B by linarith only [hBB1])
-        linarith only [this]
-      have! hgX : (g : ℝ) * X ≤ 4 * g * B := by
-        have! this : X ≤ 4 * B := by linarith only [hX4, hkB']
-        nlinarith only [this, Nat.cast_nonneg (α := ℝ) g, hX0]
-      push_cast at h6
-      linarith only [h6, hl3, hlB, hgX]
-    have! hlc : 0 ≤ Real.log cT := Real.log_nonneg hcT1
-    have! hkB1 := hkcc 1 (by norm_num) (by linarith only [hCb20])
-    have! hg0 : (0 : ℝ) ≤ g := Nat.cast_nonneg g
-    have! hlcB : Real.log cT ≤ Real.log cT * B := le_mul_of_one_le_right hlc hBB1
-    nlinarith only [h1, h2, h3, hkB1, hlcB, hBB1, hg0]
-  have! hlogMV : Real.log (1 + MV) ≤ 4 * B := by
-    have! h1 : 1 + MV ≤ 6 * Real.exp (2 * (k : ℝ) ^ cc) := by
-      rw [hMV]
-      have! h2 : (Mp : ℝ) * V ≤ Real.exp ((k : ℝ) ^ cc) *
-          (5 * Real.exp ((k : ℝ) ^ cc)) := mul_le_mul hMpexp hVexp (Nat.cast_nonneg _)
-            (Real.exp_pos _).le
-      have! h3 : Real.exp (2 * (k : ℝ) ^ cc) =
-          Real.exp ((k : ℝ) ^ cc) * Real.exp ((k : ℝ) ^ cc) := by
-        rw [← Real.exp_add]; ring_nf
-      have! h4 : (1 : ℝ) ≤ Real.exp (2 * (k : ℝ) ^ cc) := Real.one_le_exp (by positivity)
-      nlinarith only [h2, h3, h4]
-    have! h2 := Real.log_le_log (by linarith only [hMV0]) h1
-    rw [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at h2
-    have! hl6 : Real.log 6 ≤ 2 := by
-      have! this := Real.log_lt_sub_one_of_pos (show (0 : ℝ) < 6 by norm_num) (by norm_num)
-      have! h7 : Real.log 6 < 2 := by
-        rw [Real.log_lt_iff_lt_exp (by norm_num)]
-        have := Real.exp_one_gt_d9
-        have! h8 : (2.7 : ℝ) ^ 2 ≤ Real.exp 1 ^ 2 :=
-          pow_le_pow_left₀ (by norm_num) (by linarith only [this]) 2
-        rw [← Real.exp_nat_mul] at h8; norm_num at h8; linarith only [h8]
-      exact h7.le
-    have! this := hkcc 1 (by norm_num) (by linarith only [hCb20])
-    linarith only [h2, hl6, this, hBB1]
-  have! hlogUε : Real.log (U / ε) ≤ (78 + 16 * g + 4 * Real.log cT) * B := by
-    rw [hUε, Real.log_mul (by positivity) (by linarith only [hMV0]), Real.log_mul (by positivity)
-      (Real.exp_pos _).ne', Real.log_mul (by positivity) (by positivity), Real.log_pow,
-      Real.log_pow, Real.log_exp]
-    have! hlc : 0 ≤ Real.log cT := Real.log_nonneg hcT1
-    have! hlcB : Real.log cT ≤ Real.log cT * B := le_mul_of_one_le_right hlc hBB1
-    push_cast
-    linarith only [hlogU, hlDB, hkB', hlogMV, hBB2, hlcB]
+  have! hlogU : Real.log U ≤ (17 + 4 * g + Real.log cT) * B :=
+    leaf_final_hlogU g cT Cb k cc cb hcb hkb S hD2 TT hT0 U hUdef B hCb20 hBB2 hBB1 hkcc X hX0 hX4
+      G hGdef hG1 hD1 hlDB hkB' hU0 hTT1 hcT1 hBGT
+  have! hlogMV : Real.log (1 + MV) ≤ 4 * B :=
+    leaf_final_hlogMV Cb k cc Mp V MV hMV B hCb20 hBB1 hkcc hMpexp hVexp hMV0
+  have! hlogUε : Real.log (U / ε) ≤ (78 + 16 * g + 4 * Real.log cT) * B :=
+    leaf_final_hlogUε g cT k S hD2 U MV ε B hBB2 hBB1 hlDB hkB' hU16 hMV0 hcT1 hUε hlogU hlogMV
   have! hL0' : 0 ≤ Real.logb 2 (U / ε) + 1 := by
     have! this := Real.logb_nonneg (b := 2) (by norm_num) hUε1; linarith only [this]
   have! hLB : Real.logb 2 (U / ε) + 1 ≤ cL * B := by
@@ -3905,8 +5267,8 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     rw [hcL]
     nlinarith only [h1, hlogUε, hBB1, hlc]
   -- the top-count cap `M_t` and the path cap `K_c`
-  have! hcL0 : 0 ≤ cL := by
-    rw [hcL]; have := Real.log_nonneg hcT1; positivity
+  have! hcL0 : 0 ≤ cL :=
+    leaf_final_hcL0 g cT cL hcL hcT1
   set! Gq := Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
     (1 + Real.log (2 * (k : ℝ))) ^ 2) with hGq
   rewrite [← hGq] at hVl0 hMt hGqG
@@ -3926,68 +5288,17 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     have h := hThrC
     rw [← Real.logb_div hU0.ne' hε0.ne'] at h
     linarith only [h, hLB]
-  have! hMtB : Mt ≤ 7000000000 * B ^ 7 * G * (cL * B + 2) := by
-    rw [hMt, Finset.card_product, Finset.card_product, Finset.card_range]
-    push_cast
-    have! hK0 : (0 : ℝ) ≤ S.K := Nat.cast_nonneg _
-    have! h1 : 2 * Gq + 2 * (S.K : ℝ) * Vl0 ≤ 28000002 * B ^ 3 * G := by
-      have! h2 : (S.K : ℝ) * Vl0 ≤ B * (14000000 * B ^ 2 * G) :=
-        mul_le_mul hKB hVl0B hVl00 (by linarith only [hBB1])
-      have! h3 : (1 : ℝ) ≤ B ^ 3 := one_le_pow₀ hBB1
-      have! h4 : G ≤ B ^ 3 * G := le_mul_of_one_le_left (by linarith only [hG1]) h3
-      nlinarith only [h2, h4, hGqG]
-    have! hJ0 : (0 : ℝ) ≤ (S.Jstar : ℝ) + 1 := by positivity
-    have! hT0' : (0 : ℝ) ≤ Ts.card := Nat.cast_nonneg _
-    have! hThr0' : (0 : ℝ) ≤ (dyThr ε U S.Dstar).card := Nat.cast_nonneg _
-    rw [div_eq_mul_one_div]
-    calc 24 * (2 * Gq + 2 * (S.K : ℝ) * Vl0) * (((S.Jstar : ℝ) + 1) *
-          ((Ts.card : ℝ) * ((dyThr ε U S.Dstar).card : ℝ))) * (1 / ρ)
-        ≤ 24 * (28000002 * B ^ 3 * G) * (B * ((3 * B) ^ 2 * (cL * B + 2))) * B := by
-          have! hBnn : 0 ≤ B := by linarith only [hBB1]
-          have! hcLB : 0 ≤ cL * B + 2 := by nlinarith only [hcL0, hBnn]
-          have! hc0 : (0 : ℝ) ≤ (Ts.card : ℝ) * ((dyThr ε U S.Dstar).card : ℝ) :=
-            mul_nonneg hT0' hThr0'
-          refine mul_le_mul (mul_le_mul (by linarith only [h1]) (mul_le_mul hJB
-              (mul_le_mul hcardTs hcardThr hThr0' (sq_nonneg _)) hc0 hBnn) (mul_nonneg hJ0 hc0)
-              (by positivity)) hρ1' (by rw [one_div]; exact (inv_pos.mpr hρ).le) ?_
-          exact mul_nonneg (by positivity) (mul_nonneg hBnn (mul_nonneg (sq_nonneg _) hcLB))
-      _ = 6048000432 * B ^ 7 * G * (cL * B + 2) := by ring
-      _ ≤ 7000000000 * B ^ 7 * G * (cL * B + 2) := by
-          have! this : (0 : ℝ) ≤ B ^ 7 * G * (cL * B + 2) := by positivity
-          nlinarith only [this]
+  have! hMtB : Mt ≤ 7000000000 * B ^ 7 * G * (cL * B + 2) :=
+    leaf_final_hMtB cL k cc ρ hρ S Vl0 U ε Mt B hBB1 G hG1 hKB hJB hVl00 hVl0B hρ1' hcL0 hGqG hMt
+      hcardTs hcardThr
   have! hMt0 : 0 ≤ Mt := by
     rw [hMt]; have : 0 ≤ Gq := by rw [hGq]; positivity
     exact div_nonneg (mul_nonneg (by positivity) (Nat.cast_nonneg _)) hρ.le
   set! Kc := max (max 1 Mt) TT with hKcdef
   rewrite [← hKcdef] at hcM4 hcM3
   have! hKc1 : 1 ≤ Kc := le_trans (le_max_left _ _) (le_max_left _ _)
-  have! hKcB : Kc ≤ cK * B ^ 12 * G := by
-    have! hB12 : (1 : ℝ) ≤ B ^ 12 * G := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hBB1) hG1
-    have! h1 : Mt ≤ 7000000000 * (cL + 2) * (B ^ 12 * G) := by
-      refine hMtB.trans ?_
-      have! h2 : B ^ 7 * B ≤ B ^ 12 := by
-        rw [← pow_succ]; exact pow_le_pow_right₀ hBB1 (by norm_num)
-      have! h3 : cL * B + 2 ≤ (cL + 2) * B := by nlinarith only [hBB1, hcL0]
-      have! h4 : 0 ≤ B ^ 7 * G := by positivity
-      calc 7000000000 * B ^ 7 * G * (cL * B + 2) ≤ 7000000000 * B ^ 7 * G * ((cL + 2) * B) :=
-            mul_le_mul_of_nonneg_left h3 (by positivity)
-        _ = 7000000000 * (cL + 2) * (B ^ 7 * B * G) := by ring
-        _ ≤ 7000000000 * (cL + 2) * (B ^ 12 * G) := by gcongr
-    have! h2 : TT ≤ cT * (B ^ 12 * G) := by
-      refine hT.trans ?_
-      have! this : B ^ 11 ≤ B ^ 12 := pow_le_pow_right₀ hBB1 (by norm_num)
-      have! h0 : 0 ≤ cT := by linarith only [hcT1]
-      calc cT * B ^ 11 * G = cT * (B ^ 11 * G) := by ring
-        _ ≤ cT * (B ^ 12 * G) := by gcongr
-    have! hle : Kc ≤ 1 + Mt + TT := max_le (max_le (by linarith only [hMt0, hT0])
-      (by linarith only [hT0])) (by linarith only [hMt0])
-    have! hcK' : (1 + 7000000000 * (cL + 2) + cT) ≤ cK := by
-      rw [hcK]; nlinarith only [hcL0, hcT1]
-    have! hBG0 : 0 ≤ B ^ 12 * G := by positivity
-    calc Kc ≤ 1 + Mt + TT := hle
-      _ ≤ (1 + 7000000000 * (cL + 2) + cT) * (B ^ 12 * G) := by nlinarith only [h1, h2, hB12]
-      _ ≤ cK * (B ^ 12 * G) := mul_le_mul_of_nonneg_right hcK' hBG0
-      _ = cK * B ^ 12 * G := by ring
+  have! hKcB : Kc ≤ cK * B ^ 12 * G :=
+    leaf_final_hKcB cT cL cK TT hT0 Mt hcK B hBB1 G hG1 hT hcT1 hcL0 hMtB hMt0
   -- the core bounds
   have! hH1' : (1 : ℝ) ≤ S.H := by linarith only [hH2]
   have! hcM4' : cM4 ≤ C4c κ * B ^ 30 * (cL * B) ^ 4 * Kc ^ 2 := by
@@ -4002,21 +5313,8 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
       _ = _ := by
           simp only [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
           push_cast; ring
-  have! hcMtot : cM4 + cM3 ≤ cMc * B ^ 59 * G ^ 2 := by
-    have! h4 := C4c_nonneg κ
-    have! h3 := C3c_nonneg κ
-    have! hK2 : Kc ^ 2 ≤ (cK * B ^ 12 * G) ^ 2 := pow_le_pow_left₀ (by linarith only [hKc1]) hKcB 2
-    have! hB30 : B ^ 30 ≤ B ^ 30 * B := le_mul_of_one_le_right (by positivity) hBB1
-    have! hX0' : 0 ≤ (cL * B) ^ 4 * Kc ^ 2 := by positivity
-    calc cM4 + cM3
-        ≤ C4c κ * B ^ 30 * (cL * B) ^ 4 * Kc ^ 2 +
-            4 * (C3c κ * B ^ 30 * B * (cL * B) ^ 4 * Kc ^ 2) := add_le_add hcM4' hcM3'
-      _ ≤ (C4c κ + 4 * C3c κ) * (B ^ 30 * B) * ((cL * B) ^ 4 * Kc ^ 2) := by
-          have! this := mul_le_mul_of_nonneg_left hB30 h4
-          nlinarith only [this, hX0']
-      _ ≤ (C4c κ + 4 * C3c κ) * (B ^ 30 * B) * ((cL * B) ^ 4 * (cK * B ^ 12 * G) ^ 2) := by
-          gcongr
-      _ = cMc * B ^ 59 * G ^ 2 := by rw [hcMc]; ring
+  have! hcMtot : cM4 + cM3 ≤ cMc * B ^ 59 * G ^ 2 :=
+    leaf_final_hcMtot κ cL cK cMc TT Mt cM4 cM3 hcMc B hBB1 G hKc1 hKcB hcM4' hcM3'
   -- the physical errors: `√(4M) √E_e ≤ 288 e^{4 k^c} √δ |R|`
   obtain ⟨E1, hE1⟩ : ∃ x : ℝ, x = Real.exp ((k : ℝ) ^ cc) := ⟨_, rfl⟩
   have! hE11 : 1 ≤ E1 := by rw [hE1]; exact Real.one_le_exp (by positivity)
@@ -4027,55 +5325,9 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
   have! hdBE : (dB : ℝ) ≤ E1 := by
     rw [hE1]; exact hdBk.trans ((Real.add_one_le_exp _).trans' (by linarith only []))
   have! hME : Real.sqrt (4 * (((Mp * V : ℕ) : ℝ) * R)) *
-      Real.sqrt Ee ≤ 288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ * R := by
-    have hEe00 : 0 ≤ Ee := hEe0
-    have! hMV' : (((Mp * V : ℕ) : ℝ)) ≤ 5 * E1 ^ 2 := by
-      push_cast
-      have! this := mul_le_mul hMpE hVE1 (Nat.cast_nonneg _) (by linarith only [hE11])
-      nlinarith only [this]
-    have! hMV0' : (0 : ℝ) ≤ (((Mp * V : ℕ) : ℝ)) := Nat.cast_nonneg _
-    have! hδ1 : δ ≤ 1 := by linarith only [hδ8]
-    have! hdB1' : (1 : ℝ) ≤ dB := by exact_mod_cast hdB1
-    have! hc : Nl * (8 * dB * δ + 2 * δ ^ 2) ≤ 10 * E1 ^ 2 * δ := by
-      have! h1 : 8 * dB * δ + 2 * δ ^ 2 ≤ 10 * dB * δ := by nlinarith only [hδ, hδ1, hdB1']
-      have! h2 : Nl * (10 * dB * δ) ≤ E1 * (10 * E1 * δ) :=
-        mul_le_mul hNlE (by nlinarith only [hdBE, hδ]) (by positivity) (by linarith only [hE11])
-      have! h3 : Nl * (8 * dB * δ + 2 * δ ^ 2) ≤ Nl * (10 * dB * δ) :=
-        mul_le_mul_of_nonneg_left h1 hNl0
-      nlinarith only [h2, h3]
-    have! hb : cb ^ 2 ≤ E1 ^ 2 := pow_le_pow_left₀ (by linarith only [hcb]) hcbE 2
-    have! hprod : 4 * (((Mp * V : ℕ) : ℝ) * R) * Ee ≤
-        (288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ * R) ^ 2 := by
-      have! hE4 : Real.exp (4 * (k : ℝ) ^ cc) = E1 ^ 4 := by
-        rw [hE1, ← Real.exp_nat_mul]; norm_num
-      have! hsδ : Real.sqrt δ ^ 2 = δ := Real.sq_sqrt hδ.le
-      rw [hE4, mul_pow, mul_pow, mul_pow, hsδ]
-      set! m := (((Mp * V : ℕ) : ℝ)) with hm
-      rewrite [← hm] at hcEsum hMV' hMV0' ⊢
-      have! hEe1 : Ee ≤ (Nl * (8 * dB * δ + 2 * δ ^ 2)) * (16 * cb ^ 2) * m * R := by
-        refine hEeb.trans (le_of_eq ?_)
-        rw [hm]
-        push_cast
-        ring
-      have! h1 : 4 * (m * R) * Ee ≤ 4 * (m * R) * ((Nl * (8 * dB * δ + 2 * δ ^ 2)) *
-          (16 * cb ^ 2) * m * R) := mul_le_mul_of_nonneg_left hEe1 (by positivity)
-      have! h2 : 4 * (m * R) * ((Nl * (8 * dB * δ + 2 * δ ^ 2)) * (16 * cb ^ 2) * m * R) =
-          64 * (m * m) * (Nl * (8 * dB * δ + 2 * δ ^ 2)) * cb ^ 2 * R ^ 2 := by ring
-      have! hmm : m * m ≤ (5 * E1 ^ 2) * (5 * E1 ^ 2) := mul_le_mul hMV' hMV' hMV0' (by positivity)
-      have! hnn : 0 ≤ Nl * (8 * dB * δ + 2 * δ ^ 2) := by positivity
-      have! h3 : 64 * (m * m) * (Nl * (8 * dB * δ + 2 * δ ^ 2)) * cb ^ 2 * R ^ 2 ≤
-          64 * ((5 * E1 ^ 2) * (5 * E1 ^ 2)) * (10 * E1 ^ 2 * δ) * E1 ^ 2 * R ^ 2 := by
-        gcongr
-      have! h4 : 64 * ((5 * E1 ^ 2) * (5 * E1 ^ 2)) * (10 * E1 ^ 2 * δ) * E1 ^ 2 * R ^ 2 ≤
-          288 ^ 2 * (E1 ^ 4) ^ 2 * δ * R ^ 2 := by
-        have! this : 0 ≤ E1 ^ 8 * δ * R ^ 2 := by positivity
-        nlinarith only [this]
-      linarith only [h1, h2, h3, h4]
-    rw [← Real.sqrt_mul (by positivity)]
-    calc Real.sqrt (4 * (((Mp * V : ℕ) : ℝ) * R) * Ee)
-        ≤ Real.sqrt ((288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ *
-          R) ^ 2) := Real.sqrt_le_sqrt hprod
-      _ = _ := Real.sqrt_sq (by positivity)
+      Real.sqrt Ee ≤ 288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ * R :=
+    leaf_final_hME κ k cc cb Nl Mp V hcb hNl4 dB hdB1 δ R hδ hδ8 hRl0 S Iw U ε cE hcEsum Ee hEe0
+      hEeb hNl0 E1 hE1 hE11 hMpE hVE1 hcbE hNlE hdBE
   have! hDinv : S.Dstar⁻¹ ≤ Real.exp (-kD) := by
     rw [Real.exp_neg]; exact inv_anti₀ (Real.exp_pos _) hexpD
   obtain ⟨ι, hι⟩ : ∃ x : ℝ, x = (S.Dstar ^ 100)⁻¹ * S.Dstar ^ 10 := ⟨_, rfl⟩
@@ -4093,29 +5345,16 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
       S.Dstar ^ 4) + 4 * (81 * threeErrC κ 3 1 * ι * U + K1c * (8 * entryCU κ 3 1 *
         2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)))) with hQe
   rewrite [← hQe] at hcEsum
-  have! hQe0 : 0 ≤ Qe := by
-    rw [hQe]
-    have! this := fourErrC_nonneg κ 3; have := threeErrC_nonneg κ 3 1; have := fourKC_nonneg κ 3
-    have! this := entryCU_nonneg' κ 3 1; have := K1c_pos
-    positivity
+  have! hQe0 : 0 ≤ Qe :=
+    leaf_final_hQe0 κ S hD2 Iw U ε hU16 hε0 ι hι0 hQe
   -- the error constant `Q_e M V`
   have! hMVc : (((Mp * V : ℕ) : ℝ)) = MV := by rw [hMV]; push_cast; ring
   have! hMVE : MV ≤ 5 * E1 ^ 2 := by
     rw [hMV]
     have! this := mul_le_mul hMpE hVE1 (Nat.cast_nonneg _) (by linarith only [hE11])
     nlinarith only [this]
-  have! hε4 : ε * U ^ 3 * S.Dstar ^ 4 * MV ≤ Real.exp (-(k : ℝ)) := by
-    have! e : ε * U ^ 3 * S.Dstar ^ 4 * MV =
-        MV / (1 + MV) * (S.Dstar⁻¹ * (Real.exp k)⁻¹) := by
-      rw [hεdef]; field_simp
-    rw [e, Real.exp_neg]
-    have! h1 : MV / (1 + MV) ≤ 1 := by
-      rw [div_le_one (by linarith only [hMV0])]; linarith only []
-    have! h2 : S.Dstar⁻¹ ≤ 1 := inv_le_one_of_one_le₀ hD1
-    have! h0 : 0 ≤ MV / (1 + MV) := by positivity
-    calc MV / (1 + MV) * (S.Dstar⁻¹ * (Real.exp k)⁻¹) ≤ 1 * (1 * (Real.exp k)⁻¹) := by
-          gcongr
-      _ = (Real.exp k)⁻¹ := by ring
+  have! hε4 : ε * U ^ 3 * S.Dstar ^ 4 * MV ≤ Real.exp (-(k : ℝ)) :=
+    leaf_final_hε4 k S hD2 U MV ε hεdef hD1 hU16 hMV0
   have! hIwD : (Iw : ℝ) + 1 ≤ 501 * S.Dstar ^ 2 := by
     have! h1 : (Iw : ℝ) ≤ Real.logb 2 (S.Dstar ^ 250) := by
       rw [hIw]; exact Nat.floor_le (Real.logb_nonneg (by norm_num) (one_le_pow₀ hD1))
@@ -4127,136 +5366,24 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     have! h4 : S.Dstar ≤ S.Dstar ^ 2 := le_self_pow₀ hD1 (by norm_num)
     have! h5 : (1 : ℝ) ≤ S.Dstar ^ 2 := one_le_pow₀ hD1
     linarith only [h1, h2, h3, h4, h5]
-  have! hε3 : ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)) * MV ≤ 501 * Real.exp (-(k : ℝ)) := by
-    have! e : ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)) * MV =
-        MV / (1 + MV) * (((Iw : ℝ) + 1) / S.Dstar ^ 2 * (Real.exp k)⁻¹) := by
-      rw [hεdef]; field_simp
-    rw [e, Real.exp_neg]
-    have! h1 : MV / (1 + MV) ≤ 1 := by
-      rw [div_le_one (by linarith only [hMV0])]; linarith only []
-    have! h2 : ((Iw : ℝ) + 1) / S.Dstar ^ 2 ≤ 501 := by
-      rw [div_le_iff₀ (by positivity)]; exact hIwD
-    have! h0 : 0 ≤ MV / (1 + MV) := by positivity
-    have! h3 : 0 ≤ ((Iw : ℝ) + 1) / S.Dstar ^ 2 := by positivity
-    calc MV / (1 + MV) * (((Iw : ℝ) + 1) / S.Dstar ^ 2 * (Real.exp k)⁻¹)
-        ≤ 1 * (501 * (Real.exp k)⁻¹) := by gcongr
-      _ = 501 * (Real.exp k)⁻¹ := by ring
-  have! hE14 : 4 ≤ E1 := by
-    rw [hE1]
-    have! this := Real.quadratic_le_exp_of_nonneg (show (0 : ℝ) ≤ (k : ℝ) ^ cc by positivity)
-    have! h2 : (2 : ℝ) ≤ (k : ℝ) ^ cc := le_trans hk2 (le_self_pow₀ hk1 (by omega))
-    nlinarith only [this, h2]
-  have! hιU : ι * U ≤ S.Dstar⁻¹ * (2 * (cb + 2) + Real.sqrt TT) := by
-    have! hU' : U ≤ 2 * (cb + 2) * S.Dstar ^ 2 + Real.sqrt TT := by
-      rw [hUdef]
-      exact max_le (by linarith only [Real.sqrt_nonneg TT]) (by
-        have! this : 0 ≤ 2 * (cb + 2) * S.Dstar ^ 2 := by
-          have := hcb; positivity
-        linarith only [this])
-    have! h1 := mul_le_mul_of_nonneg_left hU' hι0
-    have! h2 : ι * (2 * (cb + 2) * S.Dstar ^ 2) ≤ S.Dstar⁻¹ * (2 * (cb + 2)) := by
-      have! this := mul_le_mul_of_nonneg_right hιD2 (show 0 ≤ 2 * (cb + 2) by
-        linarith only [hcb])
-      linarith only [this]
-    have! h3 : ι * Real.sqrt TT ≤ S.Dstar⁻¹ * Real.sqrt TT :=
-      mul_le_mul_of_nonneg_right hιD (Real.sqrt_nonneg _)
-    linarith only [h1, h2, h3]
-  have! hsTT : Real.sqrt TT ≤ Real.sqrt cT * B ^ 6 * G := by
-    have! h1 : TT ≤ (Real.sqrt cT * B ^ 6 * G) ^ 2 := by
-      have! hc := Real.sq_sqrt (show 0 ≤ cT by linarith only [hcT1])
-      have! h11 : B ^ 11 * G ≤ B ^ 12 * G ^ 2 := by
-        have! this := pow_le_pow_right₀ hBB1 (show 11 ≤ 12 by norm_num)
-        have! hG2 : G ≤ G ^ 2 := le_self_pow₀ hG1 (by norm_num)
-        exact mul_le_mul this hG2 (by linarith only [hG1]) (by positivity)
-      calc TT ≤ cT * B ^ 11 * G := hT
-        _ ≤ cT * (B ^ 12 * G ^ 2) := by
-            rw [mul_assoc]; exact mul_le_mul_of_nonneg_left h11 (by linarith only [hcT1])
-        _ = (Real.sqrt cT * B ^ 6 * G) ^ 2 := by rw [mul_pow, mul_pow, hc]; ring
-    calc Real.sqrt TT ≤ Real.sqrt ((Real.sqrt cT * B ^ 6 * G) ^ 2) := Real.sqrt_le_sqrt h1
-      _ = Real.sqrt cT * B ^ 6 * G := Real.sqrt_sq (by positivity)
+  have! hε3 : ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)) * MV ≤ 501 * Real.exp (-(k : ℝ)) :=
+    leaf_final_hε3 k S hD2 Iw U MV ε hεdef hU16 hMV0 hIwD
+  have! hE14 : 4 ≤ E1 :=
+    leaf_final_hE14 k cc hcc hk2 hk1 E1 hE1
+  have! hιU : ι * U ≤ S.Dstar⁻¹ * (2 * (cb + 2) + Real.sqrt TT) :=
+    leaf_final_hιU cb hcb S TT U hUdef ι hι0 hιD hιD2
+  have! hsTT : Real.sqrt TT ≤ Real.sqrt cT * B ^ 6 * G :=
+    leaf_final_hsTT cT TT B hBB1 G hG1 hT hcT1
   have! hQeMV : Qe * MV ≤ 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
       324 * threeErrC κ 3 1 * Real.sqrt cT) * Real.exp (3 * (k : ℝ) ^ cc) * B ^ 6 * G *
-        Real.exp (-kD) + ce2 * Real.exp (-(k : ℝ)) := by
-    have! hf := fourErrC_nonneg κ 3
-    have! ht := threeErrC_nonneg κ 3 1
-    have! hfk := fourKC_nonneg κ 3
-    have! hen := entryCU_nonneg' κ 3 1
-    have hK1p := K1c_pos
-    -- the powers of `D_*`
-    have! hA1 : 16 * fourErrC κ 3 * ι * MV + 4 * (81 * threeErrC κ 3 1 * ι * U) * MV ≤
-        S.Dstar⁻¹ * MV * (16 * fourErrC κ 3 + 324 * threeErrC κ 3 1 *
-          (2 * (cb + 2) + Real.sqrt TT)) := by
-      have! h1 : 16 * fourErrC κ 3 * ι * MV ≤ 16 * fourErrC κ 3 * S.Dstar⁻¹ * MV :=
-        mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hιD (by positivity)) hMV0
-      have! h2 : 81 * threeErrC κ 3 1 * (ι * U) * MV ≤
-          81 * threeErrC κ 3 1 * (S.Dstar⁻¹ * (2 * (cb + 2) + Real.sqrt TT)) * MV :=
-        mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hιU (by positivity)) hMV0
-      have! e1 : 4 * (81 * threeErrC κ 3 1 * ι * U) * MV =
-          4 * (81 * threeErrC κ 3 1 * (ι * U) * MV) := by
-        ring
-      rw [e1]
-      nlinarith only [h1, h2]
-    -- the bound by `e^{3 k^c} B^6 G e^{-k_D}`
-    have! hcb2 : 2 * (cb + 2) ≤ 2 * E1 := by linarith only [hcbE, hE14, hcbexp, hE1]
-    have! hBG : 1 ≤ B ^ 6 * G := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hBB1) hG1
-    have! hE3 : Real.exp (3 * (k : ℝ) ^ cc) = E1 ^ 3 := by
-      rw [hE1, ← Real.exp_nat_mul]; norm_num
-    have! hA2 : S.Dstar⁻¹ * MV * (16 * fourErrC κ 3 + 324 * threeErrC κ 3 1 *
-        (2 * (cb + 2) + Real.sqrt TT)) ≤ 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
-          324 * threeErrC κ 3 1 * Real.sqrt cT) * Real.exp (3 * (k : ℝ) ^ cc) * B ^ 6 * G *
-            Real.exp (-kD) := by
-      rw [hE3]
-      have! h1 : 16 * fourErrC κ 3 + 324 * threeErrC κ 3 1 * (2 * (cb + 2) + Real.sqrt TT) ≤
-          (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 * Real.sqrt cT) *
-            (E1 * (B ^ 6 * G)) := by
-        have! hsc : 0 ≤ Real.sqrt cT := Real.sqrt_nonneg _
-        have! hEBG : 1 ≤ E1 * (B ^ 6 * G) := one_le_mul_of_one_le_of_one_le hE11 hBG
-        have! h2 : 2 * (cb + 2) + Real.sqrt TT ≤ 2 * (E1 * (B ^ 6 * G)) +
-            Real.sqrt cT * (E1 * (B ^ 6 * G)) := by
-          have! h3 : 2 * E1 ≤ 2 * (E1 * (B ^ 6 * G)) := by nlinarith only [hBG, hE11]
-          have! h4 : Real.sqrt cT * B ^ 6 * G ≤ Real.sqrt cT * (E1 * (B ^ 6 * G)) := by
-            have! this := mul_le_mul_of_nonneg_left (le_mul_of_one_le_left (by positivity) hE11 :
-              B ^ 6 * G ≤ E1 * (B ^ 6 * G)) hsc
-            linarith only [this]
-          linarith only [hcb2, hsTT, h3, h4]
-        have! h5 := mul_le_mul_of_nonneg_left h2 (show 0 ≤ 324 * threeErrC κ 3 1 by positivity)
-        have! h6 : 16 * fourErrC κ 3 ≤ 16 * fourErrC κ 3 * (E1 * (B ^ 6 * G)) :=
-          le_mul_of_one_le_right (by positivity) hEBG
-        nlinarith only [h5, h6]
-      have! h7 : S.Dstar⁻¹ * MV ≤ Real.exp (-kD) * (5 * E1 ^ 2) :=
-        mul_le_mul hDinv hMVE hMV0 (Real.exp_pos _).le
-      have! h8 := mul_le_mul h7 h1 (by positivity) (by positivity)
-      calc _ ≤ Real.exp (-kD) * (5 * E1 ^ 2) * ((16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
-            324 * threeErrC κ 3 1 * Real.sqrt cT) * (E1 * (B ^ 6 * G))) := h8
-        _ = _ := by ring
-    have! hA3 : K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε * U ^ 3 * S.Dstar ^ 4) * MV +
-        4 * (K1c * (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 *
-          (S.Dstar ^ 3 * (Iw + 1)))) * MV ≤ ce2 * Real.exp (-(k : ℝ)) := by
-      have! e1 : K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε * U ^ 3 * S.Dstar ^ 4) * MV =
-          K1c * (2 * fourKC κ 3 * 12 ^ 4) * (ε * U ^ 3 * S.Dstar ^ 4 * MV) := by ring
-      have! e2 : 4 * (K1c * (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 *
-          (S.Dstar ^ 3 * (Iw + 1)))) * MV = 4 * (K1c * (8 * entryCU κ 3 1 * 2 ^ (1 + 4) *
-            12 ^ 3)) * (ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)) * MV) := by ring
-      rw [e1, e2, hce2]
-      have! h1 := mul_le_mul_of_nonneg_left hε4 (show 0 ≤ K1c * (2 * fourKC κ 3 * 12 ^ 4) by
-        positivity)
-      have! h2 := mul_le_mul_of_nonneg_left hε3 (show 0 ≤ 4 * (K1c * (8 * entryCU κ 3 1 *
-        2 ^ (1 + 4) * 12 ^ 3)) by positivity)
-      nlinarith only [h1, h2]
-    have! e : Qe * MV = (16 * fourErrC κ 3 * ι * MV + 4 * (81 * threeErrC κ 3 1 * ι * U) * MV) +
-        (K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε * U ^ 3 * S.Dstar ^ 4) * MV +
-        4 * (K1c * (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 *
-          (S.Dstar ^ 3 * (Iw + 1)))) * MV) := by rw [hQe]; ring
-    rw [e]
-    linarith only [hA1, hA2, hA3]
+        Real.exp (-kD) + ce2 * Real.exp (-(k : ℝ)) :=
+    leaf_final_hQeMV κ cT ce2 k cc kD cb hcb S Iw TT U MV ε hce2 B hBB2 hBB1 G hG1 hcbexp hMV0 E1
+      hE1 hE11 hcbE hDinv ι hιD hQe hMVE hε4 hε3 hE14 hιU hsTT
   -- nonnegativity of the constants
   have! hL00 := localFormUniformConstant_nonneg κ
   have! hcT0 : 0 ≤ cT := by rw [hcT]; positivity
-  have! hcMcn : 0 ≤ cMc := by
-    rw [hcMc]
-    have! h1 := C4c_nonneg κ
-    have! h2 := C3c_nonneg κ
-    exact mul_nonneg (mul_nonneg (by linarith only [h1, h2]) (by positivity)) (by positivity)
+  have! hcMcn : 0 ≤ cMc :=
+    leaf_final_hcMcn κ cL cK cMc hcMc
   have! hcmn : 0 ≤ cm := by
     rw [hcm]
     have! h1 : 0 ≤ 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT) :=
@@ -4297,11 +5424,8 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
   set! Cjg : ℝ := (((2 * famFuel + 2 : ℕ) : ℝ) + 1) ^ 2 * Real.exp (2 * (1024 * (cc + 1) *
     (1024 * (cc + 1) + cc + 7) * (1 + Real.log (2 * (k : ℝ))) ^ 2)) with hCjg
   rewrite [← hCjg] at hΓle
-  have! hCjg1 : 1 ≤ Cjg := by
-    rw [hCjg]
-    have! h0 := Nat.cast_nonneg (α := ℝ) (2 * famFuel + 2)
-    exact one_le_mul_of_one_le_of_one_le (one_le_pow₀ (by linarith only [h0]))
-      (Real.one_le_exp (by positivity))
+  have! hCjg1 : 1 ≤ Cjg :=
+    leaf_final_hCjg1 k cc famFuel hCjg
   set! G0e := Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 3) *
     (1 + Real.log (2 * (k : ℝ))) ^ 2) with hG0e
   rewrite [← hG0e] at hTTle hT2le hG0G hΓle
@@ -4321,174 +5445,28 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
   have! hcc1 : (1 : ℝ) ≤ cc := by exact_mod_cast hcc
   have! hLpk : (2 : ℝ) ^ famFuel ≤ 3 ^ cc * (k : ℝ) ^ cc := by
     have! this := two_pow_le_of_fuel hk1 hkF; rwa [mul_pow] at this
-  have! hOsk : (Os.card : ℝ) ≤ 80 * 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1) := by
-    have! e : (Os.card : ℝ) = 80 * ((2 : ℝ) ^ famFuel) ^ 2 * ((2 * famFuel + 2 : ℕ) : ℝ) := by
-      rw [hOs]
-      unfold ActiveSetup.BasicFamilies.FamParams.SideLeafM.nOs
-      simp only [Finset.card_product, Finset.card_univ, Fintype.card_fin, Finset.card_range]
-      push_cast; ring
-    rw [e]
-    have! h1 : ((2 : ℝ) ^ famFuel) ^ 2 ≤ (3 ^ cc * (k : ℝ) ^ cc) ^ 2 :=
-      pow_le_pow_left₀ (by positivity) hLpk 2
-    have! h2 : (3 ^ cc * (k : ℝ) ^ cc) ^ 2 * (cc * k) = 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1) := by
-      rw [show (9 : ℝ) ^ cc = (3 ^ cc) ^ 2 by rw [← pow_mul, mul_comm, pow_mul]; norm_num]
-      ring
-    have! h3 := mul_le_mul h1 hJmk (Nat.cast_nonneg _) (by positivity)
-    nlinarith only [h3, h2]
+  have! hOsk : (Os.card : ℝ) ≤ 80 * 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1) :=
+    leaf_final_hOsk k cc famFuel Os hOs hJmk hLpk
   have! hOs0' : (0 : ℝ) ≤ Os.card := Nat.cast_nonneg _
-  have! hhull : hullCutConstant (ρ / 64 / 2) ≤ 65536 * (k : ℝ) ^ (2 * cc) := by
-    unfold hullCutConstant
-    have! hy : 2 / (ρ / 64 / 2) = 256 * ρ⁻¹ := by field_simp; ring
-    rw [hy]
-    have! hy0 : 0 < 256 * ρ⁻¹ := by positivity
-    have! h1 : 1 + Real.log (256 * ρ⁻¹) ≤ 256 * ρ⁻¹ := by
-      have! this := Real.log_le_sub_one_of_pos hy0; linarith only [this]
-    have! h2 : 256 * ρ⁻¹ ≤ 256 * (k : ℝ) ^ cc := by linarith only [hρk]
-    calc 256 * ρ⁻¹ * (1 + Real.log (256 * ρ⁻¹)) ≤ 256 * ρ⁻¹ * (256 * ρ⁻¹) :=
-          mul_le_mul_of_nonneg_left h1 hy0.le
-      _ ≤ (256 * (k : ℝ) ^ cc) * (256 * (k : ℝ) ^ cc) :=
-          mul_le_mul h2 h2 hy0.le (by positivity)
-      _ = 65536 * (k : ℝ) ^ (2 * cc) := by ring
+  have! hhull : hullCutConstant (ρ / 64 / 2) ≤ 65536 * (k : ℝ) ^ (2 * cc) :=
+    leaf_final_hhull k cc hk2 ρ hρ hρk
   set! Yn : ℝ := (Os.card : ℝ) * (Mp : ℝ) * V with hYn
   rewrite [← hYn] at hnearS
   have! hYn0 : 0 ≤ Yn := by
     rw [hYn]; exact mul_nonneg (mul_nonneg hOs0' (Nat.cast_nonneg _)) (Nat.cast_nonneg _)
-  have! hlogY : 1 + Real.log (2 + Yn) ≤ (8 + 80 * 9 ^ cc * cc) * (k : ℝ) ^ (2 * cc + 1) := by
-    have! h1 : 2 + Yn ≤ (2 + Os.card) * ((1 + Mp) * (1 + V)) := by
-      rw [hYn]
-      have! this : (0 : ℝ) ≤ Mp := Nat.cast_nonneg _
-      have! this : (0 : ℝ) ≤ V := Nat.cast_nonneg _
-      nlinarith only [hOs0', this, ‹(0 : ℝ) ≤ Mp›, mul_nonneg hOs0' ‹(0 : ℝ) ≤ Mp›,
-        mul_nonneg ‹(0 : ℝ) ≤ Mp› this, mul_nonneg hOs0' this,
-        mul_nonneg (mul_nonneg hOs0' ‹(0 : ℝ) ≤ Mp›) this]
-    have! h2 := Real.log_le_log (by linarith only [hYn0]) h1
-    rw [Real.log_mul (ne_of_gt (by linarith only [hOs0'])) (by positivity),
-      Real.log_mul (by positivity) (by positivity)] at h2
-    have! h3 : Real.log (2 + Os.card) ≤ 1 + Os.card := by
-      have! this := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 2 + Os.card by
-        linarith only [hOs0'])
-      linarith only [this]
-    have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
-    have! h4 : Real.log (1 + Mp) ≤ 1 + (k : ℝ) ^ cc := by
-      have! h5 : 1 + (Mp : ℝ) ≤ 2 * E1 := by linarith only [hMpE, hE11]
-      have! h6 := Real.log_le_log (by positivity) h5
-      rw [Real.log_mul (by norm_num) (by linarith only [hE11]), hE1, Real.log_exp] at h6
-      linarith only [h6, hl2]
-    have! h7 : Real.log (1 + V) ≤ 2 + (k : ℝ) ^ cc := by
-      have! h5 : 1 + (V : ℝ) ≤ 6 * E1 := by linarith only [hVE1, hE11]
-      have! h6 := Real.log_le_log (by positivity) h5
-      rw [Real.log_mul (by norm_num) (by linarith only [hE11]), hE1, Real.log_exp] at h6
-      have! hl6 : Real.log 6 ≤ 2 := by
-        have! h8 : Real.log 6 < 2 := by
-          rw [Real.log_lt_iff_lt_exp (by norm_num)]
-          have! h9 : (2.7 : ℝ) ^ 2 ≤ Real.exp 1 ^ 2 :=
-            pow_le_pow_left₀ (by norm_num) (by linarith only [Real.exp_one_gt_d9]) 2
-          rw [← Real.exp_nat_mul] at h9; norm_num at h9; linarith only [h9]
-        exact h8.le
-      linarith only [h6, hl6]
-    have! h8 : (5 : ℝ) + 2 * (k : ℝ) ^ cc ≤ 7 * (k : ℝ) ^ (2 * cc + 1) := by
-      linarith only [hkcc', hk2cc]
-    have! h9 := mul_le_mul_of_nonneg_left hk2cc (show (0 : ℝ) ≤ 80 * 9 ^ cc * cc by positivity)
-    linarith only [h2, h3, h4, h7, h8, hOsk, hk2cc]
-  have! hCjgk : Cjg ≤ 4 * cc ^ 2 * (k : ℝ) ^ 2 * G := by
-    rw [hCjg]
-    have! h1 : ((2 * famFuel + 2 : ℕ) : ℝ) + 1 ≤ 2 * cc * k := by
-      have! this : (1 : ℝ) ≤ cc * k := one_le_mul_of_one_le_of_one_le hcc1 hk1
-      linarith only [hJmk, this]
-    have! h2 : (((2 * famFuel + 2 : ℕ) : ℝ) + 1) ^ 2 ≤ (2 * cc * k) ^ 2 :=
-      pow_le_pow_left₀ (by positivity) h1 2
-    have! h3 : Real.exp (2 * (1024 * (cc + 1) * (1024 * (cc + 1) + cc + 7) *
-        (1 + Real.log (2 * (k : ℝ))) ^ 2)) ≤ G := by
-      rw [show 2 * (1024 * ((cc : ℝ) + 1) * (1024 * (cc + 1) + cc + 7) *
-          (1 + Real.log (2 * (k : ℝ))) ^ 2) = (2 * (1024 * ((cc : ℝ) + 1) *
-            (1024 * (cc + 1) + cc + 7))) * X by rw [hX]; ring]
-      refine hexpG _ ?_
-      rw [hgr]
-      nlinarith only [sq_nonneg (cc : ℝ), Nat.cast_nonneg (α := ℝ) cc]
-    calc (((2 * famFuel + 2 : ℕ) : ℝ) + 1) ^ 2 * Real.exp (2 * (1024 * (cc + 1) *
-          (1024 * (cc + 1) + cc + 7) * (1 + Real.log (2 * (k : ℝ))) ^ 2))
-        ≤ (2 * cc * k) ^ 2 * G := mul_le_mul h2 h3 (Real.exp_pos _).le (by positivity)
-      _ = 4 * cc ^ 2 * (k : ℝ) ^ 2 * G := by ring
-  have! hWk : W ≤ 170000000 * (k : ℝ) ^ (2 * cc) * G := by
-    have! hd' : (S.dmax : ℝ) ≤ 4 * (k : ℝ) ^ cc := by
-      rw [hSd]; push_cast
-      have hdBk' : (dB : ℝ) ≤ (k : ℝ) ^ cc := hdBk
-      linarith only [hdBk', hkcc1]
-    have! hlDm : Real.log (2 * S.Dm) ≤ 2 * (k : ℝ) ^ cc := by
-      rw [hSDm, Real.log_mul (by norm_num) (by positivity)]
-      have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
-      linarith only [hl2, hmaxNl, hkcc1]
-    have! hlDm0 : 0 ≤ Real.log (2 * S.Dm) := Real.log_nonneg (by linarith only [hDm2])
-    have! hk2c : (k : ℝ) ^ (2 * cc) = (k : ℝ) ^ cc * (k : ℝ) ^ cc := by ring
-    have! hVk : Vl0 ≤ 106168392 * (k : ℝ) ^ (2 * cc) * G := by
-      rw [hVl0]
-      have! hfl : ((⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ : ℕ) : ℝ) + 1 ≤
-          1474561 * (k : ℝ) ^ (2 * cc) := by
-        have! h1 := Nat.floor_le (show (0 : ℝ) ≤ 180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024)
-          by positivity)
-        have! h2 : (S.dmax : ℝ) * Real.log (2 * S.Dm) ≤ 4 * (k : ℝ) ^ cc * (2 * (k : ℝ) ^ cc) :=
-          mul_le_mul hd' hlDm hlDm0 (by positivity)
-        rw [div_div_eq_mul_div, div_one] at h1 ⊢
-        have! h3 : (1 : ℝ) ≤ (k : ℝ) ^ (2 * cc) := one_le_pow₀ hk1
-        rw [hk2c] at h3 ⊢
-        linarith only [h1, h2, h3]
-      have! hGq' : Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
-          (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394 ≤ 3 * G := by
-        have! h1 : 2 * 1 / S.Dstar ^ 394 ≤ 2 := by
-          rw [div_le_iff₀ (by positivity)]
-          have! this := one_le_pow₀ (n := 394) hD1
-          linarith only [this]
-        have! h2 : Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
-            (1 + Real.log (2 * (k : ℝ))) ^ 2) ≤ G := by rw [← hGq]; exact hGqG
-        linarith only [h1, h2, hG1]
-      have! h0 : (0 : ℝ) ≤ Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
-          (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394 := by positivity
-      calc 24 * (((⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ : ℕ) : ℝ) + 1) *
-            (Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
-              (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394)
-          ≤ 24 * (1474561 * (k : ℝ) ^ (2 * cc)) * (3 * G) := by gcongr
-        _ = 106168392 * (k : ℝ) ^ (2 * cc) * G := by ring
-    have! h1 : (1 : ℝ) ≤ (k : ℝ) ^ (2 * cc) := one_le_pow₀ hk1
-    have! h2 : (k : ℝ) ^ cc ≤ (k : ℝ) ^ (2 * cc) := pow_le_pow_right₀ hk1 (by omega)
-    have! hkG : (k : ℝ) ^ (2 * cc) ≤ (k : ℝ) ^ (2 * cc) * G :=
-      le_mul_of_one_le_right (by positivity) hG1
-    have! hG' : G ≤ (k : ℝ) ^ (2 * cc) * G := le_mul_of_one_le_left (by linarith only [hG1]) h1
-    rw [hWdef]
-    linarith only [hG0G, hVk, hEk, h1, h2, hkG, hG']
+  have! hlogY : 1 + Real.log (2 + Yn) ≤ (8 + 80 * 9 ^ cc * cc) * (k : ℝ) ^ (2 * cc + 1) :=
+    leaf_final_hlogY k cc Mp V Os E1 hE1 hE11 hMpE hVE1 hkcc' hk2cc hOsk hOs0' hYn hYn0
+  have! hCjgk : Cjg ≤ 4 * cc ^ 2 * (k : ℝ) ^ 2 * G :=
+    leaf_final_hCjgk g k cc famFuel hk1 hgr X hX G hexpG hCjg hJmk hcc1
+  have! hWk : W ≤ 170000000 * (k : ℝ) ^ (2 * cc) * G :=
+    leaf_final_hWk k cc Nl dB hdBk E hEk S hSd hSDm Vl0 hk1 G hG1 hkcc1 hD1 hmaxNl hDm2 hGqG hVl0
+      hGq hG0G hWdef
   -- the bound `Q_k ≤ c_Q e^{(8c + 4 + 2g) X}`
   set! Qk := hullCutConstant (ρ / 64 / 2) * (1 + Real.log (2 + Yn)) * Os.card * Cjg * W with hQkdef
   have! hcQ0 : 0 ≤ cQ := by rw [hcQ]; positivity
-  have! hQk : Qk ≤ cQ * Real.exp X ^ (8 * cc + 4 + 2 * g) := by
-    have! hkX : (k : ℝ) ≤ Real.exp X := by rw [hX]; exact le_exp_one_add_log_sq hk1
-    have! hGX : G = Real.exp X ^ g := by rw [hGdef, ← Real.exp_nat_mul]
-    have! hlY0 : 0 ≤ 1 + Real.log (2 + Yn) := by
-      have! this := Real.log_nonneg (show (1 : ℝ) ≤ 2 + Yn by linarith only [hYn0])
-      linarith only [this]
-    have! hh0 : 0 ≤ hullCutConstant (ρ / 64 / 2) :=
-      (hullCutConstant_pos (by positivity) (by linarith only [hρ1, hρ])).le
-    have! hCjg0 : 0 ≤ Cjg := by linarith only [hCjg1]
-    have! hW0 : 0 ≤ W := by linarith only [hW1]
-    have! h1 : Qk ≤ (65536 * (k : ℝ) ^ (2 * cc)) *
-        ((8 + 80 * 9 ^ cc * cc) * (k : ℝ) ^ (2 * cc + 1)) *
-        (80 * 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1)) * (4 * cc ^ 2 * (k : ℝ) ^ 2 * G) *
-          (170000000 * (k : ℝ) ^ (2 * cc) * G) := by
-      rw [hQkdef]
-      have! a1 := mul_le_mul hhull hlogY hlY0 (by positivity)
-      have! a2 := mul_le_mul a1 hOsk (Nat.cast_nonneg _) (by positivity)
-      have! a3 := mul_le_mul a2 hCjgk hCjg0 (by positivity)
-      exact mul_le_mul a3 hWk hW0 (by positivity)
-    have! h2 : (65536 * (k : ℝ) ^ (2 * cc)) * ((8 + 80 * 9 ^ cc * cc) * (k : ℝ) ^ (2 * cc + 1)) *
-        (80 * 9 ^ cc * cc * (k : ℝ) ^ (2 * cc + 1)) * (4 * cc ^ 2 * (k : ℝ) ^ 2 * G) *
-          (170000000 * (k : ℝ) ^ (2 * cc) * G) = cQ * ((k : ℝ) ^ (8 * cc + 4) * G ^ 2) := by
-      rw [hcQ]; ring
-    have! h3 : (k : ℝ) ^ (8 * cc + 4) * G ^ 2 ≤ Real.exp X ^ (8 * cc + 4 + 2 * g) := by
-      have! h4 : (k : ℝ) ^ (8 * cc + 4) ≤ Real.exp X ^ (8 * cc + 4) :=
-        pow_le_pow_left₀ (by positivity) hkX _
-      have! h5 : G ^ 2 = Real.exp X ^ (2 * g) := by rw [hGX, ← pow_mul, mul_comm]
-      rw [h5, pow_add (Real.exp X) (8 * cc + 4) (2 * g)]
-      exact mul_le_mul_of_nonneg_right h4 (by positivity)
-    rw [h2] at h1
-    exact h1.trans (mul_le_mul_of_nonneg_left h3 hcQ0)
+  have! hQk : Qk ≤ cQ * Real.exp X ^ (8 * cc + 4 + 2 * g) :=
+    leaf_final_hQk g cQ k cc hcc hk2 Mp V famFuel E ρ hρ hρ1 Vl0 Os hcQ hk1 X hX G hGdef hG1 hCjg1
+      hW1 hOsk hhull hYn0 hlogY hCjgk hWk hQkdef hcQ0
   -- the near bands in the final form
   set! eq' := 2 * (q - 2) / (q - 1) with heq'
   rewrite [← heq'] at hnearS
@@ -4538,164 +5516,22 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
     linarith only [this]
   have! hcore : (1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
       (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) * Γ *
-        hullCutConstant (ρ / 64 / 2) ≤ 160000 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk := by
-    have! hCjg0 : 0 ≤ Cjg := by linarith only [hCjg1]
-    have! hW0 : 0 ≤ W := by linarith only [hW1]
-    have h1 : Γ ≤ 2000 * Os.card * (n ^ 3 * Cjg) * W := hΓle
-    have! hA0 : 0 ≤ (1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
-        (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) :=
-      mul_nonneg (mul_nonneg hL10 hN10) hLY0
-    have! h2 := mul_le_mul_of_nonneg_left h1 hA0
-    have! h3 : (1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
-        (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) *
-          (2000 * Os.card * (n ^ 3 * Cjg) * W) = 2000 * ((1 + Real.log ((S.K : ℝ) + 2)) *
-            ((Nb + 1 : ℕ) : ℝ) * (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) *
-              n ^ 3) * (Os.card * Cjg * W) := by ring
-    have! h4 := mul_le_mul_of_nonneg_right hlam (show 0 ≤ Os.card * Cjg * W from
-      mul_nonneg (mul_nonneg (Nat.cast_nonneg _) hCjg0) hW0)
-    have! h5 : (2000 * ((1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
-        (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) * n ^ 3) *
-          (Os.card * Cjg * W)) * hullCutConstant (ρ / 64 / 2) ≤
-        (2000 * (80 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * (1 + Real.log (2 + Yn))) *
-          (Os.card * Cjg * W)) * hullCutConstant (ρ / 64 / 2) :=
-      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right
-        (mul_le_mul_of_nonneg_left hlam (by norm_num))
-        (mul_nonneg (mul_nonneg (Nat.cast_nonneg _) hCjg0) hW0)) hh0
-    have! h6 : (2000 * (80 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * (1 + Real.log (2 + Yn))) *
-        (Os.card * Cjg * W)) * hullCutConstant (ρ / 64 / 2) =
-        160000 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk := by rw [hQkdef]; ring
-    have! h7 := mul_le_mul_of_nonneg_right h2 hh0
-    rw [h3] at h7
-    linarith only [h7, h5, h6]
+        hullCutConstant (ρ / 64 / 2) ≤ 160000 * (2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk :=
+    leaf_final_hcore k cc Mp V famFuel E ρ S Vl0 Γ Os hCjg1 hΓle hW1 hQkdef hlam hh0 hL10 hN10 hLY0
   have! hNEAR : 6 * nearS ≤
       (Cl : ℝ) * (1 + finiteDepthConstant κ q Nd) * (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
         (Kb + 2) ^ eq' * (2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl / Real.sqrt P *
-        R := by
-    set! ZT := 4 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) * (1 + finiteDepthConstant κ q Nd) *
-          (1 + Real.log ((S.K : ℝ) + 2)) * ((S.K : ℝ) + 2) ^ eq' *
-          (64 * (2 * (2 * Real.sqrt 1)) * (2 * (2 * Real.sqrt 1)))) *
-        (hullCutConstant (ρ / 64 / 2) * (Nb + 1 : ℕ) * (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) *
-          ((Nb + 1 : ℕ) : ℝ) * Yn))) * Γ / Real.sqrt P * R with hZT
-    rewrite [← hZT] at hnearS
-    have! hZ : ZT ≤ 655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-        (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
-          ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) / Real.sqrt P *
-            R := by
-      have! e1 : ZT = 4096 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-          (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
-            ((1 + Real.log ((S.K : ℝ) + 2)) * ((Nb + 1 : ℕ) : ℝ) *
-              (1 + Real.log (2 + ((Nb + 1 : ℕ) : ℝ) * ((Nb + 1 : ℕ) : ℝ) * Yn)) * Γ *
-                hullCutConstant (ρ / 64 / 2)) / Real.sqrt P * R := by
-        rw [hZT, Real.sqrt_one]; ring
-      rw [e1]
-      have! hc0 : 0 ≤ 4096 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-          (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') :=
-        mul_nonneg (by norm_num) (mul_nonneg (mul_nonneg hnbc hCN0) hKp0)
-      have! h1 := mul_le_mul_of_nonneg_left hcore hc0
-      have! h2 := div_le_div_of_nonneg_right h1 hP0
-      have! h3 := mul_le_mul_of_nonneg_right h2 hR0
-      refine h3.trans (le_of_eq ?_)
-      ring
-    have! hQkC : 655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-        (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
-          ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) ≤
-        655360000 * cQ * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-          (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq') *
-            ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl) := by
-      have! hX1 : 1 ≤ Real.exp X := Real.one_le_exp hX0
-      have! hXC : Real.exp X ^ (8 * cc + 4 + 2 * g) ≤ Real.exp X ^ Cl :=
-        pow_le_pow_right₀ hX1 (by omega)
-      have! hQk' : Qk ≤ cQ * Real.exp X ^ Cl :=
-        hQk.trans (mul_le_mul_of_nonneg_left hXC hcQ0)
-      have! hQk0 : 0 ≤ Qk := by
-        rw [hQkdef]
-        have! this : 0 ≤ 1 + Real.log (2 + Yn) := by
-          have! this := Real.log_nonneg (show (1 : ℝ) ≤ 2 + Yn by linarith only [hYn0])
-          linarith only [this]
-        have! hCjg0 : 0 ≤ Cjg := by linarith only [hCjg1]
-        have! hW0 : 0 ≤ W := by linarith only [hW1]
-        exact mul_nonneg (mul_nonneg (mul_nonneg (mul_nonneg hh0 this) (Nat.cast_nonneg _)) hCjg0)
-          hW0
-      have! h1 : ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) ≤
-          (2 + Real.log (Kb + 2)) ^ 6 * (cQ * Real.exp X ^ Cl) :=
-        mul_le_mul hlamb hQk' hQk0 (by positivity)
-      have! h2 : (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) * (1 + finiteDepthConstant κ q Nd) *
-          ((S.K : ℝ) + 2) ^ eq' ≤ (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-            (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq' :=
-        mul_le_mul_of_nonneg_left hKp (mul_nonneg hnbc hCN0)
-      have! h3 := mul_le_mul h2 h1 (mul_nonneg (by positivity) hQk0)
-        (mul_nonneg (mul_nonneg hnbc hCN0) (by positivity))
-      calc _ = 655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-            (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq' *
-              ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk)) := mul_assoc _ _ _
-        _ ≤ 655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-            (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq' *
-              ((2 + Real.log (Kb + 2)) ^ 6 * (cQ * Real.exp X ^ Cl))) :=
-            mul_le_mul_of_nonneg_left h3 (by norm_num)
-        _ = _ := by ac_rfl
-    have! hCl3 : 384 * 655360000 * cQ ≤ Cl := by
-      have! h1 : cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ ≤
-          ((⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ : ℕ) : ℝ) := Nat.le_ceil _
-      have! h2 : (((⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ : ℕ) : ℝ)) ≤ Cl := by
-        exact_mod_cast (show ⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ ≤ Cl by
-          omega)
-      have! hcm0 : 0 ≤ cm * Cb ^ 59 := mul_nonneg hcmn (by positivity)
-      have! hce0 : 0 ≤ ce * Cb ^ 18 := mul_nonneg hcen (by positivity)
-      have hce20 : 0 ≤ ce2 := hce2n
-      linarith only [h1, h2, hcm0, hce0, hce20, hcQ0]
-    have! hfin : 6 * (64 * ZT) ≤ 384 * (655360000 * cQ * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-        (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq') *
-          ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl)) / Real.sqrt P *
-            R := by
-      have! h1 := div_le_div_of_nonneg_right hQkC hP0
-      have! h2 := mul_le_mul_of_nonneg_right h1 hR0
-      have! h3 : 6 * (64 * ZT) ≤ 384 * (655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-          (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
-            ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) / Real.sqrt P *
-              R) := by linarith only [hZ]
-      refine h3.trans ?_
-      have! this : 384 * (655360000 * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-          (1 + finiteDepthConstant κ q Nd) * ((S.K : ℝ) + 2) ^ eq') *
-            ((2 + Real.log ((S.K : ℝ) + 2)) ^ 6 * Qk) / Real.sqrt P *
-              R) ≤ 384 * (655360000 * cQ * ((nbCM κ hq2 hq3 +
-                nbCUM κ hq2 hq3) * (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq') *
-                  ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl) / Real.sqrt P *
-                    R) := by linarith only [h2]
-      refine this.trans (le_of_eq ?_)
-      ring
-    have! hfin2 : 384 * (655360000 * cQ * ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-        (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq') *
-          ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl)) / Real.sqrt P *
-            R ≤
-        (Cl : ℝ) * (1 + finiteDepthConstant κ q Nd) * (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-          (Kb + 2) ^ eq' * (2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl / Real.sqrt P *
-          R := by
-      have! hrest : 0 ≤ ((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) * (1 + finiteDepthConstant κ q Nd) *
-          (Kb + 2) ^ eq' * ((2 + Real.log (Kb + 2)) ^ 6 * Real.exp X ^ Cl)) / Real.sqrt P *
-            R :=
-        mul_nonneg (div_nonneg (mul_nonneg (mul_nonneg (mul_nonneg hnbc hCN0) (by positivity))
-          (by positivity)) (Real.sqrt_nonneg _)) hR0
-      have! h1 := mul_le_mul_of_nonneg_right hCl3 hrest
-      calc _ = 384 * 655360000 * cQ * (((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-            (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq' * ((2 + Real.log (Kb + 2)) ^ 6 *
-              Real.exp X ^ Cl)) / Real.sqrt P * R) := by ring
-        _ ≤ (Cl : ℝ) * (((nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) *
-            (1 + finiteDepthConstant κ q Nd) * (Kb + 2) ^ eq' * ((2 + Real.log (Kb + 2)) ^ 6 *
-              Real.exp X ^ Cl)) / Real.sqrt P * R) := h1
-        _ = _ := by ring
-    linarith only [hnearS, hfin, hfin2]
+        R :=
+    leaf_final_hNEAR κ q hq2 hq3 Nd Msch g cm ce ce2 cQ CΛ Cb Cl k cc hcc P Mp V famFuel E ρ R S
+      Vl0 nearS Γ Os hR0 hCb20n hMCb2 hClb u hu1 X hX0 hcmn hcen hce2n hCjg1 hW1 hYn0 hQkdef hcQ0
+      hQk hnearS hKp hlamb hKp0 hCN0 hnbc hP0 hh0 hcore
   -- the main and error collapses
   have! hX1 : 1 ≤ Real.exp X := Real.one_le_exp hX0
   have! hGX : G = Real.exp X ^ g := by rw [hGdef, ← Real.exp_nat_mul]
   have! hBn0 : 0 ≤ B := by linarith only [hBB1]
   have! hGn0 : 0 ≤ G := by linarith only [hG1]
-  have! hceil : cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ ≤ Cl := by
-    have! h2 : cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ ≤
-        ((⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ : ℕ) : ℝ) := Nat.le_ceil _
-    have! h3 : (((⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ : ℕ) : ℝ)) ≤ Cl := by
-      exact_mod_cast (show ⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ ≤ Cl by
-        omega)
-    linarith only [h2, h3]
+  have! hceil : cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ ≤ Cl :=
+    leaf_final_hceil Msch g cm ce ce2 cQ CΛ Cb Cl cc hcc hMCb2 hClb
   have! hCbp59 : (0 : ℝ) ≤ (Cb : ℝ) ^ 59 := pow_nonneg (Nat.cast_nonneg _) _
   have! hCbp18 : (0 : ℝ) ≤ (Cb : ℝ) ^ 18 := pow_nonneg (Nat.cast_nonneg _) _
   have! hcm59 : 0 ≤ cm * (Cb : ℝ) ^ 59 := mul_nonneg hcmn hCbp59
@@ -4720,237 +5556,27 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
   have! hB59 : (0 : ℝ) ≤ B ^ 59 * G ^ 4 := mul_nonneg (pow_nonneg hBn0 _) (pow_nonneg hGn0 _)
   have! hCm : 196608 * B ^ 3 * (cT * B ^ 11 * G) + 83 * (1 + 81 * localFormUniformConstant κ *
       (30000 * B ^ 2 * G + Real.sqrt (cT * B ^ 11 * G))) * (1 + cT * B ^ 11 * G) ^ 3 +
-      cMc * B ^ 59 * G ^ 2 ≤ cm * B ^ 59 * G ^ 4 := by
-    have! t1 : B ^ 3 * (cT * B ^ 11 * G) ≤ cT * (B ^ 59 * G ^ 4) := by
-      have! h1 : B ^ 14 * G ≤ B ^ 59 * G ^ 4 := mul_le_mul (pow_le_pow_right₀ hBB1 (by norm_num))
-        (le_self_pow₀ hG1 (by norm_num)) hGn0 (pow_nonneg hBn0 _)
-      calc B ^ 3 * (cT * B ^ 11 * G) = cT * (B ^ 14 * G) := by ring
-        _ ≤ cT * (B ^ 59 * G ^ 4) := mul_le_mul_of_nonneg_left h1 hcT0
-    have! hsc0 : 0 ≤ 81 * localFormUniformConstant κ := mul_nonneg (by norm_num) hL00
-    have! t2a : 1 + 81 * localFormUniformConstant κ * (30000 * B ^ 2 * G +
-        Real.sqrt (cT * B ^ 11 * G)) ≤ (1 + 81 * localFormUniformConstant κ *
-          (30000 + Real.sqrt cT)) * (B ^ 6 * G) := by
-      have! h1 : 30000 * B ^ 2 * G + Real.sqrt (cT * B ^ 11 * G) ≤
-          (30000 + Real.sqrt cT) * (B ^ 6 * G) := by
-        have! this := mul_le_mul_of_nonneg_left hB2G6 (show (0 : ℝ) ≤ 30000 by norm_num)
-        have! e : (30000 + Real.sqrt cT) * (B ^ 6 * G) =
-            30000 * (B ^ 6 * G) + Real.sqrt cT * B ^ 6 * G := by ring
-        rw [e]
-        linarith only [this, hsT']
-      have! h2 := mul_le_mul_of_nonneg_left h1 hsc0
-      have! h3 : 0 ≤ 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT) :=
-        mul_nonneg hsc0 (by positivity)
-      have! h4 := mul_le_mul_of_nonneg_left hB6G h3
-      have! e : (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (B ^ 6 * G) =
-          B ^ 6 * G + 81 * localFormUniformConstant κ * ((30000 + Real.sqrt cT) * (B ^ 6 * G)) :=
-        by ring
-      rw [e]
-      linarith only [h2, hB6G]
-    have! hB11 : 1 ≤ B ^ 11 * G := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hBB1) hG1
-    have! t2b : (1 + cT * B ^ 11 * G) ^ 3 ≤ ((1 + cT) * (B ^ 11 * G)) ^ 3 := by
-      have! h0 : 0 ≤ 1 + cT * B ^ 11 * G := by
-        have! this := mul_nonneg hcT0 (show 0 ≤ B ^ 11 * G by linarith only [hB11])
-        linarith only [this]
-      have! h1 : 1 + cT * B ^ 11 * G ≤ (1 + cT) * (B ^ 11 * G) := by
-        have! e : (1 + cT) * (B ^ 11 * G) = B ^ 11 * G + cT * (B ^ 11 * G) := by ring
-        rw [e, ← mul_assoc]
-        linarith only [hB11]
-      exact pow_le_pow_left₀ h0 h1 3
-    have! t2 : (1 + 81 * localFormUniformConstant κ * (30000 * B ^ 2 * G +
-        Real.sqrt (cT * B ^ 11 * G))) * (1 + cT * B ^ 11 * G) ^ 3 ≤
-        (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (1 + cT) ^ 3 *
-          (B ^ 59 * G ^ 4) := by
-      have! h0a : 0 ≤ (1 + cT * B ^ 11 * G) ^ 3 := by
-        have! this := mul_nonneg hcT0 (show 0 ≤ B ^ 11 * G by linarith only [hB11])
-        exact pow_nonneg (by linarith only [this]) 3
-      have! h0b : 0 ≤ (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) *
-          (B ^ 6 * G) := by
-        have! this : 0 ≤ 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT) :=
-          mul_nonneg hsc0 (by positivity)
-        exact mul_nonneg (by linarith only [this]) (by linarith only [hB6G])
-      have! h1 := mul_le_mul t2a t2b h0a h0b
-      have! h2 : (B ^ 6 * G) * (B ^ 11 * G) ^ 3 ≤ B ^ 59 * G ^ 4 := by
-        calc B ^ 6 * G * (B ^ 11 * G) ^ 3 = B ^ 39 * G ^ 4 := by ring
-          _ ≤ B ^ 59 * G ^ 4 := mul_le_mul_of_nonneg_right
-              (pow_le_pow_right₀ hBB1 (by norm_num)) (pow_nonneg hGn0 _)
-      have! h3 : 0 ≤ (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) *
-          (1 + cT) ^ 3 := by
-        have! this : 0 ≤ 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT) :=
-          mul_nonneg hsc0 (by positivity)
-        exact mul_nonneg (by linarith only [this]) (pow_nonneg (by linarith only [hcT0]) 3)
-      calc _ ≤ (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (B ^ 6 * G) *
-            ((1 + cT) * (B ^ 11 * G)) ^ 3 := h1
-        _ = (1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (1 + cT) ^ 3 *
-            ((B ^ 6 * G) * (B ^ 11 * G) ^ 3) := by ring
-        _ ≤ _ := mul_le_mul_of_nonneg_left h2 h3
-    have! t3 : cMc * B ^ 59 * G ^ 2 ≤ cMc * (B ^ 59 * G ^ 4) := by
-      have! this : B ^ 59 * G ^ 2 ≤ B ^ 59 * G ^ 4 := mul_le_mul_of_nonneg_left
-        (pow_le_pow_right₀ hG1 (by norm_num)) (pow_nonneg hBn0 _)
-      calc cMc * B ^ 59 * G ^ 2 = cMc * (B ^ 59 * G ^ 2) := by ring
-        _ ≤ cMc * (B ^ 59 * G ^ 4) := mul_le_mul_of_nonneg_left this hcMcn
-    have! e : cm * B ^ 59 * G ^ 4 = 196608 * (cT * (B ^ 59 * G ^ 4)) +
-        83 * ((1 + 81 * localFormUniformConstant κ * (30000 + Real.sqrt cT)) * (1 + cT) ^ 3 *
-          (B ^ 59 * G ^ 4)) + cMc * (B ^ 59 * G ^ 4) := by rw [hcm]; ring
-    rw [e]
-    have! e2 : 196608 * B ^ 3 * (cT * B ^ 11 * G) = 196608 * (B ^ 3 * (cT * B ^ 11 * G)) := by
-      ring
-    have! e3 : 83 * (1 + 81 * localFormUniformConstant κ * (30000 * B ^ 2 * G +
-        Real.sqrt (cT * B ^ 11 * G))) * (1 + cT * B ^ 11 * G) ^ 3 =
-        83 * ((1 + 81 * localFormUniformConstant κ * (30000 * B ^ 2 * G +
-          Real.sqrt (cT * B ^ 11 * G))) * (1 + cT * B ^ 11 * G) ^ 3) := by ring
-    rw [e2, e3]
-    linarith only [t1, t2, t3]
-  have! hClm : cm * B ^ 59 * G ^ 4 ≤ Cl * u ^ Cl * Real.exp X ^ Cl := by
-    have! h1 : cm * (Cb : ℝ) ^ 59 ≤ Cl := by
-      have! this : 0 ≤ 3 * 10 ^ 11 * cQ := mul_nonneg (by norm_num) hcQ0
-      linarith only [hceil, hce18, hce2n, this]
-    have! h2 : u ^ (59 * Cb) ≤ u ^ Cl := pow_le_pow_right₀ hu1 (by omega)
-    have! h3 : G ^ 4 ≤ Real.exp X ^ Cl := by
-      rw [hGX, ← pow_mul]; exact pow_le_pow_right₀ hX1 (by omega)
-    have! e : cm * B ^ 59 * G ^ 4 = (cm * (Cb : ℝ) ^ 59) * u ^ (59 * Cb) * G ^ 4 := by
-      rw [hBdef, mul_pow, ← pow_mul]; ring
-    rw [e]
-    exact mul_le_mul (mul_le_mul h1 h2 (pow_nonneg (by linarith only [hu1]) _)
-      (Nat.cast_nonneg _)) h3 (pow_nonneg hGn0 _)
-      (mul_nonneg (Nat.cast_nonneg _) (pow_nonneg (by linarith only [hu1]) _))
+      cMc * B ^ 59 * G ^ 2 ≤ cm * B ^ 59 * G ^ 4 :=
+    leaf_final_hCm κ cT cMc cm t3 hcm B hBB1 G hG1 hL00 hcT0 hcMcn hBn0 hGn0 hsT' hB6G hB2G6
+  have! hClm : cm * B ^ 59 * G ^ 4 ≤ Cl * u ^ Cl * Real.exp X ^ Cl :=
+    leaf_final_hClm Msch g cm ce ce2 cQ CΛ Cb Cl cc hcc hMCb2 hClb u hu1 B hBdef X G hce2n hcQ0
+      hX1 hGX hGn0 hceil hce18
   have! hErr : 6642 * localFormUniformConstant κ * (2 * (30000 * B ^ 2 * G) +
       Real.sqrt (cT * B ^ 11 * G)) ^ 3 * (288 * Real.exp (4 * (k : ℝ) ^ cc) * Real.sqrt δ * R) +
       cE ≤
       Cl * u ^ Cl * Real.exp X ^ Cl * (Real.exp (Cl * (k : ℝ) ^ cc) * (Real.sqrt δ +
-        Real.exp (-kD))) * R + Cl * Real.exp (-(k : ℝ)) * R := by
-    obtain ⟨e4, he4⟩ : ∃ x : ℝ, x = Real.exp (4 * (k : ℝ) ^ cc) := ⟨_, rfl⟩
-    obtain ⟨e3, he3⟩ : ∃ x : ℝ, x = Real.exp (3 * (k : ℝ) ^ cc) := ⟨_, rfl⟩
-    rw [← he4]
-    rw [← he3] at hQeMV
-    have! he40 : 0 ≤ e4 := by rw [he4]; exact (Real.exp_pos _).le
-    have! he30 : 0 ≤ e3 := by rw [he3]; exact (Real.exp_pos _).le
-    have! he34 : e3 ≤ e4 := by
-      rw [he3, he4]; exact Real.exp_le_exp.mpr (by linarith only [hkcc1])
-    have! hsd0 : 0 ≤ Real.sqrt δ := Real.sqrt_nonneg _
-    have! hekD : 0 ≤ Real.exp (-kD) := (Real.exp_pos _).le
-    have! hek : 0 ≤ Real.exp (-(k : ℝ)) := (Real.exp_pos _).le
-    have! hB18 : B ^ 6 * G ≤ B ^ 18 * G ^ 3 := mul_le_mul (pow_le_pow_right₀ hBB1 (by norm_num))
-      (le_self_pow₀ hG1 (by norm_num)) hGn0 (pow_nonneg hBn0 _)
-    have! hY0 : 0 ≤ B ^ 18 * G ^ 3 * e4 :=
-      mul_nonneg (mul_nonneg (pow_nonneg hBn0 _) (pow_nonneg hGn0 _)) he40
-    -- the physical errors
-    have! h1 : 2 * (30000 * B ^ 2 * G) + Real.sqrt (cT * B ^ 11 * G) ≤
-        (60000 + Real.sqrt cT) * (B ^ 6 * G) := by
-      have! this := mul_le_mul_of_nonneg_left hB2G6 (show (0 : ℝ) ≤ 60000 by norm_num)
-      have! e : (60000 + Real.sqrt cT) * (B ^ 6 * G) =
-          60000 * (B ^ 6 * G) + Real.sqrt cT * B ^ 6 * G := by ring
-      rw [e]
-      linarith only [this, hsT']
-    have! h0 : 0 ≤ 2 * (30000 * B ^ 2 * G) + Real.sqrt (cT * B ^ 11 * G) :=
-      add_nonneg (mul_nonneg (by norm_num) (mul_nonneg (mul_nonneg (by norm_num)
-        (pow_nonneg hBn0 _)) hGn0)) (Real.sqrt_nonneg _)
-    have! h1' := pow_le_pow_left₀ h0 h1 3
-    have! hL6 : 0 ≤ 6642 * localFormUniformConstant κ := mul_nonneg (by norm_num) hL00
-    have! hp1 : 6642 * localFormUniformConstant κ * (2 * (30000 * B ^ 2 * G) +
-        Real.sqrt (cT * B ^ 11 * G)) ^ 3 * (288 * e4 * Real.sqrt δ * R) ≤
-        (6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288) *
-          (B ^ 18 * G ^ 3 * e4) * Real.sqrt δ * R := by
-      have! h2 := mul_le_mul_of_nonneg_left h1' hL6
-      have! h3 := mul_le_mul_of_nonneg_right h2 (show 0 ≤ 288 * e4 * Real.sqrt δ * R from
-        mul_nonneg (mul_nonneg (mul_nonneg (by norm_num) he40) hsd0) hR0)
-      refine h3.trans (le_of_eq ?_)
-      ring
-    -- the core errors
-    have! hC0 : 0 ≤ 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
-        324 * threeErrC κ 3 1 * Real.sqrt cT) := by
-      have! this := fourErrC_nonneg κ 3; have := threeErrC_nonneg κ 3 1; positivity
-    have! hcE : cE ≤ (5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
-        Real.sqrt cT)) * (B ^ 18 * G ^ 3 * e4) * Real.exp (-kD) * R +
-          ce2 * Real.exp (-(k : ℝ)) * R := by
-      have! h2 : cE ≤ Qe * MV * R := by
-        calc cE ≤ Qe * (((Mp * V : ℕ) : ℝ) * R) := hcEsum
-          _ = Qe * MV * R := by rw [hMVc]; ring
-      have! h4 := mul_le_mul_of_nonneg_right hQeMV hR0
-      have! h5 : e3 * B ^ 6 * G ≤ B ^ 18 * G ^ 3 * e4 := by
-        have! this := mul_le_mul he34 hB18 (by linarith only [hB6G]) he40
-        linarith only [this]
-      have! h6 : 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
-          Real.sqrt cT) * e3 * B ^ 6 * G * Real.exp (-kD) ≤
-          (5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
-            Real.sqrt cT)) * (B ^ 18 * G ^ 3 * e4) * Real.exp (-kD) := by
-        have! this := mul_le_mul_of_nonneg_left h5 hC0
-        have! h7 := mul_le_mul_of_nonneg_right this hekD
-        calc _ = 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
-            Real.sqrt cT) * (e3 * B ^ 6 * G) * Real.exp (-kD) := by ring
-          _ ≤ _ := h7
-      have! h8 := mul_le_mul_of_nonneg_right h6 hR0
-      linarith only [h2, h4, h8]
-    -- the constants
-    have! hce' : ce * B ^ 18 * G ^ 3 * e4 ≤ Cl * u ^ Cl * Real.exp X ^ Cl *
-        Real.exp (Cl * (k : ℝ) ^ cc) := by
-      have! h2 : u ^ (18 * Cb) ≤ u ^ Cl := pow_le_pow_right₀ hu1 (by omega)
-      have! h3 : G ^ 3 ≤ Real.exp X ^ Cl := by
-        rw [hGX, ← pow_mul]; exact pow_le_pow_right₀ hX1 (by omega)
-      have! h4 : e4 ≤ Real.exp (Cl * (k : ℝ) ^ cc) := by
-        rw [he4]
-        refine Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_right ?_ (by linarith only [hkcc1]))
-        exact_mod_cast (show 4 ≤ Cl by omega)
-      have! h5 : ce * (Cb : ℝ) ^ 18 ≤ Cl := by
-        have! this : 0 ≤ 3 * 10 ^ 11 * cQ := mul_nonneg (by norm_num) hcQ0
-        linarith only [hceil, hcm59, hce2n, this]
-      have! e : ce * B ^ 18 * G ^ 3 * e4 = (ce * (Cb : ℝ) ^ 18) * u ^ (18 * Cb) * G ^ 3 * e4 := by
-        rw [hBdef, mul_pow, ← pow_mul]; ring
-      rw [e]
-      have! hu0 : 0 ≤ u := by linarith only [hu1]
-      exact mul_le_mul (mul_le_mul (mul_le_mul h5 h2 (pow_nonneg hu0 _) (Nat.cast_nonneg _)) h3
-        (pow_nonneg hGn0 _) (mul_nonneg (Nat.cast_nonneg _) (pow_nonneg hu0 _))) h4 he40
-        (mul_nonneg (mul_nonneg (Nat.cast_nonneg _) (pow_nonneg hu0 _))
-          (pow_nonneg (by linarith only [hX1]) _))
-    have! hce2' : ce2 ≤ Cl := by
-      have! this : 0 ≤ 3 * 10 ^ 11 * cQ := mul_nonneg (by norm_num) hcQ0
-      linarith only [hceil, hcm59, hce18, this]
-    -- assembly
-    have! hsplit : (6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288) *
-        (B ^ 18 * G ^ 3 * e4) * Real.sqrt δ * R +
-        ((5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 * Real.sqrt cT)) *
-          (B ^ 18 * G ^ 3 * e4) * Real.exp (-kD) * R) ≤
-        ce * B ^ 18 * G ^ 3 * e4 * ((Real.sqrt δ + Real.exp (-kD)) * R) := by
-      have! hA : 0 ≤ 6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288 :=
-        mul_nonneg (mul_nonneg hL6 (by positivity)) (by norm_num)
-      have! hYR : 0 ≤ B ^ 18 * G ^ 3 * e4 * R := mul_nonneg hY0 hR0
-      have hce' : ce = 6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288 +
-          9 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 +
-            324 * threeErrC κ 3 1 * Real.sqrt cT) := hce
-      have! h5 : 5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
-          Real.sqrt cT) ≤ ce := by linarith only [hce', hA, hC0]
-      have! h6 : 6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288 ≤ ce := by
-        linarith only [hce', hC0]
-      have! h7 := mul_le_mul_of_nonneg_right h6 (mul_nonneg hYR hsd0)
-      have! h8 := mul_le_mul_of_nonneg_right h5 (mul_nonneg hYR hekD)
-      calc _ = (6642 * localFormUniformConstant κ * (60000 + Real.sqrt cT) ^ 3 * 288) *
-            ((B ^ 18 * G ^ 3 * e4 * R) * Real.sqrt δ) +
-            (5 * (16 * fourErrC κ 3 + 648 * threeErrC κ 3 1 + 324 * threeErrC κ 3 1 *
-              Real.sqrt cT)) * ((B ^ 18 * G ^ 3 * e4 * R) * Real.exp (-kD)) := by ring
-        _ ≤ ce * ((B ^ 18 * G ^ 3 * e4 * R) * Real.sqrt δ) +
-            ce * ((B ^ 18 * G ^ 3 * e4 * R) * Real.exp (-kD)) := add_le_add h7 h8
-        _ = _ := by ring
-    have! hfin1 := mul_le_mul_of_nonneg_right hce' (show 0 ≤ (Real.sqrt δ + Real.exp (-kD)) * R
-      from mul_nonneg (add_nonneg hsd0 hekD) hR0)
-    have! hfin2 := mul_le_mul_of_nonneg_right hce2' (show 0 ≤ Real.exp (-(k : ℝ)) * R
-      from mul_nonneg hek hR0)
-    have! e6 : Cl * u ^ Cl * Real.exp X ^ Cl * (Real.exp (Cl * (k : ℝ) ^ cc) * (Real.sqrt δ +
-        Real.exp (-kD))) * R = Cl * u ^ Cl * Real.exp X ^ Cl *
-          Real.exp (Cl * (k : ℝ) ^ cc) * ((Real.sqrt δ + Real.exp (-kD)) * R) := by ring
-    have! e7 : ce2 * Real.exp (-(k : ℝ)) * R = ce2 * (Real.exp (-(k : ℝ)) * R) := by ring
-    have! e8 : (Cl : ℝ) * Real.exp (-(k : ℝ)) * R = Cl * (Real.exp (-(k : ℝ)) * R) := by ring
-    rw [e6, e8]
-    rw [e7] at hcE
-    linarith only [hp1, hcE, hsplit, hfin1, hfin2]
+        Real.exp (-kD))) * R + Cl * Real.exp (-(k : ℝ)) * R :=
+    leaf_final_hErr κ Msch g cT cm ce ce2 cQ CΛ Cb Cl k cc hcc kD Mp V δ R S Iw U MV ε cE hce hR0
+      hMCb2 hClb u hu1 B hBdef hBB1 X G hG1 hkcc1 hcT1 ι hcEsum hMVc hQeMV hL00 hce2n hcQ0 hX1 hGX
+      hBn0 hGn0 hceil hcm59 hce18 hsT' hB6G hB2G6
   -- the explicit leaf bound
   have! hNp0 : (0 : ℝ) ≤ ((2 : ℝ) ^ famFuel) ^ 2 := by positivity
   have! hNpB : ((2 : ℝ) ^ famFuel) ^ 2 ≤ B ^ 2 := by
     have! this : (2 : ℝ) ^ famFuel ≤ B := by exact_mod_cast hLpB
     exact pow_le_pow_left₀ (by positivity) this 2
   have! hP0' : (0 : ℝ) ≤ ((P : ℝ) + 1) ^ 2 := by positivity
-  have! hfc0 : 0 ≤ fc := by
-    rw [hfc]
-    have! h1 : (0 : ℝ) ≤ 2 * (famFuel : ℝ) + 2 := by positivity
-    exact mul_nonneg h1 (mul_nonneg hP0' (by linarith only [hτ₃]))
+  have! hfc0 : 0 ≤ fc :=
+    leaf_final_hfc0 P famFuel τ₃ hτ₃ fc hfc hP0'
   have! hfcB : fc ≤ 64 * B * ((P : ℝ) + 1) ^ 2 * τ₃ := by
     rw [hfc]
     have! h1 : 2 * (famFuel : ℝ) + 2 ≤ B := by
@@ -4981,8 +5607,1096 @@ theorem leaf_final (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3)
 namespace ActiveSetup.BasicFamilies
 variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (bf : A.BasicFamilies)
 
-set_option maxHeartbeats 400000 in
--- the leaf assembly combines the full stack of attempt-level bounds (about 3 * 10^5 heartbeats)
+/-! Steps of `leaf_estimate`. Each lemma below is one step of that proof, stated over the
+hypotheses and local definitions (as `let`s) of the proof that it uses, so that it is
+elaborated in a small local context instead of the long context of the whole proof. -/
+
+open Classical in
+/-- Step `hn_mono` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hn_mono :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p), (2 : ℝ) ≤ A.colBudget →
+    Monotone AD.n := by
+  intro κ c₀ A bf p AD hcb
+  let fp : bf.FamParams := AD.fp
+  refine monotone_nat_of_le_succ fun r => ?_
+  have! h := AD.hgrow r
+  have! hR0 := closureRatio_nonneg A.famVtxBound AD.Kt fp.mH AD.Tmax
+    (Real.exp (AD.Dst * (1 + Real.log A.Hsrc) ^ AD.Dst)) AD.τ₃
+  have! hpos : ∀ r, 0 ≤ AD.n r := by
+    intro r
+    induction r with
+    | zero => linarith only [AD.hn0, hcb]
+    | succ r ih =>
+      have! h1 := AD.hgrow r
+      have! this : (0 : ℝ) ≤ (1 + (fp.Lc + 6) * AD.Mp * closureRatio A.famVtxBound AD.Kt fp.mH
+        AD.Tmax (Real.exp (AD.Dst * (1 + Real.log A.Hsrc) ^ AD.Dst)) AD.τ₃) * AD.n r := by
+        positivity
+      linarith only [h1, this]
+  have! hfac : (1 : ℝ) ≤ 1 + (fp.Lc + 6) * AD.Mp * closureRatio A.famVtxBound AD.Kt fp.mH
+      AD.Tmax (Real.exp (AD.Dst * (1 + Real.log A.Hsrc) ^ AD.Dst)) AD.τ₃ := by
+    have! this : (0 : ℝ) ≤ (fp.Lc + 6) * AD.Mp * closureRatio A.famVtxBound AD.Kt fp.mH
+      AD.Tmax (Real.exp (AD.Dst * (1 + Real.log A.Hsrc) ^ AD.Dst)) AD.τ₃ := by positivity
+    linarith only [this]
+  exact (le_mul_of_one_le_left (hpos r) hfac).trans h
+
+open Classical in
+/-- Step `hpathU` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hpathU :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p) (s : ℕ),
+    let fp : bf.FamParams := AD.fp;
+    let Lf : SearchLeaf := leafAt A.famFuel fp.Lc (A.basicSlot p) s;
+    let ks : ℕ := Lf.k;
+    let S0 : Finset (ℤ × ℤ) := {I ∈ AD.Tc | ¬∃ c ∈ fp.failRoots, dyadicGridCell A.G I.1 I.2 ⊆
+        dyadicGridCell A.G c.1 c.2};
+    S0 ⊆ AD.Tc →
+    let gs : ℤ × ℤ → Finset bf.Grp := fun (I : ℤ × ℤ) ↦ fp.groupsAt I ks;
+    let gset : Finset bf.Grp := S0.biUnion gs;
+    let U : Fin (4 : ℕ) → bf.Grp → Finset (ℤ × ℤ) := fun (_ : Fin (4 : ℕ)) (G : bf.Grp) ↦ {I ∈
+        S0 | G ∈ gs I};
+    (U = fun (_ : Fin (4 : ℕ)) (G : bf.Grp) ↦ {I ∈ S0 | G ∈ gs I}) →
+    ∀ y, ∑ l, ∑ G ∈ gset, ((U l G).filter fun I : ℤ × ℤ =>
+    y ∈ dyadicGridCell A.G I.1 I.2).card ≤ 4 * (AD.Mp * A.famVtxBound) := by
+  intro κ c₀ A bf p AD s fp Lf ks S0 hS0T gs gset U hU y
+  simp only [hU]
+  calc ∑ _l : Fin 4, ∑ G ∈ gset, ((S0.filter fun I => G ∈ gs I).filter fun I : ℤ × ℤ =>
+        y ∈ dyadicGridCell A.G I.1 I.2).card
+      ≤ ∑ _l : Fin 4, AD.Mp * A.famVtxBound :=
+        Finset.sum_le_sum fun l _ => by
+          have! h := sum_card_uses_le A.G S0 gs gset y
+            (le_trans (Finset.card_le_card (Finset.filter_subset_filter _ hS0T))
+              (card_cells_mem_le A.G AD.Tc AD.hmult y))
+            (fun I _ => fp.card_groupsAt_le I ks)
+          convert h
+    _ = 4 * (AD.Mp * A.famVtxBound) := by simp
+
+open Classical in
+/-- Step `hU16` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hU16 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀), (2 : ℝ) ≤ A.colBudget →
+      ∀ (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar → ∀ (U : ℝ),
+      (2 : ℝ) * (A.colBudget + (2 : ℝ)) * S.Dstar ^ (2 : ℕ) ≤ U →
+    16 ≤ U := by
+  intro κ c₀ A hcb S hD2 U hU4
+  refine le_trans ?_ hU4
+  have! h1 : (2 : ℝ) + 2 ≤ A.colBudget + 2 := by linarith only [hcb]
+  have! h2 : (2 : ℝ) ^ 2 ≤ S.Dstar ^ 2 := pow_le_pow_left₀ (by norm_num) hD2 2
+  calc (16 : ℝ) ≤ 2 * (2 + 2) * 2 ^ 2 := by norm_num
+    _ ≤ 2 * (A.colBudget + 2) * 2 ^ 2 :=
+        mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left h1 (by norm_num)) (by norm_num)
+    _ ≤ 2 * (A.colBudget + 2) * S.Dstar ^ 2 :=
+        mul_le_mul_of_nonneg_left h2 (by linarith only [hcb])
+
+open Classical in
+/-- Step `hMV0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hMV0 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p) (MV : ℝ), MV = (↑AD.Mp : ℝ) * (↑A.famVtxBound : ℝ) →
+    0 ≤ MV := by
+  intro κ c₀ A bf p AD MV hMV
+  rw [hMV]; positivity
+
+open Classical in
+/-- Step `hε0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hε0 :
+    ∀ (k : ℕ) (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar → ∀ (U : ℝ), (16 : ℝ) ≤ U → ∀ (MV : ℝ),
+      (0 : ℝ) ≤ MV → ∀ (ε : ℝ),
+      ε = (U ^ (3 : ℕ) * S.Dstar ^ (5 : ℕ) * Real.exp (↑k : ℝ) * ((1 : ℝ) + MV))⁻¹ →
+    0 < ε := by
+  intro k S hD2 U hU16 MV hMV0 ε hεdef
+  rw [hεdef]
+  exact inv_pos.mpr (by positivity)
+
+open Classical in
+/-- Step `hτb` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hτb :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p),
+    let fp : bf.FamParams := AD.fp;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    let BN : ℕ := ⌈(8 : ℝ) * A.colBudget + Nl⌉₊;
+    let τb : ℝ := (1 : ℝ) / ((1 : ℝ) + (↑BN : ℝ) * A.colBudget ^ (2 : ℕ));
+    0 < τb := by
+  intro κ c₀ A bf p AD fp Nl BN τb
+  positivity
+
+open Classical in
+/-- Step `hτb1` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hτb1 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p),
+    let fp : bf.FamParams := AD.fp;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    let BN : ℕ := ⌈(8 : ℝ) * A.colBudget + Nl⌉₊;
+    let τb : ℝ := (1 : ℝ) / ((1 : ℝ) + (↑BN : ℝ) * A.colBudget ^ (2 : ℕ));
+    τb = (1 : ℝ) / ((1 : ℝ) + (↑BN : ℝ) * A.colBudget ^ (2 : ℕ)) →
+    τb ≤ 1 := by
+  intro κ c₀ A bf p AD fp Nl BN τb hτbdef
+  rw [hτbdef, div_le_one (by positivity)]
+  have! this : (0 : ℝ) ≤ BN * A.colBudget ^ 2 := by positivity
+  linarith only [this]
+
+open Classical in
+/-- Step `hτbN` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hτbN :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p),
+    let fp : bf.FamParams := AD.fp;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    let BN : ℕ := ⌈(8 : ℝ) * A.colBudget + Nl⌉₊;
+    let τb : ℝ := (1 : ℝ) / ((1 : ℝ) + (↑BN : ℝ) * A.colBudget ^ (2 : ℕ));
+    τb = (1 : ℝ) / ((1 : ℝ) + (↑BN : ℝ) * A.colBudget ^ (2 : ℕ)) →
+    τb * BN * A.colBudget ^ 2 ≤ 1 := by
+  intro κ c₀ A bf p AD fp Nl BN τb hτbdef
+  rw [hτbdef, div_mul_eq_mul_div, div_mul_eq_mul_div, one_mul, div_le_one (by positivity)]
+  linarith only
+
+open Classical in
+/-- Step `hNq` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hNq :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies), ℝ →
+      ∀ (p : Fin (3 : ℕ)) (AD : bf.AttemptData p) (d : bf.Vtx) (s : ℕ),
+    let fp : bf.FamParams := AD.fp;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    (0 : ℝ) ≤ Nl →
+    let Lf : SearchLeaf := leafAt A.famFuel fp.Lc (A.basicSlot p) s;
+    let ks : ℕ := Lf.k;
+    let S0 : Finset (ℤ × ℤ) := {I ∈ AD.Tc | ¬∃ c ∈ fp.failRoots, dyadicGridCell A.G I.1 I.2 ⊆
+        dyadicGridCell A.G c.1 c.2};
+    let gs : ℤ × ℤ → Finset bf.Grp := fun (I : ℤ × ℤ) ↦ fp.groupsAt I ks;
+    let gset : Finset bf.Grp := S0.biUnion gs;
+    (∀ (l : Fin (4 : ℕ)), (AD.cat l).length ≤ fp.Mc) →
+    let BN : ℕ := ⌈(8 : ℝ) * A.colBudget + Nl⌉₊;
+    (∀ (G : ↥gset), (↑G : bf.Grp).1 = ks) →
+      (∀ (l : Fin (4 : ℕ)), fp.bbase (Lf.role l) + fp.P ≤ fp.Hmax) →
+    ∀ l y, ((Finset.univ : Finset ({G // G ∈ gset} × (bf.Lab ⊕ Fin fp.Mc))).filter
+    fun q => ∃ I ∈ A.cells, (∃ k', fp.Cert k' q.1.1 I) ∧ ∃ p : Fin fp.P,
+    y ∈ dyadicGridCell A.G I.1 I.2 ∧
+    q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) (AD.cat l) I (fp.brank (Lf.role l))
+    (fp.bmask I q.1.1 (Lf.role l) (p + 1)) d).card ≤ BN := by
+  intro κ c₀ A bf q p AD d s fp Nl hNl0 Lf ks S0 gs gset hlenMc BN hcolG hPH l y
+  have! h1 := fp.card_ballPairs_le l (AD.cat l) d (ι := {G // G ∈ gset}) Subtype.val
+    Subtype.val_injective ks hcolG (Lf.role l) (hPH l) y
+  have! h2 := bf.card_pathLabels_le l (Mc := fp.Mc) (AD.cat l) (fp.brank (Lf.role l)) y
+  have! h3 := bf.tmplPath_le fp.Mc (AD.cat l) (hlenMc l) l (fun e he => AD.hTc (AD.hT l e he).1)
+    (r := fp.Lc + 5) (fun e he => (AD.hT l e he).2.1) hNl0 (fun I _ => AD.hlab l I _ le_rfl) y
+  have! h4 : (((Finset.univ : Finset ({G // G ∈ gset} × (bf.Lab ⊕ Fin fp.Mc))).filter
+    fun q => ∃ I ∈ A.cells, (∃ k', fp.Cert k' q.1.1 I) ∧ ∃ p : Fin fp.P,
+      y ∈ dyadicGridCell A.G I.1 I.2 ∧
+      q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) (AD.cat l) I (fp.brank (Lf.role l))
+        (fp.bmask I q.1.1 (Lf.role l) (p + 1)) d).card : ℝ) ≤ 8 * A.colBudget + Nl :=
+    le_trans (Nat.cast_le.mpr h1) (le_trans h2 (by linarith only [h3]))
+  exact Nat.cast_le.mp (h4.trans (Nat.le_ceil _))
+
+open Classical in
+/-- Step `hden` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hden :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p),
+    let fp : bf.FamParams := AD.fp;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    (2 : ℝ) ≤ A.colBudget → (4 : ℝ) ≤ Nl →
+    let NH : ℝ := (2 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp : ℝ)) * Nl;
+    0 < 1 + A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) *
+    (A.colBudget * Real.sqrt NH) := by
+  intro κ c₀ A bf p AD fp Nl hcb hNl4 NH
+  positivity
+
+open Classical in
+/-- Step `hτ₂1` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hτ₂1 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p),
+    let fp : bf.FamParams := AD.fp;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    (2 : ℝ) ≤ A.colBudget → (4 : ℝ) ≤ Nl →
+    let NH : ℝ := (2 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp : ℝ)) * Nl;
+    let τ₂ : ℝ := AD.τ₃ / ((1 : ℝ) + A.colBudget * √(AD.n (fp.Lc + (4 : ℕ))) * (A.colBudget * √NH));
+    τ₂ = AD.τ₃ / ((1 : ℝ) + A.colBudget * √(AD.n (fp.Lc + (4 : ℕ))) * (A.colBudget * √NH)) →
+      (0 : ℝ) < (1 : ℝ) + A.colBudget * √(AD.n (fp.Lc + (4 : ℕ))) * (A.colBudget * √NH) →
+    τ₂ ≤ 1 := by
+  intro κ c₀ A bf p AD fp Nl hcb hNl4 NH τ₂ hτ₂def hden
+  rw [hτ₂def, div_le_one hden]
+  have! this : 0 ≤ A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) *
+      (A.colBudget * Real.sqrt NH) := by
+    positivity
+  linarith only [this, AD.hτ₃1]
+
+open Classical in
+/-- Step `hτ₂'` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hτ₂' :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p),
+    let fp : bf.FamParams := AD.fp;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    (2 : ℝ) ≤ A.colBudget → (4 : ℝ) ≤ Nl →
+    let NH : ℝ := (2 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp : ℝ)) * Nl;
+    let τ₂ : ℝ := AD.τ₃ / ((1 : ℝ) + A.colBudget * √(AD.n (fp.Lc + (4 : ℕ))) * (A.colBudget * √NH));
+    τ₂ = AD.τ₃ / ((1 : ℝ) + A.colBudget * √(AD.n (fp.Lc + (4 : ℕ))) * (A.colBudget * √NH)) →
+      (0 : ℝ) < (1 : ℝ) + A.colBudget * √(AD.n (fp.Lc + (4 : ℕ))) * (A.colBudget * √NH) →
+    τ₂ * (A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) * (A.colBudget * Real.sqrt NH)) ≤
+    AD.τ₃ := by
+  intro κ c₀ A bf p AD fp Nl hcb hNl4 NH τ₂ hτ₂def hden
+  rw [hτ₂def, div_mul_eq_mul_div, div_le_iff₀ hden]
+  have! this : 0 ≤ A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) *
+      (A.colBudget * Real.sqrt NH) := by
+    positivity
+  nlinarith only [this, AD.hτ₃]
+
+open Classical in
+/-- Step `hcapV0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hcapV0 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (k : ℕ),
+      (0 : ℝ) < dyadicGridLength A.G A.R.1 →
+    0 ≤ FamParams.capV A cc k := by
+  intro κ c₀ cc A k hRl0
+  unfold FamParams.capV; positivity
+
+open Classical in
+/-- Step `hVl00` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hVl00 :
+    ∀ (cc : ℕ) (k : ℕ) (S : ModeSchedule) (Vl0 : ℝ),
+      Vl0 = (24 : ℝ) * ((↑⌊(180 : ℝ) * (↑S.dmax : ℝ) * Real.log ((2 : ℝ) * S.Dm) / (1 /
+        1024 : ℝ)⌋₊ : ℝ) + (1 : ℝ)) * (Real.exp (((6144 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) *
+        ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (4 : ℝ)) * ((1 : ℝ) +
+        Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)) + (2 : ℝ) * (1 : ℝ) / S.Dstar ^ (394 : ℕ)) →
+    0 ≤ Vl0 := by
+  intro cc k S Vl0 hVl0
+  rw [hVl0]; positivity
+
+open Classical in
+/-- Step `hB00` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hB00 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (k : ℕ) (Vl0 : ℝ),
+      (0 : ℝ) < dyadicGridLength A.G A.R.1 → (0 : ℝ) ≤ Vl0 →
+    0 ≤ FamParams.SideInput.sideB0 A cc k Vl0 := by
+  intro κ c₀ cc A k Vl0 hRl0 hVl00
+  unfold FamParams.SideInput.sideB0; positivity
+
+open Classical in
+/-- Step `hbig` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hbig :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (k : ℕ)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p),
+    let fp : bf.FamParams := AD.fp;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    Real.log ((2 : ℝ) * ((8 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp : ℝ)) * Nl)) ≤ (↑k : ℝ) ^ cc →
+      (2 : ℝ) ≤ A.colBudget → (4 : ℝ) ≤ Nl →
+    2 * (8 * A.colBudget + (1 + AD.Mp) * Nl) ≤ Real.exp ((k : ℝ) ^ cc) := by
+  intro κ c₀ cc A bf k p AD fp Nl hkB hcb hNl4
+  rw [← Real.exp_log (show (0 : ℝ) < 2 * (8 * A.colBudget + (1 + AD.Mp) * Nl) by
+    have! this : 0 ≤ (1 + (AD.Mp : ℝ)) * Nl := by positivity
+    linarith only [this, hcb])]
+  exact Real.exp_le_exp.mpr hkB
+
+open Classical in
+/-- Step `h64D` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_h64D :
+    ∀ (cc : ℕ), (1 : ℕ) ≤ cc → ∀ (kD : ℝ), (1 : ℝ) ≤ kD → (2 : ℝ) ≤ kD →
+    64 * kD ≤ kD ^ (cc + 6) := by
+  intro cc hcc kD hkD1 hkD2
+  have! h1 : (2 : ℝ) ^ (cc + 5) ≤ kD ^ (cc + 5) := pow_le_pow_left₀ (by norm_num) hkD2 _
+  have! h2 : (64 : ℝ) ≤ 2 ^ (cc + 5) := by
+    calc (64 : ℝ) = 2 ^ 6 := by norm_num
+      _ ≤ 2 ^ (cc + 5) := pow_le_pow_right₀ (by norm_num) (by omega)
+  rw [show cc + 6 = (cc + 5) + 1 by omega, pow_succ]
+  nlinarith only [h1, h2, hkD1]
+
+open Classical in
+/-- Step `hlogHm` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hlogHm :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (k : ℕ) (δ : ℝ) (kD : ℝ),
+      (0 : ℝ) < δ →
+    let dB : ℕ := A.dBnd;
+    let Hm : ℝ := max (max A.Hsrc (Real.exp (↑dB : ℝ))) (max ((5832 : ℝ) * max A.H padW ^ (4 : ℕ))
+        ((↑dB : ℝ) * (bumpConst * (8 : ℝ) ^ (32 : ℕ) * ((2 : ℝ) / δ))));
+    (1 : ℝ) ≤ Hm → (↑dB : ℝ) ≤ (↑k : ℝ) ^ cc → Real.log A.Hsrc ≤ (↑k : ℝ) ^ cc →
+      Real.log (max A.H padW) ≤ (↑k : ℝ) ^ cc → δ⁻¹ ≤ Real.exp kD → (↑k : ℝ) ^ cc ≤ kD →
+      (1 : ℝ) ≤ kD → (1 : ℝ) ≤ (↑k : ℝ) ^ cc → kD ≤ kD ^ (cc + (6 : ℕ)) →
+      (↑k : ℝ) ^ cc ≤ kD ^ (cc + (6 : ℕ)) → (64 : ℝ) * kD ≤ kD ^ (cc + (6 : ℕ)) →
+      (64 : ℝ) * (↑k : ℝ) ^ cc ≤ kD ^ (cc + (6 : ℕ)) →
+      Real.log bumpConst + (68 : ℝ) ≤ (↑k : ℝ) ^ cc →
+    Real.log Hm ≤ kD ^ (cc + 6) := by
+  intro κ c₀ cc A k δ kD hδ dB Hm hHm1 hdBk hHsk hHWk hδk hkD hkD1 hkcc1 hkDle hkk h64D h64 hkK0
+  set! Y := kD ^ (cc + 6) with hY
+  rewrite [← hY] at hkDle hkk h64D h64 ⊢
+  have! hHs0 : 0 < A.Hsrc := lt_of_lt_of_le (Real.exp_pos 2) A.exp_two_le_Hsrc
+  have! hW0 : 0 < max A.H ActiveSetup.padW :=
+    lt_of_lt_of_le (Real.exp_pos 2) (le_trans (le_max_left _ _) (le_max_right _ _))
+  have! ha : A.Hsrc ≤ Real.exp Y := by
+    rw [← Real.exp_log hHs0]; exact Real.exp_le_exp.mpr (hHsk.trans hkk)
+  have! hb : Real.exp dB ≤ Real.exp Y := Real.exp_le_exp.mpr (hdBk.trans hkk)
+  have! he9 : (5832 : ℝ) ≤ Real.exp 9 := by
+    have! h1 : (2.7 : ℝ) ≤ Real.exp 1 := by linarith only [Real.exp_one_gt_d9]
+    have! h2 := pow_le_pow_left₀ (by norm_num) h1 9
+    rw [← Real.exp_nat_mul] at h2
+    norm_num at h2 ⊢
+    linarith only [h2]
+  have! hc : 5832 * max A.H ActiveSetup.padW ^ 4 ≤ Real.exp Y := by
+    have! h1 : max A.H ActiveSetup.padW ^ 4 ≤ Real.exp (4 * (k : ℝ) ^ cc) := by
+      rw [← Real.exp_log hW0, ← Real.exp_nat_mul]
+      push_cast
+      exact Real.exp_le_exp.mpr (by linarith only [hHWk])
+    calc 5832 * max A.H ActiveSetup.padW ^ 4 ≤ Real.exp 9 * Real.exp (4 * (k : ℝ) ^ cc) :=
+          mul_le_mul he9 h1 (by positivity) (Real.exp_pos _).le
+      _ = Real.exp (9 + 4 * (k : ℝ) ^ cc) := (Real.exp_add _ _).symm
+      _ ≤ Real.exp Y := Real.exp_le_exp.mpr (by linarith only [h64, hkcc1])
+  have! hd : (dB : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ)) ≤ Real.exp Y := by
+    have! hdB0 : (dB : ℝ) ≤ Real.exp ((k : ℝ) ^ cc) :=
+      hdBk.trans ((Real.add_one_le_exp _).trans' (by linarith only []))
+    have! h8 : (8 : ℝ) ^ 32 * 2 ≤ Real.exp 68 := by
+      have! h1 : (2.7 : ℝ) ≤ Real.exp 1 := by linarith only [Real.exp_one_gt_d9]
+      have! h2 := pow_le_pow_left₀ (by norm_num) h1 68
+      rw [← Real.exp_nat_mul] at h2
+      norm_num at h2 ⊢
+      linarith only [h2]
+    have! hδi : 2 / δ = (8 : ℝ) ^ 0 * 2 * δ⁻¹ := by rw [pow_zero, one_mul, div_eq_mul_inv]
+    have! hb0 : bumpConst = Real.exp (Real.log bumpConst) :=
+      (Real.exp_log (lt_of_lt_of_le one_pos one_le_bumpConst)).symm
+    calc (dB : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ))
+        = (dB : ℝ) * bumpConst * ((8 : ℝ) ^ 32 * 2) * δ⁻¹ := by
+          rw [div_eq_mul_inv]; ring
+      _ ≤ Real.exp ((k : ℝ) ^ cc) * Real.exp (Real.log bumpConst) * Real.exp 68 *
+          Real.exp kD := by
+          rw [← hb0]
+          have hb1 := one_le_bumpConst
+          gcongr
+      _ = Real.exp ((k : ℝ) ^ cc + Real.log bumpConst + 68 + kD) := by
+          rw [← Real.exp_add, ← Real.exp_add, ← Real.exp_add]
+      _ ≤ Real.exp Y := Real.exp_le_exp.mpr (by linarith only [h64D, hkK0, hkD, hkD1])
+  have! hHmY : Hm ≤ Real.exp Y := max_le (max_le ha hb) (max_le hc hd)
+  rw [← Real.exp_log (lt_of_lt_of_le one_pos hHm1)] at hHmY
+  exact Real.exp_le_exp.mp hHmY
+
+open Classical in
+/-- Step `hQ0l` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hQ0l :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (k : ℕ)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p), (1 : ℝ) ≤ (↑k : ℝ) →
+    let fp : bf.FamParams := AD.fp;
+    let dB : ℕ := A.dBnd;
+    (1 : ℕ) ≤ dB → (↑dB : ℝ) ≤ (↑k : ℝ) ^ cc → Real.log fp.Hed ≤ (↑k : ℝ) ^ cc →
+    Real.log (fp.Q0bd dB) ≤ (k : ℝ) ^ (3 * cc) + 1 := by
+  intro κ c₀ cc A bf k p AD hk1 fp dB hdB1 hdBk hHedk
+  have! hq := fp.Q0bd_le dB AD.hHed2
+  have! hH1 : (1 : ℝ) ≤ fp.Hed ^ (dB * dB) := one_le_pow₀ (by linarith only [AD.hHed2])
+  have! hq1 : (1 : ℝ) ≤ fp.Q0bd dB := by exact_mod_cast fp.one_le_Q0bd dB AD.hHed2
+  have! h2 : (fp.Q0bd dB : ℝ) ≤ 2 * fp.Hed ^ (dB * dB) := by linarith only [hq, hH1]
+  have! h3 : Real.log (fp.Q0bd dB) ≤ Real.log 2 + ((dB * dB : ℕ) : ℝ) * Real.log fp.Hed := by
+    rw [← Real.log_pow, ← Real.log_mul (by norm_num) (by positivity)]
+    exact Real.log_le_log (by linarith only [hq1]) h2
+  have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
+  have! hHl0 : 0 ≤ Real.log fp.Hed := Real.log_nonneg (by linarith only [AD.hHed2])
+  have! hdB0 : (0 : ℝ) ≤ dB := Nat.cast_nonneg _
+  have! hdd : ((dB * dB : ℕ) : ℝ) * Real.log fp.Hed ≤ (k : ℝ) ^ (3 * cc) := by
+    push_cast
+    calc (dB : ℝ) * dB * Real.log fp.Hed ≤ (k : ℝ) ^ cc * (k : ℝ) ^ cc * (k : ℝ) ^ cc := by
+          gcongr
+      _ = (k : ℝ) ^ (3 * cc) := by ring
+  linarith only [h3, hl2, hdd]
+
+open Classical in
+/-- Step `hΛ0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hΛ0 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (Dm0 : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p) (δ : ℝ) (kD : ℝ),
+    let fp : bf.FamParams := AD.fp;
+    let dB : ℕ := A.dBnd;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    let Hm : ℝ := max (max A.Hsrc (Real.exp (↑dB : ℝ))) (max ((5832 : ℝ) * max A.H padW ^ (4 : ℕ))
+        ((↑dB : ℝ) * (bumpConst * (8 : ℝ) ^ (32 : ℕ) * ((2 : ℝ) / δ))));
+    (1 : ℕ) ≤ dB → (0 : ℝ) ≤ Real.log (max (2 : ℝ) Nl) →
+      Real.log (fp.Bst Dm0 dB Hm δ Nl kD δ) = Real.log (↑(fp.Q0bd dB) : ℝ) + Real.log ((2 : ℝ) ^
+        (fp.Kstar Dm0 dB Hm δ Nl kD δ + (1 : ℕ))) →
+      (0 : ℝ) ≤ Real.log ((2 : ℝ) ^ (fp.Kstar Dm0 dB Hm δ Nl kD δ + (1 : ℕ))) →
+      (0 : ℝ) ≤ Real.log (fp.modeStarG Dm0 dB Hm δ Nl kD δ) →
+    let Λ : ℝ := (↑((2 : ℕ) * dB + (2 : ℕ)) : ℝ) + Real.log (fp.modeStarG Dm0 dB Hm δ Nl kD δ) +
+        Real.log (fp.Bst Dm0 dB Hm δ Nl kD δ) + Real.log (max (2 : ℝ) Nl) + Real.log (↑(fp.Q0bd
+        dB) : ℝ) + (1 : ℝ);
+    Λ = (↑((2 : ℕ) * dB + (2 : ℕ)) : ℝ) + Real.log (fp.modeStarG Dm0 dB Hm δ Nl kD δ) + Real.log
+        (fp.Bst Dm0 dB Hm δ Nl kD δ) + Real.log (max (2 : ℝ) Nl) + Real.log (↑(fp.Q0bd dB) : ℝ) +
+        (1 : ℝ) →
+    0 ≤ Λ := by
+  intro κ c₀ Dm0 A bf p AD δ kD fp dB Nl Hm hdB1 hmaxNl0 hBstl hlK0 hlDG0 Λ hΛdef
+  rw [hΛdef, hBstl]; positivity
+
+open Classical in
+/-- Step `hE0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hE0 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (η₀ : ℝ) (E : ℝ), A.SubRootProps η₀ E →
+      (0 : ℝ) < dyadicGridLength A.G A.R.1 →
+    0 ≤ E := by
+  intro κ c₀ A η₀ E hsub hRl0
+  obtain ⟨h1, -, -⟩ := hsub A.R subset_rfl
+  have! h := h1 0
+  have! h0 : 0 ≤ ∑ I ∈ A.cells with dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2,
+      dyadicGridLength A.G I.1 * (MeasureTheory.eLpNorm (A.U 0 I) 2 (A.μ I)).toReal ^ 2 :=
+    Finset.sum_nonneg fun I _ => mul_nonneg (dyadicGridLength_pos A.G I.1).le (sq_nonneg _)
+  by_contra hneg
+  push Not at hneg
+  have! this : E * dyadicGridLength A.G A.R.1 < 0 := mul_neg_of_neg_of_pos hneg hRl0
+  linarith only [h, h0, this]
+
+open Classical in
+/-- Step `hT0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hT0 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (k : ℕ)
+      (E : ℝ) (p : Fin (3 : ℕ)) (AD : bf.AttemptData p) (ρ : ℝ), (0 : ℝ) < ρ →
+    let fp : bf.FamParams := AD.fp;
+    ∀ (S : ModeSchedule), (1 : ℕ) ≤ S.K → ∀ (Vl0 : ℝ), (0 : ℝ) < dyadicGridLength A.G A.R.1 →
+      (0 : ℝ) ≤ Vl0 → (1 : ℝ) ≤ (↑fp.P : ℝ) → (0 : ℝ) ≤ E →
+    let TT : ℝ := TsideF A fp.P S.K (A.uslot p) ((2 : ℕ) ^ A.famFuel) ((2 : ℕ) * A.famFuel +
+        (2 : ℕ)) (1 : ℝ) E cc (↑k : ℝ) (fun (_ : Fin (4 : ℕ)) ↦ Vl0) ρ;
+    (TT = TsideF A fp.P S.K (A.uslot p) ((2 : ℕ) ^ A.famFuel) ((2 : ℕ) * A.famFuel + (2 : ℕ))
+        (1 : ℝ) E cc (↑k : ℝ) (fun (_ : Fin (4 : ℕ)) ↦ Vl0) ρ) →
+    0 ≤ TT := by
+  intro κ c₀ cc A bf k E p AD ρ hρ fp S hK1 Vl0 hRl0 hVl00 hP1 hE0 TT hTT
+  rw [hTT]; unfold TsideF; dsimp only
+  have := hVl00
+  have! hL0 := localFormUniformConstant_nonneg κ
+  refine div_nonneg (add_nonneg (div_nonneg ?_ hRl0.le) (div_nonneg ?_ hRl0.le)) hρ.le
+  · exact Finset.sum_nonneg fun l _ => by split_ifs <;> positivity
+  · have! this : 0 ≤ ∑ l : Fin 4,
+        (if A.uslot p = some l then 2 * (4 * E * dyadicGridLength A.G A.R.1)
+        else 2 * ((S.K : ℝ) * (20 * Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) +
+          cc ^ 2 + 3) * (1 + Real.log (2 * (k : ℝ))) ^ 2) + 32) * dyadicGridLength A.G A.R.1) +
+        2 * ((S.K : ℝ) * (Vl0 * dyadicGridLength A.G A.R.1))) :=
+      Finset.sum_nonneg fun l _ => by split_ifs <;> positivity
+    positivity
+
+open Classical in
+/-- Step `h3pow` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_h3pow :
+    ∀ (S : ModeSchedule), (0 : ℝ) < S.Dstar → (1 : ℝ) ≤ S.Dstar →
+      √((4 : ℝ) * S.Dstar ^ (2 : ℕ) * (1 : ℝ)) = (2 : ℝ) * S.Dstar → √S.Dstar ^ (2 : ℕ) = S.Dstar →
+      (1 : ℝ) ≤ √S.Dstar →
+    (S.Dstar * (Real.sqrt S.Dstar * Real.sqrt (4 * S.Dstar ^ 2 * 1) + 1)) ^ 4 ≤
+    81 * S.Dstar ^ 10 := by
+  intro S hD0 hD1 hsq hsD hsD1
+  rw [hsq]
+  have! h1 : Real.sqrt S.Dstar * (2 * S.Dstar) + 1 ≤ 3 * (Real.sqrt S.Dstar * S.Dstar) := by
+    nlinarith only [hsD1, hD1]
+  have! h0 : 0 ≤ S.Dstar * (Real.sqrt S.Dstar * (2 * S.Dstar) + 1) := by positivity
+  calc _ ≤ (S.Dstar * (3 * (Real.sqrt S.Dstar * S.Dstar))) ^ 4 :=
+        pow_le_pow_left₀ h0 (mul_le_mul_of_nonneg_left h1 hD0.le) 4
+    _ = 81 * S.Dstar ^ 8 * (Real.sqrt S.Dstar ^ 2) ^ 2 := by ring
+    _ = _ := by rw [hsD]; ring
+
+open Classical in
+/-- Step `hQe0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hQe0 :
+    ∀ (κ : LocalKernelClass) (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar → ∀ (U : ℝ), (16 : ℝ) ≤ U →
+      ∀ (ε : ℝ), (0 : ℝ) < ε →
+    let Iw : ℕ := ⌊Real.logb (2 : ℝ) (S.Dstar ^ (250 : ℕ))⌋₊;
+    let ι : ℝ := (S.Dstar ^ (100 : ℕ))⁻¹ * S.Dstar ^ (10 : ℕ);
+    let Qe : ℝ := (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) *
+        (12 : ℝ) ^ (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) *
+        threeErrC κ (3 : ℕ) (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) *
+        (2 : ℝ) ^ ((1 : ℕ) + (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^
+        (3 : ℕ) * ((↑Iw : ℝ) + (1 : ℝ)))));
+    Qe = (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) * (12 : ℝ) ^
+        (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) * threeErrC κ (3 : ℕ)
+        (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) * (2 : ℝ) ^ ((1 : ℕ) +
+        (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^ (3 : ℕ) * ((↑Iw : ℝ) +
+        (1 : ℝ))))) →
+    0 ≤ Qe := by
+  intro κ S hD2 U hU16 ε hε0 Iw ι Qe hQe
+  rw [hQe]
+  have! this := fourErrC_nonneg κ 3; have := threeErrC_nonneg κ 3 1; have := fourKC_nonneg κ 3
+  have! this := entryCU_nonneg' κ 3 1; have := K1c_pos
+  positivity
+
+open Classical in
+/-- Step `hCjg1` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hCjg1 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (k : ℕ),
+    let Cjg : ℝ := ((↑((2 : ℕ) * A.famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    Cjg = ((↑((2 : ℕ) * A.famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp ((2 : ℝ) *
+        ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) + (↑cc : ℝ) +
+        (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ))) →
+    1 ≤ Cjg := by
+  intro κ c₀ cc A k Cjg hCjg
+  rw [hCjg]
+  have! h0 := Nat.cast_nonneg (α := ℝ) (2 * A.famFuel + 2)
+  exact one_le_mul_of_one_le_of_one_le (one_le_pow₀ (by linarith only [h0]))
+    (Real.one_le_exp (by positivity))
+
+open Classical in
+/-- Step `hΓa0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hΓa0 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (k : ℕ) (E : ℝ)
+      (S : ModeSchedule) (Vl0 : ℝ),
+    let Nb : ℕ := Nat.log (2 : ℕ) S.K + (1 : ℕ);
+    (0 : ℝ) ≤ Vl0 →
+    let Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ) := FamParams.SideLeafM.nOs
+        ((2 : ℕ) ^ A.famFuel) ((2 : ℕ) * A.famFuel + (2 : ℕ));
+    let Cjg : ℝ := ((↑((2 : ℕ) * A.famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    let Γa : Fin (4 : ℕ) → ℝ := fun (_ : Fin (4 : ℕ)) ↦ (↑Os.card : ℝ) * ((↑Nb : ℝ) * ((2 : ℝ) *
+        FamParams.capV A cc (↑k : ℝ) + (16 : ℝ) * (Cjg * FamParams.SideInput.sideB0 A cc (↑k : ℝ)
+        Vl0) + (16 : ℝ) * ((↑Nb : ℝ) * (Cjg * ((↑Nb : ℝ) * FamParams.capV A cc (↑k : ℝ))))) +
+        FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) / dyadicGridLength A.G A.R.1;
+    let G0e : ℝ := Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ));
+    (1 : ℝ) ≤ G0e →
+    let W : ℝ := G0e + Vl0 + E + (1 : ℝ);
+    (1 : ℝ) ≤ W →
+    let n : ℝ := (↑Nb : ℝ);
+    (Γa = fun (_ : Fin (4 : ℕ)) ↦ (↑Os.card : ℝ) * (n * ((2 : ℝ) * FamParams.capV A cc (↑k : ℝ) +
+        (16 : ℝ) * (Cjg * FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) + (16 : ℝ) * (n * (Cjg *
+        (n * FamParams.capV A cc (↑k : ℝ))))) + FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) /
+        dyadicGridLength A.G A.R.1) →
+    let P3 : ℝ := n ^ (3 : ℕ) * Cjg;
+    P3 = n ^ (3 : ℕ) * Cjg → (1 : ℝ) ≤ P3 → n ≤ P3 → n * Cjg ≤ P3 → (0 : ℝ) ≤ (↑Os.card : ℝ) →
+      FamParams.capV A cc (↑k : ℝ) = G0e * ((4 : ℝ) * dyadicGridLength A.G A.R.1) →
+      FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0 = (2 : ℝ) * (((20 : ℝ) * G0e + (32 : ℝ)) *
+        dyadicGridLength A.G A.R.1) + (2 : ℝ) * (Vl0 * dyadicGridLength A.G A.R.1) →
+      dyadicGridLength A.G A.R.1 ≠ (0 : ℝ) → G0e ≤ W →
+      (40 : ℝ) * G0e + (64 : ℝ) + (2 : ℝ) * Vl0 ≤ (106 : ℝ) * W →
+    Γa 0 ≤ 1874 * Os.card * P3 * W := by
+  intro κ c₀ cc A k E S Vl0 Nb hVl00 Os Cjg Γa G0e hG0e1 W hW1 n hΓadef P3 hP3 hP31 hnP3 hnCP3
+    hOs0 hcapV hsideB hR0 hG0W hsB
+  have! e : Γa 0 = Os.card * (n * (8 * G0e + 16 * Cjg * (40 * G0e + 64 + 2 * Vl0) +
+      64 * n ^ 2 * Cjg * G0e) + (40 * G0e + 64 + 2 * Vl0)) := by
+    simp only [hΓadef, hcapV, hsideB]
+    rw [div_eq_iff hR0]
+    ring
+  rw [e]
+  have! h1 : n * (8 * G0e) ≤ 8 * (P3 * W) := by
+    have! this := mul_le_mul hnP3 hG0W (by linarith only [hG0e1]) (by linarith only [hP31])
+    linarith only [this]
+  have! h2 : n * (16 * Cjg * (40 * G0e + 64 + 2 * Vl0)) ≤ 1696 * (P3 * W) := by
+    have! h3 : n * Cjg * (40 * G0e + 64 + 2 * Vl0) ≤ P3 * (106 * W) :=
+      mul_le_mul hnCP3 hsB (by positivity) (by linarith only [hP31])
+    nlinarith only [h3]
+  have! h4 : n * (64 * n ^ 2 * Cjg * G0e) ≤ 64 * (P3 * W) := by
+    have! this : n * (64 * n ^ 2 * Cjg * G0e) = 64 * (P3 * G0e) := by rw [hP3]; ring
+    rw [this]
+    have! this := mul_le_mul_of_nonneg_left hG0W (show 0 ≤ P3 by linarith only [hP31])
+    linarith only [this]
+  have! h5 : 40 * G0e + 64 + 2 * Vl0 ≤ 106 * (P3 * W) := by
+    have! this := mul_le_mul_of_nonneg_right hP31 (show 0 ≤ W by linarith only [hW1])
+    linarith only [hsB, this]
+  have! h6 : n * (8 * G0e + 16 * Cjg * (40 * G0e + 64 + 2 * Vl0) + 64 * n ^ 2 * Cjg * G0e) +
+      (40 * G0e + 64 + 2 * Vl0) ≤ 1874 * (P3 * W) := by
+    have! this : n * (8 * G0e + 16 * Cjg * (40 * G0e + 64 + 2 * Vl0) + 64 * n ^ 2 * Cjg * G0e) =
+        n * (8 * G0e) + n * (16 * Cjg * (40 * G0e + 64 + 2 * Vl0)) +
+          n * (64 * n ^ 2 * Cjg * G0e) := by ring
+    rw [this]; linarith only [h1, h2, h4, h5]
+  calc _ ≤ (Os.card : ℝ) * (1874 * (P3 * W)) := mul_le_mul_of_nonneg_left h6 hOs0
+    _ = _ := by ring
+
+open Classical in
+/-- Step `hΓb0` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hΓb0 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (k : ℕ) (E : ℝ)
+      (S : ModeSchedule) (Vl0 : ℝ),
+    let Nb : ℕ := Nat.log (2 : ℕ) S.K + (1 : ℕ);
+    let Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ) := FamParams.SideLeafM.nOs
+        ((2 : ℕ) ^ A.famFuel) ((2 : ℕ) * A.famFuel + (2 : ℕ));
+    let Cjg : ℝ := ((↑((2 : ℕ) * A.famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    let Γb : Fin (4 : ℕ) → ℝ := fun (_ : Fin (4 : ℕ)) ↦ (↑Os.card : ℝ) * ((↑Nb : ℝ) *
+        FamParams.capV A cc (↑k : ℝ) + FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) /
+        dyadicGridLength A.G A.R.1;
+    let G0e : ℝ := Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ));
+    (1 : ℝ) ≤ G0e →
+    let W : ℝ := G0e + Vl0 + E + (1 : ℝ);
+    (1 : ℝ) ≤ W →
+    let n : ℝ := (↑Nb : ℝ);
+    (Γb = fun (_ : Fin (4 : ℕ)) ↦ (↑Os.card : ℝ) * (n * FamParams.capV A cc (↑k : ℝ) +
+        FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) / dyadicGridLength A.G A.R.1) →
+    let P3 : ℝ := n ^ (3 : ℕ) * Cjg;
+    (1 : ℝ) ≤ P3 → n ≤ P3 → (0 : ℝ) ≤ (↑Os.card : ℝ) →
+      FamParams.capV A cc (↑k : ℝ) = G0e * ((4 : ℝ) * dyadicGridLength A.G A.R.1) →
+      FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0 = (2 : ℝ) * (((20 : ℝ) * G0e + (32 : ℝ)) *
+        dyadicGridLength A.G A.R.1) + (2 : ℝ) * (Vl0 * dyadicGridLength A.G A.R.1) →
+      dyadicGridLength A.G A.R.1 ≠ (0 : ℝ) → G0e ≤ W →
+      (40 : ℝ) * G0e + (64 : ℝ) + (2 : ℝ) * Vl0 ≤ (106 : ℝ) * W →
+    Γb 0 ≤ 110 * Os.card * P3 * W := by
+  intro κ c₀ cc A k E S Vl0 Nb Os Cjg Γb G0e hG0e1 W hW1 n hΓbdef P3 hP31 hnP3 hOs0 hcapV hsideB
+    hR0 hG0W hsB
+  have! e : Γb 0 = Os.card * (n * (4 * G0e) + (40 * G0e + 64 + 2 * Vl0)) := by
+    simp only [hΓbdef, hcapV, hsideB]
+    rw [div_eq_iff hR0]
+    ring
+  rw [e]
+  have! h1 : n * (4 * G0e) ≤ 4 * (P3 * W) := by
+    have! this := mul_le_mul hnP3 hG0W (by linarith only [hG0e1]) (by linarith only [hP31])
+    linarith only [this]
+  have! h5 : 40 * G0e + 64 + 2 * Vl0 ≤ 106 * (P3 * W) := by
+    have! this := mul_le_mul_of_nonneg_right hP31 (show 0 ≤ W by linarith only [hW1])
+    linarith only [hsB, this]
+  calc _ ≤ (Os.card : ℝ) * (110 * (P3 * W)) :=
+        mul_le_mul_of_nonneg_left (by linarith only [h1, h5]) hOs0
+    _ = _ := by ring
+
+open Classical in
+/-- Step `hΓa00` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hΓa00 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (k : ℕ) (S : ModeSchedule)
+      (Vl0 : ℝ),
+    let Nb : ℕ := Nat.log (2 : ℕ) S.K + (1 : ℕ);
+    (0 : ℝ) < dyadicGridLength A.G A.R.1 → (0 : ℝ) ≤ Vl0 →
+    let Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ) := FamParams.SideLeafM.nOs
+        ((2 : ℕ) ^ A.famFuel) ((2 : ℕ) * A.famFuel + (2 : ℕ));
+    let Cjg : ℝ := ((↑((2 : ℕ) * A.famFuel + (2 : ℕ)) : ℝ) + (1 : ℝ)) ^ (2 : ℕ) * Real.exp
+        ((2 : ℝ) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) +
+        (↑cc : ℝ) + (7 : ℝ)) * ((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)));
+    let Γa : Fin (4 : ℕ) → ℝ := fun (_ : Fin (4 : ℕ)) ↦ (↑Os.card : ℝ) * ((↑Nb : ℝ) * ((2 : ℝ) *
+        FamParams.capV A cc (↑k : ℝ) + (16 : ℝ) * (Cjg * FamParams.SideInput.sideB0 A cc (↑k : ℝ)
+        Vl0) + (16 : ℝ) * ((↑Nb : ℝ) * (Cjg * ((↑Nb : ℝ) * FamParams.capV A cc (↑k : ℝ))))) +
+        FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) / dyadicGridLength A.G A.R.1;
+    let G0e : ℝ := Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ));
+    let n : ℝ := (↑Nb : ℝ);
+    (Γa = fun (_ : Fin (4 : ℕ)) ↦ (↑Os.card : ℝ) * (n * ((2 : ℝ) * FamParams.capV A cc (↑k : ℝ) +
+        (16 : ℝ) * (Cjg * FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) + (16 : ℝ) * (n * (Cjg *
+        (n * FamParams.capV A cc (↑k : ℝ))))) + FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) /
+        dyadicGridLength A.G A.R.1) → (0 : ℝ) ≤ (↑Os.card : ℝ) →
+      FamParams.capV A cc (↑k : ℝ) = G0e * ((4 : ℝ) * dyadicGridLength A.G A.R.1) →
+      FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0 = (2 : ℝ) * (((20 : ℝ) * G0e + (32 : ℝ)) *
+        dyadicGridLength A.G A.R.1) + (2 : ℝ) * (Vl0 * dyadicGridLength A.G A.R.1) →
+    0 ≤ Γa 0 := by
+  intro κ c₀ cc A k S Vl0 Nb hRl0 hVl00 Os Cjg Γa G0e n hΓadef hOs0 hcapV hsideB
+  simp only [hΓadef, hcapV, hsideB]
+  exact div_nonneg (mul_nonneg hOs0 (by positivity)) hRl0.le
+
+open Classical in
+/-- Step `hΓb00` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hΓb00 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ) (A : ActiveSetup κ c₀) (k : ℕ) (S : ModeSchedule)
+      (Vl0 : ℝ),
+    let Nb : ℕ := Nat.log (2 : ℕ) S.K + (1 : ℕ);
+    (0 : ℝ) < dyadicGridLength A.G A.R.1 → (0 : ℝ) ≤ Vl0 →
+    let Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ) := FamParams.SideLeafM.nOs
+        ((2 : ℕ) ^ A.famFuel) ((2 : ℕ) * A.famFuel + (2 : ℕ));
+    let Γb : Fin (4 : ℕ) → ℝ := fun (_ : Fin (4 : ℕ)) ↦ (↑Os.card : ℝ) * ((↑Nb : ℝ) *
+        FamParams.capV A cc (↑k : ℝ) + FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) /
+        dyadicGridLength A.G A.R.1;
+    let G0e : ℝ := Real.exp (((4096 : ℝ) * ((↑cc : ℝ) + (1 : ℝ)) * ((1024 : ℝ) * ((↑cc : ℝ) +
+        (1 : ℝ)) + (↑cc : ℝ) + (7 : ℝ)) + (↑cc : ℝ) ^ (2 : ℕ) + (3 : ℝ)) * ((1 : ℝ) + Real.log
+        ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ));
+    let n : ℝ := (↑Nb : ℝ);
+    (Γb = fun (_ : Fin (4 : ℕ)) ↦ (↑Os.card : ℝ) * (n * FamParams.capV A cc (↑k : ℝ) +
+        FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0) / dyadicGridLength A.G A.R.1) →
+      (0 : ℝ) ≤ (↑Os.card : ℝ) →
+      FamParams.capV A cc (↑k : ℝ) = G0e * ((4 : ℝ) * dyadicGridLength A.G A.R.1) →
+      FamParams.SideInput.sideB0 A cc (↑k : ℝ) Vl0 = (2 : ℝ) * (((20 : ℝ) * G0e + (32 : ℝ)) *
+        dyadicGridLength A.G A.R.1) + (2 : ℝ) * (Vl0 * dyadicGridLength A.G A.R.1) →
+    0 ≤ Γb 0 := by
+  intro κ c₀ cc A k S Vl0 Nb hRl0 hVl00 Os Γb G0e n hΓbdef hOs0 hcapV hsideB
+  simp only [hΓbdef, hcapV, hsideB]
+  exact div_nonneg (mul_nonneg hOs0 (by positivity)) hRl0.le
+
+open Classical in
+/-- Step `hΓU00` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hΓU00 :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (A : ActiveSetup κ c₀) (E : ℝ),
+      (0 : ℝ) < dyadicGridLength A.G A.R.1 →
+    let Os : Finset (Fin (4 : ℕ) × Fin (4 : ℕ) × ℕ × ℕ × ℕ × ℕ) := FamParams.SideLeafM.nOs
+        ((2 : ℕ) ^ A.famFuel) ((2 : ℕ) * A.famFuel + (2 : ℕ));
+    let ΓU : ℝ := (↑Os.card : ℝ) * ((2 : ℝ) * ((4 : ℝ) * E * dyadicGridLength A.G A.R.1)) /
+        dyadicGridLength A.G A.R.1;
+    ΓU = (↑Os.card : ℝ) * ((2 : ℝ) * ((4 : ℝ) * E * dyadicGridLength A.G A.R.1)) /
+        dyadicGridLength A.G A.R.1 → (0 : ℝ) ≤ E → (0 : ℝ) ≤ (↑Os.card : ℝ) →
+    0 ≤ ΓU := by
+  intro κ c₀ A E hRl0 Os ΓU hΓUdef hE0 hOs0
+  rw [hΓUdef]
+  exact div_nonneg (mul_nonneg hOs0 (by positivity)) hRl0.le
+
+open Classical in
+/-- Step `hprin` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hprin :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (Dm0 : ℕ) (A : ActiveSetup κ c₀) (bf : A.BasicFamilies)
+      (p : Fin (3 : ℕ)) (AD : bf.AttemptData p) (d : bf.Vtx) (s : ℕ) (δ : ℝ) (ρ : ℝ) (kD : ℝ),
+      (0 : ℝ) < δ → δ ≤ (1 / 8 : ℝ) → (0 : ℝ) < ρ →
+    let fp : bf.FamParams := AD.fp;
+    let dB : ℕ := A.dBnd;
+    (8 : ℝ) * (↑dB : ℝ) * δ ≤ (1 : ℝ) →
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    ∀ (hNl0 : (0 : ℝ) ≤ Nl),
+    let Hm : ℝ := max (max A.Hsrc (Real.exp (↑dB : ℝ))) (max ((5832 : ℝ) * max A.H padW ^ (4 : ℕ))
+        ((↑dB : ℝ) * (bumpConst * (8 : ℝ) ^ (32 : ℕ) * ((2 : ℝ) / δ))));
+    (1 : ℝ) ≤ Hm → (∀ (w : bf.Vtx), (bf.vtag w).dim ≤ dB) →
+      (∀ (w : bf.Vtx) (a c : Fin (bf.vtag w).dim), (↑(rationalHeight ((bf.vtag w).C a c)) : ℝ) ≤
+        fp.Hed) → ∀ (S : ModeSchedule), S.dmax = (2 : ℕ) * dB + (2 : ℕ) →
+      (↑S.Q0 : ℝ) * (2 : ℝ) ^ (fp.Kstar Dm0 dB Hm δ Nl kD δ + (1 : ℕ)) ≤ S.Bstar →
+      ∀ (hK1 : (1 : ℕ) ≤ S.K),
+    let Lf : SearchLeaf := leafAt A.famFuel fp.Lc (A.basicSlot p) s;
+    let ks : ℕ := Lf.k;
+    let S0 : Finset (ℤ × ℤ) := {I ∈ AD.Tc | ¬∃ c ∈ fp.failRoots, dyadicGridCell A.G I.1 I.2 ⊆
+        dyadicGridCell A.G c.1 c.2};
+    let gs : ℤ × ℤ → Finset bf.Grp := fun (I : ℤ × ℤ) ↦ fp.groupsAt I ks;
+    let gset : Finset bf.Grp := S0.biUnion gs;
+    ∀ (hlenMc : ∀ (l : Fin (4 : ℕ)), (AD.cat l).length ≤ fp.Mc),
+    let mbs : (l : Fin (4 : ℕ)) → bf.MainBudget (AD.cat l) := fun (l : Fin (4 : ℕ)) ↦
+        MainBudget.ofCounts bf fp.Mc (AD.cat l) (hlenMc l) l (fun (e : CatCol bf.Vtx) (he : e ∈
+        AD.cat l) ↦ AD.hTc (AD.hT l e he).left) (fun (e : CatCol bf.Vtx) (he : e ∈ AD.cat l) ↦
+        (AD.hT l e he).right.left) hNl0 fun (I : ℤ × ℤ) (_ : I ∈ A.cells) ↦ AD.hlab l I
+        (AD.fp.Lc + (5 : ℕ)) le_rfl;
+    ∀ (Ms : Fin (4 : ℕ) → bf.Grp → ModeSystem A.G (Fintype.card (bf.Lab ⊕ Fin fp.Mc))),
+      S.Dstar = fp.modeStarG Dm0 dB Hm δ Nl kD δ →
+      (∀ (l : Fin (4 : ℕ)), ∀ G ∈ gset, (∀ (q : (Ms l G).Key), (Ms l G).dvOf q + (Ms l G).zc.dim ≤
+        (2 : ℕ) * dB + (2 : ℕ)) ∧ (Ms l G).Λ ≤ S.Dstar ∧ gaugeSqNorm (Ms l G).zc.dim (Ms l G).δc ≤
+        S.Dstar ∧ (2 : ℝ) * gaugeTail (Ms l G).zc.dim (Ms l G).δc / (2 : ℝ) ^ fp.Kstar Dm0 dB Hm δ
+        Nl kD δ * S.Dstar ^ (300 : ℕ) ≤ (1 : ℝ) ∧ (∀ (m : (Ms l G).Md), S.Dstar⁻¹ ≤ (Ms l G).L.εM
+        m) ∧ (∀ (V : ℤ × ℤ), (↑((Ms l G).alive V).card : ℝ) ≤ S.Dstar) ∧ ∀ (V : ℤ × ℤ),
+        (↑(Finset.image (Ms l G).keyOf ((Ms l G).alive V)).card : ℝ) ≤ Nl) →
+      ∀ (hA6 : (6 : ℝ) ≤ S.A0),
+    let qG : bf.Grp → ℕ := fun (G : bf.Grp) ↦ clearInt (bf.vtag (bf.grpCenter d G)).C;
+    (∀ (G : bf.Grp), (1 : ℕ) ≤ qG G ∧ qG G ≤ S.Q0) →
+      ∀ (c : (l : Fin (4 : ℕ)) → (G : ↥gset) → ℤ → ℤ × ℤ → (Ms l (↑G : bf.Grp)).Md → ℂ),
+    let cf : (l : Fin (4 : ℕ)) → (G : bf.Grp) → ℤ → ℤ × ℤ → (Ms l G).Md → ℂ := fun (l : Fin
+        (4 : ℕ)) (G : bf.Grp) ↦ if hG : G ∈ gset then c l ⟨G, hG⟩ else fun (_ : ℤ) (_ : ℤ × ℤ)
+        (_ : (Ms l G).Md) ↦ (0 : ℂ);
+    let D₀ : fp.SideInput :=
+      { cat := AD.cat, mbs := mbs, Lf := Lf, u := A.uslot p, S := S, hA := hA6, SP := S.sideParams
+          (1 / 1024 : ℝ), hK := hK1, n := Fintype.card (bf.Lab ⊕ Fin fp.Mc), Ms := Ms, c := cf };
+    ∀ (hcat : Fin (4 : ℕ) → List (CatCol bf.Vtx))
+      (hmbb : ∀ (l : Fin (4 : ℕ)), ∀ e ∈ AD.cat l ++ hcat l, e.birth ∈ A.cells)
+      (hmbT : ∀ (l : Fin (4 : ℕ)) (y : ℝ), (8 : ℝ) * A.colBudget + (↑(bf.tmplPath (AD.cat l ++
+        hcat l) y) : ℝ) ≤ (8 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp : ℝ)) * Nl),
+    let mb' : (l : Fin (4 : ℕ)) → bf.MainBudget (AD.cat l ++ hcat l) :=
+      fun (l : Fin (4 : ℕ)) ↦ { hb := hmbb l, B := (8 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp :
+                                  ℝ)) * Nl, hTp := hmbT l };
+    let D : fp.SideInput := D₀.appendCat hcat mb';
+    (∀ (l : Fin (4 : ℕ)), ∀ G ∈ gset, (Ms l G).zc = bf.vtag (bf.grpCenter d G)) →
+      (∀ (l : Fin (4 : ℕ)), ∀ G ∈ gset, (Ms l G).δc = δ ∧ (Ms l G).cl = slotCoeff l ∧ ∀ (i : Fin
+        (Ms l G).zc.dim), (Ms l G).ρ i ∈ Set.Icc (0 : ℝ) (1 : ℝ)) → (1 : ℕ) ≤ dB →
+    ∀ G ∈ gset, (D.withQ0 (qG G)).PrinOK G δ fp.Hed (fp.Kstar Dm0 dB Hm δ Nl kD δ)
+    (fp.Kstar Dm0 dB Hm δ Nl kD δ) := by
+  intro κ c₀ Dm0 A bf p AD d s δ ρ kD hδ hδ8 hρ fp dB hdδ Nl hNl0 Hm hHm1 hdim hC S hSd hbox hK1
+    Lf ks S0 gs gset hlenMc mbs Ms hDS hsch' hA6 qG hqG1 c cf D₀ hcat hmbb hmbT mb' D hzc hgrpE
+    hdB1 G hG
+  have! hcp := fp.center_principal_bounds Dm0 dB kD hδ (le_trans hδ8 (by norm_num)) AD.hHed2
+    hHm1 hδ hNl0 hdB1 hdim hC (bf.grpCenter d G)
+  rw [← hDS] at hcp
+  obtain ⟨hMN, hτm, hCN, hτc, hCm, hQC⟩ := hcp
+  have! hz0 := hzc 0 G hG
+  have hz0' : ((D.withQ0 (qG G)).Ms 0 G).zc = bf.vtag (bf.grpCenter d G) := hz0
+  have hz0'' : (D.Ms 0 G).zc = bf.vtag (bf.grpCenter d G) := hz0
+  have! hdimz := hdim (bf.grpCenter d G)
+  have! hqS : (qG G : ℝ) ≤ S.Q0 := by exact_mod_cast (hqG1 G).2
+  have! hQB : (qG G : ℝ) * 2 ^ (fp.Kstar Dm0 dB Hm δ Nl kD δ + 1) ≤ S.Bstar :=
+    le_trans (mul_le_mul_of_nonneg_right hqS (by positivity)) hbox
+  exact
+    { hz := fun j => (hzc j G hG).trans hz0.symm
+      hdim := by
+        change (D.Ms 0 G).zc.dim ≤ S.dmax
+        rw [hz0'', hSd]
+        omega
+      hδ := hδ
+      hdδ := by
+        rw [hz0']
+        have! this : (8 : ℝ) * (bf.vtag (bf.grpCenter d G)).dim * δ ≤ 8 * dB * δ := by
+          have! this : ((bf.vtag (bf.grpCenter d G)).dim : ℝ) ≤ dB := by exact_mod_cast hdimz
+          gcongr
+        exact this.trans hdδ
+      hδ8 := hδ8
+      hδc := fun j => (hgrpE j G hG).1
+      hcl := fun j => (hgrpE j G hG).2.1
+      hρ := fun j i => (hgrpE j G hG).2.2 i
+      hQC := by rw [hz0']; exact hQC
+      hCm0 := le_trans (by norm_num) AD.hHed2
+      hCm := by rw [hz0']; exact hCm
+      hQB := hQB
+      hτc := by rw [hz0']; exact hτc
+      hτm := by rw [hz0']; exact hτm
+      hMN := by rw [hz0']; exact hMN
+      hCN := by rw [hz0']; exact hCN
+      hDg := fun j => (hsch' j G hG).2.2.1
+      hKf := fun j => (hsch' j G hG).2.2.2.1
+      hQBf := hQB
+      hεw := fun j m => (hsch' j G hG).2.2.2.2.1 m
+      hΛ := fun j => (hsch' j G hG).2.1 }
+
+open Classical in
+/-- Step `hUD` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hUD :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ), (1 : ℕ) ≤ cc → ∀ (Dm0 : ℕ) (A : ActiveSetup κ c₀)
+      (bf : A.BasicFamilies) (p : Fin (3 : ℕ)) (AD : bf.AttemptData p) (d : bf.Vtx) (s : ℕ) (δ : ℝ)
+      (kD : ℝ),
+    let fp : bf.FamParams := AD.fp;
+    let dB : ℕ := A.dBnd;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    (2 : ℝ) ≤ A.colBudget → ∀ (hNl0 : (0 : ℝ) ≤ Nl),
+    let Hm : ℝ := max (max A.Hsrc (Real.exp (↑dB : ℝ))) (max ((5832 : ℝ) * max A.H padW ^ (4 : ℕ))
+        ((↑dB : ℝ) * (bumpConst * (8 : ℝ) ^ (32 : ℕ) * ((2 : ℝ) / δ))));
+    ∀ (S : ModeSchedule) (hK1 : (1 : ℕ) ≤ S.K),
+    let Lf : SearchLeaf := leafAt A.famFuel fp.Lc (A.basicSlot p) s;
+    let ks : ℕ := Lf.k;
+    let S0 : Finset (ℤ × ℤ) := {I ∈ AD.Tc | ¬∃ c ∈ fp.failRoots, dyadicGridCell A.G I.1 I.2 ⊆
+        dyadicGridCell A.G c.1 c.2};
+    let gs : ℤ × ℤ → Finset bf.Grp := fun (I : ℤ × ℤ) ↦ fp.groupsAt I ks;
+    let gset : Finset bf.Grp := S0.biUnion gs;
+    ∀ (hlenMc : ∀ (l : Fin (4 : ℕ)), (AD.cat l).length ≤ fp.Mc),
+    let mbs : (l : Fin (4 : ℕ)) → bf.MainBudget (AD.cat l) := fun (l : Fin (4 : ℕ)) ↦
+        MainBudget.ofCounts bf fp.Mc (AD.cat l) (hlenMc l) l (fun (e : CatCol bf.Vtx) (he : e ∈
+        AD.cat l) ↦ AD.hTc (AD.hT l e he).left) (fun (e : CatCol bf.Vtx) (he : e ∈ AD.cat l) ↦
+        (AD.hT l e he).right.left) hNl0 fun (I : ℤ × ℤ) (_ : I ∈ A.cells) ↦ AD.hlab l I
+        (AD.fp.Lc + (5 : ℕ)) le_rfl;
+    ∀ (Ms : Fin (4 : ℕ) → bf.Grp → ModeSystem A.G (Fintype.card (bf.Lab ⊕ Fin fp.Mc)))
+      (L : (l : Fin (4 : ℕ)) → (G : bf.Grp) → LiftData (bf.Lab ⊕ Fin fp.Mc) (Ms l G).Md),
+      (∀ (l : Fin (4 : ℕ)), ∀ G ∈ gset, fp.ModeExports l (AD.cat l) G (Lf.role l) d Dm0 dB Hm δ δ
+        Nl (Ms l G) (L l G)) →
+      (∀ (l : Fin (4 : ℕ)), ∀ G ∈ gset, (∀ (q : (Ms l G).Key), (Ms l G).dvOf q + (Ms l G).zc.dim ≤
+        (2 : ℕ) * dB + (2 : ℕ)) ∧ (Ms l G).Λ ≤ S.Dstar ∧ gaugeSqNorm (Ms l G).zc.dim (Ms l G).δc ≤
+        S.Dstar ∧ (2 : ℝ) * gaugeTail (Ms l G).zc.dim (Ms l G).δc / (2 : ℝ) ^ fp.Kstar Dm0 dB Hm δ
+        Nl kD δ * S.Dstar ^ (300 : ℕ) ≤ (1 : ℝ) ∧ (∀ (m : (Ms l G).Md), S.Dstar⁻¹ ≤ (Ms l G).L.εM
+        m) ∧ (∀ (V : ℤ × ℤ), (↑((Ms l G).alive V).card : ℝ) ≤ S.Dstar) ∧ ∀ (V : ℤ × ℤ),
+        (↑(Finset.image (Ms l G).keyOf ((Ms l G).alive V)).card : ℝ) ≤ Nl) →
+      ∀ (hA6 : (6 : ℝ) ≤ S.A0),
+    let qG : bf.Grp → ℕ := fun (G : bf.Grp) ↦ clearInt (bf.vtag (bf.grpCenter d G)).C;
+    ∀ (U : ℝ), (2 : ℝ) * (A.colBudget + (2 : ℝ)) * S.Dstar ^ (2 : ℕ) ≤ U → (0 : ℝ) < S.Dstar →
+      (1 : ℝ) ≤ S.Dstar → ∀ (gsc : Fin (4 : ℕ) → ↥gset → ℤ),
+      (∀ (l : Fin (4 : ℕ)) (G : ↥gset), fp.MainLiftExports l (AD.cat l) (↑G : bf.Grp) (Lf.role l)
+        d Dm0 dB Hm (gsc l G) (L l (↑G : bf.Grp)) (Ms l (↑G : bf.Grp)).wave (Ms l
+        (↑G : bf.Grp)).cellOf) →
+      ∀ (c : (l : Fin (4 : ℕ)) → (G : ↥gset) → ℤ → ℤ × ℤ → (Ms l (↑G : bf.Grp)).Md → ℂ),
+      (∀ (l : Fin (4 : ℕ)) (G : ↥gset), ∀ b ∈ Finset.image (fun (β : ℕ) ↦ A.R.1 + (↑(S.K *
+        β) : ℤ)) (Finset.range (A.treeDepth + (1 : ℕ))), ∀ J ∈ fp.retainedV (↑G : bf.Grp) b S.K, ∑
+        m ∈ (Ms l (↑G : bf.Grp)).alive (ancAt A.G J (b - (4 : ℤ) * (↑S.K : ℤ))), ‖c l G b J m‖ ^
+        (2 : ℕ) ≤ (4 : ℝ) * S.Dstar ^ (2 : ℕ) * (1 : ℝ)) → ∀ (Cut : Fin (4 : ℕ) → Finset (ℤ × ℤ)),
+    let cf : (l : Fin (4 : ℕ)) → (G : bf.Grp) → ℤ → ℤ × ℤ → (Ms l G).Md → ℂ := fun (l : Fin
+        (4 : ℕ)) (G : bf.Grp) ↦ if hG : G ∈ gset then c l ⟨G, hG⟩ else fun (_ : ℤ) (_ : ℤ × ℤ)
+        (_ : (Ms l G).Md) ↦ (0 : ℂ);
+    let D₀ : fp.SideInput :=
+      { cat := AD.cat, mbs := mbs, Lf := Lf, u := A.uslot p, S := S, hA := hA6, SP := S.sideParams
+          (1 / 1024 : ℝ), hK := hK1, n := Fintype.card (bf.Lab ⊕ Fin fp.Mc), Ms := Ms, c := cf };
+    ∀ (hcat : Fin (4 : ℕ) → List (CatCol bf.Vtx))
+      (hmbb : ∀ (l : Fin (4 : ℕ)), ∀ e ∈ AD.cat l ++ hcat l, e.birth ∈ A.cells)
+      (hmbT : ∀ (l : Fin (4 : ℕ)) (y : ℝ), (8 : ℝ) * A.colBudget + (↑(bf.tmplPath (AD.cat l ++
+        hcat l) y) : ℝ) ≤ (8 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp : ℝ)) * Nl),
+    let mb' : (l : Fin (4 : ℕ)) → bf.MainBudget (AD.cat l ++ hcat l) :=
+      fun (l : Fin (4 : ℕ)) ↦ { hb := hmbb l, B := (8 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp :
+                                  ℝ)) * Nl, hTp := hmbT l };
+    let D : fp.SideInput := D₀.appendCat hcat mb';
+    let S1 : Finset (ℤ × ℤ) := {I ∈ S0 | ∀ (j : Fin (4 : ℕ)), ∀ e ∈ Cut j, ¬dyadicGridCell A.G I.1
+        I.2 ⊆ dyadicGridCell A.G e.1 e.2};
+    S1 ⊆ S0 → S1 ⊆ A.cells →
+      (∀ I ∈ A.cells, A.blkStart S.K I.1 ∈ Finset.image (fun (β : ℕ) ↦ A.R.1 + (↑(S.K * β) : ℤ))
+        (Finset.range (A.treeDepth + (1 : ℕ)))) →
+      (∀ (j : Fin (4 : ℕ)) (G : ↥gset), D.c j (↑G : bf.Grp) = c j G) →
+    ∀ I ∈ S1, ∀ G ∈ gs I, ∀ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs, ∀ j,
+    ∀ F ∈ (D.withQ0 (qG G)).goodCls G I j h, (D.withQ0 (qG G)).clsSize G I j F ≤ U := by
+  intro κ c₀ cc hcc Dm0 A bf p AD d s δ kD fp dB Nl hcb hNl0 Hm S hK1 Lf ks S0 gs gset hlenMc mbs
+    Ms L hexp hsch' hA6 qG U hU4 hD0 hD1 gsc hMLE c hcB Cut cf D₀ hcat hmbb hmbT mb' D S1 hS1S0
+    hS1c hIB hcD I hI G hG h _ j F hF
+  have! hGs : G ∈ gset := Finset.mem_biUnion.mpr ⟨I, hS1S0 hI, hG⟩
+  have! hret : (D.withQ0 (qG G)).preAt I ∈ fp.retainedV G (A.blkStart S.K I.1) S.K := by
+    obtain ⟨K', hK', -⟩ := Finset.mem_image.mp hF
+    have! hK'' := (Finset.mem_filter.mp hK').1
+    unfold FamParams.SideInput.compsAt at hK''
+    split_ifs at hK'' with hcond
+    · exact hcond.2
+    · exact absurd hK'' (Finset.notMem_empty _)
+  have! hW : ∀ m, (D.Ms j G).L.εM m ≤ A.colBudget ^ 2 := by
+    intro m
+    obtain ⟨ρ₀', z', g', -, -, hMLE, hεM', -⟩ := hexp j G hGs
+    change (Ms j G).L.εM m ≤ _
+    rw [← hεM' m]
+    exact (hMLE.εM_le m).trans (by rw [hMLE.εP_eq]; exact bf.mainWeight_le fp.Mc j _)
+  have! hcc := hcB j ⟨G, hGs⟩ _ (hIB I (hS1c hI)) _ hret
+  have! hcl := (D.withQ0 (qG G)).clsSize_le G I j F (sq_nonneg _) hW
+    (Cc := 4 * S.Dstar ^ 2 * 1) (by rw [← hcD j ⟨G, hGs⟩] at hcc; exact hcc)
+    ((hsch' j G hGs).2.2.2.2.2.1 _) hD1
+  refine hcl.trans (le_trans ?_ hU4)
+  have! hs1 : Real.sqrt (1 + A.colBudget ^ 2) ≤ A.colBudget + 1 := by
+    calc Real.sqrt (1 + A.colBudget ^ 2) ≤ Real.sqrt ((A.colBudget + 1) ^ 2) :=
+          Real.sqrt_le_sqrt (by nlinarith only [hcb])
+      _ = A.colBudget + 1 := Real.sqrt_sq (by linarith only [hcb])
+  have! hs2 : Real.sqrt (4 * S.Dstar ^ 2 * 1) = 2 * S.Dstar := by
+    rw [mul_one, show (4 : ℝ) * S.Dstar ^ 2 = (2 * S.Dstar) ^ 2 by ring,
+      Real.sqrt_sq (by linarith only [hD0])]
+  rw [hs2]
+  change (Real.sqrt (1 + A.colBudget ^ 2) + 1) * S.Dstar * (2 * S.Dstar) ≤
+    2 * (A.colBudget + 2) * S.Dstar ^ 2
+  have! this : (Real.sqrt (1 + A.colBudget ^ 2) + 1) * S.Dstar * (2 * S.Dstar) ≤
+      (A.colBudget + 2) * S.Dstar * (2 * S.Dstar) :=
+    mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (by linarith only [hs1]) hD0.le)
+      (by linarith only [hD0])
+  calc _ ≤ (A.colBudget + 2) * S.Dstar * (2 * S.Dstar) := this
+    _ = 2 * (A.colBudget + 2) * S.Dstar ^ 2 := by ring
+
+open Classical in
+/-- Step `hΞ` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hΞ :
+    ∀ x : ℝ, 2 ≤ x → 8 * x ≤ x ^ 1000 := by
+  intro x hx
+  have! h8 : (8 : ℝ) ≤ 2 ^ 999 := by
+    calc (8 : ℝ) = 2 ^ 3 := by norm_num
+      _ ≤ 2 ^ 999 := pow_le_pow_right₀ (by norm_num) (by norm_num)
+  have! h1 : (8 : ℝ) ≤ x ^ 999 := le_trans h8 (pow_le_pow_left₀ (by norm_num) hx 999)
+  calc 8 * x ≤ x ^ 999 * x := mul_le_mul_of_nonneg_right h1 (by linarith only [hx])
+    _ = x ^ 1000 := by ring
+
+open Classical in
+/-- Step `hcoreE` of `leaf_estimate`, over the part of its context that it uses. -/
+theorem leaf_estimate_hcoreE :
+    ∀ (κ : LocalKernelClass) (c₀ : ℕ) (cc : ℕ), (1 : ℕ) ≤ cc → ∀ (Dm0 : ℕ) (A : ActiveSetup κ c₀)
+      (bf : A.BasicFamilies), A.cells.Nonempty → ∀ (p : Fin (3 : ℕ)) (AD : bf.AttemptData p)
+      (d : bf.Vtx) (s : ℕ) (δ : ℝ) (kD : ℝ),
+    let fp : bf.FamParams := AD.fp;
+    let dB : ℕ := A.dBnd;
+    let Nl : ℝ := AD.n (fp.Lc + (5 : ℕ));
+    ∀ (hNl0 : (0 : ℝ) ≤ Nl),
+    let Hm : ℝ := max (max A.Hsrc (Real.exp (↑dB : ℝ))) (max ((5832 : ℝ) * max A.H padW ^ (4 : ℕ))
+        ((↑dB : ℝ) * (bumpConst * (8 : ℝ) ^ (32 : ℕ) * ((2 : ℝ) / δ))));
+    ∀ (S : ModeSchedule), (2 : ℝ) ≤ S.Dstar → ∀ (hK1 : (1 : ℕ) ≤ S.K),
+    let Lf : SearchLeaf := leafAt A.famFuel fp.Lc (A.basicSlot p) s;
+    let ks : ℕ := Lf.k;
+    let S0 : Finset (ℤ × ℤ) := {I ∈ AD.Tc | ¬∃ c ∈ fp.failRoots, dyadicGridCell A.G I.1 I.2 ⊆
+        dyadicGridCell A.G c.1 c.2};
+    let gs : ℤ × ℤ → Finset bf.Grp := fun (I : ℤ × ℤ) ↦ fp.groupsAt I ks;
+    let gset : Finset bf.Grp := S0.biUnion gs;
+    ∀ (hlenMc : ∀ (l : Fin (4 : ℕ)), (AD.cat l).length ≤ fp.Mc),
+    let mbs : (l : Fin (4 : ℕ)) → bf.MainBudget (AD.cat l) := fun (l : Fin (4 : ℕ)) ↦
+        MainBudget.ofCounts bf fp.Mc (AD.cat l) (hlenMc l) l (fun (e : CatCol bf.Vtx) (he : e ∈
+        AD.cat l) ↦ AD.hTc (AD.hT l e he).left) (fun (e : CatCol bf.Vtx) (he : e ∈ AD.cat l) ↦
+        (AD.hT l e he).right.left) hNl0 fun (I : ℤ × ℤ) (_ : I ∈ A.cells) ↦ AD.hlab l I
+        (AD.fp.Lc + (5 : ℕ)) le_rfl;
+    ∀ (Ms : Fin (4 : ℕ) → bf.Grp → ModeSystem A.G (Fintype.card (bf.Lab ⊕ Fin fp.Mc))),
+      (∀ (l : Fin (4 : ℕ)), ∀ G ∈ gset, (∀ (q : (Ms l G).Key), (Ms l G).dvOf q + (Ms l G).zc.dim ≤
+        (2 : ℕ) * dB + (2 : ℕ)) ∧ (Ms l G).Λ ≤ S.Dstar ∧ gaugeSqNorm (Ms l G).zc.dim (Ms l G).δc ≤
+        S.Dstar ∧ (2 : ℝ) * gaugeTail (Ms l G).zc.dim (Ms l G).δc / (2 : ℝ) ^ fp.Kstar Dm0 dB Hm δ
+        Nl kD δ * S.Dstar ^ (300 : ℕ) ≤ (1 : ℝ) ∧ (∀ (m : (Ms l G).Md), S.Dstar⁻¹ ≤ (Ms l G).L.εM
+        m) ∧ (∀ (V : ℤ × ℤ), (↑((Ms l G).alive V).card : ℝ) ≤ S.Dstar) ∧ ∀ (V : ℤ × ℤ),
+        (↑(Finset.image (Ms l G).keyOf ((Ms l G).alive V)).card : ℝ) ≤ Nl) →
+      ∀ (hA6 : (6 : ℝ) ≤ S.A0),
+    let qG : bf.Grp → ℕ := fun (G : bf.Grp) ↦ clearInt (bf.vtag (bf.grpCenter d G)).C;
+    ∀ (U : ℝ), (1 : ℝ) ≤ S.Dstar → (16 : ℝ) ≤ U → ∀ (ε : ℝ)
+      (c : (l : Fin (4 : ℕ)) → (G : ↥gset) → ℤ → ℤ × ℤ → (Ms l (↑G : bf.Grp)).Md → ℂ),
+      (∀ (l : Fin (4 : ℕ)) (G : ↥gset), ∀ b ∈ Finset.image (fun (β : ℕ) ↦ A.R.1 + (↑(S.K *
+        β) : ℤ)) (Finset.range (A.treeDepth + (1 : ℕ))), ∀ J ∈ fp.retainedV (↑G : bf.Grp) b S.K, ∑
+        m ∈ (Ms l (↑G : bf.Grp)).alive (ancAt A.G J (b - (4 : ℤ) * (↑S.K : ℤ))), ‖c l G b J m‖ ^
+        (2 : ℕ) ≤ (4 : ℝ) * S.Dstar ^ (2 : ℕ) * (1 : ℝ)) → ∀ (Cut : Fin (4 : ℕ) → Finset (ℤ × ℤ)),
+    let cf : (l : Fin (4 : ℕ)) → (G : bf.Grp) → ℤ → ℤ × ℤ → (Ms l G).Md → ℂ := fun (l : Fin
+        (4 : ℕ)) (G : bf.Grp) ↦ if hG : G ∈ gset then c l ⟨G, hG⟩ else fun (_ : ℤ) (_ : ℤ × ℤ)
+        (_ : (Ms l G).Md) ↦ (0 : ℂ);
+    let D₀ : fp.SideInput :=
+      { cat := AD.cat, mbs := mbs, Lf := Lf, u := A.uslot p, S := S, hA := hA6, SP := S.sideParams
+          (1 / 1024 : ℝ), hK := hK1, n := Fintype.card (bf.Lab ⊕ Fin fp.Mc), Ms := Ms, c := cf };
+    ∀ (hcat : Fin (4 : ℕ) → List (CatCol bf.Vtx))
+      (hmbb : ∀ (l : Fin (4 : ℕ)), ∀ e ∈ AD.cat l ++ hcat l, e.birth ∈ A.cells)
+      (hmbT : ∀ (l : Fin (4 : ℕ)) (y : ℝ), (8 : ℝ) * A.colBudget + (↑(bf.tmplPath (AD.cat l ++
+        hcat l) y) : ℝ) ≤ (8 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp : ℝ)) * Nl),
+    let mb' : (l : Fin (4 : ℕ)) → bf.MainBudget (AD.cat l ++ hcat l) :=
+      fun (l : Fin (4 : ℕ)) ↦ { hb := hmbb l, B := (8 : ℝ) * A.colBudget + ((1 : ℝ) + (↑AD.Mp :
+                                  ℝ)) * Nl, hTp := hmbT l };
+    let D : fp.SideInput := D₀.appendCat hcat mb';
+    let S1 : Finset (ℤ × ℤ) := {I ∈ S0 | ∀ (j : Fin (4 : ℕ)), ∀ e ∈ Cut j, ¬dyadicGridCell A.G I.1
+        I.2 ⊆ dyadicGridCell A.G e.1 e.2};
+    S1 ⊆ S0 → S1 ⊆ A.cells →
+      (∀ I ∈ A.cells, A.blkStart S.K I.1 ∈ Finset.image (fun (β : ℕ) ↦ A.R.1 + (↑(S.K * β) : ℤ))
+        (Finset.range (A.treeDepth + (1 : ℕ)))) →
+      (∀ (j : Fin (4 : ℕ)) (G : ↥gset), D.c j (↑G : bf.Grp) = c j G) →
+    let Iw : ℕ := ⌊Real.logb (2 : ℝ) (S.Dstar ^ (250 : ℕ))⌋₊;
+    ∀ (C : Finset (ℤ × ℤ)) (C₂ : Finset (ℤ × ℤ)),
+    let S₂ : Finset (ℤ × ℤ) := {I ∈ {I ∈ S1 | ¬∃ e ∈ C, dyadicGridCell A.G I.1 I.2 ⊆
+        dyadicGridCell A.G e.1 e.2} | ¬∃ e ∈ C₂, dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G
+        e.1 e.2};
+    (∀ (l : Fin (4 : ℕ)), ∀ I ∈ S₂, ∀ G ∈ gs I, √((dyadicGridLength A.G I.1)⁻¹ * ∫ (y : ℝ) in
+        dyadicGridLeft A.G I.1 I.2..dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1,
+        ‖augPhys ((D.withQ0 (qG G)).toLeaf.sv l G I) y‖ ^ (2 : ℕ)) ≤ U) → S₂ ⊆ S1 →
+      (S.Dstar * (√S.Dstar * √((4 : ℝ) * S.Dstar ^ (2 : ℕ) * (1 : ℝ)))) ^ (4 : ℕ) = (16 : ℝ) *
+        S.Dstar ^ (10 : ℕ) →
+      (S.Dstar * (√S.Dstar * √((4 : ℝ) * S.Dstar ^ (2 : ℕ) * (1 : ℝ)) + (1 : ℝ))) ^ (4 : ℕ) ≤
+        (81 : ℝ) * S.Dstar ^ (10 : ℕ) →
+    let ι : ℝ := (S.Dstar ^ (100 : ℕ))⁻¹ * S.Dstar ^ (10 : ℕ);
+    ι = (S.Dstar ^ (100 : ℕ))⁻¹ * S.Dstar ^ (10 : ℕ) →
+    let Qe : ℝ := (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) *
+        (12 : ℝ) ^ (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) *
+        threeErrC κ (3 : ℕ) (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) *
+        (2 : ℝ) ^ ((1 : ℕ) + (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^
+        (3 : ℕ) * ((↑Iw : ℝ) + (1 : ℝ)))));
+    Qe = (16 : ℝ) * fourErrC κ (3 : ℕ) * ι + K1c * ((2 : ℝ) * fourKC κ (3 : ℕ) * (12 : ℝ) ^
+        (4 : ℕ) * ε * U ^ (3 : ℕ) * S.Dstar ^ (4 : ℕ)) + (4 : ℝ) * ((81 : ℝ) * threeErrC κ (3 : ℕ)
+        (1 : ℕ) * ι * U + K1c * ((8 : ℝ) * entryCU κ (3 : ℕ) (1 : ℕ) * (2 : ℝ) ^ ((1 : ℕ) +
+        (4 : ℕ)) * (12 : ℝ) ^ (3 : ℕ) * ε * U ^ (3 : ℕ) * (S.Dstar ^ (3 : ℕ) * ((↑Iw : ℝ) +
+        (1 : ℝ))))) →
+    ∀ I ∈ S₂, D.coreE qG gs 3 1 Iw U ε I ≤ (gs I).card * Qe := by
+  intro κ c₀ cc hcc Dm0 A bf hne p AD d s δ kD fp dB Nl hNl0 Hm S hD2 hK1 Lf ks S0 gs gset hlenMc
+    mbs Ms hsch' hA6 qG U hD1 hU16 ε c hcB Cut cf D₀ hcat hmbb hmbT mb' D S1 hS1S0 hS1c hIB hcD Iw
+    C C₂ S₂ hUs hS₂S1 h4pow h3pow ι hι Qe hQe I hI
+  have! hI1 := hS₂S1 hI
+  have hK1 : D.K1 = K1c := rfl
+  have! hfour : ∀ G ∈ gs I, (D.withQ0 (qG G)).fourErr 3 G I ≤ 16 * fourErrC κ 3 * ι := by
+    intro G hG
+    have! hGs : G ∈ gset := Finset.mem_biUnion.mpr ⟨I, hS1S0 hI1, hG⟩
+    have h := (D.withQ0 (qG G)).fourErr_le 3 G I (Cc := 4 * S.Dstar ^ 2 * 1)
+      hD1 (fun l hne => ?_) (fun l => (hsch' l G hGs).2.2.2.2.2.1 _)
+    · refine h.trans (le_of_eq ?_)
+      change fourErrC κ 3 * (S.Dstar ^ 100)⁻¹ *
+        (S.Dstar * (Real.sqrt S.Dstar * Real.sqrt (4 * S.Dstar ^ 2 * 1))) ^ 4 = _
+      rw [h4pow, hι]; ring
+    · have! hret : (D.withQ0 (qG G)).preAt I ∈ fp.retainedV G (A.blkStart S.K I.1) S.K := by
+        unfold FamParams.SideInput.compsAt at hne
+        split_ifs at hne with hcond
+        · exact hcond.2
+        · exact absurd rfl hne
+      have! hcc := hcB l ⟨G, hGs⟩ _ (hIB I (hS1c hI1)) _ hret
+      rw [← hcD l ⟨G, hGs⟩] at hcc
+      exact hcc
+  have! hthree : ∀ l, ∀ G ∈ gs I, (D.withQ0 (qG G)).threeErr 3 1 l G I ≤
+      81 * threeErrC κ 3 1 * ι * U := by
+    intro l G hG
+    have! hGs : G ∈ gset := Finset.mem_biUnion.mpr ⟨I, hS1S0 hI1, hG⟩
+    have h := (D.withQ0 (qG G)).threeErr_le 3 1 l G I (Cc := 4 * S.Dstar ^ 2 * 1)
+      hD1 (fun l hne => ?_) (fun l => (hsch' l G hGs).2.2.2.2.2.1 _)
+      (hUs l I hI G hG)
+    · refine h.trans ?_
+      change threeErrC κ 3 1 * (S.Dstar ^ 100)⁻¹ * U *
+        (S.Dstar * (Real.sqrt S.Dstar * Real.sqrt (4 * S.Dstar ^ 2 * 1) + 1)) ^ 4 ≤ _
+      have! h0 : 0 ≤ threeErrC κ 3 1 * (S.Dstar ^ 100)⁻¹ * U := by
+        have! this := threeErrC_nonneg κ 3 1; positivity
+      calc threeErrC κ 3 1 * (S.Dstar ^ 100)⁻¹ * U *
+          (S.Dstar * (Real.sqrt S.Dstar * Real.sqrt (4 * S.Dstar ^ 2 * 1) + 1)) ^ 4
+          ≤ threeErrC κ 3 1 * (S.Dstar ^ 100)⁻¹ * U * (81 * S.Dstar ^ 10) :=
+            mul_le_mul_of_nonneg_left h3pow h0
+        _ = _ := by rw [hι]; ring
+    · have! hret : (D.withQ0 (qG G)).preAt I ∈ fp.retainedV G (A.blkStart S.K I.1) S.K := by
+        unfold FamParams.SideInput.compsAt at hne
+        split_ifs at hne with hcond
+        · exact hcond.2
+        · exact absurd rfl hne
+      have! hcc := hcB l ⟨G, hGs⟩ _ (hIB I (hS1c hI1)) _ hret
+      rw [← hcD l ⟨G, hGs⟩] at hcc
+      exact hcc
+  unfold FamParams.SideInput.coreE
+  rw [hK1]
+  have hS : D.S.Dstar = S.Dstar := rfl
+  rw [hS]
+  have! e1 : ∑ G ∈ gs I, ((D.withQ0 (qG G)).fourErr 3 G I + K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε *
+      U ^ 3 * S.Dstar ^ 4)) ≤ (gs I).card * (16 * fourErrC κ 3 * ι + K1c * (2 * fourKC κ 3 *
+        12 ^ 4 * ε * U ^ 3 * S.Dstar ^ 4)) := by
+    rw [← nsmul_eq_mul, ← Finset.sum_const]
+    exact Finset.sum_le_sum fun G hG => by linarith only [hfour G hG]
+  have! e2 : ∑ l, ∑ G ∈ gs I, ((D.withQ0 (qG G)).threeErr 3 1 l G I + K1c * (8 * entryCU κ 3 1 *
+      2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)))) ≤
+      (gs I).card * (4 * (81 * threeErrC κ 3 1 * ι * U + K1c * (8 * entryCU κ 3 1 *
+        2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1))))) := by
+    calc _ ≤ ∑ _l : Fin 4, (gs I).card * (81 * threeErrC κ 3 1 * ι * U + K1c *
+          (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)))) := by
+          refine Finset.sum_le_sum fun l _ => ?_
+          rw [← nsmul_eq_mul, ← Finset.sum_const]
+          exact Finset.sum_le_sum fun G hG => by linarith only [hthree l G hG]
+      _ = _ := by simp; ring
+  have! e3 : ((gs I).card : ℝ) * (16 * fourErrC κ 3 * ι + K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε *
+      U ^ 3 * S.Dstar ^ 4)) + (gs I).card * (4 * (81 * threeErrC κ 3 1 * ι * U + K1c *
+        (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1))))) =
+      (gs I).card * Qe := by rw [hQe]; ring
+  linarith only [e1, e2, e3]
+
 open Classical in
 /-- Blueprint lines 2838-2851 on one leaf of the guarded search of an attempt (stages: schedule,
 offsets and modes, frozen families and first tops, helper catalogs, leaf bound, and the explicit
@@ -5027,12 +6741,15 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
                 (leafAt A.famFuel AD.fp.Lc (A.basicSlot p) s).layers l))‖ ≤
             leafBnd Cl kD AD.fp.P k cc A.η η₀ AD.τ₃ δ (finiteDepthConstant κ q Nd)
               (nbCM κ hq2 hq3 + nbCUM κ hq2 hq3) q (dyadicGridLength A.G A.R.1) := by
-  obtain ⟨Dm0, hDm0, hmodes⟩ := exists_leaf_modes κ c₀
-  obtain ⟨Msch, hMsch, hsch⟩ := FamParams.exists_leaf_schedule 340 5 4 600
+  have! hobt := exists_leaf_modes κ c₀
+  obtain ⟨Dm0, hDm0, hmodes⟩ := hobt
+  have! hobt := FamParams.exists_leaf_schedule 340 5 4 600
     (δs := 1 / 1024) (by norm_num) (by norm_num)
-  obtain ⟨Cg, hCg⟩ := log_modeStarG_poly (cc + 6) Dm0
+  obtain ⟨Msch, hMsch, hsch⟩ := hobt
+  have! hobt := log_modeStarG_poly (cc + 6) Dm0
+  obtain ⟨Cg, hCg⟩ := hobt
   -- the constants of the explicit bound (packed, so that `linarith` does not see them)
-  obtain ⟨g, cT, cL, cK, cMc, cm, ce, ce2, cQ, CΛ, eΛ, CM1, t3, Cb, Cl, hconst⟩ :
+  have! hobt :
       ∃ (g : ℕ) (cT cL cK cMc cm ce ce2 cQ : ℝ) (CΛ eΛ CM1 t3 Cb Cl : ℕ),
       g = 8192 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + cc ^ 2 + 8 ∧
       cT = 10 ^ 22 * (1 + localFormUniformConstant κ) ^ 2 ∧
@@ -5051,6 +6768,7 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
       Cl = ⌈cm * Cb ^ 59 + ce * Cb ^ 18 + ce2 + 3 * 10 ^ 11 * cQ⌉₊ + 59 * Cb + 4 * g + 8 * cc + 8 :=
     ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl,
       rfl, rfl, rfl, rfl, rfl⟩
+  obtain ⟨g, cT, cL, cK, cMc, cm, ce, ce2, cQ, CΛ, eΛ, CM1, t3, Cb, Cl, hconst⟩ := hobt
   have! hCl1 : 1 ≤ Cl := by rw [hconst.2.2.2.2.2.2.2.2.2.2.2.2.2.2]; omega
   have! hlb := Real.log_nonneg one_le_bumpConst
   refine ⟨Cl, 2 + Real.log bumpConst + 100, hCl1, by linarith only [hlb], ?_⟩
@@ -5070,27 +6788,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   set! Nl : ℝ := AD.n (fp.Lc + 5) with hNl
   rewrite [← hNl] at hδN hkB
   have hcb := A.two_le_colBudget
-  have! hn_mono : Monotone AD.n := by
-    refine monotone_nat_of_le_succ fun r => ?_
-    have! h := AD.hgrow r
-    have! hR0 := closureRatio_nonneg A.famVtxBound AD.Kt fp.mH AD.Tmax
-      (Real.exp (AD.Dst * (1 + Real.log A.Hsrc) ^ AD.Dst)) AD.τ₃
-    have! hpos : ∀ r, 0 ≤ AD.n r := by
-      intro r
-      induction r with
-      | zero => linarith only [AD.hn0, hcb]
-      | succ r ih =>
-        have! h1 := AD.hgrow r
-        have! this : (0 : ℝ) ≤ (1 + (fp.Lc + 6) * AD.Mp * closureRatio A.famVtxBound AD.Kt fp.mH
-          AD.Tmax (Real.exp (AD.Dst * (1 + Real.log A.Hsrc) ^ AD.Dst)) AD.τ₃) * AD.n r := by
-          positivity
-        linarith only [h1, this]
-    have! hfac : (1 : ℝ) ≤ 1 + (fp.Lc + 6) * AD.Mp * closureRatio A.famVtxBound AD.Kt fp.mH
-        AD.Tmax (Real.exp (AD.Dst * (1 + Real.log A.Hsrc) ^ AD.Dst)) AD.τ₃ := by
-      have! this : (0 : ℝ) ≤ (fp.Lc + 6) * AD.Mp * closureRatio A.famVtxBound AD.Kt fp.mH
-        AD.Tmax (Real.exp (AD.Dst * (1 + Real.log A.Hsrc) ^ AD.Dst)) AD.τ₃ := by positivity
-      linarith only [this]
-    exact (le_mul_of_one_le_left (hpos r) hfac).trans h
+  have! hn_mono : Monotone AD.n :=
+    leaf_estimate_hn_mono κ c₀ A bf p AD hcb
   have! hNl0 : 0 ≤ Nl :=
     le_trans (by linarith only [hcb]) ((AD.hn0).trans (hn_mono (Nat.zero_le _)))
   -- the mode height
@@ -5138,19 +6837,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     obtain ⟨hI0, hGI⟩ := Finset.mem_filter.mp hI
     exact (hcu I hI0 G hGI).2
   have! hpathU : ∀ y, ∑ l, ∑ G ∈ gset, ((U l G).filter fun I : ℤ × ℤ =>
-      y ∈ dyadicGridCell A.G I.1 I.2).card ≤ 4 * (AD.Mp * A.famVtxBound) := by
-    intro y
-    simp only [hU]
-    calc ∑ _l : Fin 4, ∑ G ∈ gset, ((S0.filter fun I => G ∈ gs I).filter fun I : ℤ × ℤ =>
-          y ∈ dyadicGridCell A.G I.1 I.2).card
-        ≤ ∑ _l : Fin 4, AD.Mp * A.famVtxBound :=
-          Finset.sum_le_sum fun l _ => by
-            have! h := sum_card_uses_le A.G S0 gs gset y
-              (le_trans (Finset.card_le_card (Finset.filter_subset_filter _ hS0T))
-                (card_cells_mem_le A.G AD.Tc AD.hmult y))
-              (fun I _ => fp.card_groupsAt_le I ks)
-            convert h
-      _ = 4 * (AD.Mp * A.famVtxBound) := by simp
+      y ∈ dyadicGridCell A.G I.1 I.2).card ≤ 4 * (AD.Mp * A.famVtxBound) :=
+    leaf_estimate_hpathU κ c₀ A bf p AD s hS0T hU
   -- the main budgets of the main catalogs
   have! hlenMc : ∀ l, (AD.cat l).length ≤ fp.Mc := fun l => by
     have! h1 := AD.hlen l
@@ -5177,11 +6865,12 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
       (le_trans (le_max_left _ _) (le_max_right _ _))
   have! hHδ : (dB : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ)) ≤ Hm :=
     le_trans (le_max_right _ _) (le_max_right _ _)
-  obtain ⟨Ms, L, hexp, hnotg, herr⟩ := hmodes A bf fp AD.cat (fun l e he => (AD.hT l e he).2.2)
+  have! hobt := hmodes A bf fp AD.cat (fun l e he => (AD.hT l e he).2.2)
     AD.htag mbs (fun l => Lf.role l) (fun l => Lf.layers l) d gset hgsetU hanc (K := S.K)
     (fun I => A.blkStart S.K I.1) (fun I => A.blkStart_bounds hK1 I.1) U hUuse hpathU AD.hHed2
     hdim hC hδ hδ8
     hdδ hHs hdz hCz hHδ hδ hNl0 zero_le_one hNlab hδN (fun l jb V hV => bf.normF l jb hV)
+  obtain ⟨Ms, L, hexp, hnotg, herr⟩ := hobt
   clear hmodes
   have! herrW := PLift.up herr
   clear herr
@@ -5205,32 +6894,29 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   set! qG : bf.Grp → ℕ := fun G => clearInt (bf.vtag (bf.grpCenter d G)).C with hqG
   have! hqG1 : ∀ G, 1 ≤ qG G ∧ qG G ≤ S.Q0 := fun G => hclr _
   -- the linear-side energy bound, the side cap and the thresholds
-  obtain ⟨Vl0, hVl0⟩ : ∃ v : ℝ, v = 24 * (⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ +
+  have! hobt : ∃ v : ℝ, v = 24 * (⌊180 * S.dmax * Real.log (2 * S.Dm) / (1 / 1024 : ℝ)⌋₊ +
       1) * (Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
         (1 + Real.log (2 * (k : ℝ))) ^ 2) + 2 * 1 / S.Dstar ^ 394) := ⟨_, rfl⟩
-  obtain ⟨U, hUdef⟩ : ∃ U : ℝ, U = max (2 * (A.colBudget + 2) * S.Dstar ^ 2)
+  obtain ⟨Vl0, hVl0⟩ := hobt
+  have! hobt : ∃ U : ℝ, U = max (2 * (A.colBudget + 2) * S.Dstar ^ 2)
       (Real.sqrt (TsideF A fp.P S.K
       (A.uslot p) (2 ^ A.famFuel) (2 * A.famFuel + 2) 1 E cc k (fun _ => Vl0) ρ)) := ⟨_, rfl⟩
+  obtain ⟨U, hUdef⟩ := hobt
   have! hU4 : 2 * (A.colBudget + 2) * S.Dstar ^ 2 ≤ U := hUdef ▸ le_max_left _ _
   have! hD0 : (0 : ℝ) < S.Dstar := lt_of_lt_of_le two_pos hD2
   have! hD1 : (1 : ℝ) ≤ S.Dstar := le_trans one_le_two hD2
-  have! hU16 : 16 ≤ U := by
-    refine le_trans ?_ hU4
-    have! h1 : (2 : ℝ) + 2 ≤ A.colBudget + 2 := by linarith only [hcb]
-    have! h2 : (2 : ℝ) ^ 2 ≤ S.Dstar ^ 2 := pow_le_pow_left₀ (by norm_num) hD2 2
-    calc (16 : ℝ) ≤ 2 * (2 + 2) * 2 ^ 2 := by norm_num
-      _ ≤ 2 * (A.colBudget + 2) * 2 ^ 2 :=
-          mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left h1 (by norm_num)) (by norm_num)
-      _ ≤ 2 * (A.colBudget + 2) * S.Dstar ^ 2 :=
-          mul_le_mul_of_nonneg_left h2 (by linarith only [hcb])
+  have! hU16 : 16 ≤ U :=
+    leaf_estimate_hU16 κ c₀ A hcb S hD2 U hU4
   have! hU0 : 0 < U := lt_of_lt_of_le (by norm_num) hU16
-  obtain ⟨MV, hMV⟩ : ∃ x : ℝ, x = (AD.Mp : ℝ) * A.famVtxBound := ⟨_, rfl⟩
-  have! hMV0 : 0 ≤ MV := by rw [hMV]; positivity
-  obtain ⟨ε, hεdef⟩ : ∃ ε : ℝ, ε = (U ^ 3 * S.Dstar ^ 5 * Real.exp k * (1 + MV))⁻¹ :=
+  have! hobt : ∃ x : ℝ, x = (AD.Mp : ℝ) * A.famVtxBound := ⟨_, rfl⟩
+  obtain ⟨MV, hMV⟩ := hobt
+  have! hMV0 : 0 ≤ MV :=
+    leaf_estimate_hMV0 κ c₀ A bf p AD MV hMV
+  have! hobt : ∃ ε : ℝ, ε = (U ^ 3 * S.Dstar ^ 5 * Real.exp k * (1 + MV))⁻¹ :=
     ⟨_, rfl⟩
-  have! hε0 : 0 < ε := by
-    rw [hεdef]
-    exact inv_pos.mpr (by positivity)
+  obtain ⟨ε, hεdef⟩ := hobt
+  have! hε0 : 0 < ε :=
+    leaf_estimate_hε0 k S hD2 U hU16 MV hMV0 ε hεdef
   have! hε1 : ε ≤ 1 := by
     rw [hεdef]
     refine inv_le_one_of_one_le₀ ?_
@@ -5242,7 +6928,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
       (one_le_mul_of_one_le_of_one_le h1 h2) h3) h4
   have! hεU : ε ≤ U := le_trans hε1 (le_trans (by norm_num) hU16)
   have! hUD : S.Dstar⁻¹ ≤ U := le_trans (inv_le_one_of_one_le₀ hD1) (le_trans (by norm_num) hU16)
-  obtain ⟨hThr0, hThrD, hThrM, hThrC⟩ := dyThr_spec hε0 hεU hUD
+  have! hobt := dyThr_spec hε0 hεU hUD
+  obtain ⟨hThr0, hThrD, hThrM, hThrC⟩ := hobt
   set! Ts : Finset (ℕ × ℕ) := Finset.range (Nat.log 2 ⌊S.Dstar⌋₊ + 1) ×ˢ
     Finset.range (Nat.log 2 ⌊S.Dstar⌋₊ + 1) with hTsdef
   have! hTs0 : Ts.Nonempty := ⟨(0, 0), Finset.mem_product.mpr
@@ -5250,14 +6937,12 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   -- the joint ball variation threshold
   set! BN : ℕ := ⌈8 * A.colBudget + Nl⌉₊ with hBN
   set! τb : ℝ := 1 / (1 + BN * A.colBudget ^ 2) with hτbdef
-  have! hτb : 0 < τb := by positivity
-  have! hτb1 : τb ≤ 1 := by
-    rw [hτbdef, div_le_one (by positivity)]
-    have! this : (0 : ℝ) ≤ BN * A.colBudget ^ 2 := by positivity
-    linarith only [this]
-  have! hτbN : τb * BN * A.colBudget ^ 2 ≤ 1 := by
-    rw [hτbdef, div_mul_eq_mul_div, div_mul_eq_mul_div, one_mul, div_le_one (by positivity)]
-    linarith only
+  have! hτb : 0 < τb :=
+    leaf_estimate_hτb κ c₀ A bf p AD
+  have! hτb1 : τb ≤ 1 :=
+    leaf_estimate_hτb1 κ c₀ A bf p AD hτbdef
+  have! hτbN : τb * BN * A.colBudget ^ 2 ≤ 1 :=
+    leaf_estimate_hτbN κ c₀ A bf p AD hτbdef
   have! hHτb : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τb⁻¹) ^ A.Dg) ≤ fp.Hed := by
     have! e : τb⁻¹ = 1 + (BN : ℝ) * A.colBudget ^ 2 := by rw [hτbdef, one_div, inv_inv]
     rw [e]
@@ -5303,20 +6988,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
       fun q => ∃ I ∈ A.cells, (∃ k', fp.Cert k' q.1.1 I) ∧ ∃ p : Fin fp.P,
         y ∈ dyadicGridCell A.G I.1 I.2 ∧
         q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) (AD.cat l) I (fp.brank (Lf.role l))
-          (fp.bmask I q.1.1 (Lf.role l) (p + 1)) d).card ≤ BN := by
-    intro l y
-    have! h1 := fp.card_ballPairs_le l (AD.cat l) d (ι := {G // G ∈ gset}) Subtype.val
-      Subtype.val_injective ks hcolG (Lf.role l) (hPH l) y
-    have! h2 := bf.card_pathLabels_le l (Mc := fp.Mc) (AD.cat l) (fp.brank (Lf.role l)) y
-    have! h3 := bf.tmplPath_le fp.Mc (AD.cat l) (hlenMc l) l (fun e he => AD.hTc (AD.hT l e he).1)
-      (r := fp.Lc + 5) (fun e he => (AD.hT l e he).2.1) hNl0 (fun I _ => AD.hlab l I _ le_rfl) y
-    have! h4 : (((Finset.univ : Finset ({G // G ∈ gset} × (bf.Lab ⊕ Fin fp.Mc))).filter
-      fun q => ∃ I ∈ A.cells, (∃ k', fp.Cert k' q.1.1 I) ∧ ∃ p : Fin fp.P,
-        y ∈ dyadicGridCell A.G I.1 I.2 ∧
-        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) (AD.cat l) I (fp.brank (Lf.role l))
-          (fp.bmask I q.1.1 (Lf.role l) (p + 1)) d).card : ℝ) ≤ 8 * A.colBudget + Nl :=
-      le_trans (Nat.cast_le.mpr h1) (le_trans h2 (by linarith only [h3]))
-    exact Nat.cast_le.mp (h4.trans (Nat.le_ceil _))
+          (fp.bmask I q.1.1 (Lf.role l) (p + 1)) d).card ≤ BN :=
+    leaf_estimate_hNq κ c₀ A bf q p AD d s hNl0 hlenMc hcolG hPH
   -- the per-group schedule facts on the subtype of the groups
   have! hdimG : ∀ l (G : {G // G ∈ gset}) q, (Ms l G.1).dvOf q + (Ms l G.1).zc.dim ≤ S.dmax :=
     fun l G q => by rw [hSd]; exact (hsch' l G.1 G.2).1 q
@@ -5414,13 +7087,14 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     have! h1 := AD.hlen l
     have h2 : fp.Mc = AD.Tc.card * AD.Tmax + AD.Tc.card * AD.Tmax := AD.hMc
     omega
-  obtain ⟨hcat, hhp, hmp, hball, hcum, hhcount, hhT⟩ := FamParams.helper_sides_closure AD.Dst fp
+  have! hobt := FamParams.helper_sides_closure AD.Dst fp
     AD.Tc AD.hTc AD.hst (Fin A.famVtxBound) AD.cat (fun l i I => (D₀.toLeafQ qG).sv l (gE I i) I)
     (fun l i I => by
       rw [D₀.toLeafQ_sv_restrict qG l (gE I i) I]
       exact D₀.toLeafQ_sv_fresh qG l (gE I i) I)
     main hmainR (fun i => catThreshold A.famVtxBound AD.τ₃ AD.n (main i).2.2.r) hpassW
     A.exp_two_le_Hsrc AD.hτ₃ AD.hMp1 AD.hKh AD.hn0 AD.hgrow AD.hcapH hMcH
+  obtain ⟨hcat, hhp, hmp, hball, hcum, hhcount, hhT⟩ := hobt
   -- the main budgets of the extended catalogs
   have! hTmpl : ∀ l y, (bf.tmplPath (AD.cat l ++ hcat l) y : ℝ) ≤ (1 + AD.Mp) * Nl := by
     intro l y
@@ -5430,13 +7104,14 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     have! h2 := bf.tmplPath_le_of_births (hcat l) AD.Tc (fun e he => (hhT l e he).1) hNl0
       (card_cells_mem_le A.G AD.Tc AD.hmult) (fun J hJ => hhcount l J hJ) y
     linarith only [h1, h2]
+  have! hmbb : ∀ l, ∀ e ∈ AD.cat l ++ hcat l, e.birth ∈ A.cells := fun l e he => by
+    rcases List.mem_append.mp he with h | h
+    · exact AD.hTc (AD.hT l e h).1
+    · exact AD.hTc (hhT l e h).1
+  have! hmbT : ∀ l y, 8 * A.colBudget + bf.tmplPath (AD.cat l ++ hcat l) y ≤
+      8 * A.colBudget + (1 + AD.Mp) * Nl := fun l y => by linarith only [hTmpl l y]
   let mb' : ∀ l, bf.MainBudget (AD.cat l ++ hcat l) := fun l =>
-    { hb := fun e he => by
-        rcases List.mem_append.mp he with h | h
-        · exact AD.hTc (AD.hT l e h).1
-        · exact AD.hTc (hhT l e h).1
-      B := 8 * A.colBudget + (1 + AD.Mp) * Nl
-      hTp := fun y => by linarith only [hTmpl l y] }
+    { hb := hmbb l, B := 8 * A.colBudget + (1 + AD.Mp) * Nl, hTp := hmbT l }
   -- the side input of the leaf
   let D : fp.SideInput := D₀.appendCat hcat mb'
   have! hrankH : ∀ l, ∀ e ∈ hcat l, fp.hrank ≤ e.rank := fun l e he => by
@@ -5534,35 +7209,31 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
       hTmpl a _
     linarith only [h2]
   -- the residual threshold of the helper tests
-  set NH : ℝ := 2 * A.colBudget + (1 + AD.Mp) * Nl with hNH
+  set! NH : ℝ := 2 * A.colBudget + (1 + AD.Mp) * Nl with hNH
+  rewrite [← hNH] at hNHD
   set! τ₂ : ℝ := AD.τ₃ / (1 + A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) *
     (A.colBudget * Real.sqrt NH)) with hτ₂def
   have! hden : 0 < 1 + A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) *
-      (A.colBudget * Real.sqrt NH) := by positivity
+      (A.colBudget * Real.sqrt NH) :=
+    leaf_estimate_hden κ c₀ A bf p AD hcb hNl4
   have! hτ₂ : 0 < τ₂ := div_pos AD.hτ₃ hden
-  have! hτ₂1 : τ₂ ≤ 1 := by
-    rw [hτ₂def, div_le_one hden]
-    have! this : 0 ≤ A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) *
-        (A.colBudget * Real.sqrt NH) := by
-      positivity
-    linarith only [this, AD.hτ₃1]
+  have! hτ₂1 : τ₂ ≤ 1 :=
+    leaf_estimate_hτ₂1 κ c₀ A bf p AD hcb hNl4 hτ₂def hden
   have! hτ₂' : τ₂ * (A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) * (A.colBudget * Real.sqrt NH)) ≤
-      AD.τ₃ := by
-    rw [hτ₂def, div_mul_eq_mul_div, div_le_iff₀ hden]
-    have! this : 0 ≤ A.colBudget * Real.sqrt (AD.n (fp.Lc + 4)) *
-        (A.colBudget * Real.sqrt NH) := by
-      positivity
-    nlinarith only [this, AD.hτ₃]
+      AD.τ₃ :=
+    leaf_estimate_hτ₂' κ c₀ A bf p AD hcb hNl4 hτ₂def hden
   have hHed₂ : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ₂⁻¹) ^ A.Dg) ≤ fp.Hed :=
     AD.hHedτ₂
   -- the stack energies of the near bands
   set! Nb : ℕ := Nat.log 2 S.K + 1 with hNb
   have! hKN : S.K ≤ 2 ^ Nb := (Nat.lt_pow_succ_log_self (by norm_num) S.K).le
   have! hRl0 : 0 < dyadicGridLength A.G A.R.1 := dyadicGridLength_pos A.G A.R.1
-  have! hcapV0 : 0 ≤ FamParams.capV A cc k := by unfold FamParams.capV; positivity
-  have! hVl00 : 0 ≤ Vl0 := by rw [hVl0]; positivity
-  have! hB00 : 0 ≤ FamParams.SideInput.sideB0 A cc k Vl0 := by
-    unfold FamParams.SideInput.sideB0; positivity
+  have! hcapV0 : 0 ≤ FamParams.capV A cc k :=
+    leaf_estimate_hcapV0 κ c₀ cc A k hRl0
+  have! hVl00 : 0 ≤ Vl0 :=
+    leaf_estimate_hVl00 cc k S Vl0 hVl0
+  have! hB00 : 0 ≤ FamParams.SideInput.sideB0 A cc k Vl0 :=
+    leaf_estimate_hB00 κ c₀ cc A k Vl0 hRl0 hVl00
   set! Os := FamParams.SideLeafM.nOs (2 ^ A.famFuel) (2 * A.famFuel + 2) with hOs
   set! Cjg : ℝ := (((2 * A.famFuel + 2 : ℕ) : ℝ) + 1) ^ 2 * Real.exp (2 * (1024 * (cc + 1) *
     (1024 * (cc + 1) + cc + 7) * (1 + Real.log (2 * (k : ℝ))) ^ 2)) with hCjg
@@ -5611,11 +7282,12 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
       intro I hI
       obtain ⟨hI1, hG⟩ := Finset.mem_filter.mp hI
       exact Finset.mem_filter.mpr ⟨hS1S0 hI1, hG⟩) herrW.down)
-  obtain ⟨Ee, hEe0, hEeb⟩ : ∃ Ee : ℝ,
+  have! hobt : ∃ Ee : ℝ,
       ∑ I ∈ S1, ∑ G ∈ gs I, ∑ l, ‖(D₀.withQ0 (qG G)).errAt L l G I‖ ^ 2 ≤ Ee ∧
       Ee ≤ (8 * dB * δ + 2 * δ ^ 2) * (4 * Nl * A.colBudget ^ 2 * 1) *
         ((4 * (AD.Mp * A.famVtxBound) : ℕ) : ℝ) * dyadicGridLength A.G A.R.1 :=
     ⟨_, hEeD, le_rfl⟩
+  obtain ⟨Ee, hEe0, hEeb⟩ := hobt
   have! hEeD' : ∑ I ∈ S1, ∑ G ∈ gs I, ∑ l, ‖(D.withQ0 (qG G)).errAt L l G I‖ ^ 2 ≤ Ee := by
     refine le_of_eq_of_le (Finset.sum_congr rfl fun I hI => Finset.sum_congr rfl fun G _ =>
       Finset.sum_congr rfl fun l _ => ?_) hEe0
@@ -5655,49 +7327,9 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     have! h2 : (2 : ℝ) ≤ dB := h1.trans (Nat.le_ceil _)
     exact_mod_cast (show (1 : ℝ) ≤ dB by linarith only [h2])
   have! hprin : ∀ G ∈ gset, (D.withQ0 (qG G)).PrinOK G δ fp.Hed (fp.Kstar Dm0 dB Hm δ Nl kD δ)
-      (fp.Kstar Dm0 dB Hm δ Nl kD δ) := by
-    intro G hG
-    have! hcp := fp.center_principal_bounds Dm0 dB kD hδ (le_trans hδ8 (by norm_num)) AD.hHed2
-      hHm1 hδ hNl0 hdB1 hdim hC (bf.grpCenter d G)
-    rw [← hDS] at hcp
-    obtain ⟨hMN, hτm, hCN, hτc, hCm, hQC⟩ := hcp
-    have! hz0 := hzc 0 G hG
-    have hz0' : ((D.withQ0 (qG G)).Ms 0 G).zc = bf.vtag (bf.grpCenter d G) := hz0
-    have hz0'' : (D.Ms 0 G).zc = bf.vtag (bf.grpCenter d G) := hz0
-    have! hdimz := hdim (bf.grpCenter d G)
-    have! hqS : (qG G : ℝ) ≤ S.Q0 := by exact_mod_cast (hqG1 G).2
-    have! hQB : (qG G : ℝ) * 2 ^ (fp.Kstar Dm0 dB Hm δ Nl kD δ + 1) ≤ S.Bstar :=
-      le_trans (mul_le_mul_of_nonneg_right hqS (by positivity)) hbox
-    exact
-      { hz := fun j => (hzc j G hG).trans hz0.symm
-        hdim := by
-          change (D.Ms 0 G).zc.dim ≤ S.dmax
-          rw [hz0'', hSd]
-          omega
-        hδ := hδ
-        hdδ := by
-          rw [hz0']
-          have! this : (8 : ℝ) * (bf.vtag (bf.grpCenter d G)).dim * δ ≤ 8 * dB * δ := by
-            have! this : ((bf.vtag (bf.grpCenter d G)).dim : ℝ) ≤ dB := by exact_mod_cast hdimz
-            gcongr
-          exact this.trans hdδ
-        hδ8 := hδ8
-        hδc := fun j => (hgrpE j G hG).1
-        hcl := fun j => (hgrpE j G hG).2.1
-        hρ := fun j i => (hgrpE j G hG).2.2 i
-        hQC := by rw [hz0']; exact hQC
-        hCm0 := le_trans (by norm_num) AD.hHed2
-        hCm := by rw [hz0']; exact hCm
-        hQB := hQB
-        hτc := by rw [hz0']; exact hτc
-        hτm := by rw [hz0']; exact hτm
-        hMN := by rw [hz0']; exact hMN
-        hCN := by rw [hz0']; exact hCN
-        hDg := fun j => (hsch' j G hG).2.2.1
-        hKf := fun j => (hsch' j G hG).2.2.2.1
-        hQBf := hQB
-        hεw := fun j m => (hsch' j G hG).2.2.2.2.1 m
-        hΛ := fun j => (hsch' j G hG).2.1 }
+      (fp.Kstar Dm0 dB Hm δ Nl kD δ) :=
+    leaf_estimate_hprin κ c₀ Dm0 A bf p AD d s δ ρ kD hδ hδ8 hρ hdδ hNl0 hHm1 hdim hC S hSd hbox
+      hK1 hlenMc Ms hDS hsch' hA6 hqG1 c hcat hmbb hmbT hzc hgrpE hdB1
   -- the stabilization of the modes of every group of the leaf
   have! hBσ1 : ∀ l G, 1 ≤ (Ms l G).Bσ := fun l G => (Ms l G).one_le_Bσ
   have! hstab : ∀ G ∈ gset, (D.withQ0 (qG G)).Stab := by
@@ -5747,8 +7379,9 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
         exact hD0.le
   -- the first tops in the form of the leaf bound
   have! hcD : ∀ j (G : {G // G ∈ gset}), D.c j G.1 = c j G := fun j G => dite_eq_left G.2
-  set Gq : ℝ := Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
+  set! Gq : ℝ := Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) *
     (1 + Real.log (2 * (k : ℝ))) ^ 2) with hGq
+  rewrite [← hGq] at hVl0 hVE hTop
   set! Mt : ℝ := 24 * (2 * Gq + 2 * S.K * Vl0) *
     (Finset.range (S.Jstar + 1) ×ˢ Ts ×ˢ dyThr ε U S.Dstar).card / ρ with hMt
   have! hTopD : ∀ j y, ∀ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs,
@@ -5768,43 +7401,9 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     exact (div_div _ _ _).symm.trans (div_eq_mul_inv _ _)
   -- the class sizes
   have! hUD : ∀ I ∈ S1, ∀ G ∈ gs I, ∀ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs, ∀ j,
-      ∀ F ∈ (D.withQ0 (qG G)).goodCls G I j h, (D.withQ0 (qG G)).clsSize G I j F ≤ U := by
-    intro I hI G hG h _ j F hF
-    have! hGs : G ∈ gset := Finset.mem_biUnion.mpr ⟨I, hS1S0 hI, hG⟩
-    have! hret : (D.withQ0 (qG G)).preAt I ∈ fp.retainedV G (A.blkStart S.K I.1) S.K := by
-      obtain ⟨K', hK', -⟩ := Finset.mem_image.mp hF
-      have! hK'' := (Finset.mem_filter.mp hK').1
-      unfold FamParams.SideInput.compsAt at hK''
-      split_ifs at hK'' with hcond
-      · exact hcond.2
-      · exact absurd hK'' (Finset.notMem_empty _)
-    have! hW : ∀ m, (D.Ms j G).L.εM m ≤ A.colBudget ^ 2 := by
-      intro m
-      obtain ⟨ρ₀', z', g', -, -, hMLE, hεM', -⟩ := hexp j G hGs
-      change (Ms j G).L.εM m ≤ _
-      rw [← hεM' m]
-      exact (hMLE.εM_le m).trans (by rw [hMLE.εP_eq]; exact bf.mainWeight_le fp.Mc j _)
-    have! hcc := hcB j ⟨G, hGs⟩ _ (hIB I (hS1c hI)) _ hret
-    have! hcl := (D.withQ0 (qG G)).clsSize_le G I j F (sq_nonneg _) hW
-      (Cc := 4 * S.Dstar ^ 2 * 1) (by rw [← hcD j ⟨G, hGs⟩] at hcc; exact hcc)
-      ((hsch' j G hGs).2.2.2.2.2.1 _) hD1
-    refine hcl.trans (le_trans ?_ hU4)
-    have! hs1 : Real.sqrt (1 + A.colBudget ^ 2) ≤ A.colBudget + 1 := by
-      calc Real.sqrt (1 + A.colBudget ^ 2) ≤ Real.sqrt ((A.colBudget + 1) ^ 2) :=
-            Real.sqrt_le_sqrt (by nlinarith only [hcb])
-        _ = A.colBudget + 1 := Real.sqrt_sq (by linarith only [hcb])
-    have! hs2 : Real.sqrt (4 * S.Dstar ^ 2 * 1) = 2 * S.Dstar := by
-      rw [mul_one, show (4 : ℝ) * S.Dstar ^ 2 = (2 * S.Dstar) ^ 2 by ring,
-        Real.sqrt_sq (by linarith only [hD0])]
-    rw [hs2]
-    change (Real.sqrt (1 + A.colBudget ^ 2) + 1) * S.Dstar * (2 * S.Dstar) ≤
-      2 * (A.colBudget + 2) * S.Dstar ^ 2
-    have! this : (Real.sqrt (1 + A.colBudget ^ 2) + 1) * S.Dstar * (2 * S.Dstar) ≤
-        (A.colBudget + 2) * S.Dstar * (2 * S.Dstar) :=
-      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (by linarith only [hs1]) hD0.le)
-        (by linarith only [hD0])
-    calc _ ≤ (A.colBudget + 2) * S.Dstar * (2 * S.Dstar) := this
-      _ = 2 * (A.colBudget + 2) * S.Dstar ^ 2 := by ring
+      ∀ F ∈ (D.withQ0 (qG G)).goodCls G I j h, (D.withQ0 (qG G)).clsSize G I j F ≤ U :=
+    leaf_estimate_hUD κ c₀ cc hcc Dm0 A bf p AD d s δ kD hcb hNl0 S hK1 hlenMc Ms L hexp hsch' hA6
+      U hU4 hD0 hD1 gsc hMLE c hcB Cut hcat hmbb hmbT hS1S0 hS1c hIB hcD
   have! hUT :
       Real.sqrt (D.Tside qG (2 ^ A.famFuel) (2 * A.famFuel + 2) 1 E cc k (fun _ => Vl0) ρ) ≤
       U := by
@@ -5813,14 +7412,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   -- the core constants
   set! Iw : ℕ := ⌊Real.logb 2 (S.Dstar ^ 250)⌋₊ with hIw
   have! hIw12 := two_pow_floor_logb (one_le_pow₀ hD1 : (1 : ℝ) ≤ S.Dstar ^ 250)
-  have! hΞ : ∀ x : ℝ, 2 ≤ x → 8 * x ≤ x ^ 1000 := by
-    intro x hx
-    have! h8 : (8 : ℝ) ≤ 2 ^ 999 := by
-      calc (8 : ℝ) = 2 ^ 3 := by norm_num
-        _ ≤ 2 ^ 999 := pow_le_pow_right₀ (by norm_num) (by norm_num)
-    have! h1 : (8 : ℝ) ≤ x ^ 999 := le_trans h8 (pow_le_pow_left₀ (by norm_num) hx 999)
-    calc 8 * x ≤ x ^ 999 * x := mul_le_mul_of_nonneg_right h1 (by linarith only [hx])
-      _ = x ^ 1000 := by ring
+  have! hΞ : ∀ x : ℝ, 2 ≤ x → 8 * x ≤ x ^ 1000 :=
+    leaf_estimate_hΞ
   have! hGc : ∀ G ∈ gset, (∀ j, 8 * (D.Ms j G).Λ ≤ D.S.Ξ) ∧
       (∀ j, (D.Ms j G).zc = bf.vtag (bf.grpCenter d G)) ∧
       (bf.vtag (bf.grpCenter d G)).dim ≤ D.S.dmax := by
@@ -5898,7 +7491,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   have! hkcc0 : (k : ℝ) ≤ (k : ℝ) ^ cc := le_self_pow₀ hk1 (by omega)
   have! hkD1 : (1 : ℝ) ≤ kD := hk1.trans (hkcc0.trans hkD)
   have! hkD2 : (2 : ℝ) ≤ kD := hk2.trans (hkcc0.trans hkD)
-  obtain ⟨u, hu⟩ : ∃ x : ℝ, x = kD * fp.P := ⟨_, rfl⟩
+  have! hobt : ∃ x : ℝ, x = kD * fp.P := ⟨_, rfl⟩
+  obtain ⟨u, hu⟩ := hobt
   have! hu1 : 1 ≤ u := by rw [hu]; exact one_le_mul_of_one_le_of_one_le hkD1 hP1
   have! hku : (k : ℝ) ≤ u := by
     rw [hu]; exact (hkcc0.trans hkD).trans (le_mul_of_one_le_right (by linarith only [hkD1]) hP1)
@@ -5908,11 +7502,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   have! hcbexp : 2 * A.colBudget ≤ Real.exp ((k : ℝ) ^ cc) := by
     rw [← Real.exp_log (show 0 < 2 * A.colBudget by linarith only [hcb])]
     exact Real.exp_le_exp.mpr hkb
-  have! hbig : 2 * (8 * A.colBudget + (1 + AD.Mp) * Nl) ≤ Real.exp ((k : ℝ) ^ cc) := by
-    rw [← Real.exp_log (show (0 : ℝ) < 2 * (8 * A.colBudget + (1 + AD.Mp) * Nl) by
-      have! this : 0 ≤ (1 + (AD.Mp : ℝ)) * Nl := by positivity
-      linarith only [this, hcb])]
-    exact Real.exp_le_exp.mpr hkB
+  have! hbig : 2 * (8 * A.colBudget + (1 + AD.Mp) * Nl) ≤ Real.exp ((k : ℝ) ^ cc) :=
+    leaf_estimate_hbig κ c₀ cc A bf k p AD hkB hcb hNl4
   have! hNlexp : Nl ≤ Real.exp ((k : ℝ) ^ cc) := by
     have! this : Nl ≤ (1 + (AD.Mp : ℝ)) * Nl :=
       le_mul_of_one_le_left hNl0 (by linarith only [hMp0])
@@ -5930,68 +7521,16 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   have! hkcc1 : (1 : ℝ) ≤ (k : ℝ) ^ cc := one_le_pow₀ hk1
   have! hkDle : kD ≤ kD ^ (cc + 6) := le_self_pow₀ hkD1 (by omega)
   have! hkk : (k : ℝ) ^ cc ≤ kD ^ (cc + 6) := hkD.trans hkDle
-  have! h64D : 64 * kD ≤ kD ^ (cc + 6) := by
-    have! h1 : (2 : ℝ) ^ (cc + 5) ≤ kD ^ (cc + 5) := pow_le_pow_left₀ (by norm_num) hkD2 _
-    have! h2 : (64 : ℝ) ≤ 2 ^ (cc + 5) := by
-      calc (64 : ℝ) = 2 ^ 6 := by norm_num
-        _ ≤ 2 ^ (cc + 5) := pow_le_pow_right₀ (by norm_num) (by omega)
-    rw [show cc + 6 = (cc + 5) + 1 by omega, pow_succ]
-    nlinarith only [h1, h2, hkD1]
+  have! h64D : 64 * kD ≤ kD ^ (cc + 6) :=
+    leaf_estimate_h64D cc hcc kD hkD1 hkD2
   have! h64 : 64 * (k : ℝ) ^ cc ≤ kD ^ (cc + 6) := by linarith only [h64D, hkD]
   have! hkK0 : Real.log bumpConst + 68 ≤ (k : ℝ) ^ cc := by
     have! this : (k : ℝ) ≤ (k : ℝ) ^ cc := le_self_pow₀ hk1 (by omega)
     linarith only [this, hK0k]
   -- the height of the modes
-  have! hlogHm : Real.log Hm ≤ kD ^ (cc + 6) := by
-    set! Y := kD ^ (cc + 6) with hY
-    rewrite [← hY] at hkDle hkk h64D h64 ⊢
-    have! hHs0 : 0 < A.Hsrc := lt_of_lt_of_le (Real.exp_pos 2) A.exp_two_le_Hsrc
-    have! hW0 : 0 < max A.H ActiveSetup.padW :=
-      lt_of_lt_of_le (Real.exp_pos 2) (le_trans (le_max_left _ _) (le_max_right _ _))
-    have! ha : A.Hsrc ≤ Real.exp Y := by
-      rw [← Real.exp_log hHs0]; exact Real.exp_le_exp.mpr (hHsk.trans hkk)
-    have! hb : Real.exp dB ≤ Real.exp Y := Real.exp_le_exp.mpr (hdBk.trans hkk)
-    have! he9 : (5832 : ℝ) ≤ Real.exp 9 := by
-      have! h1 : (2.7 : ℝ) ≤ Real.exp 1 := by linarith only [Real.exp_one_gt_d9]
-      have! h2 := pow_le_pow_left₀ (by norm_num) h1 9
-      rw [← Real.exp_nat_mul] at h2
-      norm_num at h2 ⊢
-      linarith only [h2]
-    have! hc : 5832 * max A.H ActiveSetup.padW ^ 4 ≤ Real.exp Y := by
-      have! h1 : max A.H ActiveSetup.padW ^ 4 ≤ Real.exp (4 * (k : ℝ) ^ cc) := by
-        rw [← Real.exp_log hW0, ← Real.exp_nat_mul]
-        push_cast
-        exact Real.exp_le_exp.mpr (by linarith only [hHWk])
-      calc 5832 * max A.H ActiveSetup.padW ^ 4 ≤ Real.exp 9 * Real.exp (4 * (k : ℝ) ^ cc) :=
-            mul_le_mul he9 h1 (by positivity) (Real.exp_pos _).le
-        _ = Real.exp (9 + 4 * (k : ℝ) ^ cc) := (Real.exp_add _ _).symm
-        _ ≤ Real.exp Y := Real.exp_le_exp.mpr (by linarith only [h64, hkcc1])
-    have! hd : (dB : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ)) ≤ Real.exp Y := by
-      have! hdB0 : (dB : ℝ) ≤ Real.exp ((k : ℝ) ^ cc) :=
-        hdBk.trans ((Real.add_one_le_exp _).trans' (by linarith only []))
-      have! h8 : (8 : ℝ) ^ 32 * 2 ≤ Real.exp 68 := by
-        have! h1 : (2.7 : ℝ) ≤ Real.exp 1 := by linarith only [Real.exp_one_gt_d9]
-        have! h2 := pow_le_pow_left₀ (by norm_num) h1 68
-        rw [← Real.exp_nat_mul] at h2
-        norm_num at h2 ⊢
-        linarith only [h2]
-      have! hδi : 2 / δ = (8 : ℝ) ^ 0 * 2 * δ⁻¹ := by rw [pow_zero, one_mul, div_eq_mul_inv]
-      have! hb0 : bumpConst = Real.exp (Real.log bumpConst) :=
-        (Real.exp_log (lt_of_lt_of_le one_pos one_le_bumpConst)).symm
-      calc (dB : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ))
-          = (dB : ℝ) * bumpConst * ((8 : ℝ) ^ 32 * 2) * δ⁻¹ := by
-            rw [div_eq_mul_inv]; ring
-        _ ≤ Real.exp ((k : ℝ) ^ cc) * Real.exp (Real.log bumpConst) * Real.exp 68 *
-            Real.exp kD := by
-            rw [← hb0]
-            have hb1 := one_le_bumpConst
-            gcongr
-        _ = Real.exp ((k : ℝ) ^ cc + Real.log bumpConst + 68 + kD) := by
-            rw [← Real.exp_add, ← Real.exp_add, ← Real.exp_add]
-        _ ≤ Real.exp Y := Real.exp_le_exp.mpr (by linarith only [h64D, hkK0, hkD, hkD1])
-    have! hHmY : Hm ≤ Real.exp Y := max_le (max_le ha hb) (max_le hc hd)
-    rw [← Real.exp_log (lt_of_lt_of_le one_pos hHm1)] at hHmY
-    exact Real.exp_le_exp.mp hHmY
+  have! hlogHm : Real.log Hm ≤ kD ^ (cc + 6) :=
+    leaf_estimate_hlogHm κ c₀ cc A k δ kD hδ hHm1 hdBk hHsk hHWk hδk hkD hkD1 hkcc1 hkDle hkk h64D
+      h64 hkK0
   -- `log D_*` and the cutoff, by `log_modeStarG_poly`
   have! hkDP : (1 : ℝ) ≤ kD * fp.P := one_le_mul_of_one_le_of_one_le hkD1 hP1
   have! hmsG := hCg fp dB (H := Hm) (δc := δ) (N := Nl) (k := kD) (δ := δ) hkD1
@@ -6008,23 +7547,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   have! hupow : ∀ e : ℕ, e ≤ eΛ → u ^ e ≤ u ^ eΛ := fun e he => pow_le_pow_right₀ hu1 he
   have! hkue : ∀ e : ℕ, (k : ℝ) ^ e ≤ u ^ e := fun e =>
     pow_le_pow_left₀ (by linarith only [hk1]) hku e
-  have! hQ0l : Real.log (fp.Q0bd dB) ≤ (k : ℝ) ^ (3 * cc) + 1 := by
-    have! hq := fp.Q0bd_le dB AD.hHed2
-    have! hH1 : (1 : ℝ) ≤ fp.Hed ^ (dB * dB) := one_le_pow₀ (by linarith only [AD.hHed2])
-    have! hq1 : (1 : ℝ) ≤ fp.Q0bd dB := by exact_mod_cast fp.one_le_Q0bd dB AD.hHed2
-    have! h2 : (fp.Q0bd dB : ℝ) ≤ 2 * fp.Hed ^ (dB * dB) := by linarith only [hq, hH1]
-    have! h3 : Real.log (fp.Q0bd dB) ≤ Real.log 2 + ((dB * dB : ℕ) : ℝ) * Real.log fp.Hed := by
-      rw [← Real.log_pow, ← Real.log_mul (by norm_num) (by positivity)]
-      exact Real.log_le_log (by linarith only [hq1]) h2
-    have! hl2 : Real.log 2 ≤ 1 := by linarith only [Real.log_two_lt_d9]
-    have! hHl0 : 0 ≤ Real.log fp.Hed := Real.log_nonneg (by linarith only [AD.hHed2])
-    have! hdB0 : (0 : ℝ) ≤ dB := Nat.cast_nonneg _
-    have! hdd : ((dB * dB : ℕ) : ℝ) * Real.log fp.Hed ≤ (k : ℝ) ^ (3 * cc) := by
-      push_cast
-      calc (dB : ℝ) * dB * Real.log fp.Hed ≤ (k : ℝ) ^ cc * (k : ℝ) ^ cc * (k : ℝ) ^ cc := by
-            gcongr
-        _ = (k : ℝ) ^ (3 * cc) := by ring
-    linarith only [h3, hl2, hdd]
+  have! hQ0l : Real.log (fp.Q0bd dB) ≤ (k : ℝ) ^ (3 * cc) + 1 :=
+    leaf_estimate_hQ0l κ c₀ cc A bf k p AD hk1 hdB1 hdBk hHedk
   have! hQ0l0 : 0 ≤ Real.log (fp.Q0bd dB) :=
     Real.log_nonneg (by exact_mod_cast fp.one_le_Q0bd dB AD.hHed2)
   have! hmaxNl : Real.log (max 2 Nl) ≤ (k : ℝ) ^ cc := by
@@ -6048,8 +7572,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     Real.log (fp.Bst Dm0 dB Hm δ Nl kD δ) + Real.log (max 2 Nl) + Real.log (fp.Q0bd dB) + 1
     with hΛdef
   rewrite [← hΛdef] at hlogH hK
-  have! hΛ0 : 0 ≤ Λ := by
-    rw [hΛdef, hBstl]; positivity
+  have! hΛ0 : 0 ≤ Λ :=
+    leaf_estimate_hΛ0 κ c₀ Dm0 A bf p AD δ kD hdB1 hmaxNl0 hBstl hlK0 hlDG0 hΛdef
   have! hΛ : Λ ≤ CΛ * u ^ eΛ := by
     rw [hΛdef, hBstl]
     have! h1 : (k : ℝ) ^ (3 * cc) ≤ u ^ eΛ := (hkue _).trans (hupow _ (by rw [heΛ]; omega))
@@ -6062,34 +7586,15 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     rw [hCΛ]
     push_cast
     linarith only [h1, h2, h3, h4, h5, hdBk', hlDG, hQ0l, hmaxNl]
-  have! hE0 : 0 ≤ E := by
-    obtain ⟨h1, -, -⟩ := hsub A.R subset_rfl
-    have! h := h1 0
-    have! h0 : 0 ≤ ∑ I ∈ A.cells with dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2,
-        dyadicGridLength A.G I.1 * (MeasureTheory.eLpNorm (A.U 0 I) 2 (A.μ I)).toReal ^ 2 :=
-      Finset.sum_nonneg fun I _ => mul_nonneg (dyadicGridLength_pos A.G I.1).le (sq_nonneg _)
-    by_contra hneg
-    push Not at hneg
-    have! this : E * dyadicGridLength A.G A.R.1 < 0 := mul_neg_of_neg_of_pos hneg hRl0
-    linarith only [h, h0, this]
+  have! hE0 : 0 ≤ E :=
+    leaf_estimate_hE0 κ c₀ A η₀ E hsub hRl0
   have! hVl0nn : ∀ l : Fin 4, 0 ≤ (fun _ : Fin 4 => Vl0) l ∧ (fun _ : Fin 4 => Vl0) l ≤ Vl0 :=
     fun _ => ⟨hVl00, le_rfl⟩
   set! TT := TsideF A fp.P S.K (A.uslot p) (2 ^ A.famFuel) (2 * A.famFuel + 2) 1 E cc k
     (fun _ => Vl0) ρ with hTT
   rewrite [← hTT] at hUdef
-  have! hT0 : 0 ≤ TT := by
-    rw [hTT]; unfold TsideF; dsimp only
-    have := hVl00
-    have! hL0 := localFormUniformConstant_nonneg κ
-    refine div_nonneg (add_nonneg (div_nonneg ?_ hRl0.le) (div_nonneg ?_ hRl0.le)) hρ.le
-    · exact Finset.sum_nonneg fun l _ => by split_ifs <;> positivity
-    · have! this : 0 ≤ ∑ l : Fin 4,
-          (if A.uslot p = some l then 2 * (4 * E * dyadicGridLength A.G A.R.1)
-          else 2 * ((S.K : ℝ) * (20 * Real.exp ((4096 * (cc + 1) * (1024 * (cc + 1) + cc + 7) +
-            cc ^ 2 + 3) * (1 + Real.log (2 * (k : ℝ))) ^ 2) + 32) * dyadicGridLength A.G A.R.1) +
-          2 * ((S.K : ℝ) * (Vl0 * dyadicGridLength A.G A.R.1))) :=
-        Finset.sum_nonneg fun l _ => by split_ifs <;> positivity
-      positivity
+  have! hT0 : 0 ≤ TT :=
+    leaf_estimate_hT0 κ c₀ cc A bf k E p AD ρ hρ S hK1 Vl0 hRl0 hVl00 hP1 hE0 hTT
   set! T2v := D.T2 cc k (fun _ => Vl0) ρ with hT2v
   rewrite [← hT2v] at hsum
   -- the core errors on the retained cells
@@ -6115,15 +7620,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     calc _ = 16 * S.Dstar ^ 8 * (Real.sqrt S.Dstar ^ 2) ^ 2 := by ring
       _ = _ := by rw [hsD]; ring
   have! h3pow : (S.Dstar * (Real.sqrt S.Dstar * Real.sqrt (4 * S.Dstar ^ 2 * 1) + 1)) ^ 4 ≤
-      81 * S.Dstar ^ 10 := by
-    rw [hsq]
-    have! h1 : Real.sqrt S.Dstar * (2 * S.Dstar) + 1 ≤ 3 * (Real.sqrt S.Dstar * S.Dstar) := by
-      nlinarith only [hsD1, hD1]
-    have! h0 : 0 ≤ S.Dstar * (Real.sqrt S.Dstar * (2 * S.Dstar) + 1) := by positivity
-    calc _ ≤ (S.Dstar * (3 * (Real.sqrt S.Dstar * S.Dstar))) ^ 4 :=
-          pow_le_pow_left₀ h0 (mul_le_mul_of_nonneg_left h1 hD0.le) 4
-      _ = 81 * S.Dstar ^ 8 * (Real.sqrt S.Dstar ^ 2) ^ 2 := by ring
-      _ = _ := by rw [hsD]; ring
+      81 * S.Dstar ^ 10 :=
+    leaf_estimate_h3pow S hD0 hD1 hsq hsD hsD1
   set! ι : ℝ := (S.Dstar ^ 100)⁻¹ * S.Dstar ^ 10 with hι
   have! hι0 : 0 ≤ ι := by rw [hι]; positivity
   have! hιD : ι ≤ S.Dstar⁻¹ := by
@@ -6137,81 +7635,11 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   set! Qe : ℝ := 16 * fourErrC κ 3 * ι + K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε * U ^ 3 *
       S.Dstar ^ 4) + 4 * (81 * threeErrC κ 3 1 * ι * U + K1c * (8 * entryCU κ 3 1 *
         2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)))) with hQe
-  have! hcoreE : ∀ I ∈ S₂, D.coreE qG gs 3 1 Iw U ε I ≤ (gs I).card * Qe := by
-    intro I hI
-    have! hI1 := hS₂S1 hI
-    have hK1 : D.K1 = K1c := rfl
-    have! hfour : ∀ G ∈ gs I, (D.withQ0 (qG G)).fourErr 3 G I ≤ 16 * fourErrC κ 3 * ι := by
-      intro G hG
-      have! hGs : G ∈ gset := Finset.mem_biUnion.mpr ⟨I, hS1S0 hI1, hG⟩
-      have h := (D.withQ0 (qG G)).fourErr_le 3 G I (Cc := 4 * S.Dstar ^ 2 * 1)
-        hD1 (fun l hne => ?_) (fun l => (hsch' l G hGs).2.2.2.2.2.1 _)
-      · refine h.trans (le_of_eq ?_)
-        change fourErrC κ 3 * (S.Dstar ^ 100)⁻¹ *
-          (S.Dstar * (Real.sqrt S.Dstar * Real.sqrt (4 * S.Dstar ^ 2 * 1))) ^ 4 = _
-        rw [h4pow, hι]; ring
-      · have! hret : (D.withQ0 (qG G)).preAt I ∈ fp.retainedV G (A.blkStart S.K I.1) S.K := by
-          unfold FamParams.SideInput.compsAt at hne
-          split_ifs at hne with hcond
-          · exact hcond.2
-          · exact absurd rfl hne
-        have! hcc := hcB l ⟨G, hGs⟩ _ (hIB I (hS1c hI1)) _ hret
-        rw [← hcD l ⟨G, hGs⟩] at hcc
-        exact hcc
-    have! hthree : ∀ l, ∀ G ∈ gs I, (D.withQ0 (qG G)).threeErr 3 1 l G I ≤
-        81 * threeErrC κ 3 1 * ι * U := by
-      intro l G hG
-      have! hGs : G ∈ gset := Finset.mem_biUnion.mpr ⟨I, hS1S0 hI1, hG⟩
-      have h := (D.withQ0 (qG G)).threeErr_le 3 1 l G I (Cc := 4 * S.Dstar ^ 2 * 1)
-        hD1 (fun l hne => ?_) (fun l => (hsch' l G hGs).2.2.2.2.2.1 _)
-        (hUs l I hI G hG)
-      · refine h.trans ?_
-        change threeErrC κ 3 1 * (S.Dstar ^ 100)⁻¹ * U *
-          (S.Dstar * (Real.sqrt S.Dstar * Real.sqrt (4 * S.Dstar ^ 2 * 1) + 1)) ^ 4 ≤ _
-        have! h0 : 0 ≤ threeErrC κ 3 1 * (S.Dstar ^ 100)⁻¹ * U := by
-          have! this := threeErrC_nonneg κ 3 1; positivity
-        calc threeErrC κ 3 1 * (S.Dstar ^ 100)⁻¹ * U *
-            (S.Dstar * (Real.sqrt S.Dstar * Real.sqrt (4 * S.Dstar ^ 2 * 1) + 1)) ^ 4
-            ≤ threeErrC κ 3 1 * (S.Dstar ^ 100)⁻¹ * U * (81 * S.Dstar ^ 10) :=
-              mul_le_mul_of_nonneg_left h3pow h0
-          _ = _ := by rw [hι]; ring
-      · have! hret : (D.withQ0 (qG G)).preAt I ∈ fp.retainedV G (A.blkStart S.K I.1) S.K := by
-          unfold FamParams.SideInput.compsAt at hne
-          split_ifs at hne with hcond
-          · exact hcond.2
-          · exact absurd rfl hne
-        have! hcc := hcB l ⟨G, hGs⟩ _ (hIB I (hS1c hI1)) _ hret
-        rw [← hcD l ⟨G, hGs⟩] at hcc
-        exact hcc
-    unfold FamParams.SideInput.coreE
-    rw [hK1]
-    have hS : D.S.Dstar = S.Dstar := rfl
-    rw [hS]
-    have! e1 : ∑ G ∈ gs I, ((D.withQ0 (qG G)).fourErr 3 G I + K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε *
-        U ^ 3 * S.Dstar ^ 4)) ≤ (gs I).card * (16 * fourErrC κ 3 * ι + K1c * (2 * fourKC κ 3 *
-          12 ^ 4 * ε * U ^ 3 * S.Dstar ^ 4)) := by
-      rw [← nsmul_eq_mul, ← Finset.sum_const]
-      exact Finset.sum_le_sum fun G hG => by linarith only [hfour G hG]
-    have! e2 : ∑ l, ∑ G ∈ gs I, ((D.withQ0 (qG G)).threeErr 3 1 l G I + K1c * (8 * entryCU κ 3 1 *
-        2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)))) ≤
-        (gs I).card * (4 * (81 * threeErrC κ 3 1 * ι * U + K1c * (8 * entryCU κ 3 1 *
-          2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1))))) := by
-      calc _ ≤ ∑ _l : Fin 4, (gs I).card * (81 * threeErrC κ 3 1 * ι * U + K1c *
-            (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1)))) := by
-            refine Finset.sum_le_sum fun l _ => ?_
-            rw [← nsmul_eq_mul, ← Finset.sum_const]
-            exact Finset.sum_le_sum fun G hG => by linarith only [hthree l G hG]
-        _ = _ := by simp; ring
-    have! e3 : ((gs I).card : ℝ) * (16 * fourErrC κ 3 * ι + K1c * (2 * fourKC κ 3 * 12 ^ 4 * ε *
-        U ^ 3 * S.Dstar ^ 4)) + (gs I).card * (4 * (81 * threeErrC κ 3 1 * ι * U + K1c *
-          (8 * entryCU κ 3 1 * 2 ^ (1 + 4) * 12 ^ 3 * ε * U ^ 3 * (S.Dstar ^ 3 * (Iw + 1))))) =
-        (gs I).card * Qe := by rw [hQe]; ring
-    linarith only [e1, e2, e3]
-  have! hQe0 : 0 ≤ Qe := by
-    rw [hQe]
-    have! this := fourErrC_nonneg κ 3; have := threeErrC_nonneg κ 3 1; have := fourKC_nonneg κ 3
-    have! this := entryCU_nonneg' κ 3 1; have := K1c_pos
-    positivity
+  have! hcoreE : ∀ I ∈ S₂, D.coreE qG gs 3 1 Iw U ε I ≤ (gs I).card * Qe :=
+    leaf_estimate_hcoreE κ c₀ cc hcc Dm0 A bf hne p AD d s δ kD hNl0 S hD2 hK1 hlenMc Ms hsch' hA6
+      U hD1 hU16 ε c hcB Cut hcat hmbb hmbT hS1S0 hS1c hIB hcD C C₂ hUs hS₂S1 h4pow h3pow hι hQe
+  have! hQe0 : 0 ≤ Qe :=
+    leaf_estimate_hQe0 κ S hD2 U hU16 ε hε0 hQe
   have! hcEsum : ∑ I ∈ S₂, dyadicGridLength A.G I.1 * D.coreE qG gs 3 1 Iw U ε I ≤
       Qe * (((AD.Mp * A.famVtxBound : ℕ) : ℝ) * dyadicGridLength A.G A.R.1) := by
     calc ∑ I ∈ S₂, dyadicGridLength A.G I.1 * D.coreE qG gs 3 1 Iw U ε I
@@ -6238,11 +7666,8 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     rw [hn, hNb]; push_cast
     have! this := Nat.cast_nonneg (α := ℝ) (Nat.log 2 S.K)
     linarith only [this]
-  have! hCjg1 : 1 ≤ Cjg := by
-    rw [hCjg]
-    have! h0 := Nat.cast_nonneg (α := ℝ) (2 * A.famFuel + 2)
-    exact one_le_mul_of_one_le_of_one_le (one_le_pow₀ (by linarith only [h0]))
-      (Real.one_le_exp (by positivity))
+  have! hCjg1 : 1 ≤ Cjg :=
+    leaf_estimate_hCjg1 κ c₀ cc A k hCjg
   set! P3 := n ^ 3 * Cjg with hP3
   have! hP31 : 1 ≤ P3 := one_le_mul_of_one_le_of_one_le (one_le_pow₀ hn1) hCjg1
   have! hnP3 : n ≤ P3 := by
@@ -6261,51 +7686,11 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   have! hVW : Vl0 ≤ W := by linarith only [hG0e1, hE0]
   have! hEW : E ≤ W := by linarith only [hG0e1, hVl00]
   have! hsB : 40 * G0e + 64 + 2 * Vl0 ≤ 106 * W := by linarith only [hG0W, hVW, hW1]
-  have! hΓa0 : Γa 0 ≤ 1874 * Os.card * P3 * W := by
-    have! e : Γa 0 = Os.card * (n * (8 * G0e + 16 * Cjg * (40 * G0e + 64 + 2 * Vl0) +
-        64 * n ^ 2 * Cjg * G0e) + (40 * G0e + 64 + 2 * Vl0)) := by
-      simp only [hΓadef, hcapV, hsideB]
-      rw [div_eq_iff hR0]
-      ring
-    rw [e]
-    have! h1 : n * (8 * G0e) ≤ 8 * (P3 * W) := by
-      have! this := mul_le_mul hnP3 hG0W (by linarith only [hG0e1]) (by linarith only [hP31])
-      linarith only [this]
-    have! h2 : n * (16 * Cjg * (40 * G0e + 64 + 2 * Vl0)) ≤ 1696 * (P3 * W) := by
-      have! h3 : n * Cjg * (40 * G0e + 64 + 2 * Vl0) ≤ P3 * (106 * W) :=
-        mul_le_mul hnCP3 hsB (by positivity) (by linarith only [hP31])
-      nlinarith only [h3]
-    have! h4 : n * (64 * n ^ 2 * Cjg * G0e) ≤ 64 * (P3 * W) := by
-      have! this : n * (64 * n ^ 2 * Cjg * G0e) = 64 * (P3 * G0e) := by rw [hP3]; ring
-      rw [this]
-      have! this := mul_le_mul_of_nonneg_left hG0W (show 0 ≤ P3 by linarith only [hP31])
-      linarith only [this]
-    have! h5 : 40 * G0e + 64 + 2 * Vl0 ≤ 106 * (P3 * W) := by
-      have! this := mul_le_mul_of_nonneg_right hP31 (show 0 ≤ W by linarith only [hW1])
-      linarith only [hsB, this]
-    have! h6 : n * (8 * G0e + 16 * Cjg * (40 * G0e + 64 + 2 * Vl0) + 64 * n ^ 2 * Cjg * G0e) +
-        (40 * G0e + 64 + 2 * Vl0) ≤ 1874 * (P3 * W) := by
-      have! this : n * (8 * G0e + 16 * Cjg * (40 * G0e + 64 + 2 * Vl0) + 64 * n ^ 2 * Cjg * G0e) =
-          n * (8 * G0e) + n * (16 * Cjg * (40 * G0e + 64 + 2 * Vl0)) +
-            n * (64 * n ^ 2 * Cjg * G0e) := by ring
-      rw [this]; linarith only [h1, h2, h4, h5]
-    calc _ ≤ (Os.card : ℝ) * (1874 * (P3 * W)) := mul_le_mul_of_nonneg_left h6 hOs0
-      _ = _ := by ring
-  have! hΓb0 : Γb 0 ≤ 110 * Os.card * P3 * W := by
-    have! e : Γb 0 = Os.card * (n * (4 * G0e) + (40 * G0e + 64 + 2 * Vl0)) := by
-      simp only [hΓbdef, hcapV, hsideB]
-      rw [div_eq_iff hR0]
-      ring
-    rw [e]
-    have! h1 : n * (4 * G0e) ≤ 4 * (P3 * W) := by
-      have! this := mul_le_mul hnP3 hG0W (by linarith only [hG0e1]) (by linarith only [hP31])
-      linarith only [this]
-    have! h5 : 40 * G0e + 64 + 2 * Vl0 ≤ 106 * (P3 * W) := by
-      have! this := mul_le_mul_of_nonneg_right hP31 (show 0 ≤ W by linarith only [hW1])
-      linarith only [hsB, this]
-    calc _ ≤ (Os.card : ℝ) * (110 * (P3 * W)) :=
-          mul_le_mul_of_nonneg_left (by linarith only [h1, h5]) hOs0
-      _ = _ := by ring
+  have! hΓa0 : Γa 0 ≤ 1874 * Os.card * P3 * W :=
+    leaf_estimate_hΓa0 κ c₀ cc A k E S Vl0 hVl00 hG0e1 hW1 hΓadef hP3 hP31 hnP3 hnCP3 hOs0 hcapV
+      hsideB hR0 hG0W hsB
+  have! hΓb0 : Γb 0 ≤ 110 * Os.card * P3 * W :=
+    leaf_estimate_hΓb0 κ c₀ cc A k E S Vl0 hG0e1 hW1 hΓbdef hP31 hnP3 hOs0 hcapV hsideB hR0 hG0W hsB
   have! hΓU0 : ΓU ≤ 8 * Os.card * P3 * W := by
     have! e : ΓU = Os.card * (8 * E) := by
       rw [hΓUdef, div_eq_iff hR0]; ring
@@ -6314,15 +7699,12 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
     calc (Os.card : ℝ) * (8 * E) ≤ Os.card * (8 * (P3 * W)) :=
           mul_le_mul_of_nonneg_left (by linarith only [this]) hOs0
       _ = _ := by ring
-  have! hΓa00 : 0 ≤ Γa 0 := by
-    simp only [hΓadef, hcapV, hsideB]
-    exact div_nonneg (mul_nonneg hOs0 (by positivity)) hRl0.le
-  have! hΓb00 : 0 ≤ Γb 0 := by
-    simp only [hΓbdef, hcapV, hsideB]
-    exact div_nonneg (mul_nonneg hOs0 (by positivity)) hRl0.le
-  have! hΓU00 : 0 ≤ ΓU := by
-    rw [hΓUdef]
-    exact div_nonneg (mul_nonneg hOs0 (by positivity)) hRl0.le
+  have! hΓa00 : 0 ≤ Γa 0 :=
+    leaf_estimate_hΓa00 κ c₀ cc A k S Vl0 hRl0 hVl00 hΓadef hOs0 hcapV hsideB
+  have! hΓb00 : 0 ≤ Γb 0 :=
+    leaf_estimate_hΓb00 κ c₀ cc A k S Vl0 hRl0 hVl00 hΓbdef hOs0 hcapV hsideB
+  have! hΓU00 : 0 ≤ ΓU :=
+    leaf_estimate_hΓU00 κ c₀ A E hRl0 hΓUdef hE0 hOs0
   set! Γ := Γa 0 + Γb 0 + ΓU with hΓdef
   have! hΓle : Γ ≤ 2000 * Os.card * P3 * W := by
     have! this : (0 : ℝ) ≤ Os.card * P3 * W :=
@@ -6360,7 +7742,7 @@ theorem leaf_estimate (κ : LocalKernelClass) (c₀ cc : ℕ) (hcc : 1 ≤ cc) :
   have! hΛ' : Λ ≤ CΛ * (kD * fp.P) ^ eΛ := by rw [← hu]; exact hΛ
   have! hlD' : Real.log S.Dstar ≤ Cg * (kD * fp.P) ^ Cg := by rw [← hu]; exact hlD
   have! hBd := hsum.trans (leaf_final κ hq2 hq3 Nd hMsch hconst hcc hk2 hkD fp.hP hcb hNl4 hkB hkb
-    hVle hkF hdB1 hdBk hE0 hEk hρ hρ1 hρk hδ hδ8 hη0 hη₀ AD.hτ₃ hRl0 S hd2 hD2 hH2 hK1 hSd hSDm
+    hVle hkF hdB1 hdBk hE0 hEk hρ hρ1 hρk hδ hδ8 hη0 hη₀ AD.hτ₃ hRl0 S hD2 hH2 hK1 hSd hSDm
     hJH hΛ0 hΛ' hK hlogH hlD' hexpD rfl hVl0 hT0
     (TsideF_le A fp.P S.K (A.uslot p) (2 ^ A.famFuel) (2 * A.famFuel + 2) cc k (fun _ => Vl0)
       hS2 fp.hP Nat.one_le_two_pow hE0 hVl0nn hρ) hUdef hMV hεdef hMt
