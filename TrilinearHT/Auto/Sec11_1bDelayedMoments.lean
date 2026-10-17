@@ -115,7 +115,7 @@ theorem delay_cell_telescope (G : RealDyadicGrid) (I : ℤ × ℤ) {θ : ℝ →
     exact setIntegral_depthExpectation_of_le G Q (by rw [hd]; omega)
       (integrableOn_cell_of_continuous G _ _ hθc)
   -- the telescoping terms
-  set T : ℕ → ℂ := fun j => ∫ y in C, D j y * (θ y - E j y) with hT
+  set! T : ℕ → ℂ := fun j => ∫ y in C, D j y * (θ y - E j y) with hT
   have hmulθE : ∀ j, IntegrableOn (fun y => D j y * (θ y - E j y)) C := fun j =>
     integrableOn_cell_mul_bdd (hD2 j) (hθm.sub (hEm j)) (hEθ j)
   have hmulE : ∀ j k, IntegrableOn (fun y => D j y * E k y) C := fun j k =>
@@ -139,7 +139,7 @@ theorem delay_cell_telescope (G : RealDyadicGrid) (I : ℤ × ℤ) {θ : ℝ →
       Real.sqrt r * (Real.sqrt (∫ y in C, ‖D j y - D (j + 1) y‖ ^ 2) +
         Real.sqrt (∫ y in C, ‖μ (j + 1) y - μ j y‖ ^ 2)) := by
     intro j hj
-    set g : ℝ → ℂ := fun y => E (j + 1) y - E j y with hg
+    set! g : ℝ → ℂ := fun y => E (j + 1) y - E j y with hg
     have hgm : Measurable g := (hEm _).sub (hEm _)
     have hgc : ∀ Q ∈ dyadicGeneration G I (j + 1), ∀ y ∈ dyadicGridCell G Q.1 Q.2,
         ∀ z ∈ dyadicGridCell G Q.1 Q.2, g y = g z := fun Q hQ y hy z hz => by
@@ -199,7 +199,7 @@ theorem delay_cell_telescope (G : RealDyadicGrid) (I : ℤ × ℤ) {θ : ℝ →
           (norm_add_le _ _).trans (add_le_add le_rfl (norm_add_le _ _))
       _ ≤ _ := by
           simp only [Pi.sub_apply] at bA bB
-          nlinarith [bA, bB, hLa]
+          nlinarith only [bA, bB, hLa]
   -- the terminal term
   have hend : ∀ N, ‖T N‖ ≤ L * (2 : ℝ)⁻¹ ^ N * Real.sqrt r *
       Real.sqrt (∫ y in C, ‖D N y‖ ^ 2) := fun N =>
@@ -301,7 +301,7 @@ theorem geom_Ico_le (K d : ℕ) :
   have h : ∑ i ∈ Finset.range d, (2 : ℝ)⁻¹ ^ i ≤ 2 := by
     rw [geom_sum_eq (by norm_num), div_le_iff_of_neg (by norm_num)]
     have : 0 ≤ (2 : ℝ)⁻¹ ^ d := by positivity
-    linarith
+    linarith only [this]
   calc (2 : ℝ)⁻¹ ^ K * ∑ i ∈ Finset.range d, (2 : ℝ)⁻¹ ^ i ≤ (2 : ℝ)⁻¹ ^ K * 2 :=
         mul_le_mul_of_nonneg_left h (by positivity)
     _ = 2 * (2 : ℝ)⁻¹ ^ K := by ring
@@ -352,23 +352,23 @@ theorem delay_rows_sum (G : RealDyadicGrid) (J : ℤ × ℤ) (S : Finset (ℤ ×
       3 * (9 * L * (2 : ℝ)⁻¹ ^ K₀) ^ 2 * E := by
   classical
   have hE0 : 0 ≤ E := by simpa using hE ∅
-  set dI : ℤ × ℤ → ℕ := fun I => (N - I.1 - K₀).toNat with hdI
+  set! dI : ℤ × ℤ → ℕ := fun I => (N - I.1 - K₀).toNat with hdI
   have hdIe : ∀ I ∈ S, I.1 + ((K₀ + dI I : ℕ) : ℤ) = N := fun I hI => by
     have := hN I hI; simp only [hdI]; push_cast; omega
-  set dmax := S.sup dI with hdmax
+  set! dmax := S.sup dI with hdmax
   have hdle : ∀ I ∈ S, dI I ≤ dmax := fun I hI => Finset.le_sup (f := dI) hI
-  set α : ℤ × ℤ → ℕ → ℝ := fun I j =>
+  set! α : ℤ × ℤ → ℕ → ℝ := fun I j =>
     Real.sqrt (∫ y in dyadicGridCell G I.1 I.2, e (I.1 + j) y) with hα
   have hα0 : ∀ I j, 0 ≤ α I j := fun I j => Real.sqrt_nonneg _
-  set st : ℤ × ℤ → ℝ := fun I =>
+  set! st : ℤ × ℤ → ℝ := fun I =>
     ‖∫ y in dyadicGridCell G I.1 I.2, μg (I.1 + K₀) y * θ I y‖ with hst
-  set c : ℕ → ℝ := fun j => 4 * L * (2 : ℝ)⁻¹ ^ j with hc
+  set! c : ℕ → ℝ := fun j => 4 * L * (2 : ℝ)⁻¹ ^ j with hc
   have hc0 : ∀ j, 0 ≤ c j := fun j => by positivity
   have hcs : ∑ j ∈ Finset.Ico K₀ (K₀ + dmax), c j ≤ 8 * L * (2 : ℝ)⁻¹ ^ K₀ := by
     rw [hc, ← Finset.mul_sum]
     have := geom_Ico_le K₀ dmax
-    nlinarith
-  set ρ : ℤ × ℤ → ℝ := fun I => (4 : ℝ)⁻¹ ^ (K₀ + dI I) * ∫ y in dyadicGridCell G I.1 I.2, m y
+    nlinarith only [hL, this]
+  set! ρ : ℤ × ℤ → ℝ := fun I => (4 : ℝ)⁻¹ ^ (K₀ + dI I) * ∫ y in dyadicGridCell G I.1 I.2, m y
     with hρ
   -- per cell
   have hcell : ∀ I ∈ S, (dyadicGridLength G I.1)⁻¹ *
@@ -415,7 +415,7 @@ theorem delay_rows_sum (G : RealDyadicGrid) (J : ℤ × ℤ) (S : Finset (ℤ ×
               Real.sqrt_sq (by norm_num)]
     have hsr := Real.sqrt_pos.mpr hr0
     have hmI0 : 0 ≤ ∫ y in dyadicGridCell G I.1 I.2, m y := integral_nonneg hm0
-    set z := L * (2 : ℝ)⁻¹ ^ (K₀ + dI I) * (2 * Real.sqrt (∫ y in dyadicGridCell G I.1 I.2, m y))
+    set! z := L * (2 : ℝ)⁻¹ ^ (K₀ + dI I) * (2 * Real.sqrt (∫ y in dyadicGridCell G I.1 I.2, m y))
       with hz
     have hT' : ‖∫ y in dyadicGridCell G I.1 I.2, Dg (I.1 + K₀) y * θ I y‖ / Real.sqrt r ≤
         st I / Real.sqrt r + ∑ j ∈ Finset.Ico K₀ (K₀ + dmax), c j * α I j + z := by
@@ -463,7 +463,7 @@ theorem delay_rows_sum (G : RealDyadicGrid) (J : ℤ × ℤ) (S : Finset (ℤ ×
     have h3 : (st I / Real.sqrt r + ∑ j ∈ Finset.Ico K₀ (K₀ + dmax), c j * α I j + z) ^ 2 ≤
         3 * (st I / Real.sqrt r) ^ 2 +
           3 * (∑ j ∈ Finset.Ico K₀ (K₀ + dmax), c j * α I j) ^ 2 + 3 * z ^ 2 := by
-      nlinarith [sq_nonneg (st I / Real.sqrt r - ∑ j ∈ Finset.Ico K₀ (K₀ + dmax), c j * α I j),
+      nlinarith only [sq_nonneg (st I / Real.sqrt r - ∑ j ∈ Finset.Ico K₀ (K₀ + dmax), c j * α I j),
         sq_nonneg (st I / Real.sqrt r - z),
         sq_nonneg (∑ j ∈ Finset.Ico K₀ (K₀ + dmax), c j * α I j - z)]
     have hr2 : Real.sqrt r ^ 2 = r := Real.sq_sqrt hr0.le
@@ -560,7 +560,7 @@ theorem delay_rows_sum (G : RealDyadicGrid) (J : ℤ × ℤ) (S : Finset (ℤ ×
       rw [h4]
       have : 0 ≤ L ^ 2 * ((2 : ℝ)⁻¹ ^ K₀) ^ 2 * E := by positivity
       simp only [hst]
-      nlinarith
+      nlinarith only [hE0]
 
 /-- Blueprint lem:delay, proof line 1559: for mean-zero bumps the start term is
 `∫_I (μ_H - μ_s) ω_I`, a sum of `K₀` private increments, costing `K₀ √ε ‖F_a‖₂`. -/
@@ -934,7 +934,7 @@ theorem linear_phase_scale_sum_rows (G : RealDyadicGrid) (κ : LocalKernelClass)
     simp only [Prod.mk.injEq, neg_inj] at h
     exact hinj hi hj (Prod.ext h.1 h.2)
   -- Bessel bound per character
-  set bd : (Fin 2 → ℤ) → ℝ := fun v =>
+  set! bd : (Fin 2 → ℤ) → ℝ := fun v =>
     charWaveConst κ (frequencyLength v) * 1 * Real.sqrt (2 * M) with hbd
   have hbd0 : ∀ v, 0 ≤ bd v := fun v => by
     have := two_le_charWaveConst κ (hLn v)
@@ -958,9 +958,9 @@ theorem linear_phase_scale_sum_rows (G : RealDyadicGrid) (κ : LocalKernelClass)
       _ = Ka * Kb * bd v ^ 2 * Na * Nb := by
           rw [hsqrt hKa (hbd0 v) hNa0, hsqrt hKb (hbd0 v) hNb0]; ring
   -- the majorant
-  set U : (Fin 2 → ℤ) → ℝ := fun v =>
+  set! U : (Fin 2 → ℤ) → ℝ := fun v =>
     E * ((1 + frequencyLength v) ^ 7)⁻¹ * (Ka * Kb * bd v ^ 2 * Na * Nb) with hU
-  set C0 := E * ((2 + 2 * K) * 25) ^ 2 * 2 * M * Ka * Kb * Na * Nb with hC0
+  set! C0 := E * ((2 + 2 * K) * 25) ^ 2 * 2 * M * Ka * Kb * Na * Nb with hC0
   have hUe : ∀ v, U v = C0 * ((1 + frequencyLength v) ^ 3)⁻¹ := by
     intro v
     have h1 : 0 < 1 + frequencyLength v := by linarith [hLn v]
@@ -1223,7 +1223,7 @@ theorem delay_part_zero (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ ×
   set X := (K₀ : ℝ) * Real.sqrt Δ.ε + 9 * (2 : ℝ)⁻¹ ^ K₀ with hX
   have hX0 : 0 ≤ X := by positivity
   have hE0 := Δ.E_nonneg
-  set Ka := Real.sqrt (27 / (2 * M)) * X * Real.sqrt Δ.E with hKa
+  set! Ka := Real.sqrt (27 / (2 * M)) * X * Real.sqrt Δ.E with hKa
   have hKa0 : 0 ≤ Ka := by positivity
   set Nb := Real.sqrt (∫ y in dyadicGridCell G J.1 J.2, ‖Fb y‖ ^ 2) with hNb
   have hNb0 : 0 ≤ Nb := Real.sqrt_nonneg _
@@ -1314,7 +1314,7 @@ theorem delay_part_zero (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ ×
         _ ≤ 3 * (9 * A ^ 2) * X ^ 2 * Δ.E := by
             have := mul_le_mul hLA hX2
               (add_nonneg (mul_nonneg (sq_nonneg _) Δ.ε_nonneg) (by positivity)) (by positivity)
-            nlinarith
+            nlinarith only [hE0, this]
         _ = 27 * A ^ 2 * X ^ 2 * Δ.E := by ring
     have hKa2 : Ka ^ 2 * (A * 1 * Real.sqrt (2 * M)) ^ 2 * 1 ^ 2 = 27 * A ^ 2 * X ^ 2 * Δ.E := by
       have s1 : Real.sqrt (27 / (2 * M)) ^ 2 = 27 / (2 * M) := Real.sq_sqrt (by positivity)
@@ -1411,7 +1411,7 @@ theorem delay_linear_xrow (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ 
       (slotPairFreqA a b (dyadicGridLength G I.1) v) y *
         (Real.fourierChar (-(γ / ((b : ℝ) - (a : ℝ))) * y) : ℂ))
     hL0 (fun I hI y => ((classWave_mod_bounds κ (dyadicGridLength_pos G I.1) _ _
-      (hAa v I hI)).2.1 y).trans (by rw [hL]; nlinarith [Real.pi_pos, abs_nonneg γ]))
+      (hAa v I hI)).2.1 y).trans (by rw [hL]; nlinarith only [Real.pi_pos, abs_nonneg γ, hg1, hA2]))
     (Δ.μ (s + K₀)) (fun I hI => Δ.μ_memLp I (hS' hI) _)
   have hμe : ∑ I ∈ S', ∫ y in dyadicGridCell G I.1 I.2, ‖Δ.μ (s + K₀) y‖ ^ 2 ≤ Δ.ε * Δ.E := by
     rcases S'.eq_empty_or_nonempty with he | ⟨I₀, hI₀⟩
@@ -1502,13 +1502,13 @@ theorem delay_linear_depth (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ
   have hE0 := Δ.E_nonneg
   set g := 1 + r * |γ| with hg
   have hg1 : 1 ≤ g := by rw [hg]; nlinarith [abs_nonneg γ]
-  set Ka := Real.sqrt (147 / (2 * M)) * g * Y * Real.sqrt Δ.E with hKa
+  set! Ka := Real.sqrt (147 / (2 * M)) * g * Y * Real.sqrt Δ.E with hKa
   have hKa0 : 0 ≤ Ka := by positivity
   set Nb := Real.sqrt (∫ y in dyadicGridCell G J.1 J.2, ‖Fb y‖ ^ 2) with hNb
   have hNb0 : 0 ≤ Nb := Real.sqrt_nonneg _
   have hLn : ∀ v : Fin 2 → ℤ, 0 ≤ frequencyLength v := frequencyLength_nonneg
   have hd1 : 1 ≤ |((b : ℝ) - (a : ℝ))| := one_le_abs_fin_sub hab
-  set ν := γ / ((b : ℝ) - (a : ℝ)) with hν
+  set! ν := γ / ((b : ℝ) - (a : ℝ)) with hν
   have hνr : r * |ν| ≤ r * |γ| := by
     rw [hν, abs_div]
     exact mul_le_mul_of_nonneg_left (div_le_self (abs_nonneg _) hd1) hr0.le
@@ -1904,7 +1904,7 @@ theorem chirp_fourier : ∃ C : ℝ, 0 ≤ C ∧ ∀ D : ℝ, ∃ q : (Fin 1 →
     have hX : 0 ≤ bumpFourierConst * (120 * Cχ) * |D| := by positivity
     calc bumpFourierConst * (120 * Cχ) * |D| * (1 + 600 ^ 3 * (1 + |D|) ^ 3)
         ≤ bumpFourierConst * (120 * Cχ) * |D| * ((1 + 600 ^ 3) * (1 + |D|) ^ 3) :=
-          mul_le_mul_of_nonneg_left (by nlinarith) hX
+          mul_le_mul_of_nonneg_left (by nlinarith only [h1]) hX
       _ = _ := by ring
 
 /-- The constant of `chirp_fourier`. -/
@@ -1948,13 +1948,13 @@ theorem delay_chirp_depth (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ 
   have hqn : Summable (fun v => ‖q v‖) := Summable.of_nonneg_of_le (fun _ => norm_nonneg _)
     (fun v => le_mul_of_one_le_right (norm_nonneg _)
       (by have := frequencyLength_nonneg v; linarith)) hqs
-  set γ : (Fin 1 → ℤ) → ℝ := fun v => (v 0 : ℝ) / (8 * r) with hγ
+  set! γ : (Fin 1 → ℤ) → ℝ := fun v => (v 0 : ℝ) / (8 * r) with hγ
   set Y := Real.sqrt Δ.ε + 9 * (2 : ℝ)⁻¹ ^ K₀ with hY
   set Nb := Real.sqrt (∫ y in dyadicGridCell G J.1 J.2, ‖Fb y‖ ^ 2) with hNb
-  set B := delayLinConst κ * Y * Real.sqrt Δ.E * Kb * Nb with hB
+  set! B := delayLinConst κ * Y * Real.sqrt Δ.E * Kb * Nb with hB
   have hB0 : 0 ≤ B := by have := delayLinConst_nonneg κ; positivity
   -- the linear-phase bound for each frequency
-  set sepv : (Fin 1 → ℤ) → ℤ × ℤ → ℂ := fun v I =>
+  set! sepv : (Fin 1 → ℤ) → ℤ × ℤ → ℂ := fun v I =>
     separatedLocalForm (dyadicGridLength G I.1) (w I)
       (fun t => (Real.fourierChar (γ v * t) : ℂ)) a b (fun y => 1 * Δ.D (I.1 + K₀) y)
       (fun y => ψb y * zb I y) with hsepv
@@ -1969,7 +1969,7 @@ theorem delay_chirp_depth (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ 
       rw [hγ, abs_div, abs_of_pos (by positivity : (0 : ℝ) < 8 * r)]
       have := abs_frequency_coordinate_le v 0
       rw [mul_div_assoc', div_le_iff₀ (by positivity)]
-      nlinarith [abs_nonneg ((v 0 : ℤ) : ℝ)]
+      nlinarith only [abs_nonneg ((v 0 : ℤ) : ℝ), hr0, this]
     rw [hB]
     have hX : 0 ≤ delayLinConst κ * Y * Real.sqrt Δ.E * Kb * Nb := hB0
     calc delayLinConst κ * (1 + r * |γ v|) * Y * Real.sqrt Δ.E * Kb * Nb
@@ -2115,8 +2115,8 @@ theorem delay_error_bound (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ 
   set Nb := Real.sqrt (∫ y in dyadicGridCell G J.1 J.2, ‖Fb y‖ ^ 2) with hNb
   have hNb0 : 0 ≤ Nb := Real.sqrt_nonneg _
   have hE0 := Δ.E_nonneg
-  set X := (K₀ : ℝ) * Real.sqrt Δ.ε + 9 * (2 : ℝ)⁻¹ ^ K₀ with hX
-  set Y := Real.sqrt Δ.ε + 9 * (2 : ℝ)⁻¹ ^ K₀ with hY
+  set! X := (K₀ : ℝ) * Real.sqrt Δ.ε + 9 * (2 : ℝ)⁻¹ ^ K₀ with hX
+  set! Y := Real.sqrt Δ.ε + 9 * (2 : ℝ)⁻¹ ^ K₀ with hY
   set Z := (2 : ℝ)⁻¹ ^ K₀ + (1 + K₀) * Real.sqrt Δ.ε with hZ
   have hs0 := Real.sqrt_nonneg Δ.ε
   have hp0 : (0 : ℝ) ≤ (2 : ℝ)⁻¹ ^ K₀ := by positivity
@@ -2124,10 +2124,10 @@ theorem delay_error_bound (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ 
   have hXZ : X ≤ 9 * Z := by rw [hX, hZ]; nlinarith
   have hYZ : Y ≤ 9 * Z := by rw [hY, hZ]; nlinarith
   -- split the time factor
-  set sep1 : ℤ × ℤ → ℂ := fun I => separatedLocalForm (dyadicGridLength G I.1) (w I)
+  set! sep1 : ℤ × ℤ → ℂ := fun I => separatedLocalForm (dyadicGridLength G I.1) (w I)
     (fun t => (Real.fourierChar (0 * t) : ℂ)) a b (fun y => 1 * Δ.D (I.1 + K₀) y)
     (fun y => ψb y * zb I y) with hsep1
-  set sep2 : ℤ × ℤ → ℂ := fun I => separatedLocalForm (dyadicGridLength G I.1) (w I)
+  set! sep2 : ℤ × ℤ → ℂ := fun I => separatedLocalForm (dyadicGridLength G I.1) (w I)
     (fun t => (Real.fourierChar (lam * t ^ 2) : ℂ) - 1) a b (fun y => 1 * Δ.D (I.1 + K₀) y)
     (fun y => ψb y * zb I y) with hsep2
   have hEc : ∀ c : ℝ, Measurable (fun t : ℝ => (Real.fourierChar (c * t) : ℂ)) := fun c =>
@@ -2243,11 +2243,11 @@ theorem delay_error_bound (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ 
   have hD2 : 2 * Dp * (1 + Dp) ^ 3 ≤ 2 * (1 + Dp) ^ 4 := by
     have : Dp * (1 + Dp) ^ 3 ≤ (1 + Dp) * (1 + Dp) ^ 3 :=
       mul_le_mul_of_nonneg_right (by linarith) (by positivity)
-    nlinarith
+    nlinarith only [hDp0, hD1]
   have hc1 := delayZeroConst_nonneg κ
   have hc2 : 0 ≤ delayLinConst κ * chirpConst := by
     have := delayLinConst_nonneg κ; have := chirpConst_spec.1; positivity
-  set W := Real.sqrt Δ.E * Kb * Nb with hW
+  set! W := Real.sqrt Δ.E * Kb * Nb with hW
   have hW0 : 0 ≤ W := by positivity
   have e1 : delayZeroConst κ * X * Real.sqrt Δ.E * Kb * Nb = delayZeroConst κ * X * W := by
     rw [hW]; ring
@@ -2545,7 +2545,7 @@ theorem ColumnDepthFamily.setIntegral_proj_le (Ψ : ColumnDepthFamily V) (h : �
   have hQI := dyadicGeneration_subset _ _ _ hQg
   have hQ : Q ∈ (Ψ.partition h).cells := (Ψ.mem_partition h Q).mpr ⟨hQ1, hQI.trans hI⟩
   have hQc := (Ψ.partition h).subset hQ
-  set PQ := cellColumnProjection Ψ.D Ψ.A hQc with hPQ
+  set! PQ := cellColumnProjection Ψ.D Ψ.A hQc with hPQ
   have e1 : ∫ y in dyadicGridCell Ψ.D.grid Q.1 Q.2, ‖(Ψ.proj h z : ℝ → ColumnHilbert V) y‖ ^ 2 =
       ∫ y in dyadicGridCell Ψ.D.grid Q.1 Q.2, ‖(PQ z : ℝ → ColumnHilbert V) y‖ ^ 2 :=
     integral_congr_ae ((Ψ.proj_ae_cell h z hQ).mono fun y hy => by beta_reduce; rw [hy])
@@ -2565,8 +2565,8 @@ theorem ColumnDepthFamily.setIntegral_proj_le (Ψ : ColumnDepthFamily V) (h : �
         exact pow_le_pow_left₀ (norm_nonneg _)
           ((PQ.le_opNorm _).trans (by
             have := cellColumnProjection_norm_le Ψ.D Ψ.A hQc
-            nlinarith [norm_nonneg (columnL2Restriction (dyadicGridCell Ψ.D.grid Q.1 Q.2)
-              (dyadicGridCell_measurable _ _ _) z)])) 2
+            nlinarith only [norm_nonneg (columnL2Restriction (dyadicGridCell Ψ.D.grid Q.1 Q.2)
+              (dyadicGridCell_measurable _ _ _) z), this])) 2
     _ = _ := columnL2Restriction_norm_sq _ _ z
 
 theorem ColumnDepthFamily.proj_eq_of_depth (Ψ : ColumnDepthFamily V) {h h' : ℤ}
@@ -2587,10 +2587,10 @@ theorem ColumnDepthFamily.increment_energy (Ψ : ColumnDepthFamily V) (z : Colum
         ‖(z : ℝ → ColumnHilbert V) y‖ ^ 2 := by
   classical
   set J := Ψ.D.root with hJ
-  set z₀ := columnL2Restriction (dyadicGridCell Ψ.D.grid J.1 J.2)
+  set! z₀ := columnL2Restriction (dyadicGridCell Ψ.D.grid J.1 J.2)
     (dyadicGridCell_measurable _ _ _) z with hz₀
-  set T := (Ψ.N - J.1).toNat with hT
-  set P : ℕ → ColumnL2 V →L[ℂ] ColumnL2 V := fun n => Ψ.proj (J.1 + n) with hP
+  set! T := (Ψ.N - J.1).toNat with hT
+  set! P : ℕ → ColumnL2 V →L[ℂ] ColumnL2 V := fun n => Ψ.proj (J.1 + n) with hP
   have hbes := projection_successive_differences_bessel P T
     (fun n _ => Ψ.isStarProjection_proj _)
     (fun i _ j _ hij => Ψ.proj_nested (by omega)) z₀
@@ -2974,7 +2974,7 @@ theorem delayedPredictorReplacement (κ : LocalKernelClass) (Ψ : ColumnDepthFam
         Real.sqrt (∫ y in dyadicGridCell Ψ.D.grid Ψ.D.root.1 Ψ.D.root.2,
           ‖(f : ℝ → ℂ) y‖ ^ 2) * Kb *
         Real.sqrt (∫ y in dyadicGridCell Ψ.D.grid Ψ.D.root.1 Ψ.D.root.2, ‖Fb y‖ ^ 2) := by
-  set Δ := Ψ.delayData f hψm hψ hscal hε1 S hS (fun I hI => by have := hN I hI; omega) havail
+  set! Δ := Ψ.delayData f hψm hψ hscal hε1 S hS (fun I hI => by have := hN I hI; omega) havail
   have h := delay_error_bound κ Δ w hw hab lam hDp0 hDp hψbm hψb hKb hzb hzbm hzb2 K₀ hN
   refine le_trans (le_of_eq (Finset.sum_congr rfl fun I hI => ?_)) h
   congr 2
@@ -3019,7 +3019,7 @@ theorem ColumnDepthFamily.rolling_energy (Ψ : ColumnDepthFamily V) (z : ColumnL
         ‖(z : ℝ → ColumnHilbert V) y‖ ^ 2 := by
   classical
   set J := Ψ.D.root
-  set e : ℤ → ℝ → ℝ := fun h y => ‖(Ψ.proj (h + 1) z : ℝ → ColumnHilbert V) y -
+  set! e : ℤ → ℝ → ℝ := fun h y => ‖(Ψ.proj (h + 1) z : ℝ → ColumnHilbert V) y -
     (Ψ.proj h z : ℝ → ColumnHilbert V) y‖ ^ 2 with he
   set E := ∫ y in dyadicGridCell Ψ.D.grid J.1 J.2, ‖(z : ℝ → ColumnHilbert V) y‖ ^ 2
   have hei : ∀ h, IntegrableOn (e h) (dyadicGridCell Ψ.D.grid J.1 J.2) := fun h =>
@@ -3191,9 +3191,9 @@ theorem ColumnDepthFamily.current_admissible (Ψ : ColumnDepthFamily V)
     rw [← hB0', zero_pow two_ne_zero, zero_mul] at h
     exact le_antisymm h (by positivity)
   -- normalized rows
-  set c : ℝ := B⁻¹ with hc
-  set ιs := {i // i ∈ R.index}
-  set Brow : ColumnRowFamily Ψ.D ιs ℂ :=
+  set! c : ℝ := B⁻¹ with hc
+  set! ιs := {i // i ∈ R.index}
+  set! Brow : ColumnRowFamily Ψ.D ιs ℂ :=
     { decision := fun i => Ψ.anc (R.cell i.val)
       decision_mem := fun i => hmem i.val i.property
       row := fun i => ((c : ℝ) : ℂ) • (innerSL ℂ ((cellRow_memLp R i.val).toLp

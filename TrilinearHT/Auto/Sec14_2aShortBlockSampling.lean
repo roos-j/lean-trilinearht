@@ -388,7 +388,7 @@ theorem latticeSampled_offsets {δ : ℝ} (hδ : 0 < δ) (z : ℝ × ℝ) :
   have k4 := Int.lt_floor_add_one ((z.1 + z.2) / δ)
   rw [le_div_iff₀ hδ] at k1 k3
   rw [div_lt_iff₀ hδ] at k2 k4
-  refine ⟨by nlinarith, by nlinarith, by nlinarith, by nlinarith⟩
+  refine ⟨by nlinarith only [k1], by nlinarith, by nlinarith, by nlinarith⟩
 
 /-- Blueprint lines 2307-2312 (first kernel-sampling error): for an admissible kernel on a cell
 of length `r` and `5δ ≤ μ r`, the form with the sampling error kernel `w - w^δ` is at most
@@ -449,10 +449,10 @@ theorem latticeSampled_form_error {κ : LocalKernelClass} {a r : ℝ} (hr : 0 < 
           (δ * ⌊(z.1 + z.2) / δ⌋ - δ * ⌊z.1 / δ⌋)) + ((1 - (j : ℝ)) * X + (j : ℝ) * Y) := by
         simp only [X, Y]; ring
       have hd1 : |(1 - (j : ℝ)) * X + (j : ℝ) * Y| ≤ 5 * δ := by
-        rw [abs_le]; constructor <;> nlinarith
+        rw [abs_le]; constructor <;> nlinarith only [hj3, o1, o2, o3, o4]
       rw [abs_le] at hd1
       rw [hcoord]
-      constructor <;> nlinarith [mul_pos hμ hr]
+      constructor <;> nlinarith only [mul_pos hμ hr, hδr, h1, hj3, o1, o2, o3, h2, o4]
   -- the form estimate
   have hW : ∀ z, ‖e z‖ₑ ≤ ENNReal.ofReal (2 * admissibleLipConst κ * (δ / r)) := fun z => by
     rw [← ofReal_norm]; exact ENNReal.ofReal_le_ofReal (hsize z)

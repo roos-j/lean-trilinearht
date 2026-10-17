@@ -36,7 +36,7 @@ theorem card_int_in_open_interval (B : Finset ℤ) (s : ℝ) (hB : ∀ β ∈ B,
     rw [Finset.mem_Icc]
     constructor
     · have := Int.floor_le s
-      have : (⌊s⌋ : ℝ) < β := by linarith
+      have : (⌊s⌋ : ℝ) < β := by linarith only [h1, this]
       exact_mod_cast this
     · have := Int.lt_floor_add_one s
       have : (β : ℝ) < ⌊s⌋ + 5 := by linarith
@@ -295,11 +295,11 @@ theorem stabilize_witness {W : Type*} [AddCommGroup W] [Module ℚ W] {n : ℕ}
   classical
   set φ := integerRationalMap n
   have hφ : ∀ v l, φ v l = v l := fun _ _ => rfl
-  set Λ := rationalIntegerIntersection U
+  set! Λ := rationalIntegerIntersection U
   have hΛ := rationalIntegerIntersection_saturated U
   have hQ0 : (Q : ℚ) ≠ 0 := by exact_mod_cast hQ.ne'
   -- step 0: the cleared difference `Q m_h - 6^R Σ β_j m_j` lies in `K_B`, hence in `U`
-  set z : Fin n → ℤ := (Q : ℤ) • mh - (6 : ℤ) ^ R • ∑ j, β j • mj j
+  set! z : Fin n → ℤ := (Q : ℤ) • mh - (6 : ℤ) ^ R • ∑ j, β j • mj j
   have hzl : ∀ l, (z l : ℚ) = (Q : ℚ) * mh l - 6 ^ R * ∑ j, (β j : ℚ) * mj j l := by
     intro l; simp [z, Finset.sum_apply]
   have hzK : ι (φ z) ∈ K := by
@@ -334,7 +334,7 @@ theorem stabilize_witness {W : Type*} [AddCommGroup W] [Module ℚ W] {n : ℕ}
   have hyU : φ (mh - (6 : ℤ) ^ Δ • y) ∈ U := hy
   have h60 : ∀ e : ℕ, (6 : ℚ) ^ e ≠ 0 := fun e => pow_ne_zero _ (by norm_num)
   -- step 2: `y - 6^(R-Δ) Σ b_j m_j ∈ U`
-  set ctr : Fin n → ℚ := (6 : ℚ) ^ (R - Δ) • ∑ j, ((β j : ℚ) / Q) • φ (mj j)
+  set! ctr : Fin n → ℚ := (6 : ℚ) ^ (R - Δ) • ∑ j, ((β j : ℚ) / Q) • φ (mj j)
   have hdiff : φ y - ctr ∈ U := by
     have hcomb : φ y - ctr = ((Q : ℚ) * 6 ^ Δ)⁻¹ •
         (φ ((Q : ℤ) • mh - (6 : ℤ) ^ R • ∑ j, β j • mj j) -
@@ -357,7 +357,7 @@ theorem stabilize_witness {W : Type*} [AddCommGroup W] [Module ℚ W] {n : ℕ}
   -- step 3: round the coefficients in the generators
   rw [← hgU] at hdiff
   obtain ⟨c, hc⟩ := (Submodule.mem_span_range_iff_exists_fun ℚ).mp hdiff
-  set m' : Fin n → ℤ := y - ∑ i, round (c i) • g i
+  set! m' : Fin n → ℤ := y - ∑ i, round (c i) • g i
   have hm'φ : φ m' - ctr = ∑ i, (c i - round (c i)) • φ (g i) := by
     simp only [m', map_sub, map_sum, map_zsmul, sub_smul, Finset.sum_sub_distrib, hc]
     simp only [Int.cast_smul_eq_zsmul]
@@ -688,7 +688,7 @@ theorem core_bad_proportion (Δ : ℕ) (goodP : ℕ → P → Prop) [∀ h, Deci
     exact_mod_cast Finset.card_le_card Finset.inter_subset_left
   have hkey : 2 * (c : ℝ) ≤ J + 1 := by nlinarith
   rw [hcard]
-  nlinarith [mul_le_mul_of_nonneg_left hkey hδ.le]
+  nlinarith only [mul_le_mul_of_nonneg_left hkey hδ.le, h1, h2]
 
 end ModeComponents
 
@@ -915,8 +915,8 @@ theorem rational_span_expand_bounded {m n : ℕ} (v : Fin m → Fin n → ℚ) {
     simp only [Fintype.card_sum, Fintype.card_prod, Fintype.card_fin]
     have := Nat.mul_le_mul hrn hrn
     omega
-  set Z : Matrix (Fin r) (Fin r) ℤ := fun i k => z (Sum.inl (i, k))
-  set w : Fin r → ℤ := fun i => z (Sum.inr i)
+  set! Z : Matrix (Fin r) (Fin r) ℤ := fun i k => z (Sum.inl (i, k))
+  set! w : Fin r → ℤ := fun i => z (Sum.inr i)
   have hZ : (Int.castRingHom ℚ).mapMatrix Z = (D0 : ℚ) • M := by
     ext i k; simp only [RingHom.mapMatrix_apply, Matrix.map_apply, Matrix.smul_apply,
       smul_eq_mul]; exact (hz (Sum.inl (i, k))).1
@@ -1077,10 +1077,10 @@ theorem stabilize_core {dv dz : ℕ} (K : Submodule ℚ (Fin (dv + dz) → ℚ))
         (expandConst (dv + dz) D * (D * E (h - R)))) + dz * S (h - R) := by
   set C := expandConst (dv + dz) D
   -- the generators of `V_{h-R}`
-  set GF := (Fintype.piFinset fun _ : Fin (dv + dz) => boundedRationalEnumeration D).filter fun q =>
-    vecHeight q ≤ D ∧ ∃ m : Fin dz → ℤ, (∀ l, |(m l : ℚ)| ≤ D * E (h - R)) ∧
+  set! GF := (Fintype.piFinset fun _ : Fin (dv + dz) => boundedRationalEnumeration D).filter
+    fun q => vecHeight q ≤ D ∧ ∃ m : Fin dz → ℤ, (∀ l, |(m l : ℚ)| ≤ D * E (h - R)) ∧
       q + zEmb dv dz (((6 : ℚ) ^ (h - R))⁻¹ • integerRationalMap dz m) ∈ K
-  set g : Fin GF.card → Fin (dv + dz) → ℚ := fun i => (GF.equivFin.symm i : Fin (dv + dz) → ℚ)
+  set! g : Fin GF.card → Fin (dv + dz) → ℚ := fun i => (GF.equivFin.symm i : Fin (dv + dz) → ℚ)
   have hgmem : ∀ i, g i ∈ GF := fun i => (GF.equivFin.symm i).2
   have hspan : Submodule.span ℚ (Set.range g) = witnessSpan K D (E (h - R)) (h - R) := by
     unfold witnessSpan
@@ -1258,7 +1258,7 @@ theorem stabilize_pre (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [Decidab
   obtain ⟨a, haD, hdiff⟩ := hsame x x' hπ hπ'
   have hy0 : a0 ∈ Set.Icc a0 (a0 + rv) := ⟨le_rfl, by linarith⟩
   -- the CURRENT relation in `K`
-  set b := a + zEmb dv dz (((6 : ℚ) ^ h)⁻¹ • integerRationalMap dz n)
+  set! b := a + zEmb dv dz (((6 : ℚ) ^ h)⁻¹ • integerRationalMap dz n)
   have hbeval : ratEval Θ b = ω x a0 - ω x' a0 + (∑ l, (n l : ℝ) * ϑ l) / Lh h := by
     rw [ratEval_zEmb, ← hdiff a0 hy0]
     congr 1
@@ -1822,10 +1822,10 @@ theorem ModeSchedule.exceptional_blocks_le (S : ModeSchedule) {Cj CA CT CK : ℕ
     have p2 : 2 ≤ (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar := by nlinarith
     have p3 : 4 ≤ (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar * S.Bstar := by nlinarith
     have p4 : 4 ≤ (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar := by
-      nlinarith
+      nlinarith only [hLh, p3]
     have p5 : 4 ≤ (S.dmax : ℝ) * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar *
-        S.Q0 := by nlinarith
-    nlinarith
+        S.Q0 := by nlinarith only [hQ', p4]
+    nlinarith only [hΞ, p5]
   have hH : 2 ≤ S.H := by
     have := hV.H_gt
     have h10 : (4 : ℝ) ≤ (S.dmax * S.Cstar * S.Eh S.Jstar * S.Bstar * ModeSchedule.Lh S.Jstar *
@@ -1877,7 +1877,7 @@ theorem tinySpan_const_le {d dmax Hn : ℕ} {H : ℝ} (hd : d ≤ dmax) (hd2 : 2
       have : 4 ≤ dmax ^ 2 := by nlinarith
       calc dmax ^ 2 * 4 ≤ dmax ^ 2 * dmax ^ 2 := Nat.mul_le_mul_left _ this
         _ = dmax ^ 4 := by ring
-    have h6 : dmax ≤ dmax ^ 2 := by nlinarith
+    have h6 : dmax ≤ dmax ^ 2 := by nlinarith only
     omega
   calc (3 * (Hn : ℝ) ^ 2) ^ d * ((d.factorial : ℝ) * (Hn : ℝ) ^ (d ^ 2 + d)) ≤
         (X ^ 2) ^ d * (X ^ d * X ^ (d ^ 2 + d)) := by
@@ -1999,7 +1999,7 @@ theorem Valid.H_ge (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dmax) (hD : 2
     rw [e]; exact le_mul_of_one_le_left (by linarith) hc
   have hsq : S.Ξ * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 ≤ (S.Eh S.Jstar * Lh S.Jstar * S.Ξ) ^ 2 := by
     have h0 : 0 ≤ (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := sq_nonneg _
-    nlinarith [mul_nonneg (mul_nonneg h0 (by linarith : (0 : ℝ) ≤ S.Ξ - 1))
+    nlinarith only [mul_nonneg (mul_nonneg h0 (by linarith : (0 : ℝ) ≤ S.Ξ - 1))
       (by linarith : (0 : ℝ) ≤ S.Ξ)]
   calc 27 * S.Dstar ^ 4 * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 ≤
         S.Ξ * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := mul_le_mul_of_nonneg_right hΞ (sq_nonneg _)
@@ -2087,7 +2087,7 @@ theorem Valid.tinySpan_small (hV : S.Valid Cj CA CT CK δs W) (hCT : 4 ≤ CT) (
     rw [← h2]
   have hc := tinySpan_const_le hd hd2 hHn hHnH
   have hK1 : (1 : ℝ) ≤ (2 : ℝ) ^ (3 * S.K) := one_le_pow₀ (by norm_num)
-  have hT2 : S.T ≤ S.T ^ 2 * (2 : ℝ) ^ (3 * S.K) := by nlinarith
+  have hT2 : S.T ≤ S.T ^ 2 * (2 : ℝ) ^ (3 * S.K) := by nlinarith only [hT1, hK1]
   rw [hΛ]
   have hlt : (3 * ((⌊S.H⌋₊ : ℕ) : ℝ) ^ 2) ^ d * ((d.factorial : ℝ) *
       ((⌊S.H⌋₊ : ℕ) : ℝ) ^ (d ^ 2 + d)) < S.T ^ 2 * (2 : ℝ) ^ (3 * S.K) := by linarith
@@ -2260,7 +2260,7 @@ theorem Valid.expandConst_le (hV : S.Valid Cj CA CT CK δs W) (hd2 : 2 ≤ S.dma
       calc d * d * d ≤ S.dmax * S.dmax * S.dmax := Nat.mul_le_mul (Nat.mul_le_mul hd hd) hd
         _ ≤ S.dmax * S.dmax * S.dmax * S.dmax := Nat.le_mul_of_pos_right _ (by omega)
         _ = S.dmax ^ 4 := by ring
-    nlinarith
+    nlinarith only [b1, b3]
   calc (expandConst d D : ℝ) = (d.factorial : ℝ) * ((D : ℝ) * (D : ℝ) ^ (d * d + d)) ^ d := by
         unfold expandConst; push_cast; ring
     _ ≤ (10 * S.dmax * S.Dstar) ^ d * (10 * S.dmax * S.Dstar) ^ ((d * d + d + 1) * d) := by
@@ -2317,7 +2317,7 @@ theorem Valid.stab_le_A0 (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hd2 
       _ = X ^ 4 := by ring
   have e3 : 2 * X ^ 4 ≤ X ^ 5 := by
     have h4 : 0 ≤ X ^ 4 := pow_nonneg (by linarith) 4
-    nlinarith
+    nlinarith only [hX2, h4]
   linarith
 
 /-- The heights of the CURRENT and PRE relations in the proof of lem:stabilize are at most `H`:
@@ -2483,9 +2483,9 @@ theorem Valid.stabGood_pre (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hC
         exact mul_le_mul_of_nonneg_left hEh6 (mul_nonneg (sq_nonneg _) (by linarith))
       have t5 : S.Cstar * (S.Dstar * S.Eh h) + S.Cstar ^ 2 * S.Dstar * S.Eh h ≤
           S.Cstar ^ 3 * S.Dstar * S.Eh h := by
-        have hc3 : S.Cstar + S.Cstar ^ 2 ≤ S.Cstar ^ 3 := by nlinarith
+        have hc3 : S.Cstar + S.Cstar ^ 2 ≤ S.Cstar ^ 3 := by nlinarith only [hC]
         have := mul_le_mul_of_nonneg_right hc3 hDE
-        nlinarith
+        nlinarith only [hDE, hc3]
       linarith
     exact_mod_cast key
   -- `hEcur`: a CURRENT path of at most `D_*` edges has a witness of size at most `D_* E_h`
@@ -2637,9 +2637,10 @@ theorem Valid.two_le_Jstar (hV : S.Valid Cj CA CT CK δs W) (hCj : 1 ≤ Cj) (h�
       rw [show (4 : ℝ) = 2 ^ 2 by norm_num, Real.log_pow]; norm_num
     linarith [Real.log_two_gt_d9]
   have h1 : (1 : ℝ) ≤ Cj * δs⁻¹ ^ 2 := one_le_mul_of_one_le_of_one_le hCj' hδi
-  have h2 : (2 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax := by nlinarith
-  have h3 : (60 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax * S.Rht := by nlinarith
-  have h4 : (60 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax * S.Rht * Real.log (2 * S.Dm) := by nlinarith
+  have h2 : (2 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax := by nlinarith only [hd2', h1]
+  have h3 : (60 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax * S.Rht := by nlinarith only [hR', h2]
+  have h4 : (60 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax * S.Rht * Real.log (2 * S.Dm) := by
+    nlinarith only [hlog, h3]
   have : (2 : ℝ) ≤ S.Jstar := by linarith [hV.Jstar_ge]
   exact_mod_cast this
 

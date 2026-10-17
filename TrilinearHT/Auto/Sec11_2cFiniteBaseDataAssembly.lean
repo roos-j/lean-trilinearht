@@ -224,8 +224,8 @@ theorem replaceSlot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠
   have e1 := localProgressionForm_slots4_congr_a hr hwI hai hak hab hik hib hkb hinm h.f_meas
     (Xi.val_measurable I) (Xk.val_measurable I) (hzbm I) hinf hff hXif hXkf hzbf hin_ae
   -- the delayed projection against the physical part of the fine projections
-  set a' := (fitState G M S.P S.O (I.1 - K.1).toNat I).1
-  set n' := (fitState G M S.P S.O (I.1 - K.1).toNat I).2
+  set! a' := (fitState G M S.P S.O (I.1 - K.1).toNat I).1
+  set! n' := (fitState G M S.P S.O (I.1 - K.1).toNat I).2
   have hst : S.tree.st I = (a', n') := by
     change S.tree.state (S.tree.depthIn I) I = _
     unfold GreedyTree.depthIn GreedyTree.state
@@ -540,7 +540,7 @@ theorem replaceTuple (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     refine setIntegral_congr_fun (dyadicGridCell_measurable _ _ _) fun y hy => ?_
     simp only [Set.indicator_of_mem (hJ'J hy)]
   -- the opponent of the slot-`a` replacement: `F_b - g_b`
-  set zbA : ℤ × ℤ → ℝ → ℂ := fun I y => Fb y + -zgb I y with hzbA
+  set! zbA : ℤ × ℤ → ℝ → ℂ := fun I y => Fb y + -zgb I y with hzbA
   have hzbAm : ∀ I, Measurable (zbA I) := fun I => hFbm.add (hzgb.1 I).1.neg
   have hzbA2 : ∀ I, MemLp (zbA I) 2 (volume.restrict (dyadicGridCell G I.1 I.2)) := fun I =>
     (hFbL.restrict _).add (hzgb.1 I).2.neg
@@ -564,7 +564,7 @@ theorem replaceTuple (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     exact ⟨hadd.mono (by positivity) (by linarith), haddE.mono (by norm_num) (by linarith)⟩
   -- the opponent of the slot-`b` replacement: `P_a - g_a` (delayed)
   obtain ⟨hzPm, hzPadm⟩ := (Sa.system Ka).delayed_opponent hR Sa.input K₀
-  set zPa : ℤ × ℤ → ℝ → ℂ := fun I =>
+  set! zPa : ℤ × ℤ → ℝ → ℂ := fun I =>
     if I.1 + K₀ ≤ J.1 + N then ((Sa.system Ka).family R hR).delayed Sa.input K₀ I else 0
     with hzPa
   set cc := compressionOneConst ((Sa.system Ka).rooted R) with hcc
@@ -573,7 +573,7 @@ theorem replaceTuple (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     have := ((Sa.system Ka).rooted R).two_le_budget
     have : 0 ≤ Real.log (2 * ((Sa.system Ka).rooted R).budget) := Real.log_nonneg (by linarith)
     positivity
-  set zbB : ℤ × ℤ → ℝ → ℂ := fun I y => zPa I y + -zga I y with hzbB
+  set! zbB : ℤ × ℤ → ℝ → ℂ := fun I y => zPa I y + -zga I y with hzbB
   have hzbBm : ∀ I, Measurable (zbB I) := fun I => (hzPm I).1.add (hzga.1 I).1.neg
   have hzbB2 : ∀ I, MemLp (zbB I) 2 (volume.restrict (dyadicGridCell G I.1 I.2)) := fun I =>
     (hzPm I).2.add (hzga.1 I).2.neg
@@ -642,7 +642,7 @@ theorem replaceTuple (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
     obtain ⟨hIc, hsa, hsb, hIR, hga_ae, hgb_ae⟩ := hT I hI
     have hr := dyadicGridLength_pos G I.1
     have hwI := hw I
-    set μI := normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)
+    set! μI := normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)
     have hprob : IsProbabilityMeasure μI := normalizedIntervalMeasure_probability _ hr
     have hIT : I ∈ dyadicFiniteTree G J N := AccSetup.coarse_tree hSa hIc
     have hIJ : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G J.1 J.2 :=
@@ -1315,7 +1315,7 @@ theorem reduction (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
         · rw [min_eq_right h]; exact min_le_right _ _
       have h3 := min_sum_le Finset.univ (fun p : Fin 3 => ‖A.Hf I (A.z (Fin.castSucc p) I)‖)
         (fun p _ => norm_nonneg _) hη
-      linarith
+      linarith only [hE0, h1, h2, h3]
     · simp only [hact, ↓reduceIte, zero_add]
       have hall : ∀ m v₀ v₁ v₂, A.avail3 I m v₀ v₁ v₂ → A.tnorm I m v₀ v₁ v₂ ≤ δ := by
         intro m v₀ v₁ v₂ hav; by_contra h; exact hact ⟨m, v₀, v₁, v₂, hav, not_le.mp h⟩
@@ -1559,9 +1559,9 @@ theorem predSystem_pathCharts {ε : ℝ} (hε0 : 0 < ε) (hε1 : ε ≤ 1) (cell
   classical
   refine PathCharts.of_nested (fun c hc v hv => ?_) fun c hc c' hc' hcc' v hv hv' => ?_
   · have hPA : PredAvail κ Xi Xk a i k b B D pkg c v := by simpa [predSystem] using hv
-    set P := pkg (Xi.birth c v.1) (Xk.birth c v.2.1) v.1 v.2.1
+    set! P := pkg (Xi.birth c v.1) (Xk.birth c v.2.1) v.1 v.2.1
     have hlt : (v.2.2 : ℕ) < P.L.card := hPA.2.2.2
-    set ℓ := (P.L.equivFin.symm ⟨v.2.2, hlt⟩).1
+    set! ℓ := (P.L.equivFin.symm ⟨v.2.2, hlt⟩).1
     have hℓ : ℓ ∈ P.L := (P.L.equivFin.symm ⟨v.2.2, hlt⟩).2
     obtain ⟨hb1, -, hc1, -⟩ := P.bdd ℓ hℓ
     refine ⟨_, conjugateQuadraticChart (P.ψa ℓ), conjugateQuadraticChart_complexity hc1,
@@ -2389,7 +2389,8 @@ theorem Hyp.U_sq_le (h : S.Hyp) {K I : ℤ × ℤ} (hIc : I ∈ dyadicFiniteTree
         have h0 := norm_nonneg (S.phys I (S.tree.st I).1 (S.tree.st I).2 y -
           S.cur K I y)
         have h4 := pow_le_pow_left₀ h0 h3 2
-        nlinarith [sq_nonneg (‖S.phys I (S.tree.st I).1 (S.tree.st I).2 y‖ - ‖S.cur K I y‖)]
+        nlinarith only [sq_nonneg (‖S.phys I (S.tree.st I).1 (S.tree.st I).2 y‖ - ‖S.cur K I y‖),
+            h3, h0]
     _ ≤ 4 * dyadicGridLength S.G I.1 := by
         rw [integral_add (hi1.const_mul 2) (hi2.const_mul 2), integral_const_mul,
           integral_const_mul]
@@ -3183,15 +3184,15 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
   intro Sa Sb Ea Eb S₀ Sp
   classical
   set Pa := Sa.system Ka with hPa_def
-  set Pb := Sb.system Kb with hPb_def
+  set! Pb := Sb.system Kb with hPb_def
   have hTtree : ∀ I ∈ T, I ∈ dyadicFiniteTree G J N := fun I hI =>
     AccSetup.coarse_tree hSa (hT I hI).1
   have hS₀ : 0 < S₀ := by positivity
   -- the replaced high inputs
-  set Ya : ℤ × ℤ → ℝ → ℂ := fun I => if I ∈ T then
+  set! Ya : ℤ × ℤ → ℝ → ℂ := fun I => if I ∈ T then
     Sa.phys I (Sa.tree.st I).1 (Sa.tree.st I).2 - Xga.val I
     else baseHighB Pa Sa.Z Xga.coef (fun I l => Xga.atom I l) I with hYa_def
-  set Yb : ℤ × ℤ → ℝ → ℂ := fun I => if I ∈ T then
+  set! Yb : ℤ × ℤ → ℝ → ℂ := fun I => if I ∈ T then
     Sb.phys I (Sb.tree.st I).1 (Sb.tree.st I).2 - Xgb.val I
     else baseHighB Pb Sb.Z Xgb.coef (fun I l => Xgb.atom I l) I with hYb_def
   have hHBa : ∀ I, baseHighB Pa Sa.Z Xga.coef (fun I l => Xga.atom I l) I =
@@ -3359,7 +3360,7 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
     hSb.coef_le (hTtree I hI) (hTH I hI) hε0 hwb v
   have hsub : ∀ I ∈ T, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2 := fun I hI =>
     (hT I hI).2.2.2.1
-  set A := baseActiveSetup κ Xi Xk Pa Pb Sa.Z Sb.Z Xga.coef (fun I l => Xga.atom I l) Xgb.coef
+  set! A := baseActiveSetup κ Xi Xk Pa Pb Sa.Z Sb.Z Xga.coef (fun I l => Xga.atom I l) Xgb.coef
     (fun I l => Xgb.atom I l) R T hsub w (fun I _ => hw I) hik hai.symm hib hak.symm hkb hab
     (fun I m => Xga.atom_measurable I m) (fun I m y => Xga.atom_bound I m y)
     (fun I m => Xgb.atom_measurable I m) (fun I m y => Xgb.atom_bound I m y) H'
@@ -3397,7 +3398,7 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
       (A.U_L2 a I).eLpNorm_ne_top (A.U_L2 b I).eLpNorm_ne_top
     set x := (eLpNorm (A.U a I) 2 (A.μ I)).toReal
     set y := (eLpNorm (A.U b I) 2 (A.μ I)).toReal
-    have hxy : x * y ≤ (x ^ 2 + y ^ 2) / 2 := by nlinarith [sq_nonneg (x - y)]
+    have hxy : x * y ≤ (x ^ 2 + y ^ 2) / 2 := by nlinarith only [sq_nonneg (x - y)]
     calc dyadicGridLength G I.1 * ‖A.Hf I (slots4 a i k (A.U a I) (Xi.val I) (Xk.val I)
           (A.U b I))‖ ≤ dyadicGridLength G I.1 * (x * y * η₀) :=
           mul_le_mul_of_nonneg_left h hr.le
@@ -3405,7 +3406,7 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
       _ = _ := by ring
   -- the sub-root properties
   -- the column budgets of the basic projections
-  set XB : ℝ := 2 + ((Fintype.card Xi.Λ + Fintype.card Xk.Λ + (Fintype.card Sa.W +
+  set! XB : ℝ := 2 + ((Fintype.card Xi.Λ + Fintype.card Xk.Λ + (Fintype.card Sa.W +
     Fintype.card Xga.Λ) + (Fintype.card Sb.W + Fintype.card Xgb.Λ) : ℕ) : ℝ) *
       (1 + Real.sqrt ε⁻¹) with hXB
   have hsq0 : 0 ≤ Real.sqrt ε⁻¹ := Real.sqrt_nonneg _
@@ -3419,21 +3420,21 @@ theorem baseRoot (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i ≠ k)
         Fintype.card Xga.Λ) + (Fintype.card Sb.W + Fintype.card Xgb.Λ) : ℕ) : ℝ) :=
       Nat.cast_nonneg _
     rw [hXB]
-    nlinarith [mul_nonneg h0 hsq0]
+    nlinarith only [mul_nonneg h0 hsq0, hs]
   have hPaX : Pa.budget ≤ XB := by
     refine (Pa.budget_le hε0 hwa).trans ?_
     rw [← Real.sqrt_inv, hXB]
     have hs : (Fintype.card Sa.W : ℝ) ≤ ((Fintype.card Xi.Λ + Fintype.card Xk.Λ +
         (Fintype.card Sa.W + Fintype.card Xga.Λ) + (Fintype.card Sb.W + Fintype.card Xgb.Λ) :
           ℕ) : ℝ) := by exact_mod_cast (by omega)
-    nlinarith [mul_le_mul_of_nonneg_right hs hsq0]
+    nlinarith only [mul_le_mul_of_nonneg_right hs hsq0, hDc]
   have hPbX : Pb.budget ≤ XB := by
     refine (Pb.budget_le hε0 hwb).trans ?_
     rw [← Real.sqrt_inv, hXB]
     have hs : (Fintype.card Sb.W : ℝ) ≤ ((Fintype.card Xi.Λ + Fintype.card Xk.Λ +
         (Fintype.card Sa.W + Fintype.card Xga.Λ) + (Fintype.card Sb.W + Fintype.card Xgb.Λ) :
           ℕ) : ℝ) := by exact_mod_cast (by omega)
-    nlinarith [mul_le_mul_of_nonneg_right hs hsq0]
+    nlinarith only [mul_le_mul_of_nonneg_right hs hsq0, hDc]
   have hsubroot : A.SubRootProps η₀ ((K₀ : ℝ) ^ 2) := by
     intro R' hR'
     change dyadicGridCell G R'.1 R'.2 ⊆ dyadicGridCell G R.1 R.2 at hR'
@@ -3958,10 +3959,10 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
         L.1 ≤ (Sb.tree.seg I).1 := fun I hI => by
     obtain ⟨h1, h2, -, h4⟩ := hthB.seg_spec (hTc I hI).1
     exact ⟨h1, h2, h4⟩
-  set P := Tc.image (fun I => (Sa.tree.seg I, Sb.tree.seg I)) with hP_def
+  set! P := Tc.image (fun I => (Sa.tree.seg I, Sb.tree.seg I)) with hP_def
   have hPmem : ∀ p ∈ P, ∃ I ∈ Tc, (Sa.tree.seg I, Sb.tree.seg I) = p := fun p hp => by
     simpa [hP_def] using hp
-  set T : P → Finset (ℤ × ℤ) := fun p => Tc.filter (fun I => (Sa.tree.seg I, Sb.tree.seg I) = p.1)
+  set! T : P → Finset (ℤ × ℤ) := fun p => Tc.filter (fun I => (Sa.tree.seg I, Sb.tree.seg I) = p.1)
     with hT_def
   have hTmem : ∀ p : P, ∀ I ∈ T p, I ∈ Tc ∧ Sa.tree.seg I = p.1.1 ∧ Sb.tree.seg I = p.1.2 :=
     fun p I hI => by
@@ -4081,7 +4082,7 @@ theorem baseSegments (hai : a ≠ i) (hak : a ≠ k) (hab : a ≠ b) (hik : i �
       intro V _ D'
       unfold compressionOneConst
       exact pow_nonneg (mul_nonneg (by positivity)
-        (Real.log_nonneg (by linarith [D'.two_le_budget]))) _
+        (Real.log_nonneg (by linarith only [D'.two_le_budget]))) _
     have hxa := hcomp _ ((Sa.system J).rooted J)
     have hxb := hcomp _ ((Sb.system J).rooted J)
     have hdel := delayConst_nonneg κ
@@ -4546,10 +4547,10 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
       c ∈ dyadicFiniteTree G J N ∧ dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G R.1 R.2 :=
     dyadicFiniteTree_below_iff G J N hR
   -- the low lists below `R`
-  set Xi' := Xi.reroot hR
-  set Xk' := Xk.reroot hR
-  set Xga' := Xga.reroot hR
-  set Xgb' := Xgb.reroot hR
+  set! Xi' := Xi.reroot hR
+  set! Xk' := Xk.reroot hR
+  set! Xga' := Xga.reroot hR
+  set! Xgb' := Xgb.reroot hR
   -- the predictor packages
   have hD : H ≤ D := le_max_left _ _
   have hD1 : 1 ≤ D := le_trans hH hD
@@ -4630,7 +4631,7 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
       intro V _ D'
       unfold compressionOneConst
       exact pow_nonneg (mul_nonneg (by positivity)
-        (Real.log_nonneg (by linarith [D'.two_le_budget]))) _
+        (Real.log_nonneg (by linarith only [D'.two_le_budget]))) _
     have hwA : ∀ v, ε ≤ (predAccSetup κ Xi' Xk' a i k b Bp D pkga hε0 hε1 K₀ Ma (f a) w q ka c₂
         (fitBudget Cqa Ca ka)).wt v := by
       intro v; cases v with
@@ -4654,7 +4655,7 @@ theorem baseFirstRoot (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ c₀) 
     have he2 : 0 ≤ (2 : ℝ)⁻¹ ^ K₀ + (1 + K₀) * Real.sqrt ε :=
       add_nonneg (pow_nonneg (by norm_num) _) (mul_nonneg (by positivity) (Real.sqrt_nonneg _))
     exact errExpr_mono (by positivity) (Nat.cast_nonneg _) (hcomp _ _) (hcomp _ _) hca hcb hCga
-      hCgb (by linarith) (delayConst_nonneg κ) he2
+      hCgb (by linarith only [hH, hD]) (delayConst_nonneg κ) he2
   · intro I hI s s' hss
     have := hpair I hI s s' hss
     rw [hWa] at this
@@ -4755,10 +4756,10 @@ theorem compBound_mono {n n' : ℕ} (h : n ≤ n') (ε : ℝ) : compBound n ε �
   have hs : (0 : ℝ) ≤ (Real.sqrt ε)⁻¹ := inv_nonneg.mpr (Real.sqrt_nonneg ε)
   have hn : (n : ℝ) ≤ n' := by exact_mod_cast h
   have h0 : (0 : ℝ) ≤ n := Nat.cast_nonneg n
-  have h1 : (1 : ℝ) ≤ 2 * (2 + n + n * (Real.sqrt ε)⁻¹) := by nlinarith
+  have h1 : (1 : ℝ) ≤ 2 * (2 + n + n * (Real.sqrt ε)⁻¹) := by nlinarith only [hs]
   have hlog : Real.log (2 * (2 + n + n * (Real.sqrt ε)⁻¹)) ≤
       Real.log (2 * (2 + n' + n' * (Real.sqrt ε)⁻¹)) :=
-    Real.log_le_log (by linarith) (by nlinarith)
+    Real.log_le_log (by linarith) (by nlinarith only [hs, hn])
   have := Real.log_nonneg h1
   gcongr
 
@@ -4889,8 +4890,6 @@ theorem sum_length_below_le {G : RealDyadicGrid} {R R' : ℤ × ℤ} {K₀ : ℕ
         Finset.sum_le_sum_of_subset_of_nonneg hsub fun I _ _ => (dyadicGridLength_pos G I.1).le
     _ ≤ K₀ * dyadicGridLength G R'.1 := sum_bottom_length_le G R' N' K₀
 
-set_option maxHeartbeats 2000000 in
--- the active setup has many fields and the proof mirrors `baseRoot`
 /-- Blueprint prop:base at the bottom levels of a finite tree (lines 1600-1616, with the new
 families empty at depth `s` and complete at depth `s + K₀`): on cells `T` below `R` within `K₀`
 levels of `R`, the tuple `X` itself is an active setup: `Y = X` (no replacement
@@ -4946,10 +4945,10 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
         η₀ * ((K₀ : ℝ) ^ 2 * dyadicGridLength G R.1) ∧
       A.HasColumnRep 1 ∧ A.SubRootProps η₀ ((K₀ : ℝ) ^ 2) := by
   classical
-  set Pa := emptyPathColumnSystem G J N with hPa
+  set! Pa := emptyPathColumnSystem G J N with hPa
   set Pb := emptyPathColumnSystem G J N with hPb
-  set Za : ColumnL2 Empty := 0
-  set Zb : ColumnL2 Empty := 0
+  set! Za : ColumnL2 Empty := 0
+  set! Zb : ColumnL2 Empty := 0
   have hTtree : ∀ I ∈ T, I ∈ dyadicFiniteTree G J N := fun I hI => (hT I hI).1
   have hTH : ∀ I ∈ T, kernelHull G J N w I := fun I hI => (hT I hI).2.1
   have hsub : ∀ I ∈ T, dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R.1 R.2 := fun I hI =>
@@ -4959,9 +4958,9 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
   have hBb : ∀ I, baseHighB Pb Zb Xgb.coef (fun I l => Xgb.atom I l) I = fun y => -Xgb.val I y :=
     fun I => baseHighB_empty Xgb Zb I
   -- the inputs: unreplaced on the cells, without side elsewhere
-  set Ya : ℤ × ℤ → ℝ → ℂ := fun I => if I ∈ T then f a - Xga.val I else fun y => -Xga.val I y
+  set! Ya : ℤ × ℤ → ℝ → ℂ := fun I => if I ∈ T then f a - Xga.val I else fun y => -Xga.val I y
     with hYa_def
-  set Yb : ℤ × ℤ → ℝ → ℂ := fun I => if I ∈ T then f b - Xgb.val I else fun y => -Xgb.val I y
+  set! Yb : ℤ × ℤ → ℝ → ℂ := fun I => if I ∈ T then f b - Xgb.val I else fun y => -Xgb.val I y
     with hYb_def
   have hUaT : ∀ I, Ya I - baseHighB Pa Za Xga.coef (fun I l => Xga.atom I l) I =
       if I ∈ T then f a else 0 := by
@@ -5080,7 +5079,7 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
   have hDc : 1 ≤ Real.sqrt ε⁻¹ := by
     rw [show (1 : ℝ) = Real.sqrt 1 from Real.sqrt_one.symm]
     exact Real.sqrt_le_sqrt ((one_le_inv₀ hε0).mpr hε1)
-  set A := baseActiveSetup κ Xi Xk Pa Pb Za Zb Xga.coef (fun I l => Xga.atom I l) Xgb.coef
+  set! A := baseActiveSetup κ Xi Xk Pa Pb Za Zb Xga.coef (fun I l => Xga.atom I l) Xgb.coef
     (fun I l => Xgb.atom I l) R T hsub w (fun I _ => hw I) hik hai.symm hib hak.symm hkb hab
     (fun I m => Xga.atom_measurable I m) (fun I m y => Xga.atom_bound I m y)
     (fun I m => Xgb.atom_measurable I m) (fun I m y => Xgb.atom_bound I m y) H'
@@ -5118,7 +5117,7 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
         (dyadicGridLength G I.1))).toReal := ENNReal.toReal_nonneg
       change (eLpNorm (f a) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1))).toReal ^ 2 ≤ 1
-      nlinarith
+      nlinarith only [h1, h0]
     by_cases hlb : l = b
     · rw [hlb, hUb_eq, hUbT, ite_eq_left_of_eq_true _ _ (eq_true hI)]
       have h1 := hfle b I hI
@@ -5126,7 +5125,7 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
         (dyadicGridLength G I.1))).toReal := ENNReal.toReal_nonneg
       change (eLpNorm (f b) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1))).toReal ^ 2 ≤ 1
-      nlinarith
+      nlinarith only [h1, h0]
     rw [hU0 l I hla hlb]
     simp
   -- the per-cell two-`U` bound
@@ -5140,7 +5139,7 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
       (A.U_L2 a I).eLpNorm_ne_top (A.U_L2 b I).eLpNorm_ne_top
     set x := (eLpNorm (A.U a I) 2 (A.μ I)).toReal
     set y := (eLpNorm (A.U b I) 2 (A.μ I)).toReal
-    have hxy : x * y ≤ (x ^ 2 + y ^ 2) / 2 := by nlinarith [sq_nonneg (x - y)]
+    have hxy : x * y ≤ (x ^ 2 + y ^ 2) / 2 := by nlinarith only [sq_nonneg (x - y)]
     calc dyadicGridLength G I.1 * ‖A.Hf I (slots4 a i k (A.U a I) (Xi.val I) (Xk.val I)
           (A.U b I))‖ ≤ dyadicGridLength G I.1 * (x * y * η₀) :=
           mul_le_mul_of_nonneg_left h hr.le
@@ -5153,7 +5152,7 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
     sum_length_below_le hR' _ fun I hI =>
       ⟨(Finset.mem_filter.mp hI).2, (hT I (Finset.mem_filter.mp hI).1).2.2.2⟩
   -- the column budgets of the basic projections
-  set XB : ℝ := 2 + ((Fintype.card Xi.Λ + Fintype.card Xk.Λ + (Fintype.card Empty +
+  set! XB : ℝ := 2 + ((Fintype.card Xi.Λ + Fintype.card Xk.Λ + (Fintype.card Empty +
     Fintype.card Xga.Λ) + (Fintype.card Empty + Fintype.card Xgb.Λ) : ℕ) : ℝ) *
       (1 + Real.sqrt ε⁻¹) with hXB
   have hBdX : Bd ≤ XB := by
@@ -5167,7 +5166,7 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
         Fintype.card Xga.Λ) + (Fintype.card Empty + Fintype.card Xgb.Λ) : ℕ) : ℝ) :=
       Nat.cast_nonneg _
     rw [hXB]
-    nlinarith [mul_nonneg h0 hsq0]
+    nlinarith only [mul_nonneg h0 hsq0, hs]
   have hsubroot : A.SubRootProps η₀ ((K₀ : ℝ) ^ 2) := by
     intro R' hR'
     change dyadicGridCell G R'.1 R'.2 ⊆ dyadicGridCell G R.1 R.2 at hR'
@@ -5204,7 +5203,7 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
       have h1 := (hT I₀ hI₀).2.2.2
       have h2 := dyadicGridCell_depth_le_of_subset G I₀ R (hsub I₀ hI₀)
       exact_mod_cast (show 1 ≤ K₀ by omega)
-    have hKK : (K₀ : ℝ) ≤ (K₀ : ℝ) ^ 2 := by nlinarith
+    have hKK : (K₀ : ℝ) ≤ (K₀ : ℝ) ^ 2 := by nlinarith only [hK1]
     have hmem : ∀ I ∈ T.filter (fun I => dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2),
         I ∈ T ∧ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G R'.1 R'.2 := fun I hI =>
       Finset.mem_filter.mp hI
@@ -5218,7 +5217,7 @@ theorem baseBottom (κ : LocalKernelClass) {G : RealDyadicGrid} {J : ℤ × ℤ}
             dyadicGridLength G I.1 := Finset.sum_le_sum fun I hI => by
               have := hUsq l I (hmem I hI).1
               have hr := dyadicGridLength_pos G I.1
-              nlinarith
+              nlinarith only [this, hr]
         _ ≤ K₀ * dyadicGridLength G R'.1 := hK R' hR'
         _ ≤ (K₀ : ℝ) ^ 2 * dyadicGridLength G R'.1 :=
             mul_le_mul_of_nonneg_right hKK hR'pos.le
@@ -5332,8 +5331,6 @@ theorem sum_tree_depth_le (G : RealDyadicGrid) (J : ℤ × ℤ) (N : ℕ) (d : �
 
 /-! ### The base data of one tuple of the stagger expansion -/
 
-set_option maxHeartbeats 4000000 in
--- the generalized tuple construction (kernel-hull cells, bottom levels) is long
 /-- Blueprint prop:base for one tuple `eq:base-tuple` of the levels `u < t`: the first-level
 roots refine the segments of the six fits entering the tuple; on each, `baseFirstRoot` gives
 active setups on the cells outside the last `K₀` levels, and `baseBottom` gives active setups
@@ -5423,7 +5420,7 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
   set la := StaggerCell.lastLevel sa t with hla_def
   set lb := StaggerCell.lastLevel sb t with hlb_def
   -- the levels and their segments
-  set Lset : Finset ℕ := {u, u - 4, t, t - 4, la, lb} with hL_def
+  set! Lset : Finset ℕ := {u, u - 4, t, t - 4, la, lb} with hL_def
   have hLne : Lset.Nonempty := ⟨u, by simp [hL_def]⟩
   have hLt : ∀ ℓ ∈ Lset, ℓ ≤ t := by
     intro ℓ hℓ
@@ -5434,10 +5431,10 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
     obtain ⟨hF1, hF2, hF3, -, hF5⟩ := (hfit ℓ).1
     obtain ⟨hs1, hs2, -, hs4, -⟩ := hF5 I hI
     exact ⟨hs2, hF3 hs1, fun I' hI' h1 h2 => (hs4 I' hI' h1 h2).1⟩
-  set Rf := firstRoot seg Lset hLne with hRf_def
-  set Tup := (dyadicFiniteTree G J N).filter (fun I => I.1 + K₀ ≤ J.1 + N ∧ kernelHull G J N w I)
+  set! Rf := firstRoot seg Lset hLne with hRf_def
+  set! Tup := (dyadicFiniteTree G J N).filter (fun I => I.1 + K₀ ≤ J.1 + N ∧ kernelHull G J N w I)
     with hTup_def
-  set Rs := Tup.image Rf with hRs_def
+  set! Rs := Tup.image Rf with hRs_def
   have hRtree : ∀ I ∈ dyadicFiniteTree G J N, Rf I ∈ dyadicFiniteTree G J N ∧
       dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G (Rf I).1 (Rf I).2 := fun I hI =>
     firstRoot_mem hsegd hI
@@ -5902,8 +5899,8 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
       _ ≤ 8 / 3 * (8 * dyadicGridLength G J.1) := by linarith
       _ = 64 / 3 * dyadicGridLength G J.1 := by ring
   -- the last `K₀` levels: fresh roots at depth `max d₀ (first-level root)`
-  set d₀ : ℤ := J.1 + N + 1 - K₀ with hd₀
-  set Bot := (dyadicFiniteTree G J N).filter
+  set! d₀ : ℤ := J.1 + N + 1 - K₀ with hd₀
+  set! Bot := (dyadicFiniteTree G J N).filter
     (fun I => ¬ (I.1 + K₀ ≤ J.1 + N) ∧ kernelHull G J N w I) with hBot_def
   have hBot : ∀ I ∈ Bot, I ∈ dyadicFiniteTree G J N ∧ d₀ ≤ I.1 ∧ kernelHull G J N w I :=
     fun I hI => by
@@ -5958,7 +5955,7 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
       obtain ⟨hb1, -⟩ := hanc I hdI
       have hx := dyadicGridCell_left_mem G I'.1 I'.2
       exact (dyadicGridCell_eq_of_common_point G (hI'Rb hx) (ha2 hx) (by omega)).symm
-  set Bs := Bot.image Rb with hBs_def
+  set! Bs := Bot.image Rb with hBs_def
   have hBsT : ∀ R' ∈ Bs, R' ∈ dyadicFiniteTree G J N ∧ d₀ ≤ R'.1 := fun R' hR' => by
     obtain ⟨I, hI, rfl⟩ := Finset.mem_image.mp hR'
     obtain ⟨hIt, hdI, -⟩ := hBot I hI
@@ -6256,17 +6253,17 @@ theorem baseTuple (κ : LocalKernelClass) (c₂ : ℕ) (hc₂ : 1 ≤ c₂) :
             (Wa : ℝ) := by exact_mod_cast hWa
         simp only [Sp]
         have := mul_le_mul_of_nonneg_right this (Real.sqrt_nonneg (2 ^ K₀ / ε))
-        linarith
+        linarith only [this]
       have hea := (Real.exp_pos (-(ka : ℝ))).le
       have heb := (Real.exp_pos (-(kb : ℝ))).le
       have k1 := mul_le_mul_of_nonneg_right (show 2 + 2 * ((1 : ℝ) + Fintype.card (Xi R hRT).Λ +
         Fintype.card (Xk R hRT).Λ + Fintype.card (Xga R hRT).Λ + Fintype.card (Xgb R hRT).Λ) ≤
-          2 + 2 * S₀ by linarith) (add_nonneg hea heb)
+          2 + 2 * S₀ by linarith only [hS₀]) (add_nonneg hea heb)
       have k2 := mul_le_mul_of_nonneg_right (show 1 + (((Fintype.card (Xi R hRT).Λ *
         Fintype.card (Xk R hRT).Λ * ⌊D⌋₊ + Ma : ℕ) : ℝ) * Real.sqrt (2 ^ K₀ / ε) + 1) ≤ 1 + Sp by
-          linarith) heb
+          linarith only [hSp]) heb
       push_cast at k1 k2 ⊢
-      linarith
+      linarith only [k1, k2]
   · -- the tuple sum
     set F : ℤ × ℤ → ℝ := fun I => dyadicGridLength G I.1 *
       ‖localProgressionForm (dyadicGridLength G I.1) (w I) (stagTuple f g u t I)‖ with hF_def
@@ -6522,7 +6519,7 @@ theorem errExpr_le {c cU e T TU K ba bb Cg U : ℝ} (hc : 0 ≤ c) (hcU : c ≤ 
       (p1.trans h1)
     have k2 := mul_le_mul h2 (show 2 * (2 * (ba + K) + Cg) + 4 ≤ 2 * (2 * (U + U) + U) + 4 by
       linarith) (by positivity) (p2.trans h2)
-    nlinarith
+    nlinarith only [hK, hKU, hba, hbaU, hCg, hCgU, h1, h2, p1]
   have hin0 : 0 ≤ (2 * e * (2 * (ba + K) + 1) + T) * (2 * (1 + Cg) + 4) +
       (2 * e * (2 * (bb + K) + 1) + T) * (2 * (2 * (ba + K) + Cg) + 4) := by positivity
   exact mul_le_mul hcU hin hin0 (hc.trans hcU)
@@ -6908,7 +6905,7 @@ theorem baseParams (κ : LocalKernelClass) (C₁ Ca : ℕ) :
           simp only [ε, Real.exp_neg, inv_inv], Real.exp_add]
         exact mul_le_mul_of_nonneg_right h2K (Real.exp_pos _).le
       exact (Real.sqrt_le_sqrt this).trans (le_of_eq (sqrt_exp' _))
-    set X := L ^ w + (K₀ + L ^ (d + 2)) / 2 with hX
+    set! X := L ^ w + (K₀ + L ^ (d + 2)) / 2 with hX
     have hX0 : 0 ≤ X := by positivity
     have h1 : (Wa : ℝ) * Real.sqrt (2 ^ K₀ / ε) ≤ Real.exp X := by
       rw [hX, Real.exp_add]
@@ -7083,7 +7080,7 @@ theorem activeCellReduction (κ : LocalKernelClass) :
   obtain ⟨Cq, K₁, hCq, hstag'⟩ := hstag q hq
   obtain ⟨Cqa, hCqa, hbt'⟩ := hbt q hq
   obtain ⟨L₀, hL₀⟩ := Filter.eventually_atTop.mp (hpar hCqa)
-  set K₂ := max (max K₁ 16) (max ⌈4 * Cq * 2 ^ C⌉₊ (max ⌈L₀⌉₊ (⌈3 + 6 * |Real.log Wp|⌉₊ + 4)))
+  set! K₂ := max (max K₁ 16) (max ⌈4 * Cq * 2 ^ C⌉₊ (max ⌈L₀⌉₊ (⌈3 + 6 * |Real.log Wp|⌉₊ + 4)))
     with hK₂
   refine ⟨Cq, K₂, hCq, fun k₁ hk₁ G J N w hw f hfm hfq => ?_⟩
   have hk₁K : K₁ ≤ k₁ := le_trans (le_trans (le_max_left _ _) (le_max_left _ _)) hk₁
@@ -7119,7 +7116,7 @@ theorem activeCellReduction (κ : LocalKernelClass) :
     have h3 : ((⌈3 + 6 * |Real.log Wp|⌉₊ + 4 : ℕ) : ℝ) ≤ x := by rw [hx_def]; exact_mod_cast h1
     push_cast at h3
     linarith
-  set L : ℝ := x ^ (C + 2) with hL_def
+  set! L : ℝ := x ^ (C + 2) with hL_def
   have hxpow : ∀ m : ℕ, 1 ≤ x ^ m := fun m => one_le_pow₀ hx1
   have hxL : x ≤ L := by
     calc x = x ^ 1 := (pow_one x).symm
@@ -7127,7 +7124,7 @@ theorem activeCellReduction (κ : LocalKernelClass) :
   have hC1L : x ^ (C + 1) ≤ L := pow_le_pow_right₀ hx1 (by omega)
   obtain ⟨hL1, hP⟩ := hL₀ L (hxL₀.trans hxL)
   -- the budgets of the fits
-  set Bt := fitBudget Cq C k with hBt_def
+  set! Bt := fitBudget Cq C k with hBt_def
   have hBt := budget_le_exp hCq (show 16 ≤ k from le_trans hk116 hkk) hxC
   have hBt1 : 1 ≤ Bt := one_le_fitBudget hCq C k
   have h17 : (1 : ℝ) ≤ Real.sqrt 17 := by
@@ -7142,7 +7139,7 @@ theorem activeCellReduction (κ : LocalKernelClass) :
     refine h1.trans (Real.exp_le_exp.mpr ?_)
     push_cast
     linarith
-  set Mt : ℕ := ⌊17 * Bt ^ 2⌋₊ with hMt_def
+  set! Mt : ℕ := ⌊17 * Bt ^ 2⌋₊ with hMt_def
   have hMtL : (Mt : ℝ) ≤ Real.exp L := (Nat.floor_le (by positivity)).trans h17B
   have hBf : ∀ ℓ ≤ t, fitBudget Cq C (stagAcc k₁ A ℓ) ≤ Bt := fun ℓ hℓ =>
     fitBudget_mono hCq C (stagAcc_mono hk1 hA1 hℓ)
@@ -7152,7 +7149,7 @@ theorem activeCellReduction (κ : LocalKernelClass) :
     have h0 : 0 ≤ fitBudget Cq C (stagAcc k₁ A ℓ) := le_trans zero_le_one (one_le_fitBudget hCq _ _)
     gcongr
   -- the low height
-  set H := max Bt Wp ^ 6 with hH_def
+  set! H := max Bt Wp ^ 6 with hH_def
   have hWp1 : 1 ≤ Wp := le_trans (by linarith [Real.add_one_le_exp (2 : ℝ)]) hWp
   have hH1 : 1 ≤ H := one_le_pow₀ (le_trans hWp1 (le_max_right _ _))
   have hHL : Real.log H ≤ L := by
@@ -7171,9 +7168,9 @@ theorem activeCellReduction (κ : LocalKernelClass) :
         mul_le_mul_of_nonneg_right (by linarith) (by positivity)
       have h3 : x * x ^ (C + 1) = L := by rw [hL_def]; ring
       have h4 := hxpow (C + 1)
-      nlinarith [abs_nonneg (Real.log Wp)]
+      nlinarith only [abs_nonneg (Real.log Wp), hxW, hxL, h3]
     push_cast
-    nlinarith
+    nlinarith only [hlog, h1]
   -- the stagger cells
   have hsz : ∀ I ∈ dyadicFiniteTree G J N, kernelHull G J N w I → ∀ l,
       eLpNorm (stagTuple f g u t I l) 2
@@ -7254,7 +7251,7 @@ theorem activeCellReduction (κ : LocalKernelClass) :
     · intro I hI s' s'' hss
       refine (hpairs I hI s' s'' hss).mono ?_
       have := hPair
-      linarith
+      linarith only [hPair, hηL]
     · intro l
       refine (hside l).trans ?_
       exact mul_le_mul_of_nonneg_right hK2 (dyadicGridLength_pos G _).le
@@ -7265,7 +7262,7 @@ theorem activeCellReduction (κ : LocalKernelClass) :
     have hJ := (dyadicGridLength_pos G J.1).le
     have h1 := mul_le_mul_of_nonneg_right (hErr.trans hxk) (by positivity :
       (0 : ℝ) ≤ 91 / 3 * dyadicGridLength G J.1)
-    linarith
+    linarith only [h1]
 
 /-- Blueprint prop:base, line 1643 ("for the finitely many initial levels omit `η`"): every pair
 of measurable arguments of normalized `L²` size at most two is `4 C_κ`-small, by the four-`L²`
@@ -7353,7 +7350,7 @@ theorem total_le (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
     (3 * Fintype.card A.L ^ 3 * (A.Dc ^ 3 * (A.S + Fintype.card A.L * A.Dc)) *
       (dyadicGridLength A.G A.R.1 * (1 / 2 * Cr * (Real.log (chartTranslationBudget A.H) +
         Real.log 2 + 1) ^ C)))
-  linarith
+  linarith only [hsum]
 
 end ActiveSetup
 

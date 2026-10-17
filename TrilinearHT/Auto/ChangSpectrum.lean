@@ -84,7 +84,7 @@ theorem bohr_partition_size {ρ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ < 1) :
   refine ⟨hn, ?_, ?_⟩
   · apply (div_le_iff₀ hnr).mpr
     have h := (div_le_iff₀ hρ).mp hlo
-    nlinarith
+    nlinarith only [h]
   · apply (le_div_iff₀ hρ).mpr
     have h := (mul_lt_mul_iff_left₀ hρ).mpr hhi
     have hid : (2 / ρ + 1) * ρ = 2 + ρ := by field_simp

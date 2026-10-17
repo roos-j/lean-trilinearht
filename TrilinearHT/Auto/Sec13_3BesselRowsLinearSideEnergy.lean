@@ -37,7 +37,7 @@ theorem cell_cross_pair_le (α β γ : ℝ) {a r θ : ℝ} (hr : 0 < r) (hθ : 0
   have hlower : ∀ x ∈ Set.Icc a (a + r), θ / 2 ≤ |2 * α * x + β| := by
     intro x hx
     have hxx : |x - x₀| ≤ r := by
-      rw [abs_le]; constructor <;> linarith [hx.1, hx.2, hx₀.1, hx₀.2]
+      rw [abs_le]; constructor <;> linarith only [hx.1, hx.2, hx₀.1, hx₀.2]
     have hd : |(2 * α * x + β) - (2 * α * x₀ + β)| ≤ θ / 2 := by
       rw [show (2 * α * x + β) - (2 * α * x₀ + β) = 2 * α * (x - x₀) by ring, abs_mul,
         abs_mul, abs_two]
@@ -45,7 +45,7 @@ theorem cell_cross_pair_le (α β γ : ℝ) {a r θ : ℝ} (hr : 0 < r) (hθ : 0
         _ ≤ θ / 2 := hvar
     have := abs_sub_abs_le_abs_sub (2 * α * x₀ + β) (2 * α * x + β)
     rw [abs_sub_comm] at this
-    linarith
+    linarith only [hlarge, hd, this]
   have h := quadratic_oscillatory_integral_bound α β γ (by linarith) (by positivity) hlower
   calc r⁻¹ * ‖∫ x in Set.Icc a (a + r), fourierWave 1 (α * x ^ 2 + β * x + γ)‖ ≤
         r⁻¹ * (4 / (θ / 2)) := by gcongr
@@ -110,7 +110,7 @@ theorem almost_orthogonal_synthesis {κ : Type*} (s : Finset κ) (v : κ → H)
     split_ifs with hee
     · subst hee
       rw [← @norm_sq_eq_re_inner ℂ]
-      linarith
+      linarith only [hw2]
     · have h1 := (RCLike.re_le_norm (inner ℂ (v e) (v e'))).trans (hcross e he e' he' hee)
       have h2 : b e * b e' ≤ (b e ^ 2 + b e' ^ 2) / 2 := by nlinarith [sq_nonneg (b e - b e')]
       have h3 : η * w e e' * b e * b e' ≤ η * (w e e' * ((b e ^ 2 + b e' ^ 2) / 2)) := by
@@ -344,7 +344,7 @@ theorem sum_frac_le_log {α : Type*} [DecidableEq α] (S : ℕ → Finset α) (h
     rcases Nat.eq_zero_or_pos M with hM0 | hMpos
     · simp [hM0]
     · have : (1 : ℝ) ≤ M := by exact_mod_cast hMpos
-      linarith [Real.log_nonneg this]
+      linarith only [Real.log_nonneg this]
   · gcongr
 
 /-- Blueprint line 2091, first term: for `1 ≤ p_h ≤ M` the shifted logarithmic increments
@@ -716,7 +716,7 @@ theorem aug_mode_rows {κ : Type*} (s : Finset κ) (J : κ → Set ℝ)
     (F : ColumnL2 V) :
     ∑ e ∈ s, ‖(Submodule.span ℂ ((fun m => (augMode_memLp (hJ e) (hJf e) (hψ m) (hψb m) (εw m)
       m).toLp) '' (M e : Set V))).starProjection F‖ ^ 2 ≤ (1 + η * D ^ 3) * ‖F‖ ^ 2 := by
-  set Ψ : κ → V → ColumnL2 V := fun e m =>
+  set! Ψ : κ → V → ColumnL2 V := fun e m =>
     (augMode_memLp (hJ e) (hJf e) (hψ m) (hψb m) (εw m) m).toLp
   have hΨ : ∀ e m, (Ψ e m : ℝ → ColumnHilbert V) =ᵐ[volume] augMode (J e) (ψ m) (εw m) m :=
     fun e m => MemLp.coeFn_toLp _
@@ -816,12 +816,12 @@ theorem chain_bad_count {α : Type*} [DecidableEq α] (N J Δ M Ae Ah : ℕ)
     exact_mod_cast Finset.card_le_card (hPC i h)
   have hPM : ∀ i h, ((P i h).card : ℝ) ≤ M := fun i h => (hPC' i h).trans (by exact_mod_cast hM i h)
   -- the five nonnegative majorants
-  set u0 : ℕ → ℕ → ℝ := fun _ h => if h < Δ then 1 else 0
-  set u1 : ℕ → ℕ → ℝ := fun i h => if Δ ≤ h then
+  set! u0 : ℕ → ℕ → ℝ := fun _ h => if h < Δ then 1 else 0
+  set! u1 : ℕ → ℕ → ℝ := fun i h => if Δ ≤ h then
     Real.log (P i h).card - Real.log (P i (h - Δ)).card else 0
-  set u2 : ℕ → ℕ → ℝ := fun i h => Real.log (C i h).card - Real.log (P i h).card
-  set u3 : ℕ → ℕ → ℝ := fun i h => ((Xe i h).card : ℝ) / (C i h).card
-  set u4 : ℕ → ℕ → ℝ := fun i h => ((Xh i h).card : ℝ) / (C i h).card
+  set! u2 : ℕ → ℕ → ℝ := fun i h => Real.log (C i h).card - Real.log (P i h).card
+  set! u3 : ℕ → ℕ → ℝ := fun i h => ((Xe i h).card : ℝ) / (C i h).card
+  set! u4 : ℕ → ℕ → ℝ := fun i h => ((Xh i h).card : ℝ) / (C i h).card
   have hu1 : ∀ i h, 0 ≤ u1 i h := fun i h => by
     simp only [u1]; split_ifs with hh
     · have := Finset.card_le_card (hPm i (Nat.sub_le h Δ))
@@ -874,7 +874,7 @@ theorem chain_bad_count {α : Type*} [DecidableEq α] (N J Δ M Ae Ah : ℕ)
     exact_mod_cast (Finset.card_le_card this).trans (Finset.card_range Δ).le
   have B1 : ∀ i, ∑ h ∈ Finset.range (J + 1), u1 i h ≤ Δ * Real.log M := by
     intro i
-    set g : ℕ → ℝ := fun h => Real.log (P i (h + Δ)).card - Real.log (P i h).card
+    set! g : ℕ → ℝ := fun h => Real.log (P i (h + Δ)).card - Real.log (P i h).card
     have hg0 : ∀ h, 0 ≤ g h := fun h => by
       have := Finset.card_le_card (hPm i (Nat.le_add_right h Δ))
       have : ((P i h).card : ℝ) ≤ (P i (h + Δ)).card := by exact_mod_cast this
@@ -911,7 +911,7 @@ theorem chain_bad_count {α : Type*} [DecidableEq α] (N J Δ M Ae Ah : ℕ)
     linarith
   have B3 : ∀ h, ∑ i ∈ Finset.range N, u3 i h ≤ Ae * (1 + Real.log M) := by
     intro h
-    set S : ℕ → Finset α := fun j => if j = 0 then ∅ else C (j - 1) h
+    set! S : ℕ → Finset α := fun j => if j = 0 then ∅ else C (j - 1) h
     have hS : Monotone S := by
       refine monotone_nat_of_le_succ fun j => ?_
       by_cases hj : j = 0
@@ -928,7 +928,7 @@ theorem chain_bad_count {α : Type*} [DecidableEq α] (N J Δ M Ae Ah : ℕ)
     simpa [S, u3] using this
   have B4 : ∀ i, ∑ h ∈ Finset.range (J + 1), u4 i h ≤ Ah * (1 + Real.log M) := by
     intro i
-    set S : ℕ → Finset α := fun j => if j = 0 then ∅ else C i (j - 1)
+    set! S : ℕ → Finset α := fun j => if j = 0 then ∅ else C i (j - 1)
     have hS : Monotone S := by
       refine monotone_nat_of_le_succ fun j => ?_
       by_cases hj : j = 0
@@ -1310,7 +1310,7 @@ theorem augMode_toLp_sum_norm_sq_ge {J : Set ℝ} (hJ : MeasurableSet J) (hJf : 
     ε * volume.real J * ∑ m ∈ M, ‖β m‖ ^ 2 ≤
       ‖∑ m ∈ M, β m • (augMode_memLp hJ hJf (hψ m) (hψb m) (εw m) m).toLp‖ ^ 2 := by
   rw [columnL2_norm_sq_eq]
-  set Ψ : V → ColumnL2 V := fun m => (augMode_memLp hJ hJf (hψ m) (hψb m) (εw m) m).toLp
+  set! Ψ : V → ColumnL2 V := fun m => (augMode_memLp hJ hJf (hψ m) (hψb m) (εw m) m).toLp
   have hsum : ((∑ m ∈ M, β m • Ψ m : ColumnL2 V) : ℝ → ColumnHilbert V) =ᵐ[volume]
       fun y => ∑ m ∈ M, β m • augMode J (ψ m) (εw m) m y := by
     refine (Lp.coeFn_fun_finsetSum _ _).trans ?_
@@ -1370,7 +1370,7 @@ theorem block_subtotals_le {V κ : Type*} [Fintype V] [DecidableEq V] (cells : F
         c k m • (augMode_memLp (hJ k) (hJf k) (hψ m) (hψb m) (εw m) m).toLp‖ ^ 2 ≤
       (1 + η * D ^ 3) * ∑ k ∈ cells, ∑ E ∈ comps k, ‖∑ m ∈ E,
         c k m • (augMode_memLp (hJ k) (hJf k) (hψ m) (hψb m) (εw m) m).toLp‖ ^ 2 := by
-  set Ψ : κ → V → ColumnL2 V := fun k m =>
+  set! Ψ : κ → V → ColumnL2 V := fun k m =>
     (augMode_memLp (hJ k) (hJf k) (hψ m) (hψb m) (εw m) m).toLp
   have hvan : ∀ k, ∀ᵐ y ∂volume, y ∉ J k →
       ((∑ E ∈ comps k, ∑ m ∈ E, c k m • Ψ k m : ColumnL2 V) : ℝ → ColumnHilbert V) y = 0 := by
@@ -1716,7 +1716,7 @@ theorem level_rows {s : Finset Ms.Event} (hδ : 0 < Ms.δc) (h1 : ∀ e ∈ s, e
         (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ hr.le hlen' 2) (abs_nonneg _)).trans hlm'
       have habs := abs_sub (Ms.lamOf m) (Ms.lamOf m')
       rw [div_div, le_div_iff₀ (by positivity)]
-      nlinarith [mul_le_mul_of_nonneg_right habs (sq_nonneg r)]
+      nlinarith only [mul_le_mul_of_nonneg_right habs (sq_nonneg r), hΛ, hr2, hr2']
   · -- multiplicity, counted along the path through each point
     intro e he
     refine (sum_measureReal_inter_le s Ms.evCell
@@ -1776,7 +1776,7 @@ theorem chain_side_bound {P : Type*} [DecidableEq P] (n : ℕ) (Mode : ℕ → T
   set Cp : ℕ → ℕ → Finset P := fun i h => if i < n then LF i h else LF (n - 1) h
   set Xe : ℕ → ℕ → Finset P := fun i h =>
     if i < n then (Cp i h).filter fun p => ¬ nonexc i p else ∅
-  set Xh : ℕ → ℕ → Finset P := fun i h =>
+  set! Xh : ℕ → ℕ → Finset P := fun i h =>
     if i < n then (Cp i h).filter fun p => nonexc i p ∧ ¬ goodP i h p else ∅
   have hEF : ∀ i h, LE i h ⊆ LF i h := fun i h =>
     Finset.image_subset_image ((C i).E_le_F h (x i))
@@ -2135,7 +2135,7 @@ theorem class_rows (s : Finset Ms.Event)
     (F : ColumnL2 Ms.Md) :
     ∑ e ∈ s, ‖(Submodule.span ℂ ((Ms.evMode e) '' (e.2.2 : Set Ms.Md))).starProjection F‖ ^ 2 ≤
       (L + 1) * ((1 + pairConst Ms.zc.dim Ms.δc S.Ξ Kf * D ^ 3) * ‖F‖ ^ 2) := by
-  set lev : Ms.Event → ℕ := chainLevel (s : Set Ms.Event) (Ms.Linked S) L
+  set! lev : Ms.Event → ℕ := chainLevel (s : Set Ms.Event) (Ms.Linked S) L
   have hK : (0 : ℤ) ≤ S.K := Nat.cast_nonneg _
   rw [← Finset.sum_fiberwise_of_maps_to (s := s) (t := Finset.range (L + 1)) (g := lev)
     (fun e _ => Finset.mem_range.mpr (Nat.lt_succ_of_le (chainLevel_le _ _ L e)))]
@@ -2212,7 +2212,7 @@ theorem cellMode_inner_le (hδ : 0 < Ms.δc) (hΛ : 8 * Ms.Λ ≤ S.Ξ) (hΞ : 0
   have hvar : 2 * |Ms.lamOf m - Ms.lamOf m'| * r ≤ S.Ξ / r / 2 := by
     have habs := abs_sub (Ms.lamOf m) (Ms.lamOf m')
     rw [div_div, le_div_iff₀ (by positivity)]
-    nlinarith [mul_le_mul_of_nonneg_right habs (sq_nonneg r)]
+    nlinarith only [mul_le_mul_of_nonneg_right habs (sq_nonneg r), hΛ, hr2, hr2']
   have h := modeWave_pair_le_full Ms.zc hδ Ms.ρ Ms.cl (Ms.lamOf m)
     (dyadicGridLeft Gd (Ms.cellOf m).1 (Ms.cellOf m).2) (Ms.γOf m) (Ms.lamOf m')
     (dyadicGridLeft Gd (Ms.cellOf m').1 (Ms.cellOf m').2) (Ms.γOf m') hr (div_pos hΞ hr) hQ0 Kf
@@ -2258,7 +2258,7 @@ theorem sideEvent_not_adj {b : ℤ} {J : ℤ × ℤ} (hJ : J.1 ≤ b + S.K) {E :
   obtain ⟨y, hy, rfl⟩ := Finset.mem_map.mp hm
   intro hedge
   set C := Ms.preComps S hA (b - 4 * S.K) (b + S.K) J hJ
-  set z : Ms.alive (ancAt Gd J (b - 4 * S.K)) := ⟨m', hm'A⟩
+  set! z : Ms.alive (ancAt Gd J (b - 4 * S.K)) := ⟨m', hm'A⟩
   have hz : z ∈ C.E 0 y := by
     simp only [C, preComps, ModeSchedule.preCurrent, ModeComponents.ofEdges, Finset.mem_filter,
       Finset.mem_univ, true_and]
@@ -2428,7 +2428,7 @@ theorem group_side_energy (Bs : Finset ℤ) (cells : ℤ → Finset (ℤ × ℤ)
   have hT0 := norm_nonneg T
   have hP0 := norm_nonneg P
   have her : 0 ≤ er := (norm_nonneg _).trans h'
-  nlinarith [sq_nonneg (‖P‖ - er)]
+  nlinarith only [sq_nonneg (‖P‖ - er), hT, hT0]
 
 end ModeSystem
 
@@ -2640,7 +2640,7 @@ theorem chain_length_schedule (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : �
     linarith [Real.log_two_gt_d9]
   have hd2' : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
   have hR' : (30 : ℝ) ≤ S.Rht := by exact_mod_cast hR
-  have hX : (60 : ℝ) ≤ S.dmax * S.Rht := by nlinarith
+  have hX : (60 : ℝ) ≤ S.dmax * S.Rht := by nlinarith only [hd2', hR']
   have hJ : 2 * (((S.sideParams δs).Δ : ℝ) + 10 * ((S.sideParams δs).Δ : ℝ) * l +
       10 * ((3 * S.dmax * S.Rht : ℕ) : ℝ) * (1 + l)) ≤
       δs * (((S.sideParams δs).Jst : ℝ) + 1) := by
@@ -2659,15 +2659,15 @@ theorem chain_length_schedule (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : �
     have h1 : 340 * (X * L) ≤ δs * S.Jstar := by
       calc 340 * (X * L) ≤ Cj * δs⁻¹ * (X * L) := by
             refine mul_le_mul_of_nonneg_right ?_ hXL
-            nlinarith
+            nlinarith only [hCj', hδi]
         _ = δs * (Cj * δs⁻¹ ^ 2 * S.dmax * S.Rht * L) := e1.symm
         _ ≤ δs * S.Jstar := mul_le_mul_of_nonneg_left hJs hδ.le
     have h2 : 2 * (10 + 10 * 10 * l + 10 * (3 * X) * (1 + l)) ≤ 340 * (X * L) := by
       have hlL : 1 + l ≤ 2 * L := by linarith
-      nlinarith [mul_le_mul_of_nonneg_left hlL (by linarith : (0 : ℝ) ≤ X)]
+      nlinarith only [mul_le_mul_of_nonneg_left hlL (by linarith : (0 : ℝ) ≤ X), hl0, hX]
     have h3 : 2 * (10 + 10 * 10 * l + 10 * (3 * (S.dmax : ℝ) * S.Rht) * (1 + l)) =
         2 * (10 + 10 * 10 * l + 10 * (3 * X) * (1 + l)) := by simp only [X]; ring
-    nlinarith
+    nlinarith only [hδ, hX, hL, hL1, h1]
   have hx := chain_length_of_bound (δ := δs) (Δ := ((S.sideParams δs).Δ : ℝ)) (l := l)
     (Ae := ((4 * S.dmax : ℕ) : ℝ)) (Ah := ((3 * S.dmax * S.Rht : ℕ) : ℝ))
     (Y := ((S.sideParams δs).Jst : ℝ) + 1) (x := ((k + 1 : ℕ) : ℝ)) hδ (by positivity)
@@ -2676,7 +2676,7 @@ theorem chain_length_schedule (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : �
   rw [div_le_div_iff_of_pos_right hδ]
   push_cast
   have hd1 : (1 : ℝ) ≤ S.dmax := by linarith
-  nlinarith [mul_le_mul_of_nonneg_left hL (by linarith : (0 : ℝ) ≤ S.dmax)]
+  nlinarith only [mul_le_mul_of_nonneg_left hL (by linarith : (0 : ℝ) ≤ S.dmax), hl0, hL1, hd2']
 
 end ModeSystem
 
@@ -2752,7 +2752,7 @@ theorem blockClass_sep {R₀ : ℤ} {K : ℕ} (hK : 1 ≤ K) {b b' : ℤ} (hb : 
     omega
   have h3 : β + 3 ≤ β' := by omega
   have : (K : ℤ) * (β + 3) ≤ K * β' := mul_le_mul_of_nonneg_left h3 hKz.le
-  nlinarith
+  nlinarith only [hβ, hβ', this]
 
 namespace ModeSystem
 variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
@@ -3033,9 +3033,9 @@ theorem main_rows_joint (l : Fin 4) (s : List (CatCol bf.Vtx))
     ∑ G, ∑ e, ‖Q G e (fp.gBall l s mb (grp G) j (u G e).1 x)‖ ^ 2 ≤
       (1 + τ * N * A.colBudget ^ 2) * (c * compression1 (bf.mainTree fp.Mc s mb) ^ 2) *
         ‖x‖ ^ 2 := by
-  set ι₀ := colRelabel (bf.rv fp.Mc s)
+  set! ι₀ := colRelabel (bf.rv fp.Mc s)
   have hiso : ∀ z, ‖ι₀ z‖ = ‖z‖ := norm_colRelabel (bf.rv_injective fp.Mc s)
-  set R : ∀ G, ρ → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] F G := fun G e =>
+  set! R : ∀ G, ρ → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] F G := fun G e =>
     (Q G e).comp (fp.gBall l s mb (grp G) j (u G e).1)
   have hgrp1 : ∀ G y, ∑ e ∈ Finset.univ, ‖R G e y‖ ^ 2 ≤
       c * compression1 (bf.mainTree fp.Mc s mb) ^ 2 * ‖y‖ ^ 2 := fun G y =>
@@ -3102,7 +3102,7 @@ theorem lift_rows_history (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBu
         (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj (u G e).1 Z)))‖ ^ 2 ≤
       B * compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 *
         compression1 (bf.P l jb).Ψ.D ^ 2 * ‖Z‖ ^ 2 := by
-  set R' : ι × ρ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] E := fun q =>
+  set! R' : ι × ρ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] E := fun q =>
     (emb q.1).comp ((Q q.1 q.2).comp ((fp.gBall l s mb (grp q.1) j (u q.1 q.2).1).comp
       (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s)))))
   have hR' : ∀ x, ∑ q, ‖R' q x‖ ^ 2 ≤ B * ‖x‖ ^ 2 := by
@@ -3239,7 +3239,7 @@ theorem lift_composition_global (l : Fin 4) (s : List (CatCol bf.Vtx))
         compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 *
           (compression1 (bf.P l 0).Ψ.D ^ 2 + compression1 (bf.P l 1).Ψ.D ^ 2)) *
         dyadicGridLength A.G A.R.1 := by
-  set Q : ∀ G, ρ → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] F G := fun G e =>
+  set! Q : ∀ G, ρ → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] F G := fun G e =>
     (P G e).comp ((L G).op.comp (colRelabel (bf.rv fp.Mc s)))
   have hQ : ∀ G x, ∑ e, ‖Q G e x‖ ^ 2 ≤ 5 * c * ‖x‖ ^ 2 := fun G x =>
     fp.lift_rows_bessel s (L G) (P G) hc (hP G) x
@@ -3326,7 +3326,7 @@ theorem liftConst_le_G0 (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudg
   have hn1 : ((1 : ℕ) : ℝ) ≤ cc * (Real.log kk + 1) := by
     have := Real.log_nonneg hk
     have hc' : (1 : ℝ) ≤ cc := by exact_mod_cast hcc
-    push_cast; nlinarith
+    push_cast; nlinarith only [this, hc']
   -- the ball insertion
   have hC1 : compression1 (bf.mainTree fp.Mc s mb) ^ 2 ≤ Real.exp (K1 * X ^ 2) ^ 2 := by
     have h := (compression1_le_compressionC (bf.mainTree fp.Mc s mb)).trans
@@ -3367,7 +3367,7 @@ theorem liftConst_le_G0 (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudg
         (2.7 : ℝ) ≤ Real.exp 1) 4)
     rw [← Real.exp_nat_mul] at h1
     refine h1.trans (Real.exp_le_exp.mpr ?_)
-    push_cast; nlinarith
+    push_cast; nlinarith only [hX1]
   have hexp : E1 ^ 2 * E4 * Real.exp (4 * X ^ 2) =
       Real.exp ((6144 * (cc + 1) * (1024 * (cc + 1) + cc + 7) + 4) * X ^ 2) := by
     simp only [E1, E4]
@@ -3474,7 +3474,7 @@ theorem group_event_rows_schedule (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W 
         have : S.Dstar ^ 4 = S.Dstar * S.Dstar ^ 3 := by ring
         have h8 : (8 : ℝ) ≤ S.Dstar ^ 3 :=
           le_trans (by norm_num) (pow_le_pow_left₀ (by norm_num) hD 3)
-        nlinarith
+        nlinarith only [hD, h8]
       linarith
     have : 8 * Ms.Λ ≤ 8 * S.Dstar := by linarith
     exact this.trans h1
@@ -3517,7 +3517,7 @@ theorem group_event_rows_schedule (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W 
       hbox hε hεw (by linarith) (fun y => hpt y) hpt2 (inst := fun e => inst e.2.1 e.2.2) F
     · refine hrows.trans (mul_le_mul_of_nonneg_left ?_ (by positivity))
       have hF := sq_nonneg ‖F‖
-      nlinarith
+      nlinarith only [hη]
     -- the chain length of the class (`eq:bad-density`)
     intro k e hc
     have hb := Ms.chain_length_schedule S hV hCj hCA hδs hδ1 hd2 hD hB hQ hDm hW hdim hM1 hMD
@@ -3675,7 +3675,7 @@ theorem group_count (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : ℝ}
       ∑ _i : Fin 3, (L + 1) * (Ms.ptSet y).card := Finset.sum_le_sum fun i _ => ?_
     _ = 3 * (L + 1) * (Ms.ptSet y).card := by
         rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]; ring
-  set s := ev.filter (fun e => blockClass R₀ S.K e.1 = i)
+  set! s := ev.filter (fun e => blockClass R₀ S.K e.1 = i)
   have hmem : ∀ e ∈ s, e.1 ∈ Bs ∧ e.2.1 ∈ cells e.1 ∧
       e.2.2 ∈ Ms.sideEvents S hA SP e.1 e.2.1 ∧ blockClass R₀ S.K e.1 = i := by
     intro e he
@@ -3768,7 +3768,7 @@ theorem ModeSystem.side_errors_negligible (S : ModeSchedule) {Cj CA CT CK : ℕ}
       ring
     have hP2 : (P * S.Dstar ^ 200) ^ 2 ≤ 1 := by
       have : 0 ≤ P * S.Dstar ^ 200 := mul_nonneg hP0 (pow_nonneg hDp.le _)
-      nlinarith
+      nlinarith only [hP, this]
     calc (Ms G).eventErr (S.withQ0 (q G)) Kf S.Dstar⁻¹ b J E (c G b J) ^ 2 * S.Dstar ^ 397 ≤
         P ^ 2 * dyadicGridLength Gd J.1 * S.Dstar ^ 2 * Bc / S.Dstar⁻¹ * S.Dstar ^ 397 :=
           mul_le_mul_of_nonneg_right h (pow_nonneg hDp.le _)
@@ -4000,7 +4000,7 @@ theorem lift_composition_dep (l : Fin 4) (s : List (CatCol bf.Vtx))
   obtain ⟨P', hP'd⟩ : ∃ P' : ∀ G, (Σ G', ρ G') → ColumnL2 (Md G) →L[ℂ] F G,
       ∀ G q, P' G q = if h : q.1 = G then h ▸ P q.1 q.2 else 0 := ⟨_, fun _ _ => rfl⟩
   have hP'G : ∀ G e, P' G ⟨G, e⟩ = P G e := fun G e => by rw [hP'd, dite_eq_left rfl]
-  set T' : ι → Finset (Σ G', ρ G') := fun G => (T G).map (Function.Embedding.sigmaMk G)
+  set! T' : ι → Finset (Σ G', ρ G') := fun G => (T G).map (Function.Embedding.sigmaMk G)
   have hT' : ∀ G (f : (Σ G', ρ G') → ℝ), ∑ q ∈ T' G, f q = ∑ e ∈ T G, f ⟨G, e⟩ := fun G f =>
     Finset.sum_map _ _ _
   have hmem : ∀ G q, q ∈ T' G → ∃ e ∈ T G, q = ⟨G, e⟩ := fun G q hq => by
@@ -4413,7 +4413,7 @@ theorem linear_energy (l : Fin 4) (s : List (CatCol bf.Vtx))
         have : S.Dstar ^ 4 = S.Dstar * S.Dstar ^ 3 := by ring
         have h8 : (8 : ℝ) ≤ S.Dstar ^ 3 :=
           le_trans (by norm_num) (pow_le_pow_left₀ (by norm_num) hD 3)
-        nlinarith
+        nlinarith only [hD, h8]
       linarith
     have : 8 * (Ms G).Λ ≤ 8 * S.Dstar := by linarith [hΛ G]
     exact this.trans h1

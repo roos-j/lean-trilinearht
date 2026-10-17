@@ -63,7 +63,7 @@ theorem count_balance_bound {J₀ L ℓ τ : ℝ} (hL : 1 ≤ L) (hℓ : 1 ≤ �
     (hJ0 : 0 ≤ J₀) (hJ : J₀ ≤ 3 * L * τ⁻¹ ^ 2) :
     J₀ * τ ^ 3 + Real.sqrt L * τ + ℓ * L * J₀ ^ 4 * (τ ^ 3 / L)⁻¹ ^ 7 * τ ^ 30 ≤
       85 * ℓ * L ^ 12 * τ := by
-  have hL0 : 0 < L := by linarith
+  have hL0 : 0 < L := by linarith only [hL]
   have hJτ : J₀ * τ ^ 2 ≤ 3 * L := by
     calc J₀ * τ ^ 2 ≤ 3 * L * τ⁻¹ ^ 2 * τ ^ 2 := by gcongr
       _ = 3 * L := by field_simp
@@ -141,7 +141,7 @@ theorem many_four_paths (P : Finset X) (Q : Finset Y) (E : Finset (X × Y))
     · have : E = ∅ := by
         rw [Finset.card_eq_zero.mp h, Finset.product_empty] at hE
         exact Finset.subset_empty.mp hE
-      rw [this] at hEη; simp at hEη; nlinarith [sq_nonneg M, mul_pos hη (pow_pos hM 2)]
+      rw [this] at hEη; simp at hEη; nlinarith only [sq_nonneg M, mul_pos hη (pow_pos hM 2), hEη]
     · exact h
   have hQ0' : (0 : ℝ) < Q.card := by exact_mod_cast hQ0
   -- second moment of neighborhood sizes
@@ -154,7 +154,7 @@ theorem many_four_paths (P : Finset X) (Q : Finset Y) (E : Finset (X × Y))
     have h2 : Q.card * ∑ y ∈ Q, ((nb y).card : ℝ) ^ 2 ≤ M * ∑ y ∈ Q, ((nb y).card : ℝ) ^ 2 :=
       mul_le_mul_of_nonneg_right hQM (Finset.sum_nonneg fun _ _ => by positivity)
     have : η ^ 2 * M ^ 3 * M ≤ M * ∑ y ∈ Q, ((nb y).card : ℝ) ^ 2 := by nlinarith
-    nlinarith
+    nlinarith only [hM, hsq, h1, h2]
   -- expected number of bad pairs
   have hbad : ∑ y ∈ Q, (badY y : ℝ) ≤ c₀ * η ^ 2 * M ^ 3 := by
     have e := sum_card_pairs_bipNbhd P Q E bad
@@ -190,14 +190,14 @@ theorem many_four_paths (P : Finset X) (Q : Finset Y) (E : Finset (X × Y))
     linarith
   have hYlow : η * M / 2 ≤ Yn.card := by
     have h0 : 0 ≤ η * M / 2 := by positivity
-    nlinarith [sq_nonneg ((Yn.card : ℝ) - η * M / 2)]
+    nlinarith only [sq_nonneg ((Yn.card : ℝ) - η * M / 2), hy]
   have hbadY : (100 : ℝ) * badY y ≤ (Yn.card : ℝ) ^ 2 := by
     have : 0 ≤ η ^ 2 * M ^ 2 / 2 := by positivity
     linarith
   -- delete vertices with many bad partners
-  set partners : X → ℕ := fun x => (Yn.filter fun x' => bad x x').card
-  set D := Yn.filter fun x => (Yn.card : ℝ) / 4 < partners x
-  set B₀ := Yn \ D
+  set! partners : X → ℕ := fun x => (Yn.filter fun x' => bad x x').card
+  set! D := Yn.filter fun x => (Yn.card : ℝ) / 4 < partners x
+  set! B₀ := Yn \ D
   have hpart_sum : ∑ x ∈ Yn, (partners x : ℝ) = badY y := by
     have : ∑ x ∈ Yn, partners x = badY y := by
       simp only [partners, badY]
@@ -217,12 +217,12 @@ theorem many_four_paths (P : Finset X) (Q : Finset Y) (E : Finset (X × Y))
   have hYpos : (0 : ℝ) < Yn.card := lt_of_lt_of_le (by positivity) hYlow
   have hDcard : (D.card : ℝ) ≤ Yn.card / 25 := by
     have : (D.card : ℝ) * ((Yn.card : ℝ) / 4) ≤ (Yn.card : ℝ) ^ 2 / 100 := by linarith
-    nlinarith
+    nlinarith only [hy, hD, hYpos]
   have hB₀card : η * M / 3 ≤ B₀.card := by
     have : (B₀.card : ℝ) = Yn.card - D.card := by
       rw [Finset.card_sdiff_of_subset (Finset.filter_subset _ _)]
       push_cast [Finset.card_le_card (Finset.filter_subset _ Yn)]; ring
-    rw [this]; nlinarith
+    rw [this]; nlinarith only [hy, hYlow, hD, hYpos]
   have hYP : Yn ⊆ P := Finset.filter_subset _ _
   refine ⟨B₀, (Finset.sdiff_subset).trans hYP, hB₀card, fun a ha a' ha' => ?_⟩
   -- common good partners
@@ -231,7 +231,7 @@ theorem many_four_paths (P : Finset X) (Q : Finset Y) (E : Finset (X × Y))
     have := (Finset.mem_sdiff.mp hx).2
     simp only [D, Finset.mem_filter, not_and, not_lt] at this
     exact this (Finset.mem_sdiff.mp hx).1
-  set Z := Yn.filter fun z => ¬ bad a z ∧ ¬ bad z a'
+  set! Z := Yn.filter fun z => ¬ bad a z ∧ ¬ bad z a'
   have hZ : (Yn.card : ℝ) / 2 ≤ Z.card := by
     have hsub : Yn ⊆ Z ∪ ((Yn.filter fun z => bad a z) ∪ (Yn.filter fun z => bad a' z)) := by
       intro z hz
@@ -319,7 +319,7 @@ theorem difference_cover_of_sequences {G C : Type*} [AddCommGroup G] [DecidableE
     have hend : ∀ p ∈ P, ∃ a ∈ B₀, ∃ a' ∈ B₀, a - a' = p := fun p hp =>
       Finset.mem_sub.mp (hPsub' hp)
     choose! ea hea ea' hea' heq using hend
-    set V := fun p => W (ea p) (ea' p)
+    set! V := fun p => W (ea p) (ea' p)
     have hdisj : (P : Set G).PairwiseDisjoint V := by
       intro p hp p' hp' hne
       refine Finset.disjoint_left.mpr fun c hc hc' => ?_
@@ -405,7 +405,7 @@ theorem add_mem_shiftBox {d : ℕ} {ζ : Fin d → ℤ} {N ε t t' : ℕ} {x y :
   obtain ⟨m, hm, v, hv, rfl⟩ := mem_shiftBox.mp hy
   refine mem_shiftBox.mpr ⟨n + m, fun k => ?_, u + v, ?_, ?_⟩
   · have := (abs_add_le (n k) (m k)).trans (add_le_add (hn k) (hm k))
-    simp only [Pi.add_apply]; push_cast at this ⊢; linarith
+    simp only [Pi.add_apply]; push_cast at this ⊢; linarith only [this]
   · have := (abs_add_le u v).trans (add_le_add hu hv)
     push_cast at this ⊢; linarith
   · rw [shiftDot_add]; ring
@@ -912,7 +912,7 @@ theorem translated_triples_gap {d : ℕ} (ζ : Fin d → ℤ) (α : Fin 3 → �
     (hk : ∀ j i, |(k j i : ℝ)| ≤ Kb) (hQ : 144 * Bw + 54 * Kb ≤ Q)
     (hgap : ∀ m : Fin d → ℤ, (∀ i, |(m i : ℝ)| ≤ Q) →
       ¬ (μ * R / 50 ≤ |(shiftDot m ζ : ℝ)| ∧ |(shiftDot m ζ : ℝ)| ≤ 50 * ν * R)) : False := by
-  set m : Fin d → ℤ := (36 : ℤ) • (nx + ny - nx' - ny') + ∑ j, (6 * α j) • k j
+  set! m : Fin d → ℤ := (36 : ℤ) • (nx + ny - nx' - ny') + ∑ j, (6 * α j) • k j
   have hm : shiftDot m ζ = tripleResidual ζ α x nx + tripleResidual ζ α y ny -
       tripleResidual ζ α x' nx' - tripleResidual ζ α y' ny' - ∑ j, α j * w j := by
     have hsum : ∑ j, α j * ((x j + y j) - (x' j + y' j)) =
@@ -975,7 +975,7 @@ theorem translated_triples_gap {d : ℕ} (ζ : Fin d → ℤ) (α : Fin 3 → �
       gcongr
       exact abs_add_le _ _
     have hνR : 0 ≤ ν * R := (abs_nonneg _).trans hx'
-    nlinarith
+    nlinarith only [hR, hx, hx', hx'', hy, hy', herr, hwsum, h1]
   refine hgap m (fun i => ?_) ⟨hlow, hup⟩
   simp only [m, Pi.add_apply, Pi.smul_apply, Pi.sub_apply, smul_eq_mul, Finset.sum_apply]
   push_cast
@@ -998,7 +998,7 @@ theorem translated_triples_gap {d : ℕ} (ζ : Fin d → ℤ) (α : Fin 3 → �
                 rw [abs_mul, abs_mul, abs_of_pos (by norm_num : (0 : ℝ) < 6)]
                 have h3 : |(α j : ℝ)| ≤ 3 := by rw [← Int.cast_abs]; exact_mod_cast hα3 j
                 have := hk j i
-                nlinarith [abs_nonneg (α j : ℝ), abs_nonneg (k j i : ℝ)]
+                nlinarith only [abs_nonneg (α j : ℝ), abs_nonneg (k j i : ℝ), h3, this]
             _ = 54 * Kb := by simp; ring
     _ ≤ Q := by linarith
 
@@ -1062,13 +1062,13 @@ theorem triple_count_bound {d : ℕ} {ι : Type*} (ζ : Fin d → ℤ) (N H : �
       (fun t x hx => neg_mem_shiftBox hx) (B j) (B₀ j) (P j) (hB₀ j) (hB₀ne j) H (hsep j)
       (hcov j) (hdouble j) 2 (Pc j) (hPcsub j) (hPcpack j)
   -- outputs
-  set out : ι × (Fin 3 → ℤ) → Fin 3 → ℤ := fun q => tv q.1 + q.2
+  set! out : ι × (Fin 3 → ℤ) → Fin 3 → ℤ := fun q => tv q.1 + q.2
   have hout : ∀ q ∈ V ×ˢ F, ∀ j, out q j ∈ 2 • B j := by
     intro q hq j
     obtain ⟨hv, hf⟩ := Finset.mem_product.mp hq
     rw [two_nsmul]
     exact Finset.add_mem_add (htv _ hv j) (hF _ hf j)
-  set nout : ι × (Fin 3 → ℤ) → Fin d → ℤ := fun q => nv q.1 + nf q.2
+  set! nout : ι × (Fin 3 → ℤ) → Fin d → ℤ := fun q => nv q.1 + nf q.2
   have hres : ∀ q ∈ V ×ˢ F, |(tripleResidual ζ α (out q) (nout q) : ℝ)| ≤ 2 * ν * Rs := by
     intro q hq
     obtain ⟨hv, hf⟩ := Finset.mem_product.mp hq
@@ -1083,7 +1083,7 @@ theorem triple_count_bound {d : ℕ} {ι : Type*} (ζ : Fin d → ℤ) (N H : �
       _ ≤ ν * Rv q.1 + ν * Rf q.2 := add_le_add h1 h2
       _ ≤ 2 * ν * Rs := by nlinarith
   -- columns
-  set Lc : ℤ × ℤ → Finset ℤ := fun pp => ((V ×ˢ F).filter fun q =>
+  set! Lc : ℤ × ℤ → Finset ℤ := fun pp => ((V ×ˢ F).filter fun q =>
     out q 0 - pp.1 ∈ shiftBox ζ N (ε 0) (H + H) ∧
       out q 1 - pp.2 ∈ shiftBox ζ N (ε 1) (H + H)).image fun q => out q 2
   have hpk3 : ∀ pp : ℤ × ℤ, ∃ P' ⊆ Lc pp, (∀ p ∈ P', ∀ p' ∈ P',
@@ -1182,7 +1182,7 @@ theorem triple_count_bound {d : ℕ} {ι : Type*} (ζ : Fin d → ℤ) (N H : �
     obtain ⟨p₃, hp₃, h₃⟩ := hP₃cov _ _ hmem
     exact ⟨p₁, hp₁, p₂, hp₂, p₃, hp₃, h₁, h₂, h₃⟩
   choose! b₁ hb₁ b₂ hb₂ b₃ hb₃ hbx₁ hbx₂ hbx₃ using hbox
-  set boxes := (Pc 0 ×ˢ Pc 1).sigma fun pp => P₃ pp
+  set! boxes := (Pc 0 ×ˢ Pc 1).sigma fun pp => P₃ pp
   have hinj : (V ×ˢ F).card ≤ boxes.card := by
     refine Finset.card_le_card_of_injOn (fun q => (⟨(b₁ q, b₂ q), b₃ q⟩ : Σ _ : ℤ × ℤ, ℤ))
       (fun q hq => Finset.mem_sigma.mpr ⟨Finset.mem_product.mpr ⟨hb₁ q hq, hb₂ q hq⟩,
@@ -1482,7 +1482,7 @@ theorem extract_cover_subset (O : Finset (ℤ × (Fin 4 → ℤ)))
   have hL : (1 : ℝ) ≤ D.L := by exact_mod_cast D.one_le_L
   set O' := O.filter fun o => o.2 i ∈ Unc
   have hO' : ∀ o ∈ O', o.1 ∈ D.S ∧ o.2 ∈ D.E o.1 := fun o ho => hO o (Finset.mem_filter.mp ho).1
-  set Eg := O'.image fun o => (o.2 i, o.2 j)
+  set! Eg := O'.image fun o => (o.2 i, o.2 j)
   have hEsub : Eg ⊆ Unc ×ˢ D.A j := by
     intro e he
     obtain ⟨o, ho, rfl⟩ := Finset.mem_image.mp he
@@ -1494,7 +1494,7 @@ theorem extract_cover_subset (O : Finset (ℤ × (Fin 4 → ℤ)))
       (fun e _ => D.pair_fiber_le O' hO' hi hj hij e)
     have h1' : (O'.card : ℝ) ≤ D.L * Eg.card := by exact_mod_cast h1
     have : η * D.L * D.M ^ 2 ≤ D.L * Eg.card := hbig.le.trans h1'
-    nlinarith
+    nlinarith only [hbig, h1']
   have hUM : (Unc.card : ℝ) ≤ D.M := (by exact_mod_cast Finset.card_le_card hUnc :
     (Unc.card : ℝ) ≤ (D.A i).card).trans (D.card_A i hi)
   obtain ⟨B₀, hB₀U, hB₀card, hpaths⟩ := many_four_paths Unc (D.A j) Eg hEsub
@@ -1507,7 +1507,7 @@ theorem extract_cover_subset (O : Finset (ℤ × (Fin 4 → ℤ)))
   -- edge tuples and colours
   have hch : ∀ e ∈ Eg, ∃ o ∈ O', (o.2 i, o.2 j) = e := fun e he => Finset.mem_image.mp he
   choose! oc hoc hoce using hch
-  set col : ℤ × ℤ → ℤ := fun e => (oc e).2 k
+  set! col : ℤ × ℤ → ℤ := fun e => (oc e).2 k
   have hocS : ∀ e ∈ Eg, (oc e).1 ∈ D.S ∧ (oc e).2 ∈ D.E (oc e).1 := fun e he => hO' _ (hoc e he)
   have hoci : ∀ e ∈ Eg, (oc e).2 i = e.1 := fun e he => congrArg Prod.fst (hoce e he)
   have hocj : ∀ e ∈ Eg, (oc e).2 j = e.2 := fun e he => congrArg Prod.snd (hoce e he)
@@ -1540,9 +1540,9 @@ theorem extract_cover_subset (O : Finset (ℤ × (Fin 4 → ℤ)))
     (Finset.mem_insert_of_mem (Finset.mem_singleton_self k)))
   obtain ⟨-, βi, hβi⟩ := roleCoeff_spec hli
   have hβ6 := (abs_cofactor_le hβi).1
-  set q : ℤ × ℤ × ℤ × ℤ → ℤ := fun c =>
+  set! q : ℤ × ℤ × ℤ × ℤ → ℤ := fun c =>
     -βi * roleCoeff k l * ((c.1 - c.2.1 + c.2.2.1 - c.2.2.2) / 6)
-  set seq : ℤ → ℤ → ℤ × ℤ × ℤ → ℤ × ℤ × ℤ × ℤ := fun a a' p =>
+  set! seq : ℤ → ℤ → ℤ × ℤ × ℤ → ℤ × ℤ × ℤ × ℤ := fun a a' p =>
     (col (a, p.1), col (p.2.1, p.1), col (p.2.1, p.2.2), col (a', p.2.2))
   have hsix : ∀ e ∈ Eg, (6 : ℤ) ∣ col e := fun e he =>
     D.six_dvd _ (hocS e he).1 _ (hocS e he).2 k hk
@@ -1585,8 +1585,8 @@ theorem extract_cover_subset (O : Finset (ℤ × (Fin 4 → ℤ)))
     obtain ⟨σ', hσ'⟩ := hσ
     have hseq : seq a a' (y₁, x, y₂) = (c₁, c₂, c₃, c₄) := rfl
     rw [hseq]
-    set Nn := n₁ - n₂ + n₃ - n₄
-    set u := a - a' - q (c₁, c₂, c₃, c₄) + 6 * βi * shiftDot Nn D.ζ
+    set! Nn := n₁ - n₂ + n₃ - n₄
+    set! u := a - a' - q (c₁, c₂, c₃, c₄) + 6 * βi * shiftDot Nn D.ζ
     have hqv : q (c₁, c₂, c₃, c₄) = -βi * roleCoeff k l * σ' := by
       simp only [q]; rw [hσ', Int.mul_ediv_cancel_left _ (by norm_num : (6 : ℤ) ≠ 0)]
     have hNn : shiftDot Nn D.ζ = shiftDot n₁ D.ζ - shiftDot n₂ D.ζ + shiftDot n₃ D.ζ -
@@ -1612,7 +1612,7 @@ theorem extract_cover_subset (O : Finset (ℤ × (Fin 4 → ℤ)))
       have hα1 : (1 : ℝ) ≤ |(roleCoeff i l : ℝ)| := by
         rw [← Int.cast_abs]; exact_mod_cast Int.one_le_abs (abs_cofactor_le hβi).2
       rw [Int.cast_mul, abs_mul] at h1
-      nlinarith [abs_nonneg (u : ℝ)]
+      nlinarith only [abs_nonneg (u : ℝ), hε, h1, hα1]
     have hNb : ∀ r, |((-βi) * Nn r : ℝ)| ≤ 24 * D.B := by
       intro r
       have hb6 : |(βi : ℝ)| ≤ 6 := by rw [← Int.cast_abs]; exact_mod_cast hβ6
@@ -1621,7 +1621,7 @@ theorem extract_cover_subset (O : Finset (ℤ × (Fin 4 → ℤ)))
         refine (abs_alt_four_le _ _ _ _).trans ?_
         linarith [hn₁ r, hn₂ r, hn₃ r, hn₄ r]
       rw [abs_mul, abs_neg]
-      nlinarith [abs_nonneg (Nn r : ℝ), abs_nonneg (βi : ℝ)]
+      nlinarith only [abs_nonneg (Nn r : ℝ), abs_nonneg (βi : ℝ), hb6, hN4]
     refine mem_shiftBox.mpr ⟨(-βi) • Nn, fun r => ?_, u, ?_, ?_⟩
     · have := hNb r
       have h2 : |((-βi) * Nn r : ℝ)| ≤ (N : ℝ) := this.trans hN
@@ -1632,14 +1632,14 @@ theorem extract_cover_subset (O : Finset (ℤ × (Fin 4 → ℤ)))
       rw [one_mul]; rw [← Int.cast_abs] at this; exact_mod_cast this
     · rw [shiftDot_smul]; simp only [u]; ring
   -- colour sequences
-  set W : ℤ → ℤ → Finset (ℤ × ℤ × ℤ × ℤ) := fun a a' =>
+  set! W : ℤ → ℤ → Finset (ℤ × ℤ × ℤ × ℤ) := fun a a' =>
     (bipFourPaths Unc (D.A j) Eg a a').image (seq a a')
-  set κ : ℕ := ⌈η ^ 5 * D.M ^ 3 / 160000⌉₊
+  set! κ : ℕ := ⌈η ^ 5 * D.M ^ 3 / 160000⌉₊
   have hκ : ∀ a ∈ B₀, ∀ a' ∈ B₀, κ ≤ (W a a').card := by
     intro a ha a' ha'
     rw [Finset.card_image_of_injOn (bipFourPaths_colors_injOn Unc (D.A j) Eg col hpx hpy a a')]
     exact Nat.ceil_le.mpr (hpaths a ha a' ha')
-  set Cs := D.A k ×ˢ D.A k ×ˢ D.A k ×ˢ D.A k
+  set! Cs := D.A k ×ˢ D.A k ×ˢ D.A k ×ˢ D.A k
   have hWCs : ∀ a ∈ B₀, ∀ a' ∈ B₀, W a a' ⊆ Cs := by
     intro a _ a' _ c hc
     obtain ⟨⟨y₁, x, y₂⟩, hp, rfl⟩ := Finset.mem_image.mp hc
@@ -1936,7 +1936,7 @@ theorem residue_selection (Wm : Finset ℤ) (sF : ℤ) (hWm : ∀ s ∈ Wm, sF <
     have hc1 : 1 ≤ c := by
       by_contra h
       push Not at h
-      nlinarith
+      nlinarith only [hlt, hc, h]
     nlinarith
   · have h1 : (Wm.card : ℝ) ≤ Wm'.card + g := by exact_mod_cast hlow
     have h2 : (Wm'.card : ℝ) ≤ g * (Wm'.filter fun s => s % (g : ℤ) = r).card := by
@@ -2030,7 +2030,7 @@ theorem combination_arith {ρ M L K₁ δ g V F P₀ P₁ P₂ b₀ b₁ b₂ : 
   rw [hl, div_le_div_iff₀ (by positivity) (by positivity)] at key
   have h7 : ρ ^ 7 ≤ 995328 * δ * g * K₁ ^ 7 * L ^ 6 := by
     have hM2 : 0 < M ^ 2 := by positivity
-    have : ρ ^ 7 * M ^ 2 ≤ 995328 * δ * g * K₁ ^ 7 * L ^ 6 * M ^ 2 := by nlinarith
+    have : ρ ^ 7 * M ^ 2 ≤ 995328 * δ * g * K₁ ^ 7 * L ^ 6 * M ^ 2 := by nlinarith only [key]
     exact le_of_mul_le_mul_right this hM2
   have hρ3 : ρ ^ 3 ≤ L ^ 3 := pow_le_pow_left₀ hρ.le hρL 3
   calc ρ ^ 10 = ρ ^ 7 * ρ ^ 3 := by ring
@@ -2038,7 +2038,7 @@ theorem combination_arith {ρ M L K₁ δ g V F P₀ P₁ P₂ b₀ b₁ b₂ : 
         gcongr
     _ ≤ 10 ^ 6 * δ * g * K₁ ^ 7 * L ^ 9 := by
         have : 0 ≤ δ * g * K₁ ^ 7 * L ^ 9 := by positivity
-        nlinarith
+        nlinarith only [this]
 
 namespace SparseCountData
 variable (D : SparseCountData)
@@ -2102,11 +2102,12 @@ theorem combination_bound (C : Finset (ℤ × (Fin 4 → ℤ)))
   have hB1 := D.one_le_B
   have hd1 : (1 : ℝ) ≤ ((D.d : ℝ) + 1) ^ 2 := by
     have : (0 : ℝ) ≤ D.d := Nat.cast_nonneg _
-    nlinarith
+    nlinarith only [this]
   have hgR : (1 : ℝ) ≤ g := by exact_mod_cast hg
   have hCR : (0 : ℝ) < C.card := lt_of_le_of_lt (by positivity) hbig
   have hCpos : 0 < C.card := by exact_mod_cast hCR
-  have h12 : 12 * (δ * D.M ^ 2) ≤ C.card := by nlinarith [mul_pos hδ (pow_pos hM0 2)]
+  have h12 : 12 * (δ * D.M ^ 2) ≤ C.card := by nlinarith only [mul_pos hδ (pow_pos hM0 2), hbig,
+      hgR]
   obtain ⟨c₁, c₂, hc21, hfirst, hmiddle, hlast⟩ := mass_ranges C hδm h12 hCpos
   -- the triple coefficients
   have hα : ∀ j, |roleCoeff (e j) l| ≤ 3 ∧ ∃ β : ℤ, roleCoeff (e j) l * β = 6 :=
@@ -2114,7 +2115,7 @@ theorem combination_bound (C : Finset (ℤ × (Fin 4 → ℤ)))
   choose hα3 β hαβ using hα
   -- anchors
   set First := C.filter fun o => c₁ ≤ o.1
-  set B₀ : Fin 3 → Finset ℤ := fun j => First.image fun o => o.2 (e j)
+  set! B₀ : Fin 3 → Finset ℤ := fun j => First.image fun o => o.2 (e j)
   have hFirstC : ∀ o ∈ First, o.1 ∈ D.S ∧ o.2 ∈ D.E o.1 :=
     fun o ho => hC o (Finset.mem_filter.mp ho).1
   have hB₀low : ∀ j, (C.card : ℝ) / D.M ^ 2 * D.M / (3 * D.L) ≤ (B₀ j).card := by
@@ -2126,7 +2127,7 @@ theorem combination_bound (C : Finset (ℤ × (Fin 4 → ℤ)))
     rw [div_le_iff₀ (by positivity)]
     have e : (C.card : ℝ) / D.M ^ 2 * D.M = C.card / D.M := by field_simp
     rw [e, div_le_iff₀ hM0]
-    nlinarith
+    nlinarith only [hfirst, h1]
   have hB₀sub : ∀ j, B₀ j ⊆ B j := by
     intro j a ha
     obtain ⟨o, ho, rfl⟩ := Finset.mem_image.mp ha
@@ -2139,8 +2140,8 @@ theorem combination_bound (C : Finset (ℤ × (Fin 4 → ℤ)))
     exact_mod_cast this
   -- the last range
   set Last := C.filter fun o => o.1 < c₂
-  set proj : ℤ × (Fin 4 → ℤ) → Fin 3 → ℤ := fun o j => o.2 (e j)
-  set F := Last.image proj
+  set! proj : ℤ × (Fin 4 → ℤ) → Fin 3 → ℤ := fun o j => o.2 (e j)
+  set! F := Last.image proj
   have hLastC : ∀ o ∈ Last, o.1 ∈ D.S ∧ o.2 ∈ D.E o.1 :=
     fun o ho => hC o (Finset.mem_filter.mp ho).1
   have hFlow : (C.card : ℝ) / D.M ^ 2 * D.M ^ 2 / (4 * D.L) ≤ F.card := by
@@ -2148,7 +2149,7 @@ theorem combination_bound (C : Finset (ℤ × (Fin 4 → ℤ)))
       by exact_mod_cast D.proj_fiber_le Last hLastC e he heC f
     have e : (C.card : ℝ) / D.M ^ 2 * D.M ^ 2 = C.card := by field_simp
     rw [e, div_le_iff₀ (by positivity)]
-    nlinarith
+    nlinarith only [hlast, h1]
   have hFwit : ∀ f ∈ F, ∃ o ∈ Last, proj o = f := fun f hf => Finset.mem_image.mp hf
   choose! of hofL hofp using hFwit
   have hofC : ∀ f ∈ F, of f ∈ C := fun f hf => (Finset.mem_filter.mp (hofL f hf)).1
@@ -2173,7 +2174,7 @@ theorem combination_bound (C : Finset (ℤ × (Fin 4 → ℤ)))
     rwa [hoFs] at this
   -- the middle range and the selected scales
   set Mid := C.filter fun o => c₂ ≤ o.1 ∧ o.1 < c₁
-  set Wm := Mid.image Prod.fst
+  set! Wm := Mid.image Prod.fst
   have hWmlow : (C.card : ℝ) / 4 ≤ δ * D.M ^ 2 * Wm.card := by
     refine hmiddle.trans (card_le_mul_card_image_real Mid Prod.fst _ fun s _ => ?_)
     exact le_trans (Nat.cast_le.mpr (Finset.card_le_card (Finset.filter_subset_filter _
@@ -2448,7 +2449,7 @@ theorem block_mass_le (C : Finset (ℤ × α)) {θ m₀ : ℝ} (hθ : 0 < θ)
       rw [Nat.cast_sub hmono]
     rw [← this]; exact_mod_cast hle
   have := hm ohi.1
-  nlinarith
+  nlinarith only [h1, h2, hle', this]
 
 end CountingBlocks
 
@@ -2846,7 +2847,7 @@ theorem combinations_mass_le (Occ : Finset (ℤ × (Fin 4 → ℤ)))
   classical
   have hM0 : 0 < D.M := by linarith [D.one_le_M]
   have hY0 : 0 ≤ Y := le_trans (by positivity) hY1
-  set fut : ℤ × (Fin 4 → ℤ) → Finset (Fin 4) := fun o => D.core.filter fun i =>
+  set! fut : ℤ × (Fin 4 → ℤ) → Finset (Fin 4) := fun o => D.core.filter fun i =>
     ∃ b' ∈ Finset.range J₀, β o.1 < b' ∧ ∃ B ∈ 𝓑 b' i, o.2 i ∈ B
   set U₃ := Occ.filter fun o => 3 ≤ (fut o).card
   -- choices: a triple of future roles, future blocks and subsets
@@ -2865,10 +2866,10 @@ theorem combinations_mass_le (Occ : Finset (ℤ × (Fin 4 → ℤ)))
       exact ⟨(b', B), fun _ => ⟨hb', hlt, hB, hoB⟩⟩
     · exact ⟨(0, ∅), fun h' => absurd h' h⟩
   choose sel hsel using hsel
-  set key : ℤ × (Fin 4 → ℤ) → (ℕ × Finset (Fin 4)) × (Fin 3 → ℕ × Finset ℤ) := fun o =>
+  set! key : ℤ × (Fin 4 → ℤ) → (ℕ × Finset (Fin 4)) × (Fin 3 → ℕ × Finset ℤ) := fun o =>
     ((β o.1, T o), fun j => sel o (enumRoles (T o) j))
   -- the key space
-  set AllPairs := (Finset.range J₀ ×ˢ D.core).biUnion fun p => (𝓑 p.1 p.2).image fun B => (p.1, B)
+  set! AllPairs := (Finset.range J₀ ×ˢ D.core).biUnion fun p => (𝓑 p.1 p.2).image fun B => (p.1, B)
   have hAll : (AllPairs.card : ℝ) ≤ 12 * J₀ / η := by
     refine (Nat.cast_le.mpr Finset.card_biUnion_le).trans ?_
     push_cast
@@ -2884,7 +2885,7 @@ theorem combinations_mass_le (Occ : Finset (ℤ × (Fin 4 → ℤ)))
           gcongr
           exact_mod_cast (Finset.card_le_univ D.core).trans (by simp)
       _ = 12 * J₀ / η := by ring
-  set KS := (Finset.range J₀ ×ˢ D.core.powersetCard 3) ×ˢ
+  set! KS := (Finset.range J₀ ×ˢ D.core.powersetCard 3) ×ˢ
     Fintype.piFinset fun _ : Fin 3 => AllPairs
   have hKS : (KS.card : ℝ) ≤ J₀ * 4 * (12 * J₀ / η) ^ 3 := by
     simp only [KS, Finset.card_product, Fintype.card_piFinset, Finset.prod_const,
@@ -2943,7 +2944,7 @@ theorem combinations_mass_le (Occ : Finset (ℤ × (Fin 4 → ℤ)))
       rw [Finset.card_univ, Fintype.card_fin] at this
       omega
     have hel : ∀ j, e j ≠ l := fun j h => hl (h ▸ heT j)
-    set p : Fin 3 → ℕ × Finset ℤ := fun j => sel o₀ (e j)
+    set! p : Fin 3 → ℕ × Finset ℤ := fun j => sel o₀ (e j)
     have hp : ∀ j, (p j).2 ∈ 𝓑 (p j).1 (e j) := fun j => (hsel o₀ (e j) (hfut o₀ ho₀ j)).2.2.1
     have hCbound := D.combination_bound C (fun o ho => hOcc o (hCO o ho)) hδ
       (fun s => le_trans (Nat.cast_le.mpr (Finset.card_le_card
@@ -3137,11 +3138,12 @@ theorem sparse_final_arith {X J₀ L ℓ τ M U₁ U₂ U₃ : ℝ} (hτ0 : 0 < 
   calc X ≤ U₁ + U₂ + U₃ := hX
     _ ≤ 691200000 * (J₀ * τ ^ 3 + Real.sqrt L * τ +
           ℓ * L * J₀ ^ 4 * (τ ^ 3 / L)⁻¹ ^ 7 * τ ^ 30) * M ^ 2 := by
-        nlinarith [mul_nonneg hA hM2.le, mul_nonneg hB hM2.le, mul_nonneg hC hM2.le]
+        nlinarith only [mul_nonneg hA hM2.le, mul_nonneg hB hM2.le, mul_nonneg hC hM2.le, h1, h3,
+            h2']
     _ ≤ 691200000 * (85 * ℓ * L ^ 12 * τ) * M ^ 2 := by gcongr
     _ ≤ 10 ^ 11 * ℓ * L ^ 12 * τ * M ^ 2 := by
         have : 0 ≤ ℓ * L ^ 12 * τ * M ^ 2 := by positivity
-        nlinarith
+        nlinarith only [hbal, hA, hB, hC]
 
 /-- The logarithmic scale margin: there is `g ≤ 32 ℓ` with `2^g μ ≥ 612000000 (d+1)² ν`, where
 `ℓ = 1 + log₂(2 + (d+1)² ν/μ)`. -/
@@ -3197,11 +3199,11 @@ theorem sparse_Y1_arith {M δ τ g ℓ η L : ℝ} (hM : 0 < M) (hτ0 : 0 < τ) 
   rw [hδ]
   have h1 : 12 * g * τ ^ 300 ≤ 384 * ℓ * τ ^ 30 := by
     have := mul_le_mul hg hτ (by positivity) (by linarith)
-    nlinarith
+    nlinarith only [this]
   have h2 : 384 * ℓ * τ ^ 30 ≤ 10 ^ 5 * ℓ * η⁻¹ ^ 4 * L * τ ^ 30 := by
     have hlL : 1 ≤ η⁻¹ ^ 4 * L := by nlinarith
     have : 0 ≤ ℓ * τ ^ 30 := by positivity
-    nlinarith
+    nlinarith only [hlL, this]
   have := mul_le_mul_of_nonneg_right (h1.trans h2) hM2.le
   linarith
 
@@ -3286,8 +3288,8 @@ theorem sparse_mass_bound (hQ : 7200000 * ((D.d : ℝ) + 1) ^ 2 * D.B ≤ D.Q)
     rw [D.card_lightOcc]; exact D.total_mass_le _ (Finset.filter_subset _ _)
   rw [← D.card_lightOcc]
   -- blocks
-  set β := blockIndex Occ θ
-  set J₀ := ⌊(Occ.card : ℝ) / θ⌋₊ + 1
+  set! β := blockIndex Occ θ
+  set! J₀ := ⌊(Occ.card : ℝ) / θ⌋₊ + 1
   have hβ : ∀ o ∈ Occ, β o.1 < J₀ := fun o _ => blockIndex_lt Occ hθ o.1
   have hβlt : ∀ o ∈ Occ, ∀ o' ∈ Occ, β o.1 < β o'.1 → o'.1 < o.1 :=
     fun o _ o' _ h => lt_of_blockIndex_lt Occ hθ h
@@ -3303,10 +3305,10 @@ theorem sparse_mass_bound (hQ : 7200000 * ((D.d : ℝ) + 1) ^ 2 * D.B ≤ D.Q)
         _ = D.L * τ⁻¹ ^ 2 * θ := by simp only [θ]; field_simp
     have h3 : 1 ≤ D.L * τ⁻¹ ^ 2 := by
       have : 1 ≤ τ⁻¹ ^ 2 := one_le_pow₀ (one_le_inv_iff₀.mpr ⟨hτ0, hτ1⟩)
-      nlinarith
+      nlinarith only [hL, this]
     linarith
   -- difference covers in every block and role
-  set N₀ := ⌈32 * D.B⌉₊
+  set! N₀ := ⌈32 * D.B⌉₊
   have hN₀ : 24 * D.B ≤ N₀ := le_trans (by linarith [D.one_le_B]) (Nat.le_ceil _)
   have hN₀' : (N₀ : ℝ) ≤ 33 * D.B := by
     have := Nat.ceil_lt_add_one (show 0 ≤ 32 * D.B by linarith [D.one_le_B])
@@ -3314,11 +3316,11 @@ theorem sparse_mass_bound (hQ : 7200000 * ((D.d : ℝ) + 1) ^ 2 * D.B ≤ D.Q)
   obtain ⟨Rp, ε, 𝓑, Pc, hRp, hε, hA, -, hcard, hPc, hunc⟩ :=
     D.block_covers Occ hOcc β hβlt N₀ hN₀ hη
   -- the three parts
-  set U₁ := Occ.filter fun o : ℤ × (Fin 4 → ℤ) => ∃ i ∈ D.core, ∀ B ∈ 𝓑 (β o.1) i, o.2 i ∉ B
-  set U₂ := Occ.filter fun o : ℤ × (Fin 4 → ℤ) => (∀ i ∈ D.core, ∃ B ∈ 𝓑 (β o.1) i, o.2 i ∈ B) ∧
+  set! U₁ := Occ.filter fun o : ℤ × (Fin 4 → ℤ) => ∃ i ∈ D.core, ∀ B ∈ 𝓑 (β o.1) i, o.2 i ∉ B
+  set! U₂ := Occ.filter fun o : ℤ × (Fin 4 → ℤ) => (∀ i ∈ D.core, ∃ B ∈ 𝓑 (β o.1) i, o.2 i ∈ B) ∧
       (D.core.filter fun i => ∃ b' ∈ Finset.range J₀, β o.1 < b' ∧
         ∃ B ∈ 𝓑 b' i, o.2 i ∈ B).card < 3
-  set U₃ := Occ.filter fun o => 3 ≤ (D.core.filter fun i => ∃ b' ∈ Finset.range J₀,
+  set! U₃ := Occ.filter fun o => 3 ≤ (D.core.filter fun i => ∃ b' ∈ Finset.range J₀,
       β o.1 < b' ∧ ∃ B ∈ 𝓑 b' i, o.2 i ∈ B).card
   have hsplit : Occ ⊆ U₁ ∪ U₂ ∪ U₃ := by
     intro o ho
@@ -3494,18 +3496,18 @@ theorem sparse_count_explicit :
   · simp only [hS, Finset.filter_empty, Finset.sum_empty]
     positivity
   -- the grid step
-  set R : ℤ → ℝ := fun s => R₀ * 2 ^ s
+  set! R : ℤ → ℝ := fun s => R₀ * 2 ^ s
   have hRpos : ∀ s, 0 < R s := fun s => mul_pos hR₀ (zpow_pos (by norm_num) s)
-  set Rmin := R (S.min' hSne)
+  set! Rmin := R (S.min' hSne)
   have hRmin : ∀ s ∈ S, Rmin ≤ R s := fun s hs =>
     mul_le_mul_of_nonneg_left (zpow_le_zpow_right₀ (by norm_num) (Finset.min'_le _ _ hs)) hR₀.le
   have hRmin0 : 0 < Rmin := hRpos _
-  set K := 27 + d * Q + 18 * d * B
+  set! K := 27 + d * Q + 18 * d * B
   have hK : 27 ≤ K := by
     have : (0 : ℝ) ≤ d * Q := by positivity
     have : (0 : ℝ) ≤ 18 * d * B := by positivity
     linarith
-  set h := min (Sg * Rmin / (12 + d * Q)) (μ * Rmin / (1000 * K))
+  set! h := min (Sg * Rmin / (12 + d * Q)) (μ * Rmin / (1000 * K))
   have hh : 0 < h := lt_min (by positivity) (by positivity)
   have hh1 : h * (12 + d * Q) ≤ Sg * Rmin := by
     have := min_le_left (Sg * Rmin / (12 + d * Q)) (μ * Rmin / (1000 * K))
@@ -3525,9 +3527,9 @@ theorem sparse_count_explicit :
       mul_le_mul_of_nonneg_left ((hRmin s hs).trans (le_max_left _ _)) hSg0.le
     have h4 : 6 * h < Sg * Rmin := by
       have : (0 : ℝ) ≤ d * Q := by positivity
-      nlinarith
+      nlinarith only [hh, hh1, this]
     linarith
-  set rd : (Fin 4 → ℝ) → Fin 4 → ℤ := fun x i => gridLabel h (x i)
+  set! rd : (Fin 4 → ℝ) → Fin 4 → ℤ := fun x i => gridLabel h (x i)
   have hinj : ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s', rd x = rd x' → x = x' := by
     intro s hs s' hs' x hx x' hx' heq
     funext i
@@ -3536,9 +3538,9 @@ theorem sparse_count_explicit :
     · rw [(hE s hs x hx).2 i hi, (hE s' hs' x' hx').2 i hi]
   have hrdinj : ∀ s ∈ S, Set.InjOn rd (E s) := fun s hs x hx x' hx' h =>
     hinj s hs s hs x hx x' hx' h
-  set E' : ℤ → Finset (Fin 4 → ℤ) := fun s => (E s).image rd
-  set A' : Fin 4 → Finset ℤ := fun i => (A i).image (gridLabel h)
-  set ζ' : Fin d → ℤ := fun k => round (ζ k / h)
+  set! E' : ℤ → Finset (Fin 4 → ℤ) := fun s => (E s).image rd
+  set! A' : Fin 4 → Finset ℤ := fun i => (A i).image (gridLabel h)
+  set! ζ' : Fin d → ℤ := fun k => round (ζ k / h)
   have hcardE : ∀ s ∈ S, (E' s).card = (E s).card := fun s hs =>
     Finset.card_image_of_injOn (hrdinj s hs)
   have hmemE : ∀ s, ∀ x' ∈ E' s, ∃ x ∈ E s, rd x = x' := fun s x' hx' => Finset.mem_image.mp hx'
@@ -3569,7 +3571,8 @@ theorem sparse_count_explicit :
             have ha : |(roleCoeff i l : ℝ)| ≤ 3 := by
               rw [← Int.cast_abs]; exact_mod_cast (roleCoeff_spec (hTl i hi)).1
             have := gridLabel_err hh (x i)
-            nlinarith [abs_nonneg (roleCoeff i l : ℝ), abs_nonneg (h * gridLabel h (x i) - x i)]
+            nlinarith only [abs_nonneg (roleCoeff i l : ℝ),
+                abs_nonneg (h * gridLabel h (x i) - x i), ha, this]
         _ = 27 * h := by rw [Finset.sum_const, hT3]; ring
     have e : h * ((∑ i ∈ T, roleCoeff i l * rd x i + 36 * shiftDot n ζ' : ℤ) : ℝ) -
         (∑ i ∈ T, (roleCoeff i l : ℝ) * x i + 36 * ∑ k, (n k : ℝ) * ζ k) =
@@ -3586,7 +3589,7 @@ theorem sparse_count_explicit :
           gcongr
       _ ≤ h * K := by
           have : (0 : ℝ) ≤ d * Q * h := by positivity
-          simp only [K]; nlinarith
+          simp only [K]; nlinarith only [this]
   have hRh : ∀ s : ℤ, R₀ / h * 2 ^ s = R s / h := fun s => by simp only [R]; ring
   -- the fields of the grid data
   have f_card_A : ∀ i ∈ core, ((A' i).card : ℝ) ≤ M := fun i hi =>
@@ -3640,7 +3643,7 @@ theorem sparse_count_explicit :
     intro s hs
     rw [hRh s, show μ / 2 * (R s / h) = μ * R s / (2 * h) by ring, le_div_iff₀ (by positivity)]
     have := hRS s hs
-    nlinarith
+    nlinarith only [hK, hh, this]
   have f_sep : ∀ i ∈ core, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E' s, ∀ x' ∈ E' s', x i ≠ x' i →
       ∀ n : Fin d → ℤ, (∀ r, |(n r : ℝ)| ≤ Q) →
         Sg / 2 * max (R₀ / h * 2 ^ s) (R₀ / h * 2 ^ s') <
@@ -3674,7 +3677,7 @@ theorem sparse_count_explicit :
     have h2 : Sg * max (R s) (R s') - h * (12 + d * Q) / 2 ≥ Sg / 2 * max (R s) (R s') := by
       have := mul_le_mul_of_nonneg_left hmax hSg0.le
       linarith
-    nlinarith
+    nlinarith only [hSg0, hh1, h1, hmax, key]
   have f_ann : ∀ T ⊆ core, T.card = 3 → ∀ l, l ∉ T → ∀ s ∈ S, ∀ x ∈ E' s, ∃ n : Fin d → ℤ,
       (∀ r, |(n r : ℝ)| ≤ B) ∧
         μ / 2 * (R₀ / h * 2 ^ s) ≤
@@ -3687,7 +3690,7 @@ theorem sparse_count_explicit :
     refine ⟨n, hn, ?_⟩
     have herr := hres T l hT3 (fun i hi h' => hl (h' ▸ hi)) x n hn
     have hK1 : h * K ≤ μ * R s / 2 := by
-      have := hRS s hs; nlinarith
+      have := hRS s hs; nlinarith only [hK, hh, this]
     rw [hRh]
     set r' := ((∑ r ∈ T, roleCoeff r l * rd x r + 36 * shiftDot n ζ' : ℤ) : ℝ)
     set r := ∑ i ∈ T, (roleCoeff i l : ℝ) * x i + 36 * ∑ k, (n k : ℝ) * ζ k
@@ -3698,9 +3701,9 @@ theorem sparse_count_explicit :
     have hμν : μ * R s ≤ ν * R s := mul_le_mul_of_nonneg_right (by linarith) (hRpos s).le
     constructor
     · rw [show μ / 2 * (R s / h) = (μ * R s / 2) / h by ring, div_le_iff₀ hh]
-      nlinarith
+      nlinarith only [hK1, h1, herr, hab']
     · rw [show 2 * ν * (R s / h) = (2 * ν * R s) / h by ring, le_div_iff₀ hh]
-      nlinarith
+      nlinarith only [hK, hh, hK1, h1, h2, herr, hab]
   have f_gap : ∀ s ∈ S, (E' s).Nonempty → ∀ n : Fin d → ℤ, (∀ r, |(n r : ℝ)| ≤ Q) →
       ¬ (μ / 2 * (R₀ / h * 2 ^ s) / 50 ≤ |(shiftDot n ζ' : ℝ)| ∧
         |(shiftDot n ζ' : ℝ)| ≤ 50 * (2 * ν) * (R₀ / h * 2 ^ s)) := by

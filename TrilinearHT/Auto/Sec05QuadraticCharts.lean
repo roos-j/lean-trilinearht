@@ -126,7 +126,7 @@ theorem mem_chartLatticeBox_of_bound {d : ℕ} {H : ℝ} {z : Fin d → ℝ}
   apply Fintype.mem_piFinset.mpr
   intro i
   obtain ⟨hlo, hhi⟩ := abs_le.mp (hn i)
-  have hl : z i - H ≤ (n i : ℝ) := by linarith
+  have hl : z i - H ≤ (n i : ℝ) := by linarith only [hhi]
   have hu : (n i : ℝ) ≤ z i + H := by linarith
   refine Finset.mem_Icc.mpr ⟨?_, Int.le_floor.mpr hu⟩
   simpa using Int.floor_mono hl
@@ -216,7 +216,7 @@ theorem ordinaryQuadraticChart_atom (lam β y : ℝ) :
 
 theorem ordinaryQuadraticChart_complexity (c₀ : ℕ) {H : ℝ} (hH : Real.exp 2 ≤ H)
     (lam β : ℝ) : QuadraticChartComplexity c₀ H (ordinaryQuadraticChart lam β) := by
-  have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
+  have hH1 : 1 ≤ H := by linarith only [Real.add_one_le_exp (2 : ℝ), hH]
   refine ⟨hH, ?_, ?_, ?_, ?_⟩
   · simpa only [Nat.cast_zero] using Real.log_nonneg hH1
   · intro i

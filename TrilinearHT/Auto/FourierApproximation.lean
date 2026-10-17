@@ -88,7 +88,7 @@ theorem norm_fourierCoeffOn_le_of_norm_le
     {a b C : ℝ} (hab : a < b) {f : ℝ → ℂ} (n : ℤ)
     (hf : ∀ x ∈ Set.uIoc a b, ‖f x‖ ≤ C) :
     ‖fourierCoeffOn hab f n‖ ≤ C := by
-  have hperiod : Fact (0 < b - a) := ⟨by linarith⟩
+  have hperiod : Fact (0 < b - a) := ⟨by linarith only [hab]⟩
   let : Fact (0 < b - a) := hperiod
   rw [fourierCoeffOn_eq_integral]
   have hint : ‖∫ x in a..b,

@@ -110,7 +110,7 @@ theorem bogolyubov_expect_norm_le {G : Type*} [Fintype G]
     (A : Finset G) (hA : A.Nonempty) (f : G → ℂ) {p : ℝ} (hp : 1 ≤ p) :
     ‖𝔼 a ∈ A, f a‖ ≤ ((Fintype.card G : ℝ) / A.card) ^ (1 / p) *
       (𝔼 x, ‖f x‖ ^ p) ^ (1 / p) := by
-  have hp0 : 0 < p := by linarith
+  have hp0 : 0 < p := by linarith only [hp]
   have h := (bogolyubov_expect_norm_rpow_le A hA f hp).trans
     (bogolyubov_expect_subset_le A (fun x => ‖f x‖ ^ p) (fun x => by positivity))
   have hr := Real.rpow_le_rpow (by positivity : 0 ≤ ‖𝔼 a ∈ A, f a‖ ^ p)
@@ -169,7 +169,7 @@ theorem bogolyubov_double_average_almost_periods {G : Type*} [AddCommGroup G]
         ‖bogolyubovAverage A (bogolyubovAverage A f) (x + u) -
           bogolyubovAverage A (bogolyubovAverage A f) x‖ ≤
           ((Fintype.card G : ℝ) / A.card) ^ (1 / p) * (2 * k * ε) := by
-  have hp0 : 0 < p := by linarith
+  have hp0 : 0 < p := by linarith only [hp]
   have hnorm : finiteLpNorm p f ≤ 1 := by
     have hm : uniformMean (fun x => ‖f x‖ ^ p) ≤ 1 := by
       calc
@@ -293,7 +293,7 @@ theorem bogolyubovSampleSize_le {α : ℝ} (hα : 0 < α) (hα1 : α ≤ 1) :
   have ht1 : bogolyubovTolerance α ≤ 1 := by
     unfold bogolyubovTolerance
     apply (inv_le_one₀ (by positivity)).mpr
-    nlinarith
+    nlinarith only [hk, he]
   have hp : 2 ≤ bogolyubovExponent α := le_max_left _ _
   have ht2 : bogolyubovTolerance α ^ 2 ≤ 1 := by nlinarith
   have hratio : 1 ≤ bogolyubovExponent α / bogolyubovTolerance α ^ 2 :=

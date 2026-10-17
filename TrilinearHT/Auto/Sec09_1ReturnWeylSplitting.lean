@@ -389,14 +389,14 @@ theorem fourier_progression_step_small {E : Type*}
         have h0 : ((j : ℤ) - i) ≠ 0 := sub_ne_zero.mpr (by exact_mod_cast (Ne.symm hij))
         exact_mod_cast Int.one_le_abs h0
       rw [dist_eq_norm, he, norm_smul, Real.norm_eq_abs]
-      nlinarith [norm_nonneg ω])
+      nlinarith only [norm_nonneg ω, hω, hρ1, hij'])
     (fun j hj x hx => by
       have h1 := hlarge j hj
       have h2 := hLip x (ξ - j • ω)
       have h3 : ‖x - (ξ - j • ω)‖ ≤ ρ := (mem_ball_iff_norm.mp hx).le
       have h4 := norm_sub_norm_le (𝓕 f (ξ - j • ω)) (𝓕 f x)
       rw [norm_sub_rev] at h4
-      nlinarith [mul_le_mul_of_nonneg_left h3 hL.le])
+      nlinarith only [mul_le_mul_of_nonneg_left h3 hL.le, hLρ, h1, h2, h4])
     (by positivity)
   rw [integral_norm_sq_fourier hf1 hf2] at hmass
   linarith only [hmass, hS, hM]
@@ -2591,8 +2591,8 @@ theorem weyl_threshold_lower {S' V0 K δ W : ℝ} (hW : 70 ≤ W) (hδ : 0 < δ)
       calc 9 * S' * (V0⁻¹ * δ⁻¹ ^ 2) ≤ 9 * W * ((12 * W) ^ 3 * W ^ 2) := by gcongr
         _ = _ := by ring
     have h3 : (2 : ℝ) ≤ 2 * W ^ 6 := by
-      nlinarith [one_le_pow₀ (show (1 : ℝ) ≤ W by linarith only [hW]) (n := 6)]
-    nlinarith [h1, h2, h3]
+      nlinarith only [one_le_pow₀ (show (1 : ℝ) ≤ W by linarith only [hW]) (n := 6)]
+    nlinarith only [h1, h2, h3]
   have hW16 : (W ^ 16)⁻¹ ≤ 1 / 2 := by
     rw [one_div]; apply inv_anti₀ (by norm_num)
     nlinarith [one_le_pow₀ (show (1 : ℝ) ≤ W by linarith only [hW]) (n := 15),
@@ -2652,7 +2652,7 @@ theorem weyl_log_budget {c₀ d : ℕ} {H R δ P a : ℝ} (hH : Real.exp 2 ≤ H
   have hc0 : (0 : ℝ) ≤ c₀ := Nat.cast_nonneg _
   have hN : (N : ℝ) ≤ (4 * c₀ + 23) * T := by
     have : (N : ℝ) = 4 * c₀ + 3 * d + 20 := by simp [N]
-    rw [this]; nlinarith
+    rw [this]; nlinarith only [hd, hlogδ]
   have hT2 : T ≤ T ^ 3 := by
     have h1 : 1 ≤ T ^ 2 := one_le_pow₀ hT1
     calc T = T * 1 := (mul_one T).symm
@@ -2662,18 +2662,18 @@ theorem weyl_log_budget {c₀ d : ℕ} {H R δ P a : ℝ} (hH : Real.exp 2 ≤ H
     refine hloga.trans ?_
     have h1 : (N : ℝ) * (lam + Real.log H) ≤ ((4 * c₀ + 23) * T) * ((lam + 1) * T) := by
       gcongr
-      nlinarith
+      nlinarith only [hd, hlogδ, hlam]
     have h2 : ((4 * c₀ + 23) * T) * ((lam + 1) * T) ≤ (4 * c₀ + 23) * (lam + 1) * T ^ 3 := by
       have : 0 ≤ (4 * (c₀ : ℝ) + 23) * (lam + 1) := by positivity
       have hT3 : T ^ 2 ≤ T ^ 3 := pow_le_pow_right₀ hT1 (by norm_num)
       calc ((4 * c₀ + 23) * T) * ((lam + 1) * T) = (4 * c₀ + 23) * (lam + 1) * T ^ 2 := by ring
         _ ≤ _ := by gcongr
     have hδT : Real.log δ⁻¹ ≤ T ^ 3 := by linarith only [hlogH, hT2]
-    nlinarith
+    nlinarith only [hd, hT2, h1, h2]
   rw [Real.log_one, add_zero]
   have hlogH' : Real.log H ≤ T ^ 3 := hHT.trans hT2
   have : 0 ≤ (4 * (c₀ : ℝ) + 23) * (lam + 1) * T ^ 3 := by positivity
-  nlinarith
+  nlinarith only [hlogδ, hlogP, hT2, hfin]
 
 /-- **Blueprint lem:weyl (Weyl alternative), lines 1304–1333.** Let `θ` be
 supported in the fixed box `[-R,R]^k` with supremum and Lipschitz norms at
@@ -2715,7 +2715,7 @@ theorem weylSplitting (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
   refine ⟨D0 * κ ^ D0 + 3 * D0, by nlinarith [Nat.zero_le (D0 * κ ^ D0)], ?_⟩
   intro d k hk1 hk3 H A hA θ hθm hθ hθLip hθsupp δ hδ hsup B
   have hH0 : 0 ≤ H := (quadraticChartComplexity_parameter_pos hA).le
-  set δ' := min δ 1 with hδ'
+  set! δ' := min δ 1 with hδ'
   have hδ'0 : 0 < δ' := lt_min hδ one_pos
   have hδ'1 : δ' ≤ 1 := min_le_right _ _
   obtain ⟨ξ, hξ⟩ := hsup (3 * δ' / 4) (by
@@ -2736,7 +2736,7 @@ theorem weylSplitting (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
   set L := 2 * Real.pi * ((k : ℝ) * ((2 * R) ^ k * R * B0)) with hL
   set S' := (2 * R) ^ k * B0 ^ 2 with hS'
   set K := localizedReturnErrorConstant c₀ d k H R with hK
-  set W := Zc ^ N / δ' with hW
+  set! W := Zc ^ N / δ' with hW
   have hZN1 : 1 ≤ Zc ^ N := one_le_pow₀ (by linarith only [hZ70])
   have hZNW : Zc ^ N ≤ W := le_div_self (by positivity) hδ'0 hδ'1
   have hδW : 1 ≤ δ' * W := by
@@ -2750,8 +2750,8 @@ theorem weylSplitting (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
     rw [hK]; unfold localizedReturnErrorConstant chartReturnErrorConstant; positivity
   have hS0 : 0 ≤ S' := by rw [hS']; positivity
   have hL0 : 0 ≤ L := by rw [hL, hB0]; positivity
-  set ρ := min (1 / 2) (δ' / (6 * (L + 1))) with hρdef
-  set V0 := volume.real (Metric.ball (0 : EuclideanSpace ℝ (Fin k)) ρ) with hV0def
+  set! ρ := min (1 / 2) (δ' / (6 * (L + 1))) with hρdef
+  set! V0 := volume.real (Metric.ball (0 : EuclideanSpace ℝ (Fin k)) ρ) with hV0def
   have hρ : 1 / (6 * W) ≤ ρ := by
     apply le_min
     · rw [div_le_div_iff₀ (by positivity) (by norm_num)]; linarith only [hW70]
@@ -2777,7 +2777,7 @@ theorem weylSplitting (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
           linarith only [hk]
       _ ≤ V0 := hvol
   have hV0 : 0 < V0 := lt_of_lt_of_le (by positivity) hV
-  set M : ℕ := ⌈9 * S' / (V0 * δ' ^ 2)⌉₊ + 1 with hMdef
+  set! M : ℕ := ⌈9 * S' / (V0 * δ' ^ 2)⌉₊ + 1 with hMdef
   have hM1 : (1 : ℝ) ≤ M := by
     rw [hMdef]; push_cast
     linarith only [Nat.cast_nonneg (α := ℝ) ⌈9 * S' / (V0 * δ' ^ 2)⌉₊]
@@ -2786,8 +2786,8 @@ theorem weylSplitting (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
       rw [hMdef]; push_cast
       linarith only [Nat.le_ceil (9 * S' / (V0 * δ' ^ 2))]
     rw [div_lt_iff₀ (by positivity)] at h1
-    nlinarith
-  set a := min (1 / 2) (δ' / (8 * (K + 1) * M)) with hadef
+    nlinarith only [h1]
+  set! a := min (1 / 2) (δ' / (8 * (K + 1) * M)) with hadef
   have ha0 : 0 < a := lt_min (by norm_num) (by positivity)
   have ha1 : a < 1 := lt_of_le_of_lt (min_le_left _ _) (by norm_num)
   have haM : (M : ℝ) * (K * (2 * a)) ≤ δ' / 4 := by
@@ -2936,7 +2936,7 @@ theorem phase_height_budget {H X : ℝ} {d Dw : ℕ} (hDw : 1 ≤ Dw) (hH1 : 1 �
       mul_le_mul h1 h2 (by positivity) (by positivity)
     have h4 : E ≤ E ^ 5 := le_self_pow₀ hE1 (by norm_num)
     have h5 : (1 : ℝ) ≤ E ^ 5 := one_le_pow₀ hE1
-    nlinarith
+    nlinarith only [hH1, hHE, h3, h4]
   have hprod : 4 * H ^ (d ^ 2) * (B ^ (d ^ 2)) ^ 2 * (H + (d : ℝ) ^ 2 * ((1 + B) * H * B) + 1) ≤
       E ^ (3 * d ^ 2 + 6) := by
     have hA : H ^ (d ^ 2) ≤ E ^ (d ^ 2) := pow_le_pow_left₀ hH0 hHE _
@@ -2953,7 +2953,7 @@ theorem phase_height_budget {H X : ℝ} {d Dw : ℕ} (hDw : 1 ≤ Dw) (hH1 : 1 �
   have hlogE : Real.log E ≤ (1 + Dw) * X ^ Dw := by
     rw [hE, Real.log_mul (by positivity) (by positivity), Real.log_exp, Real.log_exp]
     have : X ≤ X ^ Dw := le_self_pow₀ hX1 (by omega)
-    nlinarith
+    nlinarith only [this]
   have hlogE0 : 0 ≤ Real.log E := Real.log_nonneg hE1
   have hn : ((3 * d ^ 2 + 6 : ℕ) : ℝ) ≤ 9 * X ^ 2 := by
     push_cast

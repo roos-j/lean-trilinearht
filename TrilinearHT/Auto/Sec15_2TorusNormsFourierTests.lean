@@ -402,7 +402,7 @@ theorem torus_size_bound {ι : Type*} (s : Finset ι) (A sD : ι → ℝ) (hA : 
     (hcard : (s.card : ℝ) ≤ Dst) (hεD : ε ≤ Dst ^ (-100 : ℤ))
     (haX : a ^ 2 ≤ X + ε * (∑ i ∈ s, sD i) ^ 2) (hX : X ≤ 2 * ∑ i ∈ s, A i ^ 2) :
     a ≤ Real.sqrt 2 * Real.sqrt (∑ i ∈ s, (A i + Dst ^ (-30 : ℤ) * sD i) ^ 2) := by
-  have hD0 : 0 < Dst := by linarith
+  have hD0 : 0 < Dst := by linarith only [hDst]
   have hcs : (∑ i ∈ s, sD i) ^ 2 ≤ s.card * ∑ i ∈ s, sD i ^ 2 := sq_sum_le_card_mul_sum_sq
   have hfl : ε * (∑ i ∈ s, sD i) ^ 2 ≤ 2 * ∑ i ∈ s, (Dst ^ (-30 : ℤ) * sD i) ^ 2 := by
     have h60 : Dst ^ (-100 : ℤ) * Dst ≤ 2 * (Dst ^ (-30 : ℤ)) ^ 2 := by
@@ -447,7 +447,7 @@ theorem iteratedDeriv_eq_zero_of_support {f : ℝ → ℂ} {R : ℝ}
     refine closure_minimal (fun y hy => ?_) isClosed_Icc
     exact abs_le.mp (hsupp y hy)
   have hnot : x ∉ tsupport f := fun h => by
-    have := abs_le.mpr (hts h); linarith
+    have := abs_le.mpr (hts h); linarith only [hx, this]
   rw [iteratedDeriv]
   have : iteratedFDeriv ℝ k f x = 0 := by
     by_contra hne
@@ -799,7 +799,7 @@ theorem decay_lines (hR : 0 ≤ R) (J : ℕ) (L : Finset ℝ) (hL : L.Nonempty) 
     calc ‖kernelFT w q t‖ * max 1 (max |q| |t|) ^ J
         ≤ ‖kernelFT w q t‖ * ((1 + |q| ^ J) + (1 + |t| ^ J)) :=
           mul_le_mul_of_nonneg_left hmax hK
-      _ ≤ 2 * D := by nlinarith
+      _ ≤ 2 * D := by nlinarith only [h1, h2]
       _ ≤ _ := by linarith
   · push Not at hm
     rw [min_eq_right hm.le]
@@ -832,7 +832,8 @@ theorem decay_lines (hR : 0 ≤ R) (J : ℕ) (L : Finset ℝ) (hL : L.Nonempty) 
       have hle : max 1 (max |q| |t|) ≤ (Jb + 2) * max 1 |q| := by
         have hq1 : 1 ≤ max 1 |q| := le_max_left _ _
         have hqq : |q| ≤ max 1 |q| := le_max_right _ _
-        refine max_le (by nlinarith) (max_le (by nlinarith) (by nlinarith))
+        refine max_le (by nlinarith only [hJb0, hq1]) (max_le (by nlinarith only [hJb0, hq1,
+            hqq]) (by nlinarith only [hJb0, ht, hq1, hqq]))
       have hp : (max 1 |q|) ^ J ≤ 1 + |q| ^ J := by
         rcases le_total 1 |q| with h | h
         · rw [max_eq_right h]; linarith
@@ -846,7 +847,7 @@ theorem decay_lines (hR : 0 ≤ R) (J : ℕ) (L : Finset ℝ) (hL : L.Nonempty) 
         ≤ ‖kernelFT w q t‖ * ((Jb + 2) ^ J * (1 + |q| ^ J)) := mul_le_mul_of_nonneg_left hν hK
       _ = (Jb + 2) ^ J * ((1 + |q| ^ J) * ‖kernelFT w q t‖) := by ring
       _ ≤ (Jb + 2) ^ J * (Nb * m) := mul_le_mul_of_nonneg_left hN (by positivity)
-      _ ≤ (2 * D + (Jb + 2) ^ J * Nb) * m := by nlinarith
+      _ ≤ (2 * D + (Jb + 2) ^ J * Nb) * m := by nlinarith only [hD0, hm0]
 
 end UnitKernelBounds
 
@@ -1060,7 +1061,7 @@ theorem coset_haar_four_le
         ∂torusAnnihilatorHaar (rationalIntegerIntersection V)‖ ≤
       W * ∏ i, (eLpNorm (g i) 2 (torusAnnihilatorHaar (rationalIntegerIntersection V))).toReal := by
   set μ := torusAnnihilatorHaar (rationalIntegerIntersection V)
-  set F : torusAnnihilator (rationalIntegerIntersection V) ×
+  set! F : torusAnnihilator (rationalIntegerIntersection V) ×
       torusAnnihilator (rationalIntegerIntersection V) → ℂ :=
     fun z => Rm z * (∏ i, g i (z.1 + ((i : ℤ) - l) • z.2)) * χ z
   have hFc : Continuous F := by
@@ -1197,7 +1198,7 @@ theorem anchor_entry_bound {K : ℝ → ℝ → ℂ} {C Jb : ℝ} (hC : 0 ≤ C)
     have h2 : max 1 |κ| ^ A ≤ M ^ A := pow_le_pow_left₀ (by positivity) hκM A
     have h3 : max 1 |κ| ^ A ≤ (Jb + 2) ^ A * M ^ A := by
       have : (1 : ℝ) ≤ (Jb + 2) ^ A := one_le_pow₀ (by linarith)
-      nlinarith [pow_nonneg (by positivity : (0 : ℝ) ≤ M) A]
+      nlinarith only [pow_nonneg (by positivity : (0 : ℝ) ≤ M) A, h2, this]
     calc max 1 |β| ^ J * max 1 |κ| ^ A ≤ ((Jb + 2) * M) ^ J * ((Jb + 2) ^ A * M ^ A) :=
           mul_le_mul h1 h3 (by positivity) (by positivity)
       _ = (Jb + 2) ^ J * (Jb + 2) ^ A * (M ^ J * M ^ A) := by rw [mul_pow]; ring
@@ -1247,7 +1248,7 @@ theorem dual_slice_bound
         (eLpNorm (g i) 2 (torusAnnihilatorHaar (rationalIntegerIntersection V))).toReal := by
   classical
   set μ := torusAnnihilatorHaar (rationalIntegerIntersection V)
-  set Dm : torusAnnihilator (rationalIntegerIntersection V) → ℂ := fun u =>
+  set! Dm : torusAnnihilator (rationalIntegerIntersection V) → ℂ := fun u =>
     ∫ v, Rm (u, v) * (∏ i ∈ Finset.univ.erase l, g i (u + ((i : ℤ) - (l : ℤ)) • v)) *
       starRingEnd ℂ (torusCharacter m v) ∂μ
   have hχ : Continuous fun v : torusAnnihilator (rationalIntegerIntersection V) =>
@@ -1267,7 +1268,7 @@ theorem dual_slice_bound
       hint isCompact_univ
     simpa [Measure.restrict_univ] using h
   -- the four functions with the dual slice in the anchor slot
-  set g' : Fin 4 → torusAnnihilator (rationalIntegerIntersection V) → ℂ := fun i =>
+  set! g' : Fin 4 → torusAnnihilator (rationalIntegerIntersection V) → ℂ := fun i =>
     if i = l then fun u => starRingEnd ℂ (Dm u) else g i
   have hg' : ∀ i, Continuous (g' i) := by
     intro i
@@ -1321,7 +1322,7 @@ theorem dual_slice_bound
   -- `X ≤ W √X P` gives `√X ≤ W P`
   rcases hs0.eq_or_lt with h0 | hpos
   · exact le_trans (le_of_eq h0.symm) (mul_nonneg hW hP0)
-  · have : Real.sqrt X * Real.sqrt X ≤ Real.sqrt X * (W * P) := by nlinarith
+  · have : Real.sqrt X * Real.sqrt X ≤ Real.sqrt X * (W * P) := by nlinarith only [h, hs]
     exact le_of_mul_le_mul_left this hpos
 
 end DualSlice
@@ -1664,7 +1665,7 @@ theorem torus_bessel (f : torusAnnihilator (rationalIntegerIntersection V) → �
     (continuous_torusCharacter n).comp continuous_subtype_val
   have hI : ∀ {g : torusAnnihilator (rationalIntegerIntersection V) → ℂ}, Continuous g →
       Integrable g μ := fun hg => integrable_of_continuous_annihilator V hg
-  set a : (Fin d → ℤ) → ℂ := fun n => ∫ u, f u * starRingEnd ℂ (e n u) ∂μ
+  set! a : (Fin d → ℤ) → ℂ := fun n => ∫ u, f u * starRingEnd ℂ (e n u) ∂μ
   have horth : ∀ n ∈ N, ∀ n' ∈ N, ∫ u, e n u * starRingEnd ℂ (e n' u) ∂μ =
       if n = n' then 1 else 0 := by
     intro n hn n' hn'
@@ -1681,7 +1682,7 @@ theorem torus_bessel (f : torusAnnihilator (rationalIntegerIntersection V) → �
     rw [← integral_conj]
     refine integral_congr_ae (Filter.Eventually.of_forall fun u => ?_)
     simp only [map_mul, Complex.conj_conj]; ring
-  set h : torusAnnihilator (rationalIntegerIntersection V) → ℂ :=
+  set! h : torusAnnihilator (rationalIntegerIntersection V) → ℂ :=
     fun u => f u - ∑ n ∈ N, a n * e n u
   have hpt : ∀ u, ((‖h u‖ ^ 2 : ℝ) : ℂ) = f u * starRingEnd ℂ (f u) -
       ∑ n ∈ N, starRingEnd ℂ (a n) * (f u * starRingEnd ℂ (e n u)) -
@@ -1821,7 +1822,7 @@ theorem three_core_windows
         C * ((2 : ℝ) ^ I)⁻¹ ^ (A + 2) *
           ((∑ n ∈ N, ‖∫ u, dualSlice V Rm l g m u * starRingEnd ℂ (torusCharacter n u)
             ∂torusAnnihilatorHaar (rationalIntegerIntersection V)‖) * ∑ k ∈ Kk, ‖b k‖) := by
-  set a : (Fin d → ℤ) → ℂ := fun n => ∫ u, dualSlice V Rm l g m u *
+  set! a : (Fin d → ℤ) → ℂ := fun n => ∫ u, dualSlice V Rm l g m u *
     starRingEnd ℂ (torusCharacter n u) ∂torusAnnihilatorHaar (rationalIntegerIntersection V)
   have hsw := side_windows N fr hsep Kk a b M hC A I hM
   refine hsw.trans (add_le_add_left ?_ _)
@@ -2184,7 +2185,7 @@ theorem four_core_test' {ι : Type*} (P : Finset ι) (c Kv : ι → ℂ)
       ‖K₀‖ * (W * ∏ i, (eLpNorm (g i) 2
         (torusAnnihilatorHaar (rationalIntegerIntersection V))).toReal) +
       max ε τ * ∑ p ∈ P, ‖c p‖ := by
-  set rel : ι → Prop := fun p => (fr p).1 - p₀.1 ∈ rationalIntegerIntersection V ∧
+  set! rel : ι → Prop := fun p => (fr p).1 - p₀.1 ∈ rationalIntegerIntersection V ∧
     (fr p).2 - p₀.2 ∈ rationalIntegerIntersection V
   -- the reference value as a value at an extra index
   have hsplit : ∑ p ∈ P, c p * Kv p = K₀ * ∑ p ∈ P.filter rel, c p +
@@ -2193,7 +2194,7 @@ theorem four_core_test' {ι : Type*} (P : Finset ι) (c Kv : ι → ℂ)
       ← Finset.sum_add_distrib]
     congr 1
     refine Finset.sum_congr rfl fun p _ => by ring
-  set χ : torusAnnihilator (rationalIntegerIntersection V) ×
+  set! χ : torusAnnihilator (rationalIntegerIntersection V) ×
       torusAnnihilator (rationalIntegerIntersection V) → ℂ := fun z =>
     starRingEnd ℂ (torusCharacter p₀.1 z.1) * starRingEnd ℂ (torusCharacter p₀.2 z.2)
   have hχc : Continuous χ :=
@@ -2349,17 +2350,17 @@ theorem four_core_cell_bound {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
           (torusAnnihilatorHaar (rationalIntegerIntersection V))).toReal) +
         max ε τ * ∑ x ∈ QR ×ˢ Fintype.piFinset F, ‖rc x.1 * ∏ j, a j (x.2 j)‖) := by
   have hphys := four_core_physical hr hw f hfi ξ x₀ γ QR rc fr F a n hε0 hε
-  set Kv : ιR × (∀ j, ι j) → ℂ := fun x =>
+  set! Kv : ιR × (∀ j, ι j) → ℂ := fun x =>
     (Real.fourierChar ((∑ j, γ j + ∑ i, (((fr x.1).1 + ∑ j, n j (x.2 j)) i : ℝ) * ξ i) *
           (a₀ + r / 2 - x₀)) : ℂ) *
         kernelFT (unitKernel a₀ r w)
           (-(r * (∑ j, γ j + ∑ i, (((fr x.1).1 + ∑ j, n j (x.2 j)) i : ℝ) * ξ i)))
           (-(r * (∑ j : Fin 4, ((j : ℕ) : ℝ) * γ j + ∑ i, (((fr x.1).2 +
             ∑ j : Fin 4, (((j : ℕ) : ℤ) - 0) • n j (x.2 j)) i : ℝ) * ξ i)))
-  set Rm : torusAnnihilator (rationalIntegerIntersection V) ×
+  set! Rm : torusAnnihilator (rationalIntegerIntersection V) ×
       torusAnnihilator (rationalIntegerIntersection V) → ℂ := fun z =>
     ∑ q ∈ QR, rc q * (torusCharacter (fr q).1 z.1 * torusCharacter (fr q).2 z.2)
-  set g : Fin 4 → torusAnnihilator (rationalIntegerIntersection V) → ℂ := fun j u =>
+  set! g : Fin 4 → torusAnnihilator (rationalIntegerIntersection V) → ℂ := fun j u =>
     ∑ k ∈ F j, a j k * torusCharacter (n j k) u
   have hRm : Continuous Rm := continuous_finsetSum _ fun q _ => continuous_const.mul
     (((continuous_torusCharacter _).comp (continuous_subtype_val.comp continuous_fst)).mul
@@ -2408,7 +2409,7 @@ theorem augMode_toLp_sum_phys_le {J : Set ℝ} (hJ : MeasurableSet J) (hJf : vol
     ∫ y in J, ‖∑ m ∈ M, β m * ψ m y‖ ^ 2 ≤
       ‖∑ m ∈ M, β m • (augMode_memLp hJ hJf (hψ m) (hψb m) (εw m) m).toLp‖ ^ 2 := by
   rw [columnL2_norm_sq_eq]
-  set Ψ : V → ColumnL2 V := fun m => (augMode_memLp hJ hJf (hψ m) (hψb m) (εw m) m).toLp
+  set! Ψ : V → ColumnL2 V := fun m => (augMode_memLp hJ hJf (hψ m) (hψb m) (εw m) m).toLp
   have hsum : ((∑ m ∈ M, β m • Ψ m : ColumnL2 V) : ℝ → ColumnHilbert V) =ᵐ[volume]
       fun y => ∑ m ∈ M, β m • augMode J (ψ m) (εw m) m y := by
     refine (Lp.coeFn_fun_finsetSum _ _).trans ?_
@@ -2489,7 +2490,7 @@ theorem torus_size_cell {d : ℕ} (V : Submodule ℚ (Fin d → ℚ)) {ι κ : T
     ∑ k ∈ F, c k * torusCharacter (n k) x
   have hg : Continuous g := continuous_finsetSum _ fun k _ =>
     continuous_const.mul ((continuous_torusCharacter (n k)).comp continuous_subtype_val)
-  set fq : ι → ℝ := fun k => ∑ i, (n k i : ℝ) * ξ i
+  set! fq : ι → ℝ := fun k => ∑ i, (n k i : ℝ) * ξ i
   -- the Haar side
   have hH : ((∫ x, ‖g x‖ ^ 2 ∂μ : ℝ) : ℂ) = ∑ k ∈ F, ∑ k' ∈ F,
       (if n k - n k' ∈ (rationalIntegerIntersection V) then c k * starRingEnd ℂ (c k') else 0) := by
@@ -2500,8 +2501,8 @@ theorem torus_size_cell {d : ℕ} (V : Submodule ℚ (Fin d → ℚ)) {ι κ : T
     refine Finset.sum_congr rfl fun k _ => Finset.sum_congr rfl fun k' _ => ?_
     rw [map_mul]; ring
   -- the cell side in exponential form
-  set c' : ι → ℂ := fun k => c k * (Real.fourierChar (fq k * s₀) : ℂ)
-  set φ : ι → ℝ := fun k => 2 * Real.pi * r * fq k
+  set! c' : ι → ℂ := fun k => c k * (Real.fourierChar (fq k * s₀) : ℂ)
+  set! φ : ι → ℝ := fun k => 2 * Real.pi * r * fq k
   have hpt : ∀ t : ℝ, ∑ k ∈ F, c k * torusCharacter (n k) (torusMk fun i => ξ i * (s₀ + r * t)) =
       ∑ k ∈ F, c' k * Complex.exp (Complex.I * (φ k * t : ℝ)) := by
     intro t
@@ -3534,11 +3535,11 @@ theorem three_core_main (hr : 0 < r) (hw : IsAdmissibleLocalKernel κ a₀ r w) 
         (∫ y in Set.Ico a₀ (a₀ + r), ‖S y‖) *
           ∑ n ∈ N, ‖∫ u, dualSlice V Rm l g m₀ u * starRingEnd ℂ (torusCharacter n u)
             ∂torusAnnihilatorHaar (rationalIntegerIntersection V)‖ := by
-  set a : (Fin d → ℤ) → ℂ := fun n => ∫ u, dualSlice V Rm l g m₀ u *
+  set! a : (Fin d → ℤ) → ℂ := fun n => ∫ u, dualSlice V Rm l g m₀ u *
     starRingEnd ℂ (torusCharacter n u) ∂torusAnnihilatorHaar (rationalIntegerIntersection V)
-  set s : ℤ → ℂ := fun k => ∫ y in Set.Ico a₀ (a₀ + r), S y *
+  set! s : ℤ → ℂ := fun k => ∫ y in Set.Ico a₀ (a₀ + r), S y *
     Complex.exp (2 * Real.pi * Complex.I * k * y / r)
-  set M : (Fin d → ℤ) → ℤ → ℂ := fun n k => (r : ℂ)⁻¹ * anchorK a₀ r w l x₀ (αN n) β₀ k
+  set! M : (Fin d → ℤ) → ℤ → ℂ := fun n k => (r : ℂ)⁻¹ * anchorK a₀ r w l x₀ (αN n) β₀ k
   set Ce := r⁻¹ * entryC κ J A (r * β₀)
   have hCe : 0 ≤ Ce := mul_nonneg (inv_nonneg.mpr hr.le) (entryC_nonneg hr hw J A _)
   set S1 := ∫ y in Set.Ico a₀ (a₀ + r), ‖S y‖
@@ -3562,7 +3563,7 @@ theorem three_core_main (hr : 0 < r) (hw : IsAdmissibleLocalKernel κ a₀ r w) 
   set Kk := windowSet N (fun n => r * αN n) I
   set F : ℤ → ℂ := fun k => ∑ n ∈ N, a n * (M n k * s k)
   -- split into the windows and the tail
-  set Ft : ℤ → ℂ := fun k => if k ∈ Kk then 0 else F k
+  set! Ft : ℤ → ℂ := fun k => if k ∈ Kk then 0 else F k
   have hsplitF : ∀ k, F k = (if k ∈ Kk then F k else 0) + Ft k := fun k => by
     simp only [Ft]; split_ifs <;> simp
   have hwin : HasSum (fun k => if k ∈ Kk then F k else 0) (∑ k ∈ Kk, F k) := by
@@ -3744,7 +3745,7 @@ theorem anchoredForm_phase_approx {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0
   have hcoordl : ∀ q : ℝ × ℝ, realProgressionCoordinate l (T q) = q.1 := fun q => by
     rw [hT]; simp only [realProgressionCoordinate, L]; ring
   set Kw := localKernelSupBound κ
-  set G : ι → ℝ × ℝ → ℂ := fun p q => w (q.1 - L * q.2, q.2) * Sd q.1 *
+  set! G : ι → ℝ × ℝ → ℂ := fun p q => w (q.1 - L * q.2, q.2) * Sd q.1 *
     (C p * (Real.fourierChar (α p * (q.1 - x₀) + β p * q.2) : ℂ))
   have hG : ∀ p q, G p q = w (q.1 - L * q.2, q.2) * Sd q.1 *
     (C p * (Real.fourierChar (α p * (q.1 - x₀) + β p * q.2) : ℂ)) := fun _ _ => rfl
@@ -3803,7 +3804,7 @@ theorem anchoredForm_phase_approx {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0
     rw [integral_const_mul]
     ring
   -- the error
-  set E : ℝ × ℝ → ℂ := fun q => w (q.1 - L * q.2, q.2) * Sd q.1 *
+  set! E : ℝ × ℝ → ℂ := fun q => w (q.1 - L * q.2, q.2) * Sd q.1 *
     (Fc (T q) - ∑ p ∈ P, C p * (Real.fourierChar (α p * (q.1 - x₀) + β p * q.2) : ℂ))
   have hpt : ∀ q, w (T q) * (Fc (T q) * Sd (realProgressionCoordinate l (T q))) =
       E q + ∑ p ∈ P, G p q := by

@@ -84,7 +84,7 @@ theorem polynomial_derivative_step_coeff_le {p : Polynomial ℝ} {d : ℕ} {M : 
     have := hp (i - 2)
     push_cast at hder hsub
     rw [mul_comm (p.coeff (i - 2 + 1))]
-    nlinarith
+    nlinarith only [this, hder, hsub]
   · simp only [abs_zero]
     positivity
 
@@ -159,7 +159,7 @@ The explicit order four is sufficient for the source's existential fixed-order r
 theorem iteratedDeriv_expNegInvGlue_gevrey_bound (n : ℕ) (x : ℝ) :
     |iteratedDeriv n expNegInvGlue x| ≤ (4 * ((n : ℝ) + 1)) ^ (4 * (n + 1)) := by
   have hn : 0 ≤ (n : ℝ) := Nat.cast_nonneg _
-  have hb : 1 ≤ 4 * ((n : ℝ) + 1) := by linarith
+  have hb : 1 ≤ 4 * ((n : ℝ) + 1) := by linarith only
   have hf : ((2 * n).factorial : ℝ) ≤ (4 * ((n : ℝ) + 1)) ^ (2 * n) := by
     calc
       _ ≤ ((2 * n : ℕ) : ℝ) ^ (2 * n) := by exact_mod_cast Nat.factorial_le_pow (2 * n)
@@ -189,7 +189,7 @@ theorem gevreyBump_zero {x : ℝ} (hx : x ∉ Set.Ioo (0 : ℝ) 1) : gevreyBump 
   · simp [gevreyBump, expNegInvGlue.zero_of_nonpos h]
   · have h' : 1 ≤ x := by
       simp only [Set.mem_Ioo, not_and_or, not_lt] at hx
-      rcases hx with hx | hx <;> linarith
+      rcases hx with hx | hx <;> linarith only [h, hx]
     simp [gevreyBump, expNegInvGlue.zero_of_nonpos (show 1 - x ≤ 0 by linarith)]
 
 theorem gevreyBump_contDiff {n : ℕ∞} : ContDiff ℝ n gevreyBump := by
@@ -205,7 +205,7 @@ theorem gevreyBump_hasCompactSupport : HasCompactSupport gevreyBump := by
 theorem iteratedDeriv_gevreyBump_bound (n : ℕ) (x : ℝ) :
     |iteratedDeriv n gevreyBump x| ≤ (8 * ((n : ℝ) + 1)) ^ (8 * (n + 1)) := by
   let B : ℝ := 8 * ((n : ℝ) + 1)
-  have hB : 1 ≤ B := by dsimp [B]; have := Nat.cast_nonneg (α := ℝ) n; linarith
+  have hB : 1 ≤ B := by dsimp [B]; have := Nat.cast_nonneg (α := ℝ) n; linarith only
   have hder (i : ℕ) (hi : i ≤ n) (y : ℝ) :
       |iteratedDeriv i expNegInvGlue y| ≤ B ^ (4 * (i + 1)) := by
     refine (iteratedDeriv_expNegInvGlue_gevrey_bound i y).trans ?_
@@ -362,13 +362,13 @@ noncomputable def gevreyPartition (x : ℝ) : ℝ :=
   gevreyStep (2 * x + 3 / 2) - gevreyStep (2 * x - 1 / 2)
 
 theorem gevreyPartition_nonneg (x : ℝ) : 0 ≤ gevreyPartition x := by
-  exact sub_nonneg.mpr (gevreyStep_monotone (by linarith))
+  exact sub_nonneg.mpr (gevreyStep_monotone (by linarith only))
 
 theorem gevreyPartition_le_one (x : ℝ) : gevreyPartition x ≤ 1 := by
   have h₁ := (gevreyStep_mem_Icc (2 * x + 3 / 2)).2
   have h₂ := (gevreyStep_mem_Icc (2 * x - 1 / 2)).1
   dsimp [gevreyPartition]
-  linarith
+  linarith only [h₁, h₂]
 
 theorem gevreyPartition_zero_left {x : ℝ} (hx : x ≤ -(3 / 4)) : gevreyPartition x = 0 := by
   rw [gevreyPartition, gevreyStep_zero (show 2 * x + 3 / 2 ≤ 0 by linarith),

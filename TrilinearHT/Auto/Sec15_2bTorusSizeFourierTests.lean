@@ -66,7 +66,7 @@ theorem cell_average_of_approx_Ico {P Q : ℝ → ℂ} {η : ℝ} (hP : Continuo
         filter_upwards [ae_restrict_mem measurableSet_Icc, ae_restrict_of_ae hne] with t ht ht1
         have h1 := h t ⟨ht.1, lt_of_le_of_ne ht.2 ht1⟩
         have h0 : 0 ≤ ‖P t‖ := norm_nonneg _
-        nlinarith [sq_nonneg (‖Q t‖ - η)]
+        nlinarith only [sq_nonneg (‖Q t‖ - η), h1, h0]
     _ = _ := by
         rw [intervalIntegral.integral_add (hQi.const_mul 2) intervalIntegrable_const,
           intervalIntegral.integral_const_mul, intervalIntegral.integral_const]
@@ -93,7 +93,7 @@ theorem torus_size_phys_Ico {d : ℕ} (V : Submodule ℚ (Fin d → ℚ)) {ι κ
         ∑ k ∈ F, c k * torusCharacter (n k) x) 2
         (torusAnnihilatorHaar (rationalIntegerIntersection V))).toReal ≤
       Real.sqrt 2 * Real.sqrt (∑ i ∈ s, (A i + Dst ^ (-30 : ℤ) * sD i) ^ 2) := by
-  set P : ℝ → ℂ := fun t => ∑ k ∈ F, c k *
+  set! P : ℝ → ℂ := fun t => ∑ k ∈ F, c k *
     torusCharacter (n k) (torusMk fun i => ξ i * ((a₀ - xs) + r * t))
   have hPc : Continuous P := by
     refine continuous_finsetSum _ fun k _ => continuous_const.mul ?_
@@ -334,7 +334,7 @@ theorem torus_floor_budget {ι : Type*} (s : Finset ι) (sv : ι → ℝ) {Dst �
     inv_anti₀ (by positivity) (pow_le_pow_right₀ hD (by norm_num))
   have hi150 : 0 < (Dst ^ 150)⁻¹ := by positivity
   constructor
-  · have h2 : ((Dst ^ 150)⁻¹ + τ) ^ 2 ≤ 4 * ((Dst ^ 150)⁻¹) ^ 2 := by nlinarith
+  · have h2 : ((Dst ^ 150)⁻¹ + τ) ^ 2 ≤ 4 * ((Dst ^ 150)⁻¹) ^ 2 := by nlinarith only [hτ0, hτ, h300]
     calc (((Dst ^ 150)⁻¹ + τ) * Sα) ^ 2 = ((Dst ^ 150)⁻¹ + τ) ^ 2 * Sα ^ 2 := by ring
       _ ≤ 4 * ((Dst ^ 150)⁻¹) ^ 2 * (Dst * (Dst ^ 60 * ∑ i ∈ s, ((Dst ^ 30)⁻¹ * sv i) ^ 2)) :=
           mul_le_mul h2 hSα (sq_nonneg _) (by positivity)
@@ -376,7 +376,7 @@ theorem torus_size_final {ι : Type*} (s : Finset ι) (a sv : ι → ℝ) {Dst a
     have h2 : 0 ≤ (Dst ^ 59)⁻¹ * sv i := mul_nonneg (by positivity) (hs i)
     have h3 : 0 ≤ (Dst ^ 30)⁻¹ * sv i := mul_nonneg (by positivity) (hs i)
     have := ha i
-    nlinarith
+    nlinarith only [h1, h2, this]
   have h9 : Real.sqrt (∑ i ∈ s, (2 * (a i + (Dst ^ 30)⁻¹ * sv i) +
       (Dst ^ 2) ^ (-30 : ℤ) * (Dst * sv i)) ^ 2) ≤ 3 * Real.sqrt X := by
     rw [show 3 * Real.sqrt X = Real.sqrt (9 * X) by
@@ -387,7 +387,7 @@ theorem torus_size_final {ι : Type*} (s : Finset ι) (a sv : ι → ℝ) {Dst a
     exact Finset.sum_le_sum hterm
   have hbX : ∑ i ∈ s, ((Dst ^ 30)⁻¹ * sv i) ^ 2 ≤ X := Finset.sum_le_sum fun i _ => by
     have := ha i; have h3 : 0 ≤ (Dst ^ 30)⁻¹ * sv i := mul_nonneg (by positivity) (hs i)
-    nlinarith
+    nlinarith only [this, h3]
   have heX : e ≤ Real.sqrt X := Real.le_sqrt_of_sq_le (he.trans hbX)
   have hs2 : Real.sqrt 2 ≤ 3 / 2 := by
     rw [Real.sqrt_le_left (by norm_num)]; norm_num
@@ -397,7 +397,7 @@ theorem torus_size_final {ι : Type*} (s : Finset ι) (a sv : ι → ℝ) {Dst a
     calc Real.sqrt 2 * _ ≤ Real.sqrt 2 * (3 * Real.sqrt X) :=
           mul_le_mul_of_nonneg_left h9 (Real.sqrt_nonneg _)
       _ = _ := by ring
-  nlinarith
+  nlinarith only [he0, ha', heX, hs2, hPX]
 
 namespace ModeSystem
 variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
@@ -611,8 +611,8 @@ theorem trunc_tiny_huge (hA6 : 6 ≤ S.A0) (hBA : S.Bstar ≤ S.A0) {Kf : ℕ}
       have e : 2 / (2 * Real.pi * ModeSchedule.Lh h' / T) = T / ModeSchedule.Lh h' / Real.pi := by
         field_simp
       rw [e, div_le_iff₀ Real.pi_pos]
-      have : 1 ≤ 2 * Real.pi * Real.pi := by nlinarith [Real.pi_gt_three]
-      nlinarith
+      have : 1 ≤ 2 * Real.pi * Real.pi := by nlinarith only [Real.pi_gt_three]
+      nlinarith only [hpos, this]
     exact h2.trans (mul_le_mul_of_nonneg_left h1 (by positivity))
 
 open Classical in
@@ -691,7 +691,7 @@ theorem torus_size_of_dichotomy {b : ℤ} {J I : ℤ × ℤ} (hJ : J.1 = b - 2 *
   obtain ⟨hfl1, hfl2⟩ := torus_floor_budget s (fun E => ∑ m ∈ E, ‖c m‖) hD1 hτ0 hτ hSα2
   -- the cell data
   set r := dyadicGridLength Gd I.1 with hr_def
-  set a₀ := dyadicGridLeft Gd I.1 I.2 with ha₀
+  set! a₀ := dyadicGridLeft Gd I.1 I.2 with ha₀
   have hcell : dyadicGridCell Gd I.1 I.2 = Set.Ico a₀ (a₀ + r) := rfl
   have hxs' : xs ∈ Set.Ico a₀ (a₀ + r) := hxs
   have hbox : (S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ S.Eh 0 := by
@@ -720,7 +720,7 @@ theorem torus_size_of_dichotomy {b : ℤ} {J I : ℤ × ℤ} (hJ : J.1 = b - 2 *
     rw [← e] at h3
     linarith [(abs_le.mp h1).1]
   -- the cell-average budget
-  set aE : Finset Ms.Md → ℝ := fun E => ‖∑ m ∈ E, c m • Ms.cellMode I m‖ / Real.sqrt r with haE
+  set! aE : Finset Ms.Md → ℝ := fun E => ‖∑ m ∈ E, c m • Ms.cellMode I m‖ / Real.sqrt r with haE
   have haE0 : ∀ E, 0 ≤ aE E := fun E => div_nonneg (norm_nonneg _) (Real.sqrt_nonneg _)
   have hXA : 2 * (r⁻¹ * ∫ y in a₀..a₀ + r, ‖∑ x ∈ Fsel, c x.1 * Ms.wave x.1 y‖ ^ 2) +
       2 * (((S.Dstar ^ 150)⁻¹ + cutTail Ms.zc.dim Ms.δc Kf) * Sα) ^ 2 ≤
@@ -744,7 +744,7 @@ theorem torus_size_of_dichotomy {b : ℤ} {J I : ℤ × ℤ} (hJ : J.1 = b - 2 *
         (mul_nonneg (by positivity) (Finset.sum_nonneg fun _ _ => norm_nonneg _))
     have h4 : 0 ≤ ∑ E ∈ s, aE E ^ 2 := Finset.sum_nonneg fun E _ => sq_nonneg _
     rw [h2]
-    linarith
+    linarith only [hfl1, h1, h3, h4]
   have hcS : ∑ p ∈ frequencyBox Ms.zc.dim (2 ^ (Kf + 1)) ×ˢ Fsel,
       ‖cc p.1 * (Real.fourierChar (∑ i, (p.1 i : ℝ) * (Ms.zc.θ i * xs)) : ℂ) *
         (c p.2.1 * (Real.fourierChar (Ms.phase p.2.1 xs) : ℂ))‖ ≤
@@ -781,7 +781,7 @@ theorem torus_size_of_dichotomy {b : ℤ} {J I : ℤ × ℤ} (hJ : J.1 = b - 2 *
     (fun E _ => mul_nonneg (by norm_num) (add_nonneg (haE0 E)
       (mul_nonneg (by positivity) (Finset.sum_nonneg fun _ _ => norm_nonneg _))))
     (fun E _ => mul_nonneg hDp.le (Finset.sum_nonneg fun _ _ => norm_nonneg _))
-    (one_le_pow₀ hD1 : (1 : ℝ) ≤ S.Dstar ^ 2) (hscard.trans (by nlinarith)) hεD hXA hcS
+    (one_le_pow₀ hD1 : (1 : ℝ) ≤ S.Dstar ^ 2) (hscard.trans (by nlinarith only [hD])) hεD hXA hcS
   exact torus_size_final s aE (fun E => ∑ m ∈ E, ‖c m‖) hD1 haE0
     (fun E => Finset.sum_nonneg fun _ _ => norm_nonneg _)
     (mul_nonneg hτ0 (Finset.sum_nonneg fun _ _ => norm_nonneg _)) hP hstep1 hfl2
@@ -865,14 +865,14 @@ theorem Tt_ge_Lh {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK �
     have h1 : ModeSchedule.Lh D.S.Jstar ≤ (D.S.Eh D.S.Jstar * ModeSchedule.Lh D.S.Jstar) ^ 2 :=
       hEL.trans (le_self_pow₀ (le_trans hLJ hEL) (by norm_num))
     have h2 : 0 ≤ (D.S.Eh D.S.Jstar * ModeSchedule.Lh D.S.Jstar) ^ 2 := sq_nonneg _
-    nlinarith
+    nlinarith only [hH, hLJ, hD4, hEL]
   have hΞ : 4 * Real.pi * D.S.Dstar ^ 200 ≤ D.S.Ξ := by
     have hpi : Real.pi < 4 := Real.pi_lt_four
     have h1 : D.S.Dstar ^ 4 ≤ D.S.Dstar ^ 800 := pow_le_pow_right₀ hD1 (by norm_num)
     have h2 : 0 < D.S.Dstar ^ 200 := by positivity
     unfold ModeSchedule.Ξ
     rw [show (1000 : ℕ) = 800 + 200 from rfl, pow_add]
-    nlinarith
+    nlinarith only [hD4, hpi, h1, h2]
   have hΞ0 : 0 ≤ 4 * Real.pi * D.S.Dstar ^ 200 := by positivity
   calc 4 * Real.pi * ModeSchedule.Lh h' * D.S.Dstar ^ 200 =
         ModeSchedule.Lh h' * (4 * Real.pi * D.S.Dstar ^ 200) := by ring
@@ -1772,7 +1772,7 @@ theorem Tt_ge_U0 {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK �
     have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 250 := one_le_pow₀ hD1
     have h2 : D.S.Dstar ^ 251 ≤ D.S.Dstar ^ 1000 := pow_le_pow_right₀ hD1 (by norm_num)
     rw [pow_succ] at h2
-    nlinarith
+    nlinarith only [hD, h1, h2]
   have hU0 : 0 ≤ D.U0 + 1 := by unfold U0; positivity
   calc ModeSchedule.Lh h' * (D.U0 + 1) ≤ D.S.H * D.S.Ξ :=
         mul_le_mul (hL.trans hLH) hΞ hU0 (by linarith)
@@ -1991,7 +1991,7 @@ theorem four_core_test {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA C
   have hHU : 1 ≤ D.SP.Tt / ModeSchedule.Lh (h - D.SP.Δ) - D.U0 := by
     have h1 := D.Tt_ge_U0 hV hCT hd2 hD hB hQ hSP hh'
     rw [le_sub_iff_add_le, le_div_iff₀ hLh]
-    linarith
+    linarith only [h1]
   have key := four_core_principal_of hr hw (D.Ms 0 G).zc hδ hδ'' ρ' hρ'' hQ0 hQC hCm
     (L := 6 ^ (h - D.SP.Δ)) (pow_pos (by norm_num) _) Kt ⟨hxs.1, hxs.2.le⟩
     (fun j => (D.Ms j G).slope (a j).1 xs) Fsel
@@ -2045,7 +2045,7 @@ theorem four_core_test {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA C
         (Finset.sum_nonneg fun _ _ => norm_nonneg _))
       ((le_of_eq Finset.sum_empty.symm).trans (hcmN ∅))
   have hτm : 0 ≤ 1 + multTail (D.Ms 0 G).zc.dim δ'' D.S.Q0 Cm Kt := by
-    have := (norm_nonneg _).trans (hcmT 0); linarith
+    have := (norm_nonneg _).trans (hcmT 0); linarith only [this]
   have hM : 0 ≤ max ((Real.pi * kerC κ' 0 + 2 * (2 * 4 * (2 * 4 * (2 * Real.pi * 4 *
       kernelDerivBound κ' 0)))) * (D.SP.Tt⁻¹ / ModeSchedule.Lh (h - D.SP.Δ)))
       (kerC κ' J * ((D.SP.Tt / ModeSchedule.Lh (h - D.SP.Δ) - D.U0) ^ J)⁻¹) := by
@@ -2250,7 +2250,7 @@ theorem three_cosets_of_dichotomy {d : ℕ} (V : Submodule ℚ (Fin d → ℚ)) 
   set K := rationalIntegerIntersection V with hK
   set Bxs := frequencyBox (d + d) (2 ^ (Kt + 1)) ×ˢ Fintype.piFinset
     (fun j => frequencyBox d (2 ^ (Kt + 1)) ×ˢ F j) with hBxs
-  set P := Bxs.image (expP1 L QL n) with hP
+  set! P := Bxs.image (expP1 L QL n) with hP
   -- sizes of the expansion frequencies
   have hrole : ∀ x ∈ Bxs, ∀ j i,
       |((((QL : ℤ) • (x.2 j).1 + n j (x.2 j).2) i : ℤ) : ℝ)| ≤ 2 * B := by
@@ -2432,8 +2432,8 @@ theorem Valid.box64_lt_H (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hd2 
         linarith
     _ ≤ 27 * S.Dstar ^ 4 * (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := by
         have : S.Eh S.Jstar * S.Eh S.Jstar ≤ (S.Eh S.Jstar * Lh S.Jstar) ^ 2 := by
-          nlinarith [mul_le_mul_of_nonneg_left hL hEJ]
-        nlinarith
+          nlinarith only [mul_le_mul_of_nonneg_left hL hEJ, hA, hE1]
+        nlinarith only [hD4, this]
 
 end ModeSchedule
 
@@ -2470,7 +2470,7 @@ theorem box_dichotomy64 {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA 
   have hJst : D.SP.Jst = D.S.Jstar := by rw [hSP]; rfl
   have hH2 := hV.two_le_H hd2 hD hB hQ
   have hHn1 : 1 ≤ D.SP.Hn := by rw [hHn]; exact Nat.le_floor (by norm_num; linarith)
-  have hT : 0 < D.SP.Tt := by rw [hTt]; linarith [hV.one_le_T (by omega) hd2 hD hB hQ]
+  have hT : 0 < D.SP.Tt := by rw [hTt]; linarith only [hV.one_le_T (by omega) hd2 hD hB hQ]
   have hL : 0 < ModeSchedule.Lh (h - D.SP.Δ) := by unfold ModeSchedule.Lh; positivity
   obtain ⟨-, -, -, hdich⟩ := D.frequency_dichotomy I l G hgood hHn1 hT
     (D.tinySmall_of_valid hV hCT hd2 hD hB hQ hSP hdim _) hL
@@ -2621,7 +2621,7 @@ theorem three_cosets {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT 
   have hT := D.Tt_ge_U0 hV hCT hd2 hD hB hQ hSP hh'
   have hU0 : 0 ≤ D.U0 := by unfold U0; positivity
   have hH : 1 ≤ D.SP.Tt / ModeSchedule.Lh (h - D.SP.Δ) := by
-    rw [le_div_iff₀ hLh]; nlinarith
+    rw [le_div_iff₀ hLh]; nlinarith only [hLh, hT, hU0]
   have hγT : ∑ j : Fin 4, ((j : ℕ) : ℝ) * (if j = l then 0 else a j) -
       ((l : ℕ) : ℝ) * ∑ j, (if j = l then 0 else a j) =
       threeT l a := by
@@ -2776,23 +2776,23 @@ theorem three_core_main_l2 (hr : 0 < r) (hw : IsAdmissibleLocalKernel κ a₀ r 
   set G := W * ∏ i ∈ Finset.univ.erase l, (eLpNorm (g i) 2
     (torusAnnihilatorHaar (rationalIntegerIntersection V))).toReal with hG
   have hG0 : 0 ≤ G := mul_nonneg hW (Finset.prod_nonneg fun _ _ => ENNReal.toReal_nonneg)
-  set s : ℤ → ℂ := fun k => ∫ y in Set.Ico a₀ (a₀ + r), S y *
+  set! s : ℤ → ℂ := fun k => ∫ y in Set.Ico a₀ (a₀ + r), S y *
     Complex.exp (2 * Real.pi * Complex.I * k * y / r) with hs
   set B2 := Real.sqrt (r * ∫ y in a₀..a₀ + r, ‖S y‖ ^ 2) with hB2
   have hbes : ∀ K : Finset ℤ, Real.sqrt (∑ k ∈ K, ‖s k‖ ^ 2) ≤ B2 := fun K =>
     Real.sqrt_le_sqrt (cell_coeff_bessel hr S hS2 K)
-  set S1 := ∫ y in Set.Ico a₀ (a₀ + r), ‖S y‖ with hS1
+  set! S1 := ∫ y in Set.Ico a₀ (a₀ + r), ‖S y‖ with hS1
   have hS10 : 0 ≤ S1 := setIntegral_nonneg measurableSet_Ico fun _ _ => norm_nonneg _
-  set aN : (Fin d → ℤ) → ℂ := fun n => ∫ u, dualSlice V Rm l g m₀ u *
+  set! aN : (Fin d → ℤ) → ℂ := fun n => ∫ u, dualSlice V Rm l g m₀ u *
     starRingEnd ℂ (torusCharacter n u) ∂torusAnnihilatorHaar (rationalIntegerIntersection V)
-  set SA := ∑ n ∈ N, ‖aN n‖ with hSA
+  set! SA := ∑ n ∈ N, ‖aN n‖ with hSA
   have hSA0 : 0 ≤ SA := Finset.sum_nonneg fun _ _ => norm_nonneg _
   set c : (Fin d → ℤ) → ℝ := fun n => r * αN n with hc
   set M := Ce * 2 ^ (A + 4) * ∑ i ∈ Finset.range (I + 1), ((2 : ℝ) ^ i)⁻¹ ^ (A + 1) *
     (G * Real.sqrt (∑ k ∈ (windowSet N c I).filter
       (fun k : ℤ => ∃ n ∈ N, |(k : ℝ) + -c n| ≤ 2 ^ i), ‖s k‖ ^ 2)) with hM
   set T := Ce * 2 ^ (A + 4) * (2 * ((2 : ℝ) ^ (I + 1))⁻¹ ^ (A + 1)) * (G * B2) with hT
-  set C0 := Ce * S1 * SA * (3 * N.card + 12) with hC0
+  set! C0 := Ce * S1 * SA * (3 * N.card + 12) with hC0
   have hC00 : 0 ≤ C0 := by positivity
   -- the bound at every larger shell cutoff
   have hstep : ∀ I', I ≤ I' → ‖∑ n ∈ N, aN n * anchorP r w l S x₀ (αN n) β₀‖ ≤
@@ -2843,7 +2843,8 @@ theorem three_core_main_l2 (hr : 0 < r) (hw : IsAdmissibleLocalKernel κ a₀ r 
             _ = _ := by rw [hX1]; ring
         rw [e]
         have hA' : ((2 : ℝ) ^ I')⁻¹ ^ A ≤ 1 := pow_le_one₀ hq0 hq
-        have : ((2 : ℝ) ^ I')⁻¹ * (2 + ((2 : ℝ) ^ I')⁻¹) ≤ 3 * ((2 : ℝ) ^ I')⁻¹ := by nlinarith
+        have : ((2 : ℝ) ^ I')⁻¹ * (2 + ((2 : ℝ) ^ I')⁻¹) ≤ 3 * ((2 : ℝ) ^ I')⁻¹ := by
+          nlinarith only [hq, hq0]
         calc ((2 : ℝ) ^ I')⁻¹ ^ A * (((2 : ℝ) ^ I')⁻¹ * (2 + ((2 : ℝ) ^ I')⁻¹)) ≤
             1 * (3 * ((2 : ℝ) ^ I')⁻¹) := mul_le_mul hA' this (by positivity) (by norm_num)
           _ = _ := one_mul _
@@ -2859,7 +2860,7 @@ theorem three_core_main_l2 (hr : 0 < r) (hw : IsAdmissibleLocalKernel κ a₀ r 
         calc ((2 : ℝ) ^ I')⁻¹ ^ A ≤ ((2 : ℝ) ^ I')⁻¹ ^ 1 := pow_le_pow_of_le_one hq0 hq hA
           _ = _ := pow_one _
       have : 0 ≤ Ce * S1 * SA := by positivity
-      nlinarith
+      nlinarith only [hC0, hC00, hA']
     have hmain : Ce * 2 ^ (A + 4) * ∑ i ∈ Finset.range (I' + 1), ((2 : ℝ) ^ i)⁻¹ ^ (A + 1) *
         (G * Real.sqrt (∑ k ∈ (windowSet N c I').filter
           (fun k : ℤ => ∃ n ∈ N, |(k : ℝ) + -c n| ≤ 2 ^ i), ‖s k‖ ^ 2)) ≤ M + T := by
@@ -2873,7 +2874,7 @@ theorem three_core_main_l2 (hr : 0 < r) (hw : IsAdmissibleLocalKernel κ a₀ r 
     have e : C0 * ((2 : ℝ) ^ I')⁻¹ = Ce * S1 * SA * (3 * N.card) * ((2 : ℝ) ^ I')⁻¹ +
         Ce * S1 * SA * 12 * ((2 : ℝ) ^ I')⁻¹ := by rw [hC0]; ring
     rw [e]
-    linarith
+    linarith only [hr1, hr2, hmain]
   -- letting the shell cutoff tend to infinity
   refine le_of_forall_pos_lt_add fun ε hε => ?_
   obtain ⟨K, hK⟩ := exists_pow_lt_of_lt_one (show 0 < ε / (C0 + 1) by positivity)
@@ -3188,7 +3189,7 @@ theorem three_core_principal_of {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 <
         (r⁻¹ * (∫ y in Set.Ico a₀ (a₀ + r), ‖sideSd z (ρ l) l (f l) y‖) *
           (nearB κ ε₁ + 12 * (kerC κ J * (4 / H) ^ (J - 2)))) := by
   set ζ := centerCut z δ (ρ l) with hζ
-  set ph : ℝ → ℝ := fun y => ((slotCoeff l : ℤ) : ℝ) * centerPhase z (ρ l) y with hph
+  set! ph : ℝ → ℝ := fun y => ((slotCoeff l : ℤ) : ℝ) * centerPhase z (ρ l) y with hph
   have hprod :=
     three_core_Fc_approx_of z hδ hδ'' ρ hρ hQ0 hQ hCm
     hL Kt xs l γ hγl F c n hFl hcl hnl
@@ -3197,7 +3198,7 @@ theorem three_core_principal_of {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 <
     (fun j hj y hy => by rw [Function.update_of_ne hj]; exact hfa j hj y hy)
     (fun j hj y hy => by rw [Function.update_of_ne hj]; exact hfb j hj y hy)
     cc0 hcc0 hccT cm0 hcm0 hcmT cc hccE cm hcmE
-  set Fc : ℝ × ℝ → ℂ := fun zz =>
+  set! Fc : ℝ × ℝ → ℂ := fun zz =>
     (∏ j ∈ Finset.univ.erase l, f j (realProgressionCoordinate j zz)) *
       ((ζ (realProgressionCoordinate l zz) : ℂ) *
         (Real.fourierChar (ph (realProgressionCoordinate l zz)) : ℂ)) with hFc
@@ -3840,7 +3841,7 @@ theorem three_core_test {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA 
   have hH4 : 4 ≤ D.SP.Tt / ModeSchedule.Lh (h - D.SP.Δ) - D.U0 := by
     have h1 := D.Tt_ge_U0_four hV hCT hd2 hD hB hQ hSP hh'
     rw [le_sub_iff_add_le, le_div_iff₀ hLh]
-    linarith
+    linarith only [h1]
   have hε₁ : 0 ≤ D.SP.Tt⁻¹ / ModeSchedule.Lh (h - D.SP.Δ) :=
     div_nonneg (inv_nonneg.mpr hT0.le) hLh.le
   have key := three_core_averaged_of hr hw (D.Ms 0 G).zc hδ hδ'' hdδ hδ8 ρc hρc hQ0 hQC hCm0 hCm
@@ -3954,7 +3955,8 @@ theorem three_core_test {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA 
       have := profR_nonneg hδ'' ((D.Ms 0 G).zc.dim + (D.Ms 0 G).zc.dim + 1)
       positivity
     have h1τ : 0 ≤ (1 + multTail (D.Ms 0 G).zc.dim δ'' D.S.Q0 Cm Kt) *
-        (1 + cutTail (D.Ms 0 G).zc.dim δ Kt) := mul_nonneg (by linarith) (by linarith)
+        (1 + cutTail (D.Ms 0 G).zc.dim δ Kt) :=
+      mul_nonneg (by linarith only [hτm]) (by linarith only [hτc])
     have hQW := mul_le_mul_of_nonneg_left
       (Finset.prod_le_prod₀ (fun _ _ => ENNReal.toReal_nonneg) hG) h1τ
     have hWf0 : 0 ≤ (1 + multTail (D.Ms 0 G).zc.dim δ'' D.S.Q0 Cm Kt) *
@@ -4010,7 +4012,7 @@ theorem three_core_test {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA 
         rw [hQsum]; simp only [hξ]; ring
       have h2 : (0 : ℝ) ≤ 2 ^ i := by positivity
       rw [e]
-      exact hk₁.trans (by linarith)
+      exact hk₁.trans (by linarith only [h2])
   · rw [hfvj j hj, hρcj j hj, hFj j hj, Finset.sum_map, Finset.sum_map]
     simp only [Function.Embedding.some_apply, sideOptC, sideOptN, Option.elim, hnnj j hj, hcα,
       hj, ↓reduceIte]
@@ -4060,7 +4062,7 @@ theorem prod_add_mul_le {ι : Type*} (s : Finset ι) {a S : ι → ℝ} {τ : �
           mul_le_mul_of_nonneg_left ih' (add_nonneg hak (mul_nonneg hτ hSk))
       _ ≤ a k * A + ((1 + τ) ^ (s.card + 1) - 1) * (S k * B) := by
           rw [pow_succ, hq1]
-          nlinarith [h1, h2]
+          nlinarith only [h1, h2]
 
 /-- A four-core kernel sample is at most the constant `C₀` of `fourK_mu_nu` (`μ ≤ 1`). -/
 theorem fourK_le_fourKC {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w : ℝ × ℝ → ℂ}
@@ -4290,21 +4292,21 @@ theorem expP_fullBox (S : ModeSchedule) (hA6 : 6 ≤ S.A0) (hBA : S.Bstar ≤ S.
   have hLB : (6 : ℝ) ^ h' * 2 ^ (Kt + 1) ≤ S.Eh h' := by
     refine le_trans ?_ hQL
     have h0 : (0 : ℝ) ≤ 6 ^ h' * 2 ^ (Kt + 1) := by positivity
-    nlinarith
+    nlinarith only [hQ1, h0]
   have hD5 : 10 + 6 * S.Dstar ≤ S.Dstar ^ 5 := by
     have h4 : (16 : ℝ) ≤ S.Dstar ^ 4 :=
       calc (16 : ℝ) = 2 ^ 4 := by norm_num
         _ ≤ S.Dstar ^ 4 := pow_le_pow_left₀ (by norm_num) hD 4
     have : S.Dstar ^ 5 = S.Dstar ^ 4 * S.Dstar := pow_succ _ _
-    nlinarith
+    nlinarith only [hD, h4]
   have hDE := mul_le_mul_of_nonneg_right hD5 hE0
   obtain ⟨h1, -⟩ := expP_entries_le (6 ^ h') (S.Q0 * 6 ^ h') (2 ^ (Kt + 1)) F n hn x hx i
   have h2 := expP_anchor_le (6 ^ h') (S.Q0 * 6 ^ h') (2 ^ (Kt + 1)) F n hn x hx l i
   push_cast at h1 h2
   have hD0 : 0 ≤ S.Dstar * S.Eh h' := mul_nonneg (by linarith) hE0
   constructor
-  · nlinarith
-  · nlinarith
+  · nlinarith only [hD, hE0, hQL, hLB, hD5, h1]
+  · nlinarith only [hE0, hQL, hLB, hD5, h2]
 
 namespace ActiveSetup.BasicFamilies.FamParams
 variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
@@ -4576,10 +4578,10 @@ theorem gauge_err_le {K D τc τm P δ : ℝ} (d : ℕ) (hD1 : 1 ≤ D) (hK : 0 
     mul_le_mul (mul_le_mul_of_nonneg_left hA3 (by norm_num)) hτc' hτc0 (by norm_num)
   have e2 : (1 + τc) ^ 4 * τm ≤ 16 * (D ^ 100)⁻¹ := mul_le_mul hA4 hτm' hτm0 (by norm_num)
   have hsum : 4 * (D ^ 150)⁻¹ + (4 * (1 + τc) ^ 3 * τc + (1 + τc) ^ 4 * τm) ≤
-      52 * (D ^ 100)⁻¹ := by linarith
+      52 * (D ^ 100)⁻¹ := by linarith only [h150, e1, e2]
   have := mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right hsum hP)
     (by positivity : (0 : ℝ) ≤ 2 * K)
-  linarith
+  linarith only [this]
 
 /-- The truncation parts of the core sizes (blueprint `eq:core-numerical`): for `0 ≤ a_j ≤ S_j` and
 tails `τ_c, τ_m ≤ u ≤ 1`, `(1 + τ_m) Π_j (a_j + τ_c S_j) ≤ Π_j a_j + 31 u Π_j S_j`. -/
@@ -4842,7 +4844,7 @@ theorem four_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid 
     · simp only [hpass, ↓reduceIte]
       rw [hfourErr]
       refine hcomb.trans ?_
-      linarith
+      linarith only [h1P]
     · simp only [hpass, ↓reduceIte, zero_add]
       rw [hfourErr]
       have hinner : fourInner (dyadicGridLength A.G I.1) (D.fourQ' G I xs (h - D.SP.Δ) a)
@@ -4863,7 +4865,7 @@ theorem four_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid 
           fun j _ => D.coreSize_le G I xs _ j (by rw [hδc j]; exact hδ) (Fsel j) (n j)
       have h2 := mul_le_mul hFd hPaP hPa0 (mul_nonneg hC1 hu0)
       refine hcomb.trans ?_
-      linarith
+      linarith only [h1P, h2]
   · have hnoref : D.fourRefSet G I xs (h - D.SP.Δ) a = ∅ :=
       Finset.not_nonempty_iff_eq_empty.mp hne
     have key := D.four_core_noref_side hV hCA hd2 hD hB hQ hI G hz hδ hδc hcl hρ hQC hCm0 hCm
@@ -4886,7 +4888,7 @@ theorem four_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid 
         (2 * Real.pi * 4 * kernelDerivBound κ' 0)))) + kerC κ' J) * (D.S.Dstar ^ 100)⁻¹ *
         ∏ j, D.coefSum G I j (Fsel j) := by positivity
     refine key.trans ?_
-    linarith
+    linarith only [hE1, h1P, h2, h3]
 
 end SideInput
 
@@ -4994,8 +4996,8 @@ theorem three_core_noref_of {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) 
       (multNorm z.dim δ'' Q0 Cm * ∏ j, (cutNorm z.dim δ * ∑ k ∈ F j, ‖c j k‖)) *
         (r⁻¹ * (∫ y in Set.Ico a₀ (a₀ + r), ‖f l y‖) *
           (12 * (kerC κ J * (4 / U) ^ (J - 2))))) := by
-  set T := ∑ j : Fin 4, ((j : ℕ) : ℝ) * γ j - ((l : ℕ) : ℝ) * ∑ j, γ j with hTdef
-  set β₀ : ℝ := if U ≤ |r * T| then T else U / r with hβ₀
+  set! T := ∑ j : Fin 4, ((j : ℕ) : ℝ) * γ j - ((l : ℕ) : ℝ) * ∑ j, γ j with hTdef
+  set! β₀ : ℝ := if U ≤ |r * T| then T else U / r with hβ₀
   have hβ₀U : U ≤ |r * β₀| := by
     rw [hβ₀]
     split_ifs with hT
@@ -5065,7 +5067,7 @@ theorem three_core_noref_of {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) 
     hsep nref le_rfl hU4 hnear hfar hJ A 0 hA
   -- the window and the shells above it are bounded by the energy of the side
   have hI2 : 0 ≤ ∫ y in a₀..a₀ + r, ‖f l y‖ ^ 2 :=
-    intervalIntegral.integral_nonneg (by linarith) fun _ _ => by positivity
+    intervalIntegral.integral_nonneg (by linarith only [hr]) fun _ _ => by positivity
   have hwin : ∀ K : Finset ℤ, Real.sqrt (∫ ρ', sideWinE z l (f l) a₀ r K ρ'
       ∂offsetMeasure z.dim) ≤ Real.sqrt (r * ∫ y in a₀..a₀ + r, ‖f l y‖ ^ 2) := fun K => by
     refine Real.sqrt_le_sqrt ?_
@@ -5075,7 +5077,7 @@ theorem three_core_noref_of {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) 
           integral_mono (window_energy_integrable z l hgm hr hL2 K).1 (integrable_const _)
             fun ρ' => hb ρ'
       _ = r * ∫ y in a₀..a₀ + r, ‖f l y‖ ^ 2 := by simp
-  have heC := entryC_le_far hr hw J A (b := r * β₀) (by linarith) hβ₀U
+  have heC := entryC_le_far hr hw J A (b := r * β₀) (by linarith only [hU4]) hβ₀U
   have heC0 := entryC_nonneg hr hw J A (r * β₀)
   have hnear0 : nearB κ 0 = 0 := by simp [nearB]
   rw [hnear0, zero_add] at key
@@ -5092,7 +5094,7 @@ theorem three_core_noref_of {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) 
   have hτ := cutTail_nonneg z.dim hδ Kt
   have hτm : 0 ≤ multTail z.dim δ'' Q0 Cm Kt := by
     unfold multTail; have := profR_nonneg hδ'' (z.dim + z.dim + 1); positivity
-  have hQt0 : 0 ≤ Qt := mul_nonneg (mul_nonneg (by linarith) (by linarith))
+  have hQt0 : 0 ≤ Qt := mul_nonneg (mul_nonneg (by linarith only [hτm]) (by linarith))
     (Finset.prod_nonneg fun _ _ => ENNReal.toReal_nonneg)
   set S2 := Real.sqrt (r * ∫ y in a₀..a₀ + r, ‖f l y‖ ^ 2) with hS2def
   have hS20 : 0 ≤ S2 := Real.sqrt_nonneg _
@@ -5106,7 +5108,7 @@ theorem three_core_noref_of {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) 
     have : (2 : ℝ)⁻¹ ^ (A + 1) ≤ (2 : ℝ)⁻¹ ^ 1 :=
       pow_le_pow_of_le_one (by norm_num) (by norm_num) (by omega)
     norm_num at this ⊢
-    linarith
+    linarith only [this]
   have hT1 : r⁻¹ * entryC κ J A (r * β₀) * 2 ^ (A + 4) * (2 * (2 : ℝ)⁻¹ ^ (A + 1)) *
       (Qt * S2) ≤ r⁻¹ * (entryCU κ J A * (U ^ J)⁻¹) * 2 ^ (A + 4) * (Qt * S2) := by
     have h0 : 0 ≤ r⁻¹ * entryC κ J A (r * β₀) * 2 ^ (A + 4) := by
@@ -5142,7 +5144,7 @@ theorem three_core_noref_of {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) 
     positivity
   have hE0 : 0 ≤ r⁻¹ * (entryCU κ J A * (U ^ J)⁻¹) * 2 ^ (A + 4) * (Qt * S2) :=
     mul_nonneg hc0 (mul_nonneg hQt0 hS20)
-  linarith
+  linarith only [hT1, hW1, hE0]
 
 /-- The constant of the near-coset replacement error: `nearB κ ε ≤ nearBC κ √ε` for `ε ≤ 1`. -/
 noncomputable def nearBC (κ : LocalKernelClass) : ℝ :=
@@ -5164,8 +5166,8 @@ theorem nearB_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w : ℝ ×
       _ ≤ Real.sqrt ε := Real.sqrt_le_sqrt (by nlinarith)
   have h12 : 0 ≤ Real.pi * (12 * kerC κ 2) := by positivity
   have := mul_le_mul_of_nonneg_left hs h12
-  nlinarith [Real.sqrt_nonneg ε, Real.sqrt_nonneg (kerC κ 4),
-    Real.sqrt_nonneg (2 * 4 * (2 * 4 * (2 * Real.pi * 4 * 5 * kernelDerivBound κ 0)))]
+  nlinarith only [Real.sqrt_nonneg ε, Real.sqrt_nonneg (kerC κ 4),
+    Real.sqrt_nonneg (2 * 4 * (2 * 4 * (2 * Real.pi * 4 * 5 * kernelDerivBound κ 0))), hs, h12]
 
 /-- The truncation parts of three core sizes with the multiplier and side-cutoff factor
 `W = (1 + τ_m)(1 + τ_c)` (blueprint `eq:core-numerical`): for `0 ≤ a_j ≤ S_j`, three roles and tails
@@ -5195,8 +5197,8 @@ theorem trunc_core_err3 {ι : Type*} (s : Finset ι) (hs : s.card = 3) {a S : ι
       (by norm_num))) hP0
     linarith
   have hW0 : 0 ≤ (1 + τm) * (1 + τc) := by positivity
-  have hW : (1 + τm) * (1 + τc) ≤ 1 + 3 * u := by nlinarith
-  have hW4 : (1 + τm) * (1 + τc) ≤ 4 := by nlinarith
+  have hW : (1 + τm) * (1 + τc) ≤ 1 + 3 * u := by nlinarith only [hτc0, hτc, hτm, hu1]
+  have hW4 : (1 + τm) * (1 + τc) ≤ 4 := by nlinarith only [hτc0, hτc1, hτm1]
   have e1 := mul_le_mul_of_nonneg_left hq hW0
   have e2 : (1 + τm) * (1 + τc) * ∏ j ∈ s, a j ≤ (1 + 3 * u) * ∏ j ∈ s, a j :=
     mul_le_mul_of_nonneg_right hW hPa0
@@ -5568,20 +5570,20 @@ theorem three_core_noref_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid 
         (D.S.Q0 * 6 ^ (h - D.SP.Δ)) (2 ^ (Kt + 1)) (sideOptF l Fsel) (sideOptC cα) (sideOptN nn)
         (fun j v => cc0 j v *
           (Real.fourierChar (∑ i, (v i : ℝ) * ((D.Ms 0 G).zc.θ i * xs)) : ℂ)) j
-        (M := 1 + cutTail (D.Ms 0 G).zc.dim δ Kt) (by linarith)
+        (M := 1 + cutTail (D.Ms 0 G).zc.dim δ Kt) (by linarith only [hτ0])
         (trunc_cut_sup (ρc j) Kt (cc0 j) (hccT j) (D.Ms 0 G).zc.θ xs
           (D.S.Q0 * 6 ^ (h - D.SP.Δ)))
       have h2 := eLpNorm_charSum_le (⊥ : Submodule ℚ (Fin (D.Ms 0 G).zc.dim → ℚ))
         (sideOptF l Fsel j) (sideOptC cα j) (sideOptN nn j)
       rw [hsum1 j hj] at h2
-      exact h1.trans (mul_le_mul_of_nonneg_left h2 (by linarith))
+      exact h1.trans (mul_le_mul_of_nonneg_left h2 (by linarith only [hτ0]))
     have hτ0 := cutTail_nonneg (D.Ms 0 G).zc.dim hδ Kt
     have hτm0 : 0 ≤ multTail (D.Ms 0 G).zc.dim δ'' D.S.Q0 Cm Kt := by
       unfold multTail
       have := profR_nonneg hδ'' ((D.Ms 0 G).zc.dim + (D.Ms 0 G).zc.dim + 1)
       positivity
     have hW0 : (0 : ℝ) ≤ (1 + multTail (D.Ms 0 G).zc.dim δ'' D.S.Q0 Cm Kt) *
-        (1 + cutTail (D.Ms 0 G).zc.dim δ Kt) := mul_nonneg (by linarith) (by linarith)
+        (1 + cutTail (D.Ms 0 G).zc.dim δ Kt) := mul_nonneg (by linarith only [hτm0]) (by linarith)
     have hQW := mul_le_mul_of_nonneg_left
       (Finset.prod_le_prod₀ (fun _ _ => ENNReal.toReal_nonneg) hG) hW0
     rw [hfvl, hPS, hPN] at key
@@ -5696,11 +5698,11 @@ theorem three_coset_err_le {ι : Type*} (s : Finset ι) (hs : s.card = 3)
     have h2 : 48 * kJ * (D ^ 999)⁻¹ ≤ 48 * kJ * (D ^ 499)⁻¹ :=
       mul_le_mul_of_nonneg_left (inv_anti₀ (by positivity)
         (pow_le_pow_right₀ hD1 (by norm_num))) (by positivity)
-    linarith
+    linarith only [h1, h2]
   have hfar0 : 0 ≤ 12 * (kJ * (4 / H) ^ (J - 2)) := by positivity
   have hsum : NB + 12 * (kJ * (4 / H) ^ (J - 2)) ≤ (nC + 48 * kJ) * (D ^ 499)⁻¹ := by
     have h1 := mul_le_mul_of_nonneg_left hsq hnC
-    linarith
+    linarith only [hNB, hfar, h1]
   have h499 := inv_pow_mul_pow5_le hD1 (k := 499) (by norm_num)
   have hσ0 : 0 ≤ σ := hL1.trans hL1σ
   calc (MN * (CN * ∏ j ∈ s, (CN * S j))) * (L1 * (NB + 12 * (kJ * (4 / H) ^ (J - 2)))) ≤
@@ -5937,7 +5939,7 @@ theorem three_core_ref_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
       G).zc.dim δ Kt) * (∏ j ∈ Finset.univ.erase l, (D.coreSize G I xs (h - D.SP.Δ) j (Fsel j) (n
           j) +
       cutTail (D.Ms 0 G).zc.dim δ Kt * D.coefSum G I j (Fsel j))) :=
-    mul_nonneg (mul_nonneg (by linarith) (by linarith)) hQ0
+    mul_nonneg (mul_nonneg (by linarith only [hτm0]) (by linarith only [hτc0])) hQ0
   have hWf32 : (1 + multTail (D.Ms 0 G).zc.dim (δ / 2) D.S.Q0 Cm Kt) * (1 + cutTail (D.Ms 0
       G).zc.dim δ Kt) * (∏ j ∈ Finset.univ.erase l, (D.coreSize G I xs (h - D.SP.Δ) j (Fsel j) (n
           j) +
@@ -5946,8 +5948,8 @@ theorem three_core_ref_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
     have h1 : 31 * (D.S.Dstar ^ 100)⁻¹ * (∏ j ∈ Finset.univ.erase l, D.coefSum G I j (Fsel j)) ≤ 31
         * (∏ j ∈ Finset.univ.erase l, D.coefSum G I j (Fsel j)) := by
       have := mul_le_mul_of_nonneg_right hu1 hP0
-      linarith
-    exact hWf.trans (by linarith)
+      linarith only [this]
+    exact hWf.trans (by linarith only [hPaP, h1])
   -- the torus-form and gauge errors
   have hT1 : (2 * localKernelSupBound κ' * ((4 * (D.S.Dstar ^ 150)⁻¹ +
       (gaugeErr (D.Ms 0 G).zc.dim δ (δ / 2) +
@@ -5974,7 +5976,7 @@ theorem three_core_ref_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
         (by omega)
     have h2 : ((2 : ℝ) ^ (Iw + 1))⁻¹ ≤ D.U0⁻¹ := inv_anti₀ hU0 hIw
     have h3 : D.U0⁻¹ ≤ (D.S.Dstar ^ 100)⁻¹ := by unfold U0; exact hpow 250 (by norm_num)
-    linarith
+    linarith only [h1, h2, h3]
   have hTail : ((dyadicGridLength A.G I.1)⁻¹ * entryC κ' J Aw (D.threeBeta G I xs (h - D.SP.Δ) l a)
       *
       2 ^ (Aw + 4) * (2 * ((2 : ℝ) ^ (Iw + 1))⁻¹ ^ (Aw + 1)) *
@@ -6087,7 +6089,7 @@ theorem three_core_ref_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
       dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1, ‖augPhys X y‖ ^ 2))) := by ring
       _ = _ := by rw [hσ]
   unfold threePrin
-  linarith
+  linarith only [key', hT1, hTail, hCo, hW, hR]
 
 open Classical in
 /-- Blueprint `eq:core-numerical` (lines 2562-2567) for a three-core tuple on a leaf cell of the
@@ -6199,7 +6201,7 @@ theorem three_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid
       hAw hIw
     by_cases hpass : D.threePasses G I xs (h - D.SP.Δ) l a
     · simp only [hpass, ↓reduceIte]
-      linarith
+      linarith only [hEP, key]
     · simp only [hpass, ↓reduceIte, zero_add]
       -- a discarded tuple with a reference: `|β| < U₀⁻¹`
       have hβ : |D.threeBeta G I xs (h - D.SP.Δ) l a| < D.U0⁻¹ := by
@@ -6280,13 +6282,13 @@ theorem three_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid
             (Aw + 4) * (∏ j ∈ Finset.univ.erase l, D.coefSum G I j (Fsel j)) * (Real.sqrt
                 (dyadicGridLength A.G I.1 * ∫ y in (dyadicGridLeft A.G I.1 I.2)..
       dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1, ‖augPhys X y‖ ^ 2)) * 2) := by
-              linarith
+              linarith only [hsum, h2]
           _ = 4 * 2 ^ (Aw + 4) * entryCU κ' J Aw * (D.S.Dstar ^ 100)⁻¹ * (∏ j ∈ Finset.univ.erase
               l, D.coefSum G I j (Fsel j)) * ((dyadicGridLength A.G I.1)⁻¹ * (Real.sqrt
                   (dyadicGridLength A.G I.1 * ∫ y in (dyadicGridLeft A.G I.1 I.2)..
       dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1, ‖augPhys X y‖ ^ 2))) := by ring
           _ = _ := by rw [hσ]
-      linarith
+      linarith only [key, hprin]
   · -- no reference: discarded
     have hnoref : D.threeRefSet G I xs (h - D.SP.Δ) l a = ∅ :=
       Finset.not_nonempty_iff_eq_empty.mp hne
@@ -6327,7 +6329,8 @@ theorem three_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid
           G).zc.dim δ Kt) ≤ 4 :=
         calc (1 + multTail (D.Ms 0 G).zc.dim (δ / 2) D.S.Q0 Cm Kt) * (1 + cutTail (D.Ms 0 G).zc.dim
             δ Kt) ≤ 2 * 2 :=
-              mul_le_mul (by linarith) (by linarith) (by linarith) (by norm_num)
+              mul_le_mul (by linarith only [hτm1]) (by linarith) (by linarith only [hτc0])
+                (by norm_num)
           _ = 4 := by norm_num
       calc (1 + multTail (D.Ms 0 G).zc.dim (δ / 2) D.S.Q0 Cm Kt) * (1 + cutTail (D.Ms 0 G).zc.dim δ
           Kt) * ((1 + cutTail (D.Ms 0 G).zc.dim δ Kt) ^ 3 * (∏ j ∈ Finset.univ.erase l, D.coefSum G
@@ -6335,7 +6338,7 @@ theorem three_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid
             mul_le_mul hW4 (mul_le_mul_of_nonneg_right h3 hP0) (by positivity) (by norm_num)
         _ = 32 * (∏ j ∈ Finset.univ.erase l, D.coefSum G I j (Fsel j)) := by ring
     have hτc1' : 0 ≤ 1 + cutTail (D.Ms 0 G).zc.dim δ Kt := by linarith
-    have hτm1' : 0 ≤ 1 + multTail (D.Ms 0 G).zc.dim (δ / 2) D.S.Q0 Cm Kt := by linarith
+    have hτm1' : 0 ≤ 1 + multTail (D.Ms 0 G).zc.dim (δ / 2) D.S.Q0 Cm Kt := by linarith only [hτm0]
     have hWn0 : 0 ≤ (1 + multTail (D.Ms 0 G).zc.dim (δ / 2) D.S.Q0 Cm Kt) * (1 + cutTail (D.Ms 0
         G).zc.dim δ Kt) * ∏ j ∈ Finset.univ.erase l, ((1 + cutTail (D.Ms 0 G).zc.dim δ Kt) *
         D.coefSum G I j (Fsel j)) :=
@@ -6406,7 +6409,7 @@ theorem three_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid
       have hfar : 12 * (kerC κ' J * (4 / D.U0) ^ (J - 2)) ≤ 48 * kerC κ' J * D.U0⁻¹ := by
         have h1 := mul_le_mul_of_nonneg_left hpw hkJ
         calc 12 * (kerC κ' J * (4 / D.U0) ^ (J - 2)) ≤ 12 * (kerC κ' J * (4 / D.U0)) := by
-              linarith
+              linarith only [h1]
           _ = 48 * kerC κ' J * D.U0⁻¹ := by rw [div_eq_mul_inv]; ring
       have hfar0 : 0 ≤ 12 * (kerC κ' J * (4 / D.U0) ^ (J - 2)) := by positivity
       have h250 := inv_pow_mul_pow5_le hD1 (k := 250) (by norm_num)
@@ -6436,7 +6439,7 @@ theorem three_core_tuple_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid
     have hEN : 0 ≤ nearBC κ' * (D.S.Dstar ^ 100)⁻¹ * (∏ j ∈ Finset.univ.erase l, D.coefSum G I j
         (Fsel j)) * (Real.sqrt ((dyadicGridLength A.G I.1)⁻¹ * ∫ y in (dyadicGridLeft A.G I.1 I.2)..
       dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1, ‖augPhys X y‖ ^ 2)) := by positivity
-    linarith
+    linarith only [key, hT1, hMid, hCo, hEN]
 
 end SideInput
 
@@ -7302,7 +7305,7 @@ theorem four_core_principal {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj
     have := (Finset.mem_filter.mp hh).1
     rw [Finset.mem_range] at this
     omega
-  have hρ0 : (0 : ℝ) ≤ 2 * D.SP.δs := by linarith
+  have hρ0 : (0 : ℝ) ≤ 2 * D.SP.δs := by linarith only [hδs]
   have hdimj : ∀ j, (D.Ms j G).zc.dim ≤ D.S.dmax := fun j => by rw [hz j]; exact hdim
   have hδcj : ∀ j, 0 < (D.Ms j G).δc := fun j => by rw [hδc j]; exact hδ
   have htor : ∀ h ∈ H, ∀ j {n : ℕ} (asg : Fin n → Fin 4) (w : Fin n → ℕ)
@@ -7394,7 +7397,7 @@ theorem four_core_principal {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj
       have h0 : 0 ≤ (2 * D.SP.δs) ^ (Finset.univ.filter fun i => a i = j).card *
           D.clsSize G I j (p j) ^ 2 := mul_nonneg (pow_nonneg hρ0 _) (sq_nonneg _)
       refine h2.trans ?_
-      nlinarith
+      nlinarith only [h0]
 
 end SideInput
 
@@ -7581,7 +7584,7 @@ theorem four_core_principal_bins {Cj CA CT CK : ℕ} {δs W : ℝ}
   refine (D.four_core_principal hV hCA hCT hd2 hD hB hQ hSP hstab hK hI G hz hdim hδ hδc hcl hρ
     hQC hCm0 hCm hQB hτc hτm hMN hCN hJ1 hDg hKf hQBf hεw hcard hΛ hJ hδs hδ16 hδJ hq anc hanc hxs
     L).trans (add_le_add ?_ le_rfl)
-  have hden : 0 < 1 - 4 * (2 * D.SP.δs) ^ (1 / (4 : ℝ)) := by linarith
+  have hden : 0 < 1 - 4 * (2 * D.SP.δs) ^ (1 / (4 : ℝ)) := by linarith only [hq]
   refine div_le_div_of_nonneg_right (mul_le_mul_of_nonneg_left (Finset.sum_le_sum fun h _ =>
     mul_le_mul_of_nonneg_left ?_ (inv_nonneg.mpr (Nat.cast_nonneg _))) (by norm_num)) hden.le
   have hb := D.four_core_binned hD hI G xs (h - D.SP.Δ) J
@@ -8047,7 +8050,7 @@ theorem three_core_principal {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
           have h0 : 0 ≤ (2 * D.SP.δs) ^ (Finset.univ.filter fun i => a i = j).card *
               D.clsSize G I j (p j) ^ 2 := mul_nonneg (pow_nonneg hρ0 _) (sq_nonneg _)
           refine h2.trans ?_
-          nlinarith
+          nlinarith only [h0]
 
 end SideInput
 
@@ -8125,7 +8128,7 @@ theorem three_core_binned (hD : 2 ≤ D.S.Dstar) {I : ℤ × ℤ} (hI : I ∈ A.
   have hU := D.one_le_U0 hD
   have hEU := entryCU_nonneg hr hw J Aw
   unfold threeTestedOf
-  set term : ι × ℕ → ℝ := fun q => (if D.threePasses G I xs h' l (a q.1) then
+  set! term : ι × ℕ → ℝ := fun q => (if D.threePasses G I xs h' l (a q.1) then
       2 * (entryC κ' J Aw (D.threeBeta G I xs h' l (a q.1)) * 2 ^ (Aw + 4) *
         ((2 : ℝ) ^ q.2)⁻¹ ^ (Aw + 1) * D.winB G I xs h' l (a q.1) X q.2) else 0) *
       ∏ j ∈ Finset.univ.erase l, (6 * σv q.1 j) with hterm
@@ -8307,7 +8310,7 @@ theorem three_core_principal_bins {Cj CA CT CK : ℕ} {δs W : ℝ}
   refine (D.three_core_principal hV hCA hCT hd2 hD hB hQ hSP hstab hK hI G hz hdim hδ hdδ hδ8
     hδc hcl hρ hQC hCm0 hCm hQB hτc hτm hMN hCN hJ3 hDg hKf hQBf hεw hcard hΛ hJ hδs hδ16 hδJ
     hq l anc hanc hxs L Aw Iw hAw hIw).trans (add_le_add ?_ le_rfl)
-  have hden : 0 < 1 - 4 * (2 * D.SP.δs) ^ (1 / (4 : ℝ)) := by linarith
+  have hden : 0 < 1 - 4 * (2 * D.SP.δs) ^ (1 / (4 : ℝ)) := by linarith only [hq]
   refine div_le_div_of_nonneg_right (mul_le_mul_of_nonneg_left (Finset.sum_le_sum fun h _ =>
     mul_le_mul_of_nonneg_left ?_ (inv_nonneg.mpr (Nat.cast_nonneg _))) (by norm_num)) hden.le
   have hb := D.three_core_binned hD hI G xs (h - D.SP.Δ) l J Aw Iw

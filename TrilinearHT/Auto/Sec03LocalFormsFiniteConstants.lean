@@ -45,7 +45,7 @@ theorem reciprocalExponentPolytope_convex (d k : ℕ) :
         s * a i + t * b i ≤ s * 1 + t * 1 :=
           add_le_add (mul_le_mul_of_nonneg_left (ha.1 i).2 hs)
             (mul_le_mul_of_nonneg_left (hb.1 i).2 ht)
-        _ = 1 := by nlinarith
+        _ = 1 := by nlinarith only [hst]
   · change ∑ i, (s * a i + t * b i) ≤ (k : ℝ)
     rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
     calc
@@ -85,7 +85,7 @@ theorem reciprocalExponentPolytope_perturb {d k : ℕ} {a v : Fin d → ℝ}
     · intro i
       change 0 ≤ a i + v i ∧ a i + v i ≤ 1
       constructor <;>
-        linarith [hc i, hb i, min_le_left (a i) (1 - a i), min_le_right (a i) (1 - a i)]
+        linarith only [hc i, hb i, min_le_left (a i) (1 - a i), min_le_right (a i) (1 - a i)]
     · change ∑ i, (a i + v i) ≤ (k : ℝ)
       rw [Finset.sum_add_distrib]
       linarith

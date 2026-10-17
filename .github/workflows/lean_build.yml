@@ -27,7 +27,8 @@ jobs:
           haskell: true
           large-packages: true
           docker-images: true
-          swap-storage: true
+          # Keep the swap file: the largest files peak at several GB of memory on the runner.
+          swap-storage: false
 
       - uses: actions/checkout@v4
 

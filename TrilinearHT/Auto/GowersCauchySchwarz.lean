@@ -602,8 +602,6 @@ theorem norm_cubeChoice_le {G : Type*} {j : ℕ} (f g : G → ℂ)
   unfold cubeChoice
   split_ifs <;> first | exact hf x | exact hg x
 
-set_option maxHeartbeats 800000 in
--- The finite expansion has a function space of cube vertices as its summation index.
 theorem cubeAverage_add_expansion {G : Type*} [AddCommGroup G] [MeasurableSpace G]
     [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] (j : ℕ)
     (f g : G → ℂ) (hf : Measurable f) (hg : Measurable g) {M : ℝ}
@@ -1304,7 +1302,7 @@ lemma mem_latticeCube {N : ℕ} (hN : 0 < N) {k : Fin d → ℤ} {x : Fin d → 
   simp only [latticeCube, Set.mem_pi, Set.mem_univ, true_implies, Set.mem_Ico, Int.floor_eq_iff]
   refine forall_congr' fun i => ?_
   rw [div_le_iff₀ hN', lt_div_iff₀ hN']
-  constructor <;> rintro ⟨h1, h2⟩ <;> constructor <;> linarith
+  constructor <;> rintro ⟨h1, h2⟩ <;> constructor <;> linarith only [h1, h2]
 
 lemma volume_latticeCube {N : ℕ} (hN : 0 < N) (k : Fin d → ℤ) :
     volume (latticeCube N k) = ENNReal.ofReal ((N : ℝ)⁻¹) ^ d := by
@@ -1942,7 +1940,7 @@ theorem circle_lift_supported_apply (g : ℝ → ℂ)
       by_cases hv0 : v ≤ 0
       · apply (AddCircle.coe_eq_coe_iff_of_mem_Ioc
           (a := (-8 : ℝ)) (p := (16 : ℝ))
-          (by constructor <;> linarith [hr.1, hr.2])
+          (by constructor <;> linarith only [hr.1, hr.2])
           (by constructor <;> linarith [hv.1])).mp hc
       · apply (AddCircle.coe_eq_coe_iff_of_mem_Ioc
           (a := (0 : ℝ)) (p := (16 : ℝ))

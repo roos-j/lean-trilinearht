@@ -34,7 +34,7 @@ theorem pair_difference_eq_zero {u v s₁ s₂ e₁ e₂ w ε Sep : ℝ} {a b c 
     u = 0 := by
   by_contra hu
   have := pair_determination h₁ h₂ hD hw he₁ he₂
-  linarith [hsep hu]
+  linarith only [hsep hu, hS, this]
 
 /-- Blueprint `eq:total-count` (line 2729), first bound: if every pair of labels in roles `i, j`
 determines tuples with at most `L` scale occurrences in total, then
@@ -106,8 +106,8 @@ theorem pair_role_of_diff {d : ℕ} (ζ : Fin d → ℝ) {x x' : Fin 4 → ℝ} 
     have h0 : roleCoeff l k ≠ 0 := by rintro h; rw [h] at hβ; simp at hβ
     have : (1 : ℤ) ≤ |roleCoeff l k| := Int.one_le_abs h0
     have h6 : |roleCoeff l k| * |β| = 6 := by rw [← abs_mul, hβ]; rfl
-    nlinarith [abs_nonneg β]
-  set N : Fin d → ℤ := fun p => 6 * β * (-(l : ℤ) * (n p - n' p) + (m p - m' p)) with hN
+    nlinarith only [abs_nonneg β, this, h6]
+  set! N : Fin d → ℤ := fun p => 6 * β * (-(l : ℤ) * (n p - n' p) + (m p - m' p)) with hN
   have hl3 : ((l : ℕ) : ℝ) ≤ 3 := by have := l.isLt; exact_mod_cast (by omega : (l : ℕ) ≤ 3)
   have hNb : ∀ p, |(-N p : ℝ)| ≤ Q := by
     intro p
@@ -128,15 +128,15 @@ theorem pair_role_of_diff {d : ℕ} (ζ : Fin d → ℝ) {x x' : Fin 4 → ℝ} 
           rw [abs_of_pos (by norm_num : (0 : ℝ) < 6)]; gcongr
       _ ≤ Q := by linarith
   set u := x k - x' k
-  set v := x l - x' l
+  set! v := x l - x' l
   have hsum := fin4_sum_eq hkl hki hkj hli hlj hij (fun r => x r - x' r)
   have hsumr := fin4_sum_eq hkl hki hkj hli hlj hij (fun r => ((r : ℕ) : ℝ) * (x r - x' r))
   simp only [hxi, hxj, sub_self, mul_zero, zero_add] at hsum hsumr
   rw [Finset.sum_sub_distrib] at hsum
   simp_rw [mul_sub] at hsumr
   rw [Finset.sum_sub_distrib] at hsumr
-  set s₁ : ℝ := -(36 * ∑ p, ((n p : ℝ) - n' p) * ζ p)
-  set s₂ : ℝ := -(36 * ∑ p, ((m p : ℝ) - m' p) * ζ p)
+  set! s₁ : ℝ := -(36 * ∑ p, ((n p : ℝ) - n' p) * ζ p)
+  set! s₂ : ℝ := -(36 * ∑ p, ((m p : ℝ) - m' p) * ζ p)
   set e₁ : ℝ := (∑ r, x r + 36 * ∑ p, (n p : ℝ) * ζ p) -
     (∑ r, x' r + 36 * ∑ p, (n' p : ℝ) * ζ p)
   set e₂ : ℝ := (∑ r : Fin 4, ((r : ℕ) : ℝ) * x r + 36 * ∑ p, (m p : ℝ) * ζ p) -
@@ -170,7 +170,7 @@ theorem pair_role_of_diff {d : ℕ} (ζ : Fin d → ℝ) {x x' : Fin 4 → ℝ} 
       simpa [sub_eq_add_neg] using this) (by
       have : |((((l : ℕ) : ℤ)) : ℝ)| + |((1 : ℤ) : ℝ)| ≤ 4 := by
         push_cast; rw [abs_of_nonneg (Nat.cast_nonneg _)]; norm_num; linarith
-      nlinarith)
+      nlinarith only [hSep, hε, this])
   simp only [u] at hu
   linarith
 
@@ -260,7 +260,7 @@ theorem four_core_ann {d : ℕ} (ζ : Fin d → ℝ) {x : Fin 4 → ℝ} {B μ �
     _ ≤ ν * R + 3 * (ν * R) := by
       rw [abs_mul, abs_of_nonneg hl0]
       have : 0 ≤ ν * R := (abs_nonneg _).trans hq
-      nlinarith
+      nlinarith only [hq, ht, hl3, this]
     _ = 4 * ν * R := by ring
 
 theorem sum_erase_roleCoeff {i j k l : Fin 4} (hkl : k ≠ l) (hki : k ≠ i) (hkj : k ≠ j)
@@ -308,7 +308,7 @@ theorem three_core_pair {d : ℕ} (ζ : Fin d → ℝ) {l : Fin 4} {x x' : Fin 4
   have hdiff := sum_erase_roleCoeff hkl hki hkj (fun h => hil h.symm) (fun h => hjl h.symm) hij
     (fun r => x r - x' r) (by simp [hxi]) (by simp [hxj])
   simp only [mul_sub, Finset.sum_sub_distrib] at hdiff
-  set N : Fin d → ℤ := fun p => 6 * β * (m p - m' p) with hN
+  set! N : Fin d → ℤ := fun p => 6 * β * (m p - m' p) with hN
   have hNb : ∀ p, |(N p : ℝ)| ≤ Q := by
     intro p
     simp only [hN]; push_cast
@@ -339,7 +339,7 @@ theorem three_core_pair {d : ℕ} (ζ : Fin d → ℝ) {l : Fin 4} {x x' : Fin 4
         _ = _ := this
         _ ≤ ν * R + ν * R' := (abs_sub _ _).trans (add_le_add ht ht')
         _ ≤ 2 * ν * max R R' := by
-          nlinarith [mul_le_mul_of_nonneg_left (le_max_left R R') hν,
+          nlinarith only [mul_le_mul_of_nonneg_left (le_max_left R R') hν,
             mul_le_mul_of_nonneg_left (le_max_right R R') hν]
     have h3 : 2 * ν * max R R' ≤ Sg * max R R' :=
       mul_le_mul_of_nonneg_right hSg (le_max_of_le_left hR)
@@ -377,8 +377,8 @@ theorem side_window_pair {d : ℕ} (ζ : Fin d → ℝ) {l i : Fin 4} (hil : i �
   obtain ⟨k₀, l₀, hkl₀, hki₀, hkl₀', hli₀, hll₀, hcov⟩ := fin4_complement i l hil
   have hl3 : ((l : ℕ) : ℝ) ≤ 3 := by have := l.isLt; exact_mod_cast (by omega : (l : ℕ) ≤ 3)
   have hl0 : (0 : ℝ) ≤ (l : ℕ) := Nat.cast_nonneg _
-  set M : Fin d → ℤ := fun p => m p + (l : ℕ) * n p with hM
-  set M' : Fin d → ℤ := fun p => m' p + (l : ℕ) * n' p with hM'
+  set! M : Fin d → ℤ := fun p => m p + (l : ℕ) * n p with hM
+  set! M' : Fin d → ℤ := fun p => m' p + (l : ℕ) * n' p with hM'
   have hMb : ∀ (a b : Fin d → ℤ), (∀ p, |(a p : ℝ)| ≤ B) → (∀ p, |(b p : ℝ)| ≤ B) →
       ∀ p, |((a p + (l : ℕ) * b p : ℤ) : ℝ)| ≤ 4 * B := by
     intro a b ha hb p
@@ -531,11 +531,11 @@ theorem tested_scale_mult {d : ℕ} (ζ : Fin d → ℝ) (x : Fin 4 → ℝ) (T 
     · refine Fin.addCases (fun i => ?_) (fun p => ?_) j
       · rw [Fin.append_left]
         split_ifs
-        · have := rationalHeight_intCast_bound (roleCoeff i l) (B := 36 * B) (by linarith)
+        · have := rationalHeight_intCast_bound (roleCoeff i l) (B := 36 * B) (by linarith only [hB])
             (by
               have h3 := (roleCoeff_spec (r := i) (l := l)) 
               by_cases hil : i = l
-              · subst hil; simp [roleCoeff]; linarith
+              · subst hil; simp [roleCoeff]; linarith only [hB]
               · have := (h3 hil).1
                 have : |((roleCoeff i l : ℤ) : ℝ)| ≤ 3 := by exact_mod_cast this
                 linarith)
@@ -616,12 +616,13 @@ theorem tested_mult_le {d : ℕ} {B μ ν : ℝ} (hB : 1 ≤ B) (hμ : 0 < μ) (
   have h1 : Real.log (2 * ν / μ) = Real.log 2 + Real.log (ν / μ) := by
     rw [mul_div_assoc, Real.log_mul (by norm_num) (by positivity)]
   have h2 : Real.log (2 * (36 * B)) = Real.log (72 * B) := by ring_nf
-  have hlB : 0 ≤ Real.log (72 * B) := Real.log_nonneg (by linarith)
+  have hlB : 0 ≤ Real.log (72 * B) := Real.log_nonneg (by linarith only [hB])
   have hl2 : 0 ≤ Real.log 2 := Real.log_nonneg (by norm_num)
   have hc : (0 : ℝ) ≤ 32 * ((4 + d : ℕ) + 1 : ℝ) ^ 4 := by positivity
   rw [h1, h2]
   have key : Real.log (72 * B) + (Real.log 2 + Real.log (ν / μ)) ≤
-      (Real.log (72 * B) + Real.log 2 + 1) * (1 + Real.log (ν / μ)) := by nlinarith
+      (Real.log (72 * B) + Real.log 2 + 1) * (1 + Real.log (ν / μ)) := by nlinarith only [hl0,
+          hlB, hl2]
   calc 32 * ((4 + d : ℕ) + 1 : ℝ) ^ 4 * (Real.log (72 * B) + (Real.log 2 + Real.log (ν / μ)))
       ≤ 32 * ((4 + d : ℕ) + 1 : ℝ) ^ 4 * ((Real.log (72 * B) + Real.log 2 + 1) *
           (1 + Real.log (ν / μ))) := mul_le_mul_of_nonneg_left key hc
@@ -652,7 +653,7 @@ theorem one_le_fourMult (d : ℕ) {B μ ν : ℝ} (hB : 1 ≤ B) (hμ : 0 < μ) 
   have h3 : 1 ≤ Real.log (2 * (36 * (4 * B))) := by
     rw [Real.le_log_iff_exp_le (by positivity)]
     have := Real.exp_one_lt_d9
-    nlinarith
+    nlinarith only [hB, this]
   have h4 : 0 ≤ Real.log (2 * (4 * ν) / μ) :=
     Real.log_nonneg (by rw [le_div_iff₀ hμ]; nlinarith)
   nlinarith
@@ -720,7 +721,7 @@ theorem one_le_threeMult (d : ℕ) {B μ ν : ℝ} (hB : 1 ≤ B) (hμ : 0 < μ)
   have h3 : 1 ≤ Real.log (2 * (36 * B)) := by
     rw [Real.le_log_iff_exp_le (by positivity)]
     have := Real.exp_one_lt_d9
-    nlinarith
+    nlinarith only [hB, this]
   have h4 : 0 ≤ Real.log (2 * ν / μ) :=
     Real.log_nonneg (by rw [le_div_iff₀ hμ]; nlinarith)
   nlinarith
@@ -1009,7 +1010,7 @@ theorem rep_slope_sep (G : bf.Grp) (j : Fin 4) (h : ℕ) (Cs : Finset (ℤ × �
     D.S.Ξ / 2 * max rI⁻¹ rI'⁻¹ < |(D.Ms j G).slope (rep c) xs - (D.Ms j G).slope (rep c') xs +
       ∑ k, (N k : ℝ) * ((cq : ℝ) * ((D.Ms j G).zc.θ k / D.S.Q0 / ModeSchedule.Lh h))| := by
   obtain ⟨hNd, halive, -, hdist⟩ := D.classNodes_props G j h Cs
-  set Np := (D.typedNodes G j h Cs k₁ k₂).filter fun c => xs ∈ dyadicGridCell A.G c.2.1.1 c.2.1.2
+  set! Np := (D.typedNodes G j h Cs k₁ k₂).filter fun c => xs ∈ dyadicGridCell A.G c.2.1.1 c.2.1.2
   have hsub : ∀ c ∈ Np, c ∈ D.classNodes G j h Cs := fun c hc =>
     (Finset.mem_filter.mp (Finset.mem_filter.mp hc).1).1
   have hsep := fun (n : Fin (D.Ms j G).zc.dim → ℤ) (hn : ∀ k, |(n k : ℝ)| ≤ D.S.Eh h) =>
@@ -1583,7 +1584,7 @@ theorem fourMult_le_sched {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj C
   have hlog : Real.log (72 * (4 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)))) ≤
       Real.log (288 * (D.S.Dstar ^ 5 * D.S.H)) := by
     refine Real.log_le_log (by positivity) ?_
-    nlinarith
+    nlinarith only [hBH]
   have hd5 : ((4 + d : ℕ) + 1 : ℝ) ^ 4 ≤ ((D.S.dmax : ℝ) + 5) ^ 4 := by
     refine pow_le_pow_left₀ (by positivity) ?_ 4
     have : (d : ℝ) ≤ D.S.dmax := by exact_mod_cast hd
@@ -1901,7 +1902,7 @@ theorem four_core_total_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
     have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
       have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
       have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
-      nlinarith
+      nlinarith only [h1, h2]
     have hres := hV.shift_reserve hCA hd2 hD hB hh
     rw [← hΔ] at hres
     have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
@@ -2311,7 +2312,7 @@ theorem three_core_total_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid 
     have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
       have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
       have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
-      nlinarith
+      nlinarith only [h1, h2]
     have hres := hV.shift_reserve hCA hd2 hD hB hh
     rw [← hΔ] at hres
     have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
@@ -2595,7 +2596,7 @@ theorem Valid.sparse_reserve (hV : S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (
   have hd1 : ((S.dmax : ℝ) + 1) ^ 2 ≤ 4 * S.Cstar ^ 2 := by
     have h2 : (2 : ℝ) ≤ S.dmax := by exact_mod_cast hd2
     have : (S.dmax : ℝ) + 1 ≤ 2 * S.Cstar := by linarith
-    nlinarith
+    nlinarith only [hC, hdC]
   have hD1 : (1 : ℝ) ≤ S.Dstar := by linarith
   have hD5 : S.Dstar ^ 5 ≤ S.Dstar ^ 10 := pow_le_pow_right₀ hD1 (by norm_num)
   have hC2 : S.Cstar ^ 2 ≤ S.Cstar ^ 10 := pow_le_pow_right₀ (by linarith) (by norm_num)
@@ -2680,7 +2681,7 @@ theorem side_pure_gap {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT
   have hEH : D.S.Eh h < D.S.H := by
     have := hV.box_lt_H hCA hd2 hD hB hQ (h := h) (by rw [← hJst]; exact hhJ)
     have hD5 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
-    nlinarith
+    nlinarith only [hE1, this, hD5]
   have hH1 : 1 ≤ D.SP.Hn := by
     rw [hHn]
     exact Nat.le_floor (by push_cast; linarith)
@@ -2719,7 +2720,7 @@ theorem side_pure_gap {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT
   have hL36 : 36 ≤ L := by
     rw [hLdef, le_div_iff₀ hQ6]
     push_cast
-    nlinarith
+    nlinarith only [hLh]
   intro hmem
   obtain ⟨hlo, hhi⟩ := Set.mem_Icc.mp hmem
   by_cases hK : n ∈ rationalIntegerIntersection (tinySpan (fun i => (D.Ms j G).zc.θ i / D.S.Q0)
@@ -2737,20 +2738,20 @@ theorem side_pure_gap {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT
     -- `μ L T ≤ 1000`, but `μ L T > (U₀⁻¹/2) L_h (U₀ + 4) L ≥ L_h L / 2 > 1000`
     have h3 : μ * L * D.SP.Tt ≤ 1000 := by
       have := mul_le_mul_of_nonneg_right hμT hT.le
-      nlinarith
+      nlinarith only [hT, hμT, hTinv]
     have h4 : D.U0⁻¹ / 2 * (ModeSchedule.Lh h * (D.U0 + 4)) ≥ ModeSchedule.Lh h / 2 := by
       have : D.U0⁻¹ * D.U0 = 1 := inv_mul_cancel₀ hU0.ne'
       have hi : 0 ≤ D.U0⁻¹ := inv_nonneg.mpr hU0.le
-      nlinarith
+      nlinarith only [hTt, hU, hLh, hT, this]
     have h5 : D.U0⁻¹ / 2 * (ModeSchedule.Lh h * (D.U0 + 4)) ≤ μ * D.SP.Tt := by
       have hi : 0 ≤ D.U0⁻¹ / 2 := by positivity
       exact mul_le_mul hμ.le hTt (by positivity) (by linarith)
     have h6 : ModeSchedule.Lh h / 2 * 36 ≤ μ * D.SP.Tt * L := by
       have h7 : ModeSchedule.Lh h / 2 ≤ μ * D.SP.Tt := by linarith
-      exact mul_le_mul h7 hL36 (by norm_num) (by nlinarith)
+      exact mul_le_mul h7 hL36 (by norm_num) (by nlinarith only [hLh, h4, h5])
     have h8 : (6 : ℝ) ^ 10 / 2 * 36 ≤ ModeSchedule.Lh h / 2 * 36 := by linarith
     norm_num at h8
-    nlinarith
+    nlinarith only [hLh, hT, hLdef, hμT, hTinv, h4, h5]
   · have ht := h2 hK
     have e1 : dyadicGridLength A.G I.1 * (1000 * ν * (dyadicGridLength A.G I.1)⁻¹) =
         1000 * ν := by
@@ -2762,12 +2763,12 @@ theorem side_pure_gap {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT
         _ = 1000 * ν := e1
     rw [div_le_iff₀ (by linarith)] at hνT
     -- `T ≤ 1000 ν L ≤ 8000 U₀ L_h / 6^8 < L_h (U₀ + 4) ≤ T`
-    have h3 : 1000 * ν * L ≤ 8000 * D.U0 * L := by nlinarith
+    have h3 : 1000 * ν * L ≤ 8000 * D.U0 * L := by nlinarith only [hν, hL]
     have h4 : 8000 * D.U0 * L < ModeSchedule.Lh h * (D.U0 + 4) := by
       have h68 : ((6 ^ 8 : ℕ) : ℝ) = 1679616 := by norm_num
       rw [hLdef, h68]
       have hUL : 0 < D.U0 * ModeSchedule.Lh h := mul_pos hU0 hLh0
-      nlinarith
+      nlinarith only [hU, hLh]
     linarith
 
 end SideInput
@@ -2847,7 +2848,7 @@ theorem four_core_applied_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid
     have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
       have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
       have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
-      nlinarith
+      nlinarith only [h1, h2]
     have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
     have hR₀ : 0 < A.G.baseLength⁻¹ := inv_pos.mpr A.G.baseLength_pos
     have hM1 : 1 ≤ M := by
@@ -2976,7 +2977,7 @@ theorem three_core_applied_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Vali
     have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
       have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
       have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA
-      nlinarith
+      nlinarith only [h1, h2]
     have hQ6 : (0 : ℝ) < ((6 ^ 8 : ℕ) : ℝ) := by positivity
     have hR₀ : 0 < A.G.baseLength⁻¹ := inv_pos.mpr A.G.baseLength_pos
     have hM1 : 1 ≤ M := by
@@ -3029,7 +3030,7 @@ theorem three_core_applied_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Vali
           _ ≤ (7200000 * 6 ^ 8 * (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ))) *
               (4 * ((D.S.dmax : ℝ) + 1) ^ 2) := by
             refine mul_le_mul_of_nonneg_left ?_ (by positivity)
-            nlinarith [sq_nonneg ((D.S.dmax : ℝ) + 1)]
+            nlinarith only [sq_nonneg ((D.S.dmax : ℝ) + 1), hdd]
           _ = _ := by ring
       linarith
     · rw [le_div_iff₀ hQ6]

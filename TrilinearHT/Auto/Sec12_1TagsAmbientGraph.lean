@@ -172,13 +172,13 @@ theorem unitTrapezoid_support {ε z : ℝ} (hε : 0 < ε) (h : unitTrapezoid ε 
       hε.le))
   · rw [not_lt] at h1
     exact (min_le_right _ _).trans ((min_le_right _ _).trans (div_nonpos_of_nonpos_of_nonneg
-      (by linarith) hε.le))
+      (by linarith only [h1]) hε.le))
 
 theorem unitTrapezoid_eq_one {ε z : ℝ} (hε : 0 < ε) (h1 : ε ≤ z) (h2 : z ≤ 1 - ε) :
     unitTrapezoid ε z = 1 := by
   unfold unitTrapezoid
   have a1 : 1 ≤ z / ε := (one_le_div hε).mpr h1
-  have a2 : 1 ≤ (1 - z) / ε := (one_le_div hε).mpr (by linarith)
+  have a2 : 1 ≤ (1 - z) / ε := (one_le_div hε).mpr (by linarith only [h2])
   rw [min_eq_left (le_min a1 a2), max_eq_right zero_le_one]
 
 theorem unitTrapezoid_lipschitz {ε : ℝ} (hε : 0 < ε) (x y : ℝ) :
@@ -296,11 +296,11 @@ theorem graph_sameSlot (c₀ : ℕ) (hc : 1 ≤ c₀) :
       (fun i _ => r * Fin.append A.horizontal B.horizontal i)
       (chartBlockMatrix A.matrix (-B.matrix)) (fun _ _ => r ^ 2 * (A.quadratic - B.quadratic)) := by
   obtain ⟨Dw, hDw, hW⟩ := weylSplitting c₀ hc 1 zero_le_one
-  refine ⟨Dw * 700 ^ Dw + 3 * Dw, by nlinarith [Nat.zero_le (Dw * 700 ^ Dw)], ?_⟩
+  refine ⟨Dw * 700 ^ Dw + 3 * Dw, by nlinarith only [Nat.zero_le (Dw * 700 ^ Dw), hDw], ?_⟩
   intro H τ hH hτ hτ1 d e A B hA hB hAb hBb a₀ r hr hlarge
   obtain ⟨A', hA'c, hA'b, hA'a, hA'h, hA'm, hA'q⟩ := quadraticChart_translation_tag hA hc a₀
   obtain ⟨B', hB'c, hB'b, hB'a, hB'h, hB'm, hB'q⟩ := quadraticChart_translation_tag hB hc a₀
-  set P := productQuadraticChart (dilateQuadraticChart r A')
+  set! P := productQuadraticChart (dilateQuadraticChart r A')
     (conjugateQuadraticChart (dilateQuadraticChart r B')) with hP_def
   have hPc : QuadraticChartComplexity c₀ (chartTranslationBudget H ^ 6) P :=
     productQuadraticChart_complexity (dilateQuadraticChart_complexity hA'c r)
@@ -321,7 +321,7 @@ theorem graph_sameSlot (c₀ : ℕ) (hc : 1 ≤ c₀) :
     congr 1; funext z; rw [hPatom]
   rw [hint] at hlarge
   -- smoothing the indicator
-  set ε := τ / 4 with hε_def
+  set! ε := τ / 4 with hε_def
   have hε : 0 < ε := by positivity
   have herr := integral_unitTrapezoid_error hε hPm hPb
   have hlow : τ / 2 ≤ ‖∫ z, (unitTrapezoid ε z : ℂ) * quadraticChartAtom P z‖ := by
@@ -329,16 +329,16 @@ theorem graph_sameSlot (c₀ : ℕ) (hc : 1 ≤ c₀) :
       (∫ z, (unitTrapezoid ε z : ℂ) * quadraticChartAtom P z)
     have h2 := norm_sub_rev (∫ z in Set.Ico (0 : ℝ) 1, quadraticChartAtom P z)
       (∫ z, (unitTrapezoid ε z : ℂ) * quadraticChartAtom P z)
-    linarith
+    linarith only [hlarge, hε_def, herr, this]
   -- the Weyl alternative
-  set HW := max (chartTranslationBudget H ^ 6) (4 / τ) with hHW
+  set! HW := max (chartTranslationBudget H ^ 6) (4 / τ) with hHW
   have hTB : Real.exp 2 ≤ chartTranslationBudget H ^ 6 := hPc.lower
   have hHW2 : Real.exp 2 ≤ HW := hTB.trans (le_max_left _ _)
   have hHW1 : 1 ≤ HW := le_trans (by linarith [Real.add_one_le_exp (2 : ℝ)]) hHW2
-  set M := liftChart P (fun _ : Fin 1 => (1 : ℝ)) with hM
+  set! M := liftChart P (fun _ : Fin 1 => (1 : ℝ)) with hM
   have hMc : MultivariableQuadraticChartComplexity c₀ HW M :=
     liftChart_complexity (quadraticChartComplexity_mono hPc (le_max_left _ _)) _
-  set θ : (Fin 1 → ℝ) → ℂ := fun z => (unitTrapezoid ε (z 0) : ℂ) with hθ
+  set! θ : (Fin 1 → ℝ) → ℂ := fun z => (unitTrapezoid ε (z 0) : ℂ) with hθ
   have hθm : Measurable θ :=
     (Complex.continuous_ofReal.comp ((unitTrapezoid_continuous ε).comp
       (continuous_apply 0))).measurable
@@ -404,19 +404,20 @@ theorem graph_sameSlot (c₀ : ℕ) (hc : 1 ≤ c₀) :
   have hX3 : X ≤ X ^ 3 := by
     calc X = X ^ 1 := (pow_one X).symm
       _ ≤ X ^ 3 := pow_le_pow_right₀ hX1 (by norm_num)
-  have hT1 : 1 ≤ chartTranslationBudget H ^ 6 := le_trans (by linarith [Real.add_one_le_exp (2 :
-    ℝ)]) hTB
+  have hT1 : 1 ≤ chartTranslationBudget H ^ 6 :=
+    le_trans (by linarith only [Real.add_one_le_exp (2 : ℝ)]) hTB
   have h4τ : 1 ≤ 4 / τ := by rw [le_div_iff₀ hτ]; linarith
   have hlogHW : Real.log HW ≤ 600 * (1 + Real.log H) ^ 3 + Real.log 4 + Real.log τ⁻¹ := by
     have hmax : HW ≤ chartTranslationBudget H ^ 6 * (4 / τ) :=
-      max_le (le_mul_of_one_le_right (by linarith) h4τ) (le_mul_of_one_le_left (by linarith) hT1)
-    refine (Real.log_le_log (by linarith) hmax).trans (le_of_eq ?_)
+      max_le (le_mul_of_one_le_right (by linarith) h4τ)
+        (le_mul_of_one_le_left (by linarith only [h4τ]) hT1)
+    refine (Real.log_le_log (by linarith only [hHW1]) hmax).trans (le_of_eq ?_)
     rw [Real.log_mul (by linarith) (by linarith), Real.log_pow, chartTranslationBudget,
       Real.log_exp, logarithmicSize, div_eq_mul_inv, Real.log_mul (by norm_num) (by positivity)]
     push_cast; ring
   have hlogm : Real.log (max 1 (τ / 2)⁻¹) = Real.log 2 + Real.log τ⁻¹ := by
     have : (τ / 2)⁻¹ = 2 * τ⁻¹ := by field_simp
-    rw [max_eq_right (by rw [this]; nlinarith [one_le_inv₀ hτ |>.mpr hτ1]), this,
+    rw [max_eq_right (by rw [this]; nlinarith only [one_le_inv₀ hτ |>.mpr hτ1]), this,
       Real.log_mul (by norm_num) (by positivity)]
   have hl4 : Real.log 4 ≤ 2 := by
     have := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 4 by norm_num)
@@ -449,7 +450,7 @@ theorem graph_sameSlot (c₀ : ℕ) (hc : 1 ≤ c₀) :
     _ = (Dw * 700 ^ Dw) * X ^ (3 * Dw) := by rw [mul_pow, ← pow_mul]; ring
     _ ≤ ((Dw * 700 ^ Dw + 3 * Dw : ℕ) : ℝ) * X ^ (Dw * 700 ^ Dw + 3 * Dw) := by
         apply mul_le_mul _ (pow_le_pow_right₀ hX1 (by omega)) (by positivity) (by positivity)
-        push_cast; nlinarith
+        push_cast; nlinarith only
 
 theorem chartBlockMatrix_smul {d e : ℕ} (c : ℚ) (C : Matrix (Fin d) (Fin d) ℚ)
     (D : Matrix (Fin e) (Fin e) ℚ) :
@@ -504,7 +505,7 @@ theorem weylSplit_of_oneVar (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤
   set A' := oneVariableChart (dilateQuadraticChart r A) with hA'
   have hA'c : MultivariableQuadraticChartComplexity c₀ H A' :=
     oneVariableChart_complexity (dilateQuadraticChart_complexity hA r)
-  set θw : (Fin 1 → ℝ) → ℂ := fun z => ζ (z 0) with hθw
+  set! θw : (Fin 1 → ℝ) → ℂ := fun z => ζ (z 0) with hθw
   have hθm : Measurable θw := hζm.comp (measurable_pi_apply 0)
   have hθb : ∀ z, ‖θw z‖ ≤ H := fun z => hζ _
   have hθL : ∀ x y, ‖θw y - θw x‖ ≤ H * ‖y - x‖ := fun x y => by
@@ -617,10 +618,10 @@ theorem graph_distinct_core (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
   have hlogH : 2 ≤ Real.log H := by
     rw [← Real.log_exp 2]; exact Real.log_le_log (Real.exp_pos 2) hH
   have hlτ : 0 ≤ Real.log τ⁻¹ := Real.log_nonneg (one_le_inv₀ hτ |>.mpr hτ1)
-  set Y := 1 + Real.log H + Real.log τ⁻¹ with hY
-  have hY1 : 1 ≤ Y := by linarith
+  set! Y := 1 + Real.log H + Real.log τ⁻¹ with hY
+  have hY1 : 1 ≤ Y := by linarith only [hlogH, hlτ]
   have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
-  set Es := Real.exp (Dp * (1 + Real.log H) ^ Dp) with hEs
+  set! Es := Real.exp (Dp * (1 + Real.log H) ^ Dp) with hEs
   have hEs0 : 0 < Es := Real.exp_pos _
   have qEs : QPLe Y kE Es := by
     unfold QPLe
@@ -632,13 +633,13 @@ theorem graph_distinct_core (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
     have := QPLe.const hY1 (2 : ℝ); simpa using this
   have qW : QPLe Y kW W' := QPLe.const hY1 W'
   have qK : QPLe Y kK (K' + 1) := QPLe.const hY1 (K' + 1)
-  set T₀ := max 1 (2 * Es * W' * τ⁻¹) with hT₀
+  set! T₀ := max 1 (2 * Es * W' * τ⁻¹) with hT₀
   have qT : QPLe Y kT T₀ := qple_max (QPLe.one_le hY1)
     (((q2.mul hY1 hEs0.le qEs).mul hY1 hW'0 qW).mul hY1 (by positivity) qinv)
   have hT₀1 : 1 ≤ T₀ := le_max_left _ _
-  set H₁ := (Es * T₀) ^ 6 with hH₁
+  set! H₁ := (Es * T₀) ^ 6 with hH₁
   have qH₁ : QPLe Y kH H₁ := (qEs.mul hY1 (by linarith) qT).pow hY1 (by positivity) 6
-  set δ := τ / (2 * Es * (K' + 1)) with hδ
+  set! δ := τ / (2 * Es * (K' + 1)) with hδ
   have hδ0 : 0 < δ := by positivity
   have hδinv : δ⁻¹ = 2 * Es * (K' + 1) * τ⁻¹ := by rw [hδ]; field_simp
   have qδ : QPLe Y kδ δ⁻¹ := by
@@ -697,7 +698,7 @@ theorem graph_distinct_core (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
           rw [div_mul_eq_mul_div, div_le_iff₀ hT0]
           have : 2 * Es * W' * τ⁻¹ ≤ T₀ := le_max_right _ _
           have e : 2 * Es * W' * τ⁻¹ * τ = 2 * (Es * W') := by field_simp
-          nlinarith
+          nlinarith only [hτ, this, e]
   obtain ⟨q, hq, hXq⟩ := exists_large_retained_term cf _ size hcs hcsum hEs0
     hXb (by positivity) hτ.le htail'
     (by rw [hHS.tsum_eq]; exact hlt)
@@ -759,9 +760,9 @@ theorem graph_distinct_core (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
     have hpos : 0 < 2 * Es := by positivity
     rw [show K' * (τ / (2 * Es * (K' + 1))) = (K' / (K' + 1)) * (τ / (2 * Es)) by
       field_simp]
-    have hlt1 : K' / (K' + 1) < 1 := (div_lt_one (by linarith)).mpr (by linarith)
+    have hlt1 : K' / (K' + 1) < 1 := (div_lt_one (by linarith only [hK'0])).mpr (by linarith only)
     have hp : 0 < τ / (2 * Es) := by positivity
-    nlinarith
+    nlinarith only [hlt1, hp]
   linarith
 
 /-- Blueprint lem:graph (distinct slots): pure columns of two tags in distinct slots `i, k`
@@ -783,7 +784,8 @@ theorem graph_distinctSlot_tag (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ 
   obtain ⟨c₁, D, hc₁, hD, hcore⟩ := graph_distinct_core κ c₀ hc
   obtain ⟨Dw, hDw, hweyl⟩ := weylSplit_of_oneVar c₁ hc₁ 2 (by norm_num)
   set D' := Dw * (1 + 2 * D) ^ Dw + D * Dw with hD'
-  refine ⟨D', by nlinarith [Nat.one_le_pow Dw (1 + 2 * D) (by omega), Nat.zero_le (D * Dw)], ?_⟩
+  refine ⟨D', by nlinarith only [Nat.one_le_pow Dw (1 + 2 * D) (by omega), Nat.zero_le (D * Dw),
+      hDw, hD'], ?_⟩
   intro H τ hH hτ hτ1 v w a i k b hai hak hab hik hib hkb hv hw A A' hA hA' hAb hA'b hAh hAm hAq
     hA'h hA'm hA'q a₀ r hr wI hwI hne
   by_contra hns
@@ -794,7 +796,7 @@ theorem graph_distinctSlot_tag (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ 
   have hlogH : 2 ≤ Real.log H := by
     rw [← Real.log_exp 2]; exact Real.log_le_log (Real.exp_pos 2) hH
   have hlτ : 0 ≤ Real.log τ⁻¹ := Real.log_nonneg (one_le_inv₀ hτ |>.mpr hτ1)
-  have hY1 : 1 ≤ Y := by linarith
+  have hY1 : 1 ≤ Y := by linarith only [hlogH, hlτ]
   have hE1 : 1 ≤ E := Real.one_le_exp (by positivity)
   -- the Weyl alternative for the time factor
   have hsplit := hweyl E E⁻¹ r Φ hΦc (fun u => (plateauTwo u : ℂ))
@@ -836,7 +838,7 @@ theorem graph_distinctSlot_tag (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ 
   rw [max_eq_right (by rw [inv_inv]; exact hE1), inv_inv, hE, Real.log_exp]
   apply Real.exp_le_exp.mpr
   have hYD : 1 ≤ Y ^ D := one_le_pow₀ hY1
-  have h1 : 1 + D * Y ^ D + D * Y ^ D ≤ (1 + 2 * D) * Y ^ D := by nlinarith
+  have h1 : 1 + D * Y ^ D + D * Y ^ D ≤ (1 + 2 * D) * Y ^ D := by nlinarith only [hYD]
   have h2 : (1 + D * Y ^ D + D * Y ^ D) ^ Dw ≤ (1 + 2 * D) ^ Dw * Y ^ (D * Dw) := by
     rw [pow_mul, ← mul_pow]
     exact pow_le_pow_left₀ (by positivity) h1 Dw
@@ -847,7 +849,7 @@ theorem graph_distinctSlot_tag (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ 
         rw [← mul_assoc]
         apply mul_le_mul _ (pow_le_pow_right₀ hY1 (by rw [hD']; omega)) (by positivity)
           (by positivity)
-        rw [hD']; push_cast; nlinarith [Nat.zero_le (D * Dw)]
+        rw [hD']; push_cast; nlinarith only [Nat.zero_le (D * Dw)]
 
 /-! ### Short paths (lem:graph, proof line 1704) -/
 
@@ -969,7 +971,7 @@ theorem abs_chartAltForm_le {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) {K : ℝ}
   have h2 := abs_chartMatrixPhase_le C hK hC y x
   calc _ ≤ |chartMatrixPhase C x.ofLp y.ofLp| + |chartMatrixPhase C y.ofLp x.ofLp| :=
         abs_sub _ _
-    _ ≤ _ := by linarith
+    _ ≤ _ := by linarith only [h1, h2]
 
 /-- The vector form of `WeylSplitData` in one variable. -/
 theorem weylSplitData_iff {B : ℝ} {d : ℕ} (V : Matrix (Fin d) (Fin 1) ℝ)
@@ -1273,11 +1275,11 @@ theorem shortPath_budget {X B D : ℝ} (hX : 1 ≤ X) (hB : 2 ≤ B) (hD : D ≤
   have hX4 : 1 ≤ X ^ 4 := one_le_pow₀ hX
   have hX48 : X ^ 4 ≤ X ^ 8 := pow_le_pow_right₀ hX (by norm_num)
   set Y := Real.exp (X ^ 4 * ℓ) with hY
-  have hY1 : 1 ≤ X ^ 4 * ℓ := by nlinarith
+  have hY1 : 1 ≤ X ^ 4 * ℓ := by nlinarith only [hℓ1, hX4]
   have hYe : 2 ≤ Y := by have := Real.add_one_le_exp (X ^ 4 * ℓ); linarith
   have hBY : B ≤ Y := by
     have h1 : 2 * B = Real.exp ℓ := (Real.exp_log (by linarith)).symm
-    have h2 : Real.exp ℓ ≤ Y := Real.exp_le_exp.mpr (by nlinarith)
+    have h2 : Real.exp ℓ ≤ Y := Real.exp_le_exp.mpr (by nlinarith only [hℓ1, hX4])
     linarith
   have hXY : X ≤ Y := by
     have := Real.add_one_le_exp (X ^ 4 * ℓ)
@@ -1329,7 +1331,7 @@ theorem shortPath_budget {X B D : ℝ} (hX : 1 ≤ X) (hB : 2 ≤ B) (hD : D ≤
     have hl2 : Real.log (2 * Real.exp (8 * (X + 1) ^ 4 * ℓ)) ≤ 129 * X ^ 4 * ℓ := by
       rw [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp]
       have : Real.log 2 ≤ ℓ := Real.log_le_log (by norm_num) (by linarith)
-      nlinarith
+      nlinarith only [hℓ1, hX4, h16, this]
     have hl0 : 0 ≤ Real.log (2 * Real.exp (8 * (X + 1) ^ 4 * ℓ)) := by
       rw [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp]
       have : 0 ≤ Real.log 2 := Real.log_nonneg (by norm_num)
@@ -1337,7 +1339,7 @@ theorem shortPath_budget {X B D : ℝ} (hX : 1 ≤ X) (hB : 2 ≤ B) (hD : D ≤
     calc 8 * (2 * X + 1) ^ 4 * Real.log (2 * Real.exp (8 * (X + 1) ^ 4 * ℓ))
         ≤ 8 * (81 * X ^ 4) * (129 * X ^ 4 * ℓ) := by gcongr
       _ = 83592 * X ^ 8 * ℓ := by ring
-      _ ≤ 100000 * X ^ 8 * ℓ := by nlinarith
+      _ ≤ 100000 * X ^ 8 * ℓ := by nlinarith only [hℓ1, hX4, hX48]
 
 /-- Coordinates of the concatenated horizontal space along a path of tags. -/
 def pathIndex {L : ℕ} (v : Fin (L + 1) → ChartTag) :
@@ -1412,9 +1414,6 @@ theorem chartAltForm_pathPair {L : ℕ} (v : Fin (L + 1) → ChartTag) (i i' : F
   simp only [pathPair_castAdd, pathPair_natAdd]
   rfl
 
-set_option maxHeartbeats 1600000 in
--- the single proof assembles the concatenated system, the edge telescoping and the endpoint
--- projection; elaborating it as one declaration needs more than the default budget
 /-- Blueprint lem:graph, short paths (proof line 1704): if `v_0, …, v_L` are joined
 consecutively by edges at length `r` with heights and sizes at most `B`, then the endpoints are
 joined by an edge with logarithmic height and size polynomial in `L`, the dimensions and
@@ -1428,22 +1427,22 @@ theorem tagEdge_path {B r : ℝ} (hB : 2 ≤ B) {L dB : ℕ} (hL : 1 ≤ L)
   classical
   choose U Q hQ1 hQ2 hiso hh1 hh2 hdist heff using
     fun j => (weylSplitData_iff _ _ _).mp (hedge j)
-  set N := ∑ i, (v i).dim with hN
-  set t := pathVector r v with ht
-  set s : Fin L → ℕ := fun j => (v j.castSucc).dim + (v j.succ).dim with hs
-  set σ : (j : Fin L) → Fin (s j) → Fin N := fun j => pathPair v j.castSucc j.succ with hσ
+  set! N := ∑ i, (v i).dim with hN
+  set! t := pathVector r v with ht
+  set! s : Fin L → ℕ := fun j => (v j.castSucc).dim + (v j.succ).dim with hs
+  set! σ : (j : Fin L) → Fin (s j) → Fin N := fun j => pathPair v j.castSucc j.succ with hσ
   have hσi : ∀ j, Function.Injective (σ j) := fun j =>
     pathPair_injective v (show j.castSucc < j.succ from Fin.castSucc_lt_succ).ne
-  have hB0 : (0 : ℝ) ≤ B := by linarith
-  set M := stackedConstraint s σ Q with hM
+  have hB0 : (0 : ℝ) ≤ B := by linarith only [hB]
+  set! M := stackedConstraint s σ Q with hM
   have hMh : ∀ p q, (rationalHeight (M p q) : ℝ) ≤ B :=
     stackedConstraint_height (by linarith) s σ hσi Q hh1
-  set K := rationalRealRowSpace M with hK
-  set y := Kᗮ.starProjection t with hy
+  set! K := rationalRealRowSpace M with hK
+  set! y := Kᗮ.starProjection t with hy
   have hyW : y ∈ Kᗮ := Kᗮ.starProjection_apply_mem t
   have hyU : ∀ j, WithLp.toLp 2 (fun b => y (σ j b)) ∈ U j :=
     (mem_stackedConstraint_kernel s σ Q U hQ1 y).mp hyW
-  set D := ‖t - y‖ with hD
+  set! D := ‖t - y‖ with hD
   have hD0 : 0 ≤ D := norm_nonneg _
   -- the edge vectors are restrictions of the concatenated vector
   have hVcol : ∀ j : Fin L, (fun c => tagDiffV r (v j.castSucc) (v j.succ) c 0) =
@@ -1484,7 +1483,7 @@ theorem tagEdge_path {B r : ℝ} (hB : 2 ≤ B) {L dB : ℕ} (hL : 1 ≤ L)
   have hX1 : 1 ≤ X := by
     have : (0 : ℝ) ≤ L := Nat.cast_nonneg _
     have : (0 : ℝ) ≤ dB := Nat.cast_nonneg _
-    rw [hX]; nlinarith
+    rw [hX]; nlinarith only
   have hdimX : ∀ i, ((v i).dim : ℝ) ≤ X := by
     intro i
     have : ((v i).dim : ℝ) ≤ dB := by exact_mod_cast hdim i
@@ -1493,14 +1492,14 @@ theorem tagEdge_path {B r : ℝ} (hB : 2 ≤ B) {L dB : ℕ} (hL : 1 ≤ L)
     rw [hX]; nlinarith
   have hLX : (L : ℝ) ≤ X := by
     have : (0 : ℝ) ≤ dB := Nat.cast_nonneg _
-    rw [hX]; nlinarith
+    rw [hX]; nlinarith only
   have hNX : (N : ℝ) ≤ X := by
     have h1 : N ≤ (L + 1) * dB := by
       calc N = ∑ i, (v i).dim := rfl
         _ ≤ ∑ _i : Fin (L + 1), dB := Finset.sum_le_sum (fun i _ => hdim i)
         _ = (L + 1) * dB := by simp
     have h2 : ((L + 1) * dB : ℕ) ≤ ((L : ℝ) + 1) * ((dB : ℝ) + 1) := by
-      push_cast; have : (0 : ℝ) ≤ L := Nat.cast_nonneg _; nlinarith
+      push_cast; have : (0 : ℝ) ≤ L := Nat.cast_nonneg _; nlinarith only
     calc (N : ℝ) ≤ ((L + 1) * dB : ℕ) := by exact_mod_cast h1
       _ ≤ X := h2
   have hsX : ∀ j, (s j : ℝ) ≤ 2 * X := by
@@ -1515,11 +1514,11 @@ theorem tagEdge_path {B r : ℝ} (hB : 2 ≤ B) {L dB : ℕ} (hL : 1 ≤ L)
     have h2 : ((L * (2 * dB) : ℕ) : ℝ) ≤ 2 * X := by
       push_cast; have : (0 : ℝ) ≤ L := Nat.cast_nonneg _
       have : (0 : ℝ) ≤ dB := Nat.cast_nonneg _
-      rw [hX]; nlinarith
+      rw [hX]; nlinarith only
     calc ((∑ j, s j : ℕ) : ℝ) ≤ ((L * (2 * dB) : ℕ) : ℝ) := by exact_mod_cast h1
       _ ≤ 2 * X := h2
   -- the node potentials
-  set ψ : Fin (L + 1) → ℝ := fun i => r ^ 2 * (v i).lam +
+  set! ψ : Fin (L + 1) → ℝ := fun i => r ^ 2 * (v i).lam +
     1 / 2 * chartMatrixPhase (v i).C (pathNode v t i) (pathNode v t i) +
     1 / 2 * chartAltForm (v i).C (pathNode v y i) (pathNode v t i) with hψ
   have hedgeB : ∀ j : Fin L, |ψ j.castSucc - ψ j.succ| ≤ B + (2 * X) ^ 2 * B ^ 2 * (D + B) := by
@@ -1528,7 +1527,7 @@ theorem tagEdge_path {B r : ℝ} (hB : 2 ≤ B) {L dB : ℕ} (hL : 1 ≤ L)
     have h2 := hdist j
     rw [hVcol j] at h1 h2
     set Vj : EuclideanSpace ℝ (Fin (s j)) := WithLp.toLp 2 (fun b => t (σ j b)) with hVj
-    set Gj : EuclideanSpace ℝ (Fin (s j)) := WithLp.toLp 2 (fun b => y (σ j b)) with hGj
+    set! Gj : EuclideanSpace ℝ (Fin (s j)) := WithLp.toLp 2 (fun b => y (σ j b)) with hGj
     set Fj := (U j).starProjection Vj with hFj
     have hFU : Fj ∈ U j := (U j).starProjection_apply_mem Vj
     have hGF : Gj - Fj ∈ U j := sub_mem (hyU j) hFU
@@ -1603,17 +1602,17 @@ theorem tagEdge_path {B r : ℝ} (hB : 2 ≤ B) {L dB : ℕ} (hL : 1 ≤ L)
       linarith
     calc (2 : ℝ) ≤ 2 * B := by linarith
       _ = Real.exp (Real.log (2 * B)) := (Real.exp_log (by linarith)).symm
-      _ ≤ E₁ := Real.exp_le_exp.mpr (by nlinarith)
-  set τ := pathPair v 0 (Fin.last L) with hτ
+      _ ≤ E₁ := Real.exp_le_exp.mpr (by nlinarith only [hlog0, h1])
+  set! τ := pathPair v 0 (Fin.last L) with hτ
   have hτi : Function.Injective τ := pathPair_injective v (by
     rw [Ne, Fin.ext_iff]; simp; omega)
   obtain ⟨W', Q', h1', h2', h3', h4', hin, hout⟩ :=
     rational_restrict_subspace hE₁2 P Kᗮ hP2 hP4 τ
   have hTcol : (fun c => tagDiffV r (v 0) (v (Fin.last L)) c 0) = fun c => t (τ c) :=
     (pathVector_pair r v _ _).symm
-  set T : EuclideanSpace ℝ (Fin ((v 0).dim + (v (Fin.last L)).dim)) :=
+  set! T : EuclideanSpace ℝ (Fin ((v 0).dim + (v (Fin.last L)).dim)) :=
     WithLp.toLp 2 (fun c => t (τ c)) with hT
-  set u : EuclideanSpace ℝ (Fin ((v 0).dim + (v (Fin.last L)).dim)) :=
+  set! u : EuclideanSpace ℝ (Fin ((v 0).dim + (v (Fin.last L)).dim)) :=
     WithLp.toLp 2 (fun c => y (τ c)) with hu
   have huW : u ∈ W' := hin y hyW
   have iso' : ∀ x ∈ W', ∀ x₂ ∈ W',
@@ -1640,7 +1639,7 @@ theorem tagEdge_path {B r : ℝ} (hB : 2 ≤ B) {L dB : ℕ} (hL : 1 ≤ L)
           rw [map_sub, h0, sub_zero]
       _ ≤ ‖T - u‖ := Submodule.norm_starProjection_apply_le _ _
       _ ≤ D := hTuD
-  set F' := W'.starProjection T with hF'
+  set! F' := W'.starProjection T with hF'
   have hF'W : F' ∈ W' := W'.starProjection_apply_mem T
   have hFu : F' - u ∈ W' := sub_mem hF'W huW
   have hTF : ‖T - F'‖ ≤ D := by
@@ -1664,7 +1663,7 @@ theorem tagEdge_path {B r : ℝ} (hB : 2 ≤ B) {L dB : ℕ} (hL : 1 ≤ L)
     have h0 : (0 : ℝ) ≤ (((v 0).dim + (v (Fin.last L)).dim : ℕ) : ℝ) := Nat.cast_nonneg _
     have : (((v 0).dim + (v (Fin.last L)).dim : ℕ) : ℝ) *
         (((v 0).dim + (v (Fin.last L)).dim : ℕ) : ℝ) * B ≤ (2 * X) ^ 2 * B := by
-      gcongr; nlinarith
+      gcongr; nlinarith only [hn'X]
     gcongr
   have hid' : tagDiffΛ r (v 0) (v (Fin.last L)) 0 0 +
       1 / 2 * chartMatrixPhase (tagDiffC (v 0) (v (Fin.last L))) T.ofLp T.ofLp +
@@ -1777,7 +1776,7 @@ theorem curvatureGraph (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
     refine hsame H τ hH hτ hτ1 v w c hc0 A B hA hB hAb hBb hAh hAm hAq hBh hBm hBq a₀ r hr
       (fun he => hne (tagEdge_mono he (qpoly_exponent_mono (le_max_left _ _) ?_)))
     have hlogH : 0 ≤ Real.log H := Real.log_nonneg (le_trans (by
-      have := Real.add_one_le_exp (2 : ℝ); linarith) hH)
+      have := Real.add_one_le_exp (2 : ℝ); linarith only [this]) hH)
     have hlτ : 0 ≤ Real.log τ⁻¹ := Real.log_nonneg (one_le_inv₀ hτ |>.mpr hτ1)
     linarith
   · intro H τ hH hτ hτ1 v w a i k b hai hak hab hik hib hkb hv hw A A' hA hA' hAb hA'b hAh hAm
@@ -1967,7 +1966,7 @@ theorem lt_cohortPrefix_of_le {i i' j j' m : ℕ} (hij : i ≤ j) (hi'j' : i' �
     have hlt : i / 2 ^ (m - 1) < i' / 2 ^ (m - 1) + 1 := by omega
     have hp : 0 < 2 ^ (m - 1) := Nat.two_pow_pos _
     have := (Nat.div_lt_iff_lt_mul hp).mp hlt
-    linarith
+    linarith only [this]
 
 /-- Graph distances `d_s` on the original vertices (blueprint lines 1682-1686): a pseudometric at
 every depth, with values in `ℕ∞`, decreasing with depth. -/
@@ -2188,14 +2187,14 @@ theorem WeylSplitData.reindex {B : ℝ} {n m : ℕ} (e : Fin n ≃ Fin m) {V : M
     WeylSplitData B (V.submatrix e.symm id) (C.submatrix e.symm e.symm) Λ := by
   rw [weylSplitData_iff] at h ⊢
   obtain ⟨U, Q, h1, h2, h3, h4, h5, h6, h7⟩ := h
-  set P := LinearIsometryEquiv.piLpCongrLeft 2 ℝ ℝ e
+  set! P := LinearIsometryEquiv.piLpCongrLeft 2 ℝ ℝ e
   have hP : ∀ x : EuclideanSpace ℝ (Fin n), (P x).ofLp = fun i => x.ofLp (e.symm i) := by
     intro x; funext i; simp [P, LinearIsometryEquiv.piLpCongrLeft_apply, Equiv.piCongrLeft'_apply]
   have hPs : ∀ x : EuclideanSpace ℝ (Fin m), (P.symm x).ofLp = fun i => x.ofLp (e i) := by
     intro x; funext i
     simp [P, LinearIsometryEquiv.piLpCongrLeft_symm, LinearIsometryEquiv.piLpCongrLeft_apply,
       Equiv.piCongrLeft'_apply]
-  set U' := U.map (P.toLinearEquiv : EuclideanSpace ℝ (Fin n) →ₗ[ℝ] EuclideanSpace ℝ (Fin m))
+  set! U' := U.map (P.toLinearEquiv : EuclideanSpace ℝ (Fin n) →ₗ[ℝ] EuclideanSpace ℝ (Fin m))
   have hproj : ∀ x, U'.starProjection x = P (U.starProjection (P.symm x)) := fun x =>
     Submodule.starProjection_map_apply P U x
   -- the conjugated operators

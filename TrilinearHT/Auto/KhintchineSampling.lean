@@ -96,7 +96,7 @@ theorem two_point_pow_aux {P A w c : ℝ} (hP : 0 ≤ P) (hA : 0 ≤ A) (hw : w 
           2 * m * w ^ 2 * (P + c * A) ^ m := by
   set Q := P + c * A with hQdef
   set u := P + A with hudef
-  have huQ : u ≤ Q := by nlinarith
+  have huQ : u ≤ Q := by nlinarith only [hA, hc]
   have hu : 0 ≤ u := by positivity
   intro m
   induction m with
@@ -121,11 +121,12 @@ theorem two_point_pow_aux {P A w c : ℝ} (hP : 0 ≤ P) (hA : 0 ≤ A) (hw : w 
         have h2 : u * Q + m * w ^ 2 ≤ Q ^ 2 := by
           have : m * w ^ 2 ≤ m * (4 * P * A) := mul_le_mul_of_nonneg_left hw hm0
           have hPA : 0 ≤ P * A := mul_nonneg hP hA
-          have hcc : c ≤ c * c := by nlinarith
+          have hcc : c ≤ c * c := by nlinarith only [hc]
           have hid : Q ^ 2 - u * Q - m * (4 * P * A) =
               (c - 4 * m - 1) * (P * A) + (c * c - c) * A ^ 2 := by
             rw [hQdef, hudef]; ring
-          nlinarith [mul_le_mul_of_nonneg_left hmc hPA, mul_le_mul_of_nonneg_left hcc (sq_nonneg A)]
+          nlinarith only [mul_le_mul_of_nonneg_left hmc hPA,
+              mul_le_mul_of_nonneg_left hcc (sq_nonneg A), hw]
         have : Q * (u * ((u + w) ^ m + (u - w) ^ m)) + Q * (w * ((u + w) ^ m - (u - w) ^ m))
             ≤ Q * (u * (2 * Q ^ m)) + 2 * m * w ^ 2 * Q ^ m := by
           linarith
@@ -174,16 +175,16 @@ theorem two_point_norm_pow (x a : H) {μ c : ℝ} (hμ : 0 ≤ μ) (hc : 1 ≤ c
   have hA : 0 ≤ ‖a‖ ^ 2 := by positivity
   have hw : (2 * t) ^ 2 ≤ 4 * (‖x‖ ^ 2 + μ) * ‖a‖ ^ 2 := by
     have : 0 ≤ μ * ‖a‖ ^ 2 := mul_nonneg hμ hA
-    nlinarith
+    nlinarith only [hμ, htle]
   rcases (show 0 ≤ ‖x‖ ^ 2 + μ + c * ‖a‖ ^ 2 by positivity).lt_or_eq with hQ | hQ
   · have := (two_point_pow_aux hP hA hw hc hQ n hn).1
     have e1 : ‖x + a‖ ^ 2 + μ = ‖x‖ ^ 2 + μ + ‖a‖ ^ 2 + 2 * t := by rw [hadd]; ring
     have e2 : ‖x - a‖ ^ 2 + μ = ‖x‖ ^ 2 + μ + ‖a‖ ^ 2 - 2 * t := by rw [hsub]; ring
     rw [e1, e2]
     exact this
-  · have hx : ‖x‖ ^ 2 = 0 := by nlinarith [sq_nonneg ‖x‖, sq_nonneg ‖a‖]
-    have ha : ‖a‖ ^ 2 = 0 := by nlinarith [sq_nonneg ‖x‖, sq_nonneg ‖a‖]
-    have hμ0 : μ = 0 := by nlinarith [sq_nonneg ‖x‖, sq_nonneg ‖a‖]
+  · have hx : ‖x‖ ^ 2 = 0 := by nlinarith only [sq_nonneg ‖x‖, sq_nonneg ‖a‖, hμ, hc, hQ]
+    have ha : ‖a‖ ^ 2 = 0 := by nlinarith only [sq_nonneg ‖x‖, sq_nonneg ‖a‖, hμ, hc, hQ]
+    have hμ0 : μ = 0 := by nlinarith only [sq_nonneg ‖x‖, sq_nonneg ‖a‖, hμ, hc, hQ]
     have hx0 : x = 0 := by simpa using hx
     have ha0 : a = 0 := by simpa using ha
     subst hx0 ha0 hμ0
@@ -214,7 +215,7 @@ theorem sum_powerset_norm_sq_add_pow_le (s : Finset ι) (v : ι → H) {c : ℝ}
     rw [Finset.sum_congr rfl e1, Finset.sum_congr rfl e2]
     set S := ∑ i ∈ s, ‖v i‖ ^ 2
     have hS : 0 ≤ S := Finset.sum_nonneg fun i _ => sq_nonneg _
-    have hμ' : 0 ≤ μ + c * S := by nlinarith
+    have hμ' : 0 ≤ μ + c * S := by nlinarith only [hc, hμ, hS]
     have htp := two_point_norm_pow 𝕜 x (v a) hμ' hc n hn
     calc _ ≤ 2 ^ s.card * (‖x - v a‖ ^ 2 + μ + c * S) ^ n +
           2 ^ s.card * (‖x + v a‖ ^ 2 + μ + c * S) ^ n := add_le_add (ih _ _ hμ) (ih _ _ hμ)
@@ -253,7 +254,7 @@ theorem khintchine_upper_rpow (s : Finset ι) (v : ι → H) {p : ℝ} (hp : 0 <
   have hn1 : 1 ≤ n := Nat.one_le_iff_ne_zero.mpr (Nat.ceil_pos.mpr (half_pos hp)).ne'
   have hn1' : (1 : ℝ) ≤ n := by exact_mod_cast hn1
   set c : ℝ := 4 * (n : ℝ) with hcdef
-  have hc : 1 ≤ c := by linarith
+  have hc : 1 ≤ c := by linarith only [hn1']
   have hnc : 4 * (n : ℝ) ≤ c + 3 := by linarith
   set S := ∑ i ∈ s, ‖v i‖ ^ 2 with hSdef
   have hS : 0 ≤ S := Finset.sum_nonneg fun i _ => sq_nonneg _
@@ -264,7 +265,7 @@ theorem khintchine_upper_rpow (s : Finset ι) (v : ι → H) {p : ℝ} (hp : 0 <
   have hpn : p ≤ 2 * n := by
     have := Nat.le_ceil (p / 2)
     rw [← hndef] at this
-    linarith
+    linarith only [this]
   have hq : 1 ≤ q := by rw [hqdef, le_div_iff₀ hp]; linarith
   have hq0 : 0 < q := by linarith
   have hw : ∑ _u ∈ s.powerset, N⁻¹ = 1 := by
@@ -324,7 +325,7 @@ end Vectors
 
 theorem khintchineUpperConst_le {p : ℝ} (hp : 2 ≤ p) :
     khintchineUpperConst p ≤ 2 * Real.sqrt p := by
-  have hp0 : 0 ≤ p := by linarith
+  have hp0 : 0 ≤ p := by linarith only [hp]
   have hc := Nat.ceil_lt_add_one (show 0 ≤ p / 2 by positivity)
   calc khintchineUpperConst p ≤ Real.sqrt (4 * p) := by
         apply Real.sqrt_le_sqrt
@@ -605,7 +606,7 @@ theorem sampling_mean_moment_bound {I A : Type*} [Fintype I] [DecidableEq I]
   calc (Fintype.card I : ℝ)⁻¹ * (2 * khintchineUpperConst p * Real.sqrt (Fintype.card I))
       = 2 * khintchineUpperConst p / Real.sqrt (Fintype.card I) := by
         field_simp
-        nlinarith
+        nlinarith only [hC, hs]
     _ ≤ 4 * Real.sqrt p / Real.sqrt (Fintype.card I) := by
         apply div_le_div_of_nonneg_right _ hs0.le
         nlinarith [khintchineUpperConst_le hp]
@@ -765,7 +766,7 @@ theorem uniformMean_half_good {A : Type*} [Fintype A] [Nonempty A]
   have hc : ((Finset.univ.filter (fun a => u a ≤ R)).card : ℝ) + (B.card : ℝ) =
       Fintype.card A := by
     exact_mod_cast Finset.card_filter_add_card_filter_not (s := Finset.univ) (fun a => u a ≤ R)
-  have hb : (Fintype.card A : ℝ) / 2 < B.card := by linarith
+  have hb : (Fintype.card A : ℝ) / 2 < B.card := by linarith only [hg, hc]
   have hbpos : 0 < B.card := by exact_mod_cast (show (0 : ℝ) < B.card by linarith)
   obtain ⟨b, hbb⟩ := Finset.card_pos.mp hbpos
   have hstrict : (B.card : ℝ) * R < ∑ a, u a := by
@@ -800,7 +801,7 @@ theorem almostPeriodSampleSize_factor {p ε : ℝ} (hp : 0 < p) (hε : 0 < ε) :
     nlinarith
   have hsq := Real.sq_sqrt (show 0 ≤ p / almostPeriodSampleSize p ε by positivity)
   have hs0 := Real.sqrt_nonneg (p / almostPeriodSampleSize p ε)
-  nlinarith
+  nlinarith only [hε, hratio, hsq]
 
 /-- The actual sample tuples giving the required `Lp` approximation. -/
 noncomputable def goodSampleTuples {G : Type*} [AddCommGroup G] [Fintype G] [DecidableEq G]
@@ -1117,7 +1118,7 @@ theorem sampling_almost_periods_iterated {G : Type*} [AddCommGroup G] [Fintype G
   obtain ⟨X, hX, hdensity, hpair⟩ := sampling_almost_periods A hA f hp hε
   refine ⟨X, hX, hdensity, ?_⟩
   intro k u hu
-  have h := finiteLpNorm_sumset_difference_bound (by linarith : 1 ≤ p)
+  have h := finiteLpNorm_sumset_difference_bound (by linarith only [hp] : 1 ≤ p)
     (finiteConvolution f (finiteSetDensity A)) X (2 * ε * finiteLpNorm p f)
     (fun t ht t' ht' => by simpa only [add_sub_assoc] using hpair t ht t' ht') k u hu
   convert h using 1; ring

@@ -315,7 +315,7 @@ theorem lex_step {a a' b b' B : ℕ} (hb : b ≤ B) (h1 : a ≤ a')
   rcases h1.lt_or_eq with hlt | heq
   · have : a * (B + 1) + b < a' * (B + 1) + b' := by
       have : (a + 1) * (B + 1) ≤ a' * (B + 1) := Nat.mul_le_mul_right _ hlt
-      nlinarith
+      nlinarith only [hb, hlt]
     exact ⟨this.le, fun he => absurd he this.ne⟩
   · subst heq
     have := h2 rfl
@@ -482,7 +482,7 @@ theorem potential_le {A : AdmState V} (hA : A.WF) {Nv : ℕ} (hN : A.X.card ≤ 
   generalize K.d0 * flog32 Nv = B3 at *
   have e1 : a * (B2 + 1) + b < (B1 + 1) * (B2 + 1) := by nlinarith
   have e2 : (a * (B2 + 1) + b) * (B3 + 1) + c < (B1 + 1) * (B2 + 1) * (B3 + 1) := by nlinarith
-  nlinarith
+  nlinarith only [h4, e2]
 
 end ColorSetup
 
@@ -619,7 +619,7 @@ theorem roundCode_lt {Nv : ℕ} {t : Option (Fin K.d0 × V × ℤ)}
     have h1 : g.toNat ≤ K.d0 := by omega
     have h2 : (ρ : ℕ) < K.d0 := ρ.2
     have : K.d0 * g.toNat ≤ K.d0 * K.d0 := Nat.mul_le_mul_left _ h1
-    nlinarith
+    nlinarith only [h1, h2]
 
 omit [DecidableEq V] in
 theorem roundCode_inj {t t' : Option (Fin K.d0 × V × ℤ)}
@@ -656,7 +656,7 @@ theorem metaCode_lt {Nv : ℕ} {c : Option (Fin K.d0 × V × ℤ) × ℕ × (ℕ
   have r1 := K.roundCode_lt (Nv := Nv) h1
   have r5 := K.roundCode_lt (Nv := Nv) h5
   have r2 : c.2.1 < K.radix Nv := by unfold radix; omega
-  have r3 : c.2.2.1.1 < K.radix Nv := by unfold radix; nlinarith
+  have r3 : c.2.2.1.1 < K.radix Nv := by unfold radix; nlinarith only [h3]
   have r4 : c.2.2.1.2 < K.radix Nv := by unfold radix; omega
   unfold metaCode
   have s1 := radix_step_lt (A := K.radix Nv) r1 r2
@@ -673,7 +673,7 @@ theorem metaCode_inj {Nv : ℕ} {c c' : Option (Fin K.d0 × V × ℤ) × ℕ × 
   obtain ⟨h1', h2', h3', h4', h5'⟩ := h'
   have lt : ∀ {x : ℕ}, x ≤ Nat.size Nv → x < K.radix Nv := fun hx => by unfold radix; omega
   have lt' : ∀ {x : ℕ}, x ≤ flog32 Nv → x < K.radix Nv := fun hx => by unfold radix; omega
-  have ltd : ∀ {x : ℕ}, x ≤ K.d0 → x < K.radix Nv := fun hx => by unfold radix; nlinarith
+  have ltd : ∀ {x : ℕ}, x ≤ K.d0 → x < K.radix Nv := fun hx => by unfold radix; nlinarith only [hx]
   unfold metaCode at he
   obtain ⟨e1, e5⟩ := radix_step_inj (K.roundCode_lt h5) (K.roundCode_lt h5') he
   obtain ⟨e1, e4⟩ := radix_step_inj (lt' h4) (lt' h4') e1
@@ -1035,7 +1035,7 @@ theorem prim_winner_dist {A : AdmState V} {v : V} (hv : v ∈ A.X) {ρ : Fin K.d
     have h1' : ((K.dist.d A.s z v).toNat : ℤ) <
         (((K.dist.d A.s z v).toNat / K.b1 : ℕ) : ℤ) * K.b1 + K.b1 := by exact_mod_cast h1
     rw [hqe] at h1'; linarith
-  nlinarith
+  nlinarith only [h2]
 
 omit [DecidableEq V] in
 /-- Rival terms at a successful center are at most `(g - 5) b₁` at all earlier depths. -/
@@ -1062,7 +1062,7 @@ theorem rival_term_le {A : AdmState V} {v : V} (hv : v ∈ A.X) {ρ : Fin K.d0} 
     have : (((K.dist.d A.s w v).toNat / K.b1 : ℕ) : ℤ) * K.b1 ≤ (K.dist.d A.s w v).toNat := by
       exact_mod_cast h1
     push_cast
-    nlinarith [(Nat.cast_nonneg K.b1 : (0 : ℤ) ≤ K.b1)]
+    nlinarith only [(Nat.cast_nonneg K.b1 : (0 : ℤ) ≤ K.b1), hq, this]
 
 theorem prof_center_le {A : AdmState V} {v : V} (hv : v ∈ A.X) {ρ : Fin K.d0} {z : V} {g : ℤ}
     (hc : K.prim A v = some (ρ, z, g)) {W : Finset V} (hW : W ⊆ A.X) {s' : ℤ} (hs : s' ≤ A.s) :
@@ -1218,7 +1218,7 @@ theorem mem_mask_of_dist {Hmax : ℕ} (hP : ColorParams K Hmax) (Nv : ℕ) {I : 
     rw [hk'] at htri
     have : k' ≤ k + δ := by exact_mod_cast htri
     refine ⟨k', hk', ?_⟩
-    nlinarith
+    nlinarith only [hδ, hkg, this]
   · have hW : admFrozen (T.st I) z ⊆ (T.st I).X := Finset.filter_subset _ _
     exact (K.lowMet_center_le (A := T.st I) hv hp hW (by omega) hbv (by omega)).trans
       (by exact_mod_cast hδ)
@@ -1330,9 +1330,9 @@ theorem center_close {Hmax : ℕ} (hP : ColorParams K Hmax) {A₀ A : AdmState V
   have hl2 : l + 1 ≤ 2 * K.d0 := by omega
   have ha₀ := K.high_winner_close hP hv₀ hhd₀.symm hl2
   have ha := K.high_winner_close hP hv hhd.symm hl2
-  set B₀ := A₀.X.filter (fun x => K.lowMet ρ g z W l x v₀ ≤ K.Rl l)
-  set B₁ := A.X.filter (fun x => K.lowMet ρ g z W l x v ≤ K.Rl l)
-  set B₂ := A.X.filter (fun x => K.lowMet ρ g z W (l + 1) x v ≤ K.Rl (l + 1))
+  set! B₀ := A₀.X.filter (fun x => K.lowMet ρ g z W l x v₀ ≤ K.Rl l)
+  set! B₁ := A.X.filter (fun x => K.lowMet ρ g z W l x v ≤ K.Rl l)
+  set! B₂ := A.X.filter (fun x => K.lowMet ρ g z W (l + 1) x v ≤ K.Rl (l + 1))
   have hn₀ : flog32 B₀.card = n := hvl₀
   have hn₁ : flog32 B₁.card = n := hvl
   have hn₂ : flog32 B₂.card = n := hvl'
@@ -1381,7 +1381,7 @@ theorem center_close {Hmax : ℕ} (hP : ColorParams K Hmax) {A₀ A : AdmState V
     have d1' := (Finset.mem_filter.mp hx₁).2
     have t := K.lowMet_triangle ρ g z W (show l ≤ 2 * K.d0 by omega) v₀ x v
     rw [K.lowMet_symm ρ g z W l v₀ x] at t
-    linarith
+    linarith only [d0', d1', t]
 
 end ColorSetup
 
@@ -1419,7 +1419,7 @@ theorem pad_gap {Hmax : ℕ} (hP : ColorParams K Hmax) {l : ℕ} (hl : l ≤ K.d
   have hR : K.Rl l ≤ 10 * K.d0 * (K.d0 + 1) * K.b2 := by
     unfold Rl
     have : (0 : ℝ) ≤ (K.d0 + 1) * K.b2 := by positivity
-    nlinarith
+    nlinarith only [hlr, this]
   have hR0 : 0 ≤ K.Rl l := by unfold Rl; positivity
   have hd0 : (0 : ℝ) < 2 * K.d0 := by linarith
   rw [le_div_iff₀ hd0]
@@ -1428,32 +1428,32 @@ theorem pad_gap {Hmax : ℕ} (hP : ColorParams K Hmax) {l : ℕ} (hl : l ≤ K.d
   set d := (K.d0 : ℝ)
   have hB : 100 ≤ B := by rw [hb2]; nlinarith
   have step1 : 10 * K.Rl l * h + 2 * K.Rl l + 1 ≤ 10 * (10 * d * (d + 1) * B) * (H + 1) + 1 := by
-    have : 10 * K.Rl l * h + 2 * K.Rl l ≤ 10 * K.Rl l * (H + 1) := by nlinarith
+    have : 10 * K.Rl l * h + 2 * K.Rl l ≤ 10 * K.Rl l * (H + 1) := by nlinarith only [hR0, hhr]
     have : 10 * K.Rl l * (H + 1) ≤ 10 * (10 * d * (d + 1) * B) * (H + 1) := by gcongr
     linarith
   have step2 : (10 * (10 * d * (d + 1) * B) * (H + 1) + 1) * (2 * d) ≤
       d ^ 10 * B * (H + 1) := by
     have hd2 : d ^ 10 = d ^ 3 * d ^ 7 := by ring
     have h87 : (8 : ℝ) ^ 7 ≤ d ^ 7 := pow_le_pow_left₀ (by norm_num) hd 7
-    have hBH : 1 ≤ B * (H + 1) := by nlinarith
+    have hBH : 1 ≤ B * (H + 1) := by nlinarith only [hhr, hb2]
     set P := B * (H + 1) with hPdef
     have e1 : (10 * (10 * d * (d + 1) * B) * (H + 1) + 1) * (2 * d) =
         200 * d ^ 3 * P + 200 * d ^ 2 * P + 2 * d := by rw [hPdef]; ring
     have e2 : 200 * d ^ 2 * P ≤ 25 * d ^ 3 * P := by
       have : (0 : ℝ) ≤ d ^ 2 * P := by positivity
-      nlinarith
+      nlinarith only [hd, this]
     have e3 : 2 * d ≤ 2 * d ^ 3 * P := by
-      have : 1 ≤ d ^ 2 := by nlinarith
-      have : d ≤ d ^ 3 := by nlinarith
-      nlinarith
+      have : 1 ≤ d ^ 2 := by nlinarith only [hd]
+      have : d ≤ d ^ 3 := by nlinarith only [hR0, hd, hR, hB]
+      nlinarith only [hd, hBH, e2]
     have : (10 * (10 * d * (d + 1) * B) * (H + 1) + 1) * (2 * d) ≤
-        (227 * d ^ 3) * P := by rw [e1]; nlinarith
+        (227 * d ^ 3) * P := by rw [e1]; nlinarith only [hd, hBH, e2]
     have : (227 * d ^ 3) * P ≤ d ^ 3 * d ^ 7 * P := by
       have : (0 : ℝ) ≤ d ^ 3 * P := by positivity
-      nlinarith
-    rw [hd2]; nlinarith
+      nlinarith only [hb1, h87]
+    rw [hd2]; nlinarith only [hd, h87, e2, e3]
   rw [hb1]
-  nlinarith
+  nlinarith only [hd, step1, step2]
 
 omit [DecidableEq V] in
 theorem Tl_le_half (g : ℤ) {l : ℕ} (hl : l ≤ K.d0) (hd : 0 < K.d0) :
@@ -1618,7 +1618,7 @@ theorem mask_neighbor {Hmax : ℕ} (hP : ColorParams K Hmax) (Nv : ℕ) {I : T.C
     have t := K.lowMet_triangle ρ g z W hl2 b' b v₀
     rw [K.lowMet_symm ρ g z W (l + 1) b' b] at t
     have : (δ : ℝ) ≤ 1 := by exact_mod_cast hδ
-    push_cast; linarith
+    push_cast; linarith only [hP2, hbb', t, this]
   · -- `d^{(l)}(b', v₀) ≤ 10 R_l (h + 1)`
     apply K.lowMet_le_of
     intro s''
@@ -1630,7 +1630,7 @@ theorem mask_neighbor {Hmax : ℕ} (hP : ColorParams K Hmax) (Nv : ℕ) {I : T.C
     · -- both clipped values lie in `[T_l, T_l + A_h + 1]`
       have u1 : clipW (K.Tl g l) (K.Ul g) (K.prof ρ z W b' s'') ≤
           K.Tl g l + (10 * K.Rl l * h + 2 * K.Rl l) + δ :=
-        clipW_le_of_le (by nlinarith) (hb'prof s'' hs'')
+        clipW_le_of_le (by nlinarith only [hR]) (hb'prof s'' hs'')
       have l1 := (clipW_mem hTU' (K.prof ρ z W b' s'')).1
       have hd0 := K.clipDiff_le_lowMet ρ g z W hl1 v₀ v s''
       unfold clipDiff at hd0
@@ -1638,7 +1638,7 @@ theorem mask_neighbor {Hmax : ℕ} (hP : ColorParams K Hmax) (Nv : ℕ) {I : T.C
       have u2 := (abs_le.mp (hd0.trans hcl)).2
       have l2 := (clipW_mem hTU' (K.prof ρ z W v₀ s'')).1
       unfold clipDiff
-      rw [abs_le]; constructor <;> push_cast <;> nlinarith
+      rw [abs_le]; constructor <;> push_cast <;> nlinarith only [hR, l1, u2, hδr, u1, l2]
     · obtain ⟨δ', hδ', hδδ⟩ := hlater s'' hs''
       have hδ'' : K.dist.d s'' b' b = δ' := by rw [K.dist.symm]; exact hδ'
       have e1 : K.clipDiff ρ g z W l b' b s'' ≤ δ' :=
@@ -1648,7 +1648,7 @@ theorem mask_neighbor {Hmax : ℕ} (hP : ColorParams K Hmax) (Nv : ℕ) {I : T.C
           K.clipDiff ρ g z W l b' b s'' + K.clipDiff ρ g z W l b v₀ s'' := by
         unfold clipDiff; exact abs_sub_le _ _ _
       have : (δ' : ℝ) ≤ δ := by exact_mod_cast hδδ
-      push_cast; nlinarith
+      push_cast; nlinarith only [hP3, hR, hδr, e1, e2, e3, this]
 
 /-- Two adjacent vertices, one of which has small rival profile up to depth `s`, are within
 their graph distance in the high pseudometric `d^{(l+1)}`. -/
@@ -1721,10 +1721,10 @@ theorem high_far {Hmax : ℕ} (hP : ColorParams K Hmax) {A₁ A₂ : AdmState V}
   have : x₁ / K.b2 + 4 < x₂ / K.b2 := by linarith
   have hx : x₁ + 4 * K.b2 < x₂ := by
     have := (div_lt_div_iff_of_pos_right hb2).mp (show (x₁ + 4 * K.b2) / K.b2 < x₂ / K.b2 by
-      rw [add_div, mul_div_assoc, div_self hb2.ne', mul_one]; linarith)
+      rw [add_div, mul_div_assoc, div_self hb2.ne', mul_one]; linarith only [e1, e2, hff])
     exact this
   have t := K.lowMet_triangle ρ g z W hl2 a₁ v₁ v₂
-  linarith
+  linarith only [hx, t]
 
 omit [DecidableEq V] in
 theorem admLevel_between {A₀ A A₁ : AdmState V} (hA₀ : A₀.WF) (hA : A.WF) (h₀ : A₀.Le A)
@@ -1790,7 +1790,7 @@ theorem mask_separation {Hmax : ℕ} (hP : ColorParams K Hmax) (Nv : ℕ)
     rw [hP.hb1, hP.hb2]; push_cast
     have : (1 : ℝ) ≤ (K.d0 : ℝ) ^ 10 := one_le_pow₀ (by exact_mod_cast (by omega : 1 ≤ K.d0))
     have h0 : (0 : ℝ) ≤ Hmax := Nat.cast_nonneg _
-    have h1 : (1 : ℝ) ≤ (K.d0 : ℝ) ^ 10 * (100 * (Hmax + 1)) := by nlinarith
+    have h1 : (1 : ℝ) ≤ (K.d0 : ℝ) ^ 10 * (100 * (Hmax + 1)) := by nlinarith only [this]
     calc (Hmax : ℝ) + 1 = 1 * (Hmax + 1) := by ring
       _ ≤ _ := mul_le_mul_of_nonneg_right h1 (by positivity)
   have hgap := K.pad_gap hP (l := l) (by omega) hh'
@@ -1824,7 +1824,7 @@ theorem mask_separation {Hmax : ℕ} (hP : ColorParams K Hmax) (Nv : ℕ)
       simp at this; omega
     obtain ⟨δ'', hδ'', hδ''1⟩ := hbu
     have hbb := K.lowMet_succ_adjacent ρ g z W hl2 (A := 10 * K.Rl l * h' + 2 * K.Rl l)
-      (by linarith) hδ'' hδ''1 (fun s'' hs'' x hx => hriv s'' hs'' x hx)
+      (by linarith only [hgap, hTs]) hδ'' hδ''1 (fun s'' hs'' x hx => hriv s'' hs'' x hx)
     have hδ''r : (δ'' : ℝ) ≤ 1 := by exact_mod_cast hδ''1
     have hup : K.lowMet ρ g z W (l + 1) v₀ v₀' ≤ h + 1 + h' := by
       have t1 := K.lowMet_triangle ρ g z W hl2 v₀ b v₀'
@@ -2732,12 +2732,12 @@ theorem chain_fail_le (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ) (hd5 : 5
             (if ∀ ρ, ¬ RoundMarked σ.1 (delayScore (ωp ρ) σ.2) then roundsW d0 ωp else 0) := by
           refine le_trans ?_ (Finset.single_le_sum (fun σ _ => ite_nonneg w1 le_rfl) hσ)
           rw [ite_eq_left hE]
-        nlinarith
+        nlinarith only [w1, w2, s2, this]
       · have : roundsW d0 ωh ≤ ∑ σ ∈ HS ωp,
             (if ∀ ρ, ¬ RoundMarked σ.1 (delayScore (ωh ρ) σ.2) then roundsW d0 ωh else 0) := by
           refine le_trans ?_ (Finset.single_le_sum (fun σ _ => ite_nonneg w2 le_rfl) hσ)
           rw [ite_eq_left hE]
-        nlinarith
+        nlinarith only [w1, w2, s1, this]
     · positivity
   -- the situation counts
   have hPS : (PS.card : ℝ) ≤ Nv * (Nv * (d0 + 7) + 1) := by
@@ -2833,7 +2833,7 @@ theorem delays_exist [Finite V] (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ
   have hpt : ∀ y ∈ R, ∑ ωp : Fin d0 → V → Fin (d0 + 1), ∑ ωh : Fin d0 → V → Fin (d0 + 1),
       roundsW d0 ωp * roundsW d0 ωh * (F ωp ωh).indicator (fun _ => (1 : ℝ)) y ≤ B := by
     intro y _
-    set C := S.filter (fun I => y ∈ cellSet I)
+    set! C := S.filter (fun I => y ∈ cellSet I)
     have htot : ∀ I ∈ C, ∀ J ∈ C, T.Anc I J ∨ T.Anc J I := by
       intro I hI J hJ
       obtain ⟨hI, hyI⟩ := Finset.mem_filter.mp hI
@@ -2895,7 +2895,7 @@ theorem delays_exist [Finite V] (dist : DepthDistance V) {d0 : ℕ} (b1 b2 : ℕ
         Finset.sum_eq_zero fun ωp _ => Finset.sum_eq_zero fun ωh _ =>
           le_antisymm (h ωp ωh) (hnn ωp ωh)
       linarith
-    set G := fun ωp ωh : Fin d0 → V → Fin (d0 + 1) =>
+    set! G := fun ωp ωh : Fin d0 → V → Fin (d0 + 1) =>
       roundsW d0 ωp * roundsW d0 ωh * ((volume (F ωp ωh)).toReal - B * (volume R).toReal)
     have hG : ∀ ωp ωh, 0 ≤ G ωp ωh := fun ωp ωh =>
       mul_nonneg (hnn ωp ωh) (by linarith [hcon ωp ωh])
@@ -2966,7 +2966,7 @@ theorem colorDegree_bounds {D : ℕ} (hD : 1 ≤ D) :
   have h1 := Nat.ceil_lt_add_one hpos
   have h2 : Real.log (2 * D) ≤ 2 * D := (Real.log_le_sub_one_of_pos (by positivity)).trans
     (by linarith)
-  linarith
+  linarith only [hD', h1, h2]
 
 theorem colorDegree_ge {D : ℕ} (hD : 1 ≤ D) : 2 * Nat.log 2 D + 10 ≤ colorDegree D := by
   have hD' : (1 : ℝ) ≤ D := by exact_mod_cast hD
@@ -2975,7 +2975,7 @@ theorem colorDegree_ge {D : ℕ} (hD : 1 ≤ D) : 2 * Nat.log 2 D + 10 ≤ color
     apply Real.log_le_log (by positivity)
     exact_mod_cast Nat.pow_log_le_self 2 (by omega)
   have hl2 : (0.69 : ℝ) < Real.log 2 := by
-    have := Real.log_two_gt_d9; linarith
+    have := Real.log_two_gt_d9; linarith only [this]
   have hlogD : 0 ≤ Real.log D := Real.log_nonneg hD'
   have h2D : Real.log (2 * D) = Real.log 2 + Real.log D :=
     Real.log_mul (by norm_num) (by positivity)
@@ -2983,7 +2983,7 @@ theorem colorDegree_ge {D : ℕ} (hD : 1 ≤ D) : 2 * Nat.log 2 D + 10 ≤ color
   have : (2 * Nat.log 2 D + 10 : ℝ) ≤ colorDegree D := by
     rw [h2D] at hb
     have : (Nat.log 2 D : ℝ) ≤ 2 * Real.log D := by
-      have : (Nat.log 2 D : ℝ) * 0.69 ≤ Real.log D := by nlinarith
+      have : (Nat.log 2 D : ℝ) * 0.69 ≤ Real.log D := by nlinarith only [hl, hl2]
       nlinarith
     nlinarith
   exact_mod_cast this
@@ -2997,9 +2997,9 @@ theorem numColors_le {Nv : ℕ} (hs : Nat.size Nv ≤ K.d0) (hf : flog32 Nv ≤ 
     (hd : 3 ≤ K.d0) : K.numColors Nv ≤ K.d0 ^ 30 := by
   unfold numColors potMax radix
   set d := K.d0
-  have ha : d * (2 * d + 1) + 1 ≤ 3 * d ^ 2 := by nlinarith
+  have ha : d * (2 * d + 1) + 1 ≤ 3 * d ^ 2 := by nlinarith only [hd]
   have hb : Nat.size Nv + 1 ≤ 2 * d := by omega
-  have hc : d * flog32 Nv + 1 ≤ 2 * d ^ 2 := by nlinarith
+  have hc : d * flog32 Nv + 1 ≤ 2 * d ^ 2 := by nlinarith only [hf, hd]
   have hr : (d + 1) ^ 2 + Nat.size Nv + flog32 Nv + 1 ≤ 5 * d ^ 2 := by nlinarith
   have hp : (d * (2 * d + 1) + 1) * (Nat.size Nv + 1) * (d * flog32 Nv + 1) *
       (d * (2 * d + 1) + 1) + 1 ≤ 37 * d ^ 7 := by
@@ -3022,9 +3022,9 @@ theorem potMax_le {Nv : ℕ} (hs : Nat.size Nv ≤ K.d0) (hf : flog32 Nv ≤ K.d
     K.potMax Nv ≤ 36 * K.d0 ^ 7 := by
   unfold potMax
   set d := K.d0
-  have ha : d * (2 * d + 1) + 1 ≤ 3 * d ^ 2 := by nlinarith
+  have ha : d * (2 * d + 1) + 1 ≤ 3 * d ^ 2 := by nlinarith only [hd]
   have hb : Nat.size Nv + 1 ≤ 2 * d := by omega
-  have hc : d * flog32 Nv + 1 ≤ 2 * d ^ 2 := by nlinarith
+  have hc : d * flog32 Nv + 1 ≤ 2 * d ^ 2 := by nlinarith only [hf, hd]
   calc _ ≤ 3 * d ^ 2 * (2 * d) * (2 * d ^ 2) * (3 * d ^ 2) := by gcongr
     _ = 36 * d ^ 7 := by ring
 
@@ -3034,12 +3034,12 @@ theorem pow_65_66_le {D : ℕ} (hD : 1 ≤ D) :
     (65 / 66 : ℝ) ^ colorDegree D ≤ 1 / (2 * D : ℝ) ^ 15 := by
   have hD' : (1 : ℝ) ≤ D := by exact_mod_cast hD
   have h1 : (65 / 66 : ℝ) ≤ Real.exp (-(1 / 66)) := by
-    have := Real.add_one_le_exp (-(1 / 66 : ℝ)); linarith
+    have := Real.add_one_le_exp (-(1 / 66 : ℝ)); linarith only [this]
   have h2 : (65 / 66 : ℝ) ^ colorDegree D ≤ Real.exp (-(1 / 66)) ^ colorDegree D :=
     pow_le_pow_left₀ (by norm_num) h1 _
   rw [← Real.exp_nat_mul] at h2
   have hb := (colorDegree_bounds hD).1
-  have hlog : 0 ≤ Real.log (2 * D) := Real.log_nonneg (by linarith)
+  have hlog : 0 ≤ Real.log (2 * D) := Real.log_nonneg (by linarith only [hD'])
   have h3 : Real.exp ((colorDegree D : ℝ) * -(1 / 66)) ≤ Real.exp (-(15 * Real.log (2 * D))) :=
     Real.exp_le_exp.mpr (by nlinarith)
   have h4 : Real.exp (-(15 * Real.log (2 * D))) = 1 / (2 * D : ℝ) ^ 15 := by
@@ -3086,18 +3086,18 @@ theorem failBound_le {V : Type*} [DecidableEq V] (dist : DepthDistance V) (b1 b2
     have e1 : (Nv : ℝ) * (Nv * (d + 7) + 1) ≤ 9 * (d : ℝ) ^ 7 * D ^ 2 := by
       have : (Nv : ℝ) * (Nv * (d + 7) + 1) ≤ D * (D * (d + 7) + 1) := by
         gcongr
-      nlinarith
+      nlinarith only [hD', hd8, hdd7, this]
     have e2 : (Nv : ℝ) * (K.potMax Nv * (Nv + 1) +
         Nv + 1) ≤ D * (36 * (d : ℝ) ^ 7 * (D + 1) + D + 1) := by
       have h0 : (0 : ℝ) ≤ K.potMax Nv := Nat.cast_nonneg _
       gcongr
     have e3 : (D : ℝ) * (36 * (d : ℝ) ^ 7 * (D + 1) + D + 1) ≤ 91 * (d : ℝ) ^ 7 * D ^ 2 := by
-      have hDD : (D : ℝ) ≤ D ^ 2 := by nlinarith
+      have hDD : (D : ℝ) ≤ D ^ 2 := by nlinarith only [hD']
       have a1 : (d : ℝ) ^ 7 * D ≤ (d : ℝ) ^ 7 * D ^ 2 :=
         mul_le_mul_of_nonneg_left hDD (by positivity)
       have a2 : (D : ℝ) ^ 2 ≤ (d : ℝ) ^ 7 * D ^ 2 := le_mul_of_one_le_left (by positivity) hd7
       have a3 : (D : ℝ) ≤ (d : ℝ) ^ 7 * D ^ 2 := hDD.trans a2
-      nlinarith
+      nlinarith only [hd7, hDD]
     linarith
   have hq := pow_65_66_le hD
   have hq0 : (0 : ℝ) ≤ (65 / 66 : ℝ) ^ d := by positivity
@@ -3358,7 +3358,7 @@ theorem wholeRanges_core (φ : V → ℝ → ℂ) (ε : V → ℝ) (hε : ∀ v,
   classical
   have hε0 : ∀ v, 0 ≤ ε v := fun v => (hε v).le
   set P : ι → ℝ → ℂ := fun G y => ∑ v, a G v y * φ v y with hP
-  set Q : ι → ℝ → ℝ := fun G y => ∑ u, ‖a G u y‖ ^ 2 * ε u with hQ
+  set! Q : ι → ℝ → ℝ := fun G y => ∑ u, ‖a G u y‖ ^ 2 * ε u with hQ
   have hZ : ∀ G y, ‖groupOutput φ ε (a G) y‖ ^ 2 = ‖P G y‖ ^ 2 + Q G y := fun G y =>
     norm_sq_groupOutput φ ε (a G) y hε0
   have hsum : ∀ y, ‖∑ G, groupOutput φ ε (a G) y‖ ^ 2 =
@@ -3480,7 +3480,7 @@ theorem wholeRanges_core (φ : V → ℝ → ℂ) (ε : V → ℝ) (hε : ∀ v,
   have hpt : ∀ y, ∑ G, ∑ G' ∈ Finset.univ.erase G, ∑ v, ∑ w, ‖a G v y‖ * ‖a G' w y‖ ≤
       N * W₀ ^ 2 * ∑ G, (‖P G y‖ ^ 2 + Q G y) := by
     intro y
-    set x : ι × V → ℝ := fun p => ‖a p.1 p.2 y‖
+    set! x : ι × V → ℝ := fun p => ‖a p.1 p.2 y‖
     have h1 : ∑ G, ∑ G' ∈ Finset.univ.erase G, ∑ v, ∑ w, ‖a G v y‖ * ‖a G' w y‖ ≤
         (∑ p, x p) ^ 2 := by
       calc _ ≤ ∑ G, ∑ G', ∑ v, ∑ w, ‖a G v y‖ * ‖a G' w y‖ :=
@@ -3714,7 +3714,7 @@ theorem usableRangeBessel (Gd : RealDyadicGrid) (φ : V → ℝ → ℂ) (ε : V
       (1 + τ * N * W₀ ^ 2) * ∑ G, ∫ y, ‖groupOutput φ ε (occCoef Gd occ c G) y‖ ^ 2 := by
   classical
   set a := occCoef Gd occ c with ha
-  set M := max ((K₀ : ℝ) * Mc) Mφ
+  set! M := max ((K₀ : ℝ) * Mc) Mφ
   have hM0 : 0 ≤ M := le_max_of_le_left (by positivity)
   have hab : ∀ G v y, ‖a G v y‖ ≤ M := fun G v y =>
     (norm_occCoef_le Gd occ c hc hK G v y).trans (le_max_left _ _)
@@ -3749,10 +3749,10 @@ theorem usableRangeBessel (Gd : RealDyadicGrid) (φ : V → ℝ → ℂ) (ε : V
         rcases mul_eq_zero.mp this with h | h <;> simp [h]
       rw [hz, integral_zero, norm_zero]
       exact mul_nonneg hτ (integral_nonneg fun y => by positivity)
-    set s := sep v w
+    set! s := sep v w
     obtain ⟨𝒦, h𝒦⟩ := cells_meeting_finite Gd s ra rb
-    set f : ℝ → ℂ := fun y => starRingEnd ℂ (a G v y) * a G' w y
-    set ψ : ℝ → ℂ := fun y => starRingEnd ℂ (φ v y) * φ w y
+    set! f : ℝ → ℂ := fun y => starRingEnd ℂ (a G v y) * a G' w y
+    set! ψ : ℝ → ℂ := fun y => starRingEnd ℂ (φ v y) * φ w y
     have e1 : (fun y => starRingEnd ℂ (a G v y * φ v y) * (a G' w y * φ w y)) =
         fun y => f y * ψ y := by
       funext y; simp only [f, ψ, map_mul]; ring

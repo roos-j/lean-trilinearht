@@ -33,7 +33,7 @@ theorem starProjection_sup_span_gain {E : Type*} [NormedAddCommGroup E] [InnerPr
     [CompleteSpace E] (U : Submodule ℂ E) [FiniteDimensional ℂ U] (u z : E) :
     ‖(U ⊔ Submodule.span ℂ {u}).starProjection z‖ ^ 2 ≥
       ‖U.starProjection z‖ ^ 2 + ‖inner ℂ u (z - U.starProjection z)‖ ^ 2 / ‖u‖ ^ 2 := by
-  set W := U ⊔ Submodule.span ℂ {u} with hW
+  set! W := U ⊔ Submodule.span ℂ {u} with hW
   have hUW : U ≤ W := le_sup_left
   have huW : u ∈ W :=
     (le_sup_right : Submodule.span ℂ {u} ≤ W) (Submodule.mem_span_singleton_self u)
@@ -86,8 +86,8 @@ theorem norm_fitColumnValue_le {V : Type*} [Fintype V] [DecidableEq V] {φ : ℝ
   have h1 : ‖φ y • EuclideanSpace.single (none : Option V) (1 : ℂ)‖ ≤ 1 := by
     simpa [norm_smul] using hφ y
   have h2 : ‖EuclideanSpace.single (some v) (1 : ℂ)‖ = 1 := by simp
-  linarith [norm_add_le (φ y • EuclideanSpace.single (none : Option V) (1 : ℂ))
-    (EuclideanSpace.single (some v) (1 : ℂ))]
+  linarith only [norm_add_le (φ y • EuclideanSpace.single (none : Option V) (1 : ℂ))
+    (EuclideanSpace.single (some v) (1 : ℂ)), h1, h2]
 
 theorem measurable_fitColumnValue {V : Type*} [Fintype V] [DecidableEq V] {φ : ℝ → ℂ}
     (hφ : Measurable φ) (v : V) : Measurable (fitColumnValue φ v) :=
@@ -265,7 +265,7 @@ theorem fit_detect (κ : LocalKernelClass) :
   obtain ⟨g, hgm, hgj, ih, ku, lv, h1, h2, h3, h4, h5, h6, hq1, hq2, hq3, hlt⟩ := hfail
   have hδ : Real.exp (-(k : ℝ)) < 1 / 2 := by
     have hk1 : (1 : ℝ) ≤ k := by exact_mod_cast hk
-    calc Real.exp (-(k : ℝ)) ≤ Real.exp (-1) := Real.exp_le_exp.mpr (by linarith)
+    calc Real.exp (-(k : ℝ)) ≤ Real.exp (-1) := Real.exp_le_exp.mpr (by linarith only [hk1])
       _ < 1 / 2 := by
           rw [Real.exp_neg, inv_lt_comm₀ (Real.exp_pos 1) (by norm_num)]
           have := Real.add_one_lt_exp (show (1 : ℝ) ≠ 0 by norm_num); linarith
@@ -430,7 +430,7 @@ theorem fitEnergy_gain {M : ℕ} {s : Set ℝ} (f : Lp ℂ 2 (volume : Measure �
     ‖fitProj M s a n (physicalColumnInput f)‖ ^ 2 + ρ ^ 2 * volume.real s / 4 ≤
       ‖fitProj M s (Function.update a n φ) (n + 1) (physicalColumnInput f)‖ ^ 2 := by
   set z := physicalColumnInput (V := Fin M) f with hz
-  set U := fitRange (M := M) s a n with hU
+  set! U := fitRange (M := M) s a n with hU
   have hsucc : fitRange (M := M) s (Function.update a n φ) (n + 1) =
       U ⊔ Submodule.span ℂ {fitColumn s φ (⟨n, hn⟩ : Fin M)} := by
     rw [fitRange_succ _ _ hn, fitRange_update _ _ _ _ le_rfl, Function.update_self]
@@ -480,7 +480,7 @@ theorem fitEnergy_gain {M : ℕ} {s : Set ℝ} (f : Lp ℂ 2 (volume : Measure �
     pow_le_pow_left₀ (by positivity) hcorr 2
   have hmul := mul_le_mul_of_nonneg_left hnorm
     (by positivity : (0 : ℝ) ≤ ρ ^ 2 * volume.real s / 4)
-  nlinarith
+  nlinarith only [hc2, hmul]
 
 /-- A range inside the orthogonal sum of two ranges has at most their total projection energy. -/
 theorem starProjection_energy_le_of_le_sup {E : Type*} [NormedAddCommGroup E]
@@ -612,7 +612,7 @@ theorem fitProj_restrict {M : ℕ} {s : Set ℝ} (hs : MeasurableSet s) (a : ℕ
     (z : ColumnL2 (Fin M)) :
     fitProj M s a n (columnL2Restriction s hs z) = fitProj M s a n z := by
   unfold fitProj
-  set U := fitRange (M := M) s a n
+  set! U := fitRange (M := M) s a n
   have e : columnL2Restriction s hs z = columnL2Indicator s hs z := rfl
   have hw : z - columnL2Restriction s hs z ∈ Uᗮ := by
     rw [e]

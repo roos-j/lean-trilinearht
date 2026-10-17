@@ -903,7 +903,7 @@ theorem chartSlowQuadratic_geomBound {d : ℕ} (Csy Csk : Matrix (Fin d) (Fin d)
       rw [abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)]
       linarith only [this, abs_nonneg (Csy a b)]
     have hc2 : ‖Csk a b‖ ≤ Bc := by rw [Real.norm_eq_abs]; exact hsk a b
-    nlinarith [sq_nonneg M, norm_nonneg (1 / 2 * Csy a b : ℝ), norm_nonneg (Csk a b)]
+    nlinarith only [sq_nonneg M, norm_nonneg (1 / 2 * Csy a b : ℝ), norm_nonneg (Csk a b), hc1, hc2]
   have hsmooth (a b : Fin d) : ContDiff ℝ (⊤ : ℕ∞)
       (fun y => (1 / 2 * Csy a b) * ((Lw y + cw) a * (Lw y + cw) b) +
         Csk a b * ((Ls y + cs) a * (Lw y + cw) b)) := by fun_prop
@@ -1047,7 +1047,7 @@ theorem chartUnitTerm_iteratedFDeriv_le {k d c₀ : ℕ} {H : ℝ}
     simp only [dotProduct, Matrix.mulVec]
     fun_prop
   have h5 := hφ.fourierChar hφs (by positivity)
-  set c := (1 / 2) * dotProduct (fun i => (n i : ℝ)) (Csy.mulVec fun i => (n i : ℝ))
+  set! c := (1 / 2) * dotProduct (fun i => (n i : ℝ)) (Csy.mulVec fun i => (n i : ℝ))
   have h4 := GeomBound.const (Real.fourierChar (-c) : ℂ) x le_rfl m
   -- assemble
   have hT : T = fun y => tensorCutoff ψ S (sL y + sc) *
@@ -1195,8 +1195,8 @@ theorem rationalHeight_le_of_mul_int (q : ℚ) {D : ℕ} (hD : 0 < D)
   have hdenr : (q.den : ℝ) ≤ D := by exact_mod_cast hden'
   constructor
   · rw [hnum]
-    nlinarith [abs_nonneg (q : ℝ)]
-  · nlinarith [abs_nonneg (q : ℝ)]
+    nlinarith only [abs_nonneg (q : ℝ), hdenr]
+  · nlinarith only [abs_nonneg (q : ℝ), hdenr]
 
 /-- The Fourier exponent at the rescaled point `(P_s u / P₁, u / P₀)` is the
 pairing of `u` with the frequency `P_s p / P₁ + ℓ / P₀`, for symmetric `P_s`. -/
@@ -1286,7 +1286,7 @@ theorem chart_split_fourier_hasSum {k d c₀ : ℕ} (hd : 1 ≤ d) {H : ℝ}
   intro C Csy Csk u g
   classical
   have hP1 : (1 - Q) + Q = 1 := by abel
-  have hH : 0 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hH : 0 ≤ H := by linarith only [hA.lower, Real.add_one_le_exp (2 : ℝ)]
   have hP₁0 : 0 < P₁ := by linarith only [hS, hP₁]
   have hP₀r : (0 : ℝ) < P₀ := by exact_mod_cast hP₀
   set Ez := dotProduct z ((effectiveReturnQuadratic C A.quadratic A.horizontal
@@ -1377,13 +1377,13 @@ theorem mul (h₁ : PowLe W a x) (h₂ : PowLe W b y) : PowLe W (a + b) (x * y) 
 
 theorem add (hW : 2 ≤ W) (h₁ : PowLe W a x) (h₂ : PowLe W b y) :
     PowLe W (max a b + 1) (x + y) := by
-  have hW1 : 1 ≤ W := by linarith
+  have hW1 : 1 ≤ W := by linarith only [hW]
   refine ⟨add_nonneg h₁.1 h₂.1, ?_⟩
   have ha := h₁.2.trans (pow_le_pow_right₀ hW1 (le_max_left a b))
   have hb := h₂.2.trans (pow_le_pow_right₀ hW1 (le_max_right a b))
   rw [pow_succ]
   have hp : 0 ≤ W ^ max a b := by positivity
-  nlinarith
+  nlinarith only [hW, ha, hb, hp]
 
 theorem pow (h : PowLe W a x) (n : ℕ) : PowLe W (a * n) (x ^ n) :=
   ⟨pow_nonneg h.1 n, by rw [pow_mul]; exact pow_le_pow_left₀ h.1 h.2 n⟩
@@ -1393,7 +1393,7 @@ theorem const {c : ℝ} (hc : 0 ≤ c) (hcW : c ≤ W) : PowLe W 1 c := ⟨hc, b
 theorem one : PowLe W 0 1 := ⟨zero_le_one, by simp⟩
 
 theorem div_ge_one (h : PowLe W a x) (hy : 1 ≤ y) : PowLe W a (x / y) :=
-  ⟨div_nonneg h.1 (by linarith), (div_le_self h.1 hy).trans h.2⟩
+  ⟨div_nonneg h.1 (by linarith only [hy]), (div_le_self h.1 hy).trans h.2⟩
 
 theorem max_one (hW : 1 ≤ W) (h : PowLe W a x) : PowLe W a (max x 1) :=
   ⟨(zero_le_one).trans (le_max_right _ _), max_le h.2 (one_le_pow₀ hW)⟩
@@ -1409,15 +1409,15 @@ theorem chartUnitEnvelope_le_pow {d c₀ Kψ m : ℕ} {H S rE B Bc P₀ P₁ W :
     (hKW : (Kψ : ℝ) ≤ W) (hmW : (m + 1 : ℝ) ≤ W) (hdW : (d : ℝ) ≤ W) (h7 : 7 ≤ W) :
     chartUnitEnvelope d c₀ Kψ m H S rE B Bc P₀ P₁ ≤
       W ^ (8 * d + 3 * c₀ + (4 * Kψ + 3 * c₀ + 18) * m) := by
-  have hW1 : 1 ≤ W := by linarith
+  have hW1 : 1 ≤ W := by linarith only [hW]
   have hW0 : 0 ≤ W := by linarith
   have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
   have hW3 : 4 * W ≤ W ^ 3 := by
-    have h4 : 4 ≤ W ^ 2 := by nlinarith
+    have h4 : 4 ≤ W ^ 2 := by nlinarith only [hW]
     calc 4 * W ≤ W ^ 2 * W := mul_le_mul_of_nonneg_right h4 hW0
       _ = W ^ 3 := by ring
   have hW4 : 9 * W ≤ W ^ 4 := by
-    have h9 : 9 ≤ W ^ 3 := by nlinarith [pow_le_pow_left₀ (by norm_num) h7 3]
+    have h9 : 9 ≤ W ^ 3 := by nlinarith only [pow_le_pow_left₀ (by norm_num) h7 3]
     calc 9 * W ≤ W ^ 3 * W := mul_le_mul_of_nonneg_right h9 hW0
       _ = W ^ 4 := by ring
   have hm0 : (0 : ℝ) ≤ m + 1 := by positivity
@@ -1430,7 +1430,7 @@ theorem chartUnitEnvelope_le_pow {d c₀ Kψ m : ℕ} {H S rE B Bc P₀ P₁ W :
     have h := ((PowLe.const (by linarith) hHW).pow (2 * c₀)).mul
       ((PowLe.const hm0 hmW).pow c₀)
     exact h.mono hW1 (by omega)
-  set e := 4 * Kψ + 3 * c₀ + 15 with he
+  set! e := 4 * Kψ + 3 * c₀ + 15 with he
   have hGS : PowLe W (4 * Kψ) ((((Kψ : ℝ) * (m + 1 : ℝ)) ^ (2 * Kψ)) / S) := hG.div_ge_one hS1
   have ht1 : PowLe W e (P₁ * (d * ((((Kψ : ℝ) * (m + 1 : ℝ)) ^ (2 * Kψ)) / S))) :=
     ((PowLe.const (by linarith) hP₁W).mul ((PowLe.const hd0 hdW).mul hGS)).mono hW1
@@ -1658,7 +1658,7 @@ theorem chartSplitFrequency_abs_le {d : ℕ} (Q Csk : Matrix (Fin d) (Fin d) ℝ
     abs_frequency_coordinate_le v _
   have ht2 : |Q.mulVec (fun a => (v (Fin.castAdd d a) : ℝ)) i / P₁| ≤
       d * B * frequencyLength v := by
-    rw [abs_div, abs_of_pos (by linarith : (0 : ℝ) < P₁)]
+    rw [abs_div, abs_of_pos (by linarith only [hP₁1] : (0 : ℝ) < P₁)]
     exact (div_le_self (abs_nonneg _) hP₁1).trans (abs_mulVec_le Q hQ _ hvs i)
   have ht3 : |(v (Fin.natAdd d i) : ℝ) / P₀| ≤ frequencyLength v := by
     rw [abs_div, abs_of_pos (by linarith : (0 : ℝ) < P₀)]
@@ -1674,7 +1674,7 @@ theorem chartSplitFrequency_abs_le {d : ℕ} (Q Csk : Matrix (Fin d) (Fin d) ℝ
     _ ≤ _ := by
         have h0 : 0 ≤ (d : ℝ) * (1 + B) * (d * H * K) := by positivity
         have h1 : 0 ≤ (d : ℝ) * B := by positivity
-        nlinarith
+        nlinarith only [hB, hL, h0]
 
 /-- Heights of the rational frequencies (lem:chartfourier, line 1366). -/
 theorem chartSplitFrequencyQ_height {d : ℕ} (Q C : Matrix (Fin d) (Fin d) ℚ) {B H K : ℝ}
@@ -1721,7 +1721,7 @@ theorem fourier_coeff_envelope_bounds {n : ℕ} (c : (Fin n → ℤ) → ℂ)
     · set m := p + n + 1
       set L := frequencyLength v
       have hL : 1 ≤ L := one_le_frequencyLength hv
-      have hL0 : 0 < L := by linarith
+      have hL0 : 0 < L := by linarith only [hL]
       have h1 := hAm m (by omega) v hv
       have hsq : 0 ≤ Real.sqrt n := Real.sqrt_nonneg _
       refine le_trans ?_ (le_max_right _ _)
@@ -1730,7 +1730,7 @@ theorem fourier_coeff_envelope_bounds {n : ℕ} (c : (Fin n → ℤ) → ℂ)
               (mul_nonneg (hA m) (by positivity))
             refine h1.trans (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ (by positivity) ?_ m)
               (hA m))
-            exact div_le_div_of_nonneg_left hsq hL0 (by nlinarith)
+            exact div_le_div_of_nonneg_left hsq hL0 (by nlinarith only [hpi, hL])
         _ = A m * Real.sqrt n ^ m * 2 ^ p * (L ^ p / L ^ m) := by
             rw [div_pow, mul_pow]; field_simp
         _ ≤ A m * Real.sqrt n ^ m * 2 ^ p * 1 := by
@@ -1822,8 +1822,8 @@ theorem chart_split_fourier_explicit {k d c₀ : ℕ} (hd : 1 ≤ d) {H : ℝ}
   classical
   set Qr := Q.map (fun q => (q : ℝ)) with hQr
   set C := A.matrix.map (fun q => (q : ℝ)) with hC
-  set Csy := realSymmetricPart C
-  set Csk := realSkewPart C
+  set! Csy := realSymmetricPart C
+  set! Csk := realSkewPart C
   have hP₁pos : 0 < P₁ := by
     have : (0 : ℝ) < P₁ := by linarith
     exact_mod_cast this
@@ -1837,7 +1837,7 @@ theorem chart_split_fourier_explicit {k d c₀ : ℕ} (hd : 1 ≤ d) {H : ℝ}
       Matrix.transpose_apply, smul_eq_mul, hC, Matrix.map_apply]
     rw [abs_mul, abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)]
     have := abs_add_le (A.matrix a b : ℝ) (A.matrix b a)
-    linarith [hCH a b, hCH b a]
+    linarith only [hCH a b, hCH b a, this]
   have hskB : ∀ a b, |Csk a b| ≤ H := fun a b => by
     simp only [Csk, realSkewPart, Matrix.smul_apply, Matrix.sub_apply,
       Matrix.transpose_apply, smul_eq_mul, hC, Matrix.map_apply]
@@ -1922,7 +1922,7 @@ theorem chartBudget_basic {d : ℕ} {H B : ℝ} (hH : Real.exp 2 ≤ H) (hd : (d
     by dsimp [X]; linarith, hlB, hlH, ?_⟩
   have h1 : (d : ℝ) + 1 ≤ 2 * X := by dsimp [X]; linarith
   have h0 : 0 ≤ (d : ℝ) + 1 := by positivity
-  nlinarith
+  nlinarith only [hd, hlB]
 
 /-- The common base `Y = (HB)^((d+1)²)` of the budget. -/
 theorem chartBudget_Y {d : ℕ} {H B : ℝ} (hH : Real.exp 2 ≤ H) (hd : (d : ℝ) ≤ Real.log H)
@@ -1934,9 +1934,9 @@ theorem chartBudget_Y {d : ℕ} {H B : ℝ} (hH : Real.exp 2 ≤ H) (hd : (d : �
   intro X Y
   obtain ⟨hX3, hHX, hBX, hdX, hlB, hlH, hd2⟩ := chartBudget_basic hH hd hB
   have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
-  have hHB : 1 ≤ H * B := by nlinarith
-  have hHB' : H ≤ H * B := by nlinarith
-  have hBB' : B ≤ H * B := by nlinarith
+  have hHB : 1 ≤ H * B := by nlinarith only [hB, hH1]
+  have hHB' : H ≤ H * B := by nlinarith only [hB, hH1]
+  have hBB' : B ≤ H * B := by nlinarith only [hB, hH1]
   have hpos : 1 ≤ (d + 1) ^ 2 := Nat.one_le_pow _ _ (by omega)
   have hY1 : H * B ≤ Y := by
     calc H * B = (H * B) ^ 1 := (pow_one _).symm
@@ -2026,17 +2026,17 @@ theorem chartBudget_env {d c₀ Kψ k : ℕ} {H B R : ℝ} (hH : Real.exp 2 ≤ 
   set S := B * (k * R + 1)
   have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
   have hkR : 0 ≤ (k : ℝ) * R := by positivity
-  have hS1 : 1 ≤ S := by dsimp [S]; nlinarith
-  have hSY : S ≤ (k * R + 1) * Y := by dsimp [S]; nlinarith
+  have hS1 : 1 ≤ S := by dsimp [S]; nlinarith only [hB, hkR]
+  have hSY : S ≤ (k * R + 1) * Y := by dsimp [S]; nlinarith only [hBY, hkR]
   have hq1 : (1 : ℝ) ≤ q₀ := by exact_mod_cast hq
   have hm0 : (0 : ℝ) ≤ m := Nat.cast_nonneg m
   have hK0 : (0 : ℝ) ≤ Kψ := Nat.cast_nonneg Kψ
   have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
   have hP0 : (0 : ℝ) ≤ P := Nat.cast_nonneg P
   have hP2 : ((2 * P : ℕ) : ℝ) = 2 * P := by push_cast; ring
-  set W := 2 * H + S + B + 2 * (P : ℝ) + P₁ + 3 * q₀ + Kψ + (m + 1) + d + 7 with hW
+  set! W := 2 * H + S + B + 2 * (P : ℝ) + P₁ + 3 * q₀ + Kψ + (m + 1) + d + 7 with hW
   have hB0 : 0 ≤ B := by linarith
-  have hW7 : 7 ≤ W := by rw [hW]; linarith
+  have hW7 : 7 ≤ W := by rw [hW]; linarith only [hB, hP₁, hH1]
   have hrE : (0 : ℝ) < 1 / (3 * q₀) := by positivity
   have hrEW : 1 / (1 / (3 * (q₀ : ℝ))) ≤ W := by
     rw [one_div_one_div, hW]; linarith
@@ -2051,14 +2051,14 @@ theorem chartBudget_env {d c₀ Kψ k : ℕ} {H B R : ℝ} (hH : Real.exp 2 ≤ 
   have hWY : W ≤ Λ * Y * (m + 1) := by
     have hP1Y : (P₁ : ℝ) ≤ (4 * ((k : ℝ) * R + 1) + 1) * Y := by
       have : (4 : ℝ) * S + 1 ≤ 4 * ((k * R + 1) * Y) + Y := by linarith
-      nlinarith
+      nlinarith only [hB, hBY, hP₁]
     have hPY : (P : ℝ) ≤ Y := hPH.trans hHdY
     have hqY : (q₀ : ℝ) ≤ Y := hqB.trans hBdY
     have hKY : (Kψ : ℝ) ≤ Kψ * Y := le_mul_of_one_le_right hK0 hY1
     have hsum : W ≤ (5 * ((k : ℝ) * R + 1) + Kψ + 17) * Y + (m + 1) := by
       rw [hW]
       have h7 : (7 : ℝ) ≤ 7 * Y := by linarith
-      nlinarith
+      nlinarith only [hB, hPH, hqB, hHY, hBY, hHdY, hBdY, hdY, hP₁, hkR]
     have hYm : Y ≤ Y * (m + 1) := le_mul_of_one_le_right (by linarith) (by linarith)
     have hmY : (m : ℝ) + 1 ≤ Y * (m + 1) := le_mul_of_one_le_left (by positivity) hY1
     calc W ≤ (5 * ((k : ℝ) * R + 1) + Kψ + 17) * Y + (m + 1) := hsum
@@ -2227,7 +2227,7 @@ theorem seven_pow_le_exp {d : ℕ} {X : ℝ} (hdX : (d : ℝ) ≤ X) :
     rw [Real.log_le_iff_le_exp (by norm_num)]
     have := Real.exp_one_gt_d9
     have he2 : Real.exp 2 = Real.exp 1 * Real.exp 1 := by rw [← Real.exp_add]; norm_num
-    nlinarith
+    nlinarith only [this, he2]
   have hl0 : 0 ≤ Real.log 7 := Real.log_nonneg (by norm_num)
   push_cast
   have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
@@ -2409,7 +2409,7 @@ theorem chartBudget_J {d c₀ Kψ : ℕ} {X L₀ : ℝ} (hX : 3 ≤ X) (hdX : (d
   have hE0' : E 0 ≤ Real.exp (c * X ^ 6) := by
     have hm0 : ((0 : ℕ) : ℝ) + 1 ≤ (4 * J + 4) * X ^ 2 := by
       push_cast
-      have : (4 : ℝ) ≤ (4 * J + 4) * X ^ 2 := by nlinarith
+      have : (4 : ℝ) ≤ (4 * J + 4) * X ^ 2 := by nlinarith only [hX]
       linarith
     exact (chartBudget_order hX1 hdX hL₀ (by linarith) hm0 (hE 0)).trans
       (Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_left hX56 hcpos))
@@ -2429,7 +2429,7 @@ theorem chartBudget_J {d c₀ Kψ : ℕ} {X L₀ : ℝ} (hX : 3 ≤ X) (hdX : (d
       have : 0 ≤ (ccard + 4) * X ^ 6 := by positivity
       have e : (ccard + c + 8 * J + 8) * X ^ 6 =
           c * X ^ 6 + (4 * J + 4) * X ^ 6 + 4 * J * X ^ 6 + (ccard + 4) * X ^ 6 := by ring
-      rw [e]; linarith
+      rw [e]; linarith only [hmX, this]
   · have hpre := mul_le_mul hcard (mul_le_mul (mul_le_mul (seven_pow_le_exp hdX) hEm
       (hE0 _) (Real.exp_pos _).le) hs (by positivity) (by positivity))
       (mul_nonneg (mul_nonneg (by positivity) (hE0 _)) (by positivity))
@@ -2535,8 +2535,8 @@ theorem splitFourierExpansion (c₀ : ℕ) (hc : 1 ≤ c₀) (k : ℕ) (R : ℝ)
     linarith
   set c3 := (8 + 3 * (c₀ : ℝ) + (4 * Kψ + 3 * c₀ + 18) * 3) * (L₀ + 4 + 3) with hc3
   have hc30 : 0 ≤ c3 := by positivity
-  set ctot := ccard + 2 + c3 + c3 + 7 with hctot
-  set cJ := fun J : ℕ => ccard + (8 + 3 * (c₀ : ℝ) + (4 * Kψ + 3 * c₀ + 18) * (4 * J + 4)) *
+  set! ctot := ccard + 2 + c3 + c3 + 7 with hctot
+  set! cJ := fun J : ℕ => ccard + (8 + 3 * (c₀ : ℝ) + (4 * Kψ + 3 * c₀ + 18) * (4 * J + 4)) *
     (L₀ + 4 + (4 * J + 4)) + 8 * J + 8 with hcJ
   refine ⟨⌈ccard + cht + ctot + c₀⌉₊ + 6, by omega,
     fun J => ⌈cJ J + c₀⌉₊ + 6, ?_⟩
@@ -2640,13 +2640,13 @@ theorem splitFourierExpansion (c₀ : ℕ) (hc : 1 ≤ c₀) (k : ℕ) (R : ℝ)
   obtain ⟨q₀, ZQ, hq, hqB, hZQ⟩ := chart_matrix_clear_denominators hB0 Q hQB
   have hqQ : ∀ i j, ∃ z : ℤ, (q₀ : ℚ) * Q i j = z := fun i j =>
     ⟨ZQ i j, by have h := hZQ i j; exact_mod_cast h.symm⟩
-  set S := B * (k * R + 1) with hSdef
-  have hS2 : 2 ≤ S := by rw [hSdef]; nlinarith
-  set P₁ := ⌈4 * S⌉₊ with hP₁def
+  set! S := B * (k * R + 1) with hSdef
+  have hS2 : 2 ≤ S := by rw [hSdef]; nlinarith only [hkR, hB]
+  set! P₁ := ⌈4 * S⌉₊ with hP₁def
   have hP₁ : 4 * S ≤ P₁ := Nat.le_ceil _
   have hP₁' : (P₁ : ℝ) ≤ 4 * S + 1 := (Nat.ceil_lt_add_one (by linarith)).le
   have hP₁1 : (1 : ℝ) ≤ P₁ := by linarith
-  set K := ⌈(q₀ : ℝ) * (S + d * B * H)⌉₊ with hKdef
+  set! K := ⌈(q₀ : ℝ) * (S + d * B * H)⌉₊ with hKdef
   have hKb : (q₀ : ℝ) * (S + d * B * H) ≤ K := Nat.le_ceil _
   have hK' : (K : ℝ) ≤ q₀ * (S + d * B * H) + 1 :=
     (Nat.ceil_lt_add_one (by positivity)).le
@@ -2869,8 +2869,8 @@ theorem sep_one_atom_lattice {d : ℕ} (χ : (Fin d → ℝ) → ℂ) {H : ℝ}
     have hχn : χ (ui - fun l => (n l : ℝ)) ≠ 0 := by
       intro h0; exact h (by simp [hf, h0])
     simpa using hχ _ hχn l
-  set B3 := chartLatticeBox 1 ua ×ˢ (chartLatticeBox 1 ub ×ˢ chartLatticeBox 1 ut)
-  set Ppro : (Fin d → ℤ) × (Fin d → ℤ) × (Fin d → ℤ) → ℂ := fun D =>
+  set! B3 := chartLatticeBox 1 ua ×ˢ (chartLatticeBox 1 ub ×ˢ chartLatticeBox 1 ut)
+  set! Ppro : (Fin d → ℤ) × (Fin d → ℤ) × (Fin d → ℤ) → ℂ := fun D =>
     sepPartition (ua - fun l => (D.1 l : ℝ)) * sepPartition (ub - fun l => (D.2.1 l : ℝ)) *
       sepPartition (ut - fun l => (D.2.2 l : ℝ)) with hPpro
   have hPsum : ∑ D ∈ B3, Ppro D = 1 := by
@@ -2949,8 +2949,8 @@ theorem sep_one_atom_lattice {d : ℕ} (χ : (Fin d → ℝ) → ℂ) {H : ℝ}
     simpa using sepPartition_ne_zero hPb l
   have bt (l : Fin d) : |ut l - D.2.2 l| ≤ 3 / 4 := by
     simpa using sepPartition_ne_zero hPt l
-  set v : Fin d → ℤ := fun l => D.2.1 l - D.1 l - (b - a) * D.2.2 l with hv
-  set c : Fin d → ℤ := fun l => D.1 l + (i - a) * D.2.2 l with hc
+  set! v : Fin d → ℤ := fun l => D.2.1 l - D.1 l - (b - a) * D.2.2 l with hv
+  set! c : Fin d → ℤ := fun l => D.1 l + (i - a) * D.2.2 l with hc
   -- the equality cutoff selects exactly one carry
   have hvbox : v ∈ slowValueBox d Kb := by
     rw [mem_slowValueBox]
@@ -3572,26 +3572,26 @@ theorem sep_one_atom_expansion {d : ℕ} (hd : 1 ≤ d) (A : QuadraticChartData 
       (fun w hw l => (tensorCutoff_ne_zero_bound hψ0 (by norm_num) hw l).le.trans
         (by norm_num)) hA₀' hAm
     -- phase factors of the three charts
-    set αa : ℚ := (i - b) / (b - a)
-    set αb : ℚ := (a - i) / (b - a)
-    set Sq : ℚ := (i - a) * (i - b)
-    set Bk := chartMatrixPhase A.matrix θ (fun l => (ki l : ℝ))
-    set Bkb := chartMatrixPhase A.matrix θ (fun l => (kb l : ℝ))
-    set Pa : (Fin d → ℤ) → ℂ := fun da =>
+    set! αa : ℚ := (i - b) / (b - a)
+    set! αb : ℚ := (a - i) / (b - a)
+    set! Sq : ℚ := (i - a) * (i - b)
+    set! Bk := chartMatrixPhase A.matrix θ (fun l => (ki l : ℝ))
+    set! Bkb := chartMatrixPhase A.matrix θ (fun l => (kb l : ℝ))
+    set! Pa : (Fin d → ℤ) → ℂ := fun da =>
       (Real.fourierChar ((-(αa : ℝ) * A.quadratic) * (x + a * t) ^ 2 +
         (-(αa : ℝ) * A.linear + αa * Bk) * (x + a * t)) : ℂ) *
       (Real.fourierChar (chartMatrixPhase (-αa • A.matrix) ua (ua - fun l => (da l : ℝ))) : ℂ)
       with hPa
-    set Pb : (Fin d → ℤ) → ℂ := fun db =>
+    set! Pb : (Fin d → ℤ) → ℂ := fun db =>
       (Real.fourierChar ((-(αb : ℝ) * A.quadratic) * (x + b * t) ^ 2 +
         (-(αb : ℝ) * A.linear + αb * Bk - αb * Bkb) * (x + b * t)) : ℂ) *
       (Real.fourierChar (chartMatrixPhase (-αb • A.matrix) ub (ub - fun l => (db l : ℝ))) : ℂ)
       with hPb
-    set Pt : (Fin d → ℤ) → ℂ := fun dd =>
+    set! Pt : (Fin d → ℤ) → ℂ := fun dd =>
       (Real.fourierChar (((Sq : ℝ) * A.quadratic) * t ^ 2 + 0 * t) : ℂ) *
       (Real.fourierChar (chartMatrixPhase (Sq • A.matrix) ut (ut - fun l => (dd l : ℝ))) : ℂ)
       with hPt
-    set vD : (Fin d → ℤ) × (Fin d → ℤ) × (Fin d → ℤ) → Fin (d + d + d) → ℝ := fun D =>
+    set! vD : (Fin d → ℤ) × (Fin d → ℤ) × (Fin d → ℤ) → Fin (d + d + d) → ℝ := fun D =>
       tripleVec (ua - fun l => (D.1 l : ℝ)) (ub - fun l => (D.2.1 l : ℝ))
         (ut - fun l => (D.2.2 l : ℝ)) with hvD
     -- the per-point identity
@@ -3641,11 +3641,11 @@ theorem sep_one_atom_expansion {d : ℕ} (hd : 1 ≤ d) (A : QuadraticChartData 
           simp [sub_ne_zero.mpr hc]
         simp only [sepCoupledAmplitude, hE0, mul_zero, zero_mul]
     -- the modulated factor amplitudes
-    set Ma : (Fin (d + d + d) → ℤ) → (Fin d → ℤ) → ℂ := fun p da =>
+    set! Ma : (Fin (d + d + d) → ℤ) → (Fin d → ℤ) → ℂ := fun p da =>
       modulatedCutoff ψ (3 / 4) 3 (tripleFst p) (ua - fun l => (da l : ℝ)) with hMa
-    set Mb : (Fin (d + d + d) → ℤ) → (Fin d → ℤ) → ℂ := fun p db =>
+    set! Mb : (Fin (d + d + d) → ℤ) → (Fin d → ℤ) → ℂ := fun p db =>
       modulatedCutoff ψ (3 / 4) 3 (tripleSnd p) (ub - fun l => (db l : ℝ)) with hMb
-    set Mt : (Fin (d + d + d) → ℤ) → (Fin d → ℤ) → ℂ := fun p dd =>
+    set! Mt : (Fin (d + d + d) → ℤ) → (Fin d → ℤ) → ℂ := fun p dd =>
       modulatedCutoff ψ (3 / 4) 3 (tripleThd p) (ut - fun l => (dd l : ℝ)) with hMt
     have hDsum (D : (Fin d → ℤ) × (Fin d → ℤ) × (Fin d → ℤ)) :
         HasSum (fun p => sepCoeff A.amplitude ψ i a b ki kb p *
@@ -3660,7 +3660,7 @@ theorem sep_one_atom_expansion {d : ℕ} (hd : 1 ≤ d) (A : QuadraticChartData 
       simp only [sepCoeff]
       ring
     -- a finite box of lattice points
-    set B' := chartLatticeBox (3 / 2) ua ×ˢ (chartLatticeBox (3 / 2) ub ×ˢ
+    set! B' := chartLatticeBox (3 / 2) ua ×ˢ (chartLatticeBox (3 / 2) ub ×ˢ
       chartLatticeBox (3 / 2) ut) with hB'
     have hbox (z : Fin d → ℝ) (k : Fin d → ℤ)
         (hk : ∀ l, |z l - k l| ≤ 3 / 2) : k ∈ chartLatticeBox (3 / 2) z :=
@@ -4118,11 +4118,11 @@ theorem sepCoupledVec_geomBound {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData
   have hG0 : 0 ≤ G := by positivity
   have hRE0 : 0 ≤ RE := by positivity
   have hRP0 : 0 ≤ RP := by positivity
-  set F1 := tripleFstCLM d
-  set F2 := tripleSndCLM d
-  set F3 := tripleThdCLM d
-  set Lχ := F1 + ((i - a : ℤ) : ℝ) • F3 with hLχ
-  set LE := (F1 - F2) + ((b - a : ℤ) : ℝ) • F3 with hLE
+  set! F1 := tripleFstCLM d
+  set! F2 := tripleSndCLM d
+  set! F3 := tripleThdCLM d
+  set! Lχ := F1 + ((i - a : ℤ) : ℝ) • F3 with hLχ
+  set! LE := (F1 - F2) + ((b - a : ℤ) : ℝ) • F3 with hLE
   have hLχn : ‖Lχ‖ ≤ 1 + |((i - a : ℤ) : ℝ)| :=
     sep_affine_norm_le _ _ (tripleFstCLM_norm_le d) (tripleThdCLM_norm_le d) _
   have hF12 : ‖F1 - F2‖ ≤ 1 + 1 :=
@@ -4322,7 +4322,7 @@ theorem sepCoeff_budget (c₀ Kψ Kρ q S : ℕ) :
   have hlogH : 0 ≤ Real.log H := Real.log_nonneg hH1
   have hX1 : 1 ≤ X := by linarith
   have hdlt : (d : ℝ) ≤ H := hdH.trans (Real.log_le_self hH0.le)
-  set W := f * H with hW
+  set! W := f * H with hW
   have hW3 : 12 ≤ W := hf1.trans (le_mul_of_one_le_right (by linarith) hH1)
   have hW1 : 1 ≤ W := by linarith
   have hlogW : Real.log W ≤ c₂ * X := by
@@ -4338,7 +4338,7 @@ theorem sepCoeff_budget (c₀ Kψ Kρ q S : ℕ) :
   have hn0 : ((n : ℕ) : ℝ) ≤ 3 * (X - 1) := by rw [hn]; push_cast; linarith
   have hsq : Real.sqrt (n : ℕ) ≤ W := by
     have h3W : 3 * H ≤ W := mul_le_mul_of_nonneg_right (by linarith) hH0.le
-    have hWW : W ≤ W ^ 2 := by nlinarith
+    have hWW : W ≤ W ^ 2 := by nlinarith only [hW3]
     have hWsq : (n : ℝ) ≤ W ^ 2 := by linarith
     calc Real.sqrt (n : ℕ) ≤ Real.sqrt (W ^ 2) := Real.sqrt_le_sqrt hWsq
       _ = W := Real.sqrt_sq (by linarith)
@@ -4427,7 +4427,7 @@ theorem sepCoeff_budget (c₀ Kψ Kρ q S : ℕ) :
       rw [pow_succ W E2]
       have hp : 0 ≤ W ^ E2 := by positivity
       have h3W := mul_le_mul_of_nonneg_left (by linarith : (3 : ℝ) ≤ W) hp
-      linarith [hk.2]
+      linarith only [hk.2, h0, h3W]
     refine h3.trans ((pow_le_exp_mul_sq hW1 hlogW ?_).trans hDexp)
     exact_mod_cast hE2
 
@@ -4465,7 +4465,7 @@ theorem rationalHeight_mul_le (q r : ℚ) :
     push_cast; rw [abs_mul]; exact mul_le_mul hq hr (abs_nonneg _) (by linarith)
   calc (rationalHeight (q * r) : ℝ) ≤ ((q.den * r.den : ℕ) : ℝ) * (|((q * r : ℚ) : ℝ)| + 1) := h
     _ ≤ P * (P + 1) := mul_le_mul hDP (by linarith) (by positivity) (by linarith)
-    _ ≤ 2 * P ^ 2 := by nlinarith
+    _ ≤ 2 * P ^ 2 := by nlinarith only [hP1]
 
 /-- Higher derivatives of a real affine function are bounded by powers of its linear part. -/
 theorem norm_iteratedFDeriv_affine_le {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
@@ -4610,15 +4610,15 @@ theorem modulatedChart_complexity {d : ℕ} {ψ : ℝ → ℝ} (hψ : ContDiff �
       have h2 : (d : ℝ) * ((Kψ : ℝ) ^ (2 * Kψ) * (m + 1 : ℝ) ^ (2 * Kψ) / r) =
           (m + 1 : ℝ) ^ (2 * Kψ) * ((d : ℝ) * (Kψ : ℝ) ^ (2 * Kψ) / r) := by ring
       rw [h2, mul_add]
-      linarith
+      linarith only [h1]
     have hB0 : 0 ≤ B := by rw [hB]; positivity
     calc _ ≤ ((m + 1 : ℝ) ^ (2 * Kψ) * B) ^ m := pow_le_pow_left₀ (by positivity) hR m
       _ = (m + 1 : ℝ) ^ (2 * Kψ * m) * B ^ m := by rw [mul_pow, ← pow_mul]
       _ ≤ (m + 1 : ℝ) ^ (2 * Kψ * (m + 1)) * W ^ (2 * Kψ * (m + 1)) := by
-          apply mul_le_mul (pow_le_pow_right₀ hm1 (by nlinarith)) _ (by positivity)
+          apply mul_le_mul (pow_le_pow_right₀ hm1 (by nlinarith only)) _ (by positivity)
             (by positivity)
           calc B ^ m ≤ W ^ m := pow_le_pow_left₀ hB0 hBW m
-            _ ≤ _ := pow_le_pow_right₀ hW1 (by nlinarith)
+            _ ≤ _ := pow_le_pow_right₀ hW1 (by nlinarith only [hK])
       _ = _ := mul_comm _ _
 
 theorem quadraticChartComplexity_order_mono {d c₀ c₁ : ℕ} {H : ℝ} {A : QuadraticChartData d}
@@ -4764,19 +4764,19 @@ theorem sepFactor_complexity {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
     have hsum : 2 * Real.pi * ∑ l, |(p l : ℝ)| / 3 ≤ 3 * ∑ l, |(p l : ℝ)| := by
       rw [← Finset.sum_div, mul_div_assoc']
       rw [div_le_iff₀ (by norm_num)]
-      nlinarith
+      nlinarith only [hS0, hpi]
     have hKp : (0 : ℝ) ≤ (Kψ : ℝ) ^ (2 * Kψ) := by positivity
     have h1 : (d : ℝ) * (Kψ : ℝ) ^ (2 * Kψ) / (3 / 4) ≤ 2 * (Kψ : ℝ) ^ (2 * Kψ) * H := by
-      rw [div_le_iff₀ (by norm_num)]; nlinarith
-    have hQH : H ≤ Q ^ 2 * H ^ 2 := by nlinarith
+      rw [div_le_iff₀ (by norm_num)]; nlinarith only [hdH, hKp]
+    have hQH : H ≤ Q ^ 2 * H ^ 2 := by nlinarith only [hH1, hQ2]
     have hQH0 : 0 ≤ Q ^ 2 * H ^ 2 := by positivity
     calc (d : ℝ) * (Kψ : ℝ) ^ (2 * Kψ) / (3 / 4) + 2 * Real.pi * ∑ l, |(p l : ℝ)| / 3 ≤
         2 * (Kψ : ℝ) ^ (2 * Kψ) * (Q ^ 2 * H ^ 2) + 3 * (Q ^ 2 * H ^ 2) * ∑ l, |(p l : ℝ)| := by
           have := mul_le_mul_of_nonneg_left hQH (by positivity : (0 : ℝ) ≤ 2 * (Kψ : ℝ) ^ (2 * Kψ))
           have h5 : 3 * ∑ l, |(p l : ℝ)| ≤ 3 * (Q ^ 2 * H ^ 2) * ∑ l, |(p l : ℝ)| := by
-            have h6 : (1 : ℝ) ≤ Q ^ 2 * H ^ 2 := by nlinarith
-            nlinarith
-          linarith
+            have h6 : (1 : ℝ) ≤ Q ^ 2 * H ^ 2 := by nlinarith only [hH1, hQ2]
+            nlinarith only [hH1, hS0, hQH]
+          linarith only [hsum, h1, this, h5]
       _ ≤ sepFactorConst Kψ * Q ^ 2 * H ^ 2 * P := by
           unfold sepFactorConst
           have e : (2 * (Kψ : ℝ) ^ (2 * Kψ) + 3) * Q ^ 2 * H ^ 2 * P -
@@ -5021,7 +5021,7 @@ theorem kernelUnitRescale_support {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0
       linarith [h0.2]
   have hu1 : |u 1| ≤ 1 := by
     have hb : |r * u 0| ≤ r / 2 := by
-      rw [abs_mul, abs_of_pos hr]; nlinarith
+      rw [abs_mul, abs_of_pos hr]; nlinarith only [hr, hu0]
     rw [abs_le] at hb ⊢
     constructor
     · by_contra h; push Not at h
@@ -5115,7 +5115,7 @@ theorem admissibleKernel_fourier_expansion {κ : LocalKernelClass} {a₀ r : ℝ
       exact this)
   refine ⟨hsumm, henv.2.2.trans (le_of_eq (by simp [kernelFourierConst, hA])), ?_⟩
   intro x t hx ht
-  set u : Fin 2 → ℝ := ![(x - (a₀ + r / 2)) / r, t / r] with hu
+  set! u : Fin 2 → ℝ := ![(x - (a₀ + r / 2)) / r, t / r] with hu
   have hu8 : ∀ l, |u l| ≤ 2 * 4 := by
     intro l
     fin_cases l
@@ -5234,13 +5234,13 @@ theorem separated_term_bound {A B : ℝ → ℂ} (hAm : Measurable A) (hBm : Mea
   have hba0 : 0 < |b - a| := abs_pos.mpr hba
   have hchm : Measurable (fun t : ℝ => (Real.fourierChar t : ℂ)) :=
     (continuous_subtype_val.comp Real.continuous_fourierChar).measurable
-  set K : ℝ → ℂ := fun t => (Real.fourierChar (γ * t) : ℂ) * Q t with hKdef
+  set! K : ℝ → ℂ := fun t => (Real.fourierChar (γ * t) : ℂ) * Q t with hKdef
   have hKm : Measurable K := (hchm.comp (measurable_const.mul measurable_id)).mul hQm
   have hK1 : ∀ t, ‖K t‖ ≤ 1 := fun t => by
     simp only [hKdef, norm_mul, Circle.norm_coe, one_mul]; exact hQ1 t
   rw [integral_progression_pair_eq hAm hBm hA1 hA2 hB1 hB2 hKm hK1 hab]
   -- insert the cutoff `ζ(s / ((b - a) r))`
-  set K₂ : ℝ → ℂ := fun s => ((|b - a|⁻¹ : ℝ) : ℂ) * K (s / (b - a)) *
+  set! K₂ : ℝ → ℂ := fun s => ((|b - a|⁻¹ : ℝ) : ℂ) * K (s / (b - a)) *
     (ζ (s / ((b - a) * r)) : ℂ) with hK₂
   have hcut : ∀ s, ((|b - a|⁻¹ : ℝ) : ℂ) * K (s / (b - a)) * ∫ u, A u * B (u + s) =
       K₂ s * ∫ u, A u * B (u + s) := by
@@ -5352,8 +5352,8 @@ theorem separated_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w
     · simp [Set.indicator_of_mem hx]
     · simp [Set.indicator_of_notMem hx]
   -- slot positions
-  set ar : ℝ := ((a : ℕ) : ℝ) with har
-  set br : ℝ := ((b : ℕ) : ℝ) with hbr
+  set! ar : ℝ := ((a : ℕ) : ℝ) with har
+  set! br : ℝ := ((b : ℕ) : ℝ) with hbr
   have har3 : |ar| ≤ 3 := by
     rw [har, abs_of_nonneg (Nat.cast_nonneg _)]
     have := a.isLt; exact_mod_cast (by omega : (a : ℕ) ≤ 3)
@@ -5388,10 +5388,10 @@ theorem separated_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w
   obtain ⟨hcs, hct, hexp⟩ := admissibleKernel_fourier_expansion hr hw
   set c := periodicFourierCoeff (cubePeriodization (kernelUnitRescale a₀ r w) 16) with hc
   set c₀ := a₀ + r / 2 with hc₀
-  set E : (Fin 2 → ℤ) → ℝ × ℝ → ℂ := fun v z =>
+  set! E : (Fin 2 → ℤ) → ℝ × ℝ → ℂ := fun v z =>
     (Real.fourierChar ((v 0 : ℝ) * ((z.1 - c₀) / r / 16) + (v 1 : ℝ) * (z.2 / r / 16)) : ℂ)
     with hE
-  set Ψ : (Fin 2 → ℤ) → ℝ × ℝ → ℂ := fun v z =>
+  set! Ψ : (Fin 2 → ℤ) → ℝ × ℝ → ℂ := fun v z =>
     E v z * Q z.2 * Ga (z.1 + ar * z.2) * Gb (z.1 + br * z.2) with hΨ
   have hpt : ∀ z : ℝ × ℝ, HasSum (fun v => c v * Ψ v z)
       (w z * Q z.2 * Ga (z.1 + ar * z.2) * Gb (z.1 + br * z.2)) := by
@@ -5447,7 +5447,7 @@ theorem separated_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w
     have := hpair.bdd_mul (c := 1) (hEQm v).aestronglyMeasurable
       (Filter.Eventually.of_forall (hEQ1 v))
     exact this.congr (Filter.Eventually.of_forall fun z => by simp only [hΨ]; ring)
-  set P := ∫ z : ℝ × ℝ, ‖Ga (z.1 + ar * z.2) * Gb (z.1 + br * z.2)‖ with hP
+  set! P := ∫ z : ℝ × ℝ, ‖Ga (z.1 + ar * z.2) * Gb (z.1 + br * z.2)‖ with hP
   have hΨn (v : Fin 2 → ℤ) : ∫ z, ‖c v * Ψ v z‖ ≤ ‖c v‖ * P := by
     rw [hP, ← integral_const_mul]
     apply integral_mono_of_nonneg (Filter.Eventually.of_forall fun _ => norm_nonneg _)
@@ -5469,12 +5469,12 @@ theorem separated_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w
     rw [h]
     congr 1; funext z; exact (hpt z).tsum_eq.symm
   -- each term is a modulated separated term
-  set Sa := Real.sqrt (∫ x, ‖Ga x‖ ^ 2) with hSa
-  set Sb := Real.sqrt (∫ x, ‖Gb x‖ ^ 2) with hSb
+  set! Sa := Real.sqrt (∫ x, ‖Ga x‖ ^ 2) with hSa
+  set! Sb := Real.sqrt (∫ x, ‖Gb x‖ ^ 2) with hSb
   have hterm (v : Fin 2 → ℤ) : ‖∫ z, Ψ v z‖ ≤ r * M * Sa * Sb := by
-    set α : ℝ := (v 0 : ℝ) / (16 * r) with hα
-    set γ : ℝ := (v 1 : ℝ) / (16 * r) - α * ar with hγ
-    set A' : ℝ → ℂ := fun y => (Real.fourierChar (α * y) : ℂ) * Ga y with hA'
+    set! α : ℝ := (v 0 : ℝ) / (16 * r) with hα
+    set! γ : ℝ := (v 1 : ℝ) / (16 * r) - α * ar with hγ
+    set! A' : ℝ → ℂ := fun y => (Real.fourierChar (α * y) : ℂ) * Ga y with hA'
     have hA'm : Measurable A' :=
       (hchm.measurable.comp (measurable_const.mul measurable_id)).mul hGam
     have hA'n : ∀ y, ‖A' y‖ = ‖Ga y‖ := fun y => by simp [hA']
@@ -5720,7 +5720,7 @@ theorem separatedPhaseMatrix_height {d : ℕ} {H B : ℝ} (hH : 1 ≤ H) (hB : 1
     · rw [abs_mul, abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2), abs_mul,
         abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)]
       have := abs_add_le (C i j : ℝ) (C j i)
-      nlinarith [hCa i j, hCa j i]
+      nlinarith only [hCa i j, hCa j i, this]
     · refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
       calc ∑ l, |(∑ k, ((if k = i then (1 : ℝ) else 0) - (Q k i : ℝ)) *
             (1 / 2 * ((C k l : ℝ) - C l k))) * (Q l j : ℝ)| ≤
@@ -5801,10 +5801,10 @@ theorem separatedPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
   refine ⟨Dm, by omega, fun J => DJs J * (1 + Dw) ^ (DJs J) + Dw * DJs J + 1, ?_⟩
   intro d H δ r A hA hr ζ hζm hζ hζL hζs hδ hsup X
   -- the chart `Q(r·)` in one real variable
-  set A' := oneVariableChart (dilateQuadraticChart r A) with hA'
+  set! A' := oneVariableChart (dilateQuadraticChart r A) with hA'
   have hA'c : MultivariableQuadraticChartComplexity c₀ H A' :=
     oneVariableChart_complexity (dilateQuadraticChart_complexity hA r)
-  set θw : (Fin 1 → ℝ) → ℂ := fun z => ζ (z 0) with hθw
+  set! θw : (Fin 1 → ℝ) → ℂ := fun z => ζ (z 0) with hθw
   have hθm : Measurable θw := hζm.comp (measurable_pi_apply 0)
   have hθb : ∀ z, ‖θw z‖ ≤ H := fun z => hζ _
   have hθL : ∀ x y, ‖θw y - θw x‖ ≤ H * ‖y - x‖ := fun x y => by
@@ -5830,12 +5830,12 @@ theorem separatedPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
   obtain ⟨U, Q, hQU, hPU, hiso, hQh, hPh, hVs, hΛ⟩ :=
     hweyl (k := 1) le_rfl (by norm_num) H A' hA'c θw hθm hθb hθL hθs δ hδ hF
   set B := Real.exp ((Dw : ℝ) * (1 + Real.log H + Real.log (max 1 δ⁻¹)) ^ Dw) with hBdef
-  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
+  have hH1 : 1 ≤ H := by linarith only [hA.lower, Real.add_one_le_exp (2 : ℝ)]
   have hlogH : 2 ≤ Real.log H := by
     rw [← Real.log_exp 2]; exact Real.log_le_log (Real.exp_pos 2) hA.lower
   have hlogδ : 0 ≤ Real.log (max 1 δ⁻¹) := Real.log_nonneg (le_max_left _ _)
-  have hX3 : 3 ≤ X := by simp only [X]; linarith
-  have hX1 : 1 ≤ X := by linarith
+  have hX3 : 3 ≤ X := by simp only [X]; linarith only [hlogH, hlogδ]
+  have hX1 : 1 ≤ X := by linarith only [hlogH, hlogδ]
   have hXD : 1 ≤ (Dw : ℝ) * X ^ Dw := by
     have : (1 : ℝ) ≤ X ^ Dw := one_le_pow₀ hX1
     have : (1 : ℝ) ≤ Dw := by exact_mod_cast hDw
@@ -5849,8 +5849,8 @@ theorem separatedPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
     A.matrix Q (fun i j => hA.height i j) hQs hQh hiso'
   obtain ⟨a, hexp, hsumm, htot, hJ⟩ := hrest A' rfl hA'c hVs
   -- the phase identity in the variable `t`
-  set M := separatedPhaseMatrix A.matrix Q with hMdef
-  set lam := A.quadratic + ∑ i, ∑ j, A.horizontal i * (M i j : ℝ) * A.horizontal j with hlam
+  set! M := separatedPhaseMatrix A.matrix Q with hMdef
+  set! lam := A.quadratic + ∑ i, ∑ j, A.horizontal i * (M i j : ℝ) * A.horizontal j with hlam
   set Λe := effectiveReturnQuadratic (A.matrix.map (fun q => (q : ℝ))) A'.quadratic
     A'.horizontal ((1 - Q.map (fun q => (q : ℝ))) * A'.horizontal)
     (Q.map (fun q => (q : ℝ)) * A'.horizontal) with hΛe
@@ -5871,7 +5871,7 @@ theorem separatedPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
     have h1 : X ≤ X ^ Dw := le_self_pow₀ hX1 (by omega)
     have h2 : 1 + Real.log H ≤ X := by simp only [X]; linarith
     change 1 + Real.log H + (Dw : ℝ) * X ^ Dw ≤ (1 + Dw) * X ^ Dw
-    nlinarith
+    nlinarith only [hlogδ, h1]
   have hcomp := exp_compose_budget (Ds := Ds) hX0 hXs
   have hDsm : Real.exp (((Ds : ℝ) * (1 + Dw) ^ Ds) * X ^ (Dw * Ds)) ≤
       Real.exp (Dm * X ^ Dm) :=
@@ -5904,7 +5904,7 @@ theorem separatedPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
       have : (0 : ℝ) ≤ Ds * (1 + Dw) ^ Ds + Dw * Ds := by positivity
       linarith))
   · intro t ht
-    set z : Fin 1 → ℝ := fun _ => t / r with hz
+    set! z : Fin 1 → ℝ := fun _ => t / r with hz
     have hzR : ∀ i, |z i| ≤ R := fun i => by
       simp only [hz, abs_div, abs_of_pos hr]
       rw [div_le_iff₀ hr]; linarith
@@ -6170,11 +6170,11 @@ theorem kernel_product_approx {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r
       _ ≤ r + 3 * r := add_le_add h2 h1
       _ = 4 * r := by ring
   -- the chirped kernel expansion
-  set A : ℕ → ℝ := chirpLineBound κ Λ with hA
+  set! A : ℕ → ℝ := chirpLineBound κ Λ with hA
   obtain ⟨hWs, hWd, hW0, hWexp⟩ := unitSquare_fourier_expansion
     (chirpedKernelRescale_smooth hw Λ) (fun u hu l => chirpedKernelRescale_support hr hw hu l)
     (A := A) (fun m i y s => chirpedKernelRescale_line_le hr hw Λ m i y s)
-  set u : Fin 2 → ℝ := ![(x - c₀) / r, t / r] with hu
+  set! u : Fin 2 → ℝ := ![(x - c₀) / r, t / r] with hu
   have hu8 : ∀ l, |u l| ≤ 8 := by
     intro l; fin_cases l
     · simp only [hu, Fin.zero_eta, Matrix.cons_val_zero]
@@ -6199,8 +6199,8 @@ theorem kernel_product_approx {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r
   have hnW : ∀ v, ‖eW v‖ = ‖cW v‖ := fun v => by simp [heW]
   have hPs : Summable (fun p => ‖eP p‖) := by simp_rw [hnP]; exact ha
   have hWs' : Summable (fun v => ‖eW v‖) := by simp_rw [hnW]; exact hWs
-  set P := ∑' p, eP p with hPdef
-  set W := ∑' v, eW v with hWdef
+  set! P := ∑' p, eP p with hPdef
+  set! W := ∑' v, eW v with hWdef
   have hchi : (Real.fourierChar (Λ * (t / r) ^ 2) : ℂ) *
       (Real.fourierChar (-(Λ * (t / r) ^ 2)) : ℂ) = 1 := by
     rw [← Circle.coe_mul, ← AddChar.map_add_eq_mul, add_neg_cancel, AddChar.map_zero_eq_one]
@@ -6362,7 +6362,7 @@ theorem chirpedKernel_coeff_mass {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 
     rw [hb0, chirpTailConst]; norm_num; ring
   rw [e]
   unfold chirpClassConst
-  nlinarith
+  nlinarith only [h3, hp, h0]
 
 theorem exists_two_pow_between {Y : ℝ} (hY : 1 ≤ Y) : ∃ K : ℕ, Y ≤ 2 ^ K ∧ (2 : ℝ) ^ K ≤ 2 * Y := by
   obtain ⟨K, hK⟩ : ∃ K : ℕ, Y ≤ 2 ^ K := by
@@ -6388,7 +6388,7 @@ theorem trunc_error_le {s E ε : ℝ} {K : ℕ} (hε : 0 < ε)
   have h1 : 4 * s * E / ε * ε = 4 * s * E := div_mul_cancel₀ _ hε.ne'
   have h2 : ε / 2 * (4 * s * E / ε + 1) ≤ ε / 2 * 2 ^ K :=
     mul_le_mul_of_nonneg_left hY (by positivity)
-  nlinarith
+  nlinarith only [hε, hY, h1]
 
 theorem trunc_error_le' {s T T' ε : ℝ} {K : ℕ} (hs : 0 ≤ s) (hT : T ≤ T') (hε : 0 < ε)
     (hY : 2 * s * T' / ε + 1 ≤ 2 ^ K) : s * (T / 2 ^ K) ≤ ε / 2 := by
@@ -6398,7 +6398,7 @@ theorem trunc_error_le' {s T T' ε : ℝ} {K : ℕ} (hs : 0 ≤ s) (hT : T ≤ T
   have h2 : ε / 2 * (2 * s * T' / ε + 1) ≤ ε / 2 * 2 ^ K :=
     mul_le_mul_of_nonneg_left hY (by positivity)
   have h3 : s * T ≤ s * T' := mul_le_mul_of_nonneg_left hT hs
-  nlinarith
+  nlinarith only [hs, hT, hε, hY, h1]
 
 theorem qp_power_bound {W X : ℝ} {k cW e : ℕ} (hW1 : 1 ≤ W)
     (hlogW : Real.log W ≤ cW * X ^ e) (hX1 : 1 ≤ X) (hk : (k : ℝ) ≤ 11 * X) :
@@ -6420,8 +6420,8 @@ theorem approx_budget_K₁ {s0 EJ ε E1 Cκ : ℝ} {K : ℕ} (hs0 : 0 ≤ s0) (h
   have hEε : 1 ≤ EJ * ε⁻¹ := one_le_mul_of_one_le_of_one_le hEJ1 hε'
   have e1 : 4 * s0 * EJ / ε = 4 * s0 * (EJ * ε⁻¹) := by rw [div_eq_mul_inv]; ring
   rw [e1] at hK
-  have h1 : 2 * (2 : ℝ) ^ K + 1 ≤ 5 * (4 * s0 + 1) * (EJ * ε⁻¹) := by nlinarith
-  have h2 : 5 * (4 * s0 + 1) ≤ Cκ * E1 := by nlinarith
+  have h1 : 2 * (2 : ℝ) ^ K + 1 ≤ 5 * (4 * s0 + 1) * (EJ * ε⁻¹) := by nlinarith only [hs0, hK, hEε]
+  have h2 : 5 * (4 * s0 + 1) ≤ Cκ * E1 := by nlinarith only [hs0, hE11, hC]
   calc 2 * (2 : ℝ) ^ K + 1 ≤ 5 * (4 * s0 + 1) * (EJ * ε⁻¹) := h1
     _ ≤ Cκ * E1 * (EJ * ε⁻¹) := mul_le_mul_of_nonneg_right h2 (by positivity)
     _ = Cκ * E1 * EJ * ε⁻¹ := by ring
@@ -6435,14 +6435,14 @@ theorem approx_budget_K₂ {A Ct L ε E1 EJ Cκ : ℝ} {K : ℕ} (hA : A ≤ E1)
   have e1 : 2 * A * (Ct * L ^ 3) / ε = 2 * A * (Ct * L ^ 3) * ε⁻¹ := div_eq_mul_inv _ _
   have h1 : 2 * A * (Ct * L ^ 3) ≤ 16 * Ct * E1 ^ 4 := by
     have : A * L ^ 3 ≤ E1 * (2 * E1) ^ 3 := mul_le_mul hA hL3 (by positivity) (by linarith)
-    nlinarith
+    nlinarith only [hCt, this]
   have hE4 : 1 ≤ E1 ^ 4 := one_le_pow₀ hE11
   have h2 : 2 * (2 : ℝ) ^ K + 1 ≤ 5 * (16 * Ct + 1) * (E1 ^ 4 * ε⁻¹) := by
     rw [e1] at hK
     have : 2 * A * (Ct * L ^ 3) * ε⁻¹ ≤ 16 * Ct * E1 ^ 4 * ε⁻¹ :=
       mul_le_mul_of_nonneg_right h1 (by positivity)
     have : 1 ≤ E1 ^ 4 * ε⁻¹ := one_le_mul_of_one_le_of_one_le hE4 hε'
-    nlinarith
+    nlinarith only [hCt, hε', hK, h1, this]
   refine h2.trans ?_
   have hCκ1 : 1 ≤ Cκ := by linarith
   have hb : 5 * (16 * Ct + 1) * (E1 ^ 4 * ε⁻¹) ≤ Cκ ^ 4 * E1 ^ 4 * EJ ^ 4 * ε⁻¹ ^ 4 := by
@@ -6488,8 +6488,6 @@ theorem phase_split_sum {α' β' : Type*} (S : Finset α') (V : Finset β') (f :
     ← AddChar.map_add_eq_mul, ← AddChar.map_add_eq_mul]
   congr 3; ring
 
-set_option maxHeartbeats 400000 in
--- The single proof assembles the phase, truncation and quasipolynomial budgets.
 /-- Blueprint lem:separation, line 1411: if `A_r ≥ δ`, the two-variable kernel
 `w(x,t) Q(t)` on `I × I` (with `t = (y_b - y_a)/(b - a)`, `x = y_a - a t`) has a uniform
 `ε`-approximation by a finite sum `Σ c_ν e(α_ν y_a) e(β_ν y_b)` of products of bounded
@@ -6537,8 +6535,8 @@ theorem separatedKernelApprox (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 1 �
   have hXp3 : 3 ≤ Xp := by simp only [Xp]; linarith
   have hX1 : 1 ≤ X := by linarith
   have hpow (k : ℕ) : Xp ^ k ≤ X ^ k := pow_le_pow_left₀ (by linarith) hXpX k
-  set E1 := Real.exp (Dp * X ^ Dp) with hE1
-  set EJ := Real.exp (LJ * X ^ LJ) with hEJ
+  set! E1 := Real.exp (Dp * X ^ Dp) with hE1
+  set! EJ := Real.exp (LJ * X ^ LJ) with hEJ
   have hE1' : ∀ y, y ≤ Real.exp (Dp * Xp ^ Dp) → y ≤ E1 := fun y hy =>
     hy.trans (Real.exp_le_exp.mpr (mul_le_mul_of_nonneg_left (hpow Dp) (Nat.cast_nonneg _)))
   have hEJ' : ∀ y, y ≤ Real.exp (LJ * Xp ^ LJ) → y ≤ EJ := fun y hy =>
@@ -6547,15 +6545,16 @@ theorem separatedKernelApprox (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 1 �
   have hEJ1 : 1 ≤ EJ := Real.one_le_exp (by positivity)
   -- the quadratic phase and the time-chart expansion on the window
   set lam := A.quadratic + ∑ i, ∑ j, A.horizontal i * (M i j : ℝ) * A.horizontal j with hlamd
-  set Λ := lam * r ^ 2 with hΛ
+  set! Λ := lam * r ^ 2 with hΛ
   have hΛE : |Λ| ≤ E1 := by
     rw [hΛ, abs_mul, abs_of_nonneg (sq_nonneg r)]; exact hE1' _ hlam
-  set γ : ι × (Fin (d + d) → ℤ) → ℝ := fun p =>
+  set! γ : ι × (Fin (d + d) → ℤ) → ℝ := fun p =>
     A.linear + ∑ i, (σ p i : ℝ) * A.horizontal i with hγ
   have hQ : ∀ t : ℝ, |t| ≤ r → HasSum (fun p => a p * (Real.fourierChar (γ p * t) : ℂ))
       ((Real.fourierChar (-(Λ * (t / r) ^ 2)) : ℂ) * quadraticChartAtom A t) := by
     intro t ht
-    have h := (hexp t (by nlinarith)).mul_left (Real.fourierChar (A.linear * t) : ℂ)
+    have h := (hexp t (by nlinarith only [hR, hr,
+        ht])).mul_left (Real.fourierChar (A.linear * t) : ℂ)
     convert h using 1
     · funext p
       simp only [hγ]
@@ -6578,26 +6577,26 @@ theorem separatedKernelApprox (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 1 �
   have hA0 : 0 ≤ ∑' p, ‖a p‖ := tsum_nonneg fun _ => norm_nonneg _
   have htotE : (∑' p, ‖a p‖) ≤ E1 := hE1' _ htot
   have hΛ1 : 1 + |Λ| ≤ 2 * E1 := by linarith
-  set Y₁ := 4 * s0 * EJ / ε + 1 with hY₁
-  set Y₂ := 2 * (∑' p, ‖a p‖) * (Ct * (1 + |Λ|) ^ 3) / ε + 1 with hY₂
+  set! Y₁ := 4 * s0 * EJ / ε + 1 with hY₁
+  set! Y₂ := 2 * (∑' p, ‖a p‖) * (Ct * (1 + |Λ|) ^ 3) / ε + 1 with hY₂
   have hY₁1 : 1 ≤ Y₁ := by
     have : 0 ≤ 4 * s0 * EJ / ε := by positivity
     linarith
   have hY₂1 : 1 ≤ Y₂ := by
     have : 0 ≤ 2 * (∑' p, ‖a p‖) * (Ct * (1 + |Λ|) ^ 3) / ε := by positivity
-    linarith
+    linarith only [this]
   obtain ⟨K₁, hK₁, hK₁'⟩ := exists_two_pow_between hY₁1
   obtain ⟨K₂, hK₂, hK₂'⟩ := exists_two_pow_between hY₂1
-  set S := (Finset.univ : Finset ι) ×ˢ frequencyBox (d + d) (2 ^ K₁) with hS
-  set V := frequencyBox 2 (2 ^ K₂) with hV
-  set cWc := periodicFourierCoeff (cubePeriodization (chirpedKernelRescale a₀ r Λ w) 16)
+  set! S := (Finset.univ : Finset ι) ×ˢ frequencyBox (d + d) (2 ^ K₁) with hS
+  set! V := frequencyBox 2 (2 ^ K₂) with hV
+  set! cWc := periodicFourierCoeff (cubePeriodization (chirpedKernelRescale a₀ r Λ w) 16)
     with hcWc
   obtain ⟨hcWs, hcWt⟩ := chirpedKernel_coeff_mass hr hw Λ
-  set c₀ := a₀ + r / 2 with hc₀
-  set gg : ι × (Fin (d + d) → ℤ) → (Fin 2 → ℤ) → ℝ := fun p v =>
+  set! c₀ := a₀ + r / 2 with hc₀
+  set! gg : ι × (Fin (d + d) → ℤ) → (Fin 2 → ℤ) → ℝ := fun p v =>
     ((v 1 : ℝ) - sa * v 0) / (16 * r) + γ p with hgg
   -- the quasipolynomial base
-  set W := Cκ * E1 * EJ * ε⁻¹ with hW
+  set! W := Cκ * E1 * EJ * ε⁻¹ with hW
   have hCκ2 : 2 ≤ Cκ := by
     rw [hCκ]
     have : 0 ≤ 5 * (4 * s0 + 1) + 5 * (16 * Ct + 1) + 8 * Cc := by positivity
@@ -6617,15 +6616,15 @@ theorem separatedKernelApprox (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 1 �
       have hle := Nat.le_ceil (Real.log Cκ)
       have : (1 : ℝ) ≤ X ^ e := one_le_pow₀ hX1
       have h0 : (0 : ℝ) ≤ ⌈Real.log Cκ⌉₊ := Nat.cast_nonneg _
-      nlinarith
+      nlinarith only [hle, this]
     have h2 : (Dp : ℝ) * X ^ Dp ≤ Dp * X ^ e :=
       mul_le_mul_of_nonneg_left (hXe Dp (le_max_left _ _)) (Nat.cast_nonneg _)
     have h3 : (LJ : ℝ) * X ^ LJ ≤ LJ * X ^ e :=
       mul_le_mul_of_nonneg_left (hXe LJ (le_max_right _ _)) (Nat.cast_nonneg _)
     have h4 : Real.log ε⁻¹ ≤ X ^ e := by
-      have : Real.log ε⁻¹ ≤ X := by simp only [X]; linarith
+      have : Real.log ε⁻¹ ≤ X := by simp only [X]; linarith only [hlogH, hlogδ]
       exact this.trans (by simpa using hXe 1 he1)
-    rw [hcW]; push_cast; linarith
+    rw [hcW]; push_cast; linarith only [h1, h2, h3, h4]
   have hdX : (d : ℝ) ≤ X := by have := hA.dimension; simp only [X]; linarith
   have hιW : (Fintype.card ι : ℝ) ≤ W := (hE1' _ hcard).trans (by
     rw [hW]
@@ -6815,7 +6814,7 @@ theorem shell_tail_at {ι : Type*} [Fintype ι] {n q : ℕ} (hq : 1 ≤ q)
     calc 2 * E * T ^ q ≤ 2 * E * (2 ^ q * ((2 : ℝ) ^ K) ^ q) :=
           mul_le_mul_of_nonneg_left hKT (by positivity)
       _ = 2 ^ (q + 1) * E * ((2 : ℝ) ^ K) ^ q := by ring
-      _ ≤ (2 ^ q * M + 2 ^ (q + 1) * E) * ((2 : ℝ) ^ K) ^ q := by nlinarith
+      _ ≤ (2 ^ q * M + 2 ^ (q + 1) * E) * ((2 : ℝ) ^ K) ^ q := by nlinarith only [hTq, hM0, hKT]
 
 /-- Mass and tail of a product of two coefficient families. -/
 theorem product_family_tail {α β : Type*} (f : α → ℂ) (g : β → ℂ)
@@ -6855,7 +6854,7 @@ theorem product_family_tail {α β : Type*} (f : α → ℂ) (g : β → ℂ)
     rw [norm_mul]
     by_cases h1 : T ≤ sf z.1
     · simp only [h1, ite_true]
-      split_ifs <;> nlinarith [hnf z.1, hng z.2, mul_nonneg (hnf z.1) (hng z.2)]
+      split_ifs <;> nlinarith only [hnf z.1, hng z.2, mul_nonneg (hnf z.1) (hng z.2)]
     · by_cases h2 : T ≤ sg z.2
       · simp only [h1, h2, ite_true, ite_false]
         split_ifs <;> nlinarith [hnf z.1, hng z.2, mul_nonneg (hnf z.1) (hng z.2)]
@@ -6922,7 +6921,7 @@ theorem atom_family_budget {H E c : ℝ} {d Db : ℕ} (hH : Real.exp 2 ≤ H)
           _ ≤ Real.exp 1 ^ 11 := pow_le_pow_left₀ (by norm_num) (by linarith) 11
       rwa [← Real.exp_nat_mul, show ((11 : ℕ) : ℝ) * 1 = 11 by norm_num] at this
     have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
-    nlinarith
+    nlinarith only [hdH, hl]
   have hXe : X ^ 2 ≤ X ^ (Db + 2) := pow_le_pow_right₀ hX1 (by omega)
   have hXD : X ^ Db ≤ X ^ (Db + 2) := pow_le_pow_right₀ hX1 (by omega)
   have hX1' : X ≤ X ^ (Db + 2) := le_self_pow₀ hX1 (by omega)
@@ -6937,7 +6936,7 @@ theorem atom_family_budget {H E c : ℝ} {d Db : ℕ} (hH : Real.exp 2 ≤ H)
         push_cast
         have : (Db : ℝ) * X ^ Db ≤ Db * X ^ (Db + 2) :=
           mul_le_mul_of_nonneg_left hXD (Nat.cast_nonneg _)
-        nlinarith
+        nlinarith only [hdH, hXe, hXD]
 
 /-- The normalized coefficient family of one separated atom: total mass and tails
 (lem:separation, line 1407), quasipolynomial in `H`. -/
@@ -6978,7 +6977,7 @@ theorem sepAtomFamily_bounds (c₀ : ℕ) (hc : 1 ≤ c₀) {ψ : ℝ → ℝ}
     hA.dimension (by exact_mod_cast hia) (by exact_mod_cast hba)
   set E := Real.exp (Db * (1 + Real.log H) ^ Db) with hE
   have hE0 : 0 ≤ E := (Real.exp_pos _).le
-  set m6 : ℝ := ((6 : ℝ) ^ d) ^ 3 with hm6
+  set! m6 : ℝ := ((6 : ℝ) ^ d) ^ 3 with hm6
   have hm60 : 0 ≤ m6 := by positivity
   have hfn : ∀ q, ‖f q‖ = m6 * ‖sepCoeff A.amplitude ψ i a b q.1.1 q.1.2 q.2‖ := fun q => by
     simp only [f, norm_mul, norm_pow, Complex.norm_real, Real.norm_eq_abs, hm6]
@@ -6998,7 +6997,7 @@ theorem sepAtomFamily_bounds (c₀ : ℕ) (hc : 1 ≤ c₀) {ψ : ℝ → ℝ}
     (fun ikb => by
       simp_rw [hfn]; exact (hsl ikb.1 ikb.2).mul_left m6)
   obtain ⟨hfs, hft⟩ := hfam
-  set card : ℝ := (Fintype.card (↥Ki × ↥Kb) : ℝ) with hcard
+  set! card : ℝ := (Fintype.card (↥Ki × ↥Kb) : ℝ) with hcard
   have hcard0 : 0 ≤ card := Nat.cast_nonneg _
   have htot : (∑' q, ‖f q‖) ≤ card * m6 * E := by
     rw [hft]
@@ -7031,14 +7030,14 @@ theorem sepAtomFamily_bounds (c₀ : ℕ) (hc : 1 ≤ c₀) {ψ : ℝ → ℝ}
     have hH7 : 7 ≤ H := by
       have he := Real.exp_one_gt_d9
       have h2 : Real.exp 2 = Real.exp 1 ^ 2 := by rw [← Real.exp_nat_mul]; norm_num
-      have : (7 : ℝ) ≤ Real.exp 1 ^ 2 := by nlinarith
+      have : (7 : ℝ) ≤ Real.exp 1 ^ 2 := by nlinarith only [he]
       linarith [hA.lower]
     rw [hcard, Fintype.card_prod, Fintype.card_coe, Fintype.card_coe, slowValueBox_card,
       slowValueBox_card]
     push_cast at hK1 hK2 ⊢
     rw [← mul_pow]
     apply pow_le_pow_left₀ (by positivity)
-    nlinarith
+    nlinarith only [hH7, hK1, hK2]
   have hbig := atom_family_budget (c := card) (E := E) hA.lower hA.dimension hE0 hE.le hcard0 hcardH
   have hX1 : 1 ≤ 1 + Real.log H := by
     have := Real.log_nonneg hH1; linarith
@@ -7049,7 +7048,7 @@ theorem sepAtomFamily_bounds (c₀ : ℕ) (hc : 1 ≤ c₀) {ψ : ℝ → ℝ}
   refine ⟨hfs, ?_, fun T hT => ?_⟩
   · refine htot.trans (le_trans ?_ (hbig.trans hfin))
     have : (1 : ℝ) ≤ 2 ^ 100 + 2 ^ 101 := by norm_num
-    nlinarith
+    nlinarith only [hm0]
   · obtain ⟨hs, ht⟩ := shell_tail_at (n := d + d + d) (q := 100) (by norm_num) f hfs hshell htot hT
     refine ⟨hs, ht.trans ?_⟩
     have hT0 : 0 < T ^ 100 := by positivity
@@ -7267,7 +7266,7 @@ theorem progressionSeparation (c₀ : ℕ) (hc : 1 ≤ c₀) :
       rw [this, ← Real.exp_nat_mul]
       apply Real.exp_le_exp.mpr
       push_cast
-      simp only [X]; nlinarith
+      simp only [X]; nlinarith only
     have hl1 : frequencyLength q.1.2 ≤ sz := by
       have := le_max_left (1 + frequencyLength q.1.2) (1 + frequencyLength q.2.2)
       rw [← hsz'] at this; linarith
@@ -7283,8 +7282,8 @@ theorem progressionSeparation (c₀ : ℕ) (hc : 1 ≤ c₀) :
     have hsum : 1 + ∑ l, |(q.1.2 l : ℝ)| + ∑ l, |(q.2.2 l : ℝ)| ≤ 7 * Real.exp X * sz := by
       push_cast at hp1 hp2
       have h7 : 1 + 6 * X ≤ 7 * Real.exp X := by
-        have := Real.add_one_le_exp X; nlinarith
-      nlinarith
+        have := Real.add_one_le_exp X; nlinarith only [hX1, this]
+      nlinarith only [hsz, hdX, heX, hp1, hp2, h7]
     have hS0 : 0 ≤ 1 + ∑ l, |(q.1.2 l : ℝ)| + ∑ l, |(q.2.2 l : ℝ)| := by positivity
     calc K * max (sepQ i a b) (sepQ k a b) ^ 2 * H ^ 2 *
           (1 + ∑ l, |(q.1.2 l : ℝ)| + ∑ l, |(q.2.2 l : ℝ)|) ≤
@@ -7306,14 +7305,14 @@ theorem progressionSeparation (c₀ : ℕ) (hc : 1 ≤ c₀) :
                 rw [← Real.exp_add]
                 apply Real.exp_le_exp.mpr
                 have : (0 : ℝ) ≤ Dc := Nat.cast_nonneg _
-                rw [pow_one]; nlinarith
+                rw [pow_one]; nlinarith only [hX1]
             _ ≤ Real.exp (Dm * X ^ Dm) := exp_poly_le hX1 (by omega) (by
                 rw [hDm]; push_cast; linarith)
   · intro T hT
     have hH7 : 7 ≤ H := by
       have he := Real.exp_one_gt_d9
       have h2 : Real.exp 2 = Real.exp 1 ^ 2 := by rw [← Real.exp_nat_mul]; norm_num
-      have : (7 : ℝ) ≤ Real.exp 1 ^ 2 := by nlinarith
+      have : (7 : ℝ) ≤ Real.exp 1 ^ 2 := by nlinarith only [he]
       linarith [hA.lower]
     refine ⟨((Finset.univ : Finset (↥Ki × ↥Kb)) ×ˢ frequencyBox (d + d + d) ⌊T⌋₊) ×ˢ
       ((Finset.univ : Finset (↥Ki' × ↥Kb')) ×ˢ frequencyBox (e + e + e) ⌊T⌋₊),

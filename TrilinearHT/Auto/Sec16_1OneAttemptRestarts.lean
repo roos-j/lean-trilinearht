@@ -37,7 +37,8 @@ theorem eta_power_P_le {ε C₄ η : ℝ} (hε : 0 < ε) (hC₄ : 0 ≤ C₄) (h
     η ^ ε * (⌈η ^ (-(ε / (4 * (C₄ + 1))))⌉₊ : ℝ) ^ C₄ ≤ 2 ^ C₄ * η ^ (ε / 2) := by
   set α := ε / (4 * (C₄ + 1)) with hα
   have hα0 : 0 < α := by positivity
-  have hX1 : 1 ≤ η ^ (-α) := Real.one_le_rpow_of_pos_of_le_one_of_nonpos hη0 hη1 (by linarith)
+  have hX1 : 1 ≤ η ^ (-α) :=
+    Real.one_le_rpow_of_pos_of_le_one_of_nonpos hη0 hη1 (by linarith only [hα0])
   have hP : (⌈η ^ (-α)⌉₊ : ℝ) ≤ 2 * η ^ (-α) := by
     have := Nat.ceil_lt_add_one (show 0 ≤ η ^ (-α) by positivity)
     linarith
@@ -119,7 +120,7 @@ theorem exists_exponent_near_two (C₅ : ℝ) (hC : 0 ≤ C₅) :
     ∃ q : ℝ, 2 < q ∧ q < 3 ∧ 2 * C₅ * ((q - 2) / (q - 1)) < 1 / 8 := by
   refine ⟨2 + 1 / (32 * (C₅ + 1)), ?_, ?_, ?_⟩
   · have : 0 < 1 / (32 * (C₅ + 1)) := by positivity
-    linarith
+    linarith only [this]
   · have : 1 / (32 * (C₅ + 1)) ≤ 1 / 32 := by
       apply one_div_le_one_div_of_le (by norm_num); nlinarith
     linarith
@@ -682,11 +683,11 @@ theorem exists_attempt (c Dst : ℕ) :
       (Mp := Mp) Unit Bh hL hDv hH hm A.exp_two_le_Hsrc hlog hτ hτ' hMp1 hMp hcb
       (by rw [Fintype.card_unit, Nat.cast_one]; exact Real.one_le_exp (by positivity)) hBh
   -- the edge threshold, the delays and the label room
-  set Hloc := Real.exp (A.Dg * (1 + Real.log A.Hsrc +
+  set! Hloc := Real.exp (A.Dg * (1 + Real.log A.Hsrc +
     Real.log (τ₃ / ((A.famVtxBound : ℝ) ^ 2 * n (A.famLc + 1)))⁻¹) ^ A.Dg) with hHloc
-  set Hed := max (Hlow Kt n Tmax) (max 2 Hloc) with hHed
+  set! Hed := max (Hlow Kt n Tmax) (max 2 Hloc) with hHed
   obtain ⟨ωp, ωh, hcol⟩ := bf.coloring Hed (A.fcb1 (A.famHmax P)) (cb2 (A.famHmax P))
-  set fp := bf.attemptFam P hP Hed ωp ωh (Tc.card * Tmax + Mx Kt n Tmax) with hfp
+  set! fp := bf.attemptFam P hP Hed ωp ωh (Tc.card * Tmax + Mx Kt n Tmax) with hfp
   have hfuel : fp.Lc - 1 < 2 ^ A.famFuel :=
     (Nat.sub_le _ _).trans_lt ((Nat.le_pow_clog one_lt_two A.famLc).trans_lt
       (Nat.pow_lt_pow_right one_lt_two (Nat.lt_succ_self _)))
@@ -799,7 +800,7 @@ theorem dmax_Q0bd_le_modeStarG (D dB : ℕ) {H δc N : ℝ} (k : ℝ) {δ : ℝ}
     nlinarith
   have hrest : 0 ≤ A.famVtxBound * (fp.K.potMax A.famVtxBound + 1) * (N + 1) *
       (Bm * (4 * max 1 (4 * Bm / δc) + 1) ^ (4 * dB)) := by positivity
-  have hcol : 4 ≤ A.colBudget ^ 2 * (Bm ^ 2 + 1) := by nlinarith
+  have hcol : 4 ≤ A.colBudget ^ 2 * (Bm ^ 2 + 1) := by nlinarith only [hcb]
   have hsq : 0 ≤ (Real.sqrt N + 1) * A.colBudget * Bm := by positivity
   have hHp : 0 ≤ fp.Hed ^ (dB * dB) := pow_nonneg (by linarith) _
   have he := Real.exp_pos k
@@ -859,7 +860,7 @@ theorem exists_leaf_schedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (h
     have h2 : (2 : ℝ) ≤ 2 ^ (fp.Kstar D dB H δc N k δ + 1) := by
       calc (2 : ℝ) = 2 ^ 1 := (pow_one 2).symm
         _ ≤ _ := pow_le_pow_right₀ (by norm_num) (by omega)
-    nlinarith
+    nlinarith only [h1, h2]
   have hS := hsch (2 * dB + 2) (fp.modeStarG D dB H δc N k δ) (fp.Bst D dB H δc N k δ) Dm
     (fp.Q0bd dB) hd2 hD2 hB2 hDm hQ1
   obtain ⟨S, h1, h2, h3, h4, h5, hV, hHb, hTb, hKb⟩ := hS
@@ -1035,7 +1036,7 @@ theorem exists_leaf_modes (κ : LocalKernelClass) (c₀ : ℕ) :
     hC δ hδ hδ' hdδ H hHs hdz hCz hHδ δc hδc N CF hN0 hCF hN hδcN hnorm
   set n := Fintype.card (bf.Lab ⊕ Fin fp.Mc)
   -- the offsets, by the majorant of the physical errors
-  set zc : Fin 4 × gset → ChartTag := fun i => bf.vtag (bf.grpCenter d i.2.1) with hzc
+  set! zc : Fin 4 × gset → ChartTag := fun i => bf.vtag (bf.grpCenter d i.2.1) with hzc
   have hpath' : ∀ y, ∑ i : Fin 4 × gset, ((U i.1 i.2.1).filter fun I : ℤ × ℤ =>
       y ∈ dyadicGridCell A.G I.1 I.2).card ≤ Nuse := fun y => by
     rw [Fintype.sum_prod_type]
@@ -1301,12 +1302,12 @@ theorem modes_path_le (hanc : A.AncClosed) {l : Fin 4} {s : List (CatCol bf.Vtx)
     (hE : ∀ G ∈ gset, fp.ModeExports l s G j d D dB H δ δc N (Ms G) (L G))
     (hδ : 0 < δ) (hHed : 2 ≤ fp.Hed) (hH : 1 ≤ H) (hδc : 0 < δc) (hN0 : 0 ≤ N) (y : ℝ) :
     (∑ G ∈ gset, ((Ms G).ptSet y).card : ℝ) ≤ fp.modeStarG D dB H δc N k δ := by
-  set Gy := ((((A.cells.filter fun I => y ∈ dyadicGridCell A.G I.1 I.2).image bf.admAt) ×ˢ
+  set! Gy := ((((A.cells.filter fun I => y ∈ dyadicGridCell A.G I.1 I.2).image bf.admAt) ×ˢ
       (Finset.univ : Finset bf.Vtx)).filter (fun p => p.2 ∈ bf.admT.X p.1)).image
         (fun p => fp.K.grp bf.admT A.famVtxBound p.1 p.2) with hGy
   have hcard := fp.card_groups_path_le y
-  set Bm := Real.exp (D * fp.Xmax dB H ^ D) with hBm
-  set Mb := N * (Bm * (4 * max 1 (4 * Bm / δc) + 1) ^ (4 * dB)) with hMb
+  set! Bm := Real.exp (D * fp.Xmax dB H ^ D) with hBm
+  set! Mb := N * (Bm * (4 * max 1 (4 * Bm / δc) + 1) ^ (4 * dB)) with hMb
   have hper : ∀ G ∈ gset, (((Ms G).ptSet y).card : ℝ) ≤ Mb := by
     intro G hG
     obtain ⟨ρ₀, z, g, -, hg, -, -, -, -, -, -, -, -, -, -, -, -, -, -, hpt, -⟩ := hE G hG
@@ -1495,7 +1496,7 @@ theorem frozenZ_restrict_append (hanc : A.AncClosed) (l : Fin 4) (s t : List (Ca
   split_ifs with hR
   · rfl
   push Not at hR
-  set U := ancAt A.G I u with hU
+  set! U := ancAt A.G I u with hU
   have hIU := subset_ancAt A.G I hu
   have hIR := (dyadicFiniteTree_mem_iff A.G A.R I _).mp (A.cells_mem_tree hI)
   have hUR := ancAt_subset hIR.1 hR
@@ -2055,7 +2056,7 @@ theorem errAt_energy_le (qG : bf.Grp → ℕ) (L : ∀ l G, LiftData (bf.Lab ⊕
       ‖(fp.physError (D.Ms l G) (L l G) l (D.cat l) (D.mbs l) G (D.Lf.role l) (D.Lf.layers l)
         D.S.K (A.blkStart D.S.K I.1) : ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) y none‖ ^ 2 ≤ E) :
     ∑ I ∈ S, ∑ G ∈ gs I, ∑ l, ‖(D.withQ0 (qG G)).errAt L l G I‖ ^ 2 ≤ E := by
-  set f : Fin 4 → bf.Grp → ℤ × ℤ → ℝ := fun l G I => ∫ y in dyadicGridCell A.G I.1 I.2,
+  set! f : Fin 4 → bf.Grp → ℤ × ℤ → ℝ := fun l G I => ∫ y in dyadicGridCell A.G I.1 I.2,
     ‖(fp.physError (D.Ms l G) (L l G) l (D.cat l) (D.mbs l) G (D.Lf.role l) (D.Lf.layers l)
       D.S.K (A.blkStart D.S.K I.1) : ℝ → ColumnHilbert (bf.Lab ⊕ Fin fp.Mc)) y none‖ ^ 2
     with hf

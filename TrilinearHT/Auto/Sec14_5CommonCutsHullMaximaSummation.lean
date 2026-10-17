@@ -1298,8 +1298,6 @@ theorem sum_swap_three_four {A B C : Type*} (VA : Finset A) (VB : Finset B) (VC 
   exact Finset.sum_congr rfl fun q _ =>
     (h1 (fun a b c => g a b c q.1 q.2.1 q.2.2.1 q.2.2.2)).symm
 
-set_option maxHeartbeats 1000000 in
--- The expansion of three randomized slots and the seven nested sums are large terms.
 /-- Blueprint lines 2421-2423 with the band family: averaging `ε_{i₀} η_{j₀}` times the form of
 the randomized band tuple over three independent sign families gives the matched band sum
 `Σ_p H(x_{i₀ p}, w_{j₀}, y_p)`. -/
@@ -1320,16 +1318,16 @@ theorem form_sign_avg3 {κ' : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w�
         (Function.update (Function.update (Function.update f a (x i₀ p)) b (w j₀)) c (y p)) := by
   classical
   set μ := normalizedIntervalMeasure a₀ r
-  set F : ι → ν → κ → ν → ℂ := fun i p j p' => localProgressionForm r w₀
+  set! F : ι → ν → κ → ν → ℂ := fun i p j p' => localProgressionForm r w₀
     (Function.update (Function.update (Function.update f a (x i p)) b (w j)) c (y p'))
   -- expand the three randomized slots
   have hexp : ∀ v₁ v₂ v₃, localProgressionForm r w₀ (randTuple3 a b c f s t u x w y v₁ v₂ v₃) =
       ∑ i ∈ s, ∑ p ∈ u, ∑ j ∈ t, ∑ p' ∈ u, ((patternSign v₁ i : ℂ) * patternSign v₃ p *
         (patternSign v₂ j * patternSign v₃ p')) * F i p j p' := by
     intro v₁ v₂ v₃
-    set Xa : ℝ → ℂ := fun z => ∑ i ∈ s, ∑ p ∈ u, (patternSign v₁ i : ℂ) * patternSign v₃ p *
+    set! Xa : ℝ → ℂ := fun z => ∑ i ∈ s, ∑ p ∈ u, (patternSign v₁ i : ℂ) * patternSign v₃ p *
       x i p z
-    set Xb : ℝ → ℂ := fun z => ∑ j ∈ t, (patternSign v₂ j : ℂ) * w j z
+    set! Xb : ℝ → ℂ := fun z => ∑ j ∈ t, (patternSign v₂ j : ℂ) * w j z
     have hXam : Measurable Xa := Finset.measurable_sum _ fun i _ => Finset.measurable_sum _
       fun p _ => measurable_const.mul (hx i p)
     have hXbm : Measurable Xb := Finset.measurable_sum _ fun j _ => measurable_const.mul (hwm j)
@@ -1560,13 +1558,13 @@ theorem piece_band_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : 
   intro G K Nd d₀ T ι κ' ν _ _ _ s t u a b c hab hac hbc f x w y hf hx hw hy kernel hker cells
     hcells hwin hff hxf hwf hyf sv hsv hla hlb hlc hlo sa sb hsa hsb sg hsg
   classical
-  set Ω := SignPattern s × SignPattern t × SignPattern u
-  set z : Fin 4 → ℝ → ℝ := fun j r => if j = a then Real.sqrt (∑ i ∈ s, ∑ p ∈ u, ‖x i p r‖ ^ 2)
+  set! Ω := SignPattern s × SignPattern t × SignPattern u
+  set! z : Fin 4 → ℝ → ℝ := fun j r => if j = a then Real.sqrt (∑ i ∈ s, ∑ p ∈ u, ‖x i p r‖ ^ 2)
     else if j = b then Real.sqrt (∑ k ∈ t, ‖w k r‖ ^ 2)
     else if j = c then Real.sqrt (∑ p ∈ u, ‖y p r‖ ^ 2) else ‖f j r‖
-  set zσ : Fin 4 → Ω → ℝ → ℂ := fun j ω =>
+  set! zσ : Fin 4 → Ω → ℝ → ℂ := fun j ω =>
     randTuple3 a b c f s t u x w y ω.1.1 ω.2.1.1 ω.2.2.1 j
-  set ε : ℤ × ℤ → Ω → ℂ := fun I ω => sg I * (patternSign ω.1.1 (sa I) : ℂ) *
+  set! ε : ℤ × ℤ → Ω → ℂ := fun I ω => sg I * (patternSign ω.1.1 (sa I) : ℂ) *
     patternSign ω.2.1.1 (sb I)
   -- the slot values of the randomized tuple
   have hza : ∀ ω r, zσ a ω r = ∑ i ∈ s, ∑ p ∈ u, (patternSign ω.1.1 i : ℂ) *
@@ -1785,10 +1783,10 @@ theorem sparse_piece_bound (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 
     hown hhull hAa hAb kernel hker hwin hff hxf hwf hyf Bc Bd hBc hBd hcB hdB sa sb hsa hsb sg hsg
   set ga : ℝ → ℝ≥0∞ := fun z => ENNReal.ofReal (∑ i ∈ s, ∑ p ∈ u, ‖x i p z‖ ^ 2)
   set gb : ℝ → ℝ≥0∞ := fun z => ENNReal.ofReal (∑ k ∈ t, ‖w k z‖ ^ 2)
-  set Aa := (dyadicEnergyAverage G ga Q).toReal
-  set Ab := (dyadicEnergyAverage G gb Q).toReal
-  set T := pieceTree Q C hC hK hdepth
-  set sv : Fin 4 → ℝ := fun j => if j = a then Real.sqrt (32 * Aa) else if j = b then
+  set! Aa := (dyadicEnergyAverage G ga Q).toReal
+  set! Ab := (dyadicEnergyAverage G gb Q).toReal
+  set! T := pieceTree Q C hC hK hdepth
+  set! sv : Fin 4 → ℝ := fun j => if j = a then Real.sqrt (32 * Aa) else if j = b then
     Real.sqrt (32 * Ab) else if j = c then Real.sqrt 2 * Bc else Real.sqrt 2 * Bd
   have hsv : ∀ j, 0 ≤ sv j := by
     intro j; simp only [sv]; split_ifs <;> positivity
@@ -1908,10 +1906,10 @@ theorem sparse_root_sum (G : RealDyadicGrid) {N : Type*} (Ns : Finset N) (K : �
         ((dyadicEnergyAverage G (ga ν) Q) ^ (1 / 2 : ℝ) *
           (dyadicEnergyAverage G (gb ν) Q) ^ (1 / 2 : ℝ)))) :
     7 * ∑ ν ∈ Ns, ‖∑ I ∈ U ν, F ν I‖ₑ ≤ 8 * c₀ * ((A * B) ^ (1 / 2 : ℝ) * volume R) := by
-  set Qs : N → Finset (ℤ × ℤ) := fun ν =>
+  set! Qs : N → Finset (ℤ × ℤ) := fun ν =>
     (Rt ν).biUnion fun r => sparseRoots G (H ν) (ga ν) (gb ν) r K
   -- the owner property of a use cell
-  set P : N → ℤ × ℤ → ℤ × ℤ → Prop := fun ν c Q =>
+  set! P : N → ℤ × ℤ → ℤ × ℤ → Prop := fun ν c Q =>
     SparseOwner G (H ν) (ga ν) (gb ν) (Rt ν) K c Q with hPdef
   have hex : ∀ ν ∈ Ns, ∀ c ∈ U ν, ∃ Q, P ν c Q := by
     intro ν hν c hc
@@ -1919,7 +1917,7 @@ theorem sparse_root_sum (G : RealDyadicGrid) {N : Type*} (Ns : Finset N) (K : �
     obtain ⟨Q, hQ, hcQ, hown, -⟩ := sparse_owner G (H ν) (ga ν) (gb ν) r K (hUH ν hν hc) hcr
       (hdep ν hν c hc r hr hcr).le
     exact ⟨Q, r, hr, hQ, hcQ, hown, hcr⟩
-  set own : N → ℤ × ℤ → ℤ × ℤ := fun ν c => if h : ∃ Q, P ν c Q then h.choose else c
+  set! own : N → ℤ × ℤ → ℤ × ℤ := fun ν c => if h : ∃ Q, P ν c Q then h.choose else c
   have hownP : ∀ ν ∈ Ns, ∀ c ∈ U ν, P ν c (own ν c) := by
     intro ν hν c hc
     have h := hex ν hν c hc
@@ -1930,7 +1928,7 @@ theorem sparse_root_sum (G : RealDyadicGrid) {N : Type*} (Ns : Finset N) (K : �
     obtain ⟨r, hr, hQ, -⟩ := hownP ν hν c hc
     exact Finset.mem_biUnion.mpr ⟨r, hr, hQ⟩
   -- the piece terms
-  set term : N → ℤ × ℤ → ℝ≥0∞ := fun ν Q => ‖∑ I ∈ (U ν).filter (fun c => own ν c = Q), F ν I‖ₑ
+  set! term : N → ℤ × ℤ → ℝ≥0∞ := fun ν Q => ‖∑ I ∈ (U ν).filter (fun c => own ν c = Q), F ν I‖ₑ
   have hsplit : ∀ ν ∈ Ns, ‖∑ I ∈ U ν, F ν I‖ₑ ≤ ∑ Q ∈ Qs ν, term ν Q := by
     intro ν hν
     rw [← Finset.sum_fiberwise_of_maps_to (g := own ν) (hownQ ν hν)]
@@ -1969,7 +1967,7 @@ theorem sparse_root_sum (G : RealDyadicGrid) {N : Type*} (Ns : Finset N) (K : �
       exact hclos ν hν c hcU r hr d hcd (hdQ.trans
         (sparseRoots_sub G (H ν) (ga ν) (gb ν) r (hRtH ν hν hr) K hQr).2)
   -- the remainders
-  set E : N → ℤ × ℤ → Set ℝ := fun ν Q => sparseRem G (H ν) (ga ν) (gb ν) Q
+  set! E : N → ℤ × ℤ → Set ℝ := fun ν Q => sparseRem G (H ν) (ga ν) (gb ν) Q
   have hdis : ∀ ν ∈ Ns, (Qs ν : Set (ℤ × ℤ)).PairwiseDisjoint (E ν) := by
     intro ν hν Q hQ Q' hQ' hne
     obtain ⟨r, hr, hQr⟩ := Finset.mem_biUnion.mp hQ
@@ -2478,9 +2476,9 @@ theorem min_three_strong (Gd : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (root :
       η ^ (1 - p) * ∑ o ∈ Os, Ca o ^ (p / 2) * Cb o ^ (p / 2) * Cc o ^ (p / 2) *
         dyadicGridLength Gd root.1 := by
   have hp0 : 0 < p := by linarith
-  set A : ω → ℤ × ℤ → ℝ := fun o I => Real.sqrt (∑ G ∈ gs I, fa o I G ^ 2)
-  set B : ω → ℤ × ℤ → ℝ := fun o I => Real.sqrt (∑ G ∈ gs I, fb o I G ^ 2)
-  set C : ω → ℤ × ℤ → ℝ := fun o I => Real.sqrt (∑ G ∈ gs I, fc o I G ^ 2)
+  set! A : ω → ℤ × ℤ → ℝ := fun o I => Real.sqrt (∑ G ∈ gs I, fa o I G ^ 2)
+  set! B : ω → ℤ × ℤ → ℝ := fun o I => Real.sqrt (∑ G ∈ gs I, fb o I G ^ 2)
+  set! C : ω → ℤ × ℤ → ℝ := fun o I => Real.sqrt (∑ G ∈ gs I, fc o I G ^ 2)
   -- per cell: the group sum is at most the product of the three group norms
   have hcell : ∀ o I, ∑ G ∈ gs I, fa o I G * fb o I G * fc o I G ≤
       A o I * B o I * C o I := by
@@ -3025,7 +3023,7 @@ theorem bandStack_outer (hanc : A.AncClosed) {Ω γ : Type*} {V : Type*} [Fintyp
   have hcast : ∀ β n : ℕ, A.R.1 + ((K * β : ℕ) : ℤ) + (n : ℤ) = A.R.1 + ((K * β + n : ℕ) : ℤ) :=
     fun β n => by push_cast; ring
   -- the term of an index is at most the term of its full group and block
-  set T : Ω × γ × ℕ → ℝ := fun m => ∑ k : Fin (N + 1),
+  set! T : Ω × γ × ℕ → ℝ := fun m => ∑ k : Fin (N + 1),
     ∑ q ∈ ((U m.2.1 m.2.2).filter fun I => posAct N k (off I)).image
       (fun I => off I / 2 ^ ((k : ℕ) + 1)), ∑ p ∈ Finset.range (P + 1),
       ‖gluedStack A.G ((U m.2.1 m.2.2).filter fun I => posAct N k (off I))
@@ -3093,7 +3091,7 @@ theorem posStack_outer (hanc : A.AncClosed) {Ω γ : Type*} {V : Type*} [Fintype
         i‖ ^ 2 ≤ ∑ _ω ∈ Os, (N * B + EW) := by
   have hcast : ∀ β n : ℕ, A.R.1 + ((K * β : ℕ) : ℤ) + (n : ℤ) = A.R.1 + ((K * β + n : ℕ) : ℤ) :=
     fun β n => by push_cast; ring
-  set T : Ω × γ × ℕ → ℝ := fun m => ∑ k : Fin (N + 1),
+  set! T : Ω × γ × ℕ → ℝ := fun m => ∑ k : Fin (N + 1),
     ∑ q ∈ ((U m.2.1 m.2.2).filter fun I => posAct N k (off I)).image
       (fun I => off I / 2 ^ ((k : ℕ) + 1)),
       ‖gluedStack A.G ((U m.2.1 m.2.2).filter fun I => posAct N k (off I))
@@ -3414,11 +3412,11 @@ theorem near_band_cutM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q 
   refine ⟨Cq, hCq, ?_⟩
   intro c₀ A bf fp K Nd hKN hK hanc N Ns U bs hUc hUb ι κ' β _ _ _ s t u a b c hab hac hbc F X W Y
     Ea Eb ρ Mu hEa hEb hMu0 hρ hρ1 hXe hWe hMu Bc Bd hBc hBd hYb hFb sa sb hsa hsb
-  set R := dyadicGridCell A.G A.R.1 A.R.2
+  set! R := dyadicGridCell A.G A.R.1 A.R.2
   have hRm : MeasurableSet R := dyadicGridCell_measurable _ _ _
-  set H : N → Finset (ℤ × ℤ) := fun n => A.useHull (U n)
-  set fa : N → ℝ → ℝ := fun n => stackDens (s n) (u n) (X n)
-  set fb : N → ℝ → ℝ := fun n => stackDens (t n) ({()} : Finset Unit) (fun k _ => W n k)
+  set! H : N → Finset (ℤ × ℤ) := fun n => A.useHull (U n)
+  set! fa : N → ℝ → ℝ := fun n => stackDens (s n) (u n) (X n)
+  set! fb : N → ℝ → ℝ := fun n => stackDens (t n) ({()} : Finset Unit) (fun k _ => W n k)
   have hea : ∑ n ∈ Ns, eLpNorm (fa n) 2 volume ^ (2 : ℕ) ≤
       ENNReal.ofReal (Ea * dyadicGridLength A.G A.R.1) := by
     refine (Finset.sum_le_sum fun n _ => stackDens_eLpNorm_sq (s n) (u n) (X n)).trans ?_
@@ -3441,11 +3439,11 @@ theorem near_band_cutM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 : q 
     (fun n _ => (stackDens_measurable _ _ _).aestronglyMeasurable) A.R
     (fun n _ => A.useHull_sub (U n)) A.sub hEa hEb hMu0 hρ hρ1 hea heb hM
   refine ⟨C, hCS, hClen, ?_⟩
-  set below : ℤ × ℤ → Prop := fun I => ∃ e ∈ C,
+  set! below : ℤ × ℤ → Prop := fun I => ∃ e ∈ C,
     dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2
-  set U' : N → Finset (ℤ × ℤ) := fun n => (U n).filter fun I => ¬ below I
-  set H' : N → Finset (ℤ × ℤ) := fun n => (H n).filter fun I => ¬ below I
-  set Rt : N → Finset (ℤ × ℤ) := fun n => maximalDyadicCells A.G (U' n)
+  set! U' : N → Finset (ℤ × ℤ) := fun n => (U n).filter fun I => ¬ below I
+  set! H' : N → Finset (ℤ × ℤ) := fun n => (H n).filter fun I => ¬ below I
+  set! Rt : N → Finset (ℤ × ℤ) := fun n => maximalDyadicCells A.G (U' n)
   have hU'U : ∀ n, U' n ⊆ U n := fun n => Finset.filter_subset _ _
   have hRtU : ∀ n, Rt n ⊆ U' n := fun n => maximalDyadicCells_subset _ _
   have hUH : ∀ n ∈ Ns, U' n ⊆ H' n := fun n hn I hI => by
@@ -3595,12 +3593,12 @@ theorem near_band_stacksM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 :
   intro c₀ A bf fp K Nd hKN hK hanc M Ms U bs hUc hUb Ka Kb _ _ ι κ' β u a b c hab hac hbc F Y va vb
     actA selA valA actB selB valB hrepA hrepB Ea Eb ρ Mu hEa hEb hMu0 hρ hρ1 hXe hWe hMu Bc Bd hBc
         hBd hYb hFb
-  set Ns : Finset (M × Ka × Kb) := Ms ×ˢ (Finset.univ ×ˢ Finset.univ)
-  set U' : M × Ka × Kb → Finset (ℤ × ℤ) := fun n =>
+  set! Ns : Finset (M × Ka × Kb) := Ms ×ˢ (Finset.univ ×ˢ Finset.univ)
+  set! U' : M × Ka × Kb → Finset (ℤ × ℤ) := fun n =>
     (U n.1).filter fun I => actA n.2.1 I ∧ actB n.2.2 I
-  set X : M × Ka × Kb → ι → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun n i p =>
+  set! X : M × Ka × Kb → ι → β → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun n i p =>
     gluedStack A.G (U' n) (selA n.2.1) (fun i => valA n.1 n.2.1 i p) i
-  set W : M × Ka × Kb → κ' → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun n k =>
+  set! W : M × Ka × Kb → κ' → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun n k =>
     gluedStack A.G (U' n) (selB n.2.2) (valB n.1 n.2.2) k
   have hU'U : ∀ n, U' n ⊆ U n.1 := fun n => Finset.filter_subset _ _
   have hU'A : ∀ n, U' n ⊆ (U n.1).filter (actA n.2.1) := fun n I hI => by
@@ -3675,9 +3673,9 @@ theorem near_band_stacksM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 :
     (fun n => selA n.2.1) (fun n => selB n.2.2)
     (fun n _ I hI => Finset.mem_image_of_mem _ hI) (fun n _ I hI => Finset.mem_image_of_mem _ hI)
   refine ⟨C, hCS, hClen, le_trans ?_ hb⟩
-  set nb : ℤ × ℤ → Prop := fun I => ¬ ∃ e ∈ C,
+  set! nb : ℤ × ℤ → Prop := fun I => ¬ ∃ e ∈ C,
     dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2
-  set T : M × Ka × Kb → ℤ × ℤ → ℝ≥0∞ := fun n I =>
+  set! T : M × Ka × Kb → ℤ × ℤ → ℝ≥0∞ := fun n I =>
     ‖(dyadicGridLength A.G I.1 : ℂ) * ∑ p ∈ u n.1, fp.Λc I (Function.update (Function.update
       (Function.update (F n.1) a (X n (selA n.2.1 I) p)) b (W n (selB n.2.2 I))) c (Y n.1 p))‖ₑ
   have hre : ∀ (x : Fin 4 → ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) (v₁ v₂ v₃ : ColumnL2 (bf.Lab ⊕ Fin
@@ -3710,7 +3708,7 @@ theorem near_band_stacksM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3 :
         (fun ka hka kb hkb => gluedStack_restrict A.G (selB kb) _
           (hmem ka kb (Finset.mem_filter.mp hka).2 (Finset.mem_filter.mp hkb).2))
         (hrepA m hm I hI p hp) (hrepB m hm I hI)
-    set f : Ka → Kb → β → ℂ := fun ka kb p => fp.Λc I (Function.update (Function.update
+    set! f : Ka → Kb → β → ℂ := fun ka kb p => fp.Λc I (Function.update (Function.update
       (Function.update (F m) a (X (m, ka, kb) (selA ka I) p)) b (W (m, ka, kb) (selB kb I))) c
         (Y m p))
     rw [Finset.sum_congr rfl hexp]
@@ -4177,8 +4175,8 @@ theorem near_coeff_le {P Ea Eb Γa Γb Z c : ℝ} (hP : 1 ≤ P) (hEa0 : 0 ≤ E
     have hs2 : Real.sqrt (P + 2) * Real.sqrt P ≤ 7 / 4 * P := by
       rw [← Real.sqrt_mul (by linarith)]
       refine Real.sqrt_le_iff.mpr ⟨by positivity, ?_⟩
-      nlinarith
-    nlinarith
+      nlinarith only [hP]
+    nlinarith only [hs2]
   rw [e1]
   have hS : 0 ≤ Real.sqrt (Γa * Γb) := Real.sqrt_nonneg _
   calc 2 / P * (8 / 7 * Z * (c * Real.sqrt (Ea * Eb)))
@@ -4278,8 +4276,9 @@ theorem near_band_criticalM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (hq3
   have hR := dyadicGridLength_pos A.G A.R.1
   have hP0 : (0 : ℝ) < fp.P := by exact_mod_cast hP
   have hCN : 0 ≤ finiteDepthConstant κ q Nd :=
-    le_trans zero_le_one (finiteDepthConstant_bounds κ (by linarith) Nd).1
-  have hlogK : 0 ≤ Real.log ((K : ℝ) + 2) := Real.log_nonneg (by linarith [K.cast_nonneg (α := ℝ)])
+    le_trans zero_le_one (finiteDepthConstant_bounds κ (by linarith only [hq2]) Nd).1
+  have hlogK : 0 ≤ Real.log ((K : ℝ) + 2) :=
+    Real.log_nonneg (by linarith only [K.cast_nonneg (α := ℝ)])
   set X := Cq * (1 + finiteDepthConstant κ q Nd) * (1 + Real.log ((K : ℝ) + 2)) *
     ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * (64 * Bc * Bd) with hX
   have hX0 : 0 ≤ X := by positivity
@@ -4396,7 +4395,7 @@ theorem ActiveSetup.BasicFamilies.FamParams.stackEA_le {κ' : LocalKernelClass} 
           positivity
         have h4 : 0 ≤ EW * (Q - 1) := by
           have := sub_nonneg.mpr hQ; positivity
-        nlinarith [h1, h2, h3, h4]
+        nlinarith only [h1, h2, h3, h4]
     _ = _ := by rw [Finset.sum_const, nsmul_eq_mul]; ring
 
 end Auto
@@ -4423,8 +4422,8 @@ theorem mainCol_mem_range (l : Fin 4) (Mc : ℕ) (s : List (CatCol bf.Vtx)) {I :
     (hmeas : Measurable (mainScalar Mc (bf.origCols l) s x)) :
     mainCol A.G Mc (bf.origCols l) s I x ∈
       LinearMap.range (colRelabel (bf.rv Mc s)).toLinearMap := by
-  set φR : bf.RLab Mc s → ℝ → ℂ := fun w => mainScalar Mc (bf.origCols l) s w.1
-  set εR : bf.RLab Mc s → ℝ := fun w => mainWeight Mc (bf.origCols l) w.1
+  set! φR : bf.RLab Mc s → ℝ → ℂ := fun w => mainScalar Mc (bf.origCols l) s w.1
+  set! εR : bf.RLab Mc s → ℝ := fun w => mainWeight Mc (bf.origCols l) w.1
   have hmR : MemLp ((dyadicGridCell A.G I.1 I.2).indicator
       (privateColumnValue φR εR ⟨x, hx⟩)) 2 volume := by
     refine hmem.of_le ?_ (Filter.Eventually.of_forall fun y => ?_)
@@ -4469,7 +4468,7 @@ theorem mainProj_relabel_range (l : Fin 4) (Mc : ℕ) (s : List (CatCol bf.Vtx))
         (colRelabel (bf.rv Mc s) (ContinuousLinearMap.adjoint (colRelabel (bf.rv Mc s)) z)) =
       mainProj A.G Mc (bf.origCols l) s I r M z := by
   set C := colRelabel (bf.rv Mc s)
-  set K := mainRange A.G Mc (bf.origCols l) s I r M
+  set! K := mainRange A.G Mc (bf.origCols l) s I r M
   have horth : z - C (ContinuousLinearMap.adjoint C z) ∈ Kᗮ := by
     refine (Submodule.orthogonal_le (bf.mainRange_le_range l Mc s hI r M))
       ((Submodule.mem_orthogonal _ _).mpr ?_)
@@ -4598,7 +4597,7 @@ theorem defects_globalM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.
     (dyadicGridCell_measurable A.G I.1 I.2)
   have hr2 : ∀ y, rI (rI y) = rI y := fun y => by
     rw [← ContinuousLinearMap.comp_apply, columnL2Restriction_idem]
-  set cs := fun e => fp.toStepM cat a c d rH I (fp.cellDescM G jc jd I e)
+  set! cs := fun e => fp.toStepM cat a c d rH I (fp.cellDescM G jc jd I e)
   rw [fp.mergeStepsM_eq_desc, chainDefectSel_eq_sum_range _ _ _ _ _ _ _ _ _ _ _ (padStep (cs e₀)),
     List.length_map, List.length_map]
   refine Finset.sum_congr rfl fun j _ => ?_
@@ -4976,12 +4975,12 @@ theorem cur_boundsM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.Main
     · exact ⟨hsd, hsc⟩
   constructor
   · unfold YfrM
-    set e := D.getD j (true, 0, none) with he
+    set! e := D.getD j (true, 0, none) with he
     set V := chainVal fp.P (fp.gStM cat mbs a c d rH G jc jd D j J.1).1
       (fp.gRestM cat mbs a c d rH G jc jd D j J.1)
       (if (fp.gStM cat mbs a c d rH G jc jd D j J.1).1 then bf.gBasic fp.Mc c J.1
         else bf.gBasic fp.Mc d J.1) with hVdef
-    set Qg : Fin fp.P → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+    set! Qg : Fin fp.P → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
       fun p => fp.gProjC (cat (if e.1 then c else d)) (mbs _)
         (bf.mainMaskT (if e.1 then c else d) fp.Mc (cat (if e.1 then c else d)) (mbs _) e.2.1
           (fun c' => fp.stepMaskM G (if e.1 then jc else jd) e.2.2 p c')
@@ -5130,7 +5129,7 @@ theorem help_bands_besselM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, 
   subst hz'
   set rI := columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
     (dyadicGridCell_measurable A.G I.1 I.2)
-  set Ah := fun n => fp.gBandC a (cat a) (mbs a) G jc jd (D.getD j (true, 0, none)) (D.take j) n
+  set! Ah := fun n => fp.gBandC a (cat a) (mbs a) G jc jd (D.getD j (true, 0, none)) (D.take j) n
     I.1
   have hN : I.1 ≤ A.R.1 + A.treeDepth :=
     ((dyadicFiniteTree_mem_iff A.G A.R I A.treeDepth).mp (A.cells_mem_tree hI)).2

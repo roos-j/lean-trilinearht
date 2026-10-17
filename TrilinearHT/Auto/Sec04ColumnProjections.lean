@@ -594,7 +594,7 @@ theorem columnCombination_lower {V : Type*} [Fintype V] (D : ColumnTreeData V)
         have h := mul_le_mul_of_nonneg_right (D.private_lower v) (norm_nonneg (a v))
         have h0 := mul_nonneg hi (norm_nonneg (a v))
         have h1 := mul_nonneg (Real.sqrt_nonneg (D.privateWeight v)) (norm_nonneg (a v))
-        nlinarith
+        nlinarith only [h, h0]
       _ = ∑ o ∈ Finset.univ.image e, ‖columnCombination D A c a y o‖ ^ 2 := by
         rw [Finset.sum_image (fun v _ w _ h => he h)]
       _ ≤ ∑ o : Option V, ‖columnCombination D A c a y o‖ ^ 2 :=
@@ -1917,7 +1917,7 @@ theorem columnMomentEnergy_le_count {V : Type*} [Fintype V] (D : ColumnTreeData 
   have hL := Real.sq_sqrt (Nat.cast_nonneg (columnMomentLogCount D) : (0 : ℝ) ≤ _)
   have hy := sq_nonneg (Real.sqrt (columnMomentEnergy D A z) -
     Real.sqrt (columnMomentLogCount D : ℝ) * ‖z‖)
-  nlinarith
+  nlinarith only [h, hS, hL, hy]
 
 /-- The source overlap count grows only logarithmically in the column budget. -/
 theorem columnMomentLogCount_le {V : Type*} [Fintype V] (D : ColumnTreeData V) :

@@ -671,7 +671,7 @@ theorem bk_offI {I : ℤ × ℤ} (hI : A.R.1 ≤ I.1) :
   refine ⟨?_, ?_, ?_⟩
   · push_cast
     rw [Int.toNat_of_nonneg h4, Int.toNat_of_nonneg h2]
-    linarith
+    linarith only [h1]
   · have : ((I.1 - A.R.1) % T.K).toNat < (T.K : ℤ).toNat :=
       (Int.toNat_lt_toNat hK).mpr h3
     simpa using this
@@ -798,7 +798,7 @@ theorem near_tripleM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) {a b e : Fin 4} (hab 
   have hRle : ∀ I ∈ A.cells, A.R.1 ≤ I.1 := fun I hI => dyadicGridCell_depth_le_of_subset A.G I A.R
     ((dyadicFiniteTree_mem_iff A.G A.R I A.treeDepth).mp (A.cells_mem_tree hI)).1
   set Ms := nOs Lp Jm ×ˢ (gset ×ˢ Finset.range Bn) with hMs
-  set U : bf.Grp → ℕ → Finset (ℤ × ℤ) := fun g β => S.filter fun I => g ∈ gs I ∧ T.bk I = β
+  set! U : bf.Grp → ℕ → Finset (ℤ × ℤ) := fun g β => S.filter fun I => g ∈ gs I ∧ T.bk I = β
     with hUdef
   have hU : ∀ g β, ∀ I ∈ U g β, I ∈ A.cells ∧ I.1 = A.R.1 + ((T.K * β + T.offI I : ℕ) : ℤ) ∧
       T.offI I < T.K := by
@@ -824,14 +824,14 @@ theorem near_tripleM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) {a b e : Fin 4} (hab 
     have h := T.bk_offI (hRle I (hS hm.1))
     rw [hm.2.2.1] at h
     exact h.2.2
-  set Fm : (Fin 4 × Fin 4 × ℕ × ℕ × ℕ × ℕ) × bf.Grp × ℕ → Fin 4 →
+  set! Fm : (Fin 4 × Fin 4 × ℕ × ℕ × ℕ × ℕ) × bf.Grp × ℕ → Fin 4 →
       ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun m =>
     Function.update 0 (fSlot m.1.1 m.1.2.1 (T.desc m.1.1 m.1.2.1 (T.tOf m.1.1 m.1.2.2.1)
       (T.tOf m.1.2.1 m.1.2.2.2.1)) m.1.2.2.2.2.1)
       (fp.FfrM T.cat T.mbs a m.1.1 m.1.2.1 (fp.Lc + 5) m.2.1 (T.Lf.role m.1.1)
         (T.Lf.role m.1.2.1) (T.desc m.1.1 m.1.2.1 (T.tOf m.1.1 m.1.2.2.1)
           (T.tOf m.1.2.1 m.1.2.2.2.1)) m.1.2.2.2.2.1 (A.R.1 + ((T.K * m.2.2 : ℕ) : ℤ))) with hFm
-  set Ym : (Fin 4 × Fin 4 × ℕ × ℕ × ℕ × ℕ) × bf.Grp × ℕ → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+  set! Ym : (Fin 4 × Fin 4 × ℕ × ℕ × ℕ × ℕ) × bf.Grp × ℕ → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
     fun m p => fp.YfrM T.cat T.mbs a m.1.1 m.1.2.1 (fp.Lc + 5) m.2.1 (T.Lf.role m.1.1)
       (T.Lf.role m.1.2.1) (T.desc m.1.1 m.1.2.1 (T.tOf m.1.1 m.1.2.2.1)
         (T.tOf m.1.2.1 m.1.2.2.2.1)) m.1.2.2.2.2.1 m.1.2.2.2.2.2
@@ -947,8 +947,6 @@ end ActiveSetup.BasicFamilies.FamParams
 
 /-! ## The near bands with a basic `U` side (blueprint lines 2409, 2425-2443) -/
 
-set_option maxHeartbeats 800000 in
--- the stack energies, the use multiplicity and the cut bound are combined in one declaration
 open Classical in
 /-- Blueprint `eq:near-band` (lines 2409 and 2425-2443) when the untouched side is a basic `U`
 side ("for a basic `U` side use each depth directly as a position"), on the main columns: with the
@@ -1090,22 +1088,23 @@ theorem near_band_critical_UM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (h
   refine ⟨C, hCS, hClen, ?_⟩
   have hP0 : (0 : ℝ) < fp.P := by exact_mod_cast hP
   have hCN : 0 ≤ finiteDepthConstant κ q Nd :=
-    le_trans zero_le_one (finiteDepthConstant_bounds κ (by linarith) Nd).1
-  have hlogK : 0 ≤ Real.log ((K : ℝ) + 2) := Real.log_nonneg (by linarith [K.cast_nonneg (α := ℝ)])
+    le_trans zero_le_one (finiteDepthConstant_bounds κ (by linarith only [hq2]) Nd).1
+  have hlogK : 0 ≤ Real.log ((K : ℝ) + 2) :=
+    Real.log_nonneg (by linarith only [K.cast_nonneg (α := ℝ)])
   set X := Cq * (1 + finiteDepthConstant κ q Nd) * (1 + Real.log ((K : ℝ) + 2)) *
     ((K : ℝ) + 2) ^ (2 * (q - 2) / (q - 1)) * (64 * Bc * Bd) with hX
   have hX0 : 0 ≤ X := by positivity
   set Mu := ((N + 1 : ℕ) : ℝ) * ((1 : ℕ) : ℝ) * (Os.card * Mp * A.famVtxBound)
   have hLg : 0 ≤ 1 + Real.log (2 + Mu) := by
     have hMu : 0 ≤ Mu := mul_nonneg (by positivity) hMu0
-    have : 0 ≤ Real.log (2 + Mu) := Real.log_nonneg (by linarith)
-    linarith
-  have hCh := (hullCutConstant_pos (half_pos hρ) (by linarith)).le
+    have : 0 ≤ Real.log (2 + Mu) := Real.log_nonneg (by linarith only [hMu])
+    linarith only [this]
+  have hCh := (hullCutConstant_pos (half_pos hρ) (by linarith only [hρ1])).le
   set Ea := fp.stackEA Os sA mbA D N BA EWa / dyadicGridLength A.G A.R.1
   set Eb := EU / dyadicGridLength A.G A.R.1
   have hEa0 : 0 ≤ Ea := div_nonneg hEA0 hR.le
   have hEb0 : 0 ≤ Eb := div_nonneg hEU0 hR.le
-  set cs := hullCutConstant (ρ / 2) * (1 + Real.log (2 + Mu)) *
+  set! cs := hullCutConstant (ρ / 2) * (1 + Real.log (2 + Mu)) *
     Real.sqrt ((N + 1 : ℕ) : ℝ) with hcs
   have hcs0 : 0 ≤ cs := by positivity
   have hY : (hullCutConstant (ρ / 2) * ((1 : ℕ) * Ea) * (1 + Real.log (2 + Mu))) *
@@ -1126,9 +1125,9 @@ theorem near_band_critical_UM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (h
     hX0 (by positivity) (by positivity) hR.le h
   rw [hY] at hreal
   have hEa : Ea ≤ (fp.P + 2) * Γa := by
-    rw [div_le_iff₀ hR]; linarith
+    rw [div_le_iff₀ hR]; linarith only [hΓa]
   have hEb : Eb ≤ Γb := by
-    rw [div_le_iff₀ hR]; linarith
+    rw [div_le_iff₀ hR]; linarith only [hΓb]
   have hco : ‖(o : ℂ) / fp.P‖ ≤ 2 / fp.P := by
     rw [norm_div, Complex.norm_natCast, Complex.norm_intCast]
     exact div_le_div_of_nonneg_right (by exact_mod_cast ho) hP0.le
@@ -1136,7 +1135,7 @@ theorem near_band_critical_UM (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (h
   have hsq : Real.sqrt ((N + 1 : ℕ) : ℝ) ≤ ((N + 1 : ℕ) : ℝ) := by
     have h1 : (1 : ℝ) ≤ ((N + 1 : ℕ) : ℝ) := by exact_mod_cast Nat.succ_pos N
     calc Real.sqrt ((N + 1 : ℕ) : ℝ) ≤ Real.sqrt (((N + 1 : ℕ) : ℝ) ^ 2) :=
-          Real.sqrt_le_sqrt (by nlinarith)
+          Real.sqrt_le_sqrt (by nlinarith only [h1])
       _ = _ := Real.sqrt_sq (by positivity)
   calc ∑ m ∈ Ms, ∑ I ∈ (Um m).filter (fun I => ¬ ∃ e ∈ C,
           dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2),
@@ -1239,7 +1238,7 @@ theorem near_triple_UM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) {a b e : Fin 4} (ha
   have hRle : ∀ I ∈ A.cells, A.R.1 ≤ I.1 := fun I hI => dyadicGridCell_depth_le_of_subset A.G I A.R
     ((dyadicFiniteTree_mem_iff A.G A.R I A.treeDepth).mp (A.cells_mem_tree hI)).1
   set Ms := nOs Lp Jm ×ˢ (gset ×ˢ Finset.range Bn) with hMs
-  set U : bf.Grp → ℕ → Finset (ℤ × ℤ) := fun g β => S.filter fun I => g ∈ gs I ∧ T.bk I = β
+  set! U : bf.Grp → ℕ → Finset (ℤ × ℤ) := fun g β => S.filter fun I => g ∈ gs I ∧ T.bk I = β
     with hUdef
   have hU : ∀ g β, ∀ I ∈ U g β, I ∈ A.cells ∧ I.1 = A.R.1 + ((T.K * β + T.offI I : ℕ) : ℤ) ∧
       T.offI I < T.K := by
@@ -1265,14 +1264,14 @@ theorem near_triple_UM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) {a b e : Fin 4} (ha
     have h := T.bk_offI (hRle I (hS hm.1))
     rw [hm.2.2.1] at h
     exact h.2.2
-  set Fm : (Fin 4 × Fin 4 × ℕ × ℕ × ℕ × ℕ) × bf.Grp × ℕ → Fin 4 →
+  set! Fm : (Fin 4 × Fin 4 × ℕ × ℕ × ℕ × ℕ) × bf.Grp × ℕ → Fin 4 →
       ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun m =>
     Function.update 0 (fSlot m.1.1 m.1.2.1 (T.desc m.1.1 m.1.2.1 (T.tOf m.1.1 m.1.2.2.1)
       (T.tOf m.1.2.1 m.1.2.2.2.1)) m.1.2.2.2.2.1)
       (fp.FfrM T.cat T.mbs a m.1.1 m.1.2.1 (fp.Lc + 5) m.2.1 (T.Lf.role m.1.1)
         (T.Lf.role m.1.2.1) (T.desc m.1.1 m.1.2.1 (T.tOf m.1.1 m.1.2.2.1)
           (T.tOf m.1.2.1 m.1.2.2.2.1)) m.1.2.2.2.2.1 (A.R.1 + ((T.K * m.2.2 : ℕ) : ℤ))) with hFm
-  set Ym : (Fin 4 × Fin 4 × ℕ × ℕ × ℕ × ℕ) × bf.Grp × ℕ → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
+  set! Ym : (Fin 4 × Fin 4 × ℕ × ℕ × ℕ × ℕ) × bf.Grp × ℕ → ℕ → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) :=
     fun m p => fp.YfrM T.cat T.mbs a m.1.1 m.1.2.1 (fp.Lc + 5) m.2.1 (T.Lf.role m.1.1)
       (T.Lf.role m.1.2.1) (T.desc m.1.1 m.1.2.1 (T.tOf m.1.1 m.1.2.2.1)
         (T.tOf m.1.2.1 m.1.2.2.2.1)) m.1.2.2.2.2.1 m.1.2.2.2.2.2
@@ -1697,7 +1696,7 @@ theorem near_sumM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncClosed) {Nd
           ∑ d : Fin 4, (if T.Val a b c d ∧ ¬ T.Ucase c d then T.nearAbs C₀ a b c d G I else 0) ≤
       ∑ a : Fin 4, ∑ b : Fin 4, ∑ e : Fin 4,
         T.nearBnd hq2 hq3 Nd N Lp Jm Mp C₀ (ρ / 64) Γa Γb ΓU a b e := by
-  set Ms := nOs Lp Jm ×ˢ (gset ×ˢ Finset.range Bn) with hMs
+  set! Ms := nOs Lp Jm ×ˢ (gset ×ˢ Finset.range Bn) with hMs
   have hP : ∀ a b e : Fin 4, ∃ C : Finset (ℤ × ℤ), C ⊆ A.cells ∧
       dyadicRootLength A.G (maximalDyadicCells A.G C) ≤ ρ / 64 * dyadicGridLength A.G A.R.1 ∧
       ((a ≠ b ∧ a ≠ e ∧ b ≠ e ∧ T.u ≠ some a) →
@@ -1711,7 +1710,7 @@ theorem near_sumM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncClosed) {Nd
     · by_cases hbu : T.u = some b
       · obtain ⟨C, h1, h2, h3⟩ := T.near_triple_UM hq2 hq3 h.1 h.2.1 h.2.2.1 h.2.2.2 hbu hanc
           hKNd hKN S hS gs gset Lp Jm Bn k Act hact hMp (hcap a h.2.2.2) (hok a h.2.2.2)
-          (hEW a h.2.2.2) (hEU b hbu) hC₀ (ρ := ρ / 64) (by positivity) (by linarith) hP
+          (hEW a h.2.2.2) (hEU b hbu) hC₀ (ρ := ρ / 64) (by positivity) (by linarith only [hρ1]) hP
           (hΓa a h.2.2.2) hΓU
         refine ⟨C, h1, h2, fun _ => h3.trans (le_of_eq ?_)⟩
         unfold nearBnd
@@ -1731,7 +1730,7 @@ theorem near_sumM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncClosed) {Nd
       have := dyadicGridLength_pos A.G A.R.1
       positivity
   choose Cf hCf1 hCf2 hCf3 using hP
-  set Cn := (Finset.univ : Finset (Fin 4 × Fin 4 × Fin 4)).biUnion
+  set! Cn := (Finset.univ : Finset (Fin 4 × Fin 4 × Fin 4)).biUnion
     fun x => maximalDyadicCells A.G (Cf x.1 x.2.1 x.2.2) with hCn
   have hcov : ∀ a b e (I : ℤ × ℤ), (¬ ∃ e' ∈ Cn,
       dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e'.1 e'.2) →
@@ -2011,11 +2010,11 @@ theorem cell_bound2 {a b c d : Fin 4} (hV : T.Val a b c d) (G : bf.Grp) {I : ℤ
       · rw [hsu c hcu]
         calc T.ns c G I * (‖T.out d G I‖ / Real.sqrt (dyadicGridLength A.G I.1))
             ≤ T.ns c G I * B₀ := mul_le_mul_of_nonneg_left hod hnc
-          _ ≤ B₀ * (T.ns c G I + T.ns d G I) := by nlinarith
+          _ ≤ B₀ * (T.ns c G I + T.ns d G I) := by nlinarith only [hB₀, hnd]
       · rw [hsu d hdu]
         calc ‖T.out c G I‖ / Real.sqrt (dyadicGridLength A.G I.1) * T.ns d G I
             ≤ B₀ * T.ns d G I := mul_le_mul_of_nonneg_right hoc hnd
-          _ ≤ B₀ * (T.ns c G I + T.ns d G I) := by nlinarith
+          _ ≤ B₀ * (T.ns c G I + T.ns d G I) := by nlinarith only [hB₀, hnc]
     unfold ns at ha hb key ⊢
     calc localFormUniformConstant κ' * (‖T.sv a G I‖ / Real.sqrt (dyadicGridLength A.G I.1) *
           (‖T.sv b G I‖ / Real.sqrt (dyadicGridLength A.G I.1)) *
@@ -2062,12 +2061,13 @@ theorem rstM_sq_le {L Cκ u v x' y' Cy : ℝ} (hL : 0 < L) (hx' : 0 ≤ x') (hx'
   have e2 : L * y ^ 2 = v ^ 2 := by
     simp only [y]; rw [div_pow, Real.sq_sqrt hL.le]; field_simp
   have hCy : 0 ≤ Cy := hx'.trans hx'C
-  have h1 : x * y' + x' * y + x * y ≤ 2 * Cy * x + Cy * y := by nlinarith
+  have h1 : x * y' + x' * y + x * y ≤ 2 * Cy * x + Cy * y := by nlinarith only [hx'C, hy'C, hvC,
+      hx, hy]
   have h0 : 0 ≤ x * y' + x' * y + x * y := by positivity
   have h2 : (x * y' + x' * y + x * y) ^ 2 ≤ 8 * Cy ^ 2 * (x ^ 2 + y ^ 2) := by
     have h3 := pow_le_pow_left₀ h0 h1 2
     have h4 : (2 * Cy * x + Cy * y) ^ 2 ≤ 8 * Cy ^ 2 * (x ^ 2 + y ^ 2) := by
-      nlinarith [sq_nonneg (2 * Cy * x - Cy * y), sq_nonneg Cy, sq_nonneg x, sq_nonneg y]
+      nlinarith only [sq_nonneg (2 * Cy * x - Cy * y), sq_nonneg Cy, sq_nonneg x, sq_nonneg y]
     linarith
   rw [mul_pow, ← mul_assoc, mul_comm L, mul_assoc]
   refine mul_le_mul_of_nonneg_left ?_ (sq_nonneg _)
@@ -2185,10 +2185,10 @@ theorem frz_varcap {γ V : Type*} [Fintype V] (Gs : Finset γ) (Z : γ → ℤ �
     ⟨dyadicGridCell_depth_le_of_subset A.G J A.R
       ((dyadicFiniteTree_mem_iff A.G A.R J A.treeDepth).mp (A.cells_mem_tree hJ)).1,
     ((dyadicFiniteTree_mem_iff A.G A.R J A.treeDepth).mp (A.cells_mem_tree hJ)).2⟩
-  set f : γ → ℤ × ℤ → ℝ := fun g J => ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
+  set! f : γ → ℤ × ℤ → ℝ := fun g J => ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
     (dyadicGridCell_measurable A.G J.1 J.2) (Z g J.1 - Z g (A.blkStart T.K J.1))‖ ^ 2 with hf
   -- the certified cells of the groups of `Gs`
-  set Sc' : γ → Finset (ℤ × ℤ) := fun g => if g ∈ Gs then Sc g else ∅ with hSc'd
+  set! Sc' : γ → Finset (ℤ × ℤ) := fun g => if g ∈ Gs then Sc g else ∅ with hSc'd
   have hSc'e : ∀ g ∈ Gs, Sc' g = Sc g := fun g hg => by simp only [hSc'd, hg, ↓reduceIte]
   have hSc' : ∀ g, ∀ J ∈ Sc' g, J ∈ A.cells ∧ ok g J := by
     intro g J hJ
@@ -2199,8 +2199,8 @@ theorem frz_varcap {γ V : Type*} [Fintype V] (Gs : Finset γ) (Z : γ → ℤ �
   -- one block offset
   have hoff : ∀ n < T.K, ∑ g ∈ Gs, ∑ J ∈ (Sc' g).filter (fun J => T.offI J = n), f g J ≤ B := by
     intro n hn
-    set ι := {β : Fin (A.treeDepth + 1) // T.K * (β : ℕ) + n ≤ A.treeDepth}
-    set Ec : γ → ι → Finset (ℤ × ℤ) := fun g β =>
+    set! ι := {β : Fin (A.treeDepth + 1) // T.K * (β : ℕ) + n ≤ A.treeDepth}
+    set! Ec : γ → ι → Finset (ℤ × ℤ) := fun g β =>
       (Sc' g).filter (fun J => T.offI J = n ∧ T.bk J = β.1) with hEc
     have hblocks : ∀ g, ∑ J ∈ (Sc' g).filter (fun J => T.offI J = n), f g J =
         ∑ β : ι, ∑ J ∈ Ec g β, f g J := by
@@ -2450,7 +2450,7 @@ theorem band_split (a c d : Fin 4) (G : bf.Grp) (t t' : List ℕ) (j o : ℕ) (I
         (fp.YfrM T.cat T.mbs a c d (fp.Lc + 5) G (T.Lf.role c) (T.Lf.role d) (T.desc c d t t') j
           o I.1 p - T.Ybk a c d G t t' j o I p)‖ ^ 2 ≤
       4 * (T.pYe a c d G t t' j I + T.iYe a c d G t t' j I) := by
-  set g : ℕ → ℝ := fun n => T.dXo a c d G t t' j n I with hg
+  set! g : ℕ → ℝ := fun n => T.dXo a c d G t t' j n I with hg
   have hg0 : ∀ n, 0 ≤ g n := fun n => sq_nonneg _
   have h0 : g 0 = 0 := by
     simp only [hg, dXo, Xo, gStM, padStep, padFam_zero, LinearMap.zero_apply, sub_self,
@@ -2493,7 +2493,7 @@ theorem sq_le_two_diff {E : Type*} [SeminormedAddCommGroup E] (u v : E) :
     ‖u‖ ^ 2 ≤ 2 * ‖u - v‖ ^ 2 + 2 * ‖v‖ ^ 2 := by
   have h := norm_le_norm_sub_add u v
   have h0 := norm_nonneg u
-  nlinarith [sq_nonneg (‖u - v‖ - ‖v‖), norm_nonneg (u - v), norm_nonneg v]
+  nlinarith only [sq_nonneg (‖u - v‖ - ‖v‖), norm_nonneg (u - v), norm_nonneg v, h, h0]
 
 open Classical in
 /-- Blueprint line 2393 ("on unflagged uses both frozen complements have bounded local sizes on
@@ -2546,7 +2546,7 @@ theorem unfl_of_noflag {C₀ : ℝ} (a c d : Fin 4) (G : bf.Grp) (t t' : List �
       rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]
       exact Finset.sum_le_sum fun p _ => key _ _
     have hc := (hcur J hJ).1
-    nlinarith
+    nlinarith only [hp, hi, hs, hsum, hc]
   · have := key (fp.FfrM T.cat T.mbs a c d (fp.Lc + 5) G (T.Lf.role c)
       (T.Lf.role d) (T.desc c d t t') j (A.blkStart T.K I.1))
       (fp.FfrM T.cat T.mbs a c d (fp.Lc + 5) G (T.Lf.role c)
@@ -2557,7 +2557,7 @@ theorem unfl_of_noflag {C₀ : ℝ} (a c d : Fin 4) (G : bf.Grp) (t t' : List �
       unfold dFe
       rw [hb]
     have hc := (hcur J hJ).2
-    nlinarith
+    nlinarith only [hf, this, hf', hc]
 
 open Classical in
 /-- The flag indicator of a use is at most the sum of the three block flag indicators. -/
@@ -2605,7 +2605,7 @@ end ActiveSetup.BasicFamilies.FamParams
 theorem sqrt_add_le_sqrt {x y : ℝ} (hx : 0 ≤ x) (hy : 0 ≤ y) :
     Real.sqrt (x + y) ≤ Real.sqrt x + Real.sqrt y := by
   have h : x + y ≤ (Real.sqrt x + Real.sqrt y) ^ 2 := by
-    nlinarith [Real.sq_sqrt hx, Real.sq_sqrt hy, Real.sqrt_nonneg x, Real.sqrt_nonneg y]
+    nlinarith only [Real.sq_sqrt hx, Real.sq_sqrt hy, Real.sqrt_nonneg x, Real.sqrt_nonneg y]
   calc Real.sqrt (x + y) ≤ Real.sqrt ((Real.sqrt x + Real.sqrt y) ^ 2) := Real.sqrt_le_sqrt h
     _ = Real.sqrt x + Real.sqrt y := Real.sqrt_sq (by positivity)
 
@@ -2842,7 +2842,7 @@ theorem frz_le {C₀ : ℝ} (hC₀ : 0 ≤ C₀) (a c d : Fin 4) (G : bf.Grp) (t
     C₀ * (Real.sqrt (T.dFe a c d G t t' j I) / Real.sqrt (dyadicGridLength A.G I.1)) +
     (C₀ ^ 2 * T.fI (T.pYe a c d G t t' j) (C₀ ^ 2 / 8) I +
       C₀ ^ 2 * T.fI (T.iYe a c d G t t' j) (C₀ ^ 2 / 8) I +
-      C₀ ^ 2 * T.fI (T.dFe a c d G t t' j) (C₀ ^ 2) I)) (by linarith) (le_of_eq ?_)
+      C₀ ^ 2 * T.fI (T.dFe a c d G t t' j) (C₀ ^ 2) I)) (by linarith only [hfl', hYd]) (le_of_eq ?_)
   unfold frzSh frzGr
   split_ifs <;> ring
 
@@ -3006,7 +3006,8 @@ end ActiveSetup.BasicFamilies.FamParams
 theorem sq6_le (x₁ x₂ x₃ x₄ x₅ x₆ : ℝ) :
     (x₁ + x₂ + x₃ + x₄ + x₅ + x₆) ^ 2 ≤
       6 * (x₁ ^ 2 + x₂ ^ 2 + x₃ ^ 2 + x₄ ^ 2 + x₅ ^ 2 + x₆ ^ 2) := by
-  nlinarith [sq_nonneg (x₁ - x₂), sq_nonneg (x₁ - x₃), sq_nonneg (x₁ - x₄), sq_nonneg (x₁ - x₅),
+  nlinarith only [sq_nonneg (x₁ - x₂), sq_nonneg (x₁ - x₃), sq_nonneg (x₁ - x₄),
+      sq_nonneg (x₁ - x₅),
     sq_nonneg (x₁ - x₆), sq_nonneg (x₂ - x₃), sq_nonneg (x₂ - x₄), sq_nonneg (x₂ - x₅),
     sq_nonneg (x₂ - x₆), sq_nonneg (x₃ - x₄), sq_nonneg (x₃ - x₅), sq_nonneg (x₃ - x₆),
     sq_nonneg (x₄ - x₅), sq_nonneg (x₄ - x₆), sq_nonneg (x₅ - x₆)]
@@ -3316,7 +3317,7 @@ theorem shE_sum {C₀ : ℝ} (hC₀ : 0 < C₀) (a c d : Fin 4) (G₀ : bf.Grp) 
     have h2 := mul_le_mul_of_nonneg_left fi (by positivity : (0 : ℝ) ≤ C₀ ^ 4)
     rw [e8] at h2
     have h3 := mul_le_mul_of_nonneg_left hEi (by positivity : (0 : ℝ) ≤ 8 * T.K * C₀ ^ 2)
-    nlinarith
+    nlinarith only [hEi, hi, h2, h3]
   have hB : ∑ I ∈ S, (if T.cumY c d t t' j then 64 * C₀ ^ 2 * T.pYe a c d G₀ t t' j I +
       C₀ ^ 4 * (dyadicGridLength A.G I.1 * T.fI (T.pYe a c d G₀ t t' j) (C₀ ^ 2 / 8) I)
       else 0) ≤ C₀ ^ 2 * ((64 + 8 * T.K) * Ep) := by
@@ -3327,7 +3328,7 @@ theorem shE_sum {C₀ : ℝ} (hC₀ : 0 < C₀) (a c d : Fin 4) (G₀ : bf.Grp) 
       have h2 := mul_le_mul_of_nonneg_left fp' (by positivity : (0 : ℝ) ≤ C₀ ^ 4)
       rw [e8] at h2
       have h3 := mul_le_mul_of_nonneg_left (hEp hY) (by positivity : (0 : ℝ) ≤ 8 * T.K * C₀ ^ 2)
-      nlinarith
+      nlinarith only [h1, h2, h3]
     · simp only [Finset.sum_const_zero]; positivity
   have hC : ∑ I ∈ S, (if T.cumF c d t t' j then C₀ ^ 2 * T.dFe a c d G₀ t t' j I +
       C₀ ^ 4 * (dyadicGridLength A.G I.1 * T.fI (T.dFe a c d G₀ t t' j) (C₀ ^ 2) I) else 0) ≤
@@ -3338,9 +3339,9 @@ theorem shE_sum {C₀ : ℝ} (hC₀ : 0 < C₀) (a c d : Fin 4) (G₀ : bf.Grp) 
       have h2 := mul_le_mul_of_nonneg_left ff (by positivity : (0 : ℝ) ≤ C₀ ^ 4)
       rw [e1] at h2
       have h3 := mul_le_mul_of_nonneg_left (hEF hF) (by positivity : (0 : ℝ) ≤ T.K * C₀ ^ 2)
-      nlinarith
+      nlinarith only [h1, h2, h3]
     · simp only [Finset.sum_const_zero]; positivity
-  nlinarith
+  nlinarith only [hA, hB, hC]
 
 open Classical in
 /-- Blueprint lines 2389-2393 for the group-indexed freeze factors of one step ("joint group
@@ -3361,7 +3362,7 @@ theorem grE_sum {C₀ : ℝ} (hC₀ : 0 < C₀) (a c d : Fin 4) (t t' : List ℕ
   have hc8 : 0 < C₀ ^ 2 / 8 := by positivity
   have hc1 : 0 < C₀ ^ 2 := by positivity
   have hK0 : (0 : ℝ) ≤ T.K := Nat.cast_nonneg _
-  set SG : bf.Grp → Finset (ℤ × ℤ) := fun G => S.filter fun I => G ∈ gs I with hSG
+  set! SG : bf.Grp → Finset (ℤ × ℤ) := fun G => S.filter fun I => G ∈ gs I with hSG
   have hSGc : ∀ G, SG G ⊆ A.cells := fun G I hI => hS (Finset.mem_filter.mp hI).1
   have hSGa : ∀ G, ∀ I ∈ SG G, ∀ J ∈ A.cells,
       dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2 → A.blkStart T.K I.1 ≤ J.1 →
@@ -3400,13 +3401,13 @@ theorem grE_sum {C₀ : ℝ} (hC₀ : 0 < C₀) (a c d : Fin 4) (t t' : List ℕ
       · rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
         have h2 := mul_le_mul_of_nonneg_left fp' (by positivity : (0 : ℝ) ≤ C₀ ^ 4)
         rw [e8] at h2
-        nlinarith
+        nlinarith only [hp, h2]
     · split_ifs
       · simp
       · rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum]
         have h2 := mul_le_mul_of_nonneg_left ff (by positivity : (0 : ℝ) ≤ C₀ ^ 4)
         rw [e1] at h2
-        nlinarith
+        nlinarith only [hf, h2]
   refine (Finset.sum_le_sum fun G _ => hper G).trans ?_
   rw [Finset.sum_add_distrib]
   have hA : ∑ G ∈ gset, (if T.cumY c d t t' j then 0 else
@@ -3425,7 +3426,7 @@ theorem grE_sum {C₀ : ℝ} (hC₀ : 0 < C₀) (a c d : Fin 4) (t t' : List ℕ
     · rw [← Finset.mul_sum, ← Finset.mul_sum]
       exact mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left (hEF hF) (by positivity))
         hc1.le
-  nlinarith
+  nlinarith only [hA, hB]
 
 end SideLeafM
 
@@ -3680,7 +3681,7 @@ theorem C3v_budget (S : Finset (ℤ × ℤ)) (hS : S ⊆ A.cells) (gs : ℤ × �
             (hEFG a c d i i' j (Finset.mem_range.mp hj))).trans ?_
           unfold frzB
           have hE0 : 0 ≤ C₀ ^ 2 * ((64 + 8 * T.K) * Eb) := by positivity
-          nlinarith
+          nlinarith only [hE0]
         have hY' : Lp ^ 2 * K' * (D * N4) ≤ Y := by
           rw [hY]
           have : 0 ≤ 2 * (localFormUniformConstant κ' * B₀) ^ 2 * Bs := by positivity
@@ -3865,9 +3866,9 @@ theorem two_two_leafM (S : Finset (ℤ × ℤ)) (hS : S ⊆ A.cells)
     T.third_nonneg C₀ B₀ hC₀ hB₀ a b c d G I
   have hab0 : ∀ I G a b c d, 0 ≤ T.absPart' C₀ τ cF a b c d G I := fun I G a b c d =>
     T.absPart'_nonneg C₀ τ cF hτ hcF a b c d G I
-  set Ab : ℤ × ℤ → ℝ := fun I => 6 * ∑ G ∈ gs I, ∑ a : Fin 4, ∑ b : Fin 4, ∑ c : Fin 4,
+  set! Ab : ℤ × ℤ → ℝ := fun I => 6 * ∑ G ∈ gs I, ∑ a : Fin 4, ∑ b : Fin 4, ∑ c : Fin 4,
     ∑ d : Fin 4, T.absPart' C₀ τ cF a b c d G I with hAb
-  set Bs : ℤ × ℤ → ℝ := fun I => ∑ G ∈ gs I, Real.sqrt (T.s2 G I) * Real.sqrt (T.s2 G I) *
+  set! Bs : ℤ × ℤ → ℝ := fun I => ∑ G ∈ gs I, Real.sqrt (T.s2 G I) * Real.sqrt (T.s2 G I) *
     (6 * ∑ a : Fin 4, ∑ b : Fin 4, ∑ c : Fin 4, ∑ d : Fin 4, T.third C₀ B₀ a b c d G I) with hBs
   have hAb0 : ∀ I, 0 ≤ Ab I := fun I => mul_nonneg (by norm_num) (Finset.sum_nonneg fun G _ =>
     Finset.sum_nonneg fun a _ => Finset.sum_nonneg fun b _ => Finset.sum_nonneg fun c _ =>
@@ -3980,7 +3981,7 @@ theorem abs_sum_leM (S : Finset (ℤ × ℤ))
           (τ + cF) * (((T.pe d).length * (T.pe c).length : ℝ) * (T.ns a G I * T.ns b G I)) := by
         ring
       have h3 : 0 ≤ τ + cF := by positivity
-      nlinarith
+      nlinarith only [hτ, hcF, h1]
     · simpa using h0
   have hcell : ∀ I ∈ S, dyadicGridLength A.G I.1 * (6 * ∑ G ∈ gs I, ∑ a : Fin 4, ∑ b : Fin 4,
       ∑ c : Fin 4, ∑ d : Fin 4, T.absPart' C₀ τ cF a b c d G I) ≤
@@ -4124,7 +4125,7 @@ theorem leaf_two_two_boundM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncC
   classical
   have hR0 := dyadicGridLength_pos A.G A.R.1
   -- the joint cut of the two strong families
-  set fam : Fin 2 → ℤ × ℤ → ℝ := fun v I => if v = 0 then ∑ G ∈ gs I, T.s2 G I else
+  set! fam : Fin 2 → ℤ × ℤ → ℝ := fun v I => if v = 0 then ∑ G ∈ gs I, T.s2 G I else
     C3 I ^ 2 with hfam
   have hfam0 : ∀ v, ∀ I ∈ S, 0 ≤ fam v I := by
     intro v I _
@@ -4169,7 +4170,7 @@ theorem leaf_two_two_boundM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncC
       (f := fun c : ℤ × ℤ => dyadicGridLength A.G c.1)
     have h0 : 0 ≤ ∑ c ∈ C1 ∩ Cm, dyadicGridLength A.G c.1 :=
       Finset.sum_nonneg fun c _ => (dyadicGridLength_pos A.G c.1).le
-    linarith
+    linarith only [hC1len, hCnlen, h, h0]
   set S' := S.filter (fun I => ¬ ∃ e ∈ C1 ∪ Cm,
     dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G e.1 e.2) with hS'
   have hS'1 : ∀ I ∈ S', I ∈ S := fun I hI => (Finset.mem_filter.mp hI).1
@@ -4225,7 +4226,7 @@ theorem leaf_two_two_boundM {q : ℝ} (hq2 : 2 < q) (hq3 : q < 3) (hanc : A.AncC
   refine hmain.trans ?_
   have := habs.trans (add_le_add le_rfl (mul_le_mul_of_nonneg_left (hnear'.trans hnear)
     (by norm_num : (0 : ℝ) ≤ 6)))
-  linarith
+  linarith only [hnear, habs, hnear']
 
 end SideLeafM
 
@@ -5044,14 +5045,14 @@ theorem F_ball (a c d : Fin 4) (t t' : List ℕ) (j : ℕ) (hF : ¬ T.cumF c d t
               p) ls h := by
   set D := T.desc c d t t' with hD
   set w := !(D.getD j (true, 0, none)).1 with hw
-  set es := D.drop (j + 1) with hes
+  set! es := D.drop (j + 1) with hes
   have hex : ∃ e ∈ es, e.1 = w ∧ e.2.2 = none := by
     unfold cumF at hF
     push Not at hF
     exact hF
   obtain ⟨eb, hebm, hebw, hebn⟩ := hex
-  set pre := es.takeWhile (fun e => !decide (e.1 = w)) with hpre_d
-  set rest := es.dropWhile (fun e => !decide (e.1 = w)) with hrest_d
+  set! pre := es.takeWhile (fun e => !decide (e.1 = w)) with hpre_d
+  set! rest := es.dropWhile (fun e => !decide (e.1 = w)) with hrest_d
   have hsplit : pre ++ rest = es := List.takeWhile_append_dropWhile
   have hpre : ∀ e ∈ pre, e.1 ≠ w := fun e he => by
     have := List.mem_takeWhile_imp he
@@ -5066,7 +5067,7 @@ theorem F_ball (a c d : Fin 4) (t t' : List ℕ) (j : ℕ) (hF : ¬ T.cumF c d t
     simpa [← hrest_d, hrest] using this
   have hes_eq : es = pre ++ e₀ :: post := by rw [← hsplit, hrest]
   -- positions in the descriptors
-  set k₀ := j + 1 + pre.length with hk₀
+  set! k₀ := j + 1 + pre.length with hk₀
   have hlenes : es.length = pre.length + 1 + post.length := by rw [hes_eq]; simp; omega
   have hesD : es.length = D.length - (j + 1) := List.length_drop
   have hlen : k₀ < D.length := by omega
@@ -5169,7 +5170,7 @@ theorem gBasic_variation (hne : A.cells.Nonempty) (l : Fin 4) {ι : Type*} [Fint
         (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
         (bf.gBasic fp.Mc l (A.R.1 + t i) - bf.gBasic fp.Mc l (A.R.1 + r i))‖ ^ 2 ≤
       4 * dyadicGridLength A.G A.R.1 := by
-  set rE : ι → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun i =>
+  set! rE : ι → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) →L[ℂ] ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun i =>
     columnL2Restriction (⋃ I ∈ Ec i, dyadicGridCell A.G I.1 I.2)
       (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2) with hrE
   -- one basic family
@@ -5183,7 +5184,7 @@ theorem gBasic_variation (hne : A.cells.Nonempty) (l : Fin 4) {ι : Type*} [Fint
       (bf.P l jb).root_sub
     have hΨr : Ψ.D.root.1 ≤ A.R.1 := dyadicGridCell_depth_le_of_subset A.G A.R Ψ.D.root hΨR
     have hN := famN_ge (bf := bf) hne l jb
-    set rR := columnL2Restriction (V := (bf.P l jb).V) (dyadicGridCell A.G A.R.1 A.R.2)
+    set! rR := columnL2Restriction (V := (bf.P l jb).V) (dyadicGridCell A.G A.R.1 A.R.2)
       (dyadicGridCell_measurable A.G A.R.1 A.R.2)
     -- the basic projections commute with the restriction to the root
     have hcomm : ∀ h, A.R.1 ≤ h → Ψ.proj h (rR (bf.P l jb).Z) = rR (Ψ.proj h (bf.P l jb).Z) := by
@@ -5276,9 +5277,9 @@ theorem histOut_variation_le (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.Mai
       (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 + ls.length *
         ∑ m ∈ Finset.range ls.length, compressionC (bf.mainTree fp.Mc s mb) m ^ 2) := by
     have := mul_nonneg hL hS
-    nlinarith
+    nlinarith only [hS]
   have h2 := mul_le_mul_of_nonneg_right h1 hC1
-  nlinarith
+  nlinarith only [h1]
 
 end ActiveSetup.BasicFamilies.FamParams
 
@@ -5302,7 +5303,7 @@ theorem varCap_avg {γ V : Type*} [Fintype V] {P : ℕ} (hP : 0 < P) {Gs : Finse
     A.VarCap Gs (fun g h => ((P : ℂ)⁻¹) • ∑ p, Z p g h) ok B := by
   intro ι _ r t hrt hdis htd Ec hEc
   have hP' : (0 : ℝ) < P := by exact_mod_cast hP
-  set rE : γ → ι → ColumnL2 V →L[ℂ] ColumnL2 V := fun g i =>
+  set! rE : γ → ι → ColumnL2 V →L[ℂ] ColumnL2 V := fun g i =>
     columnL2Restriction (⋃ J ∈ Ec g i, dyadicGridCell A.G J.1 J.2)
       (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
   have hpt : ∀ g i, ‖rE g i (((P : ℂ)⁻¹) • ∑ p, Z p g (A.R.1 + t i) -
@@ -6170,7 +6171,7 @@ theorem cell_bessel (l : Fin 4) (s : List (CatCol bf.Vtx))
       x = x) :
     ∑ G ∈ g, ‖fp.ballFilt l s I G j (layerOp (fun m => fp.cumFilt l s I m) ls x)‖ ^ 2 ≤
       (1 + τ * N * A.colBudget ^ 2) * ‖x‖ ^ 2 := by
-  set w := ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s)) x
+  set! w := ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s)) x
   have hw : ‖w‖ = ‖x‖ := by
     obtain ⟨z, rfl⟩ := hx
     change ‖ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s))
@@ -6295,7 +6296,7 @@ theorem V_sum_le (qG : bf.Grp → ℕ) (l : Fin 4) (gset : Finset bf.Grp) (Bn : 
         (A.R.1 + ((D.S.K * β : ℕ) : ℤ)) (fp.retainedV G (A.R.1 + ((D.S.K * β : ℕ) : ℤ)) D.S.K)
         (D.c l G (A.R.1 + ((D.S.K * β : ℕ) : ℤ)))‖ ^ 2 := by
   have hK := D.hK
-  set f : ℕ → ℝ := fun b => ∑ G ∈ gset, ‖(D.Ms l G).blockSide (D.S.withQ0 (qG G)) D.hA D.SP (A.R.1
+  set! f : ℕ → ℝ := fun b => ∑ G ∈ gset, ‖(D.Ms l G).blockSide (D.S.withQ0 (qG G)) D.hA D.SP (A.R.1
       + (b : ℤ))
     (fp.retainedV G (A.R.1 + (b : ℤ)) D.S.K) (D.c l G (A.R.1 + (b : ℤ)))‖ ^ 2 with hf
   have hf0 : ∀ b, 0 ≤ f b := fun b => Finset.sum_nonneg fun _ _ => sq_nonneg _
@@ -6346,8 +6347,8 @@ theorem basic_side_energy (qG : bf.Grp → ℕ) (hanc : A.AncClosed) (hne : A.ce
   have hK := D.hK
   have hdep : ∀ I ∈ S, A.R.1 ≤ I.1 := fun I hI =>
     dyadicGridCell_depth_le_of_subset A.G I A.R (A.sub I (hS hI))
-  set Sd : Finset ℕ := S.image (fun I => (I.1 - A.R.1).toNat) with hSd_def
-  set Ec : {G // G ∈ gset} → ℕ → Finset (ℤ × ℤ) := fun G t =>
+  set! Sd : Finset ℕ := S.image (fun I => (I.1 - A.R.1).toNat) with hSd_def
+  set! Ec : {G // G ∈ gset} → ℕ → Finset (ℤ × ℤ) := fun G t =>
     S.filter fun I => I.1 = A.R.1 + t ∧ G.1 ∈ gs I with hEc_def
   have hbud := fp.sideState_budget l (D.cat l) (B.hT l) (B.htag l) (B.dv l) (D.mbs l) hanc hne
     (ι := {G // G ∈ gset}) Subtype.val Subtype.val_injective k (D.Lf.role l) (B.hPH l)
@@ -6457,8 +6458,8 @@ theorem block_energy (qG : bf.Grp → ℕ) (hanc : A.AncClosed) (hne : A.cells.N
     have h3 : ((D.S.K * (D.toLeafQ qG).bk I : ℕ) : ℤ) ≤ ((I.1 - A.R.1).toNat : ℤ) := by
       exact_mod_cast h1
     omega
-  set Sd : Finset ℕ := S.image (fun I => D.S.K * (D.toLeafQ qG).bk I) with hSd_def
-  set Ec : bf.Grp → ℕ → Finset (ℤ × ℤ) := fun G t =>
+  set! Sd : Finset ℕ := S.image (fun I => D.S.K * (D.toLeafQ qG).bk I) with hSd_def
+  set! Ec : bf.Grp → ℕ → Finset (ℤ × ℤ) := fun G t =>
     (S.filter fun I => G ∈ gs I ∧ D.S.K * (D.toLeafQ qG).bk I = t).image
       (fun I => ancAt A.G I (A.R.1 + t)) with hEc_def
   have hEc : ∀ (G : {G // G ∈ gset}) t, ∀ J ∈ Ec G.1 t, J ∈ A.cells ∧ J.1 = A.R.1 + t := by
@@ -6487,7 +6488,7 @@ theorem block_energy (qG : bf.Grp → ℕ) (hanc : A.AncClosed) (hne : A.cells.N
       obtain ⟨I, hI, rfl⟩ := Finset.mem_image.mp ht
       exact Dvd.intro _ rfl)
     (fun G t => Ec G.1 t) hEc hcert hroot' hτ' hτ1 hHed (B.hN l) hτN cc hc hk (hDm l) hDb (hLs l)
-  set H : bf.Grp → ℕ → ℝ := fun G t => ‖columnL2Restriction
+  set! H : bf.Grp → ℕ → ℝ := fun G t => ‖columnL2Restriction
     (⋃ J ∈ Ec G t, dyadicGridCell A.G J.1 J.2)
     (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
     (fp.sideState (D.Ms l G) l (D.cat l) (D.mbs l) G (D.Lf.role l) (D.Lf.layers l) (D.S.withQ0

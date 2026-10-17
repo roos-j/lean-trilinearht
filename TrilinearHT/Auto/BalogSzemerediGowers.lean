@@ -198,7 +198,7 @@ theorem bipartite_dense_neighborhood {α β : Type*} [Fintype α] [Fintype β]
   have hmoment : η ^ 2 * (n : ℝ) ^ 3 ≤
       ∑ b, ((bipartiteNeighborhood E b).card : ℝ) ^ 2 := by
     apply (mul_le_mul_iff_right₀ hnr).mp
-    nlinarith [hm]
+    nlinarith only [hm]
   have hbad := bipartite_bad_pairs_sum_le E
     (τ := η ^ 2 * n / 100000) (by positivity)
   have hαr : (Fintype.card α : ℝ) ≤ n := by exact_mod_cast hα
@@ -224,7 +224,7 @@ theorem bipartite_dense_neighborhood {α β : Type*} [Fintype α] [Fintype β]
           (bipartiteNeighborhood E b)).card : ℝ)) := by
     apply (mul_le_mul_of_nonneg_right hβr (by positivity)).trans
     rw [Finset.sum_sub_distrib, ← Finset.mul_sum]
-    nlinarith [mul_nonneg (sq_nonneg η) (pow_nonneg hnr.le 3)]
+    nlinarith only [mul_nonneg (sq_nonneg η) (pow_nonneg hnr.le 3), hnr, hm, hbad']
   have hs : (∑ _b : β, η ^ 2 * (n : ℝ) ^ 2 / 2) ≤
       ∑ b, (((bipartiteNeighborhood E b).card : ℝ) ^ 2 -
         100 * ((bipartiteBadPairs E (η ^ 2 * n / 100000)
@@ -262,8 +262,8 @@ theorem bipartite_deleted_card_lt {α β : Type*} [Fintype β]
     ((Y \ bipartiteRetained E τ Y).card : ℝ) < (Y.card : ℝ) / 25 := by
   classical
   have hY : (0 : ℝ) < Y.card := by
-    nlinarith [Nat.cast_nonneg (α := ℝ) Y.card,
-      Nat.cast_nonneg (α := ℝ) (bipartiteBadPairs E τ Y).card]
+    nlinarith only [Nat.cast_nonneg (α := ℝ) Y.card,
+      Nat.cast_nonneg (α := ℝ) (bipartiteBadPairs E τ Y).card, hbad]
   have hd : ((Y \ bipartiteRetained E τ Y).card : ℝ) * (Y.card : ℝ) / 4 ≤
       ((bipartiteBadPairs E τ Y).card : ℝ) := by
     calc
@@ -279,7 +279,7 @@ theorem bipartite_deleted_card_lt {α β : Type*} [Fintype β]
           (fun _ _ _ => Nat.cast_nonneg _)
       _ = _ := by exact_mod_cast (bipartiteBadPairs_card_eq_sum E τ Y).symm
   apply (mul_lt_mul_iff_right₀ hY).mp
-  nlinarith [hd]
+  nlinarith only [hd, hbad]
 
 /-- At least twenty-four twenty-fifths of the neighborhood remains. -/
 theorem bipartiteRetained_card_lower {α β : Type*} [Fintype β]
@@ -291,7 +291,7 @@ theorem bipartiteRetained_card_lower {α β : Type*} [Fintype β]
   have he : ((Y \ bipartiteRetained E τ Y).card : ℝ) +
       (bipartiteRetained E τ Y).card = Y.card := by
     exact_mod_cast Finset.card_sdiff_add_card_eq_card (bipartiteRetained_subset E τ Y)
-  linarith
+  linarith only [hd, he]
 
 /-- Blueprint `lem:four-paths`, line 675: the selected neighborhood is large,
 and the actual retained set has size at least `eta*n/4`. Every retained vertex
@@ -312,7 +312,7 @@ theorem bipartite_dense_retained_neighborhood {α β : Type*} [Fintype α] [Fint
     (bipartiteBadPairs E (η ^ 2 * n / 100000) (bipartiteNeighborhood E b)).card
   have hY : η * n / 2 ≤ ((bipartiteNeighborhood E b).card : ℝ) := by
     apply le_of_sq_le_sq _ (Nat.cast_nonneg _)
-    nlinarith [sq_nonneg (η * (n : ℝ))]
+    nlinarith only [sq_nonneg (η * (n : ℝ)), hb]
   have hbad : 100 * ((bipartiteBadPairs E (η ^ 2 * n / 100000)
       (bipartiteNeighborhood E b)).card : ℝ) < ((bipartiteNeighborhood E b).card : ℝ) ^ 2 := by
     have hp : 0 < η ^ 2 * (n : ℝ) ^ 2 / 2 := by positivity
@@ -367,7 +367,7 @@ theorem bipartiteCommonGood_card_lower {α β : Type*} [Fintype β]
       (bipartiteBadPartners E τ Y y)
   have hxb := ((mem_bipartiteRetained E τ Y x).mp hx).2
   have hyb := ((mem_bipartiteRetained E τ Y y).mp hy).2
-  linarith
+  linarith only [he, hc, hxb, hyb]
 
 /-- Actual four-step paths with fixed endpoints. The three interior vertices
 are freely chosen; repeated vertices are permitted. -/
@@ -457,7 +457,7 @@ theorem bipartite_dense_four_paths {α β : Type*} [Fintype α] [Fintype β]
     (Nat.pos_of_ne_zero hn) hη hα hβ hedges
   refine ⟨bipartiteRetained E (η ^ 2 * n / 100000) (bipartiteNeighborhood E b), ?_, ?_⟩
   · have hpos : 0 ≤ η * (n : ℝ) := mul_nonneg hη.le (Nat.cast_nonneg _)
-    linarith
+    linarith only [hS]
   · intro x hx y hy
     exact bipartite_retained_four_paths E hη.le _ hY hx hy
 
@@ -589,7 +589,7 @@ theorem addEnergy_le_popular_mass {G : Type*} [AddCommGroup G] [DecidableEq G]
   have hrn : (sumRepresentationCount A s : ℝ) ≤ A.card := by
     exact_mod_cast sumRepresentationCount_le A s
   split_ifs with hs
-  · nlinarith [mul_nonneg ht hr]
+  · nlinarith only [mul_nonneg ht hr, hrn]
   · have hrt := (not_le.mp hs).le
     nlinarith
 
@@ -780,7 +780,7 @@ theorem balog_szemeredi_gowers {G : Type*} [AddCommGroup G] [DecidableEq G]
       _ = _ := by dsimp [L, η]; field_simp; ring
   have hnT : (A.card : ℝ) ≤ 80000000000 * K * T.card := by
     have h := (div_le_iff₀ (show (0 : ℝ) < 80000000000 * K by positivity)).mp hsize
-    nlinarith
+    nlinarith only [h]
   calc
     ((T - T).card : ℝ) ≤ 20480000000000 * K ^ 9 * A.card := hfirst
     _ ≤ 20480000000000 * K ^ 9 * (80000000000 * K * T.card) := by

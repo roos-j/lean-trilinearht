@@ -256,7 +256,7 @@ theorem transfer_chain (Λ : MultilinearMap ℂ (fun _ : Fin 4 => E) ℂ) {P : �
     -- the state before the step
     set zc := chainVal P true rest yc
     set zd := chainVal P false rest yd
-    set X := Function.update (Function.update (Function.update x c zc) d zd) a xa
+    set! X := Function.update (Function.update (Function.update x c zc) d zd) a xa
     obtain ⟨v, Qa, Qs⟩ := st
     cases v with
     | true =>
@@ -875,10 +875,10 @@ theorem ResidPass.form_le {G : RealDyadicGrid} {V : Type} [Fintype V] {I : ℤ �
   set μ := normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)
   have hcover : ∀ l : Fin 4, l = u ∨ l = t ∨ l = a ∨ l = b := fun l =>
     fin4_cover_of_distinct u t a b l hut hua hub hta htb hab
-  set z : Fin 4 → ℝ → ℂ := fun l => if l = u then quadraticChartAtom A
+  set! z : Fin 4 → ℝ → ℂ := fun l => if l = u then quadraticChartAtom A
     else if l = t then augPhys (X t) else if l = a then (Sa : ℂ)⁻¹ • augPhys (X a)
     else (Sb : ℂ)⁻¹ • augPhys (X b) with hz
-  set c : Fin 4 → ℂ := fun l => if l = a then (Sa : ℂ) else if l = b then (Sb : ℂ) else 1 with hc
+  set! c : Fin 4 → ℂ := fun l => if l = a then (Sa : ℂ) else if l = b then (Sb : ℂ) else 1 with hc
   have hzu : z u = quadraticChartAtom A := by simp [hz]
   have hzt : z t = augPhys (X t) := by simp [hz, Ne.symm hut]
   have hza : z a = (Sa : ℂ)⁻¹ • augPhys (X a) := by simp [hz, Ne.symm hua, Ne.symm hta]
@@ -1277,7 +1277,7 @@ theorem padBand_size_main (l : Fin 4) (s : List (CatCol bf.Vtx)) (I : ℤ × ℤ
     refine (norm_sub_le _ _).trans ?_
     have : ‖mainProj A.G fp.Mc (bf.origCols l) s I r (M ⟨fp.P - 1, by have := fp.hP; omega⟩) v‖ ≤
         ‖v‖ := Submodule.norm_starProjection_apply_le _ v
-    linarith
+    linarith only [this]
 
 /-- Blueprint lines 2255-2256 ("for a far source, expand the helper primal and use the
 different-tag pair estimate") on the main columns: pure charts, in two different slots, of two
@@ -1378,8 +1378,8 @@ theorem far_main_main {I : ℤ × ℤ} (hI : I ∈ A.cells) {a u o b : Fin 4} (h
       (dyadicGridLength A.G I.1)) ≤ ENNReal.ofReal Sv := by
     rw [hXu]; exact fp.padBand_size_main u catu I r M hMm hqP v hSv'
   -- the near/far split of the sources
-  set Fn := Fo.filter near
-  set Ff := Fo.filter fun m => ¬ near m
+  set! Fn := Fo.filter near
+  set! Ff := Fo.filter fun m => ¬ near m
   have hsplit : X o = (∑ m ∈ Fn, co m • src m) + ∑ m ∈ Ff, co m • src m := by
     rw [hXo, Finset.sum_filter_add_sum_filter_not]
   have hΛ : Λ X = Λ (Function.update X o (∑ m ∈ Fn, co m • src m)) +
@@ -1559,7 +1559,7 @@ theorem far_term_main {I : ℤ × ℤ} (hI : I ∈ A.cells) {a u o b : Fin 4} (h
     exact mul_le_mul_of_nonneg_right hv (by positivity)
   · -- the complement band is higher
     have hpP : p + 1 < fp.P := by omega
-    set Ys : ι → ℝ → ℂ := fun m => if h : m ∈ Fo then quadraticChartAtom (hsrc m h).choose else 0
+    set! Ys : ι → ℝ → ℂ := fun m => if h : m ∈ Fo then quadraticChartAtom (hsrc m h).choose else 0
     have hYs_eq : ∀ m (h : m ∈ Fo), Ys m = quadraticChartAtom (hsrc m h).choose := fun m h =>
       dite_eq_left_of_eq_true (eq_true h)
     have hsrc' : ∀ m ∈ Fo, ∃ A' : QuadraticChartData (bf.vtag (tago m)).dim,
@@ -1575,10 +1575,10 @@ theorem far_term_main {I : ℤ × ℤ} (hI : I ∈ A.cells) {a u o b : Fin 4} (h
       rw [hYs_eq m hm]
       exact (hsrc m hm).choose_spec.2.2.2.2.2
     -- the helper columns of the lower band and their charts
-    set Fa := mainLabelsM A.G fp.Mc (bf.origCols a) cata I rH (M ⟨p, by omega⟩) d
+    set! Fa := mainLabelsM A.G fp.Mc (bf.origCols a) cata I rH (M ⟨p, by omega⟩) d
     have hlab := fun n (hn : n ∈ Fa) =>
       bf.mainLabel_source a cata hTa htaga I rH (M ⟨p, by omega⟩) d hn
-    set Yh : bf.Lab ⊕ Fin fp.Mc → ℝ → ℂ := fun n =>
+    set! Yh : bf.Lab ⊕ Fin fp.Mc → ℝ → ℂ := fun n =>
       if h : n ∈ Fa then quadraticChartAtom (hlab n h).2.choose else 0
     have hYh_eq : ∀ n (h : n ∈ Fa), Yh n = quadraticChartAtom (hlab n h).2.choose := fun n h =>
       dite_eq_left_of_eq_true (eq_true h)
@@ -1586,7 +1586,7 @@ theorem far_term_main {I : ℤ × ℤ} (hI : I ∈ A.cells) {a u o b : Fin 4} (h
         augPhys (mainCol A.G fp.Mc (bf.origCols a) cata I n) y = Yh n y := fun n hn => by
       rw [hYh_eq n hn]
       exact (hlab n hn).2.choose_spec.2.2.2.2.2
-    set near : ι → Prop := fun m => ∃ w, M ⟨p, by omega⟩ w ∧
+    set! near : ι → Prop := fun m => ∃ w, M ⟨p, by omega⟩ w ∧
       (bf.tagDist fp.Hed).d (bf.admT.depth (bf.admAt I)) w (tago m) ≤ 1
     have hnear : ∀ m ∈ Fo, near m → ∀ k : Fin fp.P, q - 1 ≤ k → M k (tago m) := by
       intro m hm ⟨w, hw, hd⟩ k hk
@@ -2286,8 +2286,8 @@ theorem srcDataM_basic (o : Fin 4) (s : List (CatCol bf.Vtx))
     fun v => bf.vtxAt I v, hcbx, ?_, fun v hv => bf.vtxAt_mem (Finset.mem_filter.mp hv).2.2,
     hsrc⟩
   have hsq := Real.sqrt_pos.mpr (dyadicGridLength_pos A.G I.1)
-  set F' : Finset (bf.Lab ⊕ Fin fp.Mc) := Fb.map ⟨Sum.inl, Sum.inl_injective⟩
-  set c' : bf.Lab ⊕ Fin fp.Mc → ℂ := Sum.elim cb 0
+  set! F' : Finset (bf.Lab ⊕ Fin fp.Mc) := Fb.map ⟨Sum.inl, Sum.inl_injective⟩
+  set! c' : bf.Lab ⊕ Fin fp.Mc → ℂ := Sum.elim cb 0
   have hmemF : ∀ v ∈ F', v ∈ mainLabels A.G fp.Mc (bf.origCols o) s I 0 := by
     intro w hw
     obtain ⟨v, hv, rfl⟩ := Finset.mem_map.mp hw

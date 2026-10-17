@@ -99,7 +99,7 @@ noncomputable def latticeBoxRadius (n : ℕ) : ℝ := ((100 * (n : ℝ)) ^ (10 *
 theorem latticeBoxRadius_scaled_le {n : ℕ} (hn : 0 < n) :
     (4 * (n : ℝ) * (8 : ℝ) ^ n) * latticeBoxRadius n ≤ 1 := by
   have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast hn
-  have hbase : (1 : ℝ) ≤ 100 * n := by linarith
+  have hbase : (1 : ℝ) ≤ 100 * n := by linarith only [hn1]
   have hbound : (4 * (n : ℝ)) * (8 : ℝ) ^ n ≤ (100 * (n : ℝ)) ^ (10 * n) := by
     calc
       _ ≤ (100 * (n : ℝ)) * (100 * (n : ℝ)) ^ n :=

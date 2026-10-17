@@ -30,6 +30,23 @@ Formalization of blueprint Section 1, "Foundations, conventions, and proof inter
 (`sec:foundations`, lines 53-253) of `blueprint/formalization_blueprint.tex`.
 -/
 
+public meta section
+
+/-- `have! h : T := v` (or `have! h := v`) adds the hypothesis `h : T` proved by `v` as a plain
+local hypothesis. Unlike `have`, the proof `v` does not stay in the local context as the value
+of `h`, and unlike `obtain h : T := v`, nothing is generalized in the goal. Both matter in very
+long tactic proofs: every nested `by` block instantiates the whole local context (including the
+values of earlier `have`s), and `obtain` traverses the goal at every step. -/
+syntax (name := haveBang) "have! " ident (" : " term)? " := " term : tactic
+
+macro_rules
+  | `(tactic| have! $h:ident : $t := $v) =>
+    `(tactic| refine no_implicit_lambda% ((fun ($h : $t) => ?_) ($v)))
+  | `(tactic| have! $h:ident := $v) =>
+    `(tactic| refine no_implicit_lambda% ((fun $h => ?_) ($v)))
+
+end
+
 @[expose] public section
 
 namespace Auto

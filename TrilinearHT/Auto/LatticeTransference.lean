@@ -1012,7 +1012,7 @@ theorem reducedBasis_adjacent_sq {E : Type*} [NormedAddCommGroup E]
   have hmul := mul_le_mul_of_nonneg_right hμ (sq_nonneg ‖a‖)
   change (3 / 4 : ℝ) * ‖a‖ ^ 2 ≤ ‖v‖ ^ 2
   change ‖a‖ ^ 2 ≤ ‖w‖ ^ 2 at hshortsq
-  nlinarith
+  nlinarith only [hw, hμ, hshortsq]
 
 theorem norm_sq_sum_of_pairwise_orthogonal {E ι : Type*} [NormedAddCommGroup E]
     [InnerProductSpace ℝ E] (s : Finset ι) (f : ι → E)
@@ -1238,7 +1238,7 @@ theorem triangular_prefix_bound {n : ℕ} (a : Fin (n + 1) → ℝ) (i : Fin (n 
       simp only [Fin.val_succ, Fin.val_castSucc]
       omega
     rw [hexp, pow_succ]
-    nlinarith
+    nlinarith only [hprev, hnext]
 
 /-- The upper triangular inverse bound in `lem:reduced-basis`, obtained by
 the equivalent forward substitution recurrence. -/

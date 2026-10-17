@@ -30,7 +30,7 @@ open scoped FourierTransform ComplexConjugate ENNReal
 /-- `N^{1-ε} = ε N ∫_{(N,∞)} t^{-1-ε} dt` for `N > 0`. -/
 theorem rpow_one_sub_eq_integral {N ε : ℝ} (hN : 0 < N) (hε : 0 < ε) :
     N ^ (1 - ε) = ε * N * ∫ t in Set.Ioi N, t ^ (-1 - ε) := by
-  rw [integral_Ioi_rpow_of_lt (by linarith) hN]
+  rw [integral_Ioi_rpow_of_lt (by linarith only [hε]) hN]
   rw [show -1 - ε + 1 = -ε by ring, Real.rpow_sub hN, Real.rpow_one, Real.rpow_neg hN.le]
   field_simp
 
@@ -134,7 +134,7 @@ theorem distribution_power {ι : Type*} (s : Finset ι) (N : ι → ℝ) {M A B 
     refine this.congr (Filter.Eventually.of_forall fun t => ?_)
     exact hsumf t
   -- split at `t₀ = (A/K)^{1/c}`
-  set t₀ : ℝ := (A / K) ^ (1 / c)
+  set! t₀ : ℝ := (A / K) ^ (1 / c)
   have ht₀ : 0 < t₀ := by positivity
   have hKt₀ : K * t₀ ^ c = A := by
     rw [← Real.rpow_mul (by positivity), one_div_mul_cancel hc0.ne', Real.rpow_one]
@@ -259,7 +259,7 @@ theorem powered_count {ι : Type*} (s : Finset ι) (N : ι → ℝ) {M A B c : �
     ∑ i ∈ s, N i ^ (1 - c / 4) ≤
       4 / 3 * A ^ (3 / 4 : ℝ) * B ^ (1 / 4 : ℝ) * M ^ ((1 - c) / 2) := by
   have h := distribution_power s N hM hN0 hNM hA hApos hBpos hsparse hc0 hc1 (ε := c / 4)
-    (by positivity) (by linarith)
+    (by positivity) (by linarith only [hc0])
   obtain ⟨e1, e2, e3, e4, -⟩ := powered_count_exponents hc0
   rwa [e1, e2, e3, e4] at h
 
@@ -402,7 +402,7 @@ theorem core_count_groups {κ : Type*} (Gs : Finset κ) (PG : κ → ℝ) (M : F
     · exact h23.trans h12
     · exact h23
     · exact le_rfl
-  set C₀ := 4 / 3 * L0 ^ (3 / 4 : ℝ) * Bc ^ (1 / 4 : ℝ) with hC₀
+  set! C₀ := 4 / 3 * L0 ^ (3 / 4 : ℝ) * Bc ^ (1 / 4 : ℝ) with hC₀
   have hC₀0 : 0 ≤ C₀ := by positivity
   -- step A: each group term
   have hA : ∀ G ∈ Gs, PG G ≤ C₀ * ∑ k, (M 0 G ^ (3 / 4 : ℝ) * M 1 G ^ (3 / 4 : ℝ) *
@@ -1217,8 +1217,8 @@ theorem four_group_sum_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj
           fourMult D.S.dmax (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) ^ 12) ^
           (1 / 4 : ℝ) * K ^ (2 - (1 / 300 : ℝ) / 2) := by
   have hΔ : D.SP.Δ = 10 := by rw [hSP]; rfl
-  set E := fun G => (D.withQ0 (qG G)).fourPathE G h xs cellOf (ancOf G) c κ with hEdef
-  set Mc : Fin 4 → bf.Grp → ℝ := fun i G =>
+  set! E := fun G => (D.withQ0 (qG G)).fourPathE G h xs cellOf (ancOf G) c κ with hEdef
+  set! Mc : Fin 4 → bf.Grp → ℝ := fun i G =>
     (((S G).biUnion fun s => (E G s).image fun x => x i).card : ℝ) with hMc
   set Lm := fourMult D.S.dmax (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) with hLm
   set ℓm := 1 + Real.logb 2 (2 + ((D.S.dmax : ℝ) + 1) ^ 2 * ((4 * (2 * c.2.1)) / c.1))
@@ -1227,17 +1227,17 @@ theorem four_group_sum_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj
   have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
     have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
     have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA1
-    nlinarith
+    nlinarith only [h1, h2]
   have hμν : c.1 ≤ 2 * c.2.1 := by linarith [hc.2.1, hc.2.2]
   have hLm1 : 1 ≤ Lm := one_le_fourMult _ hB1 hc.1 hμν
   have hx0 : 0 ≤ (4 * (2 * c.2.1)) / c.1 := div_nonneg (by linarith [hc.2.2]) hc.1.le
   have hℓm1 : 1 ≤ ℓm := by
     have := Real.logb_nonneg (b := 2) (by norm_num)
-      (by nlinarith [sq_nonneg ((D.S.dmax : ℝ) + 1)] :
+      (by nlinarith only [sq_nonneg ((D.S.dmax : ℝ) + 1), hx0] :
         (1 : ℝ) ≤ 2 + ((D.S.dmax : ℝ) + 1) ^ 2 * ((4 * (2 * c.2.1)) / c.1))
     rw [hℓm]; linarith
   -- the groups with a nonempty path
-  set Gs' := Gs.filter fun G => ∃ s ∈ S G, (E G s).Nonempty with hGs'
+  set! Gs' := Gs.filter fun G => ∃ s ∈ S G, (E G s).Nonempty with hGs'
   have hzero : ∀ G ∈ Gs, G ∉ Gs' → ∑ s ∈ S G, ((E G s).card : ℝ) ^ (1 - (1 / 300 : ℝ) / 4) = 0 := by
     intro G hG hG'
     have hne : ∀ s ∈ S G, E G s = ∅ := fun s hs => by
@@ -1482,8 +1482,8 @@ theorem three_group_sum_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
           threeMult D.S.dmax (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) ^ 12) ^
           (1 / 4 : ℝ) * K ^ (2 - (1 / 300 : ℝ) / 2) := by
   have hΔ : D.SP.Δ = 10 := by rw [hSP]; rfl
-  set E := fun G => (D.withQ0 (qG G)).threePathE G h xs l cellOf (ancOf G) Iw c κ with hEdef
-  set Mc : Fin 4 → bf.Grp → ℝ := fun i G =>
+  set! E := fun G => (D.withQ0 (qG G)).threePathE G h xs l cellOf (ancOf G) Iw c κ with hEdef
+  set! Mc : Fin 4 → bf.Grp → ℝ := fun i G =>
     (D.withQ0 (qG G)).threeRoleCount G h xs l cellOf (ancOf G) Iw c κ (S G) i with hMc
   set Lm := threeMult D.S.dmax (D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ)) c.1 (2 * c.2.1) with hLm
   set ℓm := 1 + Real.logb 2 (2 + ((D.S.dmax : ℝ) + 1) ^ 2 * ((2 * c.2.1) / c.1)) with hℓm
@@ -1491,13 +1491,13 @@ theorem three_group_sum_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
   have hB1 : 1 ≤ D.S.Dstar ^ 5 * D.S.Eh (h - D.SP.Δ) := by
     have h1 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
     have h2 : (1 : ℝ) ≤ D.S.Eh (h - D.SP.Δ) := one_le_pow₀ hA1
-    nlinarith
+    nlinarith only [h1, h2]
   have hμν : c.1 ≤ 2 * c.2.1 := by linarith [hc.2.1, hc.2.2]
   have hLm1 : 1 ≤ Lm := one_le_threeMult _ hB1 hc.1 hμν
   have hx0 : 0 ≤ (2 * c.2.1) / c.1 := div_nonneg (by linarith [hc.2.2]) hc.1.le
   have hℓm1 : 1 ≤ ℓm := by
     have := Real.logb_nonneg (b := 2) (by norm_num)
-      (by nlinarith [sq_nonneg ((D.S.dmax : ℝ) + 1)] :
+      (by nlinarith only [sq_nonneg ((D.S.dmax : ℝ) + 1), hx0] :
         (1 : ℝ) ≤ 2 + ((D.S.dmax : ℝ) + 1) ^ 2 * ((2 * c.2.1) / c.1))
     rw [hℓm]; linarith
   have hm0 : ∀ G k, 0 ≤ Mc k G := fun G k => by
@@ -1505,7 +1505,7 @@ theorem three_group_sum_side {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
     split_ifs
     · exact Finset.sum_nonneg fun s _ => (D.withQ0 (qG G)).sideWeight_nonneg G l cellOf _ s
     · exact Nat.cast_nonneg _
-  set Gs' := Gs.filter fun G => ∃ s ∈ S G, (E G s).Nonempty with hGs'
+  set! Gs' := Gs.filter fun G => ∃ s ∈ S G, (E G s).Nonempty with hGs'
   have hzero : ∀ G ∈ Gs, G ∉ Gs' → ∑ s ∈ S G, ((E G s).card : ℝ) ^ (1 - (1 / 300 : ℝ) / 4) = 0 := by
     intro G hG hG'
     have hne : ∀ s ∈ S G, E G s = ∅ := fun s hs => by
@@ -1951,7 +1951,7 @@ theorem dyadic_band_sum_le {p J : ℝ} (hp : 0 < p) (hJ : 0 < J) (T : Finset (�
       push_cast
       have hu0 : (0 : ℝ) ≤ u := Nat.cast_nonneg _
       have hv0 : (0 : ℝ) ≤ v := Nat.cast_nonneg _
-      nlinarith
+      nlinarith only [hl2]
     have hl0 : 0 ≤ 1 + Real.log (8 * x.2 / x.1) := by
       have : (1 : ℝ) ≤ 8 * x.2 / x.1 := by
         rw [h1, h2, le_div_iff₀ (by positivity), one_mul]
@@ -2017,7 +2017,7 @@ theorem four_coef_sched {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA 
   rw [hy]
   have hℓ0 : 0 ≤ 1 + Real.logb 2 (2 + ((D.S.dmax : ℝ) + 1) ^ 2 * (8 * ν / μ)) := by
     have := Real.logb_nonneg (b := 2) (by norm_num)
-      (by nlinarith [sq_nonneg ((D.S.dmax : ℝ) + 1)] :
+      (by nlinarith only [sq_nonneg ((D.S.dmax : ℝ) + 1), hy2] :
         (1 : ℝ) ≤ 2 + ((D.S.dmax : ℝ) + 1) ^ 2 * (8 * ν / μ))
     linarith
   exact freq_coef_le (one_le_fourMult _ hB1 hμ (by linarith)) hL' hℓ0 hℓ hY (by norm_num)
@@ -2052,7 +2052,7 @@ theorem three_coef_sched {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA
   have hℓ := ell_le_log D.S.dmax hy2
   have hℓ0 : 0 ≤ 1 + Real.logb 2 (2 + ((D.S.dmax : ℝ) + 1) ^ 2 * (2 * ν / μ)) := by
     have := Real.logb_nonneg (b := 2) (by norm_num)
-      (by nlinarith [sq_nonneg ((D.S.dmax : ℝ) + 1)] :
+      (by nlinarith only [sq_nonneg ((D.S.dmax : ℝ) + 1), hy2] :
         (1 : ℝ) ≤ 2 + ((D.S.dmax : ℝ) + 1) ^ 2 * (2 * ν / μ))
     linarith
   exact freq_coef_le (one_le_threeMult _ hB1 hμ (by linarith)) hL' hℓ0 hℓ hY (by norm_num)
@@ -2340,7 +2340,7 @@ theorem four_path_bin_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj
   have hPi : 0 ≤ ∏ i, c.2.2 i := Finset.prod_nonneg fun i _ => (hσ i).le
   have hV0 : 0 ≤ Q * (fourKC κ' J * 2 * 12 ^ 4 * (c.1 * (c.2.1 ^ J)⁻¹)) := by
     have := fourKC_nonneg κ' J
-    have : 0 ≤ (c.2.1 ^ J)⁻¹ := inv_nonneg.mpr (pow_nonneg (by linarith [hc.2.2]) J)
+    have : 0 ≤ (c.2.1 ^ J)⁻¹ := inv_nonneg.mpr (pow_nonneg (by linarith only [hc.2.2]) J)
     have := hc.1.le
     positivity
   calc ∑ G ∈ Gy, ∑ s ∈ Sp G, (Q * fourBinVal κ' J c * (D.withQ0 (qG G)).fourCntA G (cellOf s) y
@@ -2704,12 +2704,12 @@ theorem four_path_total {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA 
   have hp1 : p ≤ 1 := by rw [hp]; norm_num
   have hΔ : D.SP.Δ = 10 := by rw [hSP]; rfl
   set Ty := T.filter fun I => y ∈ dyadicGridCell A.G I.1 I.2 with hTy
-  set Q := K₁ * (H.card : ℝ)⁻¹ with hQ
+  set! Q := K₁ * (H.card : ℝ)⁻¹ with hQ
   have hQnn : 0 ≤ Q := mul_nonneg hK₁ (inv_nonneg.mpr (Nat.cast_nonneg _))
-  set f : ℕ → (Fin 4 → ℕ × ℕ) → ℤ × ℤ → bf.Grp → ℝ × ℝ × (Fin 4 → ℝ) → ℝ :=
+  set! f : ℕ → (Fin 4 → ℕ × ℕ) → ℤ × ℤ → bf.Grp → ℝ × ℝ × (Fin 4 → ℝ) → ℝ :=
     fun h κ I G c => (Q * fourBinVal κ' J c * (D.withQ0 (qG G)).fourCntA G I y (anc I G) h c κ) ^ p
         with hf
-  set BY : ℕ → Finset (ℝ × ℝ × (Fin 4 → ℝ)) := fun h =>
+  set! BY : ℕ → Finset (ℝ × ℝ × (Fin 4 → ℝ)) := fun h =>
     Ty.biUnion fun I => (gs I).biUnion fun G => (D.withQ0 (qG G)).fourRetBinsA G I y (anc I G) h ε
         with hBY
   have hgen : ∀ h ∈ H, ∀ c ∈ BY h, ((∃ k : ℤ, c.1 = (2 : ℝ) ^ k) ∧ c.1 ≤ 1 ∧
@@ -2830,7 +2830,7 @@ theorem four_path_total {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA 
         refine Real.log_nonneg ?_
         have hH2 := hV.two_le_H hd2 hD hB hQ0
         have h5 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
-        nlinarith
+        nlinarith only [hH2, h5]
       have := Real.log_nonneg (by norm_num : (1 : ℝ) ≤ 2)
       positivity
     have hl : 0 ≤ D.ellPoly := by
@@ -3109,7 +3109,7 @@ theorem three_bins_sum_le {p : ℝ} (hp : 0 < p) (J : ℕ) (hJ : 1 ≤ J) (l : F
     rw [Finset.card_product, Finset.card_range] at h1
     have h2 : ((B.image key).card : ℝ) ≤ ((B.image amp).card : ℝ) * (Iw + 1) := by
       exact_mod_cast h1
-    nlinarith [Nat.cast_nonneg (α := ℝ) (B.image amp).card]
+    nlinarith only [Nat.cast_nonneg (α := ℝ) (B.image amp).card, hamps, h2]
   calc ∑ k ∈ B.image key, ∑ c ∈ B.filter (fun c => key c = k), f c
       ≤ ∑ _k ∈ B.image key, Cb := Finset.sum_le_sum hfiber
     _ = ((B.image key).card : ℝ) * Cb := by rw [Finset.sum_const, nsmul_eq_mul]
@@ -3619,7 +3619,7 @@ theorem three_path_bin_bound {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid C
             K ^ (2 - (1 / 300 : ℝ) / 2) :=
           mul_nonneg (mul_nonneg (D.fourCc_nonneg hV hd2 hD hB hQ0) (by
             have h1 : (1 : ℝ) ≤ 8 * c.2.1 / c.1 := by
-              rw [le_div_iff₀ hc.1]; linarith [hc.2.1, hc.2.2]
+              rw [le_div_iff₀ hc.1]; linarith only [hc.2.1, hc.2.2]
             have := Real.log_nonneg h1
             positivity)) hK'
         refine mul_le_mul_of_nonneg_right ?_ hX
@@ -3703,13 +3703,13 @@ theorem three_path_total {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA
   have hp1 : p ≤ 1 := by rw [hp]; norm_num
   have hΔ : D.SP.Δ = 10 := by rw [hSP]; rfl
   set Ty := T.filter fun I => y ∈ dyadicGridCell A.G I.1 I.2 with hTy
-  set Q := K₁ * (H.card : ℝ)⁻¹ with hQ
+  set! Q := K₁ * (H.card : ℝ)⁻¹ with hQ
   have hQnn : 0 ≤ Q := mul_nonneg hK₁ (inv_nonneg.mpr (Nat.cast_nonneg _))
-  set f : ℕ → (Fin 4 → ℕ × ℕ) → ℤ × ℤ → bf.Grp → ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ) → ℝ :=
+  set! f : ℕ → (Fin 4 → ℕ × ℕ) → ℤ × ℤ → bf.Grp → ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ) → ℝ :=
     fun h κ I G c => (Q * threeBinVal κ' J Aw l c * (D.withQ0 (qG G)).threeCntA G I y l (anc I G) Iw
         h c κ) ^ p
         with hf
-  set BY : ℕ → Finset (ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)) := fun h =>
+  set! BY : ℕ → Finset (ℝ × ℝ × ℕ × ℝ × (Fin 4 → ℝ)) := fun h =>
     Ty.biUnion fun I => (gs I).biUnion fun G => (D.withQ0 (qG G)).threeRetBinsA G I y l (anc I G) Iw
         h ε with hBY
   have hamp : ∀ h ∈ H, ∀ I ∈ Ty, ∀ G ∈ gs I, ∀ c ∈ (D.withQ0 (qG G)).threeRetBinsA G I y l (anc I G)
@@ -3851,7 +3851,7 @@ theorem three_path_total {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA
         refine Real.log_nonneg ?_
         have hH2 := hV.two_le_H hd2 hD hB hQ0
         have h5 : (1 : ℝ) ≤ D.S.Dstar ^ 5 := one_le_pow₀ (by linarith)
-        nlinarith
+        nlinarith only [hH2, h5]
       have := Real.log_nonneg (by norm_num : (1 : ℝ) ≤ 2)
       positivity
     have hl : 0 ≤ D.ellPoly := by

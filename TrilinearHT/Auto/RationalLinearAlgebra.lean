@@ -281,7 +281,7 @@ theorem rational_inverse_budget (n B : ℕ) (hB : 1 ≤ B) :
         (Nat.mul_le_mul (hf.trans (Nat.pow_le_pow_left hb2 _)) (Nat.pow_le_pow_left hb _))
     _ = (2 * B) ^ (2 * (n + 1) + (n ^ 2 + (n ^ 2 + n * (n ^ 2 + 1)))) := by
       simp only [pow_add]
-    _ ≤ _ := Nat.pow_le_pow_right (by omega) (by nlinarith [Nat.zero_le (n ^ 4)])
+    _ ≤ _ := Nat.pow_le_pow_right (by omega) (by nlinarith only [Nat.zero_le (n ^ 4)])
 
 /-- Blueprint `lem:rational-linear`, lines 418–420: nonsingular rational
 inverses have entry heights and Euclidean operator norm at most
@@ -841,7 +841,7 @@ theorem rational_projection_budget {r n d B : ℕ} (hr : r ≤ d) (hn : n ≤ d)
     _ = L ^ (2 * (d + 1) + d ^ 2 + (d + 1) * d + 2 * (d ^ 2 + 1) * (d + 1)) := by
       simp only [pow_add]
     _ ≤ _ := Nat.pow_le_pow_right hL
-      (by nlinarith [Nat.zero_le (d ^ 4), Nat.zero_le (d ^ 3), Nat.zero_le (d ^ 2)])
+      (by nlinarith only [Nat.zero_le (d ^ 4), Nat.zero_le (d ^ 3), Nat.zero_le (d ^ 2)])
 
 /-- Blueprint `lem:rational-linear`: the rational row-space projection has
 the stated exponential height bound and Euclidean operator norm at most one. -/
@@ -991,7 +991,7 @@ theorem rationalMatrix_projection_bounds {m n d : ℕ} (hn : n ≤ d)
     apply Real.exp_le_exp.mpr
     have hl : 0 ≤ Real.log (2 * B) := Real.log_nonneg (by linarith)
     have hn0 : 0 ≤ (d + 1 : ℝ) ^ 4 := by positivity
-    nlinarith
+    nlinarith only [hl, hn0]
   have hdouble : E * E = Real.exp (8 * (d + 1 : ℝ) ^ 4 * Real.log (2 * B)) := by
     rw [← Real.exp_add]
     congr 1
@@ -1007,7 +1007,7 @@ theorem rationalMatrix_projection_bounds {m n d : ℕ} (hn : n ≤ d)
     have hc : (rationalHeight ((1 - P) i j) : ℝ) ≤ 2 * rationalHeight (P i j) := by
       exact_mod_cast rationalMatrix_complement_height P i j
     have hPi : (rationalHeight (P i j) : ℝ) ≤ E := hh i j
-    nlinarith
+    nlinarith only [hE, hc, hPi]
   · rw [hp]
     exact Submodule.starProjection_norm_le _
   · rw [hq]
@@ -1531,7 +1531,7 @@ theorem rationalHeightRatio_log_bound (d : ℕ) {B : ℕ} (hB : 2 ≤ B) :
       (Nat.mul_ne_zero (Nat.factorial_ne_zero d) (pow_ne_zero _ (by omega)))
   have hR1 : 1 ≤ rationalHeightRatio d B := by
     unfold rationalHeightRatio
-    nlinarith
+    nlinarith only [hd1, hH1]
   have hfac : Real.log (d.factorial : ℝ) ≤ (d : ℝ) ^ 2 := by
     calc
       _ ≤ Real.log ((d : ℝ) ^ d) := Real.log_le_log hfP (by exact_mod_cast Nat.factorial_le_pow d)
@@ -1562,11 +1562,11 @@ theorem rationalHeightRatio_log_bound (d : ℕ) {B : ℕ} (hB : 2 ≤ B) :
         (mul_le_mul_of_nonneg_left hlogB (by positivity))
     _ ≤ 3 * (d + 1 : ℝ) ^ 2 + (d + 1 : ℝ) ^ 2 * Real.log (2 * B) := by
       apply add_le_add
-      · nlinarith
+      · nlinarith only
       · apply mul_le_mul_of_nonneg_right _ (by linarith)
-        nlinarith
+        nlinarith only
     _ ≤ 4 * (d + 1 : ℝ) ^ 2 * Real.log (2 * B) := by
-      nlinarith [mul_nonneg (sq_nonneg (d + 1 : ℝ)) (sub_nonneg.mpr hL)]
+      nlinarith only [mul_nonneg (sq_nonneg (d + 1 : ℝ)) (sub_nonneg.mpr hL)]
     _ ≤ 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by
       apply mul_le_mul_of_nonneg_right _ (by linarith)
       exact mul_le_mul (by norm_num : (4 : ℝ) ≤ 8)
@@ -1717,12 +1717,12 @@ theorem rational_magnitude_bins_card_le {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
   have hD : (1 : ℝ) ≤ d + 1 := le_add_of_nonneg_left (Nat.cast_nonneg d)
   have hA : 1 ≤ (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by
     have hp := one_le_pow₀ hD (n := 3)
-    nlinarith
+    nlinarith only [hL, hp]
   have hW : 0 ≤ 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by positivity
   have hdiv : 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) / Real.log 2 ≤
       16 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) := by
     apply (div_le_iff₀ h2p).mpr
-    nlinarith [mul_nonneg (show 0 ≤ (d + 1 : ℝ) ^ 3 * Real.log (2 * B) by linarith)
+    nlinarith only [mul_nonneg (show 0 ≤ (d + 1 : ℝ) ^ 3 * Real.log (2 * B) by linarith)
       (sub_nonneg.mpr h2)]
   calc
     _ ≤ (t.card : ℝ) * (8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) / Real.log 2 + 2) :=
@@ -1825,7 +1825,7 @@ theorem rational_logarithmic_scale_count {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
     constructor
     · rintro ⟨x, hx, hlo, hhi⟩
       obtain ⟨hxpos, a, ha, rfl⟩ := mem_boundedRationalMagnitudes.mp hx
-      exact ⟨a, fun j => (Nat.le_floor_iff (by linarith)).mp (ha j),
+      exact ⟨a, fun j => (Nat.le_floor_iff (by linarith only [hB])).mp (ha j),
         abs_pos.mp hxpos, hlo, hhi⟩
     · rintro ⟨a, ha, hne, hlo, hhi⟩
       exact ⟨|L a|, mem_boundedRationalMagnitudes.mpr
@@ -1833,23 +1833,24 @@ theorem rational_logarithmic_scale_count {d : ℕ} {B : ℝ} (hB : 2 ≤ B)
   · have hD : (1 : ℝ) ≤ d + 1 := le_add_of_nonneg_left (Nat.cast_nonneg d)
     have hD3 : 1 ≤ (d + 1 : ℝ) ^ 3 := one_le_pow₀ hD
     have hM : 1 ≤ Real.log (2 * B) + q - p := by linarith
-    have hprod : 1 ≤ (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) := by nlinarith
+    have hprod : 1 ≤ (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) := by nlinarith only [hpq, hL,
+        hD3]
     have hwidth : 8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + q - p ≤
         8 * (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) := by
-      nlinarith [mul_nonneg (sub_nonneg.mpr hD3) (sub_nonneg.mpr hpq)]
+      nlinarith only [mul_nonneg (sub_nonneg.mpr hD3) (sub_nonneg.mpr hpq), hpq]
     have hdiv : (8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + q - p) / δ ≤
         16 * (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) := by
       apply (div_le_iff₀ hδp).mpr
-      nlinarith [mul_nonneg
+      nlinarith only [mul_nonneg
         (show 0 ≤ (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p) by linarith)
-        (show 0 ≤ δ - 1 / 2 by linarith)]
+        (show 0 ≤ δ - 1 / 2 by linarith), hpq, hD3]
     calc
       _ ≤ (t.card : ℝ) * ((8 * (d + 1 : ℝ) ^ 3 * Real.log (2 * B) + q - p) / δ + 2) := hcard
       _ ≤ (d + 1 : ℝ) * (32 * (d + 1 : ℝ) ^ 3 * (Real.log (2 * B) + q - p)) := by
         apply mul_le_mul
         · have hh : (t.card : ℝ) ≤ d := by exact_mod_cast ht
           linarith
-        · nlinarith
+        · nlinarith only [hpq, hL, hD3, hdiv]
         · apply add_nonneg
           · exact div_nonneg (by linarith) hδp.le
           · norm_num

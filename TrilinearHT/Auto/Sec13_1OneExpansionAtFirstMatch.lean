@@ -34,7 +34,7 @@ theorem split_height_budget {H B : ℝ} {d : ℕ} (hH : Real.exp 2 ≤ H) (hB : 
       Real.exp (11 * (1 + Real.log H + Real.log B) ^ 3) := by
   set X := 1 + Real.log H + Real.log B with hX
   have hH0 : 0 < H := lt_of_lt_of_le (Real.exp_pos 2) hH
-  have hB0 : 0 < B := by linarith
+  have hB0 : 0 < B := by linarith only [hB]
   have hlogH : 2 ≤ Real.log H := by rw [Real.le_log_iff_exp_le hH0]; exact hH
   have hlogB : 0 ≤ Real.log B := Real.log_nonneg (by linarith)
   have hX1 : 1 ≤ X := by linarith
@@ -60,10 +60,10 @@ theorem split_height_budget {H B : ℝ} {d : ℕ} (hH : Real.exp 2 ≤ H) (hB : 
           hB0.le) (by positivity) (by positivity)
       have a2 : H ^ 2 * ((2 * B) * H * B) = 2 * (H ^ 3 * B ^ 2) := by ring
       have a3 : H ^ 3 * B ^ 2 ≤ H ^ 4 * B ^ 2 := mul_le_mul_of_nonneg_right hH3 (by positivity)
-      have hB2 : 1 ≤ B ^ 2 := by nlinarith
+      have hB2 : 1 ≤ B ^ 2 := by nlinarith only [hB]
       have hH4 : 1 ≤ H ^ 4 := one_le_pow₀ hH1
-      have a4 : H ≤ H ^ 4 * B ^ 2 := by nlinarith
-      have a5 : 1 ≤ H ^ 4 * B ^ 2 := by nlinarith
+      have a4 : H ≤ H ^ 4 * B ^ 2 := by nlinarith only [hH0, hH2, hB2]
+      have a5 : 1 ≤ H ^ 4 * B ^ 2 := by nlinarith only [hB, hH1, hH2]
       linarith
     have h2 := Real.log_le_log (by positivity) h1
     rw [Real.log_mul (by norm_num) (by positivity), Real.log_mul (by positivity) (by positivity),
@@ -86,7 +86,7 @@ theorem split_height_budget {H B : ℝ} {d : ℕ} (hH : Real.exp 2 ≤ H) (hB : 
       _ ≤ Real.exp 1 ^ 2 := pow_le_pow_left₀ (by norm_num) he 2
   have e1 : ((d ^ 2 : ℕ) : ℝ) * Real.log H ≤ X ^ 3 := by
     calc ((d ^ 2 : ℕ) : ℝ) * Real.log H ≤ X ^ 2 * X :=
-          mul_le_mul hd2 (by linarith) (by linarith) (by positivity)
+          mul_le_mul hd2 (by linarith only [hlogB]) (by linarith) (by positivity)
       _ = X ^ 3 := by ring
   have e2 : ((2 : ℕ) : ℝ) * (((d ^ 2 : ℕ) : ℝ) * Real.log B) ≤ 2 * X ^ 3 := by
     calc ((2 : ℕ) : ℝ) * (((d ^ 2 : ℕ) : ℝ) * Real.log B) ≤ 2 * (X ^ 2 * X) := by
@@ -158,8 +158,8 @@ theorem splitPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
   obtain ⟨ι, hι, σ, hcard, hσ, hrest⟩ := hsplit (d := d) H B hA.lower hA.dimension hB
     A.matrix Q (fun i j => hA.height i j) hQs hQh hiso'
   obtain ⟨a, hexp, hsumm, htot, hJ⟩ := hrest A' hmat hA'c hVs
-  set M := separatedPhaseMatrix A.matrix Q with hMdef
-  set lam := A.quadratic + ∑ i, ∑ j, A.horizontal i * (M i j : ℝ) * A.horizontal j with hlam
+  set! M := separatedPhaseMatrix A.matrix Q with hMdef
+  set! lam := A.quadratic + ∑ i, ∑ j, A.horizontal i * (M i j : ℝ) * A.horizontal j with hlam
   set Λe := effectiveReturnQuadratic (A.matrix.map (fun q => (q : ℝ))) A'.quadratic
     A'.horizontal ((1 - Q.map (fun q => (q : ℝ))) * A'.horizontal)
     (Q.map (fun q => (q : ℝ)) * A'.horizontal) with hΛe
@@ -196,7 +196,7 @@ theorem splitPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
       simp only [X] at *; nlinarith
     exact (h.trans hΛ').trans hBX
   · intro t ht
-    set z : Fin 1 → ℝ := fun _ => t / r with hz
+    set! z : Fin 1 → ℝ := fun _ => t / r with hz
     have hzR : ∀ i, |z i| ≤ R := fun i => by
       simp only [hz, abs_div, abs_of_pos hr]
       rw [div_le_iff₀ hr]; linarith
@@ -443,7 +443,7 @@ theorem modeLift_norm_sq_le' (own : Md → Pr) {s : ℂ} (hs : ‖s‖ ≤ 1) (q
   have hph2 : ‖modeLift own s q a εP εM F none‖ ^ 2 ≤ 2 * ‖F none‖ ^ 2 + 2 * Fp := by
     have h := pow_le_pow_left₀ (norm_nonneg _) hphys 2
     have hs2 := Real.sq_sqrt hFp0
-    nlinarith [sq_nonneg (‖F none‖ - Real.sqrt Fp)]
+    nlinarith only [sq_nonneg (‖F none‖ - Real.sqrt Fp), h, hs2]
   rw [hF]
   have : 0 ≤ ‖F none‖ ^ 2 := sq_nonneg _
   linarith
@@ -585,10 +585,10 @@ theorem offsetMean {d : ℕ} {δ : ℝ} (hδ : 0 < δ) (hdδ : 8 * d * δ ≤ 1)
     rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
   · have hb : -2 ≤ -4 * δ := by linarith
     have hB := one_add_mul_le_pow hb d
-    have h1 : 1 / 2 ≤ 1 + (d : ℝ) * (-4 * δ) := by nlinarith
+    have h1 : 1 / 2 ≤ 1 + (d : ℝ) * (-4 * δ) := by nlinarith only [hdδ]
     calc 1 / 2 ≤ 1 + (d : ℝ) * (-4 * δ) := h1
       _ ≤ (1 + -4 * δ) ^ d := hB
-      _ ≤ _ := pow_le_pow_left₀ (by linarith) (by linarith) d
+      _ ≤ _ := pow_le_pow_left₀ (by linarith only [hδ']) (by linarith) d
   · -- pointwise bound by the coordinate defects
     set g : Fin d → (Fin d → ℝ) → ℝ := fun i ρ => 1 - branchProfile δ (Int.fract (u i - ρ i)) ^ 2
     have hpt : ∀ ρ, (1 - branchCutoffValue δ ρ u ^ 2) ^ 2 ≤ ∑ i, g i ρ := by
@@ -614,7 +614,7 @@ theorem offsetMean {d : ℕ} {δ : ℝ} (hδ : 0 < δ) (hdδ : 8 * d * δ ≤ 1)
       Integrable.of_bound (hmeas i).aestronglyMeasurable 1 (Filter.Eventually.of_forall fun ρ => by
         have := branchProfile_mem δ (Int.fract (u i - ρ i))
         simp only [g, Real.norm_eq_abs]
-        rw [abs_le]; constructor <;> nlinarith [this.1, this.2])
+        rw [abs_le]; constructor <;> nlinarith only [this.1, this.2])
     have hmarg : ∀ i, ∫ ρ, g i ρ ∂(offsetMeasure d) ≤ 4 * δ := by
       intro i
       classical
@@ -672,7 +672,8 @@ theorem branchAmp_support {d : ℕ} {δ : ℝ} (hδ : 0 < δ) (_hδ' : δ < 1 / 
   · by_contra hc
     exact h (gevreyIntervalCutoff_zero_left (by linarith) (by push Not at hc; linarith))
   · by_contra hc
-    exact h (gevreyIntervalCutoff_zero_right (by linarith) (by push Not at hc; linarith))
+    exact h (gevreyIntervalCutoff_zero_right (by linarith) (by push Not at hc; linarith only [hδ,
+        hc]))
 
 theorem branchAmp_hasCompactSupport {d : ℕ} {δ : ℝ} (hδ : 0 < δ) (hδ' : δ < 1 / 4)
     (ρ : Fin d → ℝ) : HasCompactSupport (branchAmp δ ρ) := by
@@ -782,9 +783,6 @@ theorem logb_two_le_two_log {x : ℝ} (hx : 1 ≤ x) : Real.logb 2 x ≤ 2 * Rea
   calc Real.log x = 2 * Real.log x * (1 / 2) := by ring
     _ ≤ 2 * Real.log x * Real.log 2 := mul_le_mul_of_nonneg_left hh (by positivity)
 
-set_option maxHeartbeats 1000000 in
--- the explicit parameter bookkeeping is one long declaration and needs more than the default
--- budget
 /-- Blueprint `mode-schedule` (line 1976, `THT.Modes.chooseSchedule`): given the main budget
 `D_m`, the dimension bound `d_max`, the mode budget `D_*`, the cutoff `B_*`, the clearing
 integer `Q₀` and the packet width `W(H)` as a function of the height `H` (lem:height), the
@@ -815,7 +813,7 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
   have hcT0 : 0 ≤ cT := by rw [hcT]; positivity
   refine ⟨cH + cT + (8 * cT + 4 * CK + 2), by positivity, ?_⟩
   intro dmax Dstar Bstar Dm Wf Q0 hd hD hB hM hQ hWf Λ
-  set d : ℝ := ((dmax : ℕ) : ℝ) with hdd
+  set! d : ℝ := ((dmax : ℕ) : ℝ) with hdd
   have hd2 : (2 : ℝ) ≤ d := by rw [hdd]; exact_mod_cast hd
   have hl2 : (0 : ℝ) < Real.log 2 := Real.log_pos (by norm_num)
   have hlD : Real.log 2 ≤ Real.log Dstar := Real.log_le_log (by norm_num) hD
@@ -847,8 +845,8 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
       _ ≤ Real.exp 1 ^ 3 := pow_le_pow_left₀ (by norm_num) he 3
   have hhalf : (1 / 2 : ℝ) ≤ Real.log 2 := by linarith [Real.log_two_gt_d9]
   -- the witnesses
-  set Cs : ℝ := (10 * d * Dstar) ^ (100 * dmax ^ 4) with hCs
-  have hCs1 : 1 ≤ Cs := one_le_pow₀ (by nlinarith)
+  set! Cs : ℝ := (10 * d * Dstar) ^ (100 * dmax ^ 4) with hCs
+  have hCs1 : 1 ≤ Cs := one_le_pow₀ (by nlinarith only [hD, hd2])
   have hlogCs : Real.log Cs ≤ 300 * Λ ^ 5 := by
     rw [hCs, Real.log_pow, Real.log_mul (by positivity) (by linarith),
       Real.log_mul (by norm_num) (by linarith)]
@@ -864,14 +862,14 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
         (100 * Λ ^ 4) * (3 * Λ) := mul_le_mul h2 h1 h0 (by positivity)
       _ = 300 * Λ ^ 5 := by ring
   clear_value Cs
-  set Rh : ℕ := ⌈Real.logb 2 Cs⌉₊ + 30 with hRh
+  set! Rh : ℕ := ⌈Real.logb 2 Cs⌉₊ + 30 with hRh
   have hRhb : (Rh : ℝ) ≤ 631 * Λ ^ 5 := by
     have h1 : Real.logb 2 Cs ≤ 2 * Real.log Cs := logb_two_le_two_log hCs1
     have h2 := (Nat.ceil_lt_add_one (Real.logb_nonneg (b := 2) (by norm_num) hCs1)).le
     have h5 : (1 : ℝ) ≤ Λ ^ 5 := one_le_pow₀ hΛ1
     rw [hRh]; push_cast; linarith
   clear_value Rh
-  set J : ℕ := ⌈Cj * δs⁻¹ ^ 2 * d * Rh * Real.log (2 * Dm)⌉₊ with hJ
+  set! J : ℕ := ⌈Cj * δs⁻¹ ^ 2 * d * Rh * Real.log (2 * Dm)⌉₊ with hJ
   have hJb : (J : ℝ) ≤ cJ * Λ ^ 7 := by
     have hl : Real.log (2 * Dm) ≤ 2 * Λ := by
       rw [Real.log_mul (by norm_num) (by linarith)]; linarith [Real.log_two_lt_d9]
@@ -891,7 +889,7 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
     rw [hJ, hcJ, hsplit7]
     linarith
   clear_value J
-  set A : ℝ := (Cs * 6 ^ Rh * Bstar * Dstar) ^ CA with hA
+  set! A : ℝ := (Cs * 6 ^ Rh * Bstar * Dstar) ^ CA with hA
   have hA1 : 1 ≤ A := by
     apply one_le_pow₀
     have h6 : (1 : ℝ) ≤ 6 ^ Rh := one_le_pow₀ (by norm_num)
@@ -921,7 +919,7 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
           linarith
   have hlogA0 : 0 ≤ Real.log A := Real.log_nonneg hA1
   clear_value A
-  set XH : ℝ := d * Cs * A ^ (J + 1) * Bstar * 6 ^ J * Q0 * Dstar ^ 1000 with hXH
+  set! XH : ℝ := d * Cs * A ^ (J + 1) * Bstar * 6 ^ J * Q0 * Dstar ^ 1000 with hXH
   have hQ1 : (1 : ℝ) ≤ Q0 := by exact_mod_cast hQ
   have hXH1 : 1 ≤ XH := by
     have h1 : 1 ≤ A ^ (J + 1) := one_le_pow₀ hA1
@@ -959,7 +957,7 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
     rw [hcX, hsplitX]
     linarith
   clear_value XH
-  set Hv : ℝ := XH ^ 10 + 1 with hHv
+  set! Hv : ℝ := XH ^ 10 + 1 with hHv
   have hHv1 : 1 ≤ Hv := by
     have : 0 ≤ XH ^ 10 := by positivity
     linarith
@@ -974,9 +972,10 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
     have hsplitH : (10 * cX + 1) * Λ ^ 12 = 10 * (cX * Λ ^ 12) + Λ ^ 12 := by ring
     rw [hcH, hsplitH]; push_cast at h2; linarith
   clear_value Hv
-  set Tv : ℝ := (d * Hv) ^ (CT * dmax ^ 4) * Dstar ^ 1000 + 1 with hTv
+  set! Tv : ℝ := (d * Hv) ^ (CT * dmax ^ 4) * Dstar ^ 1000 + 1 with hTv
   have hX1 : 1 ≤ (d * Hv) ^ (CT * dmax ^ 4) * Dstar ^ 1000 :=
-    one_le_mul_of_one_le_of_one_le (one_le_pow₀ (by nlinarith)) (one_le_pow₀ (by linarith))
+    one_le_mul_of_one_le_of_one_le (one_le_pow₀ (by nlinarith only [hd2,
+        hHv1])) (one_le_pow₀ (by linarith))
   have hTv1 : 1 ≤ Tv := by rw [hTv]; linarith
   have hlogT : Real.log Tv ≤ cT * Λ ^ 16 := by
     have h1 : Tv ≤ 2 * ((d * Hv) ^ (CT * dmax ^ 4) * Dstar ^ 1000) := by rw [hTv]; linarith
@@ -1005,13 +1004,13 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
     linarith
   clear_value Tv
   have hW := hWf Hv
-  set x : ℝ := Wf Hv + 2 * Real.logb 2 Tv + CK * Real.logb 2 Dstar + 1 with hx
+  set! x : ℝ := Wf Hv + 2 * Real.logb 2 Tv + CK * Real.logb 2 Dstar + 1 with hx
   have hx1 : 1 ≤ x := by
     have := Real.logb_nonneg (by norm_num : (1 : ℝ) < 2) hTv1
     have := Real.logb_nonneg (by norm_num : (1 : ℝ) < 2) (by linarith : (1 : ℝ) ≤ Dstar)
     have : (0 : ℝ) ≤ CK * Real.logb 2 Dstar := by positivity
     rw [hx]; linarith
-  set κ : ℕ := ⌈Real.logb 2 x⌉₊ with hκ
+  set! κ : ℕ := ⌈Real.logb 2 x⌉₊ with hκ
   have hxpow : x = (2 : ℝ) ^ (Real.logb 2 x) :=
     (Real.rpow_logb (by norm_num) (by norm_num) (by linarith)).symm
   have hK1 : x ≤ (2 : ℝ) ^ κ := by
@@ -1059,7 +1058,7 @@ theorem chooseSchedule (Cj CA CT CK : ℕ) {δs : ℝ} (hδs : 0 < δs) (_hδs1 
     rw [hx] at hK2
     have hsplitK : (cH + cT + (8 * cT + 4 * CK + 2)) * Λ ^ 16 = cH * Λ ^ 16 + 9 * (cT * Λ ^ 16) +
         4 * (CK * Λ ^ 16) + 2 * Λ ^ 16 := by ring
-    have hT16 : 2 * Real.logb 2 Tv ≤ 4 * (cT * Λ ^ 16) := by linarith
+    have hT16 : 2 * Real.logb 2 Tv ≤ 4 * (cT * Λ ^ 16) := by linarith only [hlogT, hlT]
     have hK16 : (CK : ℝ) * Real.logb 2 Dstar ≤ 2 * (CK * Λ ^ 16) := by linarith
     have hcH16 : 0 ≤ cH * Λ ^ 16 := by positivity
     have hCK16 : 0 ≤ (CK : ℝ) * Λ ^ 16 := by positivity
@@ -2254,8 +2253,9 @@ theorem carryVec_box_le (Q0 : ℕ) (l' : Fin 4) (ρ : Fin 4 → Fin d → ℝ)
     ⟨by exact_mod_cast ej.1, by exact_mod_cast ej.2⟩
   simp only [carryVec]
   rw [abs_le]
-  constructor <;> rcases le_total ((j : ℕ) : ℝ) 1 with hj1 | hj1 <;> nlinarith [r0.1, r0.2, r1.1,
-    r1.2, rj.1, rj.2, f0.1, f0.2, f1.1, f1.2, fj.1, fj.2, c0.1, c0.2, c1.1, c1.2, cj.1, cj.2]
+  constructor <;> rcases le_total ((j : ℕ) : ℝ) 1 with hj1 | hj1 <;>
+    nlinarith only [r0.1, r0.2, r1.1, r1.2, rj.1, rj.2, f0.1, f0.2, f1.1, f1.2, fj.1, fj.2, c0.1,
+      c0.2, c1.1, c1.2, cj.1, cj.2, hs, hj3]
 
 theorem norm_carryPhaseL_le (Q0 : ℕ) (l' : Fin 4) (C : Matrix (Fin d) (Fin d) ℚ)
     (n : Fin 4 → Fin d → ℤ) {Cm K : ℝ} (hCm0 : 0 ≤ Cm) (hK0 : 0 ≤ K)
@@ -2839,7 +2839,7 @@ theorem tagEdge_of_dist {Hed : ℝ} (hHed : 2 ≤ Hed) {dB : ℕ}
       nlinarith
     have h2 : ((L + 1) * (dB + 1) : ℝ) ^ 8 ≤ ((n + 1) * (dB + 1) : ℝ) ^ 8 :=
       pow_le_pow_left₀ (by positivity) h1 8
-    nlinarith
+    nlinarith only [hlog, h2]
 
 end ActiveSetup.BasicFamilies
 
@@ -2864,7 +2864,8 @@ theorem two_le_ballEdgeH (hHed : 2 ≤ fp.Hed) (dB n : ℕ) : 2 ≤ fp.ballEdgeH
     have : (0 : ℝ) ≤ n := Nat.cast_nonneg n
     have : (0 : ℝ) ≤ dB := Nat.cast_nonneg dB
     nlinarith)
-  have h2 : 1 ≤ 100000 * ((n + 1) * (dB + 1) : ℝ) ^ 8 * Real.log (2 * fp.Hed) := by nlinarith
+  have h2 : 1 ≤ 100000 * ((n + 1) * (dB + 1) : ℝ) ^ 8 * Real.log (2 * fp.Hed) := by
+    nlinarith only [hl, h1]
   calc (2 : ℝ) ≤ Real.exp 1 := by have := Real.add_one_le_exp (1 : ℝ); linarith
     _ ≤ _ := Real.exp_le_exp.mpr h2
 
@@ -3082,7 +3083,7 @@ theorem mainFirstMatch_finite (κ : LocalKernelClass) (c₀ : ℕ) :
   have hB0 : 0 ≤ B := (Real.exp_pos _).le
   have hex : ∃ K : ℕ, 2 * B / δc ≤ 2 ^ K := pow_unbounded_of_one_lt _ (by norm_num) |>.imp
     fun _ h => h.le
-  set K := Nat.find hex
+  set! K := Nat.find hex
   have hK : 2 * B / δc ≤ 2 ^ K := Nat.find_spec hex
   have hKt : 2 * B / 2 ^ K ≤ δc := by
     rw [div_le_iff₀ (by positivity)]; rw [div_le_iff₀ hδc] at hK; linarith
@@ -3096,7 +3097,7 @@ theorem mainFirstMatch_finite (κ : LocalKernelClass) (c₀ : ℕ) :
       rw [hk, pow_succ]
       have : 4 * B / δc = 2 * (2 * B / δc) := by ring
       rw [this]; linarith
-  set S := (Finset.univ : Finset ι) ×ˢ
+  set! S := (Finset.univ : Finset ι) ×ˢ
     frequencyBox (((bf.vtag (labelTag (bf.origCols l) s I d v)).dim + (bf.vtag z).dim) +
       ((bf.vtag (labelTag (bf.origCols l) s I d v)).dim + (bf.vtag z).dim))
       (2 ^ (K + 1))
@@ -3123,7 +3124,7 @@ theorem mainFirstMatch_finite (κ : LocalKernelClass) (c₀ : ℕ) :
         ((bf.vtag (labelTag (bf.origCols l) s I d v)).dim + (bf.vtag z).dim : ℕ) :=
       Nat.cast_nonneg _
     push_cast at hdθ0
-    nlinarith [hmax, frequencyLength_nonneg q.1.2, le_max_left (1 : ℝ) (4 * B / δc)]
+    nlinarith only [hmax, frequencyLength_nonneg q.1.2, le_max_left (1 : ℝ) (4 * B / δc), hlen]
   · refine le_trans ?_ htot
     rw [Finset.sum_coe_sort S (fun q => ‖a q‖)]
     exact hsumm.sum_le_tsum _ fun q _ => norm_nonneg _
@@ -3274,7 +3275,7 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
   refine ⟨D, hD, ?_⟩
   intro A bf fp l s hT htag d cs hcs G j ρ₀ z g hG hHed dB hdim hC δ hδ hδ' ρ hρ H hHs hdz hCz
     hHδ δc hδc N hN0 hN hδcN FM X
-  set K : Finset (Σ _ : bf.Lab ⊕ Fin fp.Mc, ℤ × ℤ) := Finset.univ.sigma FM
+  set! K : Finset (Σ _ : bf.Lab ⊕ Fin fp.Mc, ℤ × ℤ) := Finset.univ.sigma FM
   have hK : ∀ k : {k // k ∈ K}, k.1.2 ∈ FM k.1.1 := fun k => (Finset.mem_sigma.mp k.2).2
   have hK' : ∀ k : {k // k ∈ K}, k.1.2 ∈ A.cells ∧ k.1.1 ∈ fp.primaries l s G j d k.1.2 :=
     fun k => by
@@ -3286,8 +3287,8 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
   set B : ℝ := Real.exp (D * X ^ D)
   have hB0 : 0 ≤ B := (Real.exp_pos _).le
   set ζ : ℝ → ℝ := centerCut (bf.vtag z) δ ρ
-  set cell : {k // k ∈ K} → Set ℝ := fun k => dyadicGridCell A.G k.1.2.1 k.1.2.2
-  set a₀ : {k // k ∈ K} → ℝ := fun k => dyadicGridLeft A.G k.1.2.1 k.1.2.2
+  set! cell : {k // k ∈ K} → Set ℝ := fun k => dyadicGridCell A.G k.1.2.1 k.1.2.2
+  set! a₀ : {k // k ∈ K} → ℝ := fun k => dyadicGridLeft A.G k.1.2.1 k.1.2.2
   set φ : bf.Lab ⊕ Fin fp.Mc → ℝ → ℂ := mainScalar fp.Mc (bf.origCols l) s
   set w : bf.Lab ⊕ Fin fp.Mc → ℝ := mainWeight fp.Mc (bf.origCols l)
   have hw : ∀ Φ, 0 < w Φ := fun Φ => by
@@ -3299,14 +3300,14 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
     rcases Φ with x | n
     · exact (bf.P x.1 x.2.1).Ψ.D.scalar_measurable x.2.2
     · exact catAtom_measurable s n
-  set ψ : (Σ k : {k // k ∈ K}, Ny k) → ℝ → ℂ := fun m y => (ζ y : ℂ) *
+  set! ψ : (Σ k : {k // k ∈ K}, Ny k) → ℝ → ℂ := fun m y => (ζ y : ℂ) *
     (Real.fourierChar ((slotCoeff l : ℝ) * centerPhase (bf.vtag z) ρ y) : ℂ) *
     (Real.fourierChar (lam m.1 * (y - a₀ m.1) ^ 2 + γ m.1 m.2 * (y - a₀ m.1)) : ℂ)
-  set am : (Σ k : {k // k ∈ K}, Ny k) → ℝ → ℂ := fun m => (cell m.1).indicator fun _ =>
+  set! am : (Σ k : {k // k ∈ K}, Ny k) → ℝ → ℂ := fun m => (cell m.1).indicator fun _ =>
     coef m.1 m.2
-  set E : bf.Lab ⊕ Fin fp.Mc → Set ℝ := fun Φ => ⋃ I ∈ FM Φ, dyadicGridCell A.G I.1 I.2
-  set sf : ℝ → ℂ := fun y => ((ζ y : ℝ) : ℂ) ^ 2
-  set qf : bf.Lab ⊕ Fin fp.Mc → ℝ → ℂ := fun Φ => (E Φ).indicator fun y =>
+  set! E : bf.Lab ⊕ Fin fp.Mc → Set ℝ := fun Φ => ⋃ I ∈ FM Φ, dyadicGridCell A.G I.1 I.2
+  set! sf : ℝ → ℂ := fun y => ((ζ y : ℝ) : ℂ) ^ 2
+  set! qf : bf.Lab ⊕ Fin fp.Mc → ℝ → ℂ := fun Φ => (E Φ).indicator fun y =>
     ∑ m ∈ Finset.univ.filter (fun m : (Σ k : {k // k ∈ K}, Ny k) => m.1.1.1 = Φ),
       am m y * ψ m y - sf y * φ Φ y
   have hζm : Measurable ζ := centerCut_measurable _ _ _
@@ -3363,7 +3364,7 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
       set k₀ : {k // k ∈ K} := ⟨⟨Φ, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩
       have hyk : y ∈ cell k₀ := hyI
       have h := happrox k₀ y hyI
-      set u : ℂ := (Real.fourierChar ((slotCoeff l : ℝ) * centerPhase (bf.vtag z) ρ y) : ℂ)
+      set! u : ℂ := (Real.fourierChar ((slotCoeff l : ℝ) * centerPhase (bf.vtag z) ρ y) : ℂ)
       set u' : ℂ := (Real.fourierChar (-(slotCoeff l : ℝ) * centerPhase (bf.vtag z) ρ y) : ℂ)
       have huw : u * u' = 1 := by
         simp only [u, u']
@@ -3390,7 +3391,7 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
     simp only [E, Finset.mem_filter, Finset.mem_univ, true_and, Set.mem_iUnion₂, exists_prop]
     rfl
   have hqsum : ∀ y, ∑ Φ, ‖qf Φ y‖ ^ 2 / w Φ ≤ δc ^ 2 * N * A.colBudget ^ 2 := fun y => by
-    set Mt := Finset.univ.filter fun Φ => y ∈ E Φ
+    set! Mt := Finset.univ.filter fun Φ => y ∈ E Φ
     rw [← Finset.sum_subset (Finset.subset_univ Mt) (fun Φ _ hΦ => by
       have hy : y ∉ E Φ := fun hy => hΦ (Finset.mem_filter.mpr ⟨Finset.mem_univ _, hy⟩)
       simp only [qf]; rw [Set.indicator_of_notMem hy, norm_zero]; ring)]
@@ -3402,9 +3403,9 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
     rw [nsmul_eq_mul]
     have := hmatched y
     have h0 : 0 ≤ δc ^ 2 * A.colBudget ^ 2 := by positivity
-    nlinarith
+    nlinarith only [this, h0]
   -- local mode weights
-  set εM : (Σ k : {k // k ∈ K}, Ny k) → ℝ := fun m =>
+  set! εM : (Σ k : {k // k ∈ K}, Ny k) → ℝ := fun m =>
     w m.1.1.1 * (∑ i, ‖coef m.1 i‖ ^ 2 + 1)⁻¹
   have hεMpos : ∀ m, 0 < εM m := fun m => by
     have := hw m.1.1.1; simp only [εM]; positivity
@@ -3473,7 +3474,7 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
     rw [Finset.card_eq_sum_card_fiberwise (f := fun m => m.1.1.1) (t := Finset.univ)
       (fun _ _ => Finset.mem_univ _)]
     push_cast
-    set Mt := Finset.univ.filter fun Φ => y ∈ E Φ
+    set! Mt := Finset.univ.filter fun Φ => y ∈ E Φ
     rw [← Finset.sum_subset (Finset.subset_univ Mt) (fun Φ _ hΦ => by
       have hy : y ∉ E Φ := fun hy => hΦ (Finset.mem_filter.mpr ⟨Finset.mem_univ _, hy⟩)
       rw [Nat.cast_eq_zero, Finset.card_eq_zero]
@@ -3484,7 +3485,7 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
         y ∈ cell m.1).filter fun m => m.1.1.1 = Φ).card : ℝ) ≤ bnd := by
       intro Φ hΦ
       obtain ⟨I₀, hI₀, hyI⟩ := Set.mem_iUnion₂.mp (Finset.mem_filter.mp hΦ).2
-      set k₀ : {k // k ∈ K} := ⟨⟨Φ, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩
+      set! k₀ : {k // k ∈ K} := ⟨⟨Φ, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩
       have hsub : ((Finset.univ.filter fun m : (Σ k : {k // k ∈ K}, Ny k) =>
           y ∈ cell m.1).filter fun m => m.1.1.1 = Φ) ⊆
           (Finset.univ : Finset (Ny k₀)).map ⟨fun i => (⟨k₀, i⟩ : Σ k : {k // k ∈ K}, Ny k),
@@ -3549,7 +3550,7 @@ theorem mainAttemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
       have h1 : ((dv k + (bf.vtag z).dim : ℕ) : ℝ) ≤ 2 * dB := by
         have := hdv k; have := hdim z
         exact_mod_cast (by omega : dv k + (bf.vtag z).dim ≤ 2 * dB)
-      nlinarith [le_max_left (1 : ℝ) (4 * B / δc)]
+      nlinarith only [le_max_left (1 : ℝ) (4 * B / δc), h1]
     refine ⟨fun m => m.1.1.2, fun m => lam m.1, fun m => γ m.1 m.2, fun m => ⟨hmodeK m,
       fun y => ?_, hlam m.1, fun y => rfl⟩, hcellcount, {k // k ∈ K}, fun m => m.1,
       dv, θv, β, fun m => σ m.1 m.2, fun m m' hown hcell => ?_, fun m m' hk => ?_, hdv,
@@ -3751,7 +3752,7 @@ theorem ballEdgeH_mono (hHed : 2 ≤ fp.Hed) (dB : ℕ) {n n' : ℕ} (h : n ≤ 
     nlinarith
   have h2 := pow_le_pow_left₀ (by positivity) h1 8
   have := mul_le_mul_of_nonneg_right h2 hl
-  nlinarith
+  nlinarith only [hl, h2]
 
 /-- The uniform first-match size of the attempt: the size `X` of `mainFirstMatch_finite` at the
 largest ball radius `b₁ d₀ + b₁ + bbase 4 + P` of the four ball levels (blueprint line 1934: the
@@ -3854,12 +3855,12 @@ theorem le_modeStar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) (hHed : 2 ≤ fp.Hed)
       have := le_max_left (1 : ℝ) (4 * Bm / δc); linarith))
   have hNg : (0 : ℝ) ≤ A.famVtxBound * (fp.K.potMax A.famVtxBound + 1) := by positivity
   set t1 := Real.exp k
-  set t2 := (A.famVtxBound : ℝ) * (fp.K.potMax A.famVtxBound + 1) * (N + 1) *
+  set! t2 := (A.famVtxBound : ℝ) * (fp.K.potMax A.famVtxBound + 1) * (N + 1) *
     (Bm * (4 * max 1 (4 * Bm / δc) + 1) ^ (4 * dB))
-  set t3 := Bm * (1 + 4 * (2 * dB + 1) * max 1 (4 * Bm / δc))
-  set t4 := A.colBudget ^ 2 * (Bm ^ 2 + 1)
-  set t5 := fp.Hed ^ (dB * dB)
-  set t6 := (Real.sqrt N + 1) * A.colBudget * Bm
+  set! t3 := Bm * (1 + 4 * (2 * dB + 1) * max 1 (4 * Bm / δc))
+  set! t4 := A.colBudget ^ 2 * (Bm ^ 2 + 1)
+  set! t5 := fp.Hed ^ (dB * dB)
+  set! t6 := (Real.sqrt N + 1) * A.colBudget * Bm
   have hS : fp.modeStar D dB H δc N k = t1 + t2 + t3 + t4 + t5 + t6 := rfl
   have h1 : 0 ≤ t1 := (Real.exp_pos _).le
   have h2 : 0 ≤ t2 := by positivity
@@ -3897,7 +3898,7 @@ theorem le_modeStar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) (hHed : 2 ≤ fp.Hed)
   · have : B ≤ t3 := by
       have hm := le_max_left (1 : ℝ) (4 * Bm / δc)
       have : (0 : ℝ) ≤ 4 * (2 * dB + 1) * max 1 (4 * Bm / δc) := by positivity
-      nlinarith
+      nlinarith only [hB1, hBB, this]
     linarith
   · have : (A.famVtxBound : ℝ) * (fp.K.potMax A.famVtxBound + 1) *
         (N * (B * (4 * max 1 (4 * B / δc) + 1) ^ (4 * dB))) ≤ t2 := by
@@ -3911,7 +3912,7 @@ theorem le_modeStar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) (hHed : 2 ≤ fp.Hed)
     linarith
   · have : (A.famVtxBound : ℝ) * (fp.K.potMax A.famVtxBound + 1) * N ≤ t2 := by
       have hNN : N ≤ (N + 1) * (Bm * (4 * max 1 (4 * Bm / δc) + 1) ^ (4 * dB)) := by
-        nlinarith
+        nlinarith only [hN0, hM1m]
       calc _ ≤ (A.famVtxBound : ℝ) * (fp.K.potMax A.famVtxBound + 1) *
             ((N + 1) * (Bm * (4 * max 1 (4 * Bm / δc) + 1) ^ (4 * dB))) :=
             mul_le_mul_of_nonneg_left hNN hNg
@@ -3920,14 +3921,14 @@ theorem le_modeStar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) (hHed : 2 ≤ fp.Hed)
   · have : B * (1 + 4 * (2 * dB + 1) * max 1 (4 * B / δc)) ≤ t3 :=
       mul_le_mul hBB (by
         have : (0 : ℝ) ≤ 4 * (2 * dB + 1) := by positivity
-        nlinarith) (by positivity) (by linarith)
+        nlinarith only [hmax]) (by positivity) (by linarith)
     linarith
   · have : A.colBudget ^ 2 * (B ^ 2 + 1) ≤ t4 :=
-      mul_le_mul_of_nonneg_left (by nlinarith) (sq_nonneg _)
+      mul_le_mul_of_nonneg_left (by nlinarith only [hB1, hBB]) (sq_nonneg _)
     linarith
   · have : Real.sqrt N * A.colBudget * B ≤ t6 := by
       have hsq := Real.sqrt_nonneg N
-      have : Real.sqrt N * A.colBudget ≤ (Real.sqrt N + 1) * A.colBudget := by nlinarith
+      have : Real.sqrt N * A.colBudget ≤ (Real.sqrt N + 1) * A.colBudget := by nlinarith only [hcb]
       exact mul_le_mul this hBB (by linarith) (by positivity)
     linarith
 
@@ -3954,7 +3955,7 @@ theorem log_modeStar_le_aux (D dB : ℕ) {H δc N k E : ℝ} (hk : 0 ≤ k) (hE 
         Real.log (fp.K.potMax A.famVtxBound + 1) + 2 * E + 7 := by
   set LB := (D : ℝ) * fp.Xmax dB H ^ D with hLB
   set Lp := Real.log (fp.K.potMax A.famVtxBound + 1) with hLp
-  set T0 := 4 * (dB + 1) * (LB + E + 6) + E ^ 3 + k + Lp + 2 * E + 5 with hT0
+  set! T0 := 4 * (dB + 1) * (LB + E + 6) + E ^ 3 + k + Lp + 2 * E + 5 with hT0
   have hX1 : 1 ≤ fp.Xmax dB H := fp.one_le_X hHed dB hH _
   have hLB0 : 0 ≤ LB := by positivity
   have hLp0 : 0 ≤ Lp := Real.log_nonneg (by
@@ -3965,12 +3966,12 @@ theorem log_modeStar_le_aux (D dB : ℕ) {H δc N k E : ℝ} (hk : 0 ≤ k) (hE 
   have he2 : (7 : ℝ) ≤ Real.exp 2 := by
     have h := Real.exp_one_gt_d9
     have : Real.exp 2 = Real.exp 1 * Real.exp 1 := by rw [← Real.exp_add]; norm_num
-    rw [this]; nlinarith
+    rw [this]; nlinarith only [h]
   have he3 : (9 : ℝ) ≤ Real.exp 3 := by
     have : Real.exp 3 = Real.exp 1 * Real.exp 2 := by rw [← Real.exp_add]; norm_num
-    rw [this]; nlinarith
+    rw [this]; nlinarith only [he1, he2]
   have hexpE : 1 ≤ Real.exp E := Real.one_le_exp (by linarith)
-  set B := Real.exp LB with hB
+  set! B := Real.exp LB with hB
   have hB1 : 1 ≤ B := Real.one_le_exp hLB0
   have hcb := two_le_colBudget (A := A)
   -- the vertex bound
@@ -4013,13 +4014,13 @@ theorem log_modeStar_le_aux (D dB : ℕ) {H δc N k E : ℝ} (hk : 0 ≤ k) (hE 
   have key : 4 * ((dB : ℝ) + 1) * (LB + E + 6) =
       4 * (dB * LB) + 4 * (dB * E) + 24 * dB + 4 * LB + 4 * E + 24 := by ring
   -- the six terms
-  set t1 := Real.exp k
-  set t2 := (A.famVtxBound : ℝ) * (fp.K.potMax A.famVtxBound + 1) * (N + 1) *
+  set! t1 := Real.exp k
+  set! t2 := (A.famVtxBound : ℝ) * (fp.K.potMax A.famVtxBound + 1) * (N + 1) *
     (B * (4 * max 1 (4 * B / δc) + 1) ^ (4 * dB))
-  set t3 := B * (1 + 4 * (2 * dB + 1) * max 1 (4 * B / δc))
-  set t4 := A.colBudget ^ 2 * (B ^ 2 + 1)
-  set t5 := fp.Hed ^ (dB * dB)
-  set t6 := (Real.sqrt N + 1) * A.colBudget * B
+  set! t3 := B * (1 + 4 * (2 * dB + 1) * max 1 (4 * B / δc))
+  set! t4 := A.colBudget ^ 2 * (B ^ 2 + 1)
+  set! t5 := fp.Hed ^ (dB * dB)
+  set! t6 := (Real.sqrt N + 1) * A.colBudget * B
   have hS : fp.modeStar D dB H δc N k = t1 + t2 + t3 + t4 + t5 + t6 := rfl
   have hT1 : t1 ≤ Real.exp T0 := Real.exp_le_exp.mpr (by linarith)
   have hT2 : t2 ≤ Real.exp T0 := by
@@ -4176,7 +4177,7 @@ theorem log_potMax_le {E : ℝ} (hE : 1 ≤ E) (hcB : A.colBudget ≤ Real.exp E
     have h1 : d * ((flog32 Nv : ℕ) : ℝ) + 1 ≤ (d + 1) * ((Nv : ℝ) + 1) := by
       have : d * ((flog32 Nv : ℕ) : ℝ) ≤ d * Nv := mul_le_mul_of_nonneg_left hf hd0
       have : (0 : ℝ) ≤ Nv := Nat.cast_nonneg _
-      nlinarith
+      nlinarith only [hd, hf]
     have h2 : d + 1 ≤ Real.exp d := Real.add_one_le_exp d
     exact h1.trans (mul_le_mul h2 hNv1 (by positivity) (Real.exp_pos _).le)
   have hpm : ((fp.K.potMax Nv : ℕ) : ℝ) ≤
@@ -4226,7 +4227,7 @@ theorem Xmax_le_pow {c dB : ℕ} {H k : ℝ} (hk : 1 ≤ k) (hL : (fp.Lc : ℝ) 
   have hw0 : 0 ≤ w := by linarith
   have hEw : E ≤ w ^ c := pow_le_pow_left₀ (by linarith) (hku.trans huw) c
   have hpw : ∀ a b : ℕ, a ≤ b → w ^ a ≤ w ^ b := fun a b h => pow_le_pow_right₀ hw1 h
-  have hw2 : (100000 : ℝ) ≤ w ^ 2 := by nlinarith
+  have hw2 : (100000 : ℝ) ≤ w ^ 2 := by nlinarith only [hk, hku]
   have hstep : ∀ (a b : ℕ) (r : ℝ), a + 1 = b → r ≤ 5002 → r * w ^ a ≤ w ^ b :=
       fun a b r hab hr => by
     rw [← hab, pow_succ]
@@ -4256,7 +4257,7 @@ theorem Xmax_le_pow {c dB : ℕ} {H k : ℝ} (hk : 1 ≤ k) (hL : (fp.Lc : ℝ) 
           gcongr
       _ = w ^ (12 * c + 11) := by ring
   -- the largest ball radius
-  set n0 : ℕ := fp.K.b1 * fp.K.d0 + fp.K.b1 + fp.bbase 4 + fp.P with hn0
+  set! n0 : ℕ := fp.K.b1 * fp.K.d0 + fp.K.b1 + fp.bbase 4 + fp.P with hn0
   have hbb : (fp.bbase 4 : ℝ) = 20 * fp.P * (fp.Lc + 1) + 30 * fp.P := by
     have : fp.bbase 4 = 20 * fp.P * (fp.Lc + 1) + 30 * fp.P := by
       change 20 * fp.P * (fp.Lc + 1) + 10 * (4 - 1) * fp.P = _
@@ -4293,7 +4294,7 @@ theorem Xmax_le_pow {c dB : ℕ} {H k : ℝ} (hk : 1 ≤ k) (hL : (fp.Lc : ℝ) 
       rw [Real.log_le_iff_le_exp (by norm_num)]
       have h := Real.exp_one_gt_d9
       have : Real.exp 2 = Real.exp 1 * Real.exp 1 := by rw [← Real.exp_add]; norm_num
-      nlinarith
+      nlinarith only [h, this]
     unfold ballEdgeH
     rw [Real.log_exp]
     have hdB1 : (dB : ℝ) + 1 ≤ w ^ (c + 1) := by
@@ -4316,7 +4317,7 @@ theorem Xmax_le_pow {c dB : ℕ} {H k : ℝ} (hk : 1 ≤ k) (hL : (fp.Lc : ℝ) 
       mul_le_mul (mul_le_mul hw2 hnd8 (by positivity) (by positivity)) hl2H hl2H0
         (by positivity)
     have he : w ^ 2 * w ^ (112 * c + 112) * w ^ (c + 1) = w ^ (113 * c + 115) := by ring
-    linarith
+    linarith only [hl3, hprod, he]
   have hctb : Real.log (chartTranslationBudget (H ^ 6)) ≤ w ^ (3 * c + 2) := by
     unfold chartTranslationBudget logarithmicSize
     rw [Real.log_exp, Real.log_pow]
@@ -4357,7 +4358,7 @@ theorem log_potMax_le_pow {c : ℕ} {k : ℝ} (hk : 1 ≤ k) (hcB : A.colBudget 
   have hw0 : 0 ≤ w := by linarith
   have hEw : E ≤ w ^ c := pow_le_pow_left₀ (by linarith) (hku.trans huw) c
   have hpw : ∀ a b : ℕ, a ≤ b → w ^ a ≤ w ^ b := fun a b h => pow_le_pow_right₀ hw1 h
-  have hw2 : (100000 : ℝ) ≤ w ^ 2 := by nlinarith
+  have hw2 : (100000 : ℝ) ≤ w ^ 2 := by nlinarith only [hk, hku]
   have hstep : ∀ (a b : ℕ) (r : ℝ), a + 1 = b → r ≤ 5002 → r * w ^ a ≤ w ^ b :=
       fun a b r hab hr => by
     rw [← hab, pow_succ]
@@ -4404,7 +4405,7 @@ theorem log_modeStar_poly (c D : ℕ) :
   intro κ c₀ A bf fp dB H δc N k hk hL hHm hdB hHed hHedk hH hHk hδck hN0 hNk hcB
   set E := k ^ c with hE
   set u := k * (fp.P : ℝ) with hu
-  set w := 5002 * u with hw
+  set! w := 5002 * u with hw
   have hP1 : (1 : ℝ) ≤ fp.P := by exact_mod_cast fp.hP
   have hE1 : 1 ≤ E := one_le_pow₀ hk
   have hku : k ≤ u := le_mul_of_one_le_right (by linarith) hP1
@@ -4416,7 +4417,7 @@ theorem log_modeStar_poly (c D : ℕ) :
   have hw0 : 0 ≤ w := by linarith
   have hEw : E ≤ w ^ c := pow_le_pow_left₀ (by linarith) (hku.trans huw) c
   have hpw : ∀ a b : ℕ, a ≤ b → w ^ a ≤ w ^ b := fun a b h => pow_le_pow_right₀ hw1 h
-  have hw2 : (100000 : ℝ) ≤ w ^ 2 := by nlinarith
+  have hw2 : (100000 : ℝ) ≤ w ^ 2 := by nlinarith only [hk, hku]
   have hstep : ∀ (a b : ℕ) (r : ℝ), a + 1 = b → r ≤ 5002 → r * w ^ a ≤ w ^ b :=
       fun a b r hab hr => by
     rw [← hab, pow_succ]
@@ -4558,7 +4559,7 @@ theorem fractProfile_deriv_le {δ : ℝ} (hδ : 0 < δ) {m i : ℕ} (hi : i ≤ 
   calc _ ≤ |iteratedDeriv i (branchProfile δ) (t₀ - ⌊t₀⌋)| +
         |iteratedDeriv i (branchProfile δ) (t₀ - (⌊t₀⌋ - 1))| := abs_add_le _ _
     _ ≤ B ^ i + B ^ i := add_le_add h1 h2
-    _ ≤ 2 ^ i * B ^ i := by nlinarith [pow_nonneg hB0 i]
+    _ ≤ 2 ^ i * B ^ i := by nlinarith only [pow_nonneg hB0 i, h3]
 
 /-- The squared periodic gauge `w ↦ (Π_i b({w_i - ρ_i}))²` on `ℝ^d`. -/
 noncomputable def gaugeSq {d : ℕ} (δ : ℝ) (ρ : Fin d → ℝ) (w : Fin d → ℝ) : ℂ :=
@@ -4917,7 +4918,7 @@ theorem gaugeMultA_mono {δ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) {d d' : ℕ}
     mul_le_mul hQQ (mul_le_mul hdr hRR hR0 (by linarith)) (by positivity) (by linarith)
   have h3 : Cm * 18 * (4 * Q0) ≤ Cm' * 18 * (4 * Q0') := by
     have := mul_le_mul hCC hQQ hQ0 (by linarith)
-    nlinarith
+    nlinarith only [hQ0, hQQ, hCm0, hCC]
   have h2 : (d : ℝ) * ((d : ℝ) * (Cm * 18 * (4 * Q0))) ≤
       (d' : ℝ) * ((d' : ℝ) * (Cm' * 18 * (4 * Q0'))) :=
     mul_le_mul hdr (mul_le_mul hdr h3 (by positivity) (by linarith)) (by positivity)
@@ -4934,7 +4935,7 @@ theorem gaugeMultA_mono {δ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) {d d' : ℕ}
         16 * (Q0' * (d' * profR δ (d' + d' + 1))) := by ring
     rw [e1, e2]
     have := mul_le_mul_of_nonneg_left h2 (by positivity : (0 : ℝ) ≤ 2 * Real.pi * 8)
-    nlinarith
+    nlinarith only [h1, this]
   have hb1 : 1 ≤ 4 * (4 * Q0' * (d' * profR δ (d' + d' + 1))) +
       2 * Real.pi * (8 * ((d' : ℝ) * ((d' : ℝ) * (Cm' * 18 * (4 * Q0'))))) := by
     have : 1 ≤ Q0' * (d' * profR δ (d' + d' + 1)) :=
@@ -5003,16 +5004,17 @@ theorem gaugeTail_mono {δ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1) {d d' : ℕ} 
     have hKK : bumpConst * (8 * (((d + 1 : ℕ) : ℝ) + 1)) ^ 32 * (2 / δ) ≤
         bumpConst * (8 * (((d' + 1 : ℕ) : ℝ) + 1)) ^ 32 * (2 / δ) := by gcongr
     have hb1 : 1 ≤ 2 * ((d : ℝ) * (2 * (bumpConst * (8 * (((d + 1 : ℕ) : ℝ) + 1)) ^ 32 *
-        (2 / δ)))) := by nlinarith
+        (2 / δ)))) := by nlinarith only [hd1, hK1]
     have hbb : 2 * ((d : ℝ) * (2 * (bumpConst * (8 * (((d + 1 : ℕ) : ℝ) + 1)) ^ 32 *
         (2 / δ)))) ≤ 2 * ((d' : ℝ) * (2 * (bumpConst * (8 * (((d' + 1 : ℕ) : ℝ) + 1)) ^ 32 *
         (2 / δ)))) := by
       have := mul_le_mul hdr hKK (by linarith) (by linarith)
-      nlinarith
+      nlinarith only [hdr, hK1, hKK]
     have hs1 : 1 ≤ Real.sqrt d := by rw [Real.one_le_sqrt]; exact hd1
     have hss : Real.sqrt d ≤ Real.sqrt d' := Real.sqrt_le_sqrt hdr
     refine mul_le_mul (mul_le_mul (pow_le_pow_right₀ (by norm_num) hdd)
-      ((pow_le_pow_left₀ (by linarith) hbb _).trans (pow_le_pow_right₀ (by linarith) (by omega)))
+      ((pow_le_pow_left₀ (by linarith only [hb1]) hbb _).trans
+        (pow_le_pow_right₀ (by linarith only [hb1, hbb]) (by omega)))
       (by positivity) (by positivity))
       ((pow_le_pow_left₀ (by positivity) hss _).trans
         (pow_le_pow_right₀ (hs1.trans hss) (by omega))) (by positivity) (by positivity)
@@ -5109,23 +5111,23 @@ theorem gaugeMultNorm_le_exp {dB : ℕ} {Hed δ E : ℝ} (hE : 1 ≤ E) (hdB : (
     have h2 : 2 / (δ / 2) ≤ Real.exp (E + 2) := by
       rw [show 2 / (δ / 2) = 4 * δ⁻¹ by field_simp; ring, Real.exp_add]
       have := mul_le_mul_of_nonneg_left hδE (by norm_num : (0 : ℝ) ≤ 4)
-      nlinarith [Real.exp_pos E]
+      nlinarith only [Real.exp_pos E, hδE, he2]
     calc bumpConst * (8 * (((dB + dB + 1 : ℕ) : ℝ) + 1)) ^ 32 * (2 / (δ / 2))
         ≤ Real.exp κ * Real.exp (512 * E + 512) * Real.exp (E + 2) := by
           rw [← hbump]; gcongr
       _ = Real.exp (κ + 513 * E + 514) := by rw [← Real.exp_add, ← Real.exp_add]; ring_nf
   have hR0 : 0 ≤ profR (δ / 2) (dB + dB + 1) := profR_nonneg (by linarith) _
   -- the base of the power
-  set b := 4 * (4 * Hed ^ (dB * dB) * (dB * profR (δ / 2) (dB + dB + 1))) +
+  set! b := 4 * (4 * Hed ^ (dB * dB) * (dB * profR (δ / 2) (dB + dB + 1))) +
     2 * Real.pi * (8 * ((dB : ℝ) * ((dB : ℝ) * (Hed * 18 * (4 * Hed ^ (dB * dB))))))
   have hb0 : 0 ≤ b := by have := Real.pi_pos; positivity
   have hb : b ≤ Real.exp (E ^ 3 + κ + 514 * E + 523) := by
-    set X := Real.exp (E ^ 3 + κ + 514 * E + 514)
+    set! X := Real.exp (E ^ 3 + κ + 514 * E + 514)
     have hX1 : Real.exp (E ^ 3) * Real.exp E * Real.exp (κ + 513 * E + 514) ≤ X := by
       rw [← Real.exp_add, ← Real.exp_add]; exact Real.exp_le_exp.mpr (by linarith)
     have hX2 : Real.exp E * (Real.exp E * (Real.exp E * Real.exp (E ^ 3))) ≤ X := by
       rw [← Real.exp_add, ← Real.exp_add, ← Real.exp_add]
-      exact Real.exp_le_exp.mpr (by nlinarith)
+      exact Real.exp_le_exp.mpr (by nlinarith only [hE, hκ])
     have t1 : Hed ^ (dB * dB) * (dB * profR (δ / 2) (dB + dB + 1)) ≤ X :=
       le_trans (by
         rw [← mul_assoc]
@@ -5179,7 +5181,7 @@ theorem gaugeMultNorm_le_exp {dB : ℕ} {Hed δ E : ℝ} (hE : 1 ≤ E) (hdB : (
           ((dB + dB : ℕ) : ℝ) ≤ (dB + dB : ℕ) + 1)
         refine le_trans this ?_
         rw [Real.sqrt_le_left (by positivity)]
-        nlinarith [(Nat.cast_nonneg (dB + dB) : (0 : ℝ) ≤ (dB + dB : ℕ))]
+        nlinarith only [(Nat.cast_nonneg (dB + dB) : (0 : ℝ) ≤ (dB + dB : ℕ))]
       refine this.trans ((Real.add_one_le_exp _).trans (Real.exp_le_exp.mpr ?_))
       push_cast; linarith
     calc Real.sqrt (dB + dB : ℕ) ^ (dB + dB + 1) ≤ Real.exp (2 * E) ^ (dB + dB + 1) :=
@@ -5187,7 +5189,7 @@ theorem gaugeMultNorm_le_exp {dB : ℕ} {Hed δ E : ℝ} (hE : 1 ≤ E) (hdB : (
       _ = Real.exp ((dB + dB + 1 : ℕ) * (2 * E)) := by rw [← Real.exp_nat_mul]
       _ ≤ Real.exp (2 * E * (2 * E + 1)) := by
           refine Real.exp_le_exp.mpr ?_
-          push_cast; nlinarith
+          push_cast; nlinarith only [hdB]
   set TG := 12 * E + (2 * E + 1) * (E ^ 3 + κ + 514 * E + 523) + 2 * E * (2 * E + 1)
   have hTG : 4 * E ≤ TG := by
     have : 0 ≤ (2 * E + 1) * (E ^ 3 + κ + 514 * E + 523) := by positivity
@@ -5251,7 +5253,7 @@ theorem gaugeSqNorm_le_exp {dB : ℕ} {δ E : ℝ} (hE : 1 ≤ E) (hdB : (dB : �
     have e2 : 2 * ((dB : ℝ) * (2 * (bumpConst * (8 * (((dB + 1 : ℕ) : ℝ) + 1)) ^ 32 *
         (2 / δ)))) = 4 * ((dB : ℝ) * (bumpConst * (8 * (((dB + 1 : ℕ) : ℝ) + 1)) ^ 32 *
         (2 / δ))) := by ring
-    rw [e2]; linarith
+    rw [e2]; linarith only [hprod, h4]
   have hb0 : 0 ≤ 2 * ((dB : ℝ) * (2 * (bumpConst * (8 * (((dB + 1 : ℕ) : ℝ) + 1)) ^ 32 *
       (2 / δ)))) := by positivity
   have hpow : (2 * ((dB : ℝ) * (2 * (bumpConst * (8 * (((dB + 1 : ℕ) : ℝ) + 1)) ^ 32 *
@@ -5272,14 +5274,14 @@ theorem gaugeSqNorm_le_exp {dB : ℕ} {δ E : ℝ} (hE : 1 ≤ E) (hdB : (dB : �
   have hs : Real.sqrt dB ^ (dB + 1) ≤ Real.exp (E * (E + 1)) := by
     have h1 : Real.sqrt dB ≤ Real.exp E := by
       have : Real.sqrt dB ≤ dB + 1 := by
-        rw [Real.sqrt_le_left (by positivity)]; nlinarith
+        rw [Real.sqrt_le_left (by positivity)]; nlinarith only
       exact this.trans ((Real.add_one_le_exp _).trans (Real.exp_le_exp.mpr hdB))
     calc Real.sqrt dB ^ (dB + 1) ≤ Real.exp E ^ (dB + 1) :=
           pow_le_pow_left₀ (Real.sqrt_nonneg _) h1 _
       _ = Real.exp ((dB + 1 : ℕ) * E) := by rw [← Real.exp_nat_mul]
       _ ≤ Real.exp (E * (E + 1)) := by
           refine Real.exp_le_exp.mpr ?_
-          push_cast; nlinarith
+          push_cast; nlinarith only [hdB]
   set TS := 2 * E + (E + 1) * (κ + 258 * E + 515) + E * (E + 1)
   have hTS : 2 * E ≤ TS := by
     have : 0 ≤ (E + 1) * (κ + 258 * E + 515) := by positivity
@@ -5457,7 +5459,7 @@ theorem log_Bstar_le (D dB : ℕ) {H δc N : ℝ} {k : ℝ} (hk0 : 0 ≤ k) {δ 
         gaugeSqNorm dB δ + fp.hgtStar D dB H δc := rfl
     have := fp.one_le_hgtStar D dB H δc
     linarith
-  set x := 2 * (fp.tailStar dB δ + 1) * Ds ^ 300
+  set! x := 2 * (fp.tailStar dB δ + 1) * Ds ^ 300
   have hx1 : 1 ≤ x := by
     have : 1 ≤ Ds ^ 300 := one_le_pow₀ hDs1
     nlinarith
@@ -5560,7 +5562,7 @@ theorem log_modeStarG_poly (c D : ℕ) :
       rw [Real.exp_add]
       have he1 : (2 : ℝ) ≤ Real.exp 1 := by linarith [Real.add_one_le_exp (1 : ℝ)]
       have := Real.one_le_exp hTM0
-      nlinarith
+      nlinarith only [hMle, he1, this]
     have hk1 := fp.one_le_keyHgt D dB H δc
     have hH0 : 0 ≤ fp.Hed ^ (dB * dB) + 1 := by positivity
     have hbase : (fp.Hed ^ (dB * dB) + 1) * (3 * (fp.keyHgt D dB H δc *
@@ -5591,7 +5593,7 @@ theorem log_modeStarG_poly (c D : ℕ) :
           have : (0 : ℝ) ≤ M1 ^ 10 := by positivity
           nlinarith
       _ = Real.exp (10 * TM + 13) := by rw [← Real.exp_add]; ring_nf
-  set T := 10 * TM + TG + TS + 13
+  set! T := 10 * TM + TG + TS + 13
   have hsum : fp.modeStarG D dB H δc N k δ ≤ Real.exp (T + 2) := by
     have h1 : Real.exp TM ≤ Real.exp T := Real.exp_le_exp.mpr (by linarith)
     have h2 : Real.exp (TG + 2) ≤ Real.exp T := Real.exp_le_exp.mpr (by linarith)
@@ -5721,7 +5723,7 @@ theorem gBall_cell_rep (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudge
       columnL2Restriction (dyadicGridCell A.G U.1 U.2) (dyadicGridCell_measurable A.G U.1 U.2)
           (colRelabel (bf.rv fp.Mc s) (fp.gBall l s mb G j u z)) =
         ∑ Φ ∈ fp.primaries l s G j d a, c Φ • mainCol A.G fp.Mc (bf.origCols l) s U Φ := by
-  set cU := dyadicGridCell A.G U.1 U.2
+  set! cU := dyadicGridCell A.G U.1 U.2
   have hmU : MeasurableSet cU := dyadicGridCell_measurable A.G U.1 U.2
   rcases ha : deepAnc (A := A) U with _ | a
   · refine Or.inl ⟨rfl, ?_⟩
@@ -5729,7 +5731,7 @@ theorem gBall_cell_rep (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudge
   · refine Or.inr ⟨a, rfl, ?_⟩
     obtain ⟨haC, hUa, -⟩ := deepAnc_spec ha
     set S := fp.primaries l s G j d a
-    set M := Submodule.span ℂ (Set.range fun Φ : {Φ // Φ ∈ S} =>
+    set! M := Submodule.span ℂ (Set.range fun Φ : {Φ // Φ ∈ S} =>
       mainCol A.G fp.Mc (bf.origCols l) s U Φ.1)
     have hmemS : ∀ Φ ∈ S, MemLp (cU.indicator (privateColumnValue
         (mainScalar fp.Mc (bf.origCols l) s) (mainWeight fp.Mc (bf.origCols l)) Φ)) 2 volume := by
@@ -5894,7 +5896,7 @@ theorem frozen_endpoint {Md : Type} [Fintype Md] (l : Fin 4) (s : List (CatCol b
       ∑ m, ‖β m‖ ≤ B * (Real.sqrt N * A.colBudget *
         (‖columnL2Restriction (dyadicGridCell A.G U.1 U.2) (dyadicGridCell_measurable A.G U.1 U.2)
           (fp.frozenZ l s mb G j ls u)‖ / Real.sqrt (dyadicGridLength A.G U.1))) := by
-  set cU := dyadicGridCell A.G U.1 U.2
+  set! cU := dyadicGridCell A.G U.1 U.2
   have hmU : MeasurableSet cU := dyadicGridCell_measurable A.G U.1 U.2
   set Z := fp.frozenZ l s mb G j ls u
   have hcb := two_le_colBudget (A := A)
@@ -5927,7 +5929,7 @@ theorem frozen_endpoint {Md : Type} [Fintype Md] (l : Fin 4) (s : List (CatCol b
         cS = fun Φ => if Φ ∈ S then c Φ else 0 := ⟨_, rfl⟩
     have hcSS : ∀ Φ, cS Φ ≠ 0 → Φ ∈ S := fun Φ hΦ => by
       by_contra h; exact hΦ (by rw [hcS]; simp [h])
-    set yU := dyadicGridLeft A.G U.1 U.2
+    set! yU := dyadicGridLeft A.G U.1 U.2
     have hyUmem : yU ∈ cU := dyadicGridCell_left_mem A.G _ _
     -- the mode coefficients of the primaries at `a` are constant on `U`
     have hconst : ∀ m, cS (L.own m) ≠ 0 → ∀ y ∈ cU, L.a m y = L.a m yU := by
@@ -6183,7 +6185,7 @@ theorem exists_mainModeSystem (κ : LocalKernelClass) (c₀ : ℕ) :
     ⟨cellOf, lamOf, γOf, hcell, hcount, Key, keyOf, dvOf, θvOf, -, -, hok, hkl, hdv, -, -, hkoc,
       hkd⟩, -⟩ := hfin A bf fp l s hT htag d A.cells subset_rfl hG hHed hdim hC hδ hδ' ρ hρ
     hHs hdz hCz hHδ hδc hN0 hN hδcN
-  set e := Fintype.equivFin (bf.Lab ⊕ Fin fp.Mc)
+  set! e := Fintype.equivFin (bf.Lab ⊕ Fin fp.Mc)
   set Bk := B * (1 + 4 * (2 * dB + 1) * max 1 (4 * B / δc))
   let Ms : ModeSystem A.G (Fintype.card (bf.Lab ⊕ Fin fp.Mc)) :=
     { Md := Md

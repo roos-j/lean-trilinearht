@@ -343,7 +343,7 @@ theorem mainProj_gain (s : List (CatCol Tg)) (d : CatCol Tg) (I : ℤ × ℤ) (r
           ℝ → ColumnHilbert (V ⊕ Fin Mc)) y none‖ ≤
       2 * Real.sqrt (dyadicGridLength G I.1) *
         ‖(mainProj G Mc O (s ++ [d]) I r M - mainProj G Mc O s I r M) X‖ := by
-  set u := mainCol G Mc O (s ++ [d]) I (Sum.inr ⟨s.length, hlen⟩) with hu
+  set! u := mainCol G Mc O (s ++ [d]) I (Sum.inr ⟨s.length, hlen⟩) with hu
   set Pn := mainProj G Mc O (s ++ [d]) I r M
   set Po := mainProj G Mc O s I r M
   have hcell := dyadicGridCell_measurable G I.1 I.2
@@ -1374,7 +1374,7 @@ theorem gain {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameTagBound κ c₀ 
     rw [hzt]; exact columnPhys_memLp_normalized _ _ _
   obtain ⟨R, hR, γ, hbd⟩ := hst H hH (tagOf x) (hdim x) hut hua hub hta htb hab A hA hAθ hAM hAq
     hr hwI z hzu hztm hza hzb hzt2 hza2 hzb2
-  set d : CatCol Tg := templateCol (tagOf x) w.t R γ I w.r x with hd
+  set! d : CatCol Tg := templateCol (tagOf x) w.t R γ I w.r x with hd
   refine ⟨d, rfl, rfl, hx, ⟨R, hR, γ, rfl⟩, ?_⟩
   have hgain := mainProj_gain (G := G) (O := O) s d I w.r w.M hlen subset_rfl le_rfl hx
     (w.hist G Mc O I mH s) (hist_fresh mH s hb)
@@ -1410,7 +1410,7 @@ theorem gain {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameTagBound κ c₀ 
     mul_lt_mul_of_pos_right h2 hsq
   have e2 : H₀ * (2 * q / Real.sqrt r) * Real.sqrt r = 2 * H₀ * q := by field_simp
   rw [e2] at h3
-  nlinarith
+  nlinarith only [h3]
 
 end MainTest
 
@@ -1454,10 +1454,10 @@ theorem main_cell_closure {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameTagB
   have hcat : ∀ (s : List Dt) (d : Dt), cat (s ++ [d]) = cat s ++ [d.1] := by
     intro s d; simp only [cat, List.map_append, List.map_cons, List.map_nil, List.append_assoc]
   set Rset := Finset.univ.image (fun w => (tests w).r)
-  set δ : ℕ → ℝ := fun r => τ r / (2 * H₀)
-  set P : W → List Dt → ColumnL2 (V ⊕ Fin Mc) →L[ℂ] ColumnL2 (V ⊕ Fin Mc) :=
+  set! δ : ℕ → ℝ := fun r => τ r / (2 * H₀)
+  set! P : W → List Dt → ColumnL2 (V ⊕ Fin Mc) →L[ℂ] ColumnL2 (V ⊕ Fin Mc) :=
     fun w s => mainProj G Mc O (cat s) I (tests w).r (tests w).M
-  set Q : W → ℕ → List Dt → ColumnL2 (V ⊕ Fin Mc) →L[ℂ] ColumnL2 (V ⊕ Fin Mc) :=
+  set! Q : W → ℕ → List Dt → ColumnL2 (V ⊕ Fin Mc) →L[ℂ] ColumnL2 (V ⊕ Fin Mc) :=
     fun w l s => (tests w).Q G Mc O I (cat s) l
   have hP : ∀ w s, IsStarProjection (P w s) := fun w s => mainProj_isStarProjection _ _ _ _ _ _ _
   have hP1 : ∀ w s d, (P w s).comp (P w (s ++ [d])) = P w s := fun w s d => by
@@ -1577,8 +1577,8 @@ theorem main_tree_closure {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameTagB
         τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D)) ≤ 0) ∧
       cat.length ≤ L.length * Tmax := by
   classical
-  set δ : ℕ → ℝ := fun r => τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))
-  set c : ℕ → ℤ × ℤ := fun i => L.getD i (0, 0) with hc
+  set! δ : ℕ → ℝ := fun r => τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))
+  set! c : ℕ → ℤ × ℤ := fun i => L.getD i (0, 0) with hc
   have hcL : ∀ i (hi : i < L.length), c i = L[i] := fun i hi => by
     simp only [hc, List.getD_eq_getElem _ _ hi]
   -- the invariant after the first `n` cells
@@ -1603,7 +1603,7 @@ theorem main_tree_closure {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameTagB
     | succ n ih =>
       intro hn
       obtain ⟨cat, hpass, hbirth, hcount, hlen⟩ := ih (by omega)
-      set I := c n with hI
+      set! I := c n with hI
       have hIL : I ∈ L := by rw [hI, hcL n (by omega)]; exact List.getElem_mem _
       obtain ⟨s, hs, hslen, hspass, hscount⟩ := main_cell_closure (O := O) hst hH hdim (hwI I hIL)
         (tests I) mH τ (hτ I) (s₀ ++ cat) (fun w => ⟨(hbase I hIL w).1.mono (by simp),
@@ -1891,7 +1891,7 @@ theorem main_closure (fp : bf.FamParams) (Tc : Finset (ℤ × ℤ)) (hTc : Tc �
   classical
   set H₀ := Real.exp (Dst * (1 + Real.log HS) ^ Dst) with hH₀
   set Dv := A.famVtxBound with hDv
-  set Q : ℝ := 4 ^ fp.mH * projectionPrefixConstant Tmax ^ (2 * fp.mH) with hQ
+  set! Q : ℝ := 4 ^ fp.mH * projectionPrefixConstant Tmax ^ (2 * fp.mH) with hQ
   set Kc := closureRatio Dv Kt fp.mH Tmax H₀ τ₃ with hKc
   have hH₀p : 0 < H₀ := Real.exp_pos _
   have hDvp : 0 < Dv := A.one_le_famVtxBound
@@ -1905,7 +1905,7 @@ theorem main_closure (fp : bf.FamParams) (Tc : Finset (ℤ × ℤ)) (hTc : Tc �
     intro r
     induction r with
     | zero => linarith
-    | succ r ih => have := hratio r; nlinarith
+    | succ r ih => have := hratio r; nlinarith only [hgr, ih, this]
   have hmono : Monotone n := monotone_nat_of_le_succ fun r => by
     have := hratio r; have := hpos r; nlinarith
   have hτp : ∀ r, 0 < catThreshold Dv τ₃ n r := fun r => catThreshold_pos hDvp hτ₃ (hpos _)
@@ -1947,10 +1947,10 @@ theorem main_closure (fp : bf.FamParams) (Tc : Finset (ℤ × ℤ)) (hTc : Tc �
           rw [Finset.sum_const, nsmul_eq_mul]
       _ ≤ (fp.Lc + 5) * (Kc * n (fp.Lc + 4)) := mul_le_mul_of_nonneg_right hcard hKn
       _ < (1 + (fp.Lc + 6) * Mp * Kc) * n (fp.Lc + 4) := by
-          have h56 : (fp.Lc + 5 : ℝ) ≤ (fp.Lc + 6) * Mp := by nlinarith
+          have h56 : (fp.Lc + 5 : ℝ) ≤ (fp.Lc + 6) * Mp := by nlinarith only [hMp']
           have : (fp.Lc + 5 : ℝ) * Kc ≤ (fp.Lc + 6) * Mp * Kc :=
             mul_le_mul_of_nonneg_right h56 hKc0
-          nlinarith
+          nlinarith only [hn4, hKn, h56]
       _ ≤ n (fp.Lc + 5) := hratio (fp.Lc + 4)
       _ ≤ Tmax := hT
   obtain ⟨L, hnd, hmem, hord⟩ := exists_coarse_first A.G Tc
@@ -2032,11 +2032,11 @@ theorem main_closure (fp : bf.FamParams) (Tc : Finset (ℤ × ℤ)) (hTc : Tc �
     have h5 : (C.card : ℝ) * r * (Kc * n (r - 1)) ≤ (fp.Lc + 6) * Mp * Kc * n (r - 1) := by
       have : (C.card : ℝ) * r ≤ Mp * (fp.Lc + 6) :=
         mul_le_mul hCM hrL (Nat.cast_nonneg _) (by positivity)
-      nlinarith
+      nlinarith only [hKn, this]
     have h6 := hmono (Nat.zero_le (r - 1))
     have h7 := hratio (r - 1)
     rw [Nat.sub_add_cancel hr1] at h7
-    nlinarith
+    nlinarith only [h4, h5, h6, h7]
 
 /-- Blueprint lem:closure, the reserved helper closure (lines 1815, 1820, 1828): for any slot
 catalogs and any finite families of helper tests of rank `L + 5` on the active cells (at most
@@ -2071,7 +2071,7 @@ theorem helper_closure (fp : bf.FamParams) (Tc : Finset (ℤ × ℤ)) (hTc : Tc 
   classical
   set H₀ := Real.exp (Dst * (1 + Real.log HS) ^ Dst) with hH₀
   set Dv := A.famVtxBound with hDv
-  set Q : ℝ := 4 ^ fp.mH * projectionPrefixConstant Tmax ^ (2 * fp.mH) with hQ
+  set! Q : ℝ := 4 ^ fp.mH * projectionPrefixConstant Tmax ^ (2 * fp.mH) with hQ
   set Kc := closureRatio Dv Kt fp.mH Tmax H₀ τ₃ with hKc
   have hH₀p : 0 < H₀ := Real.exp_pos _
   have hDvp : 0 < Dv := A.one_le_famVtxBound
@@ -2267,7 +2267,7 @@ theorem names_count_poly (c : ℕ) {k : ℝ} (hk : 6 * c + 6 ≤ k) (Lc D Hmax m
   have a4 : ((Lc + 6) * ((Lc + 1 + D) * (Hmax + 1)) * 2 : ℝ) ≤ E ^ 5 := by
     have : ((Lc + 6) * ((Lc + 1 + D) * (Hmax + 1)) : ℝ) ≤ E * (2 * E * E) :=
       mul_le_mul a1 a3 (by positivity) (by positivity)
-    have h4 : (4 : ℝ) ≤ E ^ 2 := by nlinarith
+    have h4 : (4 : ℝ) ≤ E ^ 2 := by nlinarith only [hL, hkE]
     calc ((Lc + 6) * ((Lc + 1 + D) * (Hmax + 1)) * 2 : ℝ) ≤ E * (2 * E * E) * 2 := by linarith
       _ = 4 * E ^ 3 := by ring
       _ ≤ E ^ 2 * E ^ 3 := mul_le_mul_of_nonneg_right h4 (by positivity)
@@ -2303,8 +2303,8 @@ theorem names_count_poly (c : ℕ) {k : ℝ} (hk : 6 * c + 6 ≤ k) (Lc D Hmax m
   rw [hE, ← Real.exp_nat_mul]
   apply Real.exp_le_exp.mpr
   have hlog : Real.log k ≤ k := (Real.log_le_sub_one_of_pos (by linarith)).trans (by linarith)
-  have hm' : (mH : ℝ) ≤ c * (k + 1) := hm.trans (by nlinarith)
-  have hk2 : (5 : ℝ) + 6 * (c * (k + 1)) ≤ k ^ 2 := by nlinarith
+  have hm' : (mH : ℝ) ≤ c * (k + 1) := hm.trans (by nlinarith only [hlog])
+  have hk2 : (5 : ℝ) + 6 * (c * (k + 1)) ≤ k ^ 2 := by nlinarith only [hk]
   calc ((5 + 6 * mH : ℕ) : ℝ) * k ^ c ≤ (5 + 6 * (c * (k + 1))) * k ^ c := by
         push_cast
         exact mul_le_mul_of_nonneg_right (by linarith) (by positivity)
@@ -2333,25 +2333,25 @@ theorem pathCounts_poly (c : ℕ) :
   have hkc : 1 ≤ k ^ c := one_le_pow₀ hk1
   have hkc1 : k ^ c * 3 ≤ k ^ (c + 1) := by
     rw [pow_succ]; exact mul_le_mul_of_nonneg_left hk3 (by positivity)
-  have hkc' : k ^ c ≤ k ^ (c + 1) := by nlinarith
+  have hkc' : k ^ c ≤ k ^ (c + 1) := by nlinarith only [hL, hkc1]
   have hkC : 1 ≤ k ^ C₂ := one_le_pow₀ hk1
   set a : ℝ := (Lc + 6) * Mp * (Kt * (2 * H₀ * Dv / τ₃) ^ 2) with ha
   have ha0 : 0 ≤ a := by positivity
   set K : ℝ := 1 + a with hKdef
-  set n₁ : ℝ := max n₀ 1 with hn₁
+  set! n₁ : ℝ := max n₀ 1 with hn₁
   have hn₁1 : 1 ≤ n₁ := le_max_right _ _
   have hn₁le : n₁ ≤ Real.exp (k ^ c) := max_le hn₀ (Real.one_le_exp (by positivity))
-  set j : ℕ := ⌈Real.log n₁⌉₊ with hj
+  set! j : ℕ := ⌈Real.log n₁⌉₊ with hj
   have hlog1 : 0 ≤ Real.log n₁ := Real.log_nonneg hn₁1
   have hlogk : Real.log n₁ ≤ k ^ c := (Real.log_le_iff_le_exp (by linarith)).mpr hn₁le
   have hj1 : (j : ℝ) ≤ k ^ c + 1 := (Nat.ceil_lt_add_one hlog1).le.trans (by linarith)
-  set Lr : ℕ := Lc + 6 + j with hLr
+  set! Lr : ℕ := Lc + 6 + j with hLr
   have hLrk : (Lr : ℝ) ≤ k ^ (c + 1) := by
     simp only [hLr]; push_cast
-    nlinarith
-  set y : ℝ := closureCount C₂ k (Lc + 5 + j) with hy
+    nlinarith only [hL, hkc1, hj1]
+  set! y : ℝ := closureCount C₂ k (Lc + 5 + j) with hy
   have hy1 : 1 ≤ y := Real.one_le_exp (by positivity)
-  set Tmax : ℕ := ⌈y⌉₊ with hT
+  set! Tmax : ℕ := ⌈y⌉₊ with hT
   have hTle : (Tmax : ℝ) ≤ closureCount C₂ k Lr := by
     have h1 : (Tmax : ℝ) < y + 1 := Nat.ceil_lt_add_one (by linarith)
     have h2 : closureCount C₂ k Lr = y * Real.exp (k ^ C₂) := by
@@ -2362,11 +2362,11 @@ theorem pathCounts_poly (c : ℕ) :
     have h3 : (2 : ℝ) ≤ Real.exp (k ^ C₂) := by
       have := Real.add_one_le_exp (k ^ C₂); linarith
     rw [h2]
-    nlinarith
+    nlinarith only [hy1, h1, h3]
   have hmX : (mH : ℝ) ≤ ((c + 1 : ℕ) : ℝ) * (Real.log k + 1) := by
     have := Real.log_nonneg hk1
     push_cast
-    nlinarith
+    nlinarith only [hm, this]
   have hKX : K ≤ Real.exp (k ^ (c + 1)) := hK.trans (Real.exp_le_exp.mpr hkc')
   obtain ⟨hrat, hlog⟩ := @h k (le_trans (le_max_left _ _) hk) Lr mH K hLrk hmX hKX Tmax hTle
   refine ⟨fun r => closureCount C₂ k (r + j), Tmax, ?_, fun r => ?_, Nat.le_ceil _, ?_⟩
@@ -2392,7 +2392,7 @@ theorem pathCounts_poly (c : ℕ) :
         simp only [closureRatio, ha, hQ]
         ring
       rw [e2, hKdef]
-      nlinarith
+      nlinarith only [hQ1]
     calc (1 + (Lc + 6) * Mp * closureRatio Dv Kt mH Tmax H₀ τ₃) * closureCount C₂ k (r + j)
         ≤ K * Q * closureCount C₂ k (r + j) := mul_le_mul_of_nonneg_right hle hpos.le
       _ = closureCount C₂ k (r + j) * K * Q := by ring
@@ -2499,11 +2499,11 @@ theorem closureData_le (c Dst : ℕ) {k : ℝ} (hk : 9 + 2 * Dst * 2 ^ Dst ≤ k
       have := Real.add_one_le_exp (2 : ℝ)
       have h3 : Real.exp 2 = Real.exp 1 * Real.exp 1 := by rw [← Real.exp_add]; norm_num
       have h4 := Real.exp_one_gt_d9
-      nlinarith
+      nlinarith only [h3, h4]
     have e : Real.exp (2 * h + 7 * k ^ c + 2) = Real.exp (2 * h) * E ^ 7 * Real.exp 2 := by
       rw [hE, ← Real.exp_nat_mul, ← Real.exp_add, ← Real.exp_add]; push_cast; ring_nf
     rw [e]
-    nlinarith
+    nlinarith only [h1, h2]
   have hW : 1 + (Lc + 6 : ℝ) * Mp * (Kt * (2 * Real.exp h * Dv / τ₃) ^ 2) ≤
       1 + 4 * Real.exp (2 * h) * E ^ 7 := by linarith
   refine hW.trans (hZ.trans (Real.exp_le_exp.mpr ?_))
@@ -2516,7 +2516,7 @@ theorem closureData_le (c Dst : ℕ) {k : ℝ} (hk : 9 + 2 * Dst * 2 ^ Dst ≤ k
   calc 2 * h + 7 * k ^ c + 2 ≤ 2 * (Dst * 2 ^ Dst * k ^ (c * Dst)) + 7 * k ^ c + 2 := by linarith
     _ ≤ (9 + 2 * Dst * 2 ^ Dst) * k ^ e := by
         have := mul_le_mul_of_nonneg_left hc2 hD0
-        nlinarith
+        nlinarith only [hL, hc1, hc2, hD0]
     _ ≤ k * k ^ e := mul_le_mul_of_nonneg_right hk (by positivity)
     _ = k ^ (c * Dst + c + 1) := by rw [he, pow_succ]; ring
 
@@ -2569,7 +2569,7 @@ theorem closure_poly (c Dst : ℕ) :
   have hkce : k ^ c ≤ k ^ e := pow_le_pow_right₀ hk1 (by omega)
   have hexp : ∀ {x y : ℝ}, x ≤ y → Real.exp x ≤ Real.exp y := fun h => Real.exp_le_exp.mpr h
   -- the name count
-  set Kt : ℕ := (fp.Lc + 6) * ((fp.Lc + 1 + A.famVtxBound) * (fp.Hmax + 1)) *
+  set! Kt : ℕ := (fp.Lc + 6) * ((fp.Lc + 1 + A.famVtxBound) * (fp.Hmax + 1)) *
     ((fp.mH + 1) * ((fp.Lc + 6) * ((fp.Lc + 1 + A.famVtxBound) * (fp.Hmax + 1)) * 2) ^ fp.mH) *
       (Fintype.card Bn + Fintype.card Bh) with hKt
   have hKtn : ∀ I, Fintype.card (fp.TestName I Bn) ≤ Kt := fun I => by
@@ -2595,7 +2595,7 @@ theorem closure_poly (c Dst : ℕ) :
     have := names_count_poly (c + 1) (by push_cast; linarith) fp.Lc A.famVtxBound fp.Hmax fp.mH
       (Fintype.card Bn + Fintype.card Bh) (hL.trans hkc) (hDv.trans (hexp hkc))
       (hH.trans (hexp hkc)) (hm.trans (by
-        have := Real.log_nonneg hk1; push_cast; nlinarith)) hb
+        have := Real.log_nonneg hk1; push_cast; nlinarith only [this])) hb
     rw [hKt]
     exact this.trans (hexp (by
       rw [show c + 1 + 2 = c + 3 by ring]))
@@ -2702,7 +2702,7 @@ theorem mainCoeff_sum_le (s : List (CatCol Tg)) (I : ℤ × ℤ) (F : Finset (V 
     · exact O.weight_pos v
     · exact one_pos
   -- the private coordinates
-  set S : ℝ := ∑ w ∈ F, ‖c w‖ ^ 2 * mainWeight Mc O w with hS
+  set! S : ℝ := ∑ w ∈ F, ‖c w‖ ^ 2 * mainWeight Mc O w with hS
   have hpt : ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 →
       S ≤ ‖(x : ℝ → ColumnHilbert (V ⊕ Fin Mc)) y‖ ^ 2 := by
     filter_upwards [mainCombination_coeFn s I F c hmem] with y hy hys

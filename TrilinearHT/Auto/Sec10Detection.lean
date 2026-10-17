@@ -117,7 +117,7 @@ theorem vonNeumann_first_step {G : Type*} [AddCommGroup G] [TopologicalSpace G]
   have hMR : 0 ≤ MR := (norm_nonneg _).trans (hR 0)
   have hMg : 0 ≤ Mg := (norm_nonneg _).trans (hg 0)
   have hz (n : ℤ) : Continuous (fun t : G => n • t) := continuous_zsmul n
-  set A : G → G → ℂ := fun u t => g (u + (ng - nR) • t) * b (u + (nb - nR) • t) *
+  set! A : G → G → ℂ := fun u t => g (u + (ng - nR) • t) * b (u + (nb - nR) • t) *
     c (u + (nc - nR) • t) with hA
   have hAm : Measurable (Function.uncurry A) := by
     simp only [hA]
@@ -236,7 +236,7 @@ theorem norm_integral_two_mul_sq_le {X Y : Type*} [MeasurableSpace X] [Measurabl
         rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
         have := hBb p.1 p.2
         change ‖B p.1 p.2‖ ^ 2 ≤ 1
-        nlinarith [norm_nonneg (B p.1 p.2)])
+        nlinarith only [norm_nonneg (B p.1 p.2), this])
   have i3 : Integrable (fun p : X × Y => ‖K p.1 p.2‖ ^ 2) (ν.prod μ) :=
     (integrable_const (M ^ 2)).mono' (hK.norm.pow_const 2).aestronglyMeasurable
       (Filter.Eventually.of_forall fun p => by
@@ -306,7 +306,7 @@ theorem vonNeumann_second_step {G : Type*} [AddCommGroup G] [TopologicalSpace G]
     rw [norm_mul, norm_mul]
     exact mul_le_mul (mul_le_mul (hDg _ _) (hDb _ _) (norm_nonneg _) hMM) (hDc _ _)
       (norm_nonneg _) (by positivity)
-  set K : G → G → ℂ := fun h y => ∫ t, mulDiff g (α • h) (y + (α - β) • t) *
+  set! K : G → G → ℂ := fun h y => ∫ t, mulDiff g (α • h) (y + (α - β) • t) *
     mulDiff c (γ • h) (y + (γ - β) • t) ∂μ with hK
   have hinner : ∀ h, ∫ u, ∫ t, mulDiff g (α • h) (u + α • t) * mulDiff b (β • h) (u + β • t) *
       mulDiff c (γ • h) (u + γ • t) ∂μ ∂μ = ∫ y, mulDiff b (β • h) y * K h y ∂μ :=
@@ -491,7 +491,7 @@ theorem vonNeumann_third_step {G : Type*} [AddCommGroup G] [TopologicalSpace G]
       mulDiff (V q.1) (c • h) (q.2 + c • t) ∂μ ∂μ‖ ≤ MU * MU * 1 := fun q =>
     norm_integral_le_bound μ (fun h => norm_integral_le_bound μ (fun t => hΦb q h t))
   rw [integral_prod_bdd μ μ hΦ1m hΦ1b] at hQ2
-  set K : G → G → G → ℂ := fun p h z => ∫ t, mulDiff (U p) (a • h) (z + (a - c) • t) ∂μ with hK
+  set! K : G → G → G → ℂ := fun p h z => ∫ t, mulDiff (U p) (a • h) (z + (a - c) • t) ∂μ with hK
   have hinner : ∀ p, ∫ y, ∫ h, ∫ t, mulDiff (U p) (a • h) (y + a • t) *
       mulDiff (V p) (c • h) (y + c • t) ∂μ ∂μ ∂μ =
       ∫ h, ∫ z, mulDiff (V p) (c • h) z * K p h z ∂μ ∂μ := by
@@ -567,7 +567,7 @@ theorem vonNeumann_group_bounded {G : Type*} [AddCommGroup G] [TopologicalSpace 
       (∫ x, ‖R x‖ ^ 2 ∂μ) ^ 4 * (dilatedCube μ g (ng - nR) (ng - nb) (ng - nc)).re := by
   have hz (n : ℤ) : Measurable (fun t : G => n • t) := (continuous_zsmul n).measurable
   have hMg : 0 ≤ Mg := (norm_nonneg _).trans (hg 0)
-  set α := ng - nR; set β := nb - nR; set γ := nc - nR
+  set α := ng - nR; set! β := nb - nR; set! γ := nc - nR
   have h1 := vonNeumann_first_step μ hRm hgm hbm hcm hR hg hb hc nR ng nb nc
   have h2 := vonNeumann_second_step μ hgm hbm hcm hg hb hc α β γ
   have hUm : Measurable (Function.uncurry (fun p y => mulDiff g (α • p) y)) :=
@@ -1223,9 +1223,9 @@ theorem kernel_character_term_bound {a₀ r : ℝ} (hr : 0 < r) (f : Fin 4 → �
     intro h; apply h2; apply Fin.ext
     have h' : ((jR : ℕ) : ℝ) = ((kb : ℕ) : ℝ) := h
     exact_mod_cast h'
-  set αb := (β - p * α) / (q - p) with hαb
-  set αR := α - αb with hαR
-  set F := charSlotInput a₀ r f jR kb αR αb with hF
+  set! αb := (β - p * α) / (q - p) with hαb
+  set! αR := α - αb with hαR
+  set! F := charSlotInput a₀ r f jR kb αR αb with hF
   have hMR : 0 ≤ MR := (norm_nonneg _).trans (hR 0)
   have hMg : 0 ≤ Mg := (norm_nonneg _).trans (hg 0)
   have hind : ∀ (j : Fin 4) (v : ℝ), I.indicator (f j) (a₀ + r * v) =
@@ -1241,7 +1241,7 @@ theorem kernel_character_term_bound {a₀ r : ℝ} (hr : 0 < r) (f : Fin 4 → �
       · by_contra h; push Not at h; nlinarith [hm.2]
   have hFb := charSlotInput_norm_le hr f h1 h2 h3 h4 h6 hMR hMg hR hg hb hc αR αb
   have hcov := fin_four_cover h1 h2 h3 h4 h5 h6
-  set M := MR + Mg + 1 with hM
+  set! M := MR + Mg + 1 with hM
   have hGb : ∀ j y, ‖I.indicator (f j) y‖ ≤ M := by
     intro j y
     by_cases hy : y ∈ I
@@ -1344,8 +1344,8 @@ theorem vonNeumann_local_bounded {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 
   obtain ⟨hcs, hct, hexp⟩ := admissibleKernel_fourier_expansion hr hw
   set c := periodicFourierCoeff (cubePeriodization (kernelUnitRescale a₀ r w) 16) with hcdef
   set c₀ := a₀ + r / 2 with hc₀
-  set Pf : ℝ × ℝ → ℂ := fun z => ∏ j : Fin 4, I.indicator (f j) (z.1 + (j : ℕ) * z.2) with hPf
-  set E : (Fin 2 → ℤ) → ℝ × ℝ → ℂ := fun v z =>
+  set! Pf : ℝ × ℝ → ℂ := fun z => ∏ j : Fin 4, I.indicator (f j) (z.1 + (j : ℕ) * z.2) with hPf
+  set! E : (Fin 2 → ℤ) → ℝ × ℝ → ℂ := fun v z =>
     (Real.fourierChar ((v 0 : ℝ) * ((z.1 - c₀) / r / 16) + (v 1 : ℝ) * (z.2 / r / 16)) : ℂ)
     with hE
   have hpt : ∀ z, HasSum (fun v => c v * (E v z * Pf z)) (w z * Pf z) := by
@@ -1638,7 +1638,7 @@ theorem vonNeumann_local_L2_unit {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 
   have htg (n : ℕ) : MemLp (truncateNorm n (f ig)) 2 μI :=
     hgμ.of_le (truncateNorm_measurable (hf ig) n).aestronglyMeasurable
       (Filter.Eventually.of_forall (norm_truncateNorm_le _ _))
-  set U : ℕ → ℝ := fun n => intervalGowersNorm a₀ (a₀ + r) (truncateNorm n (f ig)) with hU
+  set! U : ℕ → ℝ := fun n => intervalGowersNorm a₀ (a₀ + r) (truncateNorm n (f ig)) with hU
   have hUnn (n : ℕ) : 0 ≤ U n := by
     simp only [hU]
     rw [← intervalL2GowersSeminorm_toLp _ _ (truncateNorm_measurable (hf ig) n) (htg n)]
@@ -1756,7 +1756,7 @@ theorem vonNeumann_local_L2 {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
       (fun y hy => norm_le_zero_iff.mp (hc0 ▸ hc y hy)), ← hc0]
     simp
   set g := Function.update f kb (((Mb : ℂ)⁻¹) • f kb) with hgdef
-  set g' := Function.update g lc (((Mc : ℂ)⁻¹) • g lc) with hg'def
+  set! g' := Function.update g lc (((Mc : ℂ)⁻¹) • g lc) with hg'def
   have hH : localProgressionForm r w g' =
       (Mc : ℂ)⁻¹ * ((Mb : ℂ)⁻¹ * localProgressionForm r w f) := by
     rw [hg'def, localProgressionForm_update_smul, hgdef, localProgressionForm_update_smul]
@@ -1948,7 +1948,7 @@ theorem localProgressionForm_enorm_le_slots {κ : LocalKernelClass} {a₀ r : �
   have hW (z : ℝ × ℝ) : ‖w z‖ₑ ≤ ENNReal.ofReal (localKernelSupBound κ) := by
     rw [← ofReal_norm]
     exact ENNReal.ofReal_le_ofReal (admissibleLocalKernel_norm_le hw z)
-  set p : Fin 4 → ENNReal := fun j =>
+  set! p : Fin 4 → ENNReal := fun j =>
     if j = a then pa else if j = b then pb else if j = c then pc else pd with hp
   have hpa : p a = pa := by simp [hp]
   have hpb : p b = pb := by simp [hp, hab.symm]
@@ -2024,7 +2024,7 @@ theorem detection_clipping {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
   have hW0 : 0 ≤ W' := localFormUniformConstant_nonneg κ
   have hB0 : 0 < B := by linarith
   have hq0 : 0 < q := by linarith
-  set q' := q / (q - 1) with hq'
+  set! q' := q / (q - 1) with hq'
   have hq1 : 0 < q - 1 := by linarith
   have hq'1 : 1 ≤ q' := by rw [hq', le_div_iff₀ hq1]; linarith
   have hq'2 : q' ≤ 2 := by rw [hq', div_le_iff₀ hq1]; linarith
@@ -2036,9 +2036,9 @@ theorem detection_clipping {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
   set h := f ih
   set u := f ku
   set v := f lv
-  set hB := truncateNorm B h
-  set uB := truncateNorm B u
-  set vB := truncateNorm B v
+  set! hB := truncateNorm B h
+  set! uB := truncateNorm B u
+  set! vB := truncateNorm B v
   -- finiteness of all normalized `L²` norms
   have hRt : eLpNorm R 2 ν ≠ ⊤ := ne_top_of_le_ne_top ENNReal.ofReal_ne_top hR
   have hh2 : eLpNorm h 2 ν ≤ 1 := (eLpNorm_le_eLpNorm_of_exponent_le h2q).trans hh
@@ -2066,12 +2066,12 @@ theorem detection_clipping {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
   have hum : Measurable u := hf ku
   have hvm : Measurable v := hf lv
   -- the telescoping
-  set f1 := Function.update f ih hB with hf1
-  set e1 := Function.update f ih (h - hB) with he1
-  set f2 := Function.update f1 ku uB with hf2
-  set e2 := Function.update f1 ku (u - uB) with he2
-  set f3 := Function.update f2 lv vB with hf3
-  set e3 := Function.update f2 lv (v - vB) with he3
+  set! f1 := Function.update f ih hB with hf1
+  set! e1 := Function.update f ih (h - hB) with he1
+  set! f2 := Function.update f1 ku uB with hf2
+  set! e2 := Function.update f1 ku (u - uB) with he2
+  set! f3 := Function.update f2 lv vB with hf3
+  set! e3 := Function.update f2 lv (v - vB) with he3
   have hf1m := measurable_update_slot hf ih (truncateNorm_measurable hhm B)
   have hf2m := measurable_update_slot hf1m ku (truncateNorm_measurable hum B)
   have hf1fin := eLpNorm_update_ne_top hfin ih
@@ -2438,7 +2438,7 @@ theorem detection_structured_slot (κ : LocalKernelClass) :
   have hCv0 : 0 ≤ Cv := vonNeumannConst_nonneg κ
   -- the normalized input
   set g := f k with hgdef
-  set g' : ℝ → ℂ := ((B : ℂ)⁻¹) • g with hg'def
+  set! g' : ℝ → ℂ := ((B : ℂ)⁻¹) • g with hg'def
   have hgm : Measurable g := hf k
   have hg'm : Measurable g' := hgm.const_smul _
   have hg'b : ∀ x, ‖g' x‖ ≤ 1 := by
@@ -2463,7 +2463,7 @@ theorem detection_structured_slot (κ : LocalKernelClass) :
       exact ⟨d, A, fun _ => h⟩
     · exact ⟨0, ordinaryQuadraticChart 0 0, fun h => absurd h hi⟩
   choose dd AA hAA using ha'
-  set φ : ι → ℝ → ℂ := fun i => if i ∈ s then quadraticChartAtom (AA i) else 0 with hφdef
+  set! φ : ι → ℝ → ℂ := fun i => if i ∈ s then quadraticChartAtom (AA i) else 0 with hφdef
   have hφm : ∀ i, Measurable (φ i) := by
     intro i; simp only [hφdef]; split_ifs
     · exact quadraticChartAtom_measurable _
@@ -2475,13 +2475,13 @@ theorem detection_structured_slot (κ : LocalKernelClass) :
   have hφf : ∀ i, eLpNorm (φ i) 2 ν ≠ ⊤ := fun i =>
     ne_top_of_le_ne_top ENNReal.ofReal_ne_top (eLpNorm_two_le_of_bound hr (hφm i) (hφb i))
   -- error representatives
-  set U := l2Representative (intervalProbabilityMeasure a₀ (a₀ + r)) u with hUdef
-  set V := l2Representative (intervalProbabilityMeasure a₀ (a₀ + r)) v with hVdef
+  set! U := l2Representative (intervalProbabilityMeasure a₀ (a₀ + r)) u with hUdef
+  set! V := l2Representative (intervalProbabilityMeasure a₀ (a₀ + r)) v with hVdef
   have hUm : Measurable U := l2Representative_measurable _ u
   have hVm : Measurable V := l2Representative_measurable _ v
   have hUL : MemLp U 2 ν := by rw [hνμ]; exact l2Representative_memLp _ u
   have hVL : MemLp V 2 ν := by rw [hνμ]; exact l2Representative_memLp _ v
-  set G : ℝ → ℂ := fun x => ∑ i ∈ s, cc i * φ i x with hGdef
+  set! G : ℝ → ℂ := fun x => ∑ i ∈ s, cc i * φ i x with hGdef
   have hGm : Measurable G := Finset.measurable_sum _ fun i _ => measurable_const.mul (hφm i)
   have hGL : MemLp G 2 ν := memLp_finsetSum s fun i _ =>
     (show MemLp (φ i) 2 ν from (hφf i).lt_top).const_mul (cc i)
@@ -2514,9 +2514,9 @@ theorem detection_structured_slot (κ : LocalKernelClass) :
   have hGUf : eLpNorm (G + U) 2 ν ≠ ⊤ := (hGL.add hUL).eLpNorm_ne_top
   have hGUVf : eLpNorm (G + U + V) 2 ν ≠ ⊤ := ((hGL.add hUL).add hVL).eLpNorm_ne_top
   -- expansion of the form
-  set S := ∑ i ∈ s, cc i * localProgressionForm r w (Function.update f k (φ i)) with hSdef
-  set EU := localProgressionForm r w (Function.update f k U) with hEU
-  set EV := localProgressionForm r w (Function.update f k V) with hEV
+  set! S := ∑ i ∈ s, cc i * localProgressionForm r w (Function.update f k (φ i)) with hSdef
+  set! EU := localProgressionForm r w (Function.update f k U) with hEU
+  set! EV := localProgressionForm r w (Function.update f k V) with hEV
   have hform : localProgressionForm r w f = (B : ℂ) * (S + EU + EV) := by
     have e1 : f = Function.update f k ((B : ℂ) • g') := by
       rw [hg'def, smul_smul, mul_inv_cancel₀ (by exact_mod_cast hB0.ne'), one_smul,
@@ -2572,13 +2572,13 @@ theorem detection_structured_slot (κ : LocalKernelClass) :
     have hnorm : ‖localProgressionForm r w f‖ = B * ‖S + EU + EV‖ := by
       rw [hform, norm_mul, Complex.norm_real, Real.norm_of_nonneg hB0.le]
     have ht : ‖S + EU + EV‖ ≤ ‖S‖ + ‖EU‖ + ‖EV‖ := norm_add₃_le
-    have h2 : 2 * (Cv * C₁ * τ * B * B) * B ≤ δ' / 2 := by nlinarith
+    have h2 : 2 * (Cv * C₁ * τ * B * B) * B ≤ δ' / 2 := by nlinarith only [hδτ]
     have hBδ : δ' / B < ‖S + EU + EV‖ := by
       rw [div_lt_iff₀ hB0]; linarith
     have : δ' / (2 * B) + Cv * C₁ * τ * B * B + Cv * (C₁ * τ * B * B) ≤ δ' / B := by
       rw [div_add' _ _ _ (by positivity), div_add' _ _ _ (by positivity),
         div_le_div_iff₀ (by positivity) hB0]
-      nlinarith
+      nlinarith only [hB, hδτ]
     linarith
   -- pigeonhole over the structured list
   set M := max 1 (D (1 / τ)) with hM
@@ -2746,7 +2746,7 @@ theorem localProgression_absolute_le_slots {κ : LocalKernelClass} {a₀ r : ℝ
   have hW (z : ℝ × ℝ) : ‖w z‖ₑ ≤ ENNReal.ofReal (localKernelSupBound κ) := by
     rw [← ofReal_norm]
     exact ENNReal.ofReal_le_ofReal (admissibleLocalKernel_norm_le hw z)
-  set p : Fin 4 → ENNReal := fun j =>
+  set! p : Fin 4 → ENNReal := fun j =>
     if j = a then pa else if j = b then pb else if j = c then pc else pd with hp
   have hpa : p a = pa := by simp [hp]
   have hpb : p b = pb := by simp [hp, hab.symm]
@@ -2809,7 +2809,7 @@ theorem localProgressionForm_pair_expansion {κ : LocalKernelClass} {a₀ r : �
   set W' := localFormUniformConstant κ with hW'
   have hW0 : 0 ≤ W' := localFormUniformConstant_nonneg κ
   -- the dominating slot configuration `(R, 1, 1, v)`
-  set g : Fin 4 → ℝ → ℂ := fun j => if j = a then R else if j = b then v else fun _ => 1
+  set! g : Fin 4 → ℝ → ℂ := fun j => if j = a then R else if j = b then v else fun _ => 1
     with hg
   have hga : g a = R := by simp [hg]
   have hgb : g b = v := by simp [hg, hab.symm]
@@ -2838,7 +2838,7 @@ theorem localProgressionForm_pair_expansion {κ : LocalKernelClass} {a₀ r : �
       hik hib hkb, hga, hgi, hgk, hgb]
     simp only [norm_mul, mul_one]
   -- the separated integrands
-  set Y : τ → ℝ × ℝ → ℂ := fun q z => w z * Q q z.2 *
+  set! Y : τ → ℝ × ℝ → ℂ := fun q z => w z * Q q z.2 *
     (R (realProgressionCoordinate a z) * ψa q (realProgressionCoordinate a z)) *
     (v (realProgressionCoordinate b z) * ψb q (realProgressionCoordinate b z)) with hY
   have hYm : ∀ q, Measurable (Y q) := by
@@ -2865,7 +2865,7 @@ theorem localProgressionForm_pair_expansion {κ : LocalKernelClass} {a₀ r : �
       _ = _ := by ring
   have hYi : ∀ q, Integrable (Y q) := fun q =>
     hdom.mono' (hYm q).aestronglyMeasurable (Filter.Eventually.of_forall (hYb q))
-  set M₀ := ∫ z, ‖w z * ∏ j, g j (realProgressionCoordinate j z)‖ with hM₀
+  set! M₀ := ∫ z, ‖w z * ∏ j, g j (realProgressionCoordinate j z)‖ with hM₀
   have hYn : ∀ q, ∫ z, ‖Y q z‖ ≤ M₀ := fun q =>
     integral_mono (hYi q).norm hdom (hYb q)
   -- the bound on each separated form
@@ -3134,7 +3134,7 @@ theorem separated_moment_extraction (κ : LocalKernelClass) (c₁ : ℕ) (hc₁ 
     positivity
   have hC0 : 0 < C₁ := by linarith
   -- the cutoff
-  set ζ : ℝ → ℂ := fun u => ((ψ u : ℝ) : ℂ) with hζ
+  set! ζ : ℝ → ℂ := fun u => ((ψ u : ℝ) : ℂ) with hζ
   have hζm : Measurable ζ := Complex.measurable_ofReal.comp hψ.continuous.measurable
   have hζb : ∀ u, ‖ζ u‖ ≤ Λ := fun u => by
     rw [hζ, Complex.norm_real, Real.norm_eq_abs]; exact (hψ1' u).trans hΛ1
@@ -3161,7 +3161,7 @@ theorem separated_moment_extraction (κ : LocalKernelClass) (c₁ : ℕ) (hc₁ 
   have hFb2 : eLpNorm Fb 2 ν ≤ ENNReal.ofReal 1 :=
     ((eLpNorm_mono hFbm.aestronglyMeasurable hFble).trans hv).trans_eq ENNReal.ofReal_one.symm
   -- `A_r` is large
-  set δ₂ := δ₃ / ((K' + 1) * C₁) with hδ₂
+  set! δ₂ := δ₃ / ((K' + 1) * C₁) with hδ₂
   have hδ₂0 : 0 < δ₂ := by positivity
   have hAr : ∀ s < δ₂, ∃ ξ : ℝ, s < ‖∫ u, (Real.fourierChar (-(u * ξ)) : ℂ) *
       (ζ u * quadraticChartAtom A (r * u))‖ := by
@@ -3187,10 +3187,10 @@ theorem separated_moment_extraction (κ : LocalKernelClass) (c₁ : ℕ) (hc₁ 
     have h2 : K' * δ₂ * C₁ * 1 ≤ δ₃ := by
       rw [hδ₂, mul_one]
       have : (K' + 1) * C₁ * (δ₃ / ((K' + 1) * C₁)) = δ₃ := by field_simp
-      nlinarith [div_pos hδ₃ (by positivity : (0 : ℝ) < (K' + 1) * C₁)]
+      nlinarith only [div_pos hδ₃ (by positivity : (0 : ℝ) < (K' + 1) * C₁), hC₁, this]
     linarith
   -- uniform separation of the kernel
-  set ε₀ := min 1 (δ₃ / (2 * C₁)) with hε₀
+  set! ε₀ := min 1 (δ₃ / (2 * C₁)) with hε₀
   have hε₀0 : 0 < ε₀ := lt_min one_pos (by positivity)
   have hε₀1 : ε₀ ≤ 1 := min_le_left _ _
   have hε₀C : ε₀ * C₁ ≤ δ₃ / 2 := by
@@ -3222,8 +3222,8 @@ theorem separated_moment_extraction (κ : LocalKernelClass) (c₁ : ℕ) (hc₁ 
   have hcsum' : (∑ ν, ‖c ν‖) ≤ Eb := hcsum.trans hE₂
   have hEb0 : 0 < Eb := Real.exp_pos _
   -- restricted inputs
-  set Ga := I.indicator Fa with hGa
-  set Gb := I.indicator Fb with hGb
+  set! Ga := I.indicator Fa with hGa
+  set! Gb := I.indicator Fb with hGb
   have hGam : Measurable Ga := hFam.indicator measurableSet_Icc
   have hGbm : Measurable Gb := hFbm.indicator measurableSet_Icc
   obtain ⟨hGai, hGan⟩ := integral_indicator_norm_le_of_eLpNorm hr hFam hC0.le hFa2
@@ -3233,7 +3233,7 @@ theorem separated_moment_extraction (κ : LocalKernelClass) (c₁ : ℕ) (hc₁ 
   obtain ⟨hPi, hPeq⟩ := real_progression_pair_integral_norm hGam hGbm hGai hGbi hab'
   have hjac : |((b : ℝ) - (a : ℝ))⁻¹| ≤ 1 := by
     rw [abs_inv]; exact inv_le_one_of_one_le₀ (one_le_abs_fin_sub hab)
-  set Φ1 : ℝ × ℝ → ℂ := fun z => w z * quadraticChartAtom A z.2 *
+  set! Φ1 : ℝ × ℝ → ℂ := fun z => w z * quadraticChartAtom A z.2 *
     Ga (realProgressionCoordinate a z) * Gb (realProgressionCoordinate b z) with hΦ1
   have hXr : separatedLocalForm r w (quadraticChartAtom A) a b Fa Fb =
       (r : ℂ)⁻¹ ^ 2 * ∫ z, Φ1 z := by
@@ -3245,10 +3245,10 @@ theorem separated_moment_extraction (κ : LocalKernelClass) (c₁ : ℕ) (hc₁ 
     rw [Set.indicator_of_mem (show realProgressionCoordinate a z ∈ I from hs a),
       Set.indicator_of_mem (show realProgressionCoordinate b z ∈ I from hs b)]
   -- the separated approximation
-  set Ap : ℝ × ℝ → ℂ := fun z => ∑ ν, c ν *
+  set! Ap : ℝ × ℝ → ℂ := fun z => ∑ ν, c ν *
     (Real.fourierChar (α ν * realProgressionCoordinate a z) : ℂ) *
     (Real.fourierChar (β ν * realProgressionCoordinate b z) : ℂ) with hAp
-  set Φ2 : ℝ × ℝ → ℂ := fun z => Ap z * Ga (realProgressionCoordinate a z) *
+  set! Φ2 : ℝ × ℝ → ℂ := fun z => Ap z * Ga (realProgressionCoordinate a z) *
     Gb (realProgressionCoordinate b z) with hΦ2
   have hpw : ∀ z, ‖Φ1 z - Φ2 z‖ ≤ ε₀ * (‖Ga (realProgressionCoordinate a z)‖ *
       ‖Gb (realProgressionCoordinate b z)‖) := by
@@ -3273,7 +3273,7 @@ theorem separated_moment_extraction (κ : LocalKernelClass) (c₁ : ℕ) (hc₁ 
       · simp [hΦ1, hΦ2, Set.indicator_of_notMem hyb, hGb]
     · simp [hΦ1, hΦ2, Set.indicator_of_notMem hya, hGa]
   -- integrability
-  set S := localKernelSupBound κ with hS
+  set! S := localKernelSupBound κ with hS
   have hΦ1m : Measurable Φ1 := by
     have hca := (continuous_realProgressionCoordinate a).measurable
     have hcb := (continuous_realProgressionCoordinate b).measurable
@@ -3296,8 +3296,8 @@ theorem separated_moment_extraction (κ : LocalKernelClass) (c₁ : ℕ) (hc₁ 
           exact localKernelSupBound_nonneg κ
       _ = S * (‖Ga (z.1 + (a : ℝ) * z.2)‖ * ‖Gb (z.1 + (b : ℝ) * z.2)‖) := by
           unfold realProgressionCoordinate; ring
-  set F : ι' → ℝ → ℂ := fun ν y => (Real.fourierChar (α ν * y) : ℂ) * Ga y with hF
-  set G : ι' → ℝ → ℂ := fun ν y => (Real.fourierChar (β ν * y) : ℂ) * Gb y with hG
+  set! F : ι' → ℝ → ℂ := fun ν y => (Real.fourierChar (α ν * y) : ℂ) * Ga y with hF
+  set! G : ι' → ℝ → ℂ := fun ν y => (Real.fourierChar (β ν * y) : ℂ) * Gb y with hG
   have hFm : ∀ ν, Measurable (F ν) := fun ν =>
     ((continuous_subtype_val.comp Real.continuous_fourierChar).measurable.comp
       (measurable_const.mul measurable_id)).mul hGam
@@ -3482,20 +3482,20 @@ theorem detection_atom_pair (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ 
   set K' := kernelFourierConst κ with hK'
   -- the budget exponents
   set k1 : ℕ := 1 + ⌈W₀⌉₊ with hk1
-  set k2 : ℕ := 6 * k1 + k1 with hk2
-  set k3 : ℕ := D * (1 + k2) ^ D + k2 * D with hk3
-  set kW : ℕ := ⌈W'⌉₊ + 1 with hkW
-  set k4 : ℕ := ⌈(2 : ℝ)⌉₊ + k3 + kW + 1 with hk4
-  set k5 : ℕ := 6 * (k3 + k4) + (k3 + k4) with hk5
-  set kδ : ℕ := ⌈(2 : ℝ)⌉₊ + k3 + 1 with hkδ
-  set kΛ1 : ℕ := ⌈K' + 1⌉₊ + 1 + kδ with hkΛ1
-  set kΛ2 : ℕ := ⌈(2 : ℝ)⌉₊ + 1 + kδ with hkΛ2
-  set kΛ : ℕ := k5 + ⌈Lζ⌉₊ + kΛ1 + kΛ2 with hkΛ
-  set D3 : ℕ := Dk * 3 ^ Dk with hD3
-  set k6 : ℕ := D3 * (1 + kΛ) ^ D3 + kΛ * D3 with hk6
-  set k7 : ℕ := ⌈(2 : ℝ)⌉₊ + k6 + kδ with hk7
-  set k8 : ℕ := 6 * k5 + k5 with hk8
-  set Kf : ℕ := k7 + k8 + 1 with hKf
+  set! k2 : ℕ := 6 * k1 + k1 with hk2
+  set! k3 : ℕ := D * (1 + k2) ^ D + k2 * D with hk3
+  set! kW : ℕ := ⌈W'⌉₊ + 1 with hkW
+  set! k4 : ℕ := ⌈(2 : ℝ)⌉₊ + k3 + kW + 1 with hk4
+  set! k5 : ℕ := 6 * (k3 + k4) + (k3 + k4) with hk5
+  set! kδ : ℕ := ⌈(2 : ℝ)⌉₊ + k3 + 1 with hkδ
+  set! kΛ1 : ℕ := ⌈K' + 1⌉₊ + 1 + kδ with hkΛ1
+  set! kΛ2 : ℕ := ⌈(2 : ℝ)⌉₊ + 1 + kδ with hkΛ2
+  set! kΛ : ℕ := k5 + ⌈Lζ⌉₊ + kΛ1 + kΛ2 with hkΛ
+  set! D3 : ℕ := Dk * 3 ^ Dk with hD3
+  set! k6 : ℕ := D3 * (1 + kΛ) ^ D3 + kΛ * D3 with hk6
+  set! k7 : ℕ := ⌈(2 : ℝ)⌉₊ + k6 + kδ with hk7
+  set! k8 : ℕ := 6 * k5 + k5 with hk8
+  set! Kf : ℕ := k7 + k8 + 1 with hKf
   refine ⟨c₁, Kf, hc₁, by omega, ?_⟩
   intro a₀ r H C₁ δ₀ d e A A' hA hA' hAb hA'b hr w hw f hf jR i k lv h1 h2 h3 h4 h5 h6 hfi hfk
     hC₁ hR hv hδ₀ hδ₀1 hHf
@@ -3551,13 +3551,13 @@ theorem detection_atom_pair (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ 
   have hH'1 : 1 ≤ H' := one_le_pow₀ hHm1
   have qE₁ : QPLe Y k3 E₁ := QPLe.compose hY hH'1 qH'
   have qM : QPLe Y kW (W' * C₁) := (QPLe.const hY W').mul hY (by linarith) qC
-  set T₀ := max 1 (2 * E₁ * (W' * C₁) * (1 / δ₀)) with hT₀
+  set! T₀ := max 1 (2 * E₁ * (W' * C₁) * (1 / δ₀)) with hT₀
   have qT : QPLe Y k4 T₀ := qple_max (QPLe.one_le hY)
     (((q2.mul hY hE₁0.le qE₁).mul hY (by positivity) qM).mul hY (by positivity) qinv)
   have hT₀1 : 1 ≤ T₀ := le_max_left _ _
-  set H₁ := (E₁ * T₀) ^ 6 with hH₁
+  set! H₁ := (E₁ * T₀) ^ 6 with hH₁
   have qH₁ : QPLe Y k5 H₁ := (qE₁.mul hY (by linarith) qT).pow hY (by positivity) 6
-  set δ₃ := δ₀ / (2 * E₁) with hδ₃
+  set! δ₃ := δ₀ / (2 * E₁) with hδ₃
   have hδ₃0 : 0 < δ₃ := by positivity
   have hδ₃inv : δ₃⁻¹ = 2 * E₁ * (1 / δ₀) := by rw [hδ₃]; field_simp
   have qδ : QPLe Y kδ δ₃⁻¹ := by
@@ -3577,7 +3577,7 @@ theorem detection_atom_pair (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ 
           have : 2 * E₁ * (W' * C₁) * (1 / δ₀) ≤ T₀ := le_max_right _ _
           have e : 2 * E₁ * (W' * C₁) * (1 / δ₀) * δ₀ = 2 * (E₁ * (W' * C₁)) := by
             field_simp
-          nlinarith
+          nlinarith only [hδ₀, this, e]
   obtain ⟨q, hq, hXq⟩ := exists_large_retained_term cf _ size hcs hcsum hE₁0 hXb
     (by positivity) hδ₀.le htail' (by rw [hHS.tsum_eq]; exact hHf)
   -- the retained term
@@ -3586,7 +3586,7 @@ theorem detection_atom_pair (κ : LocalKernelClass) (c₀ : ℕ) (hc₀ : 1 ≤ 
       (mul_le_mul_of_nonneg_left hq.le hE₁0.le) 6
   have hφt := quadraticChartComplexity_mono (hcomp q).2.2 hHq
   have hφa := quadraticChartComplexity_mono (hcomp q).1 hHq
-  set Λ := max (max H₁ Lζ) (max ((K' + 1) * C₁ * δ₃⁻¹) (2 * C₁ * δ₃⁻¹)) with hΛ
+  set! Λ := max (max H₁ Lζ) (max ((K' + 1) * C₁ * δ₃⁻¹) (2 * C₁ * δ₃⁻¹)) with hΛ
   have hΛ1 : 1 ≤ Λ := le_trans hLζ (le_trans (le_max_right _ _) (le_max_left _ _))
   have qΛ : QPLe Y kΛ Λ := by
     refine qple_max (qple_max (qH₁.mono hY (by omega))
@@ -3824,19 +3824,19 @@ theorem detectResidual (κ : LocalKernelClass) :
   set kc : ℕ := ⌈4 * (Cv + 1)⌉₊ with hkc
   set kτ1 : ℕ := 4 + (kc + 1 + (3 * 1 + 1) + kδ1) with hkτ1
   set kD1 : ℕ := kD * (1 + kτ1) ^ kD + kτ1 * kD with hkD1
-  set kδ2 : ℕ := 2 + 1 + kD1 + kδ1 with hkδ2
-  set kτ2 : ℕ := 4 + (kc + 1 + (3 * 1 + 1) + kδ2) with hkτ2
-  set kD2 : ℕ := kD * (1 + kτ2) ^ kD + kτ2 * kD with hkD2
-  set kδ3 : ℕ := 2 + 1 + kD2 + kδ2 with hkδ3
-  set kδ0 : ℕ := 2 + kδ3 with hkδ0
-  set kH : ℕ := kD1 + kD2 with hkH
-  set kP : ℕ := kH + 1 + kδ0 with hkP
-  set kE : ℕ := K₃ * (1 + kP) ^ K₃ + kP * K₃ with hkE
+  set! kδ2 : ℕ := 2 + 1 + kD1 + kδ1 with hkδ2
+  set! kτ2 : ℕ := 4 + (kc + 1 + (3 * 1 + 1) + kδ2) with hkτ2
+  set! kD2 : ℕ := kD * (1 + kτ2) ^ kD + kτ2 * kD with hkD2
+  set! kδ3 : ℕ := 2 + 1 + kD2 + kδ2 with hkδ3
+  set! kδ0 : ℕ := 2 + kδ3 with hkδ0
+  set! kH : ℕ := kD1 + kD2 with hkH
+  set! kP : ℕ := kH + 1 + kδ0 with hkP
+  set! kE : ℕ := K₃ * (1 + kP) ^ K₃ + kP * K₃ with hkE
   have hkE1 : 1 ≤ kE := le_trans (le_trans hK₃ (Nat.le_mul_of_pos_right _ (by positivity)))
     (Nat.le_add_right _ _)
   refine ⟨c₂, kE, hc₂, hkE1, ?_⟩
   intro q hq
-  set cB := Real.log 2 + q / (q - 2) * (1 + Real.log (12 * (W' + 1))) with hcB
+  set! cB := Real.log 2 + q / (q - 2) * (1 + Real.log (12 * (W' + 1))) with hcB
   have hW'0 : 0 ≤ W' := localFormUniformConstant_nonneg κ
   have hcB0 : 0 ≤ cB := by
     have : 0 ≤ Real.log (12 * (W' + 1)) := Real.log_nonneg (by linarith)
@@ -3850,13 +3850,13 @@ theorem detectResidual (κ : LocalKernelClass) :
   have hC0 : 0 ≤ C₁ := by linarith
   have hCv0 : 0 ≤ Cv := vonNeumannConst_nonneg κ
   -- clipping
-  set X := 12 * (W' + 1) * C₁ * (1 / δ) with hX
+  set! X := 12 * (W' + 1) * C₁ * (1 / δ) with hX
   have hX1 : 1 ≤ X := by
     rw [hX]
     have h2 : 2 ≤ 1 / δ := by rw [le_div_iff₀ hδ]; linarith
     have hA : 1 ≤ 12 * (W' + 1) := by linarith
     exact one_le_mul_of_one_le_of_one_le (one_le_mul_of_one_le_of_one_le hA hC₁) (by linarith)
-  set B := max 2 (X ^ (q / (q - 2))) with hB
+  set! B := max 2 (X ^ (q / (q - 2))) with hB
   have hB1 : 1 ≤ B := le_trans (by norm_num) (le_max_left _ _)
   have hB0 : 0 < B := by linarith
   have hclipδ : 3 * (W' * (C₁ * B ^ (-(q - 2) / q) * 1 * 1)) ≤ δ / 4 := by
@@ -3878,7 +3878,7 @@ theorem detectResidual (κ : LocalKernelClass) :
       _ = δ / 4 := mul_one _
   have hcl := detection_clipping hr hw f hf h1 h2 h3 h4 h5 h6 hq hC0 hB1 hR hh hu hv
   set f' := clipExcept B jR f with hf'
-  set δ' := 3 * δ / 4 with hδ'
+  set! δ' := 3 * δ / 4 with hδ'
   have hδ'0 : 0 < δ' := by positivity
   have hHf' : δ' < ‖localProgressionForm r w f'‖ := by
     rw [hδ']; linarith
@@ -3902,7 +3902,7 @@ theorem detectResidual (κ : LocalKernelClass) :
     have ht4 : 4 ≤ t := le_max_left _ _
     have ht0 : 0 < t := by linarith
     refine ⟨by positivity, by rw [div_lt_div_iff₀ ht0 (by norm_num)]; linarith, ?_⟩
-    have hδe : δx = 1 / dx := by field_simp; linarith
+    have hδe : δx = 1 / dx := by field_simp; linarith only [hδx]
     have hle : 4 * (Cv + 1) * C₁ * B ^ 3 * dx ≤ t := le_max_right _ _
     rw [hδe]
     have hB3 : 0 ≤ B ^ 3 := by positivity
@@ -3912,10 +3912,10 @@ theorem detectResidual (κ : LocalKernelClass) :
       _ ≤ 1 / dx := by
           gcongr; rw [div_le_one ht0]; exact hle
   -- the first decomposition (slot `ih`)
-  set dinv1 := 4 / 3 * (1 / δ) with hdinv1
+  set! dinv1 := 4 / 3 * (1 / δ) with hdinv1
   have hdinv10 : 0 < dinv1 := by positivity
   have hd1 : δ' * dinv1 = 1 := by rw [hδ', hdinv1]; field_simp
-  set t₁ := max 4 (4 * (Cv + 1) * C₁ * B ^ 3 * dinv1) with ht₁
+  set! t₁ := max 4 (4 * (Cv + 1) * C₁ * B ^ 3 * dinv1) with ht₁
   obtain ⟨hτ₁0, hτ₁2, hτ₁δ⟩ := hτfact hdinv10 hd1
   obtain ⟨d₁, A₁, hA₁c, hA₁b, hA₁⟩ := hslot hr hw f' hf'm (k := ih) (jR := jR) (b := ku)
     (c := lv) h1.symm h4 h5 h2 h3 h6 hC0 hB1 hτ₁0 hτ₁2 (by rw [hf'R]; exact hR)
@@ -3927,12 +3927,12 @@ theorem detectResidual (κ : LocalKernelClass) :
   have hf2m : ∀ j, Measurable (f2 j) :=
     measurable_update_slot hf'm ih (quadraticChartAtom_measurable A₁)
   -- the second decomposition (slot `ku`)
-  set dinv2 := 2 * B * M₁ * dinv1 with hdinv2
+  set! dinv2 := 2 * B * M₁ * dinv1 with hdinv2
   have hM₁1 : 1 ≤ M₁ := le_max_left _ _
   have hdinv20 : 0 < dinv2 := by positivity
   have hd2 : δ2 * dinv2 = 1 := by
-    rw [hδ2def, hdinv2]; field_simp; linarith [hd1]
-  set t₂ := max 4 (4 * (Cv + 1) * C₁ * B ^ 3 * dinv2) with ht₂
+    rw [hδ2def, hdinv2]; field_simp; linarith only [hd1]
+  set! t₂ := max 4 (4 * (Cv + 1) * C₁ * B ^ 3 * dinv2) with ht₂
   obtain ⟨hτ₂0, hτ₂2, hτ₂δ⟩ := hτfact hdinv20 hd2
   obtain ⟨d₂, A₂, hA₂c, hA₂b, hA₂⟩ := hslot hr hw f2 hf2m (k := ku) (jR := jR) (b := ih)
     (c := lv) h2.symm h4.symm h6 h1 h3 h5 hC0 hB1 hτ₂0 hτ₂2
@@ -3946,21 +3946,21 @@ theorem detectResidual (κ : LocalKernelClass) :
   set f3 := Function.update f2 ku (quadraticChartAtom A₂) with hf3
   have hf3m : ∀ j, Measurable (f3 j) :=
     measurable_update_slot hf2m ku (quadraticChartAtom_measurable A₂)
-  set dinv3 := 2 * B * M₂ * dinv2 with hdinv3
+  set! dinv3 := 2 * B * M₂ * dinv2 with hdinv3
   have hM₂1 : 1 ≤ M₂ := le_max_left _ _
   have hdinv30 : 0 < dinv3 := by positivity
   have hd3 : δ3 * dinv3 = 1 := by
-    rw [hδ3, hdinv3]; field_simp; linarith [hd2]
+    rw [hδ3, hdinv3]; field_simp; linarith only [hd2]
   -- the atom pair
-  set Hc := max (D t₁) (D t₂) with hHc
-  set δ₀ := (max 2 dinv3)⁻¹ with hδ₀
+  set! Hc := max (D t₁) (D t₂) with hHc
+  set! δ₀ := (max 2 dinv3)⁻¹ with hδ₀
   have hmax0 : 0 < max 2 dinv3 := lt_of_lt_of_le (by norm_num) (le_max_left _ _)
   have hδ₀0 : 0 < δ₀ := inv_pos.mpr hmax0
   have hδ₀1 : δ₀ ≤ 1 := by
     rw [hδ₀]; exact inv_le_one_of_one_le₀ (le_trans (by norm_num) (le_max_left _ _))
   have hδ₀δ : δ₀ ≤ δ3 := by
     rw [hδ₀]
-    have : δ3 = dinv3⁻¹ := by field_simp; linarith [hd3]
+    have : δ3 = dinv3⁻¹ := by field_simp; linarith only [hd3]
     rw [this]; exact inv_anti₀ hdinv30 (le_max_right _ _)
   have hf3i : f3 ih = quadraticChartAtom A₁ := by
     rw [hf3, Function.update_of_ne h4, hf2, Function.update_self]
@@ -3978,7 +3978,7 @@ theorem detectResidual (κ : LocalKernelClass) :
   -- the budget in `Z`
   have hHc1 : 1 ≤ Hc := by
     have := hA₁c.lower
-    linarith [Real.add_one_le_exp (2 : ℝ), le_max_left (D t₁) (D t₂)]
+    linarith only [Real.add_one_le_exp (2 : ℝ), le_max_left (D t₁) (D t₂), this]
   have hE := detection_budget hkD hkδ1 hkc hkτ1 hkD1 hkδ2 hkτ2 hkD2 hkδ3 hkδ0 hkH hkP hkE
     hW'0 hq hC₁ hδ hδ2 hX hX1 hB hdinv1 ht₁ hM₁ hdinv2 ht₂ hM₂ hdinv3 hHc hHc1 hδ₀ hcB
   refine ⟨d'', Φ, quadraticChartComplexity_mono hΦc hE, hΦb, ?_⟩

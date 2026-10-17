@@ -191,7 +191,7 @@ theorem inheritedAdaptiveFit (κ : LocalKernelClass) :
       rw [show (2 : ENNReal) = ENNReal.ofReal 2 by norm_num]
       exact ENNReal.ofReal_le_ofReal hq.le
     refine ⟨hf, h2q J (dyadicFiniteTree_root_mem _ _ _) (Or.inl rfl),
-      fun c hc hcT => h2q c hc (Or.inr hcT), by linarith, fun c a n _ hm hl hns => ?_⟩
+      fun c hc hcT => h2q c hc (Or.inr hcT), by linarith only [hB1], fun c a n _ hm hl hns => ?_⟩
     obtain ⟨d, Φ, h1, h2, h3⟩ := hd (dyadicGridLength_pos G c.1) (hw c) hm hl hk hns
     exact ⟨⟨d, Φ⟩, h1, h2, h3⟩
   have hM : S.T < S.M := by
@@ -308,7 +308,7 @@ theorem twoEarliestIncrements (κ : LocalKernelClass) :
   have hgL : ∀ t, ∫ y in dyadicGridCell G I.1 I.2, ‖g t I y‖ ^ 2 ≤ dyadicGridLength G I.1 :=
     fun t => (hcell t).2.2.2.2.2.2.2.2.1 hIT
   have hgsm := fun t => (hcell t).2.2.2.2.2.2.2.2.2
-  set B : ℕ → ℝ := fun t => fitBudget Cq C (stagAcc k₁ A t) with hB
+  set! B : ℕ → ℝ := fun t => fitBudget Cq C (stagAcc k₁ A t) with hB
   have hBpos : ∀ t, 0 < B t := fun t => Real.exp_pos _
   have hgS : ∀ t y, ‖g t I y‖ ≤ Real.sqrt 17 * B t := by
     intro t y
@@ -442,7 +442,7 @@ theorem predictorDelay_group (κ : LocalKernelClass) {d e : ℕ} {A : QuadraticC
   have hKd0 : 0 ≤ Kd := by rw [hKd]; positivity
   have hKd1 : (1 : ℝ) ≤ Kd := by rw [hKd]; linarith
   -- the two opponent families in slot `a`
-  set za₁ : ℤ × ℤ → ℝ → ℂ := fun _ => (f : ℝ → ℂ)
+  set! za₁ : ℤ × ℤ → ℝ → ℂ := fun _ => (f : ℝ → ℂ)
   set za₂ : ℤ × ℤ → ℝ → ℂ := Ψ.delayed f K₀
   have hfm : Measurable (f : ℝ → ℂ) := (Lp.stronglyMeasurable f).measurable
   have hadm₁ : IsAdmissibleOpponent G J' (f : ℝ → ℂ) za₁ 1 :=
@@ -459,9 +459,9 @@ theorem predictorDelay_group (κ : LocalKernelClass) {d e : ℕ} {A : QuadraticC
   have hm₂ : ∀ I, Measurable (za₂ I) := fun I => measurable_column_coord _ none
   have hL₂ : ∀ I, MemLp (za₂ I) 2 (volume.restrict (dyadicGridCell G I.1 I.2)) :=
     fun I => ColumnDepthFamily.memLp_coord_restrict _ _
-  set F₁ : ℤ × ℤ → Fin 4 → ℝ → ℂ := fun I =>
+  set! F₁ : ℤ × ℤ → Fin 4 → ℝ → ℂ := fun I =>
     slots4 a i k (za₁ I) (quadraticChartAtom A) (quadraticChartAtom A') (zb I)
-  set F₂ : ℤ × ℤ → Fin 4 → ℝ → ℂ := fun I =>
+  set! F₂ : ℤ × ℤ → Fin 4 → ℝ → ℂ := fun I =>
     slots4 a i k (za₂ I) (quadraticChartAtom A) (quadraticChartAtom A') (zb I)
   have e1 := hP G J' S' hsub w hw zero_le_one hKb hadm₁ hzb hdep₁ hzbd (fun _ => hfm) hzbm
     (fun I => (Lp.memLp f).restrict _) hzb2 F₁ (fun I => slots4_a _ _ _ _)
@@ -471,8 +471,8 @@ theorem predictorDelay_group (κ : LocalKernelClass) {d e : ℕ} {A : QuadraticC
     (fun I => slots4_a _ _ _ _) (fun I => slots4_i hai _ _ _ _)
     (fun I => slots4_k hak hik _ _ _ _) (fun I => slots4_b hab hib hkb _ _ _ _)
   -- the separated differences
-  set chirp : ι → ℝ → ℂ := fun ℓ t => (Real.fourierChar (lam ℓ * t ^ 2) : ℂ)
-  set sd : ι → ℤ × ℤ → ℂ := fun ℓ I =>
+  set! chirp : ι → ℝ → ℂ := fun ℓ t => (Real.fourierChar (lam ℓ * t ^ 2) : ℂ)
+  set! sd : ι → ℤ × ℤ → ℂ := fun ℓ I =>
     separatedLocalForm (dyadicGridLength G I.1) (w I) (chirp ℓ) a b
         (fun y => (f : ℝ → ℂ) y * quadraticChartAtom (ψa ℓ) y)
         (fun y => quadraticChartAtom (ψb ℓ) y * zb I y) -
@@ -515,11 +515,11 @@ theorem predictorDelay_group (κ : LocalKernelClass) {d e : ℕ} {A : QuadraticC
     have := mul_le_mul_of_nonneg_right this hKb
     exact mul_le_mul_of_nonneg_right this hEb
   -- the per-cell decomposition
-  set T₁ : ℤ × ℤ → ℂ := fun I => localProgressionForm (dyadicGridLength G I.1) (w I) (F₁ I) -
+  set! T₁ : ℤ × ℤ → ℂ := fun I => localProgressionForm (dyadicGridLength G I.1) (w I) (F₁ I) -
     ∑ ℓ ∈ L, coef ℓ (dyadicGridLength G I.1) * separatedLocalForm (dyadicGridLength G I.1) (w I)
       (chirp ℓ) a b (fun y => za₁ I y * quadraticChartAtom (ψa ℓ) y)
       (fun y => zb I y * quadraticChartAtom (ψb ℓ) y)
-  set T₂ : ℤ × ℤ → ℂ := fun I => localProgressionForm (dyadicGridLength G I.1) (w I) (F₂ I) -
+  set! T₂ : ℤ × ℤ → ℂ := fun I => localProgressionForm (dyadicGridLength G I.1) (w I) (F₂ I) -
     ∑ ℓ ∈ L, coef ℓ (dyadicGridLength G I.1) * separatedLocalForm (dyadicGridLength G I.1) (w I)
       (chirp ℓ) a b (fun y => za₂ I y * quadraticChartAtom (ψa ℓ) y)
       (fun y => zb I y * quadraticChartAtom (ψb ℓ) y)
@@ -581,7 +581,7 @@ theorem predictorDelay_group (κ : LocalKernelClass) {d e : ℕ} {A : QuadraticC
                   (Finset.single_le_sum (f := fun ℓ => ‖coef ℓ (dyadicGridLength G I.1)‖)
                     (fun _ _ => norm_nonneg _) hℓ).trans (hcoef _)
                 have hL0 := (dyadicGridLength_pos G I.1).le
-                nlinarith [norm_nonneg (sd ℓ I), mul_nonneg hL0 (norm_nonneg (sd ℓ I))]
+                nlinarith only [norm_nonneg (sd ℓ I), mul_nonneg hL0 (norm_nonneg (sd ℓ I)), hle]
             _ = Dl * ∑ I ∈ S'.filter (fun I => coef ℓ (dyadicGridLength G I.1) ≠ 0),
                 dyadicGridLength G I.1 * ‖sd ℓ I‖ := by rw [Finset.mul_sum]
             _ ≤ _ := mul_le_mul_of_nonneg_left (hdelay ℓ hℓ) hDl
@@ -616,7 +616,7 @@ theorem predictorDelay_group (κ : LocalKernelClass) {d e : ℕ} {A : QuadraticC
           have : Real.exp (-B) * 1 * Kb * Ea * Eb ≤ Real.exp (-B) * Kd * Kb * Ea * Eb := by
             have hK1 : (1 : ℝ) ≤ Kd := hKd1
             have := mul_nonneg (mul_nonneg (mul_nonneg hexp hKb) hEa) hEb
-            nlinarith
+            nlinarith only [hcc, hKd, this]
           linarith
         have h2 : 2 * Real.exp (-B) * Kd * Kb * Ea * Eb + Dl ^ 2 * (delayConst κ *
             ((2 : ℝ)⁻¹ ^ K₀ + (1 + K₀) * Real.sqrt ε) * (1 + Dl) ^ 4 * Ea * Kb * Eb) =
@@ -954,10 +954,10 @@ theorem lowDelayedReplacement (κ : LocalKernelClass) {a i k b : Fin 4}
         (Real.log_nonneg (by linarith [(P.rooted R).two_le_budget]))) _
     positivity
   set Ψ := P.family R hR
-  set r : ℤ × ℤ → ℝ := fun I => dyadicGridLength G I.1
-  set D₁ : ℤ × ℤ → Xi.Λ → Xk.Λ → ℂ := fun I li lk =>
+  set! r : ℤ × ℤ → ℝ := fun I => dyadicGridLength G I.1
+  set! D₁ : ℤ × ℤ → Xi.Λ → Xk.Λ → ℂ := fun I li lk =>
     localProgressionForm (r I) (w I) (slots4 a i k (f : ℝ → ℂ) (Xi.atom I li) (Xk.atom I lk) (zb I))
-  set D₂ : ℤ × ℤ → Xi.Λ → Xk.Λ → ℂ := fun I li lk =>
+  set! D₂ : ℤ × ℤ → Xi.Λ → Xk.Λ → ℂ := fun I li lk =>
     localProgressionForm (r I) (w I)
       (slots4 a i k (Ψ.delayed f K₀ I) (Xi.atom I li) (Xk.atom I lk) (zb I))
   have hfm : Measurable (f : ℝ → ℂ) := (Lp.stronglyMeasurable f).measurable
@@ -996,9 +996,9 @@ theorem lowDelayedReplacement (κ : LocalKernelClass) {a i k b : Fin 4}
       Err * Real.sqrt (∫ y in dyadicGridCell G R.1 R.2, ‖(f : ℝ → ℂ) y‖ ^ 2) *
         Real.sqrt (∫ y in dyadicGridCell G R.1 R.2, ‖Fb y‖ ^ 2) := by
     intro li lk
-    set S₀ := S.filter (fun I => Xi.coef I li ≠ 0 ∧ Xk.coef I lk ≠ 0)
-    set jb : ℤ × ℤ → ℤ × ℤ := fun I => jointBirth Xi Xk I li lk
-    set T := S₀.image jb
+    set! S₀ := S.filter (fun I => Xi.coef I li ≠ 0 ∧ Xk.coef I lk ≠ 0)
+    set! jb : ℤ × ℤ → ℤ × ℤ := fun I => jointBirth Xi Xk I li lk
+    set! T := S₀.image jb
     have hS₀ : ∑ I ∈ S, r I * (‖Xi.coef I li * Xk.coef I lk‖ * ‖D₁ I li lk - D₂ I li lk‖) =
         ∑ I ∈ S₀, r I * (‖Xi.coef I li * Xk.coef I lk‖ * ‖D₁ I li lk - D₂ I li lk‖) := by
       rw [Finset.sum_filter]
@@ -1268,7 +1268,7 @@ theorem predSystem_cover {ε : ℝ} (hε0 : 0 < ε) (hε1 : ε ≤ 1) (hD1 : 1 �
   set P := pkg (Xi.birth I li) (Xk.birth I lk) li lk with hPdef
   have hpos : 0 < ⌊D⌋₊ := Nat.floor_pos.mpr hD1
   have hcardD : P.L.card ≤ ⌊D⌋₊ := Nat.le_floor P.card_le
-  set m : P.ι → Fin (⌊D⌋₊) := fun ℓ => if h : ℓ ∈ P.L then
+  set! m : P.ι → Fin (⌊D⌋₊) := fun ℓ => if h : ℓ ∈ P.L then
     ⟨(P.L.equivFin ⟨ℓ, h⟩ : ℕ), lt_of_lt_of_le (P.L.equivFin ⟨ℓ, h⟩).2 hcardD⟩ else ⟨0, hpos⟩
   obtain ⟨hIJ', hJ'T, hJ'i, hJ'k⟩ := jointBirth_spec Xi Xk hci hck
   set J' := jointBirth Xi Xk I li lk
@@ -1778,8 +1778,8 @@ theorem colRange_gain [DecidableEq V] {s : Set ℝ} {sc : V → ℝ → ℂ} {wt
           ((z - (colRange s sc wt A).starProjection z : ColumnL2 V) : ℝ → ColumnHilbert V) y
             none‖ ^ 2 / (4 * volume.real s) ≤
       ‖(colRange s sc wt (insert v A)).starProjection z‖ ^ 2 := by
-  set U := colRange s sc wt A
-  set u := col s sc wt v
+  set! U := colRange s sc wt A
+  set! u := col s sc wt v
   set r := z - U.starProjection z
   have hr : ∀ᵐ y ∂volume, (r : ℝ → ColumnHilbert V) y (some v) = 0 := by
     filter_upwards [hz, colRange_fresh_zero hv (Submodule.starProjection_apply_mem U z),
@@ -1795,7 +1795,7 @@ theorem colRange_gain [DecidableEq V] {s : Set ℝ} {sc : V → ℝ → ℂ} {wt
   have hu := norm_col_sq_le h
   rcases eq_or_lt_of_le (sq_nonneg ‖u‖) with h0 | hpos
   · have hu0 : u = 0 := by
-      have : ‖u‖ = 0 := by nlinarith [norm_nonneg u]
+      have : ‖u‖ = 0 := by nlinarith only [norm_nonneg u, h0]
       exact norm_eq_zero.mp this
     have hi : inner ℂ u r = 0 := by rw [hu0, inner_zero_left]
     rw [hi] at hgain ⊢
@@ -1890,7 +1890,7 @@ theorem colRange_proj_restrict {s : Set ℝ} (hs : MeasurableSet s) (sc : V → 
     (wt : V → ℝ) (A : Finset V) (z : ColumnL2 V) :
     (colRange s sc wt A).starProjection (columnL2Restriction s hs z) =
       (colRange s sc wt A).starProjection z := by
-  set U := colRange s sc wt A
+  set! U := colRange s sc wt A
   have e : columnL2Restriction s hs z = columnL2Indicator s hs z := rfl
   have hw : z - columnL2Restriction s hs z ∈ Uᗮ := by
     rw [e]
@@ -2541,7 +2541,7 @@ theorem Hyp.gain (h : S.Hyp) {I : ℤ × ℤ} (hI : I ∈ dyadicFiniteTree S.G S
     have h0 : 0 ≤ S.B⁻¹ * dyadicGridLength S.G I.1 :=
       mul_nonneg (inv_nonneg.mpr h.B_pos.le) hr.le
     have := pow_le_pow_left₀ h0 h1 2
-    nlinarith
+    nlinarith only [hcorr, htri, h0]
   linarith
 
 end AccSetup
@@ -2608,7 +2608,7 @@ theorem Hyp.energy_children (h : S.Hyp) {I : ℤ × ℤ} (hI : I ∈ dyadicFinit
   have hstep : ∀ Q ∈ S.fine I, ‖S.proj Q a n S.Z‖ ^ 2 ≤
       ∑ Q' ∈ dyadicChildren S.G Q, ‖S.proj Q' a n S.Z‖ ^ 2 := by
     intro Q hQ
-    set m := Classical.choose (dyadicGridCell_children S.G Q.1 Q.2)
+    set! m := Classical.choose (dyadicGridCell_children S.G Q.1 Q.2)
     have hm := Classical.choose_spec (dyadicGridCell_children S.G Q.1 Q.2)
     have hch : dyadicChildren S.G Q = {(Q.1 + 1, m), (Q.1 + 1, m + 1)} := rfl
     have hne : ((Q.1 + 1, m) : ℤ × ℤ) ≠ (Q.1 + 1, m + 1) := by simp
@@ -3446,7 +3446,7 @@ theorem PairSmall.le_norm_mul {a₀ r : ℝ} {w : ℝ × ℝ → ℂ} {p p' : Fi
   have hna : 0 ≤ na := ENNReal.toReal_nonneg
   have hnb : 0 ≤ nb := ENNReal.toReal_nonneg
   refine le_of_forall_pos_lt_add fun ε hε => ?_
-  set t := min 1 (ε / (2 * ((na + nb + 1) * (η + 1))))
+  set! t := min 1 (ε / (2 * ((na + nb + 1) * (η + 1))))
   have ht : 0 < t := lt_min one_pos (by positivity)
   have ht1 : t ≤ 1 := min_le_left _ _
   have hbound := h.le_mul hpp hF hab hap hap' hbp hbp' (ca := na + t) (cb := nb + t)
@@ -3702,7 +3702,7 @@ theorem mvSeparatedPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (k : ℕ) (hk1 : 1 ≤ k
   obtain ⟨ι, hι, σ, hcard, hσ, hrest⟩ := hsplit (d := d) H B hA.lower hA.dimension hB2
     A.matrix Q (fun i j => hA.height i j) hQs hQh hiso'
   obtain ⟨a, hexp, hsumm, htot, hJ⟩ := hrest A rfl hA hVs
-  set M := separatedPhaseMatrix A.matrix Q with hMdef
+  set! M := separatedPhaseMatrix A.matrix Q with hMdef
   have hΛe := effectiveReturnQuadratic_eq_mvEffQuad A Q
   have hX0 : 0 ≤ 1 + Real.log H + Real.log B := by
     have : 0 ≤ Real.log B := Real.log_nonneg (by linarith); linarith
@@ -3711,7 +3711,7 @@ theorem mvSeparatedPhase (c₀ : ℕ) (hc : 1 ≤ c₀) (k : ℕ) (hk1 : 1 ≤ k
     have h1 : X ≤ X ^ Dw := le_self_pow₀ hX1 (by omega)
     have h2 : 1 + Real.log H ≤ X := by simp only [X]; linarith
     change 1 + Real.log H + (Dw : ℝ) * X ^ Dw ≤ (1 + Dw) * X ^ Dw
-    nlinarith
+    nlinarith only [hlogδ, h1]
   have hcomp := exp_compose_budget (Ds := Ds) hX0 hXs
   have hDsm : Real.exp (((Ds : ℝ) * (1 + Dw) ^ Ds) * X ^ (Dw * Ds)) ≤
       Real.exp (Dm * X ^ Dm) :=
@@ -4194,7 +4194,7 @@ theorem sixTheta_expansion_bound {W : ℝ × ℝ → ℂ} {K L : ℝ} (hW : Cont
   have hK0 : 0 ≤ K := (norm_nonneg _).trans (hK 0)
   set tailF := ∑' p, if p ∈ F then 0 else ‖a p‖ with htailF
   have htail0 : 0 ≤ tailF := tsum_nonneg fun p => by split_ifs <;> positivity
-  set ν : τt → Fin 3 → ℝ := fun p i => b i + ∑ j, σ p j * V j i with hνdef
+  set! ν : τt → Fin 3 → ℝ := fun p i => b i + ∑ j, σ p j * V j i with hνdef
   have hν : ∀ p z, ν p ⬝ᵥ z = b ⬝ᵥ z + σ p ⬝ᵥ V.mulVec z := by
     intro p z
     simp only [hνdef, dotProduct, Matrix.mulVec, add_mul, Finset.sum_add_distrib,
@@ -4202,14 +4202,14 @@ theorem sixTheta_expansion_bound {W : ℝ × ℝ → ℂ} {K L : ℝ} (hW : Cont
     rw [Finset.sum_comm]
     congr 1
     exact Finset.sum_congr rfl fun i _ => Finset.sum_congr rfl fun j _ => by ring
-  set e2 : (Fin 3 → ℝ) → ℂ := fun z => (Real.fourierChar (z ⬝ᵥ N.mulVec z) : ℂ) with he2
-  set ph : τt → (Fin 3 → ℝ) → ℂ := fun p z => (Real.fourierChar (ν p ⬝ᵥ z) : ℂ) with hph
+  set! e2 : (Fin 3 → ℝ) → ℂ := fun z => (Real.fourierChar (z ⬝ᵥ N.mulVec z) : ℂ) with he2
+  set! ph : τt → (Fin 3 → ℝ) → ℂ := fun p z => (Real.fourierChar (ν p ⬝ᵥ z) : ℂ) with hph
   -- pointwise remainder
   have hpt : ∀ z : Fin 3 → ℝ, (∀ i, |z i| ≤ 1) →
       ‖Φ z - ∑ p ∈ F, a p * (e2 z * ph p z)‖ ≤ tailF := by
     intro z hz
-    set X := z ⬝ᵥ N.mulVec z + b ⬝ᵥ z with hX
-    set f : τt → ℂ := fun p => a p * (Real.fourierChar (σ p ⬝ᵥ V.mulVec z) : ℂ) with hf
+    set! X := z ⬝ᵥ N.mulVec z + b ⬝ᵥ z with hX
+    set! f : τt → ℂ := fun p => a p * (Real.fourierChar (σ p ⬝ᵥ V.mulVec z) : ℂ) with hf
     have hS := hexp z hz
     have hF' : HasSum (fun p => if p ∈ F then f p else 0) (∑ p ∈ F, f p) := by
       have h0 : HasSum (fun p => if p ∈ F then f p else 0)
@@ -4450,19 +4450,19 @@ theorem sixTheta_count_thresholds (c₀ : ℕ) (hc : 1 ≤ c₀) :
   classical
   have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
   have hK0 : 0 ≤ K := by linarith
-  set H' := 2 * H * K ^ 2 with hH'
+  set! H' := 2 * H * K ^ 2 with hH'
   have hK2 : (1 : ℝ) ≤ K ^ 2 := one_le_pow₀ hK1
-  have hHH' : H ≤ H' := by rw [hH']; nlinarith
+  have hHH' : H ≤ H' := by rw [hH']; nlinarith only [hH1, hK2]
   have hA' : MultivariableQuadraticChartComplexity c₀ H' A :=
     quadraticChartComplexity_mono hA hHH'
   have hX1 : 1 ≤ X := by
-    have : 0 ≤ Real.log H' := Real.log_nonneg (by rw [hH']; nlinarith)
+    have : 0 ≤ Real.log H' := Real.log_nonneg (by rw [hH']; nlinarith only [hK1, hH1])
     have : 0 ≤ Real.log (max 1 ε⁻¹) := Real.log_nonneg (le_max_left _ _)
     simp only [X]; linarith
   have hE1 : 1 ≤ E := Real.one_le_exp (by positivity)
   have hE2 : 2 ≤ E := by
     have hD1 : (1 : ℝ) ≤ D := by exact_mod_cast hD
-    have : 1 ≤ (D : ℝ) * X ^ D := by nlinarith [one_le_pow₀ (n := D) hX1]
+    have : 1 ≤ (D : ℝ) * X ^ D := by nlinarith only [one_le_pow₀ (n := D) hX1, hD1]
     have := Real.add_one_le_exp (1 : ℝ)
     have : Real.exp 1 ≤ E := Real.exp_le_exp.mpr (by linarith)
     linarith
@@ -4473,7 +4473,7 @@ theorem sixTheta_count_thresholds (c₀ : ℕ) (hc : 1 ≤ c₀) :
   choose X1 hX1 hX1c using hq
   have hB₂ : 2 ≤ E * (1 + 2 ^ K₀) := by
     have : (1 : ℝ) ≤ 2 ^ K₀ := one_le_pow₀ (by norm_num)
-    nlinarith
+    nlinarith only [hE1, this]
   obtain ⟨X2, hX2, hX2c⟩ := rational_frequency_scale_count (d := d + 1) (u := 1) hB₂ le_rfl hα₁
     hαβ (freqVector A 1) r₀
   have hsub : T ⊆ (Finset.univ.biUnion X1) ∪ X2 := by
@@ -4482,15 +4482,15 @@ theorem sixTheta_count_thresholds (c₀ : ℕ) (hc : 1 ≤ c₀) :
     have hn1 : ∀ ij, n ∉ X1 ij := fun ij h =>
       hnX (Finset.mem_union_left _ (Finset.mem_biUnion.mpr ⟨ij, Finset.mem_univ _, h⟩))
     have hn2 : n ∉ X2 := fun h => hnX (Finset.mem_union_right _ h)
-    set r := r₀ * (2 : ℝ) ^ (-n) with hr
-    set A' := mvDilateChart r A with hA'def
+    set! r := r₀ * (2 : ℝ) ^ (-n) with hr
+    set! A' := mvDilateChart r A with hA'def
     have hA'c : MultivariableQuadraticChartComplexity c₀ H' A' :=
       mvDilateChart_complexity hA' r
     have hθb : ∀ z, ‖sixTheta (W n) z‖ ≤ H' := fun z =>
-      (sixTheta_norm_le (hWb n) z).trans (by nlinarith)
+      (sixTheta_norm_le (hWb n) z).trans (by nlinarith only [hH1])
     have hθL : ∀ x y, ‖sixTheta (W n) y - sixTheta (W n) x‖ ≤ H' * ‖y - x‖ := fun x y =>
       (sixTheta_lipschitz (hWb n) (hWL n) x y).trans
-        (mul_le_mul_of_nonneg_right (by nlinarith) (norm_nonneg _))
+        (mul_le_mul_of_nonneg_right (by nlinarith only [hH1]) (norm_nonneg _))
     have hF : ∀ t < ε, ∃ ξ : EuclideanSpace ℝ (Fin 3), t < ‖𝓕 (fun z : EuclideanSpace ℝ (Fin 3) =>
         sixTheta (W n) z.ofLp * multivariableQuadraticChartAtom A' z.ofLp) ξ‖ := by
       intro t ht
@@ -4515,7 +4515,7 @@ theorem sixTheta_count_thresholds (c₀ : ℕ) (hc : 1 ≤ c₀) :
       push Not at hlt
       exact absurd (h hlt.le) (not_lt.mpr hb)
     -- frequencies: tiny or large on the truncation
-    set F : Finset (ι × (Fin (d + d) → ℤ)) := Finset.univ ×ˢ frequencyTruncationSet (d + d) K₀
+    set! F : Finset (ι × (Fin (d + d) → ℤ)) := Finset.univ ×ˢ frequencyTruncationSet (d + d) K₀
       with hFdef
     have hfreq : ∀ p ∈ F, |A'.linear 1 + ∑ i, (σ p i : ℝ) * A'.horizontal i 1| ≤ α₁ ∨
         β₁ ≤ |A'.linear 1 + ∑ i, (σ p i : ℝ) * A'.horizontal i 1| := by
@@ -4554,7 +4554,7 @@ theorem sixTheta_count_thresholds (c₀ : ℕ) (hc : 1 ≤ c₀) :
           mem_frequencyTruncationSet.mpr (Or.inl (funext fun i => absurd i.2 (by omega)))
         simp only [this, ↓reduceIte, tsum_zero]
         positivity
-      · have h := fintype_prod_tail (D := d + d) (k := (d + 1) ^ 2) (by omega) (by nlinarith) a
+      · have h := fintype_prod_tail (D := d + d) (k := (d + 1) ^ 2) (by omega) (by nlinarith only) a
           hE₁0 (fun p => by simpa only [one_mul] using (hJ 1).1 p) K₀
         refine h.trans ?_
         have : (Fintype.card ι : ℝ) ≤ E := hcard
@@ -4639,7 +4639,7 @@ theorem count_threshold_big {K E E₁ G ε Z a : ℝ} {m : ℕ} (hK : 1 ≤ K) (
   have hE0 : 0 < E := by linarith
   have hGE : 1 ≤ G * E₁ := one_le_mul_of_one_le_of_one_le hG hE₁
   have hpos : 0 < (1000 + 8 * G * E₁) * K ^ 2 * E / ε := by
-    have : 0 < 1000 + 8 * G * E₁ := by nlinarith
+    have : 0 < 1000 + 8 * G * E₁ := by nlinarith only [hE₁, hG]
     positivity
   rw [← Real.exp_log hpos]
   apply Real.exp_le_exp.mpr
@@ -4829,7 +4829,7 @@ theorem sixTheta_scale_count (c₀ : ℕ) (hc : 1 ≤ c₀) :
   have hZ2 : 2 ≤ Z := by rw [hZ]; linarith
   have hZ1 : 1 ≤ Z := by linarith
   have hdZ : (d : ℝ) ≤ Z := by have := hA.dimension; rw [hZ]; linarith
-  set X := 1 + Real.log (2 * H * K ^ 2) + Real.log (max 1 ε⁻¹) with hX
+  set! X := 1 + Real.log (2 * H * K ^ 2) + Real.log (max 1 ε⁻¹) with hX
   have hH0 : 0 < H := lt_of_lt_of_le (Real.exp_pos 2) hA.lower
   have hK0 : 0 < K := by linarith
   have hXZ : X ≤ 3 * Z := by
@@ -5040,7 +5040,7 @@ theorem kernelSlice_lipschitz {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r
     _ = c * (|p.1 - q.1| + 4 * |p.2 - q.2|) := by field_simp; ring
     _ ≤ c * (5 * ‖p - q‖) := by gcongr; linarith
     _ ≤ sliceConst κ * ‖p - q‖ := by
-        rw [hsc]; nlinarith [norm_nonneg (p - q)]
+        rw [hsc]; nlinarith only [norm_nonneg (p - q), hsup]
 
 /-! ### The transposed form in one slot -/
 
@@ -5504,7 +5504,7 @@ theorem tripleNorm_count (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) 
   have hH1 : 1 ≤ H := by linarith [(hB 0).lower, Real.add_one_le_exp (2 : ℝ)]
   have hA := sixChart_complexity hB hc (fun i => ((m.succAbove i : ℕ) : ℝ) - m)
   have hrn : ∀ n : ℤ, 0 < r₀ * (2 : ℝ) ^ (-n) := fun n => by positivity
-  set W : ℤ → ℝ × ℝ → ℂ := fun n =>
+  set! W : ℤ → ℝ × ℝ → ℂ := fun n =>
     if n ∈ T then kernelSlice (w n) y (r₀ * (2 : ℝ) ^ (-n)) m else 0 with hW
   have hK1 := one_le_sliceConst κ
   have h := hcount (H ^ 216) (sliceConst κ) (s ^ 2) r₀ _ hA hK1
@@ -5583,9 +5583,9 @@ theorem tripleTail (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
   have hlδ : 0 ≤ Real.log δ⁻¹ := Real.log_nonneg (one_le_inv_iff₀.mpr ⟨hδ, hδ1⟩)
   set P := Real.log H + Real.log δ⁻¹ + 1 with hP
   have hP1 : 1 ≤ P := by rw [hP]; linarith
-  set L₀ := 216 * Real.log H + Real.log K + 2 * Real.log δ⁻¹ + 2 with hL₀
+  set! L₀ := 216 * Real.log H + Real.log K + 2 * Real.log δ⁻¹ + 2 with hL₀
   have hL₀P : L₀ ≤ (218 + Real.log K) * P := by
-    rw [hL₀, hP]; nlinarith
+    rw [hL₀, hP]; nlinarith only [hlK, hlogH, hlδ]
   have hL₀0 : 0 ≤ L₀ := by rw [hL₀]; linarith
   -- the layer of each positive norm
   classical
@@ -5597,9 +5597,9 @@ theorem tripleTail (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
     calc δ / 2 ^ (j + 1) ≤ (1 / 2) ^ j := by
           rw [div_le_iff₀ (by positivity), one_div_pow, pow_succ]
           rw [div_mul_eq_mul_div, le_div_iff₀ (by positivity)]
-          nlinarith [pow_pos (by norm_num : (0 : ℝ) < 2) j]
+          nlinarith only [pow_pos (by norm_num : (0 : ℝ) < 2) j, hδ1]
       _ < A n := hj
-  set jn : ℤ → ℕ := fun n => if h : 0 < A n then Nat.find (hex n h) else 0 with hjn
+  set! jn : ℤ → ℕ := fun n => if h : 0 < A n then Nat.find (hex n h) else 0 with hjn
   have hjn_lo : ∀ n, 0 < A n → δ / 2 ^ (jn n + 1) < A n := fun n h => by
     simp only [hjn, h, ↓reduceDIte]; exact Nat.find_spec (hex n h)
   have hjn_hi : ∀ n ∈ T', A n ≤ δ / 2 ^ jn n := by
@@ -5618,7 +5618,7 @@ theorem tripleTail (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
   have hlayer : ∀ j : ℕ, ((T'.filter fun n => 0 < A n ∧ jn n = j).card : ℝ) ≤
       C * L₀ ^ C * ((j : ℝ) + 1) ^ C := by
     intro j
-    set s := δ / 2 ^ (j + 1) with hsdef
+    set! s := δ / 2 ^ (j + 1) with hsdef
     have hs : 0 < s := by positivity
     have hs1 : s ≤ 1 := by
       rw [hsdef, div_le_one (by positivity)]
@@ -5643,7 +5643,7 @@ theorem tripleTail (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
       have hj0 : (0 : ℝ) ≤ j := Nat.cast_nonneg j
       have : (j + 1 : ℝ) * Real.log 2 ≤ (j + 1) * 1 :=
         mul_le_mul_of_nonneg_left hl2 (by positivity)
-      nlinarith
+      nlinarith only [hlK, hlogH, hlδ, this]
     have hb0 : 0 ≤ 216 * Real.log H + Real.log K + 2 * Real.log s⁻¹ := by
       have : 0 ≤ Real.log s⁻¹ := by rw [hls]; positivity
       linarith
@@ -5651,7 +5651,7 @@ theorem tripleTail (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) :
         C * (L₀ * ((j : ℝ) + 1)) ^ C := by gcongr
       _ = C * L₀ ^ C * ((j : ℝ) + 1) ^ C := by rw [mul_pow]; ring
   -- summation
-  set N : ℕ := T'.sup jn + 1 with hN
+  set! N : ℕ := T'.sup jn + 1 with hN
   have hjN : ∀ n ∈ T', jn n < N := fun n hn => Nat.lt_succ_of_le (Finset.le_sup hn)
   have hsum1 : ∑ n ∈ T', A n ≤ ∑ n ∈ T' with 0 < A n, δ / 2 ^ jn n := by
     rw [Finset.sum_filter (p := fun n => 0 < A n) (f := fun n => δ / 2 ^ jn n)]
@@ -5891,7 +5891,7 @@ theorem cells_tripleTail (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) 
     have hJ' := (Finset.mem_filter.mp hJ).2
     exact dyadicGridCell_eq_of_common_point G hI' hJ' hIJ.symm
   set T := S.image Prod.fst with hT
-  set cellAt : ℤ → ℤ × ℤ := fun n => if h : ∃ I ∈ S, I.1 = n then h.choose else (n, 0)
+  set! cellAt : ℤ → ℤ × ℤ := fun n => if h : ∃ I ∈ S, I.1 = n then h.choose else (n, 0)
     with hcellAt
   have hcell_mem : ∀ n ∈ T, cellAt n ∈ S ∧ (cellAt n).1 = n := by
     intro n hn
@@ -5903,7 +5903,7 @@ theorem cells_tripleTail (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) 
     intro I hI
     have := hcell_mem I.1 (Finset.mem_image_of_mem _ hI)
     exact hinj this.1 hI this.2
-  set φ : Fin 4 → ℝ → ℂ := Fin.insertNth m 0 (fun i x => quadraticChartAtom (B i) (x - y))
+  set! φ : Fin 4 → ℝ → ℂ := Fin.insertNth m 0 (fun i x => quadraticChartAtom (B i) (x - y))
     with hφ
   have hφs : ∀ i, φ (m.succAbove i) = fun x => quadraticChartAtom (B i) (x - y) := fun i =>
     Fin.insertNth_apply_succAbove (α := fun _ => ℝ → ℂ) m 0 _ i
@@ -5917,8 +5917,8 @@ theorem cells_tripleTail (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀) 
     intro j hj x
     obtain ⟨i, rfl⟩ := Fin.exists_succAbove_eq hj
     rw [hφs]; exact hBb i _
-  set a : ℤ → ℝ := fun n => dyadicGridLeft G n (cellAt n).2 with ha
-  set w' : ℤ → ℝ × ℝ → ℂ := fun n => w (cellAt n) with hw'
+  set! a : ℤ → ℝ := fun n => dyadicGridLeft G n (cellAt n).2 with ha
+  set! w' : ℤ → ℝ × ℝ → ℂ := fun n => w (cellAt n) with hw'
   have hlen : ∀ n : ℤ, dyadicGridLength G n = G.baseLength * (2 : ℝ) ^ (-n) := fun n => rfl
   have hadm : ∀ n ∈ T, IsAdmissibleLocalKernel κ (a n) (G.baseLength * (2 : ℝ) ^ (-n)) (w' n) := by
     intro n hn
@@ -5993,7 +5993,7 @@ theorem cells_tripleCount (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀)
     have hJ' := (Finset.mem_filter.mp hJ).2
     exact dyadicGridCell_eq_of_common_point G hI' hJ' hIJ.symm
   set T := S.image Prod.fst with hT
-  set cellAt : ℤ → ℤ × ℤ := fun n => if h : ∃ I ∈ S, I.1 = n then h.choose else (n, 0)
+  set! cellAt : ℤ → ℤ × ℤ := fun n => if h : ∃ I ∈ S, I.1 = n then h.choose else (n, 0)
     with hcellAt
   have hcell_mem : ∀ n ∈ T, cellAt n ∈ S ∧ (cellAt n).1 = n := by
     intro n hn
@@ -6005,7 +6005,7 @@ theorem cells_tripleCount (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀)
     intro I hI
     have := hcell_mem I.1 (Finset.mem_image_of_mem _ hI)
     exact hinj this.1 hI this.2
-  set φ : Fin 4 → ℝ → ℂ := Fin.insertNth m 0 (fun i x => quadraticChartAtom (B i) (x - y))
+  set! φ : Fin 4 → ℝ → ℂ := Fin.insertNth m 0 (fun i x => quadraticChartAtom (B i) (x - y))
     with hφ
   have hφs : ∀ i, φ (m.succAbove i) = fun x => quadraticChartAtom (B i) (x - y) := fun i =>
     Fin.insertNth_apply_succAbove (α := fun _ => ℝ → ℂ) m 0 _ i
@@ -6019,8 +6019,8 @@ theorem cells_tripleCount (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀)
     intro j hj x
     obtain ⟨i, rfl⟩ := Fin.exists_succAbove_eq hj
     rw [hφs]; exact hBb i _
-  set a : ℤ → ℝ := fun n => dyadicGridLeft G n (cellAt n).2 with ha
-  set w' : ℤ → ℝ × ℝ → ℂ := fun n => w (cellAt n) with hw'
+  set! a : ℤ → ℝ := fun n => dyadicGridLeft G n (cellAt n).2 with ha
+  set! w' : ℤ → ℝ × ℝ → ℂ := fun n => w (cellAt n) with hw'
   have hlen : ∀ n : ℤ, dyadicGridLength G n = G.baseLength * (2 : ℝ) ^ (-n) := fun n => rfl
   have hadm : ∀ n ∈ T, IsAdmissibleLocalKernel κ (a n) (G.baseLength * (2 : ℝ) ^ (-n)) (w' n) := by
     intro n hn
@@ -6050,7 +6050,7 @@ theorem cells_tripleCount (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀)
     have hx' : x ∈ dyadicGridCell G (cellAt n).1 (cellAt n).2 := by
       rw [hfst]; simpa only [dyadicGridCell, ha, hlen] using hx
     exact hΦ _ hcm hy i x hx'
-  set T' := T.filter fun n => δ < tripleNorm (w' n) φ m y (G.baseLength * (2 : ℝ) ^ (-n))
+  set! T' := T.filter fun n => δ < tripleNorm (w' n) φ m y (G.baseLength * (2 : ℝ) ^ (-n))
     with hT'
   have hmain := hcnt H G.baseLength δ y B φ m hB (fun i u => by rw [hφs]; simp)
     G.baseLength_pos hδ hδ1 a w' T' (fun n hn => hadm n (Finset.mem_filter.mp hn).1)

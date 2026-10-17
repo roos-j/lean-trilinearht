@@ -119,7 +119,7 @@ theorem finiteRowNorm_binary_step {ι F : Type*} [Fintype ι] [NormedAddCommGrou
     apply (sq_le_sq₀ (finiteRowNorm_nonneg _)
       (mul_nonneg hC (Real.sqrt_nonneg _))).mp
     rw [finiteRowNorm_disjoint_sq f g hd, mul_pow, Real.sq_sqrt (add_nonneg hE₀ hE₁)]
-    nlinarith
+    nlinarith only [hf', hg']
   calc
     _ ≤ finiteRowNorm (f + g) + finiteRowNorm w := finiteRowNorm_add_le _ _
     _ ≤ C * Real.sqrt (E₀ + E₁) + Real.sqrt E₀ := add_le_add hfg hw
@@ -767,7 +767,7 @@ theorem projectionRestartTime_factor_lt_half {D : ℝ} (hD : 2 ≤ D)
     have hn : 0 < projectionRestartTime D m := Nat.ceil_pos.mpr (pow_pos hb0 p)
     exact_mod_cast hn
   apply (div_lt_iff₀ hT).mpr
-  nlinarith
+  nlinarith only [hnum, hbig]
 
 /-- Blueprint `lem:compression`, line 597: the exact restart horizon has
 prefix constant at most a cubic layer-count factor times `log (2D)`. -/

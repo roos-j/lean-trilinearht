@@ -115,7 +115,7 @@ theorem norm_integral_cell_test_le {g : ℝ → ℂ} {a r B : ℝ} (hr : 0 < r) 
             (integrableOn_const (by simp) (by simp)) measurableSet_Ico
             (fun y _ => pow_le_pow_left₀ (norm_nonneg _) (hgb y) 2)
       _ = B ^ 2 * r := by
-          rw [setIntegral_const, smul_eq_mul, Real.volume_real_Ico_of_le (by linarith)]
+          rw [setIntegral_const, smul_eq_mul, Real.volume_real_Ico_of_le (by linarith only [hr])]
           ring
   calc Real.sqrt (∫ y in Set.Ico a (a + r), ‖g y‖ ^ 2) ≤ Real.sqrt (B ^ 2 * r) :=
         Real.sqrt_le_sqrt hgsq
@@ -213,7 +213,7 @@ theorem cell_bump_square_function {ι : Type*} (S : Finset ι) (a : ι → ℝ) 
     intro ξ; simp only [hmL]; split_ifs with h
     · rw [RCLike.norm_conj, hnorm, le_div_iff₀ hr]
       rw [abs_mul, abs_of_pos hr] at h
-      nlinarith [abs_nonneg (ξ - c)]
+      nlinarith only [abs_nonneg (ξ - c), hπ, h]
     · rw [norm_zero]; positivity
   have hmHb : ∀ ξ, ‖mH ξ‖ ≤ r ^ 2 := by
     intro ξ; simp only [hmH]; split_ifs with h
@@ -226,10 +226,10 @@ theorem cell_bump_square_function {ι : Type*} (S : Finset ι) (a : ι → ℝ) 
       have h3 : (r⁻¹) ^ 2 ≤ (2 * Real.pi * |ξ - c|) ^ 2 := pow_le_pow_left₀ (by positivity) h2.le 2
       calc ((2 * Real.pi * |ξ - c|) ^ 2)⁻¹ ≤ ((r⁻¹) ^ 2)⁻¹ := inv_anti₀ (by positivity) h3
         _ = r ^ 2 := by rw [inv_pow, inv_inv]
-  set KhL := (memLp_two_mul_bounded hmLm hmLb Fh).toLp (fun ξ => mL ξ * Fh ξ) with hKhL
-  set KhH := (memLp_two_mul_bounded hmHm hmHb Fh).toLp (fun ξ => mH ξ * Fh ξ) with hKhH
-  set KL : Lp ℂ 2 (volume : Measure ℝ) := 𝓕⁻ KhL with hKL
-  set KH : Lp ℂ 2 (volume : Measure ℝ) := 𝓕⁻ KhH with hKH
+  set! KhL := (memLp_two_mul_bounded hmLm hmLb Fh).toLp (fun ξ => mL ξ * Fh ξ) with hKhL
+  set! KhH := (memLp_two_mul_bounded hmHm hmHb Fh).toLp (fun ξ => mH ξ * Fh ξ) with hKhH
+  set! KL : Lp ℂ 2 (volume : Measure ℝ) := 𝓕⁻ KhL with hKL
+  set! KH : Lp ℂ 2 (volume : Measure ℝ) := 𝓕⁻ KhH with hKH
   have hFKL : 𝓕 KL = KhL := FourierTransform.fourier_fourierInv_eq KhL
   have hFKH : 𝓕 KH = KhH := FourierTransform.fourier_fourierInv_eq KhH
   have hFh2 : MemLp (Fh : ℝ → ℂ) 2 := Lp.memLp Fh
@@ -248,9 +248,9 @@ theorem cell_bump_square_function {ι : Type*} (S : Finset ι) (a : ι → ℝ) 
     have hem : Continuous (fun y : ℝ => (Real.fourierChar (c * y) : ℂ)) :=
       continuous_subtype_val.comp (Real.continuous_fourierChar.comp (continuous_const.mul
         continuous_id))
-    set τ : ℝ → ℂ := fun y => (Real.fourierChar (c * y) : ℂ) * θ i y with hτ
-    set σ : ℝ → ℂ := fun y => (Real.fourierChar (c * y) : ℂ) * Θ i y with hσ
-    set ρ : ℝ → ℂ := fun y => (Real.fourierChar (c * y) : ℂ) * deriv (deriv (θ i)) y with hρ
+    set! τ : ℝ → ℂ := fun y => (Real.fourierChar (c * y) : ℂ) * θ i y with hτ
+    set! σ : ℝ → ℂ := fun y => (Real.fourierChar (c * y) : ℂ) * Θ i y with hσ
+    set! ρ : ℝ → ℂ := fun y => (Real.fourierChar (c * y) : ℂ) * deriv (deriv (θ i)) y with hρ
     have hτc : Continuous τ := hem.mul hθC1.continuous
     have hσc : Continuous σ := hem.mul (hΘ i).continuous
     have hρc : Continuous ρ := hem.mul hθ2cont
@@ -281,7 +281,7 @@ theorem cell_bump_square_function {ι : Type*} (S : Finset ι) (a : ι → ℝ) 
         rw [abs_mul, abs_of_pos hr, not_le] at h
         have hξc : ξ - c ≠ 0 := by
           intro h0; rw [h0, abs_zero, mul_zero] at h; linarith
-        set W : ℂ := conj ((2 * Real.pi * Complex.I * ((ξ - c : ℝ) : ℂ)) ^ 2) with hW
+        set! W : ℂ := conj ((2 * Real.pi * Complex.I * ((ξ - c : ℝ) : ℂ)) ^ 2) with hW
         have hW0 : W ≠ 0 := by
           rw [hW, map_ne_zero]
           have hξc' : (ξ : ℂ) - c ≠ 0 := by
@@ -337,7 +337,7 @@ theorem cell_bump_square_function {ι : Type*} (S : Finset ι) (a : ι → ℝ) 
       field_simp
     have hsq : ‖∫ y, conj (τ y) * F y‖ ^ 2 ≤ 2 * (x ^ 2 + z ^ 2) := by
       have := pow_le_pow_left₀ (norm_nonneg _) hnorm 2
-      nlinarith [sq_nonneg (x - z)]
+      nlinarith only [sq_nonneg (x - z), this]
     change r⁻¹ * ‖∫ y, conj (τ y) * F y‖ ^ 2 ≤ _
     calc r⁻¹ * ‖∫ y, conj (τ y) * F y‖ ^ 2 ≤ r⁻¹ * (2 * (x ^ 2 + z ^ 2)) :=
           mul_le_mul_of_nonneg_left hsq (by positivity)
@@ -403,7 +403,7 @@ theorem bumpBandBound_nonneg (ℓ : ℤ) : 0 ≤ bumpBandBound ℓ := by
 theorem bumpMultiplier_le_band {η : ℝ} {ℓ : ℤ} (h1 : (2 : ℝ) ^ ℓ ≤ |η|)
     (h2 : |η| < (2 : ℝ) ^ (ℓ + 1)) : bumpMultiplier η ≤ bumpBandBound ℓ := by
   have hπ : 0 < 2 * Real.pi := by positivity
-  have hπ1 : 1 ≤ 2 * Real.pi := by nlinarith [Real.pi_gt_three]
+  have hπ1 : 1 ≤ 2 * Real.pi := by nlinarith only [Real.pi_gt_three]
   unfold bumpMultiplier bumpBandBound
   have hη0 : 0 < |η| := lt_of_lt_of_le (zpow_pos (by norm_num) ℓ) h1
   split_ifs with hη hℓ hℓ
@@ -433,7 +433,7 @@ theorem bumpMultiplier_le_band {η : ℝ} {ℓ : ℤ} (h1 : (2 : ℝ) ^ ℓ ≤ 
         exact one_le_mul_of_one_le_of_one_le (one_le_pow₀ hπ1) (one_le_pow₀ h1'.le)
       exact pow_le_one₀ (by positivity) (inv_le_one_of_one_le₀ hb)
     calc ((2 * Real.pi * η) ^ 2)⁻¹ ^ 2 ≤ 1 := this
-      _ ≤ (2 * Real.pi) ^ 2 * 4 ^ ((0 : ℤ) + 1) := by norm_num; nlinarith
+      _ ≤ (2 * Real.pi) ^ 2 * 4 ^ ((0 : ℤ) + 1) := by norm_num; nlinarith only [hπ1]
   · -- high frequency, positive band
     set t : ℝ := (2 : ℝ) ^ ℓ with ht
     have ht0 : 0 < t := zpow_pos (by norm_num) ℓ
@@ -453,7 +453,7 @@ theorem bumpMultiplier_le_band {η : ℝ} {ℓ : ℤ} (h1 : (2 : ℝ) ^ ℓ ≤ 
     exact mul_le_mul_of_nonneg_left (inv_anti₀ (by positivity) h4) (by positivity)
 
 theorem bumpMultiplier_le (η : ℝ) : bumpMultiplier η ≤ (2 * Real.pi) ^ 2 := by
-  have hπ1 : 1 ≤ 2 * Real.pi := by nlinarith [Real.pi_gt_three]
+  have hπ1 : 1 ≤ 2 * Real.pi := by nlinarith only [Real.pi_gt_three]
   unfold bumpMultiplier
   split_ifs with h
   · rw [mul_pow, ← sq_abs η]
@@ -484,7 +484,7 @@ theorem hasSum_half_pow_natAbs : HasSum (fun ℓ : ℤ => ((1 : ℝ) / 2) ^ ℓ.
 
 theorem band_term_le (ℓ : ℤ) :
     (1 + (2 : ℝ) ^ ℓ) * bumpBandBound ℓ ≤ 8 * (2 * Real.pi) ^ 2 * ((1 : ℝ) / 2) ^ ℓ.natAbs := by
-  have hπ1 : 1 ≤ 2 * Real.pi := by nlinarith [Real.pi_gt_three]
+  have hπ1 : 1 ≤ 2 * Real.pi := by nlinarith only [Real.pi_gt_three]
   unfold bumpBandBound
   split_ifs with h
   · have h2 : (2 : ℝ) ^ ℓ ≤ 1 := zpow_le_one_of_nonpos₀ (by norm_num) h
@@ -870,7 +870,7 @@ theorem meanZeroWave_props {a₀ r : ℝ} (hr : 0 < r) (α : ℝ) :
     (hPc.continuous.mul hEc.continuous).integrable_of_hasCompactSupport hPcs.mul_right
   have hrI : 0 < r * I := mul_pos hr hI
   have hrIc : ((r * I : ℝ) : ℂ) ≠ 0 := by exact_mod_cast hrI.ne'
-  set cA := ∫ s, P s * E s with hcAdef
+  set! cA := ∫ s, P s * E s with hcAdef
   have hPint : ∫ y, P y = ((r * I : ℝ) : ℂ) := integral_plateauAt hIη hr
   have hcA : ‖cA‖ ≤ r * I := by
     refine (norm_integral_le_integral_norm _).trans (le_of_eq ?_)
@@ -939,7 +939,7 @@ theorem meanZeroWave_props {a₀ r : ℝ} (hr : 0 < r) (α : ℝ) :
           have h1 : (1 / r) ^ 2 ≤ (1 / r + 6 * Real.pi * |α|) ^ 2 :=
             pow_le_pow_left₀ (by positivity) (by linarith) 2
           have e : 3 * (2 * Real.pi) * |α| = 6 * Real.pi * |α| := by ring
-          rw [e]; nlinarith
+          rw [e]; nlinarith only [hK, h1]
 
 end MeanZeroWave
 
@@ -1132,11 +1132,11 @@ theorem slotPairKernel_meanZero_tensor {κ : LocalKernelClass} {a₀ r : ℝ} (h
   set P := plateauAt η₁ a₀ r with hP
   set α := slotPairFreqA a b r with hα
   set β := slotPairFreqB a b r with hβ
-  set c' : (Fin 2 → ℤ) → ℂ := fun v => c v * (Real.fourierChar (slotPairPhase a₀ r v) : ℂ)
+  set! c' : (Fin 2 → ℤ) → ℂ := fun v => c v * (Real.fourierChar (slotPairPhase a₀ r v) : ℂ)
     with hc'
-  set A : (Fin 2 → ℤ) → ℝ → ℂ := fun v y => P y * (Real.fourierChar (α v * y) : ℂ) with hA
-  set B : (Fin 2 → ℤ) → ℝ → ℂ := fun v y => P y * (Real.fourierChar (β v * y) : ℂ) with hB
-  set ψ₀ : ℝ → ℂ := fun y => P y / ((r * I : ℝ) : ℂ) with hψ₀
+  set! A : (Fin 2 → ℤ) → ℝ → ℂ := fun v y => P y * (Real.fourierChar (α v * y) : ℂ) with hA
+  set! B : (Fin 2 → ℤ) → ℝ → ℂ := fun v y => P y * (Real.fourierChar (β v * y) : ℂ) with hB
+  set! ψ₀ : ℝ → ℂ := fun y => P y / ((r * I : ℝ) : ℂ) with hψ₀
   have hexp := slotPairKernel_plateau_expansion hr hw hab hm hmκ hη1 hη0
   have hcs : Summable (fun v => ‖c v‖) := (admissibleKernel_fourier_expansion hr hw).1
   have hc'n : ∀ v, ‖c' v‖ = ‖c v‖ := fun v => by
@@ -1355,9 +1355,9 @@ theorem separated_linear_cell_tensor {κ : LocalKernelClass} {a₀ r : ℝ} (hr 
   have hEc : ∀ g : ℝ, Continuous (fun y : ℝ => (Real.fourierChar (g * y) : ℂ)) := fun g =>
     continuous_subtype_val.comp (Real.continuous_fourierChar.comp
       (continuous_const.mul continuous_id))
-  set fa : (Fin 2 → ℤ) → ℝ → ℂ := fun v y => classWave κ a₀ r (slotPairFreqA a b r v) y *
+  set! fa : (Fin 2 → ℤ) → ℝ → ℂ := fun v y => classWave κ a₀ r (slotPairFreqA a b r v) y *
     (Real.fourierChar ((-ν) * y) : ℂ) * Ga y with hfa
-  set fb : (Fin 2 → ℤ) → ℝ → ℂ := fun v y => classWave κ a₀ r (slotPairFreqB a b r v) y *
+  set! fb : (Fin 2 → ℤ) → ℝ → ℂ := fun v y => classWave κ a₀ r (slotPairFreqB a b r v) y *
     (Real.fourierChar (ν * y) : ℂ) * Gb y with hfb
   have hwa := fun v => classWave_props κ (a₀ := a₀) hr (slotPairFreqA a b r v)
   have hwb := fun v => classWave_props κ (a₀ := a₀) hr (slotPairFreqB a b r v)
@@ -1745,7 +1745,7 @@ theorem waveRow_bessel (G : RealDyadicGrid) (κ : LocalKernelClass) {ι : Type*}
   set gs := hgs.toLp (star (g : ℝ → ℂ))
   have hcm : Measurable (fun y => conj (ψ y)) := Complex.continuous_conj.measurable.comp hψm
   have hcb : ∀ y, ‖conj (ψ y)‖ ≤ B := fun y => by rw [RCLike.norm_conj]; exact hψ y
-  set F := (memLp_two_mul_bounded hcm hcb gs).toLp (fun y => conj (ψ y) * gs y)
+  set! F := (memLp_two_mul_bounded hcm hcb gs).toLp (fun y => conj (ψ y) * gs y)
   have hB0 : 0 ≤ B := (norm_nonneg _).trans (hψ 0)
   have hF : ‖F‖ ^ 2 ≤ B ^ 2 * ‖g‖ ^ 2 := by
     rw [norm_sq_toLp_mul hcm hcb gs, Lp_norm_sq_eq_integral g, ← integral_const_mul]
@@ -2091,7 +2091,7 @@ theorem linear_phase_scale_sum (G : RealDyadicGrid) (κ : LocalKernelClass) (J :
     simp only [Prod.mk.injEq, neg_inj] at h
     exact hinj hi hj (Prod.ext h.1 h.2)
   -- Bessel bound per character
-  set bd : (Fin 2 → ℤ) → ℝ := fun v =>
+  set! bd : (Fin 2 → ℤ) → ℝ := fun v =>
     charWaveConst κ (frequencyLength v) * 1 * Real.sqrt (2 * M) with hbd
   have hbd0 : ∀ v, 0 ≤ bd v := fun v => by
     have := two_le_charWaveConst κ (hLn v)
@@ -2127,9 +2127,9 @@ theorem linear_phase_scale_sum (G : RealDyadicGrid) (κ : LocalKernelClass) (J :
       _ = Ka * Kb * bd v ^ 2 * Na * Nb := by
           rw [hsqrt hKa (hbd0 v) hNa0, hsqrt hKb (hbd0 v) hNb0]; ring
   -- the majorant
-  set U : (Fin 2 → ℤ) → ℝ := fun v =>
+  set! U : (Fin 2 → ℤ) → ℝ := fun v =>
     E * ((1 + frequencyLength v) ^ 7)⁻¹ * (Ka * Kb * bd v ^ 2 * Na * Nb) with hU
-  set C0 := E * ((2 + 2 * K) * 25) ^ 2 * 2 * M * Ka * Kb * Na * Nb with hC0
+  set! C0 := E * ((2 + 2 * K) * 25) ^ 2 * 2 * M * Ka * Kb * Na * Nb with hC0
   have hUe : ∀ v, U v = C0 * ((1 + frequencyLength v) ^ 3)⁻¹ := by
     intro v
     have h1 : 0 < 1 + frequencyLength v := by linarith [hLn v]
@@ -2716,8 +2716,8 @@ theorem single_phase_scale_sum (G : RealDyadicGrid) (κ : LocalKernelClass) (J :
     hzam hzbm (fun I _ => integrableOn_cell_of_memLp G I (hza2 I))
     (fun I _ => integrableOn_cell_of_memLp G I (hzb2 I)) hM
   -- quadratic part, cell by cell
-  set X : ℤ × ℤ → ℝ := fun I => ∫ y in dyadicGridCell G I.1 I.2, ‖za I y‖ ^ 2
-  set Y : ℤ × ℤ → ℝ := fun I => ∫ y in dyadicGridCell G I.1 I.2, ‖zb I y‖ ^ 2
+  set! X : ℤ × ℤ → ℝ := fun I => ∫ y in dyadicGridCell G I.1 I.2, ‖za I y‖ ^ 2
+  set! Y : ℤ × ℤ → ℝ := fun I => ∫ y in dyadicGridCell G I.1 I.2, ‖zb I y‖ ^ 2
   have hcell : ∀ I ∈ S, dyadicGridLength G I.1 *
       ‖separatedLocalForm (dyadicGridLength G I.1) (w I) (quadPhase (lam I.1) (γ I.1)) a b
         (fun y => ψa y * za I y) (fun y => ψb y * zb I y)‖ ≤
@@ -2957,7 +2957,7 @@ theorem separatedLocalForm_hasSum {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0
   set Φ := ∫ z : ℝ × ℝ, ‖Ga (z.1 + (a : ℝ) * z.2)‖ * ‖Gb (z.1 + (b : ℝ) * z.2)‖
   have hwm : Measurable w := hw.smooth.continuous.measurable
   have hC := localKernelSupBound_nonneg κ
-  set f : τ → ℝ × ℝ → ℂ := fun p z => c p * (w z * φ p z.2 *
+  set! f : τ → ℝ × ℝ → ℂ := fun p z => c p * (w z * φ p z.2 *
     Ga (realProgressionCoordinate a z) * Gb (realProgressionCoordinate b z)) with hf
   have hfb : ∀ p z, ‖f p z‖ ≤ ‖c p‖ * (localKernelSupBound κ *
       (‖Ga (z.1 + (a : ℝ) * z.2)‖ * ‖Gb (z.1 + (b : ℝ) * z.2)‖)) := by
@@ -3246,7 +3246,7 @@ theorem clump_coefficient_le {Q : ℝ → ℂ} (hQm : Measurable Q) (hQb : ∀ t
   push Not at hcon
   have : (A / 2 + δ + Cζ * (∑ c' ∈ R, ‖bc c'‖) / L ^ 2) * I0 < ‖bc c‖ * I0 :=
     mul_lt_mul_of_pos_right hcon hI0
-  nlinarith
+  nlinarith only [hζ2, herrint, h3, h1, hA0, hX, hcon]
 
 theorem norm_fourierChar_sub_le (x y : ℝ) :
     ‖(Real.fourierChar x : ℂ) - (Real.fourierChar y : ℂ)‖ ≤ 2 * Real.pi * |x - y| := by
@@ -3373,7 +3373,7 @@ theorem clump_cell_bound {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
         _ = r * |f p - f (rep p)| := by ring
         _ ≤ β := hβ p hp
     have hπ := Real.pi_pos
-    nlinarith
+    nlinarith only [h1, h2, h3, h4, hπ]
   have hfib : ∑ p ∈ P, c p * H (fun t => (Real.fourierChar (f (rep p) * t) : ℂ)) =
       ∑ x ∈ P.image (fun p => f (rep p)), (∑ p ∈ P.filter (fun p => f (rep p) = x), c p) *
         H (fun t => (Real.fourierChar (x * t) : ℂ)) := by
@@ -3531,7 +3531,7 @@ theorem clump_sup_error {τ : Type*} [Countable τ] [DecidableEq τ] (coef : τ 
         _ = 2 * (r * |f p - f (rep p)|) := by ring
         _ ≤ 2 * ε₂ := by linarith [hrep p hp]
     have hπ := Real.pi_pos
-    nlinarith
+    nlinarith only [h1, h2, h3, h4, hπ]
   have hcat : ‖∑ p ∈ P, coef p * (quadPhase lam (f p) t -
       (Real.fourierChar (f (rep p) * t) : ℂ))‖ ≤
       Atot * (8 * Real.pi * ε₁ + 4 * Real.pi * ε₂) := by
@@ -3678,8 +3678,8 @@ theorem band_scale_sum_core (G : RealDyadicGrid) (κ : LocalKernelClass) (J : �
     exact mul_le_mul (Real.sqrt_le_sqrt (setIntegral_mul_bounded_le hψa (hza2 I)))
       (Real.sqrt_le_sqrt (setIntegral_mul_bounded_le hψb (hzb2 I))) (Real.sqrt_nonneg _)
       (Real.sqrt_nonneg _)
-  set SX := S.filter (fun I => I.1 ∈ X) with hSX
-  set SN := S.filter (fun I => I.1 ∉ X) with hSN
+  set! SX := S.filter (fun I => I.1 ∈ X) with hSX
+  set! SN := S.filter (fun I => I.1 ∉ X) with hSN
   have hsplitS := Finset.sum_filter_add_sum_filter_not S (fun I => I.1 ∈ X)
     (fun I => dyadicGridLength G I.1 * ‖Hf I Q‖)
   simp only [eHf]
@@ -3903,7 +3903,7 @@ theorem band_scale_sum_core (G : RealDyadicGrid) (κ : LocalKernelClass) (J : �
       _ = _ := by rw [mul_add, mul_add]
       _ ≤ _ := add_le_add (add_le_add t1 t2) t3
   -- (T1) the clump terms, via the linear-phase scale sum over (cell, center) pairs
-  set S' : Finset (Σ _ : ℤ × ℤ, ℝ) := SN.sigma (fun I => R I.1) with hS'
+  set! S' : Finset (Σ _ : ℤ × ℤ, ℝ) := SN.sigma (fun I => R I.1) with hS'
   have hd := fin_cast_sub_ne hab
   have hdabs : |(b : ℝ) - (a : ℝ)| ≤ 3 := by
     have ha := abs_fin_four_le a
@@ -4237,7 +4237,7 @@ theorem chart_depth_expansion (c₀ : ℕ) (hc : 1 ≤ c₀) :
       simp only [Pi.zero_apply]
       rw [h0]
       have := frequencyLength_nonneg q.2
-      nlinarith
+      nlinarith only [hE1, this]
   · intro t ht
     have h := (hexp t (by linarith)).mul_right
       (Real.fourierChar (lam * t ^ 2 + A.linear * t) : ℂ)
@@ -4470,7 +4470,7 @@ theorem center_rational {d : ℕ} (β : ℝ) (θ : Fin d → ℝ) (σ : Fin d �
       have h := rationalHeight_div_intCast_le (σ i) hk
       have hB0 : 0 ≤ (rationalHeight (σ i) : ℝ) := by positivity
       have h2 : (rationalHeight (σ i) : ℝ) ^ 2 ≤ B ^ 2 := pow_le_pow_left₀ hB0 (hσ i) 2
-      nlinarith
+      nlinarith only [hk3, h, h2]
   · rw [Fin.sum_univ_succ, Fin.cons_zero, Fin.cons_zero]
     simp_rw [Fin.cons_succ]
     push_cast
@@ -4688,7 +4688,7 @@ theorem bs_tail_budget (κ : LocalKernelClass) (d D J1 m : ℕ) {Lh : ℝ} (hLh 
   have hZ0 : 0 < Z := by rw [hZ]; positivity
   have hK : Z ≤ (2 : ℝ) ^ bsK0 κ d D J1 m Lh := two_pow_ceil_logb_ge hZ0
   have hpi : (2 * Real.pi) ^ k ≤ (2 * Real.pi) ^ ((d + 1) ^ 2) :=
-    pow_le_pow_right₀ (by nlinarith [Real.pi_gt_three]) hk
+    pow_le_pow_right₀ (by nlinarith only [Real.pi_gt_three]) hk
   have hnum : (⌊bsE D m Lh⌋₊ : ℝ) * bsE1 J1 m Lh * C * (2 * 7 ^ (d + d) * (2 * Real.pi) ^ k) ≤
       (bsE D m Lh + 1) * bsE1 J1 m Lh * (bsCT κ d D m Lh + 1) *
         (2 * 7 ^ (d + d) * (2 * Real.pi) ^ ((d + 1) ^ 2)) := by
@@ -4705,7 +4705,7 @@ theorem bs_tail_budget (κ : LocalKernelClass) (d D J1 m : ℕ) {Lh : ℝ} (hLh 
         rw [hZ, div_eq_iff (by positivity)]
         have hem' : Real.exp (m : ℝ) * Real.exp (-(m : ℝ)) = 1 := by rw [mul_comm]; exact hem
         field_simp
-        nlinarith [hem', Real.exp_pos (m : ℝ)]
+        nlinarith only [hem', Real.exp_pos (m : ℝ)]
 
 /-- The pooled catalog tail of one depth expansion. -/
 theorem catalog_tail_le {d : ℕ} (hd : 1 ≤ d) (coef : ℕ × (Fin (d + d) → ℤ) → ℂ)
@@ -4845,7 +4845,7 @@ theorem clumpMultiplicity_tail_le (d D m : ℕ) {Lh : ℝ} (hLh : 0 ≤ Lh) {u :
     have h3 : Real.log u ≤ u := (Real.log_le_sub_one_of_pos (by linarith)).trans (by linarith)
     have h24 : 0 ≤ Real.log 24 := Real.log_nonneg (by norm_num)
     rw [h2, hlE] at h1
-    nlinarith
+    nlinarith only [hu, hX0, h1, h3, h24]
   have h4 : 0 ≤ Real.log 4 := Real.log_nonneg (by norm_num)
   unfold clumpMultiplicity heightBandConst bsAlpha
   have hcast : (((d + 1 + 1 : ℕ) : ℝ) + 1) = (((d + 1 : ℕ) : ℝ) + 1) + 1 := by push_cast; ring
@@ -4853,7 +4853,8 @@ theorem clumpMultiplicity_tail_le (d D m : ℕ) {Lh : ℝ} (hLh : 0 ≤ Lh) {u :
   have hc0 : 0 ≤ 24 * (2 * Real.pi) ^ 2 * (4 * (32 * ((((d + 1 : ℕ) : ℝ) + 1) + 1) ^ 4)) := by
     positivity
   have key : Real.log (2 * (6 * (bsE D m Lh * u) ^ 2 + 6)) + Real.log 4 ≤
-      (Real.log 24 + 2 * (D * bsX m Lh ^ D) + 2 + Real.log 4) * u := by nlinarith
+      (Real.log 24 + 2 * (D * bsX m Lh ^ D) + 2 + Real.log 4) * u := by nlinarith only [hu, hlog,
+          h4]
   calc 24 * (2 * Real.pi) ^ 2 * (4 * (32 * ((((d + 1 : ℕ) : ℝ) + 1) + 1) ^ 4 *
         (Real.log (2 * (6 * (bsE D m Lh * u) ^ 2 + 6)) + Real.log 4)))
       = 24 * (2 * Real.pi) ^ 2 * (4 * (32 * ((((d + 1 : ℕ) : ℝ) + 1) + 1) ^ 4)) *
@@ -5020,8 +5021,8 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
   have hεE : bsEps D m Lh ≤ bsE D m Lh := by linarith
   -- the catalog
   set N₀ := ⌊bsE D m Lh⌋₊ with hN₀
-  set K₀ := bsK0 κ d D J1 m Lh with hK₀
-  set P : Finset (ℕ × (Fin (d + d) → ℤ)) :=
+  set! K₀ := bsK0 κ d D J1 m Lh with hK₀
+  set! P : Finset (ℕ × (Fin (d + d) → ℤ)) :=
     (Finset.range N₀) ×ˢ (frequencyTruncationSet (d + d) K₀) with hP
   have hmemP : ∀ p, p ∈ P ↔ p.1 < N₀ ∧ p.2 ∈ frequencyTruncationSet (d + d) K₀ := by
     intro p; simp [hP, Finset.mem_product]
@@ -5044,14 +5045,14 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
       mul_le_mul h1 h2 (by positivity) (by linarith)
     have h4 := pow_le_pow_left₀ h0 h3 2
     unfold bsB2
-    nlinarith
+    nlinarith only [h0, h3]
   -- exceptional depths
   obtain ⟨X, hXc, hXdich, hXquad⟩ := band_exceptional_depths G A.horizontal A.quadratic T lamf
     Mf P σf hε0 hεL hεE hB₁2 hB₂2 (fun s hs => (hprops s hs).2.1)
     (fun s hs i j => ((hprops s hs).1 i j).trans (by unfold bsB1; linarith))
     (fun s hs => (hprops s hs).2.2.1) hdiffh
   -- frequencies
-  set freq : ℤ → ℕ × (Fin (d + d) → ℤ) → ℝ :=
+  set! freq : ℤ → ℕ × (Fin (d + d) → ℤ) → ℝ :=
     fun s p => A.linear + ∑ i, (σf s p i : ℝ) * A.horizontal i with hfreq
   have hdiff : ∀ s p q, freq s p - freq s q =
       ∑ i, ((σf s p i - σf s q i : ℚ) : ℝ) * A.horizontal i := by
@@ -5069,7 +5070,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
     intro s hs hsX p hp q hq
     rw [hdiff]; exact hXdich s hs hsX p hp q hq
   -- tiny maxima
-  set tiny : ℤ → ℝ := fun s => finiteTinyMaximum
+  set! tiny : ℤ → ℝ := fun s => finiteTinyMaximum
     (boundedRationalMagnitudes ⌊bsB2 κ d D J1 m Lh⌋₊ (rationalEvaluation A.horizontal))
     (dyadicGridLength G s ^ 1) (bsEps D m Lh) with htinyd
   have htiny0 : ∀ s, 0 ≤ tiny s := fun s => finiteTinyMaximum_nonneg _ _ _
@@ -5101,7 +5102,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
     · exact ((hprops s hs).2.2.2.2.2.1.sum_le_tsum P
         (fun _ _ => norm_nonneg _)).trans (hprops s hs).2.2.2.2.2.2.1
     · rw [hzero s hs]; simp; linarith
-  set τt : ℝ := (N₀ : ℝ) * (bsE1 J1 m Lh * (2 * 7 ^ (d + d) * (2 * Real.pi) ^ ((d + 1) ^ 2) /
+  set! τt : ℝ := (N₀ : ℝ) * (bsE1 J1 m Lh * (2 * 7 ^ (d + d) * (2 * Real.pi) ^ ((d + 1) ^ 2) /
     2 ^ K₀)) with hτt
   have htail : ∀ s, ∑' p, (if p ∈ P then 0 else ‖coeff s p‖) ≤ τt := by
     intro s
@@ -5126,7 +5127,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
     rw [h1]
     linarith
   -- rational centers
-  set k : ℤ := ((b : ℕ) : ℤ) - ((a : ℕ) : ℤ) with hkd
+  set! k : ℤ := ((b : ℕ) : ℤ) - ((a : ℕ) : ℤ) with hkd
   have hkR : (k : ℝ) = (b : ℝ) - (a : ℝ) := by rw [hkd]; push_cast; rfl
   have hk0 : k ≠ 0 := by
     rw [hkd]; intro h; apply hab; apply Fin.ext; omega
@@ -5137,7 +5138,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
     rw [abs_le] at ha hb ⊢
     constructor <;> linarith [ha.1, ha.2, hb.1, hb.2,
       show (0 : ℝ) ≤ (a : ℝ) by positivity, show (0 : ℝ) ≤ (b : ℝ) by positivity]
-  set χc : Fin (d + 1) → ℝ := Fin.cons A.linear A.horizontal with hχc
+  set! χc : Fin (d + 1) → ℝ := Fin.cons A.linear A.horizontal with hχc
   have hrat : ∀ s ∈ T, ∀ p ∈ P, ∃ q : Fin (d + 1) → ℚ,
       (∀ j, (rationalHeight (q j) : ℝ) ≤ bsBc κ d D J1 m Lh) ∧
         freq s p / ((b : ℝ) - (a : ℝ)) = ∑ j, (q j : ℝ) * χc j := by
@@ -5146,7 +5147,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
     refine ⟨_, fun j => (h1 j).trans (le_of_eq (by unfold bsBc; rfl)), ?_⟩
     rw [← hkR]; exact h2
   -- envelope of the coefficients
-  set env : ℕ × (Fin (d + d) → ℤ) → ℝ := fun p => if p.1 < N₀ then
+  set! env : ℕ × (Fin (d + d) → ℤ) → ℝ := fun p => if p.1 < N₀ then
     bsE1 J1 m Lh * ((1 + frequencyLength p.2) ^ ((d + 1) ^ 2))⁻¹ else 0 with henvd
   have henv : ∀ s p, ‖coeff s p‖ ≤ env p := by
     intro s p
@@ -5164,7 +5165,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
       · positivity
       · exact le_rfl
   -- tail multiplicities and the quadratic total
-  set Λ := bsLam d D m Lh with hΛd
+  set! Λ := bsLam d D m Lh with hΛd
   have hΛ : ∑ s ∈ T, 2 * Real.pi * |lamf s| * dyadicGridLength G s ^ 2 ≤ Λ := by
     have h := band_quadratic_total G A.horizontal A.quadratic T lamf Mf (by linarith) hB₁2
       (fun s hs => (hprops s hs).2.1)
@@ -5172,7 +5173,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
       (fun s hs => (hprops s hs).2.2.1)
     refine h.trans (le_of_eq ?_)
     rw [hΛd, bsLam, bsB1]
-  set Mt : ℕ × (Fin (d + d) → ℤ) → ℝ := fun p =>
+  set! Mt : ℕ × (Fin (d + d) → ℤ) → ℝ := fun p =>
     clumpMultiplicity (d + 1) (6 * (bsE D m Lh * (1 + frequencyLength p.2)) ^ 2 + 6) with hMtd
   have hMt : ∀ p, p ∉ P → ∀ ξ, ∑ x ∈ S.image (fun I => (I.1, freq I.1 p / ((b : ℝ) - (a : ℝ)))),
       bumpMultiplier (dyadicGridLength G x.1 * (ξ - x.2)) ≤ Mt p := by
@@ -5261,7 +5262,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
       have := Nat.cast_nonneg (α := ℝ) m; linarith)
     unfold bsEps
     rw [div_lt_one (by positivity)]
-    nlinarith [Real.pi_gt_three]
+    nlinarith only [Real.pi_gt_three, hE1, hem1]
   have h3 : 3 * bsEps D m Lh < bsL2 D m Lh := by linarith
   have hcore := band_scale_sum_core G κ J S hSJ w hw hab (quadraticChartAtom_measurable A) hAb
     hψam hψbm hψa hψb hKa hKb hza hzb hEa hEb hzam hzbm hza2 hzb2 hband coeff lamf freq hexp
@@ -5307,7 +5308,7 @@ theorem band_scale_sum_assembly (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
         Real.exp (-(m : ℝ)) * (4 * localKernelSupBound κ *
           (((d * d + 1 : ℕ) + 1 : ℝ) ^ 4 * Real.log (2 * bsB1 D m Lh) +
             ((d : ℝ) + 1) ^ 4 * Real.log (2 * bsB2 κ d D J1 m Lh))) +
-        Real.exp (-(m : ℝ)) := by linarith [hcardX]
+        Real.exp (-(m : ℝ)) := by linarith only [hcardX]
       _ = _ := by unfold bandBracket; ring
   calc (kernelFourierConst κ * Real.exp (-(m : ℝ)) * X.card +
         Real.exp (-(m : ℝ)) * linearScaleConst κ * clumpMultiplicity (d + 1) (bsBc κ d D J1 m Lh) +
@@ -5541,7 +5542,7 @@ theorem log_two_bsL2_div_bsEps_le (hLh : 0 ≤ Lh) :
   have hc := bsLConst_nonneg
   unfold bsLConst at hc ⊢
   have hm : (m : ℝ) ≤ bsOmega D J1 m Lh := by linarith
-  nlinarith
+  nlinarith only [hLh, hlE, hW, hc]
 
 theorem bsOmega_ge_d {d : ℕ} (hLh : 0 ≤ Lh) (hdL : (d : ℝ) ≤ Lh) :
     (d : ℝ) ≤ bsOmega D J1 m Lh := by
@@ -5610,7 +5611,7 @@ theorem bsCT_add_one_le (κ : LocalKernelClass) {d : ℕ} (hLh : 0 ≤ Lh) (hdL 
       push_cast
       have : (d : ℝ) * d ≤ Ω ^ 2 := by
         rw [sq]; exact mul_le_mul hd hd (Nat.cast_nonneg _) (by linarith)
-      nlinarith
+      nlinarith only [hΩ, hd]
     have hdd0 : 0 ≤ (((d * d + 1 : ℕ) : ℝ) + 1) := by positivity
     have hlg : Real.log (2 * (bsE D m Lh + 2)) ≤ 3 * Ω := by
       have h1 : Real.log (2 * (bsE D m Lh + 2)) ≤ Real.log 6 + Real.log (bsE D m Lh) := by
@@ -5692,7 +5693,7 @@ theorem bsK0_le (κ : LocalKernelClass) {d : ℕ} (hLh : 0 ≤ Lh) (hdL : (d : �
     calc Ω = Ω ^ 1 := (pow_one _).symm
       _ ≤ Ω ^ 9 := pow_le_pow_right₀ hΩ (by norm_num)
   have hΩ29 : Ω ^ 2 ≤ Ω ^ 9 := pow_le_pow_right₀ hΩ (by norm_num)
-  have hpi1 : 1 ≤ 2 * Real.pi := by nlinarith [Real.pi_gt_three]
+  have hpi1 : 1 ≤ 2 * Real.pi := by nlinarith only [Real.pi_gt_three]
   have hE1 : 1 ≤ bsE1 J1 m Lh := Real.one_le_exp (by unfold bsX; positivity)
   have h7 : (1 : ℝ) ≤ 7 ^ (d + d) := one_le_pow₀ (by norm_num)
   have h2π : 1 ≤ (2 * Real.pi) ^ ((d + 1) ^ 2) := one_le_pow₀ hpi1
@@ -5730,7 +5731,7 @@ theorem bsK0_le (κ : LocalKernelClass) {d : ℕ} (hLh : 0 ≤ Lh) (hdL : (d : �
     have l7 : Real.log 7 ≤ 2 := log_le_of_le_exp_one_pow (by norm_num) (by norm_num)
     have l70 : 0 ≤ Real.log 7 := Real.log_nonneg (by norm_num)
     have l2pi : Real.log (2 * Real.pi) ≤ 2 :=
-      log_le_of_le_exp_one_pow (by positivity) (by nlinarith [Real.pi_lt_d2])
+      log_le_of_le_exp_one_pow (by positivity) (by nlinarith only [Real.pi_lt_d2])
     have l2pi0 : 0 ≤ Real.log (2 * Real.pi) := Real.log_nonneg hpi1
     have hdd : ((d + d : ℕ) : ℝ) * Real.log 7 ≤ 4 * Ω := by
       push_cast
@@ -5751,7 +5752,7 @@ theorem bsK0_le (κ : LocalKernelClass) {d : ℕ} (hLh : 0 ≤ Lh) (hdL : (d : �
         3 + (1 + Ω) + Ω + (bsCCT κ * Ω ^ 9 + Ω) + 4 * Ω + 8 * Ω ^ 2 + Ω := by
       linarith
     have hfin : 3 + (1 + Ω) + Ω + (bsCCT κ * Ω ^ 9 + Ω) + 4 * Ω + 8 * Ω ^ 2 + Ω ≤
-        (bsCCT κ + 20) * Ω ^ 9 := by nlinarith
+        (bsCCT κ + 20) * Ω ^ 9 := by nlinarith only [hΩ, hΩ29]
     exact hsum.trans hfin
   have hl2 : (1 : ℝ) / 2 ≤ Real.log 2 := by
     have := Real.log_two_gt_d9; linarith
@@ -5763,7 +5764,7 @@ theorem bsK0_le (κ : LocalKernelClass) {d : ℕ} (hLh : 0 ≤ Lh) (hdL : (d : �
   have hlogb : Real.logb 2 Z ≤ 2 * Real.log Z := by
     unfold Real.logb
     rw [div_le_iff₀ (by linarith)]
-    nlinarith
+    nlinarith only [hl2, hlogZ0]
   calc (bsK0 κ d D J1 m Lh : ℝ) ≤ 2 * Real.log Z + 1 := by linarith
     _ ≤ 2 * ((bsCCT κ + 20) * Ω ^ 9) + Ω ^ 9 := by linarith
     _ = (2 * bsCCT κ + 41) * Ω ^ 9 := by ring
@@ -6073,15 +6074,15 @@ theorem band_scale_sum (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelClass) :
   have hLh : Lh ≤ Real.log H + Real.log (bandLip + 2) := by
     rw [← Real.log_mul (by linarith) (by linarith)]
     refine Real.log_le_log (by positivity) (max_le ?_ ?_)
-    · nlinarith
-    · nlinarith
+    · nlinarith only [hL0, hH1]
+    · nlinarith only [hL0, hH1]
   have hbr := hC₀ d m Lh hLh0 hdL
   set W := 2 + (m : ℝ) + Real.log H with hWd
   have hW1 : 1 ≤ W := by have := Nat.cast_nonneg (α := ℝ) m; linarith
   have hWL : 2 + (m : ℝ) + Lh ≤ c₁ * W := by
     rw [hc₁, hWd]
     have hl := Real.log_nonneg (show (1 : ℝ) ≤ bandLip + 2 by linarith)
-    nlinarith
+    nlinarith only [hc₁1, hlogH0, hLh]
   have hpow : (2 + (m : ℝ) + Lh) ^ C₀ ≤ c₁ ^ C₀ * W ^ C₀ := by
     rw [← mul_pow]
     exact pow_le_pow_left₀ (by positivity) hWL C₀
@@ -6331,9 +6332,9 @@ theorem chart_band_range_scale_sum (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKer
   have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
   have hL0 : 0 ≤ Real.log H := Real.log_nonneg hH1
   -- band index
-  set band : ℤ × ℤ → ℕ := fun I => ⌊-Real.log (bandSup Q' (dyadicGridLength G I.1))⌋₊
+  set! band : ℤ × ℤ → ℕ := fun I => ⌊-Real.log (bandSup Q' (dyadicGridLength G I.1))⌋₊
     with hbandd
-  set Sp := S.filter (fun I => 0 < bandSup Q' (dyadicGridLength G I.1)) with hSp
+  set! Sp := S.filter (fun I => 0 < bandSup Q' (dyadicGridLength G I.1)) with hSp
   have hzero : ∀ I ∈ S, ¬ 0 < bandSup Q' (dyadicGridLength G I.1) →
       separatedLocalForm (dyadicGridLength G I.1) (w I) Q' a b
         (fun y => ψa y * za I y) (fun y => ψb y * zb I y) = 0 := by
@@ -6424,7 +6425,7 @@ theorem chart_band_range_scale_sum (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKer
     have h3 : (C : ℝ) = (⌈4 * (Cb : ℝ) * bandSeriesConst Cb⌉₊ : ℝ) + (Cb : ℝ) := by
       rw [hC]; push_cast; ring
     have h4 := Nat.cast_nonneg (α := ℝ) Cb
-    linarith
+    linarith only [h2, h3]
   have hW : 1 ≤ 2 + Real.log H := by linarith
   have hpow : (2 + Real.log H) ^ Cb ≤ (2 + Real.log H) ^ C :=
     pow_le_pow_right₀ hW (by rw [hC]; omega)
@@ -6486,7 +6487,7 @@ theorem clumpMultiplicity_tail_le' (d : ℕ) {E u : ℝ} (hE : 1 ≤ E) (hu : 1 
   have hc0 : 0 ≤ 24 * (2 * Real.pi) ^ 2 * (4 * (32 * ((((d + 1 : ℕ) : ℝ) + 1) + 1) ^ 4)) := by
     positivity
   have key : Real.log (2 * (6 * (E * u) ^ 2 + 6)) + Real.log 4 ≤
-      (Real.log 24 + 2 * Real.log E + 2 + Real.log 4) * u := by nlinarith
+      (Real.log 24 + 2 * Real.log E + 2 + Real.log 4) * u := by nlinarith only [hu, hlog, h4]
   calc 24 * (2 * Real.pi) ^ 2 * (4 * (32 * ((((d + 1 : ℕ) : ℝ) + 1) + 1) ^ 4 *
         (Real.log (2 * (6 * (E * u) ^ 2 + 6)) + Real.log 4)))
       = 24 * (2 * Real.pi) ^ 2 * (4 * (32 * ((((d + 1 : ℕ) : ℝ) + 1) + 1) ^ 4)) *
@@ -6541,7 +6542,7 @@ theorem expansion_catalog_tail (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
   have hK : 0 ≤ Ka * Kb * Na * Nb := by positivity
   have hC := localKernelSupBound_nonneg κ
   have hlin := linearScaleConst_nonneg κ
-  set freq : ℤ → ℕ × (Fin (d + d) → ℤ) → ℝ :=
+  set! freq : ℤ → ℕ × (Fin (d + d) → ℤ) → ℝ :=
     fun s p => A.linear + ∑ i, (σf s p i : ℝ) * A.horizontal i with hfreq
   obtain ⟨Hf, hHf⟩ : ∃ Hf : ℤ × ℤ → (ℝ → ℂ) → ℂ, Hf = fun I φ =>
       separatedLocalForm (dyadicGridLength G I.1) (w I) φ a b
@@ -6550,7 +6551,7 @@ theorem expansion_catalog_tail (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
       (fun y => ψa y * za I y) (fun y => ψb y * zb I y) = Hf I φ := fun I φ => by rw [hHf]
   simp only [eHf]
   -- the envelope
-  set env : ℕ × (Fin (d + d) → ℤ) → ℝ := fun p => if p.1 < N₀ then
+  set! env : ℕ × (Fin (d + d) → ℤ) → ℝ := fun p => if p.1 < N₀ then
     E1 * ((1 + frequencyLength p.2) ^ ((d + 1) ^ 2))⁻¹ else 0 with henvd
   have henv0 : ∀ p, 0 ≤ env p := fun p => by
     simp only [henvd]; split_ifs
@@ -6655,7 +6656,7 @@ theorem expansion_catalog_tail (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
         _ ≤ _ := mul_le_mul_of_nonneg_right (henv I.1 (Finset.mem_image_of_mem _ hI) p)
             (by have := dyadicGridLength_pos G I.1; positivity)
   -- rational centers and the quadratic total
-  set k : ℤ := ((b : ℕ) : ℤ) - ((a : ℕ) : ℤ) with hkd
+  set! k : ℤ := ((b : ℕ) : ℤ) - ((a : ℕ) : ℤ) with hkd
   have hkR : (k : ℝ) = (b : ℝ) - (a : ℝ) := by rw [hkd]; push_cast; rfl
   have hk0 : k ≠ 0 := by
     rw [hkd]; intro h; apply hab; apply Fin.ext; omega
@@ -6667,7 +6668,7 @@ theorem expansion_catalog_tail (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
     constructor <;> linarith [ha.1, ha.2, hb.1, hb.2,
       show (0 : ℝ) ≤ (a : ℝ) by positivity, show (0 : ℝ) ≤ (b : ℝ) by positivity]
   have hB₁2 : 2 ≤ E + 2 := by linarith
-  set Λ := tailLam d E with hΛd
+  set! Λ := tailLam d E with hΛd
   have hΛ : ∑ s ∈ T, 2 * Real.pi * |lamf s| * dyadicGridLength G s ^ 2 ≤ Λ := by
     have h := band_quadratic_total G A.horizontal A.quadratic T lamf Mf (by linarith) hB₁2
       (fun s hs => (hprops s hs).2.1)
@@ -6679,7 +6680,7 @@ theorem expansion_catalog_tail (κ : LocalKernelClass) {d : ℕ} (hd : 1 ≤ d)
     rw [hΛd, tailLam]
     have := Real.log_nonneg (show (1 : ℝ) ≤ 2 * (E + 2) by linarith)
     positivity
-  set Mt : ℕ × (Fin (d + d) → ℤ) → ℝ := fun p =>
+  set! Mt : ℕ × (Fin (d + d) → ℤ) → ℝ := fun p =>
     clumpMultiplicity (d + 1) (6 * (E * (1 + frequencyLength p.2)) ^ 2 + 6) with hMtd
   have hMt : ∀ p ξ, ∑ x ∈ S.image (fun I => (I.1, freq I.1 p / ((b : ℝ) - (a : ℝ)))),
       bumpMultiplier (dyadicGridLength G x.1 * (ξ - x.2)) ≤ Mt p := by
@@ -7119,7 +7120,7 @@ theorem pd_band_budget (hH : 1 ≤ H) :
     _ ≤ Real.exp (-B) / 3 := by
         rw [div_mul_div_comm, div_le_div_iff₀ (by positivity) (by norm_num)]
         have := Real.exp_pos (-B)
-        nlinarith
+        nlinarith only [this]
 
 end PredictorBudget
 
@@ -7147,7 +7148,7 @@ theorem pd_catalog_budget (κ : LocalKernelClass) (d' Dc J1 Ds Cr : ℕ) {H B : 
   have hZ0 : 0 < Z := by rw [hZ]; positivity
   have hK : Z ≤ (2 : ℝ) ^ pdK0 κ d' Dc J1 Ds Cr H B := two_pow_ceil_logb_ge hZ0
   have hpi : (2 * Real.pi) ^ ((d' + 1) ^ 2 - 1) ≤ (2 * Real.pi) ^ ((d' + 1) ^ 2) :=
-    pow_le_pow_right₀ (by nlinarith [Real.pi_gt_three]) (Nat.sub_le _ _)
+    pow_le_pow_right₀ (by nlinarith only [Real.pi_gt_three]) (Nat.sub_le _ _)
   have hnum : 4 * pdEs Ds H * ((⌊pdE Dc Ds Cr H B⌋₊ : ℝ) * (pdE1 J1 Ds Cr H B *
       tailCT κ d' (pdE Dc Ds Cr H B) * (2 * 7 ^ (d' + d') * (2 * Real.pi) ^ ((d' + 1) ^ 2 - 1)))) ≤
       4 * pdEs Ds H * ((pdE Dc Ds Cr H B + 1) * (pdE1 J1 Ds Cr H B *
@@ -7169,7 +7170,7 @@ theorem pd_catalog_budget (κ : LocalKernelClass) (d' Dc J1 Ds Cr : ℕ) {H B : 
         rw [hZ, div_eq_iff (by positivity)]
         have hem' : Real.exp B * Real.exp (-B) = 1 := by rw [mul_comm]; exact hem
         field_simp
-        nlinarith [hem', Real.exp_pos B]
+        nlinarith only [hem', Real.exp_pos B]
 
 /-- The cell-summed form of `predictor_cell_bound`. -/
 theorem predictor_sum_bound {τ π : Type*} [Countable τ] [Countable π] [DecidableEq τ]
@@ -7260,10 +7261,10 @@ theorem pair_expansion_cell {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
       ∀ q, ‖separatedLocalForm r w (Q q) a b (fun y => ψa q y * R y)
         (fun y => ψb q y * v y)‖ ≤ M := by
   classical
-  set cv : ℝ := max 1 (eLpNorm v 2 (normalizedIntervalMeasure a₀ r)).toReal with hcv
+  set! cv : ℝ := max 1 (eLpNorm v 2 (normalizedIntervalMeasure a₀ r)).toReal with hcv
   have hcv1 : 1 ≤ cv := le_max_left _ _
   have hcv0 : 0 < cv := by linarith
-  set v' : ℝ → ℂ := fun y => ((cv⁻¹ : ℝ) : ℂ) * v y with hv'
+  set! v' : ℝ → ℂ := fun y => ((cv⁻¹ : ℝ) : ℂ) * v y with hv'
   have hv'm : Measurable v' := measurable_const.mul hvm
   have hv'n : eLpNorm v' 2 (normalizedIntervalMeasure a₀ r) ≤ 1 := by
     have hne := eLpNorm_normalized_ne_top hv2
@@ -7277,11 +7278,11 @@ theorem pair_expansion_cell {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
     apply ENNReal.ofReal_le_one.mpr
     rw [inv_mul_le_iff₀ hcv0, mul_one]
     exact le_max_right _ _
-  set C₁ := (eLpNorm R 2 (normalizedIntervalMeasure a₀ r)).toReal with hC₁
+  set! C₁ := (eLpNorm R 2 (normalizedIntervalMeasure a₀ r)).toReal with hC₁
   have hC₁0 : 0 ≤ C₁ := ENNReal.toReal_nonneg
   have hRn : eLpNorm R 2 (normalizedIntervalMeasure a₀ r) ≤ ENNReal.ofReal C₁ :=
     eLpNorm_normalized_le_toReal hR2
-  set f' := Function.update f b v' with hf'
+  set! f' := Function.update f b v' with hf'
   have hf'a : f' a = R := by rw [hf', Function.update_of_ne hab]; exact hfa
   have hf'i : f' i = φ := by rw [hf', Function.update_of_ne hib]; exact hfi
   have hf'k : f' k = φ' := by rw [hf', Function.update_of_ne hkb]; exact hfk
@@ -7417,10 +7418,10 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
   set Es := pdEs Ds H with hEs
   have hEsdef : Real.exp (Ds * (1 + Real.log H) ^ Ds) = Es := by rw [hEs, pdEs, pdX]
   rw [hEsdef] at hcsum htail hcomp
-  set T₀ := pdT0 Ds Cr H B with hT₀
+  set! T₀ := pdT0 Ds Cr H B with hT₀
   have hT₀1 : 1 ≤ T₀ := one_le_pdT0 hH1
   obtain ⟨Qs, hQs, hQscard⟩ := hcount T₀ hT₀1
-  set R := Qs.filter (fun q => size q ≤ T₀) with hR
+  set! R := Qs.filter (fun q => size q ≤ T₀) with hR
   have hnotR : ∀ q, q ∉ R → T₀ < size q := by
     intro q hq
     by_contra hle
@@ -7442,22 +7443,22 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
       quadraticChartComplexity_mono (hcomp q).1 hle,
       quadraticChartComplexity_mono (hcomp q).2.1 hle⟩
   -- the band precision and the retained scales
-  set M₀ := pdM0 Ds Cr H B with hM₀
-  set δ := Real.exp (-((M₀ : ℝ) + 1)) with hδ
+  set! M₀ := pdM0 Ds Cr H B with hM₀
+  set! δ := Real.exp (-((M₀ : ℝ) + 1)) with hδ
   have hδ0 : 0 < δ := Real.exp_pos _
   have hlogδ : Real.log (max 1 δ⁻¹) = (M₀ : ℝ) + 1 := by
     rw [hδ, ← Real.exp_neg, neg_neg, max_eq_right (Real.one_le_exp (by positivity)),
       Real.log_exp]
   have hLE : 1 + Real.log H₀ + Real.log (max 1 δ⁻¹) = pdLE Ds Cr H B := by
     rw [hlogδ, pdLE, hH₀]; ring
-  set A4 : τ → QuadraticChartData (d + e) := fun q => scaleQuadraticChartAmplitude (1 / 4 : ℂ) (φt
+  set! A4 : τ → QuadraticChartData (d + e) := fun q => scaleQuadraticChartAmplitude (1 / 4 : ℂ) (φt
       q)
     with hA4
   have hA4c : ∀ q ∈ R, QuadraticChartComplexity c₁ H₀ (A4 q) := fun q hq =>
     scaleQuadraticChartAmplitude_complexity (hcompR q hq).1 (by norm_num)
   have hA4b : ∀ q t, ‖quadraticChartAtom (A4 q) t‖ ≤ 1 / 4 := fun q t =>
     quarterChart_norm_le (hbdd q).2.2 t
-  set ret : τ → ℝ → Prop := fun q r => δ < bandSup (quadraticChartAtom (A4 q)) r with hret
+  set! ret : τ → ℝ → Prop := fun q r => δ < bandSup (quadraticChartAtom (A4 q)) r with hret
   have hζb : ∀ u, ‖(bandCutoff u : ℂ)‖ ≤ H₀ := fun u => by
     rw [Complex.norm_real, Real.norm_of_nonneg (bandCutoff_spec.2.1 u)]
     exact (bandCutoff_spec.2.2.1 u).trans hH₀1
@@ -7468,7 +7469,7 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
     rw [hH₀, pdH0]; exact (le_add_of_nonneg_right zero_le_one).trans (le_max_right _ _)
   -- the per-(term, scale) chart expansions
   set E := pdE Dc Ds Cr H B with hE
-  set E1 := pdE1 (DJ 1) Ds Cr H B with hE1d
+  set! E1 := pdE1 (DJ 1) Ds Cr H B with hE1d
   have hEdef : Real.exp (Dc * (1 + Real.log H₀ + Real.log (max 1 δ⁻¹)) ^ Dc) = E := by
     rw [hLE, hE, pdE]
   have hE1def : Real.exp ((DJ 1 : ℕ) * (1 + Real.log H₀ + Real.log (max 1 δ⁻¹)) ^ (DJ 1)) =
@@ -7502,22 +7503,22 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
     · exact ⟨0, 0, 0, 0, fun hq hr hrt => absurd ⟨hq, hr, hrt⟩ hall⟩
   choose lamf Mf σf coeff hprops using hexpq
   -- the catalog and the list
-  set K₀ := pdK0 κ (d + e) Dc (DJ 1) Ds Cr H B with hK₀
-  set P : Finset (ℕ × (Fin ((d + e) + (d + e)) → ℤ)) :=
+  set! K₀ := pdK0 κ (d + e) Dc (DJ 1) Ds Cr H B with hK₀
+  set! P : Finset (ℕ × (Fin ((d + e) + (d + e)) → ℤ)) :=
     (Finset.range ⌊E⌋₊) ×ˢ frequencyTruncationSet ((d + e) + (d + e)) K₀ with hP
-  set Bσ := E * 2 ^ K₀ with hBσ
-  set Mset : Finset (Matrix (Fin (d + e)) (Fin (d + e)) ℚ) :=
+  set! Bσ := E * 2 ^ K₀ with hBσ
+  set! Mset : Finset (Matrix (Fin (d + e)) (Fin (d + e)) ℚ) :=
     Fintype.piFinset (fun _ => Fintype.piFinset (fun _ => boundedRationalEnumeration ⌊E⌋₊))
     with hMset
-  set σset : Finset (Fin (d + e) → ℚ) :=
+  set! σset : Finset (Fin (d + e) → ℚ) :=
     Fintype.piFinset (fun _ => boundedRationalEnumeration ⌊Bσ⌋₊) with hσset
-  set lamℓ : τ × (Matrix (Fin (d + e)) (Fin (d + e)) ℚ × (Fin (d + e) → ℚ)) → ℝ := fun ℓ =>
+  set! lamℓ : τ × (Matrix (Fin (d + e)) (Fin (d + e)) ℚ × (Fin (d + e) → ℚ)) → ℝ := fun ℓ =>
     (φt ℓ.1).quadratic + ∑ i, ∑ j, (φt ℓ.1).horizontal i * (ℓ.2.1 i j : ℝ) *
       (φt ℓ.1).horizontal j with hlamℓ
-  set νℓ : τ × (Matrix (Fin (d + e)) (Fin (d + e)) ℚ × (Fin (d + e) → ℚ)) → ℝ := fun ℓ =>
+  set! νℓ : τ × (Matrix (Fin (d + e)) (Fin (d + e)) ℚ × (Fin (d + e) → ℚ)) → ℝ := fun ℓ =>
     ((φt ℓ.1).linear + ∑ i, (ℓ.2.2 i : ℝ) * (φt ℓ.1).horizontal i) / ((b : ℝ) - (a : ℝ))
     with hνℓ
-  set coefℓ : τ × (Matrix (Fin (d + e)) (Fin (d + e)) ℚ × (Fin (d + e) → ℚ)) → ℝ → ℂ :=
+  set! coefℓ : τ × (Matrix (Fin (d + e)) (Fin (d + e)) ℚ × (Fin (d + e) → ℚ)) → ℝ → ℂ :=
     fun ℓ r => if ℓ.1 ∈ R ∧ 0 < r ∧ ret ℓ.1 r ∧ Mf ℓ.1 r = ℓ.2.1 then
       4 * cf ℓ.1 * ∑ p ∈ P.filter (fun p => σf ℓ.1 r p = ℓ.2.2), coeff ℓ.1 r p else 0
     with hcoefℓ
@@ -7645,14 +7646,14 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
       hfk hfb
     have := hτc
     have hde : 1 ≤ d + e := by omega
-    set len : ℤ × ℤ → ℝ := fun I => dyadicGridLength G I.1 with hlen
+    set! len : ℤ × ℤ → ℝ := fun I => dyadicGridLength G I.1 with hlen
     have hlen0 : ∀ I, 0 < len I := fun I => dyadicGridLength_pos G I.1
     set Na := Real.sqrt (∫ y in dyadicGridCell G J.1 J.2, ‖Fa y‖ ^ 2) with hNa
     set Nb := Real.sqrt (∫ y in dyadicGridCell G J.1 J.2, ‖Fb y‖ ^ 2) with hNb
     have hK : 0 ≤ Ka * Kb * Na * Nb := by positivity
-    set ψA : τ → ℝ → ℂ := fun q => quadraticChartAtom (φa q) with hψA
-    set ψB : τ → ℝ → ℂ := fun q => quadraticChartAtom (φb q) with hψB
-    set Qt : τ → ℝ → ℂ := fun q => quadraticChartAtom (φt q) with hQt
+    set! ψA : τ → ℝ → ℂ := fun q => quadraticChartAtom (φa q) with hψA
+    set! ψB : τ → ℝ → ℂ := fun q => quadraticChartAtom (φb q) with hψB
+    set! Qt : τ → ℝ → ℂ := fun q => quadraticChartAtom (φt q) with hQt
     have hψAm : ∀ q, Measurable (ψA q) := fun q => quadraticChartAtom_measurable _
     have hψBm : ∀ q, Measurable (ψB q) := fun q => quadraticChartAtom_measurable _
     have hQtm : ∀ q, Measurable (Qt q) := fun q => quadraticChartAtom_measurable _
@@ -7666,14 +7667,14 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
       have h := hexpS x t
       simpa only [Int.cast_natCast] using h
     -- the separated forms of the separation terms and of the catalog terms
-    set sepQ : ℤ × ℤ → τ → ℂ := fun I q => separatedLocalForm (len I) (w I) (Qt q) a b
+    set! sepQ : ℤ × ℤ → τ → ℂ := fun I q => separatedLocalForm (len I) (w I) (Qt q) a b
       (fun y => ψA q y * za I y) (fun y => ψB q y * zb I y) with hsepQ
-    set gam : τ → ℝ → ℕ × (Fin ((d + e) + (d + e)) → ℤ) → ℝ := fun q r p =>
+    set! gam : τ → ℝ → ℕ × (Fin ((d + e) + (d + e)) → ℤ) → ℝ := fun q r p =>
       (φt q).linear + ∑ j, (σf q r p j : ℝ) * (φt q).horizontal j with hgam
-    set sepP : ℤ × ℤ → τ → ℕ × (Fin ((d + e) + (d + e)) → ℤ) → ℂ := fun I q p =>
+    set! sepP : ℤ × ℤ → τ → ℕ × (Fin ((d + e) + (d + e)) → ℤ) → ℂ := fun I q p =>
       separatedLocalForm (len I) (w I) (quadPhase (lamf q (len I)) (gam q (len I) p)) a b
         (fun y => ψA q y * za I y) (fun y => ψB q y * zb I y) with hsepP
-    set coeffI : ℤ × ℤ → τ → ℕ × (Fin ((d + e) + (d + e)) → ℤ) → ℂ := fun I q p =>
+    set! coeffI : ℤ × ℤ → τ → ℕ × (Fin ((d + e) + (d + e)) → ℤ) → ℂ := fun I q p =>
       if q ∈ R ∧ ret q (len I) then coeff q (len I) p else 0 with hcoeffI
     have hcell : ∀ I, ∃ M : ℝ, I ∈ S → HasSum (fun q => cf q * sepQ I q)
         (localProgressionForm (len I) (w I) (f I)) ∧ ∀ q, ‖sepQ I q‖ ≤ M := by
@@ -7685,7 +7686,7 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
         exact ⟨M, fun _ => ⟨hM1, hM2⟩⟩
       · exact ⟨0, fun h => absurd h hI⟩
     choose MQ hMQ using hcell
-    set MP : ℤ × ℤ → ℝ := fun I => localKernelSupBound κ *
+    set! MP : ℤ × ℤ → ℝ := fun I => localKernelSupBound κ *
       Real.sqrt ((len I)⁻¹ * ∫ y in Set.Ico (dyadicGridLeft G I.1 I.2)
         (dyadicGridLeft G I.1 I.2 + len I), ‖za I y‖ ^ 2) *
       Real.sqrt ((len I)⁻¹ * ∫ y in Set.Ico (dyadicGridLeft G I.1 I.2)
@@ -7786,7 +7787,7 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
     have hsep0 : ∀ q (S' : Finset (ℤ × ℤ)), 0 ≤ ∑ I ∈ S', len I * ‖sepQ I q‖ := fun q S' =>
       Finset.sum_nonneg fun I _ => mul_nonneg (hlen0 I).le (norm_nonneg _)
     -- the discarded separation shells
-    set c := (Cr : ℝ) * pdA0 Ds H ^ Cr * (1 + 6 * Cr) ^ Cr with hc
+    set! c := (Cr : ℝ) * pdA0 Ds H ^ Cr * (1 + 6 * Cr) ^ Cr with hc
     have hc0 : 0 ≤ c := mul_nonneg (mul_nonneg (Nat.cast_nonneg _) (pow_nonneg (by
       linarith [one_le_pdA0 (Ds := Ds) hH1]) _)) (by positivity)
     obtain ⟨hgs, hgle⟩ := weighted_shell_tail cf size (by linarith [one_le_pdEs (Ds := Ds) hH1])
@@ -7844,7 +7845,7 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
     -- the discarded bands
     have hT2 : ∑ q ∈ R, ‖cf q‖ * ∑ I ∈ S.filter (fun I => ¬ ret q (len I)),
         len I * ‖sepQ I q‖ ≤ Real.exp (-B) / 3 * (Ka * Kb * Na * Nb) := by
-      set Z := Real.exp (-(M₀ : ℝ) / 2) * (Cr * (2 + Real.log H₀) ^ Cr) with hZ
+      set! Z := Real.exp (-(M₀ : ℝ) / 2) * (Cr * (2 + Real.log H₀) ^ Cr) with hZ
       have hZ0 : 0 ≤ Z := by have := Real.log_nonneg hH₀1; positivity
       have hpt : ∀ q ∈ R, ∑ I ∈ S.filter (fun I => ¬ ret q (len I)), len I * ‖sepQ I q‖ ≤
           Z * (Ka * Kb * Na * Nb) := by
@@ -7875,7 +7876,7 @@ theorem predictor_list_param (c₀ : ℕ) (hc : 1 ≤ c₀) (κ : LocalKernelCla
     have hT3 : ∑ q ∈ R, 4 * ‖cf q‖ * ∑ I ∈ S.filter (fun I => ret q (len I)), len I *
         ∑' p, (if p ∈ P then 0 else ‖coeffI I q p‖ * ‖sepP I q p‖) ≤
         Real.exp (-B) / 3 * (Ka * Kb * Na * Nb) := by
-      set W := (⌊E⌋₊ : ℝ) * (E1 * tailCT κ (d + e) E *
+      set! W := (⌊E⌋₊ : ℝ) * (E1 * tailCT κ (d + e) E *
         (2 * 7 ^ ((d + e) + (d + e)) * (2 * Real.pi) ^ (((d + e) + 1) ^ 2 - 1) / 2 ^ K₀))
         with hW
       have hW0 : 0 ≤ W := mul_nonneg (Nat.cast_nonneg _) (mul_nonneg (mul_nonneg hE10
@@ -8153,7 +8154,7 @@ theorem qp_tailCT (κ : LocalKernelClass) (KE : ℕ) : ∃ K : ℕ, ∀ {Y E : �
     -- the factor `tailLam`
     have hX2 : QPLe Y 6 (((d * d + 1 : ℕ) : ℝ) + 1) := by
       apply qple_poly
-      have hdd : (d : ℝ) * d ≤ 4 * Y ^ 2 := by nlinarith
+      have hdd : (d : ℝ) * d ≤ 4 * Y ^ 2 := by nlinarith only [hd]
       have h1 : Y ^ 2 ≤ Y ^ 6 := pow_le_pow_right₀ hY (by norm_num)
       have h2 : 1 ≤ Y ^ 6 := one_le_pow₀ hY
       push_cast; linarith
@@ -8192,7 +8193,7 @@ theorem qp_pdK0 (κ : LocalKernelClass) (Dc J1 Ds Cr : ℕ) : ∃ K : ℕ, ∀ {
       (QPLe.const hY (2 * Real.pi)) (by
         have h1 : (d' : ℝ) + 1 ≤ 3 * Y := by linarith
         have h0 : (0 : ℝ) ≤ d' + 1 := by positivity
-        push_cast; nlinarith)
+        push_cast; nlinarith only [hd, hY])
     have hZ := ((((((((QPLe.const hY 12).mul hY (Real.exp_pos _).le (qp_pdEs Ds hH hHY)).mul hY
       (by linarith) (qple_add_one hY hEq)).mul hY (Real.exp_pos _).le hE1).mul hY
       (by linarith) (qple_add_one hY hCT)).mul hY (by norm_num) (QPLe.const hY 2)).mul hY
@@ -8238,7 +8239,7 @@ theorem qp_pdCard (κ : LocalKernelClass) (Dc J1 Ds Cr : ℕ) : ∃ K : ℕ,
       QPLe.of_le (by gcongr) ((QPLe.const hY 3).mul hY (by positivity)
         (hE.pow hY (by linarith) 2))
     have h3 := qple_pow_var (n := d' * d') (m := 4) (j := 2) hY (by positivity) h3a
-      (by push_cast; nlinarith)
+      (by push_cast; nlinarith only [hd])
     have hK0 := hKK hH hB0 hBY hHY hd
     have hEK : QPLe Y _ (pdE Dc Ds Cr H B * 2 ^ pdK0 κ d' Dc J1 Ds Cr H B) :=
       hE.mul hY (by positivity) hK0

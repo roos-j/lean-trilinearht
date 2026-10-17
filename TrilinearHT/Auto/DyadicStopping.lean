@@ -73,7 +73,7 @@ theorem dyadicGridCell_disjoint_of_lt (G : RealDyadicGrid) (s : ℤ)
     x < G.origin s + (m : ℝ) * dyadicGridLength G s + dyadicGridLength G s at hxm
   change G.origin s + (n : ℝ) * dyadicGridLength G s ≤ x ∧
     x < G.origin s + (n : ℝ) * dyadicGridLength G s + dyadicGridLength G s at hxn
-  nlinarith [hxm.2, hxn.1]
+  nlinarith only [hxm.2, hxn.1, hr, hmn']
 
 theorem dyadicGridCell_pairwiseDisjoint (G : RealDyadicGrid) (s : ℤ) :
     Pairwise (fun m n => Disjoint (dyadicGridCell G s m) (dyadicGridCell G s n)) := by
@@ -183,7 +183,7 @@ theorem finite_union_weight_le {ι α : Type*} [DecidableEq α]
     rw [Finset.biUnion_insert, Finset.sum_insert hi]
     have hsum := Finset.sum_union_inter (s₁ := F i) (s₂ := T.biUnion F) (f := w)
     have hnonneg : 0 ≤ ∑ x ∈ F i ∩ T.biUnion F, w x := Finset.sum_nonneg (fun x _ => hw x)
-    linarith
+    linarith only [ih, hsum, hnonneg]
 
 /-- Blueprint path-packing, line 429: every restart generation loses at
 least the fixed fraction `1 - ρ` of total root length. -/

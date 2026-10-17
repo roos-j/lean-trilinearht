@@ -73,7 +73,7 @@ theorem affine_separation_on_cell {lam γ a r θ x₀ : ℝ} (hx₀ : x₀ ∈ S
     ∀ x ∈ Set.Icc a (a + r), θ / 2 < |2 * lam * x + γ| := by
   intro x hx
   have hxx : |x - x₀| ≤ r := by
-    rw [abs_le]; constructor <;> linarith [hx.1, hx.2, hx₀.1, hx₀.2]
+    rw [abs_le]; constructor <;> linarith only [hx.1, hx.2, hx₀.1, hx₀.2]
   have hd : |(2 * lam * x + γ) - (2 * lam * x₀ + γ)| ≤ θ / 2 := by
     rw [show (2 * lam * x + γ) - (2 * lam * x₀ + γ) = 2 * lam * (x - x₀) by ring, abs_mul,
       abs_mul, abs_two]
@@ -91,7 +91,7 @@ theorem component_size_comparison {ι : Type*} (s : Finset ι) (a y : ι → ℝ
     {ε : ℝ} (hT : |T| ≤ PZ + ε + V) (hPZ : 0 ≤ PZ) (hε : 0 ≤ ε) (hV : 0 ≤ V) :
     ∑ D ∈ s, (a D + y D) ^ 2 ≤ 6 * c * (PZ ^ 2 + ε ^ 2 + V ^ 2) + 2 * η := by
   have h1 : ∑ D ∈ s, (a D + y D) ^ 2 ≤ ∑ D ∈ s, (2 * a D ^ 2 + 2 * y D ^ 2) :=
-    Finset.sum_le_sum fun D _ => by nlinarith [sq_nonneg (a D - y D)]
+    Finset.sum_le_sum fun D _ => by nlinarith only [sq_nonneg (a D - y D)]
   rw [Finset.sum_add_distrib, ← Finset.mul_sum, ← Finset.mul_sum] at h1
   have hT2 : T ^ 2 ≤ 3 * (PZ ^ 2 + ε ^ 2 + V ^ 2) := by
     have h0 : 0 ≤ PZ + ε + V := by positivity
@@ -847,7 +847,7 @@ theorem attempt_representatives3 (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
         ∀ z z' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)), z.1 ∈ Ms.predOfMode S hA Δ h c →
           z'.1 ∈ Ms.predOfMode S hA Δ h c' → z ∉ (Ms.blockComps S hA c'.1 c'.2.1).F h z') := by
   set lt := nodeLt3 (Gd := Gd) Ms Nd
-  set d : ℤ × (ℤ × ℤ) × Ms.Md → ℕ := fun c => (c.1 - Bmin).toNat
+  set! d : ℤ × (ℤ × ℤ) × Ms.Md → ℕ := fun c => (c.1 - Bmin).toNat
   have hd : ∀ c c', lt c c' → d c < d c' := by
     intro c c' hcc'
     obtain ⟨hc, hc', -, hlt⟩ := hcc'
@@ -874,8 +874,8 @@ theorem attempt_representatives3 (Nd : Finset (ℤ × (ℤ × ℤ) × Ms.Md))
       Ms.blockComps_persist S hA (hNd c hc) (hNd c' hc') hlt.le hsub h' hUU (x := x) (y := y)
     set C := Ms.blockComps S hA c.1 c.2.1
     set C' := Ms.blockComps S hA c'.1 c'.2.1
-    set mc : Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)) := ⟨c.2.2, halive c hc⟩
-    set mc' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)) := ⟨c'.2.2, halive c' hc'⟩
+    set! mc : Ms.alive (ancAt Gd c.2.1 (c.1 - 4 * S.K)) := ⟨c.2.2, halive c hc⟩
+    set! mc' : Ms.alive (ancAt Gd c'.2.1 (c'.1 - 4 * S.K)) := ⟨c'.2.2, halive c' hc'⟩
     have hEc : E c = (C.E (h - Δ) mc).map ⟨Subtype.val, Subtype.val_injective⟩ :=
       Ms.predOfMode_eq S hA Δ h (halive c hc)
     have hEc' : E c' = (C'.E (h - Δ) mc').map ⟨Subtype.val, Subtype.val_injective⟩ :=
@@ -2126,7 +2126,7 @@ theorem tops_rows_path {s : Finset Ms.Event} (hδ : 0 < Ms.δc) (h1 : ∀ e ∈ 
         (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ hr.le hlen' 2) (abs_nonneg _)).trans hlm'
       have habs := abs_sub (Ms.lamOf m) (Ms.lamOf m')
       rw [div_div, le_div_iff₀ (by positivity)]
-      nlinarith [mul_le_mul_of_nonneg_right habs (sq_nonneg r)]
+      nlinarith only [mul_le_mul_of_nonneg_right habs (sq_nonneg r), hΛ, hr2, hr2']
   · -- multiplicity: the rows through a point have disjoint mode sets alive at the point
     intro e he
     refine (sum_measureReal_inter_le s Ms.evCell
@@ -2616,7 +2616,7 @@ theorem RepClass.tops_side {Δ h : ℕ} (R : Ms.RepClass S hA SP Δ h)
   set f : (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × Ms.Md) → ℝ := fun p =>
     ‖∑ m ∈ (Ms.nodeComp S hA h p.2).filter (fun m => ¬ Ms.IsCoreAt S hA SP p.2.1 p.2.2.1 m),
       c p.2.1 p.2.2.1 m • Ms.cellMode p.1 m‖ ^ 2 with hf
-  set g : ℤ × (ℤ × ℤ) → ℝ := fun k => ‖columnL2Restriction (dyadicGridCell Gd k.2.1 k.2.2)
+  set! g : ℤ × (ℤ × ℤ) → ℝ := fun k => ‖columnL2Restriction (dyadicGridCell Gd k.2.1 k.2.2)
     (dyadicGridCell_measurable Gd k.2.1 k.2.2) (Ms.blockSide S hA SP k.1 (cells k.1) (c k.1))‖ ^ 2
     with hg
   -- step 1: the tops at one block and cell
@@ -3285,11 +3285,11 @@ theorem first_top_count (l : Fin 4) (s : List (CatCol bf.Vtx))
     (1 + Real.log (2 * kq)) ^ 2) with hG0
   set M := 24 * (2 * G0 + 2 * S.K * V₀) with hM
   -- the tops of a choice, over all groups
-  set Tch : ℕ × (ℕ × ℕ) × ℝ → Finset (Σ G, (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md)) := fun ch =>
+  set! Tch : ℕ × (ℕ × ℕ) × ℝ → Finset (Σ G, (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md)) := fun ch =>
     Finset.univ.sigma fun G => (Ms G).firstTops (X ch.1 ch.2.1 G) (R ch.1 ch.2.1 G).rep
       ((Ms G).nodeSize (S.withQ0 (q G)) hA SP (c G) ch.1) (ch.2.2 ^ 2) with hTch
-  set cellOf : (Σ G, (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md)) → ℤ × ℤ := fun t => t.2.1 with hcellOf
-  set Sc := (Hs ×ˢ Ts ×ˢ Thr).biUnion fun ch => (Tch ch).image cellOf with hSc
+  set! cellOf : (Σ G, (ℤ × ℤ) × (ℤ × (ℤ × ℤ) × (Ms G).Md)) → ℤ × ℤ := fun t => t.2.1 with hcellOf
+  set! Sc := (Hs ×ˢ Ts ×ˢ Thr).biUnion fun ch => (Tch ch).image cellOf with hSc
   -- the mass of the tops of each choice
   have hpt : ∀ G y, (((Ms G).ptSet y).card : ℝ) ≤ S.Dstar := fun G y =>
     (Finset.single_le_sum (f := fun G => (((Ms G).ptSet y).card : ℝ))

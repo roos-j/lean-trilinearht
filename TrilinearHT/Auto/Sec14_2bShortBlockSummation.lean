@@ -92,11 +92,11 @@ theorem lintegral_window_tiling {δ : ℝ} (hδ : 0 < δ) (c : ℝ) (g : ℝ →
     refine ⟨⌊x / δ - c⌋, ?_, ?_⟩
     · have := Int.floor_le (x / δ - c)
       have h : δ * (⌊x / δ - c⌋ + c) ≤ δ * (x / δ) := by
-        apply mul_le_mul_of_nonneg_left (by linarith) hδ.le
+        apply mul_le_mul_of_nonneg_left (by linarith only [this]) hδ.le
       rwa [mul_div_cancel₀ _ hδ.ne'] at h
     · have := Int.lt_floor_add_one (x / δ - c)
       have h : δ * (x / δ) < δ * (⌊x / δ - c⌋ + c + 1) := by
-        apply mul_lt_mul_of_pos_left (by linarith) hδ
+        apply mul_lt_mul_of_pos_left (by linarith only [this]) hδ
       rwa [mul_div_cancel₀ _ hδ.ne'] at h
   rw [← lintegral_iUnion (fun _ => measurableSet_Ico) hdis, hcov, Measure.restrict_univ]
 
@@ -186,7 +186,7 @@ theorem random_L2_moment {Ω T : Type*} [MeasurableSpace Ω] [MeasurableSpace T]
   have ha0 : 0 < a := by linarith
   set g : Ω → T → ℝ≥0∞ := fun σ w => ‖F σ w‖ₑ ^ (2 : ℝ)
   have hg : Measurable (Function.uncurry g) := hF.enorm.pow_const _
-  have hmink := lintegral_minkowski (μ := P) (ν := ν) (p := a / 2) (by linarith) hg
+  have hmink := lintegral_minkowski (μ := P) (ν := ν) (p := a / 2) (by linarith only [ha]) hg
   have hinner : ∀ w, (∫⁻ σ, g σ w ^ (a / 2) ∂P) ^ (1 / (a / 2)) ≤ (Ca * Z w) ^ (2 : ℝ) := by
     intro w
     have e1 : ∀ σ, g σ w ^ (a / 2) = ‖F σ w‖ₑ ^ a := fun σ => by
@@ -787,7 +787,8 @@ theorem roundSampled_offsets {δ : ℝ} (hδ : 0 < δ) (z : ℝ × ℝ) :
   have k4 := Int.lt_floor_add_one ((z.1 + z.2) / δ + 1 / 2)
   have e1 : z.1 = δ * (z.1 / δ) := by field_simp
   have e2 : z.1 + z.2 = δ * ((z.1 + z.2) / δ) := by field_simp
-  refine ⟨by nlinarith, by nlinarith, by nlinarith, by nlinarith⟩
+  refine ⟨by nlinarith only [hδ, k1, e1], by nlinarith only [hδ, k2, e1], by nlinarith,
+      by nlinarith⟩
 
 /-- Blueprint lines 2353-2355 (second kernel-sampling error): replacing an admissible kernel on a
 cell of length `r` by its values at the rounded centers changes the form by at most
@@ -820,7 +821,8 @@ theorem roundSampled_form_error {κ : LocalKernelClass} {a r : ℝ} (hr : 0 < r)
     have := admissible_kernel_lipschitz hw z
       (δ * ⌊z.1 / δ + 1 / 2⌋, δ * ⌊(z.1 + z.2) / δ + 1 / 2⌋ - δ * ⌊z.1 / δ + 1 / 2⌋)
     simp only at this
-    have hx : |z.1 - δ * ⌊z.1 / δ + 1 / 2⌋| ≤ δ := by rw [abs_le]; constructor <;> linarith
+    have hx : |z.1 - δ * ⌊z.1 / δ + 1 / 2⌋| ≤ δ := by
+      rw [abs_le]; constructor <;> linarith only [hδ, o1, o2]
     have ht : |z.2 - (δ * ⌊(z.1 + z.2) / δ + 1 / 2⌋ - δ * ⌊z.1 / δ + 1 / 2⌋)| ≤ δ := by
       rw [abs_le]; constructor <;> linarith
     have hL := admissibleLipConst_nonneg κ
@@ -849,10 +851,10 @@ theorem roundSampled_form_error {κ : LocalKernelClass} {a r : ℝ} (hr : 0 < r)
             ((1 - (j : ℝ)) * X + (j : ℝ) * Y) := by
         simp only [X, Y]; ring
       have hd1 : |(1 - (j : ℝ)) * X + (j : ℝ) * Y| ≤ 5 * δ := by
-        rw [abs_le]; constructor <;> nlinarith
+        rw [abs_le]; constructor <;> nlinarith only [hj3, o1, o2, o3, o4]
       rw [abs_le] at hd1
       rw [hcoord]
-      constructor <;> nlinarith [mul_pos hμ hr]
+      constructor <;> nlinarith only [mul_pos hμ hr, hδr, h1, hj3, o1, o2, o3, h2, o4]
   -- the form estimate
   have hW : ∀ z, ‖e z‖ₑ ≤ ENNReal.ofReal (2 * admissibleLipConst κ * (δ / r)) := fun z => by
     rw [← ofReal_norm]; exact ENNReal.ofReal_le_ofReal (hsize z)
@@ -1003,7 +1005,7 @@ theorem interval_unique {δ c y : ℝ} (hδ : 0 < δ) (hc2 : c ≤ 1 / 2) {m n :
     rw [show δ * m - δ * n = (y - δ * n) - (y - δ * m) by ring]
     exact (abs_sub _ _).trans (by rw [add_comm])
   rw [show δ * (m : ℝ) - δ * n = δ * (m - n) by ring, abs_mul, abs_of_pos hδ] at h2
-  nlinarith
+  nlinarith only [hδ, hc2, hm, hn, h1, h2]
 
 open Auto.ClassicalMaximal in
 /-- Blueprint lines 2362-2364: for `c ≤ 1/2`, the mixed `L^p_y L⁴` norm of an interval input is
@@ -3078,9 +3080,10 @@ theorem TJ_window_subset {I : ℤ × ℤ} (hI : I ∈ D.cells) {m : ℤ} (hm : m
   rw [Metric.mem_ball, Real.dist_eq, abs_lt] at hy1
   simp only [J, Set.mem_Icc] at hy2
   simp only [window, Set.mem_Ico] at hx
-  have e1 : D.δ * (m + fastLiftLeft j + fastLiftLen j) ≤ D.δ * m + 4 * D.δ := by nlinarith
+  have e1 : D.δ * (m + fastLiftLeft j + fastLiftLen j) ≤ D.δ * m + 4 * D.δ := by
+    nlinarith only [hδ0, hr]
   have e2 : D.δ * m - 4 * D.δ ≤ D.δ * (m + fastLiftLeft j) := by nlinarith
-  constructor <;> nlinarith [hx.1, hx.2, hy1.1, hy1.2, hy2.1, hy2.2]
+  constructor <;> nlinarith only [hx.1, hx.2, hy1.1, hy1.2, hy2.1, hy2.2, hδ, e2, hr]
 
 /-- The weighted cell sum of `eq:shortblock` (lines 2309-2312): with local masses `Y_j(I)` at
 most the total masses `m_j` on each depth and `Σ_s δ / r_s ≤ 1`,
@@ -4842,8 +4845,8 @@ theorem short_block_core (hL : T.LeafBound z) (P : Measure Ω) [IsProbabilityMea
   have hm : K < 2 ^ m := by
     have := Nat.lt_pow_succ_log_self (b := 2) (by norm_num) (K + 1)
     exact lt_of_lt_of_le (Nat.lt_succ_self K) this.le
-  set V := (DepthRect.upTo m).filter DepthRect.Valid
-  set D := fun R => T.rectData κ cells hcells kernel hker z hz zσ hzσ R
+  set! V := (DepthRect.upTo m).filter DepthRect.Valid
+  set! D := fun R => T.rectData κ cells hcells kernel hker z hz zσ hzσ R
   have hpt : ∀ᵐ σ ∂P, ‖∑ I ∈ cells, (dyadicGridLength G I.1 : ℂ) * ε I σ *
       localProgressionForm (dyadicGridLength G I.1) (kernel I) (fun j => zσ j σ)‖ₑ ≤
       ∑ R ∈ V, ‖(D R).total ε σ‖ₑ := by
@@ -5038,7 +5041,7 @@ theorem core_rhs_le (κ : LocalKernelClass) (C4 : ℝ) {Cs Cd : ℝ≥0∞} (hs 
         unfold shortBlockConst
         have hA : x1 * L + x2 * L + CN * x3 * u * (2 * u) * L ≤
             (x1 + x2 + 2 * x3) * (1 + CN) * (u * u) * L := by
-          have huu : 1 ≤ u * u := by nlinarith
+          have huu : 1 ≤ u * u := by nlinarith only [hu]
           have h1 : x1 * L ≤ x1 * (1 + CN) * (u * u) * L := by
             have : x1 * 1 * 1 * L ≤ x1 * (1 + CN) * (u * u) * L := by gcongr; linarith
             linarith
@@ -5048,8 +5051,8 @@ theorem core_rhs_le (κ : LocalKernelClass) (C4 : ℝ) {Cs Cd : ℝ≥0∞} (hs 
           have h3 : CN * x3 * u * (2 * u) * L ≤ 2 * x3 * (1 + CN) * (u * u) * L := by
             have : CN * (2 * x3 * (u * u) * L) ≤ (1 + CN) * (2 * x3 * (u * u) * L) := by
               gcongr; linarith
-            nlinarith
-          nlinarith
+            nlinarith only [this]
+          nlinarith only [h1, h2, h3]
         calc (numLevels (Nat.log 2 (K + 1) + 1) : ℝ) *
               (x1 * L + x2 * L + CN * x3 * u * (2 * u) * L)
             ≤ (200 * (1 + Real.log ((K : ℝ) + 2))) *
@@ -5111,8 +5114,8 @@ theorem short_block_comparison (κ : LocalKernelClass) {q : ℝ} (hq2 : 2 < q) (
     intro η hη
     set s' : Fin 4 → ℝ := fun j => s j + η
     have hs' : ∀ j, 0 < s' j := fun j => by simp only [s']; linarith [hs j]
-    set z' : Fin 4 → ℝ → ℝ := fun j y => ‖z j y‖ / s' j
-    set zσ' : Fin 4 → Ω → ℝ → ℂ := fun j σ y => zσ j σ y * ((s' j)⁻¹ : ℂ)
+    set! z' : Fin 4 → ℝ → ℝ := fun j y => ‖z j y‖ / s' j
+    set! zσ' : Fin 4 → Ω → ℝ → ℂ := fun j σ y => zσ j σ y * ((s' j)⁻¹ : ℂ)
     have hz' : ∀ j, Measurable fun y => ‖z' j y‖ := fun j => ((hz j).div_const _).norm
     have hzσ' : ∀ j, Measurable (Function.uncurry (zσ' j)) := fun j => (hzσ j).mul_const _
     have hL : T.LeafBound z' := by

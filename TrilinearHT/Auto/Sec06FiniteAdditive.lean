@@ -51,7 +51,7 @@ theorem unitCircle_exists_large_multiple (x : UnitAddCircle) (hx : x ≠ 0) :
       (Nat.ceil_lt_add_one (by positivity : 0 ≤ (1 / 4 : ℝ) / ‖x‖)) hxpos
     rw [add_mul, div_mul_cancel₀ _ hxpos.ne', one_mul] at h
     change (n : ℝ) * ‖x‖ < _ at h
-    linarith
+    linarith only [hlarge, h]
   have hprod : |(n : ℝ) * r| = (n : ℝ) * ‖x‖ := by
     rw [abs_mul, abs_of_nonneg (Nat.cast_nonneg n), habs]
   have hcoe : (((n : ℝ) * r : ℝ) : UnitAddCircle) = n • x := by
@@ -96,7 +96,7 @@ theorem cyclic_nonzero_character_test_card {q : ℕ} [NeZero q] (χ : ZMod q)
     rw [← he] at hle
     have h1 := hS x hx
     have h2 := hS (x + g) hy
-    linarith
+    linarith only [hg, hle, h1, h2]
   have hc : (S.image (fun x => x + g)).card = S.card :=
     Finset.card_image_of_injective S (fun _ _ h => add_right_cancel h)
   have hu := Finset.card_le_univ (S ∪ S.image (fun x => x + g))
@@ -129,7 +129,7 @@ theorem cyclic_character_test_halving {q : ℕ} [NeZero q] (D : Finset (ZMod q))
         apply Finset.sum_le_sum
         intro χ hχ
         have h := cyclic_nonzero_character_test_card χ (hD χ hχ)
-        have hr : (2 : ℝ) * (cyclicBohrSet {χ} (1 / 8)).card ≤ q := by linarith
+        have hr : (2 : ℝ) * (cyclicBohrSet {χ} (1 / 8)).card ≤ q := by linarith only [h]
         exact_mod_cast hr
       _ = ∑ _g : ZMod q, D.card := by simp [mul_comm]
   obtain ⟨g, _, hg⟩ := Finset.exists_le_of_sum_le Finset.univ_nonempty hbound
@@ -272,7 +272,7 @@ theorem unitCircleCentered_mem (x : UnitAddCircle) :
   change -(1 / 2 : ℝ) ≤ unitCircleCentered x ∧ unitCircleCentered x < -(1 / 2) + 1 at h
   constructor
   · exact h.1
-  · linarith [h.2]
+  · linarith only [h.2]
 
 theorem unitCircleCentered_coe (x : UnitAddCircle) :
     (unitCircleCentered x : UnitAddCircle) = x := AddCircle.coe_equivIco
@@ -322,7 +322,7 @@ theorem cyclicBohrWeight_eq_one {q : ℕ} [NeZero q] (b : ℝ → ℝ)
   rw [abs_div, abs_of_pos hr, unitCircleCentered_abs]
   apply (div_le_iff₀ hr).mpr
   have h := (mem_cyclicBohrSet S (r / 2) x).mp hx s hs
-  linarith
+  linarith only [h]
 
 theorem cyclicBohrWeight_eq_zero_of_notMem {q : ℕ} [NeZero q] (b : ℝ → ℝ)
     (hb : ∀ x, 1 ≤ |x| → b x = 0) (S : Finset (ZMod q))
@@ -358,7 +358,7 @@ theorem cyclicBohrMass_bounds {q : ℕ} [NeZero q] (b : ℝ → ℝ)
         ((cyclicBohrSet S (r / 2)).card : ℝ) := by simp
     simpa only [cyclicBohrMass, Finset.expect_eq_sum_div_card, Finset.card_univ,
       ZMod.card, hsum] using he
-  have hbohr := cyclicBohrSet_card_lower S (by positivity : 0 < r / 2) (by linarith)
+  have hbohr := cyclicBohrSet_card_lower S (by positivity : 0 < r / 2) (by linarith only [hrsmall])
   have heq : r / 2 / 3 = r / 6 := by ring
   rw [heq] at hbohr
   refine ⟨((le_div_iff₀ hq).mpr hbohr).trans hmass, ?_⟩
@@ -375,7 +375,7 @@ theorem unitCircleCentered_coe_of_mem {a : ℝ}
     (ha : -(1 / 2 : ℝ) ≤ a ∧ a < 1 / 2) :
     unitCircleCentered (a : UnitAddCircle) = a := by
   have hi : a ∈ Set.Ico (-(1 / 2 : ℝ)) (-(1 / 2) + 1) := by
-    exact ⟨ha.1, by linarith [ha.2]⟩
+    exact ⟨ha.1, by linarith only [ha.2]⟩
   exact congrArg Subtype.val (AddCircle.equivIco_coe_eq hi)
 
 /-- A nearby point can be lifted in the same centered coordinate whenever a cutoff is active. -/
@@ -392,7 +392,7 @@ theorem circleCutoff_local_difference (b : ℝ → ℝ) {L : ℝ≥0} (hLip : Li
   obtain ⟨t, ht, htabs⟩ := unitCircle_norm_representative (x - y)
   have htlt : |t| < r := htabs.trans_lt hxy
   have hvabs : |unitCircleCentered x - t| < 2 * r := by
-    exact (abs_sub _ _).trans_lt (by linarith)
+    exact (abs_sub _ _).trans_lt (by linarith only [hxy, ha, htabs])
   have hv : -(1 / 2 : ℝ) ≤ unitCircleCentered x - t ∧
       unitCircleCentered x - t < 1 / 2 := by
     have hh := abs_lt.mp hvabs
@@ -1313,7 +1313,7 @@ theorem cyclic_small_bohr_domain {q : ℕ} [NeZero q]
     change ((insert (1 : ZMod q) S).card : ℝ) + Real.log (1 / ρ) ≤
       10 ^ 20 * bogolyubovLog α ^ 4
     change (S.card : ℝ) ≤ 10 ^ 14 * bogolyubovLog α ^ 4 at hS
-    nlinarith
+    nlinarith only [hlog', hL, hLpow, hc, hS]
   · intro u hu
     apply hcontain
     rw [mem_bogolyubovBohrSet]
@@ -1999,7 +1999,7 @@ theorem derivative_graph_small_difference {q : ℕ} [NeZero q]
         _ ≤ (H.card : ℝ) * δ ^ 64 / 20480000000000 := by gcongr
         _ ≤ _ := hs
     apply (le_div_iff₀ hq).mpr
-    nlinarith [mul_nonneg (pow_nonneg hδ.le 72) hq.le]
+    nlinarith only [mul_nonneg (pow_nonneg hδ.le 72) hq.le, hb]
   · apply hdiff.trans
     apply mul_le_mul_of_nonneg_right _ (Nat.cast_nonneg _)
     dsimp [K]
@@ -2075,13 +2075,13 @@ theorem locally_additive_derivative_frequency {q : ℕ} [NeZero q] (hq : Odd q)
   have hL : 1 + Real.log (1 / ((H'.card : ℝ) / q)) ≤
       10 ^ 6 * (1 + Real.log (1 / δ)) := by
     norm_num only [Nat.cast_ofNat] at hlog
-    nlinarith
+    nlinarith only [hlogcost, hlogδ, hlog]
   apply hcomplex.trans
   calc
     _ ≤ 10 ^ 20 * (10 ^ 6 * (1 + Real.log (1 / δ))) ^ 4 := by gcongr
     _ ≤ 10 ^ 50 * (1 + Real.log (1 / δ)) ^ 4 := by
       rw [mul_pow]
-      nlinarith [pow_nonneg (by linarith : 0 ≤ 1 + Real.log (1 / δ)) 4]
+      nlinarith only [pow_nonneg (by linarith : 0 ≤ 1 + Real.log (1 / δ)) 4]
 
 end Auto
 

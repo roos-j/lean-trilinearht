@@ -37,7 +37,7 @@ theorem sum_rpow_le_sum_sq_rpow {ι : Type*} (s : Finset ι) (a : ι → ℝ) (h
     intro i hi
     have h0 := ha i hi
     have hsplit : a i ^ r = a i ^ (2 : ℝ) * (a i ^ (2 : ℝ)) ^ ((r - 2) / 2) := by
-      rw [← Real.rpow_mul h0, ← Real.rpow_add' h0 (by linarith)]
+      rw [← Real.rpow_mul h0, ← Real.rpow_add' h0 (by linarith only [hr])]
       congr 1; ring
     rw [hsplit, Real.rpow_two]
     apply mul_le_mul_of_nonneg_left _ (sq_nonneg _)
@@ -46,7 +46,7 @@ theorem sum_rpow_le_sum_sq_rpow {ι : Type*} (s : Finset ι) (a : ι → ℝ) (h
     _ = S * S ^ ((r - 2) / 2) := by rw [← Finset.sum_mul]
     _ = S ^ (r / 2) := by
         rcases hS0.eq_or_lt with h | h
-        · rw [← h, zero_mul, Real.zero_rpow (by linarith)]
+        · rw [← h, zero_mul, Real.zero_rpow (by linarith only [hr])]
         · rw [← Real.rpow_one_add' hS0 (by linarith)]; congr 1; ring
 
 /-- Blueprint `eq:three-sides` (line 2380): for `2/3 < p ≤ 1` and nonnegative group sizes,
@@ -56,7 +56,7 @@ theorem three_sides_power {ι : Type*} (s : Finset ι) (a b c : ι → ℝ) (ha 
     ∑ i ∈ s, (a i * b i * c i) ^ p ≤
       (∑ i ∈ s, a i ^ 2) ^ (p / 2) * (∑ i ∈ s, b i ^ 2) ^ (p / 2) *
         (∑ i ∈ s, c i ^ 2) ^ (p / 2) := by
-  have hp0 : 0 < p := by linarith
+  have hp0 : 0 < p := by linarith only [hp]
   set x : ι → ℝ := fun i => a i ^ p
   set y : ι → ℝ := fun i => b i ^ p
   set z : ι → ℝ := fun i => c i ^ p
@@ -167,7 +167,7 @@ theorem power_cost_bound (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (a b c :
     {p : ℝ} (hp : 2 / 3 < p) :
     ∑ I ∈ S, dyadicGridLength G I.1 * (a I * b I * c I) ^ p ≤
       Ca ^ (p / 2) * Cb ^ (p / 2) * Cc ^ (p / 2) * dyadicGridLength G root.1 := by
-  have hp0 : 0 ≤ p / 2 := by linarith
+  have hp0 : 0 ≤ p / 2 := by linarith only [hp]
   set f : ℝ → ℝ := fun x => ∑ I ∈ S, (dyadicGridCell G I.1 I.2).indicator
     (fun _ => (a I * b I * c I) ^ p) x
   rw [dyadicPathIntegral_real G S _ (dyadicGridCell G root.1 root.2) hR]
@@ -811,7 +811,7 @@ theorem Λc_pair_smallM {I : ℤ × ℤ} (hI : I ∈ A.cells) {c d a b : Fin 4} 
     hpos (by positivity) (by positivity) (hXa.trans (ENNReal.ofReal_le_ofReal (by linarith)))
       (hXb.trans (ENNReal.ofReal_le_ofReal (by linarith)))
   refine le_of_forall_pos_le_add fun δ hδ => ?_
-  set ε := min 1 (δ / (τ * (Sa + Sb + 1) + 1))
+  set! ε := min 1 (δ / (τ * (Sa + Sb + 1) + 1))
   have hε0 : 0 < ε := lt_min one_pos (div_pos hδ (by positivity))
   have hε1 : ε ≤ 1 := min_le_left _ _
   have hε2 : ε * (τ * (Sa + Sb + 1) + 1) ≤ δ := by
@@ -898,7 +898,7 @@ theorem restore_corrM (I : ℤ × ℤ) {a b c d : Fin 4} (hab : a ≠ b) (hac : 
       = (‖D‖ / s * (‖x b‖ / s)) * ((‖u‖ / s) * (‖v‖ / s)) := by ring
     _ ≤ (Sa * Sb) * (Su * Sv) := by
         apply mul_le_mul (mul_le_mul hDa hxb h2 (h1.trans hDa)) (mul_le_mul hu hv h4
-          (h3.trans hu)) (by positivity) (by nlinarith)
+          (h3.trans hu)) (by positivity) (by nlinarith only [hDa, hxb, h1, h2])
 
 /-- The side value after merged steps is a contraction of the side. -/
 theorem norm_chainSide_mergeStepsM (cat : Fin 4 → List (CatCol bf.Vtx)) (a c d : Fin 4)
@@ -1101,9 +1101,9 @@ theorem main_variationM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudg
       ≤ 2 * Cw * (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 * ‖z‖ ^ 2 +
           ls.length * (∑ m ∈ Finset.range ls.length,
             compressionC (bf.mainTree fp.Mc s mb) m ^ 2) * ‖z‖ ^ 2) := by
-  set Ψ0 := bf.mainBase fp.Mc s mb
-  set Am := fp.cumMaskT l s mb
-  set T := Finset.univ.sup t
+  set! Ψ0 := bf.mainBase fp.Mc s mb
+  set! Am := fp.cumMaskT l s mb
+  set! T := Finset.univ.sup t
   have ht : ∀ i, t i ≤ T := fun i => Finset.le_sup (f := t) (Finset.mem_univ i)
   have key := certifiedVariation_gen T
     (fun G n => (Ψ0.withMask (Mk G)).proj (A.R.1 + n))
@@ -1152,8 +1152,8 @@ theorem main_jointM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s
     ∑ G, ‖columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
         (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
         (fp.gOutM l s mb (Mk G) ls ht w)‖ ^ 2 ≤ Cw * ‖w‖ ^ 2 := by
-  set H := fp.gHist l s mb ls ht w
-  set rE : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun G =>
+  set! H := fp.gHist l s mb ls ht w
+  set! rE : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun G =>
     columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
       (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
   have hj := joint_bessel_of_wholeRanges (Finset.univ : Finset ι) (fun G => G)
@@ -1306,7 +1306,7 @@ theorem out_restrictRM (hne : A.cells.Nonempty) (l : Fin 4) (s : List (CatCol bf
   set Ψ := (bf.P l jb).Ψ
   have hΨG : Ψ.D.grid = A.G := (bf.P l jb).grid
   have hN := famN_ge (bf := bf) hne l jb
-  set rR := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G A.R.1 A.R.2)
+  set! rR := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G A.R.1 A.R.2)
     (dyadicGridCell_measurable A.G A.R.1 A.R.2)
   set rE := columnL2Restriction (V := bf.RLab fp.Mc s) (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2)
     (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
@@ -1396,12 +1396,12 @@ theorem basic_variationM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBud
     (fp.main_variation_basicM l s mb Mk ls r t hrt hdis htd Ec hEc hCw hwr1 hwr2 jb _).trans
       (le_of_eq (by ring))
   clear hwr1 hwr2
-  set rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
+  set! rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
     (dyadicGridCell A.G A.R.1 A.R.2) (dyadicGridCell_measurable A.G A.R.1 A.R.2)
-  set X : Fin 2 → ι × ι' → ℤ → ColumnL2 (bf.RLab fp.Mc s) := fun jb q h =>
+  set! X : Fin 2 → ι × ι' → ℤ → ColumnL2 (bf.RLab fp.Mc s) := fun jb q h =>
     fp.gOutM l s mb (Mk q.1) ls h (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj h
       (rR jb (bf.P l jb).Z)))
-  set rE : ι × ι' → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun q =>
+  set! rE : ι × ι' → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun q =>
     columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
       (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
   have hsplit : ∀ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
@@ -1446,7 +1446,7 @@ theorem basic_variationM (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBud
         rw [Fin.sum_univ_two]
         have h0 := hfam 0
         have h1 := hfam 1
-        nlinarith
+        nlinarith only [h0, h1]
 
 /-- The variation constants of `basic_variationM` with `C_w ≤ 2` are at most the compression
 loss `G₀` (blueprint line 1877), giving the bound `G₀ · 4 |R|`. -/
@@ -1496,7 +1496,7 @@ theorem basic_variationM_le (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.Main
     Finset.sum_nonneg fun _ _ => sq_nonneg _
   have h0 := mul_le_mul hV0 hE0 hn0 hG0
   have h1 := mul_le_mul hV1 hE1 hn1 hG0
-  nlinarith
+  nlinarith only [hG0, hV0, hV1, hE0, hE1]
 
 end ActiveSetup.BasicFamilies.FamParams
 

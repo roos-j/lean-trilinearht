@@ -216,7 +216,7 @@ theorem lintegral_rpow_enorm_le_of_distribution_split [SFinite μ] {g : β → F
   have hb : 0 < b := hp.trans hpb
   -- a measurable nonnegative version `φ` of `‖f‖`
   have ψ : AEMeasurable (fun x => ‖f x‖) μ := hf.norm.aemeasurable
-  set φ : α → ℝ := fun x => max (ψ.mk _ x) 0 with hφdef
+  set! φ : α → ℝ := fun x => max (ψ.mk _ x) 0 with hφdef
   have hφm : Measurable φ := ψ.measurable_mk.max measurable_const
   have hφ0 : ∀ x, 0 ≤ φ x := fun x => le_max_right _ _
   have hφae : ∀ᵐ x ∂μ, φ x = ‖f x‖ := by
@@ -1275,7 +1275,7 @@ theorem fs_lintegral_of_weighted {n : ℕ} {r : ℝ} (hr : 1 < r) (A : ℝ≥0�
   have hq : 1 < q := hrq.symm.lt
   have hr1q : (r - 1) * q = r := by
     rw [hqdef]; field_simp [show r - 1 ≠ 0 by linarith]
-  set GN : ℕ → EuclideanSpace ℝ (Fin n) → ℝ≥0∞ := fun N =>
+  set! GN : ℕ → EuclideanSpace ℝ (Fin n) → ℝ≥0∞ := fun N =>
     (closedBall (0 : EuclideanSpace ℝ (Fin n)) N).indicator (fun x => min (G x) N)
   have hGN_le : ∀ N x, GN N x ≤ min (G x) N := fun N x => by
     by_cases hx : x ∈ closedBall (0 : EuclideanSpace ℝ (Fin n)) N
@@ -1285,7 +1285,7 @@ theorem fs_lintegral_of_weighted {n : ℕ} {r : ℝ} (hr : 1 < r) (A : ℝ≥0�
     ne_top_of_le_ne_top (ENNReal.natCast_ne_top N) ((hGN_le N x).trans (min_le_right _ _))
   have hGNm : ∀ N, Measurable (GN N) := fun N =>
     (hGm.min measurable_const).indicator measurableSet_closedBall
-  set wN : ℕ → EuclideanSpace ℝ (Fin n) → ℝ := fun N x => (GN N x ^ (r - 1)).toReal
+  set! wN : ℕ → EuclideanSpace ℝ (Fin n) → ℝ := fun N x => (GN N x ^ (r - 1)).toReal
   have hwN : ∀ N x, ‖wN N x‖ₑ = GN N x ^ (r - 1) := fun N x => by
     rw [Real.enorm_eq_ofReal ENNReal.toReal_nonneg, ENNReal.ofReal_toReal
       (ENNReal.rpow_ne_top_of_nonneg (by linarith) (hGN_ne_top N x))]
@@ -1303,7 +1303,7 @@ theorem fs_lintegral_of_weighted {n : ℕ} {r : ℝ} (hr : 1 < r) (A : ℝ≥0�
         · rw [indicator_of_mem hx]
           exact ENNReal.rpow_le_rpow ((hGN_le N x).trans (min_le_right _ _)) hr0.le
         · simp only [GN, indicator_of_notMem hx, ENNReal.zero_rpow_of_pos hr0, le_refl]
-    set Mw := hlMaximal volume (wN N)
+    set! Mw := hlMaximal volume (wN N)
     have hMwm : Measurable Mw := fs_measurable_maximal (hwNm N).aestronglyMeasurable
     have step1 : X ≤ ∫⁻ x, ‖wN N x‖ₑ * G x := by
       refine lintegral_mono fun x => ?_
@@ -1354,7 +1354,7 @@ theorem fs_lintegral_of_weighted {n : ℕ} {r : ℝ} (hr : 1 < r) (A : ℝ≥0�
     rw [Monotone.map_iSup_of_continuousAt ENNReal.continuous_rpow_const.continuousAt
       (ENNReal.monotone_rpow_of_nonneg hr0.le) (ENNReal.zero_rpow_of_pos hr0)]
     refine iSup_le fun N => ?_
-    set N' := max N ⌈‖x‖⌉₊
+    set! N' := max N ⌈‖x‖⌉₊
     have hx : x ∈ closedBall (0 : EuclideanSpace ℝ (Fin n)) N' := by
       rw [mem_closedBall, dist_zero_right]
       exact (Nat.le_ceil _).trans (Nat.cast_le.2 (le_max_right _ _))

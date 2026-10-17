@@ -229,7 +229,7 @@ theorem min_finset_subadd {σ : Type*} (s : Finset σ) {η : ℝ} (hη : 0 ≤ �
       calc min η (f j + ∑ i ∈ s, f i) ≤ f j + min η (∑ i ∈ s, f i) := by
             rcases le_total η (∑ i ∈ s, f i) with h' | h'
             · rw [min_eq_left h']
-              exact (min_le_left _ _).trans (by linarith)
+              exact (min_le_left _ _).trans (by linarith only [h1])
             · rw [min_eq_right h']
               exact min_le_right _ _
         _ ≤ f j + ∑ i ∈ s, min η (f i) := by linarith
@@ -259,7 +259,7 @@ theorem cell_min_leaves {ιc σ : Type*} (cells : Finset ιc) (wt : ιc → ℝ)
         have hle : ‖Hleaf I s‖ ≤ ‖Mn I s‖ + ε I s := by
           calc ‖Hleaf I s‖ = ‖(Hleaf I s - Mn I s) +
                 Mn I s‖ := by rw [sub_add_cancel]
-            _ ≤ _ := (norm_add_le _ _).trans (by linarith)
+            _ ≤ _ := (norm_add_le _ _).trans (by linarith only [h])
         rcases le_total η ‖Mn I s‖ with h' | h'
         · rw [min_eq_left h']; exact (min_le_left _ _).trans (by linarith)
         · rw [min_eq_right h']; exact (min_le_right _ _).trans hle
@@ -353,7 +353,7 @@ theorem joint_bessel_of_wholeRanges {γ κ : Type*} [Fintype γ] [DecidableEq γ
     (h : H) : ∑ k ∈ s, ‖R k h‖ ^ 2 ≤ C * ‖h‖ ^ 2 := by
   classical
   set X := ∑ k ∈ s, ‖R k h‖ ^ 2
-  set S := ∑ k ∈ s, ContinuousLinearMap.adjoint (R k) (R k h)
+  set! S := ∑ k ∈ s, ContinuousLinearMap.adjoint (R k) (R k h)
   have hX0 : 0 ≤ X := Finset.sum_nonneg fun _ _ => sq_nonneg _
   have hXS : X = RCLike.re (inner ℂ h S) := by
     simp only [S, inner_sum, ContinuousLinearMap.adjoint_inner_right, map_sum, X]
@@ -1134,7 +1134,7 @@ theorem cellForm_pair_le {G : RealDyadicGrid} {I : ℤ × ℤ} {κ : LocalKernel
   rw [Λ.map_update_smul, smul_eq_mul, norm_mul, mul_comm (‖c m‖)]
   refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
   -- one separated pair
-  set z : Fin 4 → ℝ → ℂ := fun l => if l = a then (Sa : ℂ)⁻¹ • augPhys (X a)
+  set! z : Fin 4 → ℝ → ℂ := fun l => if l = a then (Sa : ℂ)⁻¹ • augPhys (X a)
     else if l = b then (Sb : ℂ)⁻¹ • augPhys (X b) else 0 with hz
   have hsm := hsep m hm z (fun l => by
     simp only [hz]; split_ifs
@@ -1164,7 +1164,7 @@ theorem cellForm_pair_le {G : RealDyadicGrid} {I : ℤ × ℤ} {κ : LocalKernel
   have hform : Λ (Function.update X t (col m)) = (Sa * Sb : ℂ) *
       localProgressionForm (dyadicGridLength G I.1) wI (slotPair z u t Xs (Y m)) := by
     rw [cellForm_apply]
-    set cc : Fin 4 → ℂ := fun l => if l = a then (Sa : ℂ) else if l = b then (Sb : ℂ) else 1
+    set! cc : Fin 4 → ℂ := fun l => if l = a then (Sa : ℂ) else if l = b then (Sb : ℂ) else 1
     have e : localProgressionForm (dyadicGridLength G I.1) wI
         (fun l => augPhys (Function.update X t (col m) l)) =
         localProgressionForm (dyadicGridLength G I.1) wI
@@ -1349,10 +1349,10 @@ theorem ResidOK.form_le {κ : LocalKernelClass} {Tg : Type*} {G : RealDyadicGrid
   set μ := normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)
   have hcover : ∀ l : Fin 4, l = u ∨ l = t ∨ l = a ∨ l = b := fun l =>
     fin4_cover_of_distinct u t a b l hut hua hub hta htb hab
-  set z : Fin 4 → ℝ → ℂ := fun l => if l = u then quadraticChartAtom A
+  set! z : Fin 4 → ℝ → ℂ := fun l => if l = u then quadraticChartAtom A
     else if l = t then augPhys (X t) else if l = a then (Sa : ℂ)⁻¹ • augPhys (X a)
     else (Sb : ℂ)⁻¹ • augPhys (X b) with hz
-  set c : Fin 4 → ℂ := fun l => if l = a then (Sa : ℂ) else if l = b then (Sb : ℂ) else 1 with hc
+  set! c : Fin 4 → ℂ := fun l => if l = a then (Sa : ℂ) else if l = b then (Sb : ℂ) else 1 with hc
   have hzu : z u = quadraticChartAtom A := by simp [hz]
   have hzt : z t = augPhys (X t) := by simp [hz, Ne.symm hut]
   have hza : z a = (Sa : ℂ)⁻¹ • augPhys (X a) := by simp [hz, Ne.symm hua, Ne.symm hta]
@@ -1562,7 +1562,7 @@ theorem templateCol_source {x : bf.Vtx} (hx : bf.occAvail x.2.1 x.1) (t : Fin 4)
       _ ≤ A.Hsrc := by
           unfold ActiveSetup.Hsrc
           have : (0 : ℝ) ≤ (tagKρ : ℝ) ^ (2 * tagKρ) * A.Hm ^ 2 := by positivity
-          nlinarith
+          nlinarith only [this]
   have hBW : ((bf.vtag x).dim : ℝ) * (tagKρ : ℝ) ^ (2 * tagKρ) + 2 * Real.pi * (bf.vtag x).dim ≤
       A.Hsrc := by
     have hpi : 2 * Real.pi ≤ 7 := by linarith [Real.pi_lt_d2]
@@ -1788,7 +1788,7 @@ theorem leaf_error_resid {W : Type*} [Fintype W] {κ : LocalKernelClass} {Tg : T
         Gs.card * (τ₂ * Sz * Sz * Ct)) + Gs.card * (3 * (Ct * (βr * Sz * Sz))) := by
   classical
   set Λ := cellForm (dyadicGridLength_pos G I.1) hwI W
-  set Ll : γ → Fin 4 → ColumnL2 W →ₗ[ℂ] ColumnL2 W := fun g l => (L g l).toLinearMap
+  set! Ll : γ → Fin 4 → ColumnL2 W →ₗ[ℂ] ColumnL2 W := fun g l => (L g l).toLinearMap
   have hsz : ∀ l (y : ColumnL2 W), ‖y‖ ≤ ‖x l‖ →
       eLpNorm (augPhys y) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
         (dyadicGridLength G I.1)) ≤ ENNReal.ofReal Sz := fun l y hy =>
@@ -1983,7 +1983,7 @@ theorem avg_expansion (l : Fin 4) {Mc : ℕ} (s : List (CatCol bf.Vtx)) (I : ℤ
   have hexp := fun p : Fin P => mainRange_exists_coeffM (G := A.G) (O := bf.origCols l)
     (s := s) (I := I) (r := r) (M := M p) d (Submodule.starProjection_apply_mem _ z)
   choose c hc using hexp
-  set c' : Fin P → bf.Lab ⊕ Fin Mc → ℂ := fun p v =>
+  set! c' : Fin P → bf.Lab ⊕ Fin Mc → ℂ := fun p v =>
     if v ∈ mainLabelsM A.G Mc (bf.origCols l) s I r (M p) d then c p v else 0
   have hsub : ∀ p, mainLabelsM A.G Mc (bf.origCols l) s I r (M p) d ⊆ F := fun p =>
     mainLabelsM_mono s I r (hM p) d
@@ -2069,7 +2069,7 @@ theorem mainLabel_source (l : Fin 4) {Mc : ℕ} (s : List (CatCol bf.Vtx))
     rw [hy hyI]
     exact he y hyI
   · obtain ⟨hn, -, -⟩ := (mem_mainLabels.mp hvL : ∃ hn : (n : ℕ) < s.length, _)
-    set e := s[(n : ℕ)]
+    set! e := s[(n : ℕ)]
     have he : e ∈ s := List.getElem_mem _
     obtain ⟨R, hR, γ, hde⟩ := hT e he
     have htg : labelTag (bf.origCols l) s I d (Sum.inr n : bf.Lab ⊕ Fin Mc) = e.tag := by
@@ -2156,7 +2156,7 @@ theorem cbase_succ_le {k : ℕ} (hk : 1 ≤ k) (hkL : k ≤ fp.Lc) :
   unfold cbase
   have e : fp.Lc - (k - 1) + 1 = (fp.Lc - k + 1) + 1 := by omega
   rw [e]
-  nlinarith [Nat.zero_le fp.P]
+  nlinarith only [Nat.zero_le fp.P]
 
 theorem cbase_le_bbase (k j : ℕ) : fp.cbase k + fp.P ≤ fp.bbase j := by
   unfold cbase bbase
@@ -2403,7 +2403,7 @@ theorem leaf_bound (cat : Fin 4 → List (CatCol bf.Vtx))
     fun v => hsrc v v.2
   choose X hpad hpadle hXm Ax hAx hAb hθ hM hq hae using hsrc'
   -- the groups of the sources
-  set grp : S → Option bf.Grp := fun v =>
+  set! grp : S → Option bf.Grp := fun v =>
     if h : ∃ G ∈ Gs, ∀ p' : ℕ, fp.bmask I G 1 (p' + 1) (X v) then some (Classical.choose h)
     else none with hgrpdef
   have hgrp : ∀ v G₀, grp v = some G₀ → G₀ ∈ Gs ∧ ∀ p' : ℕ, fp.bmask I G₀ 1 (p' + 1) (X v) := by
@@ -2422,7 +2422,7 @@ theorem leaf_bound (cat : Fin 4 → List (CatCol bf.Vtx))
     exact ⟨⟨w, hw⟩, hwG⟩
   choose gv hgv using hGv
   -- the expansions of the first ball outputs in slot `t`
-  set F : bf.Grp → Finset (bf.Lab ⊕ Fin fp.Mc) := fun G =>
+  set! F : bf.Grp → Finset (bf.Lab ⊕ Fin fp.Mc) := fun G =>
     mainLabelsM A.G fp.Mc (bf.origCols t) (cat t) I (fp.Lc + 1)
       (fun y => ∃ p : Fin fp.P, fp.bmask I G 1 (p + 1) y) d with hF
   have hexp0 := fun G : bf.Grp => bf.avg_expansion t (cat t) I (fp.Lc + 1) fp.hP
@@ -2441,7 +2441,7 @@ theorem leaf_bound (cat : Fin 4 → List (CatCol bf.Vtx))
     fun v hv => (bf.mainLabel_source t (cat t) (hT t) (htag t) I (fp.Lc + 1) (fun _ => True) d
       (mem_mainLabelsM.mpr ⟨hv, trivial⟩)).2
   choose Ach hAch using hch
-  set Y : bf.Lab ⊕ Fin fp.Mc → ℝ → ℂ := fun m =>
+  set! Y : bf.Lab ⊕ Fin fp.Mc → ℝ → ℂ := fun m =>
     if h : m ∈ mainLabels A.G fp.Mc (bf.origCols t) (cat t) I (fp.Lc + 1) then
       quadraticChartAtom (Ach m h) else 0 with hYdef
   have hY : ∀ m (h : m ∈ mainLabels A.G fp.Mc (bf.origCols t) (cat t) I (fp.Lc + 1)),
@@ -2664,7 +2664,7 @@ theorem leaf_main (cat : Fin 4 → List (CatCol bf.Vtx))
   rcases hinv.2.1 with ⟨ls', hls'⟩ | ⟨hup, hnil, hhi⟩
   · -- the catalog case: the upper guard is a cumulative main filter at the color `k`
     rw [← hkhi] at hls'
-    set z := layerOp (fun m => fp.cumFilt Lf.up (cat Lf.up) I m) ls' (x Lf.up) with hz
+    set! z := layerOp (fun m => fp.cumFilt Lf.up (cat Lf.up) I m) ls' (x Lf.up) with hz
     obtain ⟨a, hxa, hab⟩ := bf.avg_expansion Lf.up (cat Lf.up) I (fp.crank Lf.k) fp.hP
       (fun p y => fp.cmask I Lf.k (p + 1) y) (fun y => ∃ p : Fin fp.P, fp.cmask I Lf.k (p + 1) y)
       (fun p y hy => ⟨p, hy⟩) d z
@@ -2732,8 +2732,8 @@ theorem leaf_main (cat : Fin 4 → List (CatCol bf.Vtx))
     refine h.trans ?_
     have hsum : ∑ v ∈ Fb, ‖cb v‖ ≤
         A.colBudget * (Real.sqrt Nu + Real.sqrt (2 * A.colBudget)) * Sz := by
-      set F' : Finset (bf.Lab ⊕ Fin fp.Mc) := Fb.map ⟨Sum.inl, Sum.inl_injective⟩
-      set c' : bf.Lab ⊕ Fin fp.Mc → ℂ := Sum.elim cb 0
+      set! F' : Finset (bf.Lab ⊕ Fin fp.Mc) := Fb.map ⟨Sum.inl, Sum.inl_injective⟩
+      set! c' : bf.Lab ⊕ Fin fp.Mc → ℂ := Sum.elim cb 0
       have hmemF : ∀ v ∈ F', v ∈ mainLabels A.G fp.Mc (bf.origCols up₀) (cat up₀) I 0 := by
         intro w hw
         obtain ⟨v, hv, rfl⟩ := Finset.mem_map.mp hw
@@ -2761,7 +2761,7 @@ theorem leaf_main (cat : Fin 4 → List (CatCol bf.Vtx))
         _ ≤ A.colBudget * (Real.sqrt Nu + Real.sqrt (2 * A.colBudget)) * Sz *
             Real.sqrt (dyadicGridLength A.G I.1) := by
             have : 0 ≤ A.colBudget * Sz * Real.sqrt (dyadicGridLength A.G I.1) := by positivity
-            nlinarith
+            nlinarith only [hN0, this]
     gcongr
 
 end ActiveSetup.BasicFamilies.FamParams
@@ -2932,7 +2932,7 @@ theorem leafErr_core {Cs D a b c cc τ₃ Sz ColSum : ℝ} (hCs : 0 < Cs) (hCD :
         ColSum * (D * (τ₃ / (D ^ 2 * c ^ 2) * Sz * Sz * (Cs * c * Sz))) := by ring
   rw [e]
   have : 0 ≤ τ₃ * Sz ^ 4 := by positivity
-  nlinarith
+  nlinarith only [hCs, hCD, h1, h2, h3, h4, this]
 
 namespace ActiveSetup.BasicFamilies.FamParams
 variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
@@ -2965,7 +2965,7 @@ theorem leafErrM_le {τ₃ Sz : ℝ} (hτ₃ : 0 < τ₃) (hSz0 : 0 < Sz) {n : �
     have h1 : Real.sqrt (2 * A.colBudget) ≤ Real.sqrt (n (fp.crank k)) :=
       Real.sqrt_le_sqrt (hn0.trans (hmono (Nat.zero_le _)))
     have : 0 ≤ A.colBudget * Sz := by positivity
-    nlinarith
+    nlinarith only [h1, this]
   unfold ActiveSetup.leafErrM catThreshold
   rw [e1, e2, e3]
   exact leafErr_core (by linarith) hCD ha hab hbc hc2 hτ₃ hSz0 hcol
@@ -3108,7 +3108,7 @@ theorem attempt_localization (Tc : Finset (ℤ × ℤ)) (hTc : Tc ⊆ A.cells) {
       one_le_pow₀ (by exact_mod_cast A.one_le_famVtxBound)
     have h2 : (1 : ℝ) ≤ n (fp.Lc + 1) := by
       have := hmono (Nat.zero_le (fp.Lc + 1)); linarith
-    nlinarith
+    nlinarith only [hτ₃1, h1, h2]
   -- the catalog thresholds are antitone
   have hanti : ∀ {r r' : ℕ}, r ≤ r' → catThreshold A.famVtxBound τ₃ n r' ≤
       catThreshold A.famVtxBound τ₃ n r := fun {r r'} h => by
@@ -3244,7 +3244,7 @@ theorem rows_projection_compression {V κ F : Type*} [Fintype V] [NormedAddCommG
       exact norm_eq_zero.mp (pow_eq_zero_iff two_ne_zero |>.mp (le_antisymm this (sq_nonneg _)))
     rw [Finset.sum_eq_zero fun k hk => by rw [h0 k hk, norm_zero, zero_pow two_ne_zero], ← hc0]
     simp
-  set r : ℝ := (Real.sqrt c)⁻¹
+  set! r : ℝ := (Real.sqrt c)⁻¹
   have hr0 : 0 < Real.sqrt c := Real.sqrt_pos.mpr hcpos
   let B : ColumnRowFamily D {k // k ∈ s} F :=
     { decision := fun k => u k.1
@@ -3341,7 +3341,7 @@ theorem layerOp_opAvg_expand {P : ℕ} (hP : 0 < P) (Pf : ℕ → Fin P → H �
   | append_singleton l a ih =>
     have hP' : (P : ℂ) ≠ 0 := by exact_mod_cast hP.ne'
     rw [layerOp_append, ContinuousLinearMap.comp_apply, ih]
-    set n := l.length
+    set! n := l.length
     have hlen : (l ++ [a]).length = n + 1 := by simp [n]
     -- the last factor as an average
     have hlast : (if a.2 then ContinuousLinearMap.id ℂ H - opAvg (Pf a.1) else opAvg (Pf a.1)) =
@@ -3476,7 +3476,7 @@ theorem rows_layer_compression {V F ι : Type*} [Fintype V] [NormedAddCommGroup 
   simp_rw [hexp]
   refine rows_uniformAvg_le R _ fun ω => ?_
   -- one pad tuple: compression with complements
-  set Aω : ℕ → InheritedColumnMask D := fun l =>
+  set! Aω : ℕ → InheritedColumnMask D := fun l =>
     if h : l < n then A (ls[l]).1 (ω ⟨l, h⟩) else A 0 ⟨0, hP⟩
   have hfac : ∀ i, operatorComplementProduct (layerFactor (Pf i) ls ω) (layerPattern ls) n =
       operatorComplementProduct (fun l => cellColumnProjection D (Aω l) (hu i))
@@ -3486,7 +3486,7 @@ theorem rows_layer_compression {V F ι : Type*} [Fintype V] [NormedAddCommGroup 
     have hl' : l < ls.length := hl
     simp only [layerFactor, Aω, hl', hl, ↓reduceDIte, hPf]
   simp_rw [hfac]
-  set r : ℝ := (Real.sqrt B)⁻¹
+  set! r : ℝ := (Real.sqrt B)⁻¹
   have hr0 : 0 < Real.sqrt B := Real.sqrt_pos.mpr hBpos
   let Bf : ColumnRowFamily D ι F :=
     { decision := u
@@ -3604,11 +3604,11 @@ theorem globHist_compression {ι : Type*} [Fintype ι] (Ψ : ColumnDepthFamily V
       ‖R i (columnL2Restriction (dyadicGridCell Ψ.D.grid Q.1.1 Q.1.2)
         (dyadicGridCell_measurable Ψ.D.grid Q.1.1 Q.1.2) x)‖ ^ 2) (z : ColumnL2 V) :
     ∑ i, ‖R i (globHist Ψ Am ls (d i) z)‖ ^ 2 ≤ B * compressionC Ψ.D ls.length ^ 2 * ‖z‖ ^ 2 := by
-  set ι' := Σ i, {Q // Q ∈ (Ψ.partition (d i)).cells}
-  set rs : ι' → ColumnL2 V →L[ℂ] ColumnL2 V := fun k =>
+  set! ι' := Σ i, {Q // Q ∈ (Ψ.partition (d i)).cells}
+  set! rs : ι' → ColumnL2 V →L[ℂ] ColumnL2 V := fun k =>
     columnL2Restriction (dyadicGridCell Ψ.D.grid k.2.1.1 k.2.1.2)
       (dyadicGridCell_measurable Ψ.D.grid k.2.1.1 k.2.1.2)
-  set R' : ι' → ColumnL2 V →L[ℂ] F := fun k => (R k.1).comp (rs k)
+  set! R' : ι' → ColumnL2 V →L[ℂ] F := fun k => (R k.1).comp (rs k)
   have hu : ∀ k : ι', k.2.1 ∈ Ψ.D.cells := fun k => (Ψ.partition (d k.1)).subset k.2.2
   have hsum : ∀ (f : ι' → ℝ), ∑ k, f k = ∑ i, ∑ Q : {Q // Q ∈ (Ψ.partition (d i)).cells},
       f ⟨i, Q⟩ := fun f => Fintype.sum_sigma f
@@ -4255,7 +4255,7 @@ theorem relabel_cellProj (l : Fin 4) (Mc : ℕ) (s : List (CatCol bf.Vtx))
     colRelabel (bf.rv Mc s) (cellColumnProjection (bf.mainTree Mc s mb)
       (bf.mainMaskT l Mc s mb r M hM) (A.cells_mem_tree hc) z) =
       mainProj A.G Mc (bf.origCols l) s c r (M c) (colRelabel (bf.rv Mc s) z) := by
-  set D := bf.mainTree Mc s mb
+  set! D := bf.mainTree Mc s mb
   set Am := bf.mainMaskT l Mc s mb r M hM
   have hcT := A.cells_mem_tree hc
   have hlab := bf.mainMaskT_labels_self l Mc s mb r M hM hc
@@ -4506,7 +4506,7 @@ theorem hist_bridge (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s
       layerOp (fun m => fp.cumFilt l s I m) ls
         (columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
           (colRelabel (bf.rv fp.Mc s) z)) := by
-  set r := (columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
+  set! r := (columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
     (dyadicGridCell_measurable A.G I.1 I.2)).comp (colRelabel (bf.rv fp.Mc s))
   have hfac : ∀ m (p : Fin fp.P), r.comp (((bf.mainBase fp.Mc s mb).withMask
       (fp.cumMaskT l s mb m p)).proj I.1) =
@@ -4528,7 +4528,7 @@ theorem ball_bridge (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s
       fp.ballFilt l s I G j
         (columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
           (colRelabel (bf.rv fp.Mc s) z)) := by
-  set r := (columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
+  set! r := (columnL2Restriction (V := bf.Lab ⊕ Fin fp.Mc) (dyadicGridCell A.G I.1 I.2)
     (dyadicGridCell_measurable A.G I.1 I.2)).comp (colRelabel (bf.rv fp.Mc s))
   have hfac : ∀ p : Fin fp.P, r.comp (((bf.mainBase fp.Mc s mb).withMask
       (fp.ballMaskT l s mb G j p)).proj I.1) =
@@ -4678,7 +4678,7 @@ theorem origCol_mem_range (l : Fin 4) (Mc : ℕ) (s : List (CatCol bf.Vtx)) (mb 
     {I : ℤ × ℤ} (hI : I ∈ A.cells) {x : bf.Lab} (hxl : x.1 = l) (hx : bf.occAvail I x) :
     mainCol A.G Mc (bf.origCols l) s I (Sum.inl x) ∈
       LinearMap.range (colRelabel (bf.rv Mc s)).toLinearMap := by
-  set Am := bf.mainMaskT l Mc s mb 0 (fun _ _ => True) (fun _ _ _ _ _ _ h => h)
+  set! Am := bf.mainMaskT l Mc s mb 0 (fun _ _ => True) (fun _ _ _ _ _ _ h => h)
   have hrel : bf.Relevant (Mc := Mc) s (Sum.inl x) := ⟨I, hI, hx⟩
   have hv : (⟨Sum.inl x, hrel⟩ : bf.RLab Mc s) ∈ Am.labels I :=
     (bf.mainMaskT_labels_self l Mc s mb 0 _ _ hI _).mpr ⟨⟨hxl, hx⟩, trivial⟩
@@ -4771,9 +4771,9 @@ theorem basic_compression {F ι : Type*} [NormedAddCommGroup F] [NormedSpace ℂ
   have huT : ∀ i, u i ∈ (bf.mainTree fp.Mc s mb).cells := fun i => A.cells_mem_tree (hu i)
   have huD : ∀ i, u i ∈ Ψ.D.cells := fun i =>
     (Ψ.partition (u i).1).subset (bf.famCell_mem l j (hu i))
-  set Lc : ι → ℕ → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun i m =>
+  set! Lc : ι → ℕ → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun i m =>
     opAvg fun p => cellColumnProjection (bf.mainTree fp.Mc s mb) (fp.cumMaskT l s mb m p) (huT i)
-  set ρ : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun i =>
+  set! ρ : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun i =>
     columnL2Restriction (dyadicGridCell A.G (u i).1 (u i).2)
       (dyadicGridCell_measurable A.G (u i).1 (u i).2)
   -- the global history at a decision cell is the local layer product
@@ -4787,7 +4787,7 @@ theorem basic_compression {F ι : Type*} [NormedAddCommGroup F] [NormedSpace ℂ
       (huT i)
     exact h'.2.trans h'.1.symm
   -- the rows after the history
-  set Q : ι → ColumnL2 (bf.P l j).V →L[ℂ] F := fun i =>
+  set! Q : ι → ColumnL2 (bf.P l j).V →L[ℂ] F := fun i =>
     (R i).comp (ι'.comp ((layerOp (Lc i) ls).comp (ιA.comp E)))
   have hA : ∀ (t : Set ℝ) (ht : MeasurableSet t) (w : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)),
       ιA (columnL2Restriction t ht w) = columnL2Restriction t ht (ιA w) :=
@@ -5081,9 +5081,9 @@ theorem compressionC_le_overhead (D : ColumnTreeData V) (n c : ℕ) {k : ℝ} (h
   have hkX : Real.log k + 1 ≤ X := by rw [hXe, hlog2k]; linarith
   have hX1 : 1 ≤ X := by linarith
   have hc0 : (0 : ℝ) ≤ c := Nat.cast_nonneg c
-  have hn1 : (n : ℝ) + 1 ≤ (c + 1) * X := by nlinarith
+  have hn1 : (n : ℝ) + 1 ≤ (c + 1) * X := by nlinarith only [hn, hkX, hX1]
   have htL : 1 ≤ t * L := one_le_mul_of_one_le_of_one_le ht1 hL1'
-  have hb1 : 1 ≤ 1024 * t * L := by nlinarith
+  have hb1 : 1 ≤ 1024 * t * L := by nlinarith only [ht1, hL1']
   have hb0 : 0 < 1024 * t * L := by linarith
   have hlogb : Real.log (1024 * t * L) ≤ (1024 * (c + 1) + c + 7) * X := by
     rw [Real.log_mul (by positivity) (by linarith), Real.log_mul (by norm_num) (by linarith), hlt]
@@ -5099,7 +5099,7 @@ theorem compressionC_le_overhead (D : ColumnTreeData V) (n c : ℕ) {k : ℝ} (h
       rw [Real.log_pow] at hLk
       have : (c : ℝ) * Real.log k ≤ c * X := mul_le_mul_of_nonneg_left (by linarith) hc0
       linarith
-    nlinarith
+    nlinarith only [hXe, hlogk, hlog2, hlog2k, h1, h2, h3]
   rw [hC, ← Real.exp_log (pow_pos hb0 _), Real.exp_le_exp, Real.log_pow]
   have hlb0 : 0 ≤ Real.log (1024 * t * L) := Real.log_nonneg hb1
   push_cast
@@ -5295,7 +5295,7 @@ theorem ColumnDepthFamily.norm_sq_partition (Ψ : ColumnDepthFamily V) (h : ℤ)
         (dyadicGridCell_measurable Ψ.D.grid Q.1.1 Q.1.2) v‖ ^ 2 := by
   classical
   set π := Ψ.partition h
-  set w : (ℤ × ℤ) → ColumnL2 V := fun Q => columnL2Restriction (dyadicGridCell Ψ.D.grid Q.1 Q.2)
+  set! w : (ℤ × ℤ) → ColumnL2 V := fun Q => columnL2Restriction (dyadicGridCell Ψ.D.grid Q.1 Q.2)
     (dyadicGridCell_measurable Ψ.D.grid Q.1 Q.2) v
   have hw : ∀ Q, ∀ᵐ y ∂volume, y ∉ dyadicGridCell Ψ.D.grid Q.1 Q.2 →
       (w Q : ℝ → ColumnHilbert V) y = 0 := by
@@ -5414,7 +5414,7 @@ theorem globHist_jump {ι : Type*} [Fintype ι] (Ψ : ColumnDepthFamily V) {P : 
     set n := l.length
     have hlen : (l ++ [a]).length = n + 1 := by simp [n]
     rw [hlen, Finset.sum_range_succ]
-    set F : ℤ → ColumnL2 V →L[ℂ] ColumnL2 V := fun h =>
+    set! F : ℤ → ColumnL2 V →L[ℂ] ColumnL2 V := fun h =>
       if a.2 then ContinuousLinearMap.id ℂ (ColumnL2 V) -
         opAvg (fun p => (Ψ.withMask (Am a.1 p)).proj h)
       else opAvg (fun p => (Ψ.withMask (Am a.1 p)).proj h)
@@ -5441,8 +5441,8 @@ theorem globHist_jump {ι : Type*} [Fintype ι] (Ψ : ColumnDepthFamily V) {P : 
             (Ψ.withMask (Am a.1 p)).proj (ρ + r i))) by abel, neg_apply,
           norm_neg]
       · rfl
-    set x : ι → ℝ := fun i => ‖globHist Ψ Am l (ρ + t i) z - globHist Ψ Am l (ρ + r i) z‖
-    set y : ι → ℝ := fun i => ‖(opAvg (fun p => (Ψ.withMask (Am a.1 p)).proj (ρ + t i)) -
+    set! x : ι → ℝ := fun i => ‖globHist Ψ Am l (ρ + t i) z - globHist Ψ Am l (ρ + r i) z‖
+    set! y : ι → ℝ := fun i => ‖(opAvg (fun p => (Ψ.withMask (Am a.1 p)).proj (ρ + t i)) -
       opAvg (fun p => (Ψ.withMask (Am a.1 p)).proj (ρ + r i)))
         (globHist Ψ Am l (ρ + r i) z)‖
     have hD : ∀ i, ‖globHist Ψ Am (l ++ [a]) (ρ + t i) z -
@@ -5484,7 +5484,7 @@ theorem globHist_jump {ι : Type*} [Fintype ι] (Ψ : ColumnDepthFamily V) {P : 
       linarith
     · have hnr : (0 : ℝ) < n := by exact_mod_cast hn
       have hpt : ∀ i, (n : ℝ) * (x i + y i) ^ 2 ≤ (n + 1) * x i ^ 2 + n * (n + 1) * y i ^ 2 :=
-        fun i => by nlinarith [sq_nonneg (x i - n * y i)]
+        fun i => by nlinarith only [sq_nonneg (x i - n * y i)]
       have hsum : (n : ℝ) * ∑ i, (x i + y i) ^ 2 ≤
           (n + 1) * ∑ i, x i ^ 2 + n * (n + 1) * ∑ i, y i ^ 2 := by
         rw [Finset.mul_sum, Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]
@@ -5560,7 +5560,7 @@ theorem ColumnDepthFamily.norm_sq_partition' (Ψ : ColumnDepthFamily V) (h : ℤ
         (dyadicGridCell_measurable Ψ.D.grid Q.1.1 Q.1.2) v‖ ^ 2 := by
   classical
   set π := Ψ.partition h
-  set w : (ℤ × ℤ) → ColumnL2 W := fun Q => columnL2Restriction (dyadicGridCell Ψ.D.grid Q.1 Q.2)
+  set! w : (ℤ × ℤ) → ColumnL2 W := fun Q => columnL2Restriction (dyadicGridCell Ψ.D.grid Q.1 Q.2)
     (dyadicGridCell_measurable Ψ.D.grid Q.1 Q.2) v
   have hw : ∀ Q, ∀ᵐ y ∂volume, y ∉ dyadicGridCell Ψ.D.grid Q.1 Q.2 →
       (w Q : ℝ → ColumnHilbert W) y = 0 := by
@@ -5633,7 +5633,7 @@ theorem ColumnDepthFamily.jumps_from_le {V : Type*} [Fintype V] (Ψ : ColumnDept
     (hdis : ∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
     (Z : ColumnL2 V) :
     ∑ i, ‖(Ψ.proj (ρ + t i) - Ψ.proj (ρ + r i)) Z‖ ^ 2 ≤ ‖Z‖ ^ 2 := by
-  set δ := (ρ - Ψ.D.root.1).toNat
+  set! δ := (ρ - Ψ.D.root.1).toNat
   have hδ : ∀ n : ℕ, ρ + n = Ψ.D.root.1 + ((n + δ : ℕ) : ℤ) := by
     intro n; push_cast; omega
   have h := (Ψ.interval_rows (fun i => r i + δ) (fun i => t i + δ)
@@ -5675,7 +5675,7 @@ theorem certifiedVariation_gen {γ ι : Type*} [Fintype γ] [DecidableEq γ] [Fi
     (hjump : ∑ i, ‖Bt i - Br i‖ ^ 2 ≤ J) :
     ∑ k : γ × ι, ‖E k.1 k.2 (L k.1 (t k.2) (Bt k.2) - L k.1 (r k.2) (Br k.2))‖ ^ 2 ≤
       2 * Cw * (G₀ * ‖F‖ ^ 2 + J) := by
-  set R1 : γ × ι → H →L[ℂ] H := fun k => (E k.1 k.2).comp (L k.1 (t k.2) - L k.1 (r k.2))
+  set! R1 : γ × ι → H →L[ℂ] H := fun k => (E k.1 k.2).comp (L k.1 (t k.2) - L k.1 (r k.2))
   have hgrp1 : ∀ G h, ∑ k ∈ (Finset.univ : Finset (γ × ι)).filter (fun k => k.1 = G),
       ‖R1 k h‖ ^ 2 ≤ ‖h‖ ^ 2 := by
     intro G h
@@ -6102,7 +6102,7 @@ theorem vWholeRanges (l : Fin 4) (s : List (CatCol bf.Vtx))
     ∫ y, ‖∑ G, groupOutput (bf.vPhi fp.Mc s) (bf.vEps fp.Mc) (occCoef A.G occ c G) y‖ ^ 2 ≤
       (1 + τ * N * A.colBudget ^ 2) *
         ∑ G, ∫ y, ‖groupOutput (bf.vPhi fp.Mc s) (bf.vEps fp.Mc) (occCoef A.G occ c G) y‖ ^ 2 := by
-  set S : bf.VLab fp.Mc → bf.VLab fp.Mc → Finset ℤ := fun v w =>
+  set! S : bf.VLab fp.Mc → bf.VLab fp.Mc → Finset ℤ := fun v w =>
     (AttemptParams.occDepths occ).filter fun t =>
       ¬ (bf.tagDist fp.Hed).d t (bf.vTag fp.Mc s d v) (bf.vTag fp.Mc s d w) ≤ 1
   -- overlapping cross occurrences give a separating depth in `S`
@@ -6257,7 +6257,7 @@ theorem mainRange_wholeRanges (l : Fin 4) (s : List (CatCol bf.Vtx))
             (bf.admAt (u p.1 q))) d).card ≤ N) :
     ‖∑ G, ∑ q ∈ T G, w G q‖ ^ 2 ≤
       (1 + τ * N * A.colBudget ^ 2) * ∑ G, ‖∑ q ∈ T G, w G q‖ ^ 2 := by
-  set L : ι → κ' → Finset (bf.Lab ⊕ Fin fp.Mc) := fun G q =>
+  set! L : ι → κ' → Finset (bf.Lab ⊕ Fin fp.Mc) := fun G q =>
     mainLabelsM A.G fp.Mc (bf.origCols l) s (u G q) (rk G q)
       (fun x => x ∈ fp.K.mask bf.admT A.famVtxBound (grp G) (hq G q) (bf.admAt (u G q))) d
   have hex : ∀ G q, ∃ β : bf.Lab ⊕ Fin fp.Mc → ℂ, q ∈ T G →
@@ -6271,15 +6271,15 @@ theorem mainRange_wholeRanges (l : Fin 4) (s : List (CatCol bf.Vtx))
   have hLsub : ∀ G, ∀ q ∈ T G, L G q ⊆ mainLabels A.G fp.Mc (bf.origCols l) s (u G q) (rk G q) :=
     fun G q _ => mainLabelsM_subset _ _ _ _ _
   -- the vertex-labelled occurrences and coefficients
-  set key : ι → κ' → bf.Lab ⊕ Fin fp.Mc → bf.VLab fp.Mc := fun G q => bf.vKey fp.Mc (u G q)
-  set F : ι → bf.VLab fp.Mc → Finset κ' := fun G v' =>
+  set! key : ι → κ' → bf.Lab ⊕ Fin fp.Mc → bf.VLab fp.Mc := fun G q => bf.vKey fp.Mc (u G q)
+  set! F : ι → bf.VLab fp.Mc → Finset κ' := fun G v' =>
     (T G).filter fun q => ∃ v ∈ L G q, key G q v = v'
-  set occ : ι → bf.VLab fp.Mc → Finset (ℤ × ℤ) := fun G v' => (F G v').image (u G)
-  set g : ι → κ' → bf.VLab fp.Mc → ℂ := fun G q v' =>
+  set! occ : ι → bf.VLab fp.Mc → Finset (ℤ × ℤ) := fun G v' => (F G v').image (u G)
+  set! g : ι → κ' → bf.VLab fp.Mc → ℂ := fun G q v' =>
     ∑ v ∈ (L G q).filter (fun v => key G q v = v'), β G q v
-  set cc : ι → bf.VLab fp.Mc → ℤ × ℤ → ℂ := fun G v' I =>
+  set! cc : ι → bf.VLab fp.Mc → ℤ × ℤ → ℂ := fun G v' I =>
     ∑ q ∈ (F G v').filter (fun q => u G q = I), g G q v'
-  set a := occCoef A.G occ cc
+  set! a := occCoef A.G occ cc
   -- the combined coefficients as sums over the index set
   have ha : ∀ G v' y, a G v' y = ∑ q ∈ T G,
       (dyadicGridCell A.G (u G q).1 (u G q).2).indicator (fun _ => g G q v') y := by
@@ -6555,7 +6555,7 @@ theorem ballFamT_interval_decomp (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf
       (ancAt A.G I hr).2 := subset_ancAt A.G I (by omega)
   have hJc : ancAt A.G I hr ∈ A.cells :=
     hanc I hIc _ hIJ (ancAt_subset (A.sub I hIc) hR1)
-  set rJ := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G (ancAt A.G I hr).1
+  set! rJ := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G (ancAt A.G I hr).1
     (ancAt A.G I hr).2) (dyadicGridCell_measurable A.G (ancAt A.G I hr).1 (ancAt A.G I hr).2)
   have h1 : (Ψ.proj ht).comp rI = cellColumnProjection (bf.mainTree fp.Mc s mb)
       (fp.ballMaskT l s mb G j p) (fp.mainTree_mem s mb hIc) := by
@@ -6630,7 +6630,7 @@ theorem main_wr1 (l : Fin 4) (s : List (CatCol bf.Vtx))
               dyadicGridCell_measurable A.G I.1 I.2)).comp
             ((fp.ballFamT l s mb (grp q.1) j p).proj (A.R.1 + t q.2) -
               (fp.ballFamT l s mb (grp q.1) j p).proj (A.R.1 + r q.2))) (x q)‖ ^ 2 := by
-  set ι₀ := colRelabel (bf.rv fp.Mc s)
+  set! ι₀ := colRelabel (bf.rv fp.Mc s)
   have hiso : ∀ z, ‖ι₀ z‖ = ‖z‖ := norm_colRelabel (bf.rv_injective fp.Mc s)
   set F : ι × ι' → ColumnL2 (bf.RLab fp.Mc s) := fun q => ContinuousLinearMap.adjoint
     ((columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
@@ -6638,11 +6638,11 @@ theorem main_wr1 (l : Fin 4) (s : List (CatCol bf.Vtx))
       ((fp.ballFamT l s mb (grp q.1) j p).proj (A.R.1 + t q.2) -
         (fp.ballFamT l s mb (grp q.1) j p).proj (A.R.1 + r q.2))) (x q) with hF
   -- the index of the main vectors
-  set T : ι → Finset ((Σ _ : ι', ℤ × ℤ) × Bool) := fun G =>
+  set! T : ι → Finset ((Σ _ : ι', ℤ × ℤ) × Bool) := fun G =>
     ((Finset.univ : Finset ι').sigma (Ec G)) ×ˢ Finset.univ
-  set u : ι → (Σ _ : ι', ℤ × ℤ) × Bool → ℤ × ℤ := fun _ q =>
+  set! u : ι → (Σ _ : ι', ℤ × ℤ) × Bool → ℤ × ℤ := fun _ q =>
     if q.2 then q.1.2 else ancAt A.G q.1.2 (A.R.1 + r q.1.1)
-  set w : ι → (Σ _ : ι', ℤ × ℤ) × Bool → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun G q =>
+  set! w : ι → (Σ _ : ι', ℤ × ℤ) × Bool → ColumnL2 (bf.Lab ⊕ Fin fp.Mc) := fun G q =>
     if q.2 then mainProj A.G fp.Mc (bf.origCols l) s q.1.2 (fp.brank j)
       (fp.bmask q.1.2 (grp G) j (p + 1)) (ι₀ (x (G, q.1.1)))
     else -mainProj A.G fp.Mc (bf.origCols l) s (ancAt A.G q.1.2 (A.R.1 + r q.1.1)) (fp.brank j)
@@ -6740,7 +6740,7 @@ theorem main_wr2 (l : Fin 4) (s : List (CatCol bf.Vtx))
             (Finset.measurableSet_biUnion _ fun I _ =>
               dyadicGridCell_measurable A.G I.1 I.2)).comp
             ((fp.ballFamT l s mb (grp G') j p).proj ht)) (x G')‖ ^ 2 := by
-  set ι₀ := colRelabel (bf.rv fp.Mc s)
+  set! ι₀ := colRelabel (bf.rv fp.Mc s)
   have hiso : ∀ z, ‖ι₀ z‖ = ‖z‖ := norm_colRelabel (bf.rv_injective fp.Mc s)
   have hFG : ∀ G, ι₀ (ContinuousLinearMap.adjoint
       ((columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
@@ -6870,9 +6870,9 @@ theorem main_variation (l : Fin 4) (s : List (CatCol bf.Vtx))
         (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 * ‖z‖ ^ 2 +
           ls.length * (∑ m ∈ Finset.range ls.length,
             compressionC (bf.mainTree fp.Mc s mb) m ^ 2) * ‖z‖ ^ 2) := by
-  set Ψ0 := bf.mainBase fp.Mc s mb
-  set Am := fp.cumMaskT l s mb
-  set T := Finset.univ.sup t
+  set! Ψ0 := bf.mainBase fp.Mc s mb
+  set! Am := fp.cumMaskT l s mb
+  set! T := Finset.univ.sup t
   have ht : ∀ i, t i ≤ T := fun i => Finset.le_sup (f := t) (Finset.mem_univ i)
   have hCw : (0 : ℝ) ≤ 1 + τ * N * A.colBudget ^ 2 := by positivity
   have key := certifiedVariation_avg T fp.hP
@@ -7139,8 +7139,8 @@ theorem main_joint (l : Fin 4) (s : List (CatCol bf.Vtx))
         (fp.gOut l s mb (grp G) j ls ht w)‖ ^ 2 ≤ (1 + τ * N * A.colBudget ^ 2) * ‖w‖ ^ 2 := by
   have hp := fp.hP
   have : Nonempty (Fin fp.P) := ⟨⟨0, hp⟩⟩
-  set H := fp.gHist l s mb ls ht w
-  set rE : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun G =>
+  set! H := fp.gHist l s mb ls ht w
+  set! rE : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun G =>
     columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
       (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
   have hC : (0 : ℝ) ≤ 1 + τ * N * A.colBudget ^ 2 := by positivity
@@ -7372,7 +7372,7 @@ theorem variation_loss_le (D : ColumnTreeData V) (D' : ColumnTreeData W) (n c : 
       8 * (1 + (n : ℝ) ^ 2) * Real.exp (K * X ^ 2) + 4 := by
     have hA : Cn ^ 2 + n * S ≤ (1 + (n : ℝ) ^ 2) * Cn ^ 2 := by
       have := mul_le_mul_of_nonneg_left hsum hn0
-      nlinarith
+      nlinarith only [hsum]
     have hB : (Cn ^ 2 + n * S) * C1 ^ 2 ≤ (1 + (n : ℝ) ^ 2) * Real.exp (K * X ^ 2) := by
       calc (Cn ^ 2 + n * S) * C1 ^ 2 ≤ ((1 + (n : ℝ) ^ 2) * Cn ^ 2) * C1 ^ 2 :=
             mul_le_mul_of_nonneg_right hA (sq_nonneg _)
@@ -7380,27 +7380,27 @@ theorem variation_loss_le (D : ColumnTreeData V) (D' : ColumnTreeData W) (n c : 
         _ ≤ _ := mul_le_mul_of_nonneg_left hloss (by positivity)
     have hP0 : 0 ≤ (Cn ^ 2 + n * S) * C1 ^ 2 :=
       mul_nonneg (add_nonneg (sq_nonneg _) (mul_nonneg hn0 hS0)) (sq_nonneg _)
-    nlinarith
+    nlinarith only [hCw, hloss, hA, hP0]
   refine h1.trans ?_
   -- absorbing `1 + n²` and the numerical factors
   have hn2 : 1 + (n : ℝ) ^ 2 ≤ Real.exp ((c : ℝ) ^ 2 * X ^ 2) := by
     have h := Real.add_one_le_exp ((n : ℝ) ^ 2)
     have : (n : ℝ) ^ 2 ≤ (c : ℝ) ^ 2 * X ^ 2 := by
       have := pow_le_pow_left₀ hn0 hnX 2
-      nlinarith
+      nlinarith only [hnX]
     linarith [Real.exp_le_exp.mpr this]
   have h12 : (12 : ℝ) ≤ Real.exp (3 * X ^ 2) := by
-    have h3 : Real.exp 3 ≤ Real.exp (3 * X ^ 2) := Real.exp_le_exp.mpr (by nlinarith)
+    have h3 : Real.exp 3 ≤ Real.exp (3 * X ^ 2) := Real.exp_le_exp.mpr (by nlinarith only [hX1])
     have he := Real.exp_one_gt_d9
     have : Real.exp 3 = Real.exp 1 ^ 3 := by rw [← Real.exp_nat_mul]; norm_num
-    have h12' : (12 : ℝ) ≤ Real.exp 3 := by rw [this]; nlinarith [sq_nonneg (Real.exp 1)]
+    have h12' : (12 : ℝ) ≤ Real.exp 3 := by rw [this]; nlinarith only [sq_nonneg (Real.exp 1), he]
     linarith
   have hprod : Real.exp (3 * X ^ 2) * Real.exp ((c : ℝ) ^ 2 * X ^ 2) * Real.exp (K * X ^ 2) =
       Real.exp ((K + c ^ 2 + 3) * X ^ 2) := by
     rw [← Real.exp_add, ← Real.exp_add]; ring_nf
   have hE0 := Real.exp_pos (K * X ^ 2)
   calc 8 * (1 + (n : ℝ) ^ 2) * Real.exp (K * X ^ 2) + 4 ≤
-      12 * (1 + (n : ℝ) ^ 2) * Real.exp (K * X ^ 2) := by nlinarith
+      12 * (1 + (n : ℝ) ^ 2) * Real.exp (K * X ^ 2) := by nlinarith only [hE1]
     _ ≤ Real.exp (3 * X ^ 2) * Real.exp ((c : ℝ) ^ 2 * X ^ 2) * Real.exp (K * X ^ 2) := by
         gcongr
     _ = _ := hprod
@@ -7472,7 +7472,7 @@ theorem out_restrictR (hne : A.cells.Nonempty) (l : Fin 4) (s : List (CatCol bf.
     (bf.P l jb).root_sub
   have hΨr : Ψ.D.root.1 ≤ A.R.1 := dyadicGridCell_depth_le_of_subset A.G A.R Ψ.D.root hΨR
   have hN := famN_ge (bf := bf) hne l jb
-  set rR := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G A.R.1 A.R.2)
+  set! rR := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G A.R.1 A.R.2)
     (dyadicGridCell_measurable A.G A.R.1 A.R.2)
   set rE := columnL2Restriction (V := bf.RLab fp.Mc s) (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2)
     (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
@@ -7542,12 +7542,12 @@ theorem basic_variation (l : Fin 4) (s : List (CatCol bf.Vtx))
           compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2 * (1 + τ * N * A.colBudget ^ 2)) *
         ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
           (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 := by
-  set rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
+  set! rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
     (dyadicGridCell A.G A.R.1 A.R.2) (dyadicGridCell_measurable A.G A.R.1 A.R.2)
-  set X : Fin 2 → ι × ι' → ℤ → ColumnL2 (bf.RLab fp.Mc s) := fun jb q h =>
+  set! X : Fin 2 → ι × ι' → ℤ → ColumnL2 (bf.RLab fp.Mc s) := fun jb q h =>
     fp.gOut l s mb (grp q.1) j ls h (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj h
       (rR jb (bf.P l jb).Z)))
-  set rE : ι × ι' → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun q =>
+  set! rE : ι × ι' → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun q =>
     columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
       (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
   -- the outputs of the two families on the certified cells
@@ -7599,7 +7599,7 @@ theorem basic_variation (l : Fin 4) (s : List (CatCol bf.Vtx))
         rw [Fin.sum_univ_two]
         have h0 := hfam 0
         have h1 := hfam 1
-        nlinarith
+        nlinarith only [h0, h1]
 
 end ActiveSetup.BasicFamilies.FamParams
 
@@ -7698,7 +7698,7 @@ theorem hist_restrictR (hne : A.cells.Nonempty) (l : Fin 4) (s : List (CatCol bf
   set Ψ := (bf.P l jb).Ψ
   have hΨG : Ψ.D.grid = A.G := (bf.P l jb).grid
   have hN := famN_ge (bf := bf) hne l jb
-  set rR := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G A.R.1 A.R.2)
+  set! rR := columnL2Restriction (V := bf.RLab fp.Mc s) (dyadicGridCell A.G A.R.1 A.R.2)
     (dyadicGridCell_measurable A.G A.R.1 A.R.2)
   set rE := columnL2Restriction (V := bf.RLab fp.Mc s) (⋃ I ∈ E, dyadicGridCell A.G I.1 I.2)
     (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
@@ -7751,11 +7751,11 @@ theorem basic_history_variation (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.
           compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2) *
         ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
           (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 := by
-  set rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
+  set! rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
     (dyadicGridCell A.G A.R.1 A.R.2) (dyadicGridCell_measurable A.G A.R.1 A.R.2)
-  set X : Fin 2 → ℤ → ColumnL2 (bf.RLab fp.Mc s) := fun jb h =>
+  set! X : Fin 2 → ℤ → ColumnL2 (bf.RLab fp.Mc s) := fun jb h =>
     fp.gHist l s mb ls h (bf.famEmbR fp.Mc s l jb ((bf.P l jb).Ψ.proj h (rR jb (bf.P l jb).Z)))
-  set rE : ι' → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun i =>
+  set! rE : ι' → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun i =>
     columnL2Restriction (⋃ I ∈ Ec i, dyadicGridCell A.G I.1 I.2)
       (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
   set Sj := (ls.length : ℝ) * (∑ m ∈ Finset.range ls.length,
@@ -7840,7 +7840,7 @@ theorem basic_history_variation (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.
         rw [Fin.sum_univ_two]
         have h0 := hfam 0
         have h1 := hfam 1
-        nlinarith
+        nlinarith only [h0, h1]
 
 end ActiveSetup.BasicFamilies.FamParams
 
@@ -7887,12 +7887,12 @@ theorem basic_onetime (l : Fin 4) (s : List (CatCol bf.Vtx))
       ∑ jb : Fin 2, 2 * (1 + τ * N * A.colBudget ^ 2) *
         ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
           (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 := by
-  set rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
+  set! rR := fun jb : Fin 2 => columnL2Restriction (V := (bf.P l jb).V)
     (dyadicGridCell A.G A.R.1 A.R.2) (dyadicGridCell_measurable A.G A.R.1 A.R.2)
-  set rE : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun G =>
+  set! rE : ι → ColumnL2 (bf.RLab fp.Mc s) →L[ℂ] ColumnL2 (bf.RLab fp.Mc s) := fun G =>
     columnL2Restriction (⋃ I ∈ Ec G, dyadicGridCell A.G I.1 I.2)
       (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
-  set X : Fin 2 → ι → ColumnL2 (bf.RLab fp.Mc s) := fun jb G =>
+  set! X : Fin 2 → ι → ColumnL2 (bf.RLab fp.Mc s) := fun jb G =>
     fp.gOut l s mb (grp G) j ls (A.R.1 + t) (bf.famEmbR fp.Mc s l jb
       ((bf.P l jb).Ψ.proj (A.R.1 + t) (rR jb (bf.P l jb).Z)))
   have hC : (0 : ℝ) ≤ 1 + τ * N * A.colBudget ^ 2 := by positivity
@@ -7929,7 +7929,7 @@ theorem basic_onetime (l : Fin 4) (s : List (CatCol bf.Vtx))
         rw [Fin.sum_univ_two]
         have h0 := hfam 0
         have h1 := hfam 1
-        nlinarith
+        nlinarith only [h0, h1]
 
 open Classical in
 /-- Blueprint lem:variation (`eq:variation`, lines 1861-1866) with the compression loss `G₀`:
@@ -8017,7 +8017,7 @@ theorem basic_variation_G0 (l : Fin 4) (s : List (CatCol bf.Vtx))
     positivity
   have h0 := mul_le_mul hV0 hE0 hn0 hG0
   have h1 := mul_le_mul hV1 hE1 hn1 hG0
-  nlinarith
+  nlinarith only [hG0, hV0, hV1, hE0, hE1]
 
 end ActiveSetup.BasicFamilies.FamParams
 

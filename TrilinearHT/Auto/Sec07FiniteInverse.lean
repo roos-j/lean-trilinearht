@@ -104,7 +104,7 @@ theorem finite_weighted_trilinear_extract {q : ℕ} [NeZero q]
           _ ≤ (w t / β) ^ 2 := pow_le_pow_left₀ (norm_nonneg _) hnorm 2
           _ = (w t) ^ 2 / β ^ 2 := div_pow _ _ _
           _ ≤ _ := div_le_div_of_nonneg_right
-            (by nlinarith [hw0 t, hw1 t] : (w t) ^ 2 ≤ w t) (sq_nonneg β)
+            (by nlinarith only [hw0 t, hw1 t] : (w t) ^ 2 ≤ w t) (sq_nonneg β)
       _ = β / β ^ 2 := by rw [← Finset.expect_div, hmass]
       _ = 1 / β := by field_simp
   have hAA : uniformMean (fun u => ‖A u‖ ^ 2) ≤ 1 := by
@@ -145,7 +145,7 @@ theorem finite_weighted_trilinear_extract {q : ℕ} [NeZero q]
     field_simp
   refine ⟨ξ, ?_⟩
   rw [← hval, norm_mul, Complex.norm_real, Real.norm_of_nonneg hβ.le]
-  nlinarith [mul_le_mul_of_nonneg_left hη' hβ.le]
+  nlinarith only [mul_le_mul_of_nonneg_left hη' hβ.le]
 
 end Auto
 
@@ -276,7 +276,7 @@ theorem localSymmetryInnerRadius_bounds {C r ζ : ℝ} (hC : 0 ≤ C)
     apply (div_le_iff₀ hden).mpr
     have hm := min_le_right (1 : ℝ) (ζ ^ 2)
     have hmul := mul_le_mul_of_nonneg_left hm (by positivity : 0 ≤ 2 * C * (d : ℝ))
-    nlinarith [sq_nonneg ζ, mul_nonneg hC hd]
+    nlinarith only [sq_nonneg ζ, mul_nonneg hC hd, hC, hm]
 
 theorem graphBohrMass_pos {q : ℕ} [NeZero q] (b : ℝ → ℝ)
     (hb : ∀ x, 0 ≤ b x) (hb1 : ∀ x, b x ≤ 1)
@@ -302,7 +302,7 @@ theorem localSymmetryInnerRadius_domain {C r ζ ρ : ℝ} (hC : 0 ≤ C)
       3 * localSymmetryInnerRadius C d r ζ < r := by
   have h := (localSymmetryInnerRadius_bounds hC hr hζ d).2.1
   constructor
-  · linarith
+  · linarith only [hr, hrρ, h]
   · constructor <;> linarith
 
 /-- Averaging all translates of a normalized weight preserves uniform averages. -/
@@ -726,7 +726,7 @@ theorem graph_symmetry_weight_replacement_select {q : ℕ} [NeZero q]
   have hcorr : ζ ^ 2 / 2 ≤ ‖graphSymmetryWeightedCorrelation w μ M a b‖ := by
     have h := norm_sub_norm_le (graphSymmetryExpression w μ M a b)
       (graphSymmetryWeightedCorrelation w μ M a b)
-    linarith
+    linarith only [hε, herror, horiginal, h]
   exact finite_weighted_correlation_select w hw hwmass
     (graphSymmetryFixedCorrelation μ M a b) (by positivity) hcorr
 
@@ -1211,7 +1211,7 @@ lemma graphSymmetryRefinedRadius_bounds {ρ r ζ D : ℝ}
   refine ⟨by positivity, ?_, ?_, ?_⟩
   · apply (div_le_iff₀ hden).mpr
     have := mul_le_mul_of_nonneg_left hrζ hρ.le
-    nlinarith [mul_nonneg hρ.le hD]
+    nlinarith only [mul_nonneg hρ.le hD, hρ, hrζ]
   · apply (div_le_iff₀ hden).mpr
     have := mul_le_mul_of_nonneg_left hρζ hr.le
     nlinarith [mul_nonneg hr.le hD]
@@ -1258,7 +1258,7 @@ theorem graph_symmetry_dense_subdomain {q : ℕ} [NeZero q]
     have hlog := graphSymmetryRefinedRadius_log hρ hr hζ hD
     change Real.log (1 / s) = _ at hlog
     rw [hlog]
-    linarith
+    linarith only [hcost, hcard]
 
 /-- In odd cyclic groups, doubling a Bohr domain divides its frequencies by two.
  Here doubling is an image, not the sum of two independently chosen points. -/
@@ -1375,7 +1375,7 @@ theorem graph_symmetry_from_spectrum {q : ℕ} [NeZero q] (hq : Odd q)
   refine ⟨S', s, hSS', hs, by linarith, ?_, ?_⟩
   · intro x hx y hy
     have h := hphase' x hx y hy
-    nlinarith [mul_nonneg hD hs.le]
+    nlinarith only [mul_nonneg hD hs.le, hsD, h]
   · have hc : (S'.card : ℝ) ≤ S.card + T.card := by exact_mod_cast hcard
     linarith
 
@@ -1483,7 +1483,7 @@ theorem graph_local_symmetry_at_radius {q : ℕ} [NeZero q] (hq : Odd q)
       1 + Real.log (1 / (β * (ζ ^ 4 / 8))) by linarith) 4
   change 2 * (S.card : ℝ) + 10 ^ 20 * _ + _ + _ + _ + Real.log (D + 1) ≤ _
   dsimp only [D, β] at *
-  nlinarith
+  nlinarith only [hp]
 
 /-- The source polynomial budget for local symmetry. -/
 noncomputable def graphSymmetryBudget (d : ℕ) (r ζ : ℝ) : ℝ :=
@@ -1535,7 +1535,7 @@ lemma localSymmetryInnerRadius_log_bound (d : ℕ) {C r ζ : ℝ}
   have hClog := Real.log_le_self (show 0 ≤ C + 1 by linarith)
   have hdlog := Real.log_le_self (show (0 : ℝ) ≤ (d : ℝ) + 1 by positivity)
   dsimp [graphSymmetryBudget] at *
-  nlinarith [Nat.cast_nonneg d (α := ℝ)]
+  nlinarith only [Nat.cast_nonneg d (α := ℝ), hC, hP, hZ, h1000, hClog, hdlog]
 
 /-- A polynomial Bohr mass lower bound becomes the exact logarithmic mass estimate. -/
 lemma graph_mass_log_bound (d : ℕ) {s β : ℝ} (hs : 0 < s)
@@ -1578,7 +1578,7 @@ lemma graphSymmetryDecayConstant_log (d : ℕ) {C s β ζ : ℝ}
     unfold graphSymmetryDecayConstant
     rw [div_add_one hden.ne']
     apply div_le_div_of_nonneg_right _ hden.le
-    nlinarith [Nat.cast_nonneg d (α := ℝ)]
+    nlinarith only [Nat.cast_nonneg d (α := ℝ), hC, hτ, hτ1, hsβ]
   have hlog := Real.log_le_log (show 0 < graphSymmetryDecayConstant C d s β ζ + 1 by linarith) hle
   rw [Real.log_div (mul_ne_zero hC1.ne' hd1.ne') hden.ne',
     Real.log_mul hC1.ne' hd1.ne',
@@ -1634,7 +1634,7 @@ theorem graph_symmetry_parameter_bounds (d : ℕ) {C r ζ β : ℝ}
       _ ≤ (d : ℝ) * Real.log (6 / s) := graph_mass_log_bound d hs hβlower
       _ ≤ (d : ℝ) * (6 + K * P) := mul_le_mul_of_nonneg_left hlog6 (Nat.cast_nonneg d)
       _ ≤ P * (6 + K * P) := mul_le_mul_of_nonneg_right hd (by positivity)
-      _ ≤ 2 * K * P ^ 2 := by nlinarith [mul_le_mul_of_nonneg_left h6 hP0]
+      _ ≤ 2 * K * P ^ 2 := by nlinarith only [mul_le_mul_of_nonneg_left h6 hP0]
   have hT : Real.log (1 / (ζ ^ 4 / 8)) ≤ 12 * P := by
     rw [graph_symmetry_threshold_log hζ]
     linarith [Real.log_le_self (by norm_num : (0 : ℝ) ≤ 8)]
@@ -1648,7 +1648,7 @@ theorem graph_symmetry_parameter_bounds (d : ℕ) {C r ζ β : ℝ}
       _ ≤ K * P ^ 2 := mul_le_mul_of_nonneg_left hPP2 hK0
   have hDensity : 1 + Real.log (1 / (β * (ζ ^ 4 / 8))) ≤ 4 * K * P ^ 2 := by
     rw [hBT]
-    nlinarith
+    nlinarith only [hC, hP, hB, hT]
   refine ⟨hR2, hB, hDensity, ?_⟩
   have hD := graphSymmetryDecayConstant_log d hC hs hs1 hβ hβ1 hζ hζ1
   have hClog := Real.log_le_self (show 0 ≤ C + 1 by linarith)
@@ -1656,7 +1656,7 @@ theorem graph_symmetry_parameter_bounds (d : ℕ) {C r ζ β : ℝ}
   have h8 := Real.log_le_self (by norm_num : (0 : ℝ) ≤ 8)
   have hKP_P2 := mul_le_mul_of_nonneg_left hPP2 hK0
   have hCbound : C + 1 ≤ K := by dsimp [K]; linarith
-  nlinarith
+  nlinarith only [hC, hP, hd, hZ, hPP2, hR2, hB, hD, hClog, hdlog, h8]
 
 /-- The explicit local-symmetry construction has degree-eight polynomial complexity. -/
 theorem graph_symmetry_complexity_bound (d : ℕ) {C r ζ β : ℝ}
@@ -2104,7 +2104,7 @@ theorem graph_initial_correlation_log_budget (d N : ℕ) {δ ρ α β K A B : �
   have hN := mul_le_mul_of_nonneg_left hB8 (by positivity : 0 ≤ (N : ℝ) + 4)
   have hC := mul_le_mul_of_nonneg_left hB80 (by positivity : 0 ≤ K + 2)
   have hD := mul_le_mul_of_nonneg_left hB48 (by positivity : 0 ≤ 600 * A)
-  nlinarith
+  nlinarith only [hK, hA, hB, hδB, hd, hlog, hL, h600, hKlog, hslog, hB8, hB48]
 
 theorem finite_weighted_shift_error {G : Type*} [Fintype G] [AddCommGroup G]
     (w μ : G → ℝ) (hμ : ∀ t, 0 ≤ μ t) (hμmass : (𝔼 t, μ t) = 1)
@@ -2588,7 +2588,7 @@ theorem local_inverse_polynomial_budget (d D : ℕ)
   have h1020 : P ^ 10 ≤ P ^ 20 := hpow (by norm_num)
   have hV' : V ≤ P ^ 21 := by
     calc
-      V ≤ 80005 * P ^ 20 := by nlinarith
+      V ≤ 80005 * P ^ 20 := by nlinarith only [hd, hZ, hV, hDT', hD, h10, hP20]
       _ ≤ P * P ^ 20 := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
       _ = P ^ 21 := by ring
   have hP21 : P ≤ P ^ 21 := by simpa only [pow_one] using hpow (by norm_num : 1 ≤ 21)
@@ -2609,7 +2609,8 @@ theorem local_inverse_polynomial_budget (d D : ℕ)
   have hP32 : P ≤ P ^ 32 := by simpa only [pow_one] using hpow (by norm_num : 1 ≤ 32)
   refine ⟨hDVR, ?_⟩
   calc
-    G ≤ 4 * P ^ 32 := by nlinarith [one_le_pow₀ hP1 (n := 32)]
+    G ≤ 4 * P ^ 32 := by nlinarith only [one_le_pow₀ hP1 (n := 32), hP, hZ, hG, hD, h1020, hP21,
+        hB']
     _ ≤ P * P ^ 32 := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
     _ = P ^ 33 := by ring
     _ ≤ P ^ 34 := hpow (by norm_num)
@@ -3666,7 +3667,7 @@ theorem local_chart_derivative_budget (d K m : ℕ) (hK : 1 ≤ K)
       _ ≤ T ^ 3 := by
         dsimp [T]
         have hm3 : (m + 1 : ℝ) ≤ (m + 1 : ℝ) ^ 3 := le_self_pow₀ hm (by norm_num)
-        nlinarith [mul_le_mul_of_nonneg_left hm3 (show 0 ≤ A ^ 3 by positivity)]
+        nlinarith only [mul_le_mul_of_nonneg_left hm3 (show 0 ≤ A ^ 3 by positivity)]
       _ ≤ _ := pow_le_pow_right₀ hT1 (by omega)
   have hsum : (d : ℝ) * (((K : ℝ) * (m + 1 : ℝ)) ^ (2 * K) / r) +
       4 * Real.pi * (d + 1 : ℝ) ^ 2 * (m + 1 : ℝ) +
@@ -4897,7 +4898,7 @@ theorem finite_inverse_radius (D d : ℕ) (hd : 0 < d) (hdD : d ≤ D)
     apply (div_le_one (by positivity : 0 < 100 * C * d)).mpr
     have hζρ := mul_le_mul hζ1 (show ρ / 100 ≤ 1 by linarith) (by positivity) zero_le_one
     have hCd := mul_le_mul hC hd1 (by norm_num : (0 : ℝ) ≤ 1) (by positivity : 0 ≤ C)
-    nlinarith
+    nlinarith only [hρ, hρ1, hζ1, hC, hd1]
   refine ⟨a * b * c, by positivity, ?_, ?_, ?_, ?_⟩
   · exact (mul_le_mul_of_nonneg_left hc1 (mul_nonneg ha.le hb.le)).trans
       (by simpa using mul_le_mul_of_nonneg_left hb1 ha.le)
@@ -4913,7 +4914,7 @@ theorem finite_inverse_radius (D d : ℕ) (hd : 0 < d) (hdD : d ≤ D)
       have hl := Real.log_le_self (by positivity : (0 : ℝ) ≤ 100 * D)
       have hm := mul_le_mul_of_nonneg_left hl (by positivity : (0 : ℝ) ≤ 10 * D)
       norm_num only [Nat.cast_mul, Nat.cast_ofNat] at *
-      nlinarith
+      nlinarith only [hl]
     have hlogs : Real.log (Real.sqrt (D : ℝ)) ≤ (D : ℝ) + 1 :=
       (Real.log_le_self hspos.le).trans hsD
     have hlogd : Real.log (d : ℝ) ≤ D := (Real.log_le_self (by positivity)).trans hdD'
@@ -4937,7 +4938,7 @@ theorem finite_inverse_radius (D d : ℕ) (hd : 0 < d) (hdD : d ≤ D)
       Real.log_div hρ.ne' (by norm_num : (100 : ℝ) ≠ 0),
       Real.log_mul (by positivity : 100 * C ≠ 0) (by positivity : (d : ℝ) ≠ 0),
       Real.log_mul (by norm_num : (100 : ℝ) ≠ 0) hCpos.ne']
-    nlinarith
+    nlinarith only [hlogs, hlogd, h100, h10, h2, heLog]
 
 theorem bohr_symmetry_refinement (cutoff : ℝ → ℝ) (hcont : ContDiff ℝ 1 cutoff)
     (hb0 : ∀ x, 0 ≤ cutoff x) (hb1 : ∀ x, cutoff x ≤ 1)

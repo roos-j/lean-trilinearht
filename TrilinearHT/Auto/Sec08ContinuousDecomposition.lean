@@ -1737,7 +1737,7 @@ theorem uniform_floor_inverse_budget (C : ℕ) (hC : 1 ≤ C) (B : ℝ) (hB : 8 
   let A₂ := 100 * (1 + A) ^ 3
   have hAA₂ : A ≤ A₂ := by
     dsimp [A₂]
-    nlinarith [sq_nonneg A, pow_nonneg (by linarith : 0 ≤ A) 3]
+    nlinarith only [sq_nonneg A, pow_nonneg (by linarith : 0 ≤ A) 3]
   obtain ⟨D, hD, hnD, hcoef, henvelope⟩ := monomial_uniform_natural_envelope A₂ (9 * C)
   refine ⟨D, hD, fun X hX => ?_⟩
   let H := Real.exp ((C : ℝ) * X ^ C)

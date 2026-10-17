@@ -39,7 +39,7 @@ theorem integral_comp_plane {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ 
       |p * s - q * r|⁻¹ • ∫ z : ℝ × ℝ, g z := by
   set M := planeMatrix p q r s
   have hM : M.det ≠ 0 := by rw [planeMatrix_det]; exact hdet
-  set f : (Fin 2 → ℝ) →ₗ[ℝ] (Fin 2 → ℝ) := Matrix.toLin' M
+  set! f : (Fin 2 → ℝ) →ₗ[ℝ] (Fin 2 → ℝ) := Matrix.toLin' M
   have hf : LinearMap.det f ≠ 0 := by rw [LinearMap.det_toLin']; exact hM
   have hmap := MeasureTheory.Measure.map_linearMap_addHaar_eq_smul_addHaar
     (μ := (volume : Measure (Fin 2 → ℝ))) hf
@@ -70,7 +70,7 @@ theorem integrable_comp_plane {E : Type*} [NormedAddCommGroup E]
     Integrable (fun z : ℝ × ℝ => g (p * z.1 + q * z.2, r * z.1 + s * z.2)) := by
   set M := planeMatrix p q r s
   have hM : M.det ≠ 0 := by rw [planeMatrix_det]; exact hdet
-  set f : (Fin 2 → ℝ) →ₗ[ℝ] (Fin 2 → ℝ) := Matrix.toLin' M
+  set! f : (Fin 2 → ℝ) →ₗ[ℝ] (Fin 2 → ℝ) := Matrix.toLin' M
   have hf : LinearMap.det f ≠ 0 := by rw [LinearMap.det_toLin']; exact hM
   have hmap := MeasureTheory.Measure.map_linearMap_addHaar_eq_smul_addHaar
     (μ := (volume : Measure (Fin 2 → ℝ))) hf
@@ -250,7 +250,7 @@ theorem fin4_slot_sep {a b : Fin 4} (hab : a ≠ b) : 1 ≤ |((b : ℕ) : ℝ) -
   rcases Nat.lt_or_gt_of_ne hne with h | h
   · have : (1 : ℝ) ≤ ((b : ℕ) : ℝ) - (a : ℕ) := by
       have : ((a : ℕ) : ℝ) + 1 ≤ (b : ℕ) := by exact_mod_cast h
-      linarith
+      linarith only [this]
     rw [abs_of_pos (by linarith)]; exact this
   · have : (1 : ℝ) ≤ ((a : ℕ) : ℝ) - (b : ℕ) := by
       have : ((b : ℕ) : ℝ) + 1 ≤ (a : ℕ) := by exact_mod_cast h
@@ -291,8 +291,8 @@ theorem slotConst_le {a b j : Fin 4} (hab : a ≠ b) (hja : j ≠ a) (hjb : j �
     rw [abs_sub_comm]; exact h3
   have h4' : |br - ar| ≤ 3 := h4
   have hα3 : 1 / 3 ≤ |slotAlpha ar br jr| := by
-    rw [hαa, le_div_iff₀ (by linarith)]
-    linarith
+    rw [hαa, le_div_iff₀ (by linarith only [h1])]
+    linarith only [h4, h2']
   have hβ3 : 1 / 3 ≤ |slotBeta ar br jr| := by
     rw [hβa, le_div_iff₀ (by linarith)]
     linarith
@@ -309,7 +309,7 @@ theorem slotConst_le {a b j : Fin 4} (hab : a ≠ b) (hja : j ≠ a) (hjb : j �
     rw [← Real.sqrt_mul hp0.le]
     calc (1 / 3 : ℝ) = Real.sqrt (1 / 9) := by
           rw [show (1 / 9 : ℝ) = (1 / 3) ^ 2 by norm_num, Real.sqrt_sq (by norm_num)]
-      _ ≤ Real.sqrt (p * q) := Real.sqrt_le_sqrt (by nlinarith)
+      _ ≤ Real.sqrt (p * q) := Real.sqrt_le_sqrt (by nlinarith only [hα3, hβ3])
   have hpq : p * q = (Real.sqrt p * Real.sqrt q) ^ 2 := by
     rw [mul_pow, hsp, hsq]
   rw [hpq]
@@ -319,7 +319,7 @@ theorem slotConst_le {a b j : Fin 4} (hab : a ≠ b) (hja : j ≠ a) (hjb : j �
     rw [mul_assoc]; change (u ^ 2 * |br - ar|)⁻¹ * u = _
     field_simp]
   rw [inv_le_comm₀ (by positivity) (by norm_num)]
-  nlinarith
+  nlinarith only [h1, hs1]
 
 /-- Blueprint same-tag, line 1813 (one term): a single-scale form with an `L²` input `G` in the
 slot `j` and two spectators in the slots `a, b` is bounded by `3 C_κ` times the Fourier supremum
@@ -340,7 +340,7 @@ theorem slotTriple_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
   have hIm : MeasurableSet I := measurableSet_Icc
   set Gg := I.indicator G with hGg
   set Ga := I.indicator Fa with hGa
-  set Gb := I.indicator Fb with hGb
+  set! Gb := I.indicator Fb with hGb
   have hGgm : Measurable Gg := hGm.indicator hIm
   have hGam : Measurable Ga := hFam.indicator hIm
   have hGbm : Measurable Gb := hFbm.indicator hIm
@@ -356,9 +356,9 @@ theorem slotTriple_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
     by_cases hx : x ∈ I
     · simp [Set.indicator_of_mem hx]
     · simp [Set.indicator_of_notMem hx]
-  set ar : ℝ := ((a : ℕ) : ℝ) with har
-  set br : ℝ := ((b : ℕ) : ℝ) with hbr
-  set jr : ℝ := ((j : ℕ) : ℝ) with hjr
+  set! ar : ℝ := ((a : ℕ) : ℝ) with har
+  set! br : ℝ := ((b : ℕ) : ℝ) with hbr
+  set! jr : ℝ := ((j : ℕ) : ℝ) with hjr
   have hab' : ar ≠ br := by
     intro h; have := fin4_slot_sep hab; rw [← hbr, ← har, h, sub_self, abs_zero] at this
     norm_num at this
@@ -385,7 +385,7 @@ theorem slotTriple_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
       Set.indicator_of_mem (hmem b), Set.indicator_of_mem (hmem j)]
     ring
   simp_rw [hrestr]
-  set Tr : ℝ × ℝ → ℂ := fun z => Ga (z.1 + ar * z.2) * Gb (z.1 + br * z.2) * Gg (z.1 + jr * z.2)
+  set! Tr : ℝ × ℝ → ℂ := fun z => Ga (z.1 + ar * z.2) * Gb (z.1 + br * z.2) * Gg (z.1 + jr * z.2)
     with hTr
   have hTri : Integrable Tr :=
     slotTriple_integrable hab' hja' hjb' hGam hGbm hGgm hGa2 hGb2 hGg1
@@ -394,7 +394,7 @@ theorem slotTriple_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
   obtain ⟨hcs, hct, hexp⟩ := admissibleKernel_fourier_expansion hr hw
   set c := periodicFourierCoeff (cubePeriodization (kernelUnitRescale a₀ r w) 16) with hc
   set c₀ := a₀ + r / 2 with hc₀
-  set E : (Fin 2 → ℤ) → ℝ × ℝ → ℂ := fun v z =>
+  set! E : (Fin 2 → ℤ) → ℝ × ℝ → ℂ := fun v z =>
     (Real.fourierChar ((v 0 : ℝ) * ((z.1 - c₀) / r / 16) + (v 1 : ℝ) * (z.2 / r / 16)) : ℂ)
     with hE
   have hab1 := fin4_slot_sep hab
@@ -440,7 +440,7 @@ theorem slotTriple_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
     have := hTri.bdd_mul (c := 1) (hEm v).aestronglyMeasurable
       (Filter.Eventually.of_forall (hE1 v))
     exact this
-  set P := ∫ z : ℝ × ℝ, ‖Tr z‖ with hP
+  set! P := ∫ z : ℝ × ℝ, ‖Tr z‖ with hP
   have hΨn (v : Fin 2 → ℤ) : ∫ z, ‖c v * (E v z * Tr z)‖ ≤ ‖c v‖ * P := by
     rw [hP, ← integral_const_mul]
     apply integral_mono_of_nonneg (Filter.Eventually.of_forall fun _ => norm_nonneg _)
@@ -458,8 +458,8 @@ theorem slotTriple_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
     rw [h]
     congr 1; funext z; exact (hpt z).tsum_eq.symm
   -- each term is a modulated slot triple
-  set Sa := Real.sqrt (∫ x, ‖Ga x‖ ^ 2) with hSa
-  set Sb := Real.sqrt (∫ x, ‖Gb x‖ ^ 2) with hSb
+  set! Sa := Real.sqrt (∫ x, ‖Ga x‖ ^ 2) with hSa
+  set! Sb := Real.sqrt (∫ x, ‖Gb x‖ ^ 2) with hSb
   have hM' : ∀ ξ, ‖𝓕 Gg ξ‖ ≤ M := by
     intro ξ
     rw [Real.fourier_real_eq]
@@ -474,10 +474,10 @@ theorem slotTriple_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
     rw [this]; exact hM ξ
   have hcst := slotConst_le hab hja hjb
   have hterm (v : Fin 2 → ℤ) : ‖∫ z, E v z * Tr z‖ ≤ 3 * M * Sa * Sb := by
-    set μb : ℝ := ((v 1 : ℝ) / (16 * r) - ar * ((v 0 : ℝ) / (16 * r))) / (br - ar) with hμb
-    set μa : ℝ := (v 0 : ℝ) / (16 * r) - μb with hμa
-    set A' : ℝ → ℂ := fun y => (Real.fourierChar (μa * y) : ℂ) * Ga y with hA'
-    set B' : ℝ → ℂ := fun y => (Real.fourierChar (μb * y) : ℂ) * Gb y with hB'
+    set! μb : ℝ := ((v 1 : ℝ) / (16 * r) - ar * ((v 0 : ℝ) / (16 * r))) / (br - ar) with hμb
+    set! μa : ℝ := (v 0 : ℝ) / (16 * r) - μb with hμa
+    set! A' : ℝ → ℂ := fun y => (Real.fourierChar (μa * y) : ℂ) * Ga y with hA'
+    set! B' : ℝ → ℂ := fun y => (Real.fourierChar (μb * y) : ℂ) * Gb y with hB'
     have hA'm : Measurable A' := (hchm.measurable.comp (measurable_const.mul measurable_id)).mul
         hGam
     have hB'm : Measurable B' := (hchm.measurable.comp (measurable_const.mul measurable_id)).mul
@@ -1756,7 +1756,7 @@ theorem tagPieceEnv_budget (c₀ : ℕ) :
   have hlogle : Real.log H + 1 ≤ H := by
     have := Real.log_le_sub_one_of_pos hH0; linarith
   have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
-  have hdW : (d : ℝ) + 2 ≤ W := by nlinarith
+  have hdW : (d : ℝ) + 2 ≤ W := by nlinarith only [hf, hdH, hlogle]
   have hKρW : (Kρ : ℝ) ≤ W := by
     have : (Kρ : ℝ) ≤ f := by rw [hf]; linarith
     exact this.trans (le_mul_of_one_le_right (by linarith) hH1)
@@ -1780,7 +1780,7 @@ theorem tagPieceEnv_budget (c₀ : ℕ) :
         _ ≤ W ^ eR := pow_le_pow_right₀ hW1 (by rw [heR]; omega)
     have hT3 : (m + 1 : ℝ) * (2 * Real.pi) * S ≤ W ^ eR := by
       have hpi : 2 * Real.pi ≤ W := by linarith [Real.pi_lt_d2]
-      have hSW : S ≤ W := by nlinarith
+      have hSW : S ≤ W := by nlinarith only [hdH, hS, hlogle, hKρW]
       calc (m + 1 : ℝ) * (2 * Real.pi) * S ≤ W * W * W := by
             apply mul_le_mul (mul_le_mul hm1 hpi (by positivity) (by linarith)) hSW hS0
               (by positivity)
@@ -1792,7 +1792,7 @@ theorem tagPieceEnv_budget (c₀ : ℕ) :
         (m + 1) * (2 * Real.pi) * S ≤ W ^ (eR + 1) := by
       rw [pow_succ]
       have : 0 ≤ W ^ eR := by positivity
-      nlinarith
+      nlinarith only [hW20, hT2, hT3, hT1, this]
     unfold tagPieceEnv
     calc H ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀ * (H ^ (2 * c₀) * (m + 1 : ℝ) ^ c₀ +
           (d : ℝ) * ((tagKρ : ℝ) * (m + 1 : ℝ)) ^ (2 * tagKρ) + (m + 1) * (2 * Real.pi) * S) ^ m ≤
@@ -1804,11 +1804,11 @@ theorem tagPieceEnv_budget (c₀ : ℕ) :
   have h7 : (7 : ℝ) ^ d ≤ W ^ d := pow_le_pow_left₀ (by norm_num) (by linarith) d
   have hsq : Real.sqrt d ^ (d + 1) ≤ W ^ (d + 1) := by
     apply pow_le_pow_left₀ (Real.sqrt_nonneg _)
-    calc Real.sqrt d ≤ Real.sqrt (W ^ 2) := Real.sqrt_le_sqrt (by nlinarith)
+    calc Real.sqrt d ≤ Real.sqrt (W ^ 2) := Real.sqrt_le_sqrt (by nlinarith only [hdH, hHW, hlogle])
       _ = W := Real.sqrt_sq (by linarith)
-  set E := 3 * d + 2 + 3 * c₀ + (eR + 1) * (d + 1) with hE
+  set! E := 3 * d + 2 + 3 * c₀ + (eR + 1) * (d + 1) with hE
   have hE0 : tagPieceEnv d c₀ H S 0 ≤ W ^ E :=
-    (henv 0 (by omega)).trans (pow_le_pow_right₀ hW1 (by rw [hE]; nlinarith))
+    (henv 0 (by omega)).trans (pow_le_pow_right₀ hW1 (by rw [hE]; nlinarith only))
   have hE1 := henv (d + 1) le_rfl
   have hEnv0 : 0 ≤ tagPieceEnv d c₀ H S 0 := by unfold tagPieceEnv; positivity
   have hEnv1 : 0 ≤ tagPieceEnv d c₀ H S (d + 1) := by unfold tagPieceEnv; positivity
@@ -1824,7 +1824,7 @@ theorem tagPieceEnv_budget (c₀ : ℕ) :
   have b2 : W ^ d * (W ^ d * W ^ (3 * c₀ + (eR + 1) * (d + 1))) * W ^ (d + 1) ≤
       W ^ (E + d + 1) := by
     rw [← pow_add, ← pow_add, ← pow_add]
-    exact pow_le_pow_right₀ hW1 (by rw [hE]; nlinarith)
+    exact pow_le_pow_right₀ hW1 (by rw [hE]; nlinarith only)
   have htot : (2 * (3 / 4 + 1) + 3 : ℝ) ^ d * tagPieceEnv d c₀ H S 0 +
       2 * (7 ^ d * ((2 * (3 / 4 + 1) + 3 : ℝ) ^ d * tagPieceEnv d c₀ H S (d + 1)) *
         Real.sqrt d ^ (d + 1)) ≤ W ^ (E + d + 1) * 3 := by
@@ -1835,7 +1835,7 @@ theorem tagPieceEnv_budget (c₀ : ℕ) :
     have hdX : (d : ℝ) ≤ Real.log H := hdH
     have hc0 : (0 : ℝ) ≤ c₀ := Nat.cast_nonneg _
     have hK0 : (0 : ℝ) ≤ Kρ := Nat.cast_nonneg _
-    nlinarith
+    nlinarith only [hdH]
   have hfin : W ^ (E + d + 1) * 3 ≤ W ^ (E + d + 1 + 2) := by
     rw [pow_add _ (E + d + 1) 2]
     have h3 : (3 : ℝ) ≤ W ^ 2 := by
@@ -1981,9 +1981,9 @@ theorem kernelTriple_integrable {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 <
   have hGa2 : MemLp Ga 2 := (memLp_indicator_iff_restrict hIm.nullMeasurableSet).mpr hFa2
   have hGb2 : MemLp Gb 2 := (memLp_indicator_iff_restrict hIm.nullMeasurableSet).mpr hFb2
   have hGg1 : Integrable Gg := (integrable_indicator_iff hIm).mpr (hG2.integrable one_le_two)
-  set ar : ℝ := ((a : ℕ) : ℝ) with har
-  set br : ℝ := ((b : ℕ) : ℝ) with hbr
-  set jr : ℝ := ((j : ℕ) : ℝ) with hjr
+  set! ar : ℝ := ((a : ℕ) : ℝ) with har
+  set! br : ℝ := ((b : ℕ) : ℝ) with hbr
+  set! jr : ℝ := ((j : ℕ) : ℝ) with hjr
   have hab' : ar ≠ br := by
     intro h; have := fin4_slot_sep hab; rw [← hbr, ← har, h, sub_self, abs_zero] at this
     norm_num at this
@@ -2039,11 +2039,11 @@ theorem tag_single_term_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
   have hchm : Continuous (fun s : ℝ => (Real.fourierChar s : ℂ)) :=
     continuous_subtype_val.comp Real.continuous_fourierChar
   have hT := kernelTriple_integrable hr hw hab hja hjb hGm hFam hFbm hG2 hFa2 hFb2
-  set α := slotAlpha ((a : ℕ) : ℝ) ((b : ℕ) : ℝ) ((i : ℕ) : ℝ)
-  set α' := slotBeta ((a : ℕ) : ℝ) ((b : ℕ) : ℝ) ((i : ℕ) : ℝ)
+  set! α := slotAlpha ((a : ℕ) : ℝ) ((b : ℕ) : ℝ) ((i : ℕ) : ℝ)
+  set! α' := slotBeta ((a : ℕ) : ℝ) ((b : ℕ) : ℝ) ((i : ℕ) : ℝ)
   have hab' : ((a : ℕ) : ℝ) ≠ ((b : ℕ) : ℝ) := by
     intro h; have := fin4_slot_sep hab; rw [h, sub_self, abs_zero] at this; norm_num at this
-  set Ψ : ι → ℝ × ℝ → ℂ := fun ν z => w z * (Real.fourierChar (β ν * realProgressionCoordinate i
+  set! Ψ : ι → ℝ × ℝ → ℂ := fun ν z => w z * (Real.fourierChar (β ν * realProgressionCoordinate i
       z) : ℂ) *
     G (realProgressionCoordinate j z) * Fa (realProgressionCoordinate a z) *
     Fb (realProgressionCoordinate b z) with hΨ
@@ -2055,7 +2055,7 @@ theorem tag_single_term_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
       (Filter.Eventually.of_forall fun z => by simp)
     refine h.congr (Filter.Eventually.of_forall fun z => ?_)
     simp only [hΨ]; ring
-  set P := ∫ z, ‖w z * G (realProgressionCoordinate j z) * Fa (realProgressionCoordinate a z) *
+  set! P := ∫ z, ‖w z * G (realProgressionCoordinate j z) * Fa (realProgressionCoordinate a z) *
     Fb (realProgressionCoordinate b z)‖
   have hΨn (ν : ι) : ∫ z, ‖c ν * Ψ ν z‖ = ‖c ν‖ * P := by
     rw [← integral_const_mul]
@@ -2079,8 +2079,8 @@ theorem tag_single_term_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {
       _ = _ := tsum_congr fun ν => by simp only [hΨ]; ring
   -- each term is a one-term form with modulated spectators
   have hterm (ν : ι) : ‖(r : ℂ)⁻¹ ^ 2 * ∫ z, Ψ ν z‖ ≤ kernelFourierConst κ * (3 * t) := by
-    set A' : ℝ → ℂ := fun y => (Real.fourierChar (β ν * α * y) : ℂ) * Fa y
-    set B' : ℝ → ℂ := fun y => (Real.fourierChar (β ν * α' * y) : ℂ) * Fb y
+    set! A' : ℝ → ℂ := fun y => (Real.fourierChar (β ν * α * y) : ℂ) * Fa y
+    set! B' : ℝ → ℂ := fun y => (Real.fourierChar (β ν * α' * y) : ℂ) * Fb y
     have hA'm : Measurable A' := (hchm.measurable.comp (measurable_const.mul measurable_id)).mul
         hFam
     have hB'm : Measurable B' := (hchm.measurable.comp (measurable_const.mul measurable_id)).mul
@@ -2453,7 +2453,7 @@ theorem sameTag_final_budget (κ : LocalKernelClass) (D₁ : ℕ) :
       calc (729 : ℝ) ≤ 2.7 ^ 7 := by norm_num
         _ ≤ Real.exp 1 ^ 7 := pow_le_pow_left₀ (by norm_num) he 7
     have hlog0 : 0 ≤ Real.log H := by linarith
-    nlinarith
+    nlinarith only [hdH, h729]
   have hcK : 2 * (kernelFourierConst κ * 3) ≤ Real.exp c := by
     rw [hcdef, Real.exp_log (by linarith)]; linarith
   have hXD : ∀ e : ℕ, e ≤ D → X ^ e ≤ X ^ D := fun e he => pow_le_pow_right₀ hX1 he
@@ -2477,7 +2477,7 @@ theorem sameTag_final_budget (κ : LocalKernelClass) (D₁ : ℕ) :
         have hDc : ((D : ℕ) : ℝ) = ⌈c⌉₊ + 7 + D₁ + 2 := by rw [hD]; push_cast; ring
         rw [hDc]
         have : 0 ≤ X ^ D := by positivity
-        nlinarith
+        nlinarith only [e1, e2, e3]
 
 theorem sum5_product {α β γ δ ε M : Type*} [AddCommMonoid M] (A : Finset α) (B : Finset β)
     (C : Finset γ) (D : Finset δ) (E : Finset ε) (f : α → β → γ → δ → ε → M) :
@@ -2540,14 +2540,14 @@ theorem sameTagTemplateTest (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
   intro H hH v hd i j a b hij hia hib hja hjb hab A hA hθ hM hq a₀ r hr w hw z hzi hzjm hzam
     hzbm hzj2 hza hzb
   set μ := normalizedIntervalMeasure a₀ r with hμ
-  set I := Set.Icc a₀ (a₀ + r) with hI
+  set! I := Set.Icc a₀ (a₀ + r) with hI
   set X := 1 + Real.log H with hX
   set H₀ := Real.exp (D * X ^ D) with hH₀def
   set F := localProgressionForm r w z with hF
   have hH₀ : 0 < H₀ := Real.exp_pos _
   by_contra hcon
   push Not at hcon
-  set t := ‖F‖ / H₀ with ht
+  set! t := ‖F‖ / H₀ with ht
   have hmom : ∀ R ∈ residueBox v.dim 9, ∀ γ : ℝ,
       ‖∫ y, z j y * (starRingEnd ℂ) (quadraticChartAtom (tagTemplateData v.θ v.C v.lam j R) y *
         (Real.fourierChar (γ * y) : ℂ)) ∂μ‖ ≤ t := by
@@ -2556,7 +2556,7 @@ theorem sameTagTemplateTest (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
     have := hcon R hR γ
     linarith
   have hdH : (v.dim : ℝ) ≤ Real.log H := hA.dimension
-  set B := Real.exp (D₁ * X ^ D₁) with hB
+  set! B := Real.exp (D₁ * X ^ D₁) with hB
   -- inputs on the cell
   have hres : volume.restrict (Set.Ico a₀ (a₀ + r)) = volume.restrict I :=
     Measure.restrict_congr_set Ico_ae_eq_Icc
@@ -2604,9 +2604,9 @@ theorem sameTagTemplateTest (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
         congr 1; funext ν; rw [norm_mul, Circle.norm_coe, mul_one]
     have hTm : ∀ l, Measurable (T l) := fun l => quadraticChartAtom_measurable _
     have hT1 : ∀ l y, ‖T l y‖ ≤ 1 := fun l y => tagFactorAt_norm_le v.θ v.C v.lam i k₃ s₃ k₄ s₄ l y
-    set Gj : ℝ → ℂ := fun y => z j y * T j y
-    set Ga : ℝ → ℂ := fun y => z a y * T a y
-    set Gb : ℝ → ℂ := fun y => z b y * T b y
+    set! Gj : ℝ → ℂ := fun y => z j y * T j y
+    set! Ga : ℝ → ℂ := fun y => z a y * T a y
+    set! Gb : ℝ → ℂ := fun y => z b y * T b y
     have hGjm : Measurable Gj := hzjm.mul (hTm j)
     have hGam : Measurable Ga := hzam.mul (hTm a)
     have hGbm : Measurable Gb := hzbm.mul (hTm b)
@@ -2665,9 +2665,9 @@ theorem sameTagTemplateTest (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
         norm_mul, tagCoef_norm]
       exact mul_le_mul_of_nonneg_left hsingle (by positivity)
   -- the full expansion
-  set Tset := slowValueBox v.dim (⌈H⌉₊ + 2) ×ˢ (slowValueBox v.dim 4 ×ˢ (residueBox v.dim 9 ×ˢ
+  set! Tset := slowValueBox v.dim (⌈H⌉₊ + 2) ×ˢ (slowValueBox v.dim 4 ×ˢ (residueBox v.dim 9 ×ˢ
     (slowValueBox v.dim 4 ×ˢ residueBox v.dim 9))) with hTset
-  set g : (Fin v.dim → ℤ) × (Fin v.dim → ℤ) × (Fin v.dim → ℕ) × (Fin v.dim → ℤ) ×
+  set! g : (Fin v.dim → ℤ) × (Fin v.dim → ℤ) × (Fin v.dim → ℕ) × (Fin v.dim → ℤ) ×
       (Fin v.dim → ℕ) → ℝ × ℝ → ℂ := fun τ p => w p * (tagCoef τ.2.1 τ.2.2.1 τ.2.2.2.1 τ.2.2.2.2 *
       (quadraticChartAtom (tagSourceChart v.θ
         (A.linear + chartMatrixPhase ((slotCoeff i : ℚ) • v.C) v.θ (fun a => (τ.1 a : ℝ)))
@@ -2853,7 +2853,7 @@ theorem catalog_trial_count (T m : ℕ) (Q : ℕ → ℕ → H →L[𝕜] H)
   set L := projectionPrefixConstant T
   have hL : 0 ≤ L := le_trans zero_le_one (projectionPrefixConstant_one_le T)
   -- the row bound for the complement products
-  set B : S → H →L[𝕜] H := fun ν => P ν - P (ν - 1)
+  set! B : S → H →L[𝕜] H := fun ν => P ν - P (ν - 1)
   have hB : ∀ h, ∑ ν, ‖B ν h‖ ^ 2 ≤ ‖h‖ ^ 2 :=
     fun h => target_increments_bessel P T hP hPnest S hS h
   have hsub : ∀ σ : ℕ → Bool, finiteRowNorm (fun ν : S =>
@@ -3017,7 +3017,7 @@ theorem closure_parameters (c : ℕ) :
       calc (8 : ℝ) ≤ 2.7 ^ 3 := by norm_num
         _ ≤ Real.exp 1 ^ 3 := pow_le_pow_left₀ (by norm_num) he 3
     push_cast at h1
-    nlinarith
+    nlinarith only [hlogX, hl6, h1]
   have hlog4 : Real.log 4 ≤ 2 := by
     rw [Real.log_le_iff_le_exp (by norm_num)]
     have h2 : Real.exp 2 = Real.exp 1 ^ 2 := by rw [← Real.exp_nat_mul]; norm_num
@@ -3025,17 +3025,17 @@ theorem closure_parameters (c : ℕ) :
     have he : (2.7 : ℝ) ≤ Real.exp 1 := by linarith [Real.exp_one_gt_d9]
     calc (4 : ℝ) ≤ 2.7 ^ 2 := by norm_num
       _ ≤ Real.exp 1 ^ 2 := pow_le_pow_left₀ (by norm_num) he 2
-  have hmX : (m : ℝ) ≤ 2 * c * X := by nlinarith
+  have hmX : (m : ℝ) ≤ 2 * c * X := by nlinarith only [hX, hm, hlogX]
   -- the exponent estimate
   have hexpo : X ^ c + m * Real.log 4 + 2 * m * Real.log L < X ^ (c + 3) := by
-    have e1 : (m : ℝ) * Real.log 4 ≤ 4 * c * X := by nlinarith [Real.log_nonneg (by norm_num : (1
-        : ℝ) ≤ 4)]
+    have e1 : (m : ℝ) * Real.log 4 ≤ 4 * c * X := by
+      nlinarith only [Real.log_nonneg (by norm_num : (1 : ℝ) ≤ 4), hX, hm, hlogX, hlog4]
     have hlogL0 : 0 ≤ Real.log L := Real.log_nonneg hL1
     have e2 : 2 * (m : ℝ) * Real.log L ≤ 4 * c * X * (3 + (2 * c + 3) * X) := by
       have := mul_le_mul hmX hlogL (by positivity) (by positivity)
       linarith
     have e3 : 4 * (c : ℝ) * X + 4 * c * X * (3 + (2 * c + 3) * X) ≤
-        (8 * (c : ℝ) ^ 2 + 28 * c) * X ^ 2 := by nlinarith
+        (8 * (c : ℝ) ^ 2 + 28 * c) * X ^ 2 := by nlinarith only [hX, hmX]
     have e4 : X ^ (c + 3) ≥ X ^ c * ((8 * (c : ℝ) ^ 2 + 28 * c + 2) * X ^ 2) := by
       rw [pow_add]
       apply mul_le_mul_of_nonneg_left _ (by positivity)
@@ -3047,7 +3047,7 @@ theorem closure_parameters (c : ℕ) :
       le_mul_of_one_le_left (by positivity) hXc1
     have f2 : X ^ c < X ^ c * (2 * X ^ 2) := by
       have : 0 < X ^ c := by positivity
-      nlinarith
+      nlinarith only [hXc1, hX2']
     have f3 : X ^ c * ((8 * (c : ℝ) ^ 2 + 28 * c + 2) * X ^ 2) =
         X ^ c * ((8 * (c : ℝ) ^ 2 + 28 * c) * X ^ 2) + X ^ c * (2 * X ^ 2) := by ring
     linarith
@@ -3468,10 +3468,10 @@ theorem LocalValid.length_lt (hP : ∀ w s, IsStarProjection (P w s))
   classical
   by_contra hlt
   push Not at hlt
-  set s' := s.take Tmax
+  set! s' := s.take Tmax
   have hs' : s'.length = Tmax := by simp [s', List.length_take, min_eq_left hlt]
   have hv := h.take Tmax
-  set f : ℕ → ℕ := fun j => if hj : j < s'.length then rk s'[j] else 0
+  set! f : ℕ → ℕ := fun j => if hj : j < s'.length then rk s'[j] else 0
   have hmaps : ∀ j ∈ Finset.range s'.length, f j ∈ Rset := by
     intro j hj
     have hj' := Finset.mem_range.mp hj
@@ -3524,7 +3524,7 @@ theorem local_closure (hP : ∀ w s, IsStarProjection (P w s))
     h.length_lt hP hP1 hQ hQ1 Rset hrk hδ hcap
   set E : ℕ → Prop := fun n => ∃ s, LocalValid rk rkW δ P Q θ m g s ∧ s.length = n
   have hE0 : E 0 := ⟨[], fun j hj => absurd hj (by simp), rfl⟩
-  set n₀ := Nat.findGreatest E Tmax
+  set! n₀ := Nat.findGreatest E Tmax
   obtain ⟨s, hs, hsl⟩ : E n₀ := Nat.findGreatest_spec (Nat.zero_le _) hE0
   refine ⟨s, hs, fun w => ?_, hbd s hs⟩
   by_contra hw
