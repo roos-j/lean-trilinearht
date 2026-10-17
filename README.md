@@ -12,7 +12,7 @@ The main theorem is stated in [`Theorems.lean`](TrilinearHT/Theorems.lean) with 
 
 In the following we record some notes about the initial formalization of the main theorem which ran Oct 8-16. 
 
-The formalization consists of about 241k lines of Lean code. The autoformalization process was started on October 8, 2026 initially using Codex/GPT-Astra 6 Light and Claude/Opus-5.5 Medium.
+The formalization consists of about 194k lines of Lean code. The autoformalization process was started on October 8, 2026 initially using Codex/GPT-Astra 6 Light and Claude/Opus-5.5 Medium.
 Claude at Medium reasoning effort eventually seems to have stalled. The agent did not disclose the issue and instead started avoiding the main difficulties and revisiting the same places in the blueprint over and over again, building more and more redundant 'bridges and wrappers', a common issue with large-scale autoformalization efforts. This was caught only through human monitoring of the `Status.md` which coding agents are instructed to maintain in the `autoformalize` skill.
 After a large refactor using Claude/Opus-5.5 on Extra high the formalization was back on track and after a few more days finally finished the proof.
 
