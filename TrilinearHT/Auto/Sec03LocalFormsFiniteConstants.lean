@@ -523,108 +523,6 @@ theorem rationalTorus_empty_endpoint {d : ℕ} (V : Submodule ℚ (Fin d → ℚ
       (torusAnnihilatorHaar (rationalIntegerIntersection V))) ≤ W := by
   simpa using rationalTorus_single_endpoint V hW (fun _ => 1) measurable_const 0 0
 
-/-- The progression pair map is injective on torsion-free groups, the
-integer-lattice endpoint argument of blueprint `lem:absolute`, line 394. -/
-theorem progressionPairHom_injective {G : Type*} [AddCommGroup G] [HasUniqueDiv G]
-    {i j : ℤ} (hij : i ≠ j) (l : ℤ) :
-    Function.Injective (progressionPairHom G i j l) := by
-  intro a b hab
-  have h1 : a.1 + (i - l) • a.2 = b.1 + (i - l) • b.2 := congrArg Prod.fst hab
-  have h2 : a.1 + (j - l) • a.2 = b.1 + (j - l) • b.2 := congrArg Prod.snd hab
-  have hv : (j - i) • a.2 = (j - i) • b.2 := by
-    calc
-      _ = (a.1 + (j - l) • a.2) - (a.1 + (i - l) • a.2) := by
-        simp only [sub_smul]; abel
-      _ = (b.1 + (j - l) • b.2) - (b.1 + (i - l) • b.2) := by rw [h1, h2]
-      _ = _ := by simp only [sub_smul]; abel
-  have hv' := zsmul_right_injective (sub_ne_zero.mpr hij.symm) hv
-  rw [hv'] at h1
-  exact Prod.ext (add_right_cancel h1) hv'
-
-/-- Blueprint `lem:absolute`, line 394: counting over the progression image
-is bounded by the full product sum, in every integer-lattice dimension. -/
-theorem integerProgression_pair_endpoint {d : ℕ}
-    {K : (Fin d → ℤ) × (Fin d → ℤ) → ℝ≥0∞}
-    {W : ℝ≥0∞} (hW : ∀ z, K z ≤ W) (f g : (Fin d → ℤ) → ℝ≥0∞)
-    {i j : ℤ} (hij : i ≠ j) (l : ℤ) :
-    (∑' z : (Fin d → ℤ) × (Fin d → ℤ),
-      K z * (f (z.1 + (i - l) • z.2) * g (z.1 + (j - l) • z.2))) ≤
-      W * (∑' u, f u) * ∑' v, g v := by
-  calc
-    _ ≤ ∑' z : (Fin d → ℤ) × (Fin d → ℤ),
-        W * (f (z.1 + (i - l) • z.2) * g (z.1 + (j - l) • z.2)) :=
-      ENNReal.tsum_le_tsum (fun z => mul_le_mul_left (hW z) _)
-    _ = W * ∑' z : (Fin d → ℤ) × (Fin d → ℤ),
-        f (z.1 + (i - l) • z.2) * g (z.1 + (j - l) • z.2) := ENNReal.tsum_mul_left
-    _ ≤ W * ∑' z : (Fin d → ℤ) × (Fin d → ℤ), f z.1 * g z.2 :=
-      mul_le_mul_right (ENNReal.tsum_comp_le_tsum_of_injective
-        (progressionPairHom_injective hij l) (fun z => f z.1 * g z.2)) W
-    _ = _ := by
-      rw [ENNReal.tsum_prod' (f := fun z : (Fin d → ℤ) × (Fin d → ℤ) => f z.1 * g z.2)]
-      simp_rw [ENNReal.tsum_mul_left, ENNReal.tsum_mul_right]
-      exact (mul_assoc _ _ _).symm
-
-theorem integerProgression_time_cutoff_sum {d : ℕ} (T : Finset (Fin d → ℤ))
-    (f : (Fin d → ℤ) → ℝ≥0∞) (i : ℤ) :
-    (∑' z : (Fin d → ℤ) × (Fin d → ℤ),
-      (if z.2 ∈ T then (1 : ℝ≥0∞) else 0) * f (z.1 + i • z.2)) =
-      (T.card : ℝ≥0∞) * ∑' u, f u := by
-  classical
-  rw [ENNReal.tsum_prod' (f := fun z : (Fin d → ℤ) × (Fin d → ℤ) =>
-    (if z.2 ∈ T then (1 : ℝ≥0∞) else 0) * f (z.1 + i • z.2)), ENNReal.tsum_comm]
-  have hinner (v : Fin d → ℤ) :
-      (∑' u, (if v ∈ T then (1 : ℝ≥0∞) else 0) * f (u + i • v)) =
-        (if v ∈ T then (1 : ℝ≥0∞) else 0) * ∑' u, f u := by
-    rw [ENNReal.tsum_mul_left]
-    congr 1
-    exact (Equiv.addRight (i • v)).tsum_eq f
-  simp_rw [hinner]
-  rw [ENNReal.tsum_mul_right]
-  congr 1
-  rw [tsum_eq_sum (s := T) (fun v hv => ite_eq_right hv)]
-  simp
-
-/-- One occupied slot for a local lattice kernel: the time support supplies
-the remaining scale factor in blueprint `lem:absolute`, line 394. -/
-theorem integerProgression_single_endpoint {d : ℕ} (T : Finset (Fin d → ℤ))
-    {K : (Fin d → ℤ) × (Fin d → ℤ) → ℝ≥0∞}
-    (hT : ∀ z, K z ≠ 0 → z.2 ∈ T) {W : ℝ≥0∞} (hW : ∀ z, K z ≤ W)
-    (f : (Fin d → ℤ) → ℝ≥0∞) (i l : ℤ) :
-    (∑' z : (Fin d → ℤ) × (Fin d → ℤ), K z * f (z.1 + (i - l) • z.2)) ≤
-      W * T.card * ∑' u, f u := by
-  classical
-  calc
-    _ ≤ ∑' z : (Fin d → ℤ) × (Fin d → ℤ),
-        W * ((if z.2 ∈ T then (1 : ℝ≥0∞) else 0) * f (z.1 + (i - l) • z.2)) := by
-      apply ENNReal.tsum_le_tsum
-      intro z
-      by_cases hz : K z = 0
-      · simp [hz]
-      · simp only [ite_eq_left (hT z hz), one_mul]
-        exact mul_le_mul_left (hW z) _
-    _ = _ := by
-      rw [ENNReal.tsum_mul_left, integerProgression_time_cutoff_sum, mul_assoc]
-
-/-- The empty lattice endpoint, with explicit cardinalities of the local
-space and time boxes rather than an implicit scale constant. -/
-theorem integerProgression_empty_endpoint {d : ℕ} (A T : Finset (Fin d → ℤ))
-    {K : (Fin d → ℤ) × (Fin d → ℤ) → ℝ≥0∞}
-    (hT : ∀ z, K z ≠ 0 → z.2 ∈ T) (i l : ℤ)
-    (hA : ∀ z, K z ≠ 0 → z.1 + (i - l) • z.2 ∈ A)
-    {W : ℝ≥0∞} (hW : ∀ z, K z ≤ W) :
-    (∑' z : (Fin d → ℤ) × (Fin d → ℤ), K z) ≤ W * T.card * A.card := by
-  classical
-  have hid (z : (Fin d → ℤ) × (Fin d → ℤ)) :
-      K z * (if z.1 + (i - l) • z.2 ∈ A then (1 : ℝ≥0∞) else 0) = K z := by
-    by_cases hz : K z = 0
-    · simp [hz]
-    · simp only [ite_eq_left (hA z hz), mul_one]
-  have hsum : (∑' u, if u ∈ A then (1 : ℝ≥0∞) else 0) = A.card := by
-    rw [tsum_eq_sum (s := A) (fun u hu => ite_eq_right hu)]
-    simp
-  simpa only [hid, hsum] using integerProgression_single_endpoint T hT hW
-    (fun u => if u ∈ A then 1 else 0) i l
-
 theorem reciprocalExponentEndpoints_support {d k : ℕ} {a : Fin d → ℝ}
     (ha : a ∈ reciprocalExponentEndpoints d k) :
     ∃ S : Finset (Fin d), S.card ≤ k ∧ ∀ i, a i = if i ∈ S then 1 else 0 := by
@@ -895,79 +793,6 @@ theorem localProgression_absoluteBound {a r : ℝ} (hr : 0 < r)
           (R * ∫⁻ u in Set.Icc a (a + r), h u) := by ring
       _ ≤ _ := mul_le_mul_left (mul_le_mul_left hWtwo _) _
 
-/-- Normalized counting measure at a positive lattice scale. -/
-noncomputable def normalizedLatticeMeasure (d : ℕ) (N : ℝ) : Measure (Fin d → ℤ) :=
-  ENNReal.ofReal N⁻¹ • Measure.count
-
-/-- The scale-normalized lattice progression estimate, with explicit bounds
-on the cardinalities of its space and time support boxes. -/
-theorem integerProgression_absoluteBound_global {d : ℕ} {N : ℝ} (hN : 0 < N)
-    (A T : Finset (Fin d → ℤ)) {B : ℝ≥0∞} (hB : 1 ≤ B)
-    (hAcard : (A.card : ℝ≥0∞) ≤ B * ENNReal.ofReal N)
-    (hTcard : (T.card : ℝ≥0∞) ≤ B * ENNReal.ofReal N)
-    (K : (Fin d → ℤ) × (Fin d → ℤ) → ℝ≥0∞)
-    (hT : ∀ z, K z ≠ 0 → z.2 ∈ T) (l : ℤ)
-    (hA : ∀ z, K z ≠ 0 → z.1 + (0 - l) • z.2 ∈ A)
-    {W : ℝ≥0∞} (hW : ∀ z, K z ≤ W)
-    (f : Fin 4 → (Fin d → ℤ) → ℝ≥0∞) (p : Fin 4 → ℝ≥0∞)
-    (hp : ∀ i, 1 ≤ p i) (hsum : ∑ i, (p i).toReal⁻¹ ≤ 2) :
-    ENNReal.ofReal N⁻¹ ^ 2 *
-      (∑' z : (Fin d → ℤ) × (Fin d → ℤ),
-        K z * ∏ i, f i (z.1 + ((i : ℤ) - l) • z.2)) ≤
-      (B ^ 2 * W) * ∏ i, eLpNorm (f i) (p i) (normalizedLatticeMeasure d N) := by
-  let R := ENNReal.ofReal N⁻¹
-  let Q := ENNReal.ofReal N
-  have hcancel : R * Q = 1 := by
-    rw [← ENNReal.ofReal_mul (inv_nonneg.mpr hN.le), inv_mul_cancel₀ hN.ne',
-      ENNReal.ofReal_one]
-  have hAc : (A.card : ℝ≥0∞) ≤ B * Q := hAcard
-  have hTc : (T.card : ℝ≥0∞) ≤ B * Q := hTcard
-  have hBsquare : B ≤ B ^ 2 := by
-    simpa only [one_mul, pow_two] using mul_le_mul_left hB B
-  have hWb : W ≤ B ^ 2 * W := by
-    simpa only [one_mul] using mul_le_mul_left (hB.trans hBsquare) W
-  have hnorm (g : (Fin d → ℤ) → ℝ≥0∞) :
-      (∫⁻ u, g u ∂normalizedLatticeMeasure d N) = R * ∑' u, g u := by
-    rw [normalizedLatticeMeasure, lintegral_smul_measure, lintegral_count]
-    rfl
-  suffices (∫⁻ z, K z * ∏ i, f i (z.1 + ((i : ℤ) - l) • z.2)
-      ∂(R ^ 2 • (Measure.count : Measure ((Fin d → ℤ) × (Fin d → ℤ))))) ≤
-      (B ^ 2 * W) * ∏ i, eLpNorm (f i) (p i) (normalizedLatticeMeasure d N) by
-    simpa only [lintegral_smul_measure, smul_eq_mul, lintegral_count] using this
-  apply positiveWeightedPairwise_eLpNorm_bound _ _
-    (fun i z => z.1 + ((i : ℤ) - l) • z.2) (fun _ => measurable_of_countable _)
-    K (measurable_of_countable _) (B ^ 2 * W) ?_ ?_ ?_ f
-    (fun _ => measurable_of_countable _) p hp hsum
-  · rw [lintegral_smul_measure, lintegral_count]
-    change R ^ 2 * (∑' z, K z) ≤ B ^ 2 * W
-    calc
-      _ ≤ R ^ 2 * (W * T.card * A.card) :=
-        mul_le_mul_right (integerProgression_empty_endpoint A T hT 0 l hA hW) _
-      _ ≤ R ^ 2 * (W * (B * Q) * (B * Q)) := by gcongr
-      _ = (B ^ 2 * W) * (R * Q) ^ 2 := by ring
-      _ = B ^ 2 * W := by rw [hcancel]; simp
-  · intro i g hg
-    rw [lintegral_smul_measure, lintegral_count, hnorm]
-    change R ^ 2 * (∑' z, K z * g (z.1 + ((i : ℤ) - l) • z.2)) ≤
-      (B ^ 2 * W) * (R * ∑' u, g u)
-    calc
-      _ ≤ R ^ 2 * (W * T.card * ∑' u, g u) :=
-        mul_le_mul_right (integerProgression_single_endpoint T hT hW g (i : ℤ) l) _
-      _ ≤ R ^ 2 * (W * (B * Q) * ∑' u, g u) := by gcongr
-      _ = (B * W) * (R * ∑' u, g u) * (R * Q) := by ring
-      _ = (B * W) * (R * ∑' u, g u) := by rw [hcancel, mul_one]
-      _ ≤ _ := mul_le_mul_left (mul_le_mul_left hBsquare W) _
-  · intro i j hij g h hg hh
-    rw [lintegral_smul_measure, lintegral_count, hnorm, hnorm]
-    change R ^ 2 * (∑' z, K z *
-      (g (z.1 + ((i : ℤ) - l) • z.2) * h (z.1 + ((j : ℤ) - l) • z.2))) ≤ _
-    calc
-      _ ≤ R ^ 2 * (W * (∑' u, g u) * ∑' v, h v) :=
-        mul_le_mul_right (integerProgression_pair_endpoint hW g h
-          (by exact_mod_cast (show i.val ≠ j.val from fun h => hij (Fin.ext h))) l) _
-      _ = W * (R * ∑' u, g u) * (R * ∑' v, h v) := by ring
-      _ ≤ _ := mul_le_mul_left (mul_le_mul_left hWb _) _
-
 /-- Blueprint `eq:absolute` for the actual complex local kernel and inputs.
 The nonnegative integral gives the intended interpretation even for infinite norms. -/
 theorem localProgression_absoluteNormBound {a r : ℝ} (hr : 0 < r)
@@ -988,42 +813,6 @@ theorem localProgression_absoluteNormBound {a r : ℝ} (hr : 0 < r)
       eLpNorm (f i) (p i) (normalizedIntervalMeasure a r) :=
     eLpNorm_enorm (f i) (hf i).aestronglyMeasurable
   simpa only [hn] using h
-
-/-- Blueprint `eq:absolute` for local integer-lattice progressions, with
-normalized local `Lp` norms and the explicit fixed-box constant `B² W`. -/
-theorem integerProgression_absoluteBound {d : ℕ} {N : ℝ} (hN : 0 < N)
-    (A T : Finset (Fin d → ℤ)) {B : ℝ≥0∞} (hB : 1 ≤ B)
-    (hAcard : (A.card : ℝ≥0∞) ≤ B * ENNReal.ofReal N)
-    (hTcard : (T.card : ℝ≥0∞) ≤ B * ENNReal.ofReal N)
-    (K : (Fin d → ℤ) × (Fin d → ℤ) → ℝ≥0∞)
-    (hT : ∀ z, K z ≠ 0 → z.2 ∈ T) (l : ℤ)
-    (hA : ∀ z, K z ≠ 0 → ∀ i : Fin 4, z.1 + ((i : ℤ) - l) • z.2 ∈ A)
-    {W : ℝ≥0∞} (hW : ∀ z, K z ≤ W)
-    (f : Fin 4 → (Fin d → ℤ) → ℝ≥0∞) (p : Fin 4 → ℝ≥0∞)
-    (hp : ∀ i, 1 ≤ p i) (hsum : ∑ i, (p i).toReal⁻¹ ≤ 2) :
-    ENNReal.ofReal N⁻¹ ^ 2 *
-      (∑' z : (Fin d → ℤ) × (Fin d → ℤ),
-        K z * ∏ i, f i (z.1 + ((i : ℤ) - l) • z.2)) ≤
-      (B ^ 2 * W) * ∏ i, eLpNorm (f i) (p i)
-        ((normalizedLatticeMeasure d N).restrict (A : Set (Fin d → ℤ))) := by
-  classical
-  let F := fun i => (A : Set (Fin d → ℤ)).indicator (f i)
-  have hid (z : (Fin d → ℤ) × (Fin d → ℤ)) :
-      K z * ∏ i, F i (z.1 + ((i : ℤ) - l) • z.2) =
-        K z * ∏ i, f i (z.1 + ((i : ℤ) - l) • z.2) := by
-    by_cases hz : K z = 0
-    · simp [hz]
-    · congr 1
-      apply Finset.prod_congr rfl
-      intro i _
-      exact Set.indicator_of_mem (hA z hz i) (f i)
-  have hn (i) : eLpNorm (F i) (p i) (normalizedLatticeMeasure d N) =
-      eLpNorm (f i) (p i)
-        ((normalizedLatticeMeasure d N).restrict (A : Set (Fin d → ℤ))) :=
-    eLpNorm_indicator_eq_eLpNorm_restrict A.measurableSet.nullMeasurableSet
-  have h := integerProgression_absoluteBound_global hN A T hB hAcard hTcard K hT l
-    (fun z hz => by simpa only [Fin.val_zero, Nat.cast_zero] using hA z hz 0) hW F p hp hsum
-  simpa only [hid, hn] using h
 
 /-- The complex local form is controlled by the positive local estimate.
 This is the form of `lem:absolute` used in `lem:finite-CN`. -/
@@ -1389,22 +1178,6 @@ theorem finiteDepthConstant_least {κ : LocalKernelClass} {q : ℝ} {N : ℕ}
     simpa only [ENNReal.toReal_mul,
       ENNReal.toReal_ofReal (finiteDepthNumerator_nonneg D),
       ENNReal.toReal_ofReal (le_trans zero_le_one hc)] using h
-
-/-- Blueprint `lem:finite-CN`, lines 405–411: for every source exponent and
-positive depth, the normalized least constant is finite, at most `1 + C N`,
-and satisfies its defining inequality for all admissible data. -/
-theorem finiteDepthConstant_finite (κ : LocalKernelClass) {q : ℝ}
-    (hq : 2 < q ∧ q < 3) (N : ℕ) (_hN : 0 < N) :
-    (1 ≤ finiteDepthConstant κ q N ∧
-      finiteDepthConstant κ q N ≤ 1 + localFormUniformConstant κ * N) ∧
-    (∀ D : FiniteDepthLocalData κ q N,
-      ENNReal.ofReal (finiteDepthNumerator D) ≤
-        ENNReal.ofReal (finiteDepthConstant κ q N) * finiteDepthDenominator D) ∧
-    (∀ c : ℝ, 1 ≤ c →
-      (∀ D : FiniteDepthLocalData κ q N, ENNReal.ofReal (finiteDepthNumerator D) ≤
-        ENNReal.ofReal c * finiteDepthDenominator D) → finiteDepthConstant κ q N ≤ c) :=
-  ⟨finiteDepthConstant_bounds κ hq.1.le N,
-    finiteDepthConstant_spec hq.1.le, fun _ => finiteDepthConstant_least⟩
 
 end Auto
 

@@ -1393,30 +1393,6 @@ theorem sub_val (X Y : LowList G J N R c₀ H) (I : ℤ × ℤ) (y : ℝ) :
   simp only [atom, sub, Sum.elim_inl, Sum.elim_inr, neg_mul, Finset.sum_neg_distrib]
   ring
 
-/-- The empty low list (zero argument). -/
-noncomputable def zero (hdef : ∃ (d : ℕ) (Φ : QuadraticChartData d), 1 ≤ d ∧
-    QuadraticChartComplexity c₀ H Φ ∧ IsBoundedQuadraticChart Φ) : LowList G J N R c₀ H where
-  Λ := Empty
-  coef := fun _ l => l.elim
-  coef_le := fun _ l => l.elim
-  avail := fun _ l => l.elim
-  coef_avail := fun _ l => l.elim
-  avail_mono := fun _ _ l => l.elim
-  birth := fun _ l => l.elim
-  dim := fun _ _ => Classical.choose hdef
-  chart := fun _ _ => Classical.choose (Classical.choose_spec hdef)
-  birth_spec := fun _ l => l.elim
-  avail_birth := fun _ l => l.elim
-  birth_canon' := fun _ _ l => l.elim
-  one_le_dim := fun _ _ => (Classical.choose_spec (Classical.choose_spec hdef)).1
-  complexity := fun _ _ => (Classical.choose_spec (Classical.choose_spec hdef)).2.1
-  bounded := fun _ _ => (Classical.choose_spec (Classical.choose_spec hdef)).2.2
-
-theorem zero_val (hdef : ∃ (d : ℕ) (Φ : QuadraticChartData d), 1 ≤ d ∧
-    QuadraticChartComplexity c₀ H Φ ∧ IsBoundedQuadraticChart Φ) (I : ℤ × ℤ) (y : ℝ) :
-    (LowList.zero (G := G) (J := J) (N := N) (R := R) hdef).val I y = 0 := by
-  unfold val; change ∑ l : Empty, _ = _; simp
-
 end LowList
 
 section FitLow
@@ -1702,10 +1678,6 @@ theorem colRange_insert [DecidableEq V] (s : Set ℝ) (sc : V → ℝ → ℂ) (
     colRange s sc wt (insert v A) = colRange s sc wt A ⊔ Submodule.span ℂ {col s sc wt v} := by
   unfold colRange
   rw [Finset.coe_insert, Set.image_insert_eq, Submodule.span_insert, sup_comm]
-
-theorem colRange_mono (s : Set ℝ) (sc : V → ℝ → ℂ) (wt : V → ℝ) {A B : Finset V}
-    (h : A ⊆ B) : colRange s sc wt A ≤ colRange s sc wt B :=
-  Submodule.span_mono (Set.image_mono (Finset.coe_subset.mpr h))
 
 /-- Elements of a column range vanish in the private coordinates of absent labels. -/
 theorem colRange_fresh_zero {s : Set ℝ} {sc : V → ℝ → ℂ} {wt : V → ℝ} {A : Finset V} {v : V}
@@ -2118,7 +2090,7 @@ variable (S : AccSetup)
 abbrev W : Type := S.V₀ ⊕ Fin S.M
 
 /-- The cell of an index. -/
-abbrev cell (c : ℤ × ℤ) : Set ℝ := dyadicGridCell S.G c.1 c.2
+noncomputable abbrev cell (c : ℤ × ℤ) : Set ℝ := dyadicGridCell S.G c.1 c.2
 
 /-- The depth of the coarse tree. -/
 def Nc : ℕ := S.N - S.K₀
@@ -3355,9 +3327,7 @@ theorem Y_pairSmall {s s' : Fin 4} (hss : s ≠ s') :
     have := C.δa_nonneg; have := C.δb_nonneg
     unfold δ; split_ifs <;> nlinarith
   rcases hcov s with hs | hs | hs | hs <;> rcases hcov s' with hs' | hs' | hs' | hs'
-  all_goals first
-    | (exact absurd (hs.trans hs'.symm) hss)
-    | skip
+  all_goals try exact absurd (hs.trans hs'.symm) hss
   -- low / low
   · rw [hlowY s (Or.inl hs), hlowY s' (Or.inr hs')]
     exact (C.pairs s s' hss z hzm hz2).trans (by unfold ηY; nlinarith)
@@ -3589,14 +3559,6 @@ theorem mvProductChart_complexity {k d e c₀ : ℕ} {H : ℝ}
   unfold MultivariableQuadraticChartComplexity at *
   rw [mvProductChart_alongLine]
   exact productQuadraticChart_complexity hM hN hc
-
-theorem mvProductChart_bounded {k d e : ℕ} {M : MultivariableQuadraticChartData k d}
-    {N : MultivariableQuadraticChartData k e} (hM : IsBoundedMultivariableQuadraticChart M)
-    (hN : IsBoundedMultivariableQuadraticChart N) :
-    IsBoundedMultivariableQuadraticChart (mvProductChart M N) := by
-  intro z
-  rw [mvProductChart_atom, norm_mul]
-  simpa only [one_mul] using mul_le_mul (hM z) (hN z) (norm_nonneg _) zero_le_one
 
 /-- Dilation of a several-variable chart: `z ↦ Q(a z)`. -/
 noncomputable def mvDilateChart {k d : ℕ} (a : ℝ) (A : MultivariableQuadraticChartData k d) :
@@ -5818,9 +5780,6 @@ theorem tripleSlots_succAbove (F : Fin 4 → ℝ → ℂ) (m : Fin 4) (f : Fin 3
     rw [Function.update_of_ne (fun h => absurd (hinj h) (by decide)), Function.update_self]
   | 2 => rw [Function.update_self]
 
-theorem tripleSlots_ne {j m : Fin 4} (hj : j ≠ m) : ∃ i : Fin 3, m.succAbove i = j :=
-  Fin.exists_succAbove_eq hj
-
 /-- Blueprint prop:base, line 1657: expanding the three slots other than `m`, each a finite
 combination of bounded atoms, bounds the form by the coefficient products times the transpose
 norms of the atom triples against the fourth slot. -/
@@ -6165,38 +6124,6 @@ theorem accurateFit (κ : LocalKernelClass) :
 
 end AccSetup
 
-/-- Residual smallness only depends on the residual almost everywhere on the cell. -/
-theorem FormSmall.congr_ae {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w : ℝ × ℝ → ℂ}
-    (hw : IsAdmissibleLocalKernel κ a₀ r w) {j : Fin 4} {q : ℝ} (hq : 2 ≤ q) {R R' : ℝ → ℂ}
-    {η : ℝ} (h : FormSmall a₀ r w j q R η) (hR : FinL2 a₀ r R) (hR' : FinL2 a₀ r R')
-    (hae : R' =ᵐ[normalizedIntervalMeasure a₀ r] R) : FormSmall a₀ r w j q R' η := by
-  intro g hg hgj ih ku lv h1 h2 h3 h4 h5 h6 hq1 hq2 hq3
-  have hprob : IsProbabilityMeasure (normalizedIntervalMeasure a₀ r) :=
-    normalizedIntervalMeasure_probability a₀ hr
-  have hfin : ∀ l, eLpNorm (g l) 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤ := by
-    intro l
-    have hcov := fin_four_cover h1 h2 h3 h4 h5 h6
-    rcases hcov l with rfl | rfl | rfl | rfl
-    · rw [hgj]; exact hR'.2
-    · refine ne_top_of_le_ne_top ENNReal.one_ne_top
-        ((eLpNorm_le_eLpNorm_of_exponent_le ?_).trans hq1)
-      rw [show (2 : ENNReal) = ENNReal.ofReal 2 by norm_num]
-      exact ENNReal.ofReal_le_ofReal hq
-    · exact ne_top_of_le_ne_top ENNReal.one_ne_top hq2
-    · exact ne_top_of_le_ne_top ENNReal.one_ne_top hq3
-  have he : localProgressionForm r w g = localProgressionForm r w (Function.update g j R) := by
-    have := localProgressionForm_update_congr_ae hr hw hg hfin h1 h2 h3 h4 h5 h6 hR'.1 hR.1
-      hR'.2 hR.2 hae
-    rwa [← hgj, Function.update_eq_self] at this
-  rw [he]
-  refine h _ (fun l => ?_) (Function.update_self _ _ _) h1 h2 h3 h4 h5 h6 ?_ ?_ ?_
-  · by_cases hl : l = j
-    · subst hl; rw [Function.update_self]; exact hR.1
-    · rw [Function.update_of_ne hl]; exact hg l
-  · rw [Function.update_of_ne (Ne.symm h1)]; exact hq1
-  · rw [Function.update_of_ne (Ne.symm h2)]; exact hq2
-  · rw [Function.update_of_ne (Ne.symm h3)]; exact hq3
-
 /-- A predictor cover persists in the accurate-fit system, whose predictor labels are those of
 the underlying system. -/
 theorem AccSetup.predictorCover_system {κ : LocalKernelClass} (S : AccSetup) (K : ℤ × ℤ)
@@ -6371,9 +6298,6 @@ theorem restrict_val (K : ℤ × ℤ) (hK : K ∈ dyadicFiniteTree G J N) {I : �
   by_cases hc : X.coef I l = 0
   · rw [hc, zero_mul, zero_mul]
   · rw [X.restrict_atom K hK (X.coef_avail I l hc) hIK]
-
-theorem restrict_card (K : ℤ × ℤ) (hK : K ∈ dyadicFiniteTree G J N) :
-    Fintype.card (X.restrict K hK).Λ = Fintype.card X.Λ := rfl
 
 theorem restrict_birth_sub (K : ℤ × ℤ) (hK : K ∈ dyadicFiniteTree G J N) {I : ℤ × ℤ} {l : X.Λ}
     (hav : X.avail I l) (hIK : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G K.1 K.2) :

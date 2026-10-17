@@ -1845,41 +1845,6 @@ theorem vonNeumann_local_L1 {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
     ← ENNReal.ofReal_mul (by norm_num)]
   exact ENNReal.ofReal_le_ofReal (le_max_right _ _)
 
-/-- Declaration von-neumann, blueprint line 1449 (THT.LocalForm.vonNeumannOneL2):
-lem:von-neumann with a constant depending only on the admissible kernel class. -/
-theorem vonNeumannOneL2 (κ : LocalKernelClass) :
-    ∃ C : ℝ, 0 ≤ C ∧ ∀ {a₀ r : ℝ}, 0 < r → ∀ {w : ℝ × ℝ → ℂ},
-      IsAdmissibleLocalKernel κ a₀ r w → ∀ f : Fin 4 → ℝ → ℂ, (∀ j, Measurable (f j)) →
-      ∀ {jR ig kb lc : Fin 4}, jR ≠ ig → jR ≠ kb → jR ≠ lc → ig ≠ kb → ig ≠ lc → kb ≠ lc →
-      (∀ {Mb Mc : ℝ}, MemLp (f jR) 2 (volume.restrict (Set.Ico a₀ (a₀ + r))) →
-        MemLp (f ig) 2 (volume.restrict (Set.Ico a₀ (a₀ + r))) →
-        (∀ y ∈ Set.Ico a₀ (a₀ + r), ‖f kb y‖ ≤ Mb) →
-        (∀ y ∈ Set.Ico a₀ (a₀ + r), ‖f lc y‖ ≤ Mc) →
-        ‖localProgressionForm r w f‖ ≤
-          C * Real.sqrt (r⁻¹ * ∫ y in Set.Ico a₀ (a₀ + r), ‖f jR y‖ ^ 2) *
-            intervalGowersNorm a₀ (a₀ + r) (f ig) * Mb * Mc) ∧
-      ‖localProgressionForm r w f‖ₑ ≤ ENNReal.ofReal C *
-        (eLpNorm (f jR) 1 (normalizedIntervalMeasure a₀ r) *
-          eLpNorm (f ig) 1 (normalizedIntervalMeasure a₀ r) *
-          eLpNorm (f kb) ⊤ (normalizedIntervalMeasure a₀ r) *
-          eLpNorm (f lc) ⊤ (normalizedIntervalMeasure a₀ r)) := by
-  refine ⟨vonNeumannConst κ, vonNeumannConst_nonneg κ, ?_⟩
-  intro a₀ r hr w hw f hf jR ig kb lc h1 h2 h3 h4 h5 h6
-  refine ⟨fun {Mb Mc} hR hg hb hc => ?_, vonNeumann_local_L1 hr hw f hf h1 h2 h3 h4 h5 h6⟩
-  have h := vonNeumann_local_L2 hr hw f hf h1 h2 h3 h4 h5 h6 hR hg hb hc
-  have ha : a₀ ∈ Set.Ico a₀ (a₀ + r) := ⟨le_rfl, by linarith⟩
-  have hMb : 0 ≤ Mb := (norm_nonneg _).trans (hb a₀ ha)
-  have hMc : 0 ≤ Mc := (norm_nonneg _).trans (hc a₀ ha)
-  have hU := intervalGowersNorm_nonneg_of_memLp hr (hf ig) hg
-  set S := Real.sqrt (r⁻¹ * ∫ y in Set.Ico a₀ (a₀ + r), ‖f jR y‖ ^ 2)
-  have hS : 0 ≤ S := Real.sqrt_nonneg _
-  calc ‖localProgressionForm r w f‖ ≤ _ := h
-    _ = (kernelFourierConst κ * 64) * (S * intervalGowersNorm a₀ (a₀ + r) (f ig) * Mb * Mc) := by
-        ring
-    _ ≤ vonNeumannConst κ * (S * intervalGowersNorm a₀ (a₀ + r) (f ig) * Mb * Mc) :=
-        mul_le_mul_of_nonneg_right (le_max_left _ _) (by positivity)
-    _ = _ := by ring
-
 theorem sum_fin_four_perm {M : Type*} [AddCommMonoid M] (φ : Fin 4 → M) {a b c d : Fin 4}
     (hab : a ≠ b) (hac : a ≠ c) (had : a ≠ d) (hbc : b ≠ c) (hbd : b ≠ d) (hcd : c ≠ d) :
     ∑ j, φ j = φ a + φ b + φ c + φ d := by
@@ -2339,139 +2304,10 @@ theorem localProgressionForm_update_congr_ae {κ : LocalKernelClass} {a₀ r : �
   rw [hz, zero_mul, zero_mul, zero_mul, mul_zero] at hb
   exact enorm_eq_zero.mp (le_antisymm hb zero_le)
 
-/-- The truncation of `g` at the level `M`: it agrees with `g` where `‖g‖ ≤ M` and vanishes
-elsewhere. -/
-noncomputable def truncAtLevel (g : ℝ → ℂ) (M : ℝ) : ℝ → ℂ := fun y => if ‖g y‖ ≤ M then g y else 0
-
-theorem truncAtLevel_measurable {g : ℝ → ℂ} (hg : Measurable g) (M : ℝ) :
-    Measurable (truncAtLevel g M) :=
-  Measurable.ite (measurableSet_le hg.norm measurable_const) hg measurable_const
-
-theorem norm_truncAtLevel_le (g : ℝ → ℂ) {M : ℝ} (hM : 0 ≤ M) (y : ℝ) :
-    ‖truncAtLevel g M y‖ ≤ M := by
-  unfold truncAtLevel
-  split_ifs with h
-  · exact h
-  · simpa using hM
-
-/-- An essentially bounded function is bounded almost everywhere by its essential supremum. -/
-theorem ae_norm_le_eLpNorm_top_toReal {g : ℝ → ℂ} {μ : Measure ℝ} (hgm : Measurable g)
-    (hg : eLpNorm g ⊤ μ ≠ ⊤) : ∀ᵐ y ∂μ, ‖g y‖ ≤ (eLpNorm g ⊤ μ).toReal := by
-  have hEq : eLpNorm g ⊤ μ = eLpNormEssSup g μ := eLpNorm_exponent_top hgm.aestronglyMeasurable
-  have hae := ae_le_eLpNormEssSup (f := g) (μ := μ)
-  rw [hEq] at hg ⊢
-  filter_upwards [hae] with y hy
-  have := ENNReal.toReal_mono hg hy
-  simpa using this
-
-/-- An essentially bounded function agrees almost everywhere with its truncation at the level of
-its essential supremum. -/
-theorem truncAtLevel_ae_eq {g : ℝ → ℂ} {μ : Measure ℝ} (hgm : Measurable g)
-    (hg : eLpNorm g ⊤ μ ≠ ⊤) :
-    g =ᵐ[μ] truncAtLevel g (eLpNorm g ⊤ μ).toReal := by
-  filter_upwards [ae_norm_le_eLpNorm_top_toReal hgm hg] with y hy
-  simp [truncAtLevel, hy]
-
 /-- Four distinct elements exhaust `Fin 4`. -/
 theorem fin4_eq_of_distinct : ∀ jR ig kb lc j : Fin 4, jR ≠ ig → jR ≠ kb → jR ≠ lc → ig ≠ kb →
     ig ≠ lc → kb ≠ lc → j = jR ∨ j = ig ∨ j = kb ∨ j = lc := by
   decide
-
-theorem eLpNorm_two_normalized_ne_top_of_Ico {a₀ r : ℝ} {g : ℝ → ℂ}
-    (hg : MemLp g 2 (volume.restrict (Set.Ico a₀ (a₀ + r)))) :
-    eLpNorm g 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤ := by
-  have h : MemLp g 2 (volume.restrict (Set.Icc a₀ (a₀ + r))) := by
-    rwa [← Measure.restrict_congr_set Ico_ae_eq_Icc]
-  exact (h.smul_measure ENNReal.ofReal_ne_top).eLpNorm_ne_top
-
-theorem eLpNorm_two_normalized_ne_top_of_top {a₀ r : ℝ} (hr : 0 < r) {g : ℝ → ℂ}
-    (hgm : Measurable g) (hg : eLpNorm g ⊤ (normalizedIntervalMeasure a₀ r) ≠ ⊤) :
-    eLpNorm g 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤ := by
-  have := normalizedIntervalMeasure_probability a₀ hr
-  have h : MemLp g ⊤ (normalizedIntervalMeasure a₀ r) :=
-    memLp_top_of_bound hgm.aestronglyMeasurable _ (ae_norm_le_eLpNorm_top_toReal hgm hg)
-  exact (h.mono_exponent le_top).eLpNorm_ne_top
-
-/-- **Blueprint lem:von-neumann, eq:von-neumann, lines 1419-1426, with `b, c ∈ L^∞(I)`.** For any
-ordering of four distinct slots, with `R, g ∈ L²(I)` and `b, c ∈ L^∞(I)`,
-`|H_I(R, g, b, c)| ≤ C ‖R‖_{2,I} ‖g‖_{U(I)} ‖b‖_∞ ‖c‖_∞`, where `‖·‖_∞` is the essential supremum
-on `I`; the constant depends only on the admissible kernel class. -/
-theorem vonNeumann_essSup (κ : LocalKernelClass) :
-    ∃ C : ℝ, 0 ≤ C ∧ ∀ {a₀ r : ℝ}, 0 < r → ∀ {w : ℝ × ℝ → ℂ},
-      IsAdmissibleLocalKernel κ a₀ r w → ∀ f : Fin 4 → ℝ → ℂ, (∀ j, Measurable (f j)) →
-      ∀ {jR ig kb lc : Fin 4}, jR ≠ ig → jR ≠ kb → jR ≠ lc → ig ≠ kb → ig ≠ lc → kb ≠ lc →
-      MemLp (f jR) 2 (volume.restrict (Set.Ico a₀ (a₀ + r))) →
-      MemLp (f ig) 2 (volume.restrict (Set.Ico a₀ (a₀ + r))) →
-      eLpNorm (f kb) ⊤ (normalizedIntervalMeasure a₀ r) ≠ ⊤ →
-      eLpNorm (f lc) ⊤ (normalizedIntervalMeasure a₀ r) ≠ ⊤ →
-      ‖localProgressionForm r w f‖ ≤
-        C * Real.sqrt (r⁻¹ * ∫ y in Set.Ico a₀ (a₀ + r), ‖f jR y‖ ^ 2) *
-          intervalGowersNorm a₀ (a₀ + r) (f ig) *
-          (eLpNorm (f kb) ⊤ (normalizedIntervalMeasure a₀ r)).toReal *
-          (eLpNorm (f lc) ⊤ (normalizedIntervalMeasure a₀ r)).toReal := by
-  obtain ⟨C, hC, hvn⟩ := vonNeumannOneL2 κ
-  refine ⟨C, hC, ?_⟩
-  intro a₀ r hr w hw f hf jR ig kb lc h1 h2 h3 h4 h5 h6 hR hg hb hc
-  set μ := normalizedIntervalMeasure a₀ r with hμ
-  set Mb := (eLpNorm (f kb) ⊤ μ).toReal with hMb
-  set Mc := (eLpNorm (f lc) ⊤ μ).toReal with hMc
-  have hMb0 : 0 ≤ Mb := ENNReal.toReal_nonneg
-  have hMc0 : 0 ≤ Mc := ENNReal.toReal_nonneg
-  set b' := truncAtLevel (f kb) Mb with hb'
-  set c' := truncAtLevel (f lc) Mc with hc'
-  have hb'm : Measurable b' := truncAtLevel_measurable (hf kb) Mb
-  have hc'm : Measurable c' := truncAtLevel_measurable (hf lc) Mc
-  have hall : ∀ j : Fin 4, j = jR ∨ j = ig ∨ j = kb ∨ j = lc := fun j =>
-    fin4_eq_of_distinct jR ig kb lc j h1 h2 h3 h4 h5 h6
-  have hfin : ∀ j, eLpNorm (f j) 2 μ ≠ ⊤ := by
-    intro j
-    rcases hall j with rfl | rfl | rfl | rfl
-    · exact eLpNorm_two_normalized_ne_top_of_Ico hR
-    · exact eLpNorm_two_normalized_ne_top_of_Ico hg
-    · exact eLpNorm_two_normalized_ne_top_of_top hr (hf _) hb
-    · exact eLpNorm_two_normalized_ne_top_of_top hr (hf _) hc
-  have hb'top : eLpNorm b' ⊤ μ ≠ ⊤ := by
-    rw [← eLpNorm_congr_ae (truncAtLevel_ae_eq (hf kb) hb)]; exact hb
-  have hc'top : eLpNorm c' ⊤ μ ≠ ⊤ := by
-    rw [← eLpNorm_congr_ae (truncAtLevel_ae_eq (hf lc) hc)]; exact hc
-  -- replace `f kb` by its truncation
-  have e1 := localProgressionForm_update_congr_ae hr hw hf hfin (Ne.symm h2) (Ne.symm h4) h6 h1 h3
-    h5
-    (hf kb) hb'm (hfin kb) (eLpNorm_two_normalized_ne_top_of_top hr hb'm hb'top)
-    (truncAtLevel_ae_eq (hf kb) hb)
-  rw [Function.update_eq_self] at e1
-  set f1 := Function.update f kb b' with hf1
-  have hf1m : ∀ j, Measurable (f1 j) := by
-    intro j; rw [hf1]; by_cases hj : j = kb
-    · subst hj; simpa using hb'm
-    · rw [Function.update_of_ne hj]; exact hf j
-  have hfin1 : ∀ j, eLpNorm (f1 j) 2 μ ≠ ⊤ := by
-    intro j; rw [hf1]; by_cases hj : j = kb
-    · subst hj; simpa using eLpNorm_two_normalized_ne_top_of_top hr hb'm hb'top
-    · rw [Function.update_of_ne hj]; exact hfin j
-  have hf1lc : f1 lc = f lc := by rw [hf1, Function.update_of_ne (Ne.symm h6)]
-  -- replace `f lc` by its truncation
-  have e2 := localProgressionForm_update_congr_ae hr hw hf1m hfin1 (Ne.symm h3) (Ne.symm h5)
-    (Ne.symm h6) h1 h2 h4 (hf1m lc) hc'm (hfin1 lc)
-    (eLpNorm_two_normalized_ne_top_of_top hr hc'm hc'top)
-    (by rw [hf1lc]; exact truncAtLevel_ae_eq (hf lc) hc)
-  rw [Function.update_eq_self] at e2
-  set f2 := Function.update f1 lc c' with hf2
-  have hf2m : ∀ j, Measurable (f2 j) := by
-    intro j; rw [hf2]; by_cases hj : j = lc
-    · subst hj; simpa using hc'm
-    · rw [Function.update_of_ne hj]; exact hf1m j
-  have hf2R : f2 jR = f jR := by rw [hf2, hf1, Function.update_of_ne h3, Function.update_of_ne h2]
-  have hf2g : f2 ig = f ig := by rw [hf2, hf1, Function.update_of_ne h5, Function.update_of_ne h4]
-  have hf2b : f2 kb = b' := by rw [hf2, hf1, Function.update_of_ne h6, Function.update_self]
-  have hf2c : f2 lc = c' := by rw [hf2, Function.update_self]
-  have hbound := (hvn hr hw f2 hf2m h1 h2 h3 h4 h5 h6).1 (Mb := Mb) (Mc := Mc)
-    (by rw [hf2R]; exact hR) (by rw [hf2g]; exact hg)
-    (fun y _ => by rw [hf2b]; exact norm_truncAtLevel_le _ hMb0 y)
-    (fun y _ => by rw [hf2c]; exact norm_truncAtLevel_le _ hMc0 y)
-  rw [hf2R, hf2g] at hbound
-  rw [e1, e2]
-  exact hbound
 
 theorem memLp_Ico_of_normalized {a₀ r : ℝ} (hr : 0 < r) {g : ℝ → ℂ}
     (hg : eLpNorm g 2 (normalizedIntervalMeasure a₀ r) ≠ ⊤) :
@@ -2780,8 +2616,6 @@ theorem of_le (hab : a ≤ b) (h : QPLe Y K b) : QPLe Y K a := hab.trans h
 
 theorem one_le (hY : 1 ≤ Y) : QPLe Y K 1 := by
   unfold QPLe; exact Real.one_le_exp (by positivity)
-
-theorem exp_Y : QPLe Y 1 (Real.exp Y) := by unfold QPLe; simp
 
 theorem mul (hY : 1 ≤ Y) (hb0 : 0 ≤ b) (ha : QPLe Y K a) (hb : QPLe Y L b) :
     QPLe Y (K + L) (a * b) := by

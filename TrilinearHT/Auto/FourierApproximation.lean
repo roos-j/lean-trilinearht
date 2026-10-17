@@ -122,20 +122,6 @@ theorem norm_fourier_antideriv_factor (n : ℤ) :
   rw [abs_of_pos Real.pi_pos]
   simp
 
-theorem norm_fourierCoeffOn_le_of_deriv_bound
-    {a b C : ℝ} (hab : a < b) {f f' : ℝ → ℂ} {n : ℤ} (hn : n ≠ 0)
-    (hf : ∀ x ∈ Set.uIcc a b, HasDerivAt f (f' x) x)
-    (hf' : IntervalIntegrable f' volume a b)
-    (hboundary : f b = f a)
-    (hbound : ∀ x ∈ Set.uIoc a b, ‖f' x‖ ≤ C) :
-    ‖fourierCoeffOn hab f n‖ ≤
-      (2 * Real.pi * |(n : ℝ)|)⁻¹ * |b - a| * C := by
-  rw [norm_fourierCoeffOn_of_hasDerivAt_zeroBoundary
-    hab hn hf hf' hboundary, norm_fourier_antideriv_factor]
-  exact mul_le_mul_of_nonneg_left
-    (norm_fourierCoeffOn_le_of_norm_le hab n hbound)
-    (mul_nonneg (inv_nonneg.mpr (by positivity)) (abs_nonneg _))
-
 theorem norm_fourierCoeffOn_le_of_iteratedDeriv_bound
     {a b C : ℝ} (hab : a < b) {f : ℝ → ℂ} {n : ℤ} (hn : n ≠ 0)
     (N : ℕ) (hf : ContDiff ℝ N f)
@@ -454,24 +440,6 @@ theorem sum_frequencyShell_le {d m : ℕ} {A T : ℝ} (hA : 0 ≤ A) (hT : 1 ≤
       rw [Real.rpow_sub hTpos, Real.rpow_natCast, Real.rpow_natCast, mul_pow, div_pow]
       ring
 
-/-- Blueprint Lemma `lem:fourier-foundation`, the nonzero Fourier shell
-estimate obtained from smooth coordinate derivatives. -/
-theorem sum_mFourierCoeff_frequencyShell_le {d m : ℕ} {A T : ℝ} (hT : 1 ≤ T)
-    (F : UnitAddTorus (Fin (d + 1)) → ℂ) (hF : Continuous F)
-    (hsmooth : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)),
-      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)))
-    (hbound : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) (x : ℝ),
-      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) x‖ ≤ A) :
-    ∑ n ∈ frequencyShell (d + 1) T, ‖UnitAddTorus.mFourierCoeff F n‖ ≤
-      (7 : ℝ) ^ (d + 1) * A * (Real.sqrt (d + 1 : ℝ)) ^ m *
-        T ^ ((d + 1 : ℝ) - m) := by
-  have hA : 0 ≤ A := (norm_nonneg _).trans (hbound 0 (fun _ => 0) 0)
-  simpa only [Nat.cast_add, Nat.cast_one] using sum_frequencyShell_le hA hT
-    (UnitAddTorus.mFourierCoeff F)
-    (fun n hn => by
-      simpa only [Nat.cast_add, Nat.cast_one] using
-        norm_mFourierCoeff_le_derivative_bound F hF n hn m hsmooth hbound)
-
 /-- Nonzero integer frequencies are covered by the dyadic shells. -/
 theorem exists_mem_dyadic_frequencyShell {d : ℕ} {n : Fin d → ℤ} (hn : n ≠ 0) :
     ∃ k : ℕ, n ∈ frequencyShell d ((2 : ℝ) ^ k) := by
@@ -698,56 +666,6 @@ theorem mem_frequencyTruncationSet {d K : ℕ} {n : Fin d → ℤ} :
     rcases h with rfl | h
     · simp [frequencyLength]
     · linarith
-
-/-- Blueprint Lemma `lem:fourier-foundation`: quantitative truncation in the
-uniform norm, with the constant Fourier mode retained separately. -/
-theorem norm_mFourier_truncation_error {d m : ℕ} {A : ℝ} (hm : d + 1 < m)
-    (F : C(UnitAddTorus (Fin (d + 1)), ℂ))
-    (hsmooth : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)),
-      ContDiff ℝ m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)))
-    (hbound : ∀ (i : Fin (d + 1)) (y : UnitAddTorus (Fin d)) (x : ℝ),
-      ‖iteratedDeriv m (fun t : ℝ => F (i.insertNth (t : UnitAddCircle) y)) x‖ ≤ A)
-    (K : ℕ) :
-    ‖F - ∑ n ∈ frequencyTruncationSet (d + 1) K,
-      UnitAddTorus.mFourierCoeff F n • UnitAddTorus.mFourier n‖ ≤
-      (7 : ℝ) ^ (d + 1) * A * (Real.sqrt (d + 1 : ℝ)) ^ m *
-        ((2 : ℝ) ^ K) ^ ((d + 1 : ℝ) - m) /
-          (1 - (2 : ℝ) ^ ((d + 1 : ℝ) - m)) := by
-  classical
-  let s := frequencyTruncationSet (d + 1) K
-  let t : (Fin (d + 1) → ℤ) → C(UnitAddTorus (Fin (d + 1)), ℂ) :=
-    fun n => UnitAddTorus.mFourierCoeff F n • UnitAddTorus.mFourier n
-  have hnorm : ∀ n, ‖t n‖ = ‖UnitAddTorus.mFourierCoeff F n‖ := by
-    intro n
-    simp [t, norm_smul, UnitAddTorus.mFourier_norm]
-  have htn : Summable (fun n => ‖t n‖) := by
-    simpa only [hnorm] using summable_norm_mFourierCoeff hm F F.continuous hsmooth hbound
-  have hsum : HasSum t F := hasSum_mFourier_of_derivative_bound hm F hsmooth hbound
-  have heq : F - ∑ n ∈ s, t n =
-      ∑' n : ↥((↑s : Set (Fin (d + 1) → ℤ))ᶜ), t n := by
-    have h := htn.of_norm.sum_add_tsum_compl (s := s)
-    rw [hsum.tsum_eq] at h
-    symm
-    apply eq_sub_iff_add_eq.mpr
-    simpa [add_comm] using h
-  change ‖F - ∑ n ∈ s, t n‖ ≤ _
-  rw [heq]
-  have hA : 0 ≤ A := (norm_nonneg _).trans (hbound 0 (fun _ => 0) 0)
-  calc
-    _ ≤ ∑' n : ↥((↑s : Set (Fin (d + 1) → ℤ))ᶜ), ‖t n‖ :=
-      norm_tsum_le_tsum_norm (htn.subtype _)
-    _ = ∑' n, if n ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength n then
-        ‖UnitAddTorus.mFourierCoeff F n‖ else 0 := by
-      rw [tsum_subtype ((↑s : Set (Fin (d + 1) → ℤ))ᶜ) (fun n => ‖t n‖)]
-      apply tsum_congr
-      intro n
-      simp [Set.indicator, s, mem_frequencyTruncationSet, hnorm, not_or]
-    _ ≤ _ := by
-      simpa only [Nat.cast_add, Nat.cast_one] using frequency_tail_bound hA hm
-        (UnitAddTorus.mFourierCoeff F)
-        (fun n hn => by
-          simpa only [Nat.cast_add, Nat.cast_one] using
-            norm_mFourierCoeff_le_derivative_bound F F.continuous n hn m hsmooth hbound) K
 
 end TorusFourier
 

@@ -46,8 +46,6 @@ Apache 2.0. Here parity counts true coordinates, exactly as in the supplied blue
 /-- Conjugation to the power of a natural number, reduced modulo two. -/
 noncomputable def cubeConj (n : ℕ) (z : ℂ) : ℂ := if Even n then z else conj z
 
-theorem cubeConj_zero (z : ℂ) : cubeConj 0 z = z := by simp [cubeConj]
-
 theorem cubeConj_succ (n : ℕ) (z : ℂ) : cubeConj (n + 1) z = conj (cubeConj n z) := by
   by_cases h : Even n <;> simp [cubeConj, h, Nat.even_add_one]
 
@@ -707,44 +705,6 @@ theorem gowersNorm_three_const_mul {G : Type*} [AddCommGroup G] [MeasurableSpace
     (mul_nonneg (norm_nonneg _) (gowersNorm_nonneg μ (by norm_num) f hf hbf))
     (by norm_num : (8 : ℕ) ≠ 0)).mp hp
 
-theorem gowersNorm_three_zero {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant] :
-    gowersNorm μ 3 (fun _ : G => 0) = 0 := by
-  simpa only [zero_mul, norm_zero] using
-    gowersNorm_three_const_mul μ 0 (fun _ : G => 0) measurable_const (M := 0) (by simp)
-
-/-- The complex vector space of pointwise bounded measurable functions. -/
-def boundedMeasurableSubmodule (G : Type*) [MeasurableSpace G] : Submodule ℂ (G → ℂ) where
-  carrier := {f | Measurable f ∧ ∃ M : ℝ, ∀ x, ‖f x‖ ≤ M}
-  zero_mem' := ⟨measurable_const, 0, by simp⟩
-  add_mem' := by
-    rintro f g ⟨hf, M, hM⟩ ⟨hg, N, hN⟩
-    exact ⟨hf.add hg, M + N, fun x =>
-      (norm_add_le _ _).trans (add_le_add (hM x) (hN x))⟩
-  smul_mem' := by
-    rintro c f ⟨hf, M, hM⟩
-    refine ⟨measurable_const.mul hf, ‖c‖ * M, fun x => ?_⟩
-    change ‖c * f x‖ ≤ _
-    rw [norm_mul]
-    exact mul_le_mul_of_nonneg_left (hM x) (norm_nonneg _)
-
-/-- The order-three Gowers seminorm, bundled on bounded measurable functions. -/
-noncomputable def gowersThreeSeminorm {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] (μ : Measure G) [IsProbabilityMeasure μ] [μ.IsAddLeftInvariant] :
-    Seminorm ℂ (boundedMeasurableSubmodule G) :=
-  Seminorm.of (fun f => gowersNorm μ 3 f.1)
-    (by
-      intro f g
-      obtain ⟨M, hM⟩ := f.2.2
-      obtain ⟨N, hN⟩ := g.2.2
-      exact gowersNorm_three_add_le μ f.1 g.1 f.2.1 g.2.1
-        (fun x => (hM x).trans (le_max_left M N))
-        (fun x => (hN x).trans (le_max_right M N)))
-    (by
-      intro c f
-      obtain ⟨M, hM⟩ := f.2.2
-      exact gowersNorm_three_const_mul μ c f.1 f.2.1 hM)
-
 /-! Independent tetrahedral vertex coordinates for the cube `L²` estimate. -/
 
 def tetrahedronShear {G : Type*} [AddCommGroup G] [MeasurableSpace G]
@@ -1185,18 +1145,6 @@ noncomputable def l2CubeContinuous {G : Type*} [AddCommGroup G] [MeasurableSpace
       cubeAverage_three_le_L2 μ (fun ω => l2Representative μ (f ω))
         (fun ω => l2Representative_measurable μ _) (fun ω => l2Representative_memLp μ _))
 
-/-- Specialization to every real torus with normalized Haar measure, in particular
-the period-sixteen torus used later in the blueprint. -/
-noncomputable def torusCubeContinuous (T : ℝ) [Fact (0 < T)] (d : ℕ) :
-    ContinuousMultilinearMap ℝ
-      (fun _ : Fin 3 → Bool => Lp ℂ 2
-        (Measure.pi (fun _ : Fin d => (AddCircle.haarAddCircle : Measure (AddCircle T))))) ℂ := by
-  let μ : Measure (AddCircle T) := AddCircle.haarAddCircle
-  letI : (Measure.pi (fun _ : Fin d => μ)).IsNegInvariant :=
-    ⟨(measurePreserving_pi (fun _ : Fin d => μ) (fun _ => μ)
-      (fun _ => Measure.measurePreserving_neg μ)).map_eq⟩
-  exact l2CubeContinuous _
-
 /-- Normalized counting measure, the Haar probability measure on a finite group. -/
 noncomputable def finiteHaar (G : Type*) [Fintype G] [MeasurableSpace G] : Measure G :=
   ((Fintype.card G : ℝ≥0∞)⁻¹) • Measure.count
@@ -1217,10 +1165,6 @@ instance finiteHaar_isAddLeftInvariant (G : Type*) [AddGroup G] [Fintype G]
 noncomputable def cyclicCellAverage (L : ℕ) (g : ℝ → ℂ) (j : ZMod (16 * L + 1)) : ℂ :=
   if j.val < L then (L : ℂ) *
     ∫ x in (j.val : ℝ) / L..((j.val : ℝ) + 1) / L, g x else 0
-
-theorem cyclicCellAverage_eq_zero {L : ℕ} (g : ℝ → ℂ)
-    (j : ZMod (16 * L + 1)) (hj : L ≤ j.val) : cyclicCellAverage L g j = 0 := by
-  simp [cyclicCellAverage, not_lt.mpr hj]
 
 theorem cyclicCellAverage_norm_le_one {L : ℕ} (hL : 0 < L)
     (g : ℝ → ℂ) (hg : ∀ x, ‖g x‖ ≤ 1) (j : ZMod (16 * L + 1)) :

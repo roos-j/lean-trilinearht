@@ -26,47 +26,6 @@ open scoped FourierTransform ComplexConjugate ENNReal
 
 /-! ### The large parameter and small overheads -/
 
-open Filter in
-/-- Blueprint sec:localization, lines 1668-1673, with `η = e^{-k^θ}` (prop:base, line 1607):
-for fixed `0 < α < 1` and `0 < θ ≤ 1` the large parameter `P = ⌈η^{-α}⌉` satisfies
-`2 ≤ P ≤ e^k` for all sufficiently large `k`; every small overhead
-`G₀ = exp(C_q (1 + log(2k))^C)` (`eq:small-overhead`) is at most `P^ε` for each fixed `ε > 0`
-(`G₀ = P^{o(1)}`), and every fixed power `k^p` is at most `P^ε` (lem:budget-rules). The thresholds
-depend on `α, θ, C_q, C, p, ε`; the degrees `C, p` are arbitrary and do not depend on `α`. -/
-theorem localization_largeParameter {α θ : ℝ} (hα0 : 0 < α) (hα1 : α < 1) (hθ0 : 0 < θ)
-    (hθ1 : θ ≤ 1) (Cq : ℝ) (C : ℕ) (p : ℝ) {ε : ℝ} (hε : 0 < ε) :
-    ∀ᶠ k : ℝ in atTop,
-      2 ≤ (⌈Real.exp (-k ^ θ) ^ (-α)⌉₊ : ℝ) ∧ (⌈Real.exp (-k ^ θ) ^ (-α)⌉₊ : ℝ) ≤ Real.exp k ∧
-      Real.exp (Cq * (1 + Real.log (2 * k)) ^ C) ≤ (⌈Real.exp (-k ^ θ) ^ (-α)⌉₊ : ℝ) ^ ε ∧
-      k ^ p ≤ (⌈Real.exp (-k ^ θ) ^ (-α)⌉₊ : ℝ) ^ ε := by
-  have hP : ∀ k : ℝ, Real.exp (-k ^ θ) ^ (-α) = Real.exp (α * k ^ θ) := fun k => by
-    rw [← Real.exp_mul]; ring_nf
-  filter_upwards [quasipolynomial_overhead_eventually_le_ceiling_power Cq C hα0 hθ0 hε,
-    fixed_power_eventually_le_ceiling_power (p := p) hα0 hθ0 hε,
-    eventually_ge_atTop (max 1 (1 / (1 - α)))] with k h1 h2 hk
-  rw [hP]
-  have hk1 : 1 ≤ k := le_trans (le_max_left _ _) hk
-  have hk2 : 1 / (1 - α) ≤ k := le_trans (le_max_right _ _) hk
-  have hk0 : 0 < k := by linarith
-  refine ⟨?_, ?_, h1, h2⟩
-  · have hx : 1 < Real.exp (α * k ^ θ) := Real.one_lt_exp_iff.mpr (by positivity)
-    have h3 : 1 < ⌈Real.exp (α * k ^ θ)⌉₊ := Nat.lt_ceil.mpr (by exact_mod_cast hx)
-    have h4 : 2 ≤ ⌈Real.exp (α * k ^ θ)⌉₊ := h3
-    exact_mod_cast h4
-  · have hkθ : k ^ θ ≤ k := by
-      have := Real.rpow_le_rpow_of_exponent_le hk1 hθ1
-      rwa [Real.rpow_one] at this
-    have hlin : 1 ≤ k * (1 - α) := (div_le_iff₀ (by linarith)).mp hk2
-    have hexp : α * k ^ θ ≤ k - 1 := by nlinarith
-    have hc := Nat.ceil_lt_add_one (Real.exp_pos (α * k ^ θ)).le
-    have h3 : Real.exp (α * k ^ θ) ≤ Real.exp (k - 1) := Real.exp_le_exp.mpr hexp
-    have h4 : Real.exp k = Real.exp (k - 1) * Real.exp 1 := by rw [← Real.exp_add]; ring_nf
-    have h5 : 2 ≤ Real.exp 1 := by linarith [Real.add_one_le_exp (1 : ℝ)]
-    have h6 : 1 ≤ Real.exp (k - 1) := Real.one_le_exp (by linarith)
-    have h7 : Real.exp (k - 1) * 2 ≤ Real.exp (k - 1) * Real.exp 1 :=
-      mul_le_mul_of_nonneg_left h5 (Real.exp_pos _).le
-    linarith
-
 /-! ### Tags and the ambient graph -/
 
 /-- The conclusion `eq:weyl-splitting` of `lem:weyl` (one time variable) for horizontal data `V`,
@@ -972,10 +931,6 @@ theorem chartAltForm_sub_right {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (x y y
 
 theorem chartAltForm_self {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (x : Fin d → ℝ) :
     chartAltForm C x x = 0 := sub_self _
-
-theorem chartAltForm_swap {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (x y : Fin d → ℝ) :
-    chartAltForm C x y = -chartAltForm C y x := by
-  simp only [chartAltForm]; ring
 
 theorem chartMatrixPhase_blockNeg {d e : ℕ} (C : Matrix (Fin d) (Fin d) ℚ)
     (D : Matrix (Fin e) (Fin e) ℚ) (z w : Fin (d + e) → ℝ) :
@@ -1938,9 +1893,6 @@ theorem roundPot_eq {X X' : Finset V} (hX : X.Nonempty) (hXX : X ⊆ X') {sc sc'
   obtain ⟨z', hz'⟩ := hm
   rwa [hz.unique (hz'.of_later hX hXX hsc htop)]
 
-theorem roundTop_nonneg_of {X : Finset V} {sc : V → ℤ} {v : V} (hv : v ∈ X) (h : 0 ≤ sc v) :
-    0 ≤ roundTop X sc := h.trans (le_roundTop hv)
-
 end Rounds
 
 /-! Dyadic cohorts: the separating level of admission indices `i ≤ j` (0-based) is the bit length
@@ -1982,13 +1934,6 @@ theorem cohortLevel_halves {i j m : ℕ} (hij : i ≤ j) (hm : cohortLevel i j =
   have hj : j / 2 ^ m = j / 2 ^ (m - 1) / 2 := by rw [hp, Nat.div_div_eq_div_mul]
   have a1 := Nat.div_le_div_right (c := 2 ^ (m - 1)) hij
   omega
-
-theorem lt_cohortPrefix (i m : ℕ) : i < cohortPrefix i m := by
-  unfold cohortPrefix
-  split_ifs
-  · omega
-  · have := Nat.lt_div_mul_add (a := i) (Nat.two_pow_pos (m - 1))
-    rw [add_mul, one_mul]; linarith
 
 theorem cohortPrefix_le {i j m : ℕ} (hij : i ≤ j) (hm : cohortLevel i j = m) :
     cohortPrefix i m ≤ j + 1 := by
@@ -2073,25 +2018,6 @@ theorem clipW_mem {T U : ℝ} (hTU : T ≤ U) (x : WithBot ℤ) : T ≤ clipW T 
 theorem clipW_coe (T U : ℝ) (n : ℤ) : clipW T U (n : WithBot ℤ) = min U (max T n) := rfl
 
 theorem clipW_bot (T U : ℝ) : clipW T U ⊥ = T := rfl
-
-theorem clipW_mono {T U : ℝ} (hTU : T ≤ U) {x y : WithBot ℤ} (h : x ≤ y) :
-    clipW T U x ≤ clipW T U y := by
-  cases x with
-  | bot => exact (clipW_mem hTU y).1
-  | coe n =>
-    cases y with
-    | bot => exact absurd h (by simp)
-    | coe m =>
-      have : n ≤ m := WithBot.coe_le_coe.mp h
-      simp only [clipW_coe]
-      gcongr
-
-/-- Clipping is `1`-Lipschitz for integer arguments. -/
-theorem abs_clipW_sub_le {T U : ℝ} (n m : ℤ) :
-    |clipW T U n - clipW T U m| ≤ |(n : ℝ) - m| := by
-  simp only [clipW_coe]
-  refine (abs_min_sub_min_le_max _ _ _ _).trans (max_le (by simp) ?_)
-  exact (abs_max_sub_max_le_max _ _ _ _).trans (max_le (by simp [abs_nonneg]) le_rfl)
 
 /-- A clipped value strictly below the top equals the clipping from below only. -/
 theorem clipW_le_of_le {T U : ℝ} {x : WithBot ℤ} {c : ℝ} (hc : T ≤ c)
@@ -2460,19 +2386,6 @@ noncomputable def DepthDistance.ofEdges (edge : ℤ → V → V → Prop)
 theorem graphDist_le_one_of_edge {s : ℤ} {v w : V} (h : edge s v w) : graphDist edge s v w ≤ 1 :=
   graphDist_le_of_reach (n := 1) ⟨v, rfl, h⟩
 
-/-- Distance at most one means equality or an edge. -/
-theorem eq_or_edge_of_graphDist_le_one {s : ℤ} {v w : V} (h : graphDist edge s v w ≤ 1) :
-    v = w ∨ edge s v w := by
-  rcases eq_top_or_lt_top (graphDist edge s v w) with h₁ | h₁
-  · rw [h₁] at h; exact absurd h (by decide)
-  obtain ⟨k, hk⟩ := ENat.ne_top_iff_exists.mp h₁.ne
-  have hr := exists_reachIn_of_graphDist_eq hk.symm
-  have hk1 : k ≤ 1 := by rw [← hk] at h; exact_mod_cast h
-  interval_cases k
-  · exact Or.inl hr
-  · obtain ⟨u, hu, huw⟩ := hr
-    exact Or.inr ((hu : v = u) ▸ huw)
-
 end GraphDistance
 
 end Auto
@@ -2486,40 +2399,6 @@ open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
 /-! ### Binary split trees -/
-
-/-- A binary tree of filter insertions: each node splits the input of one slot by a linear
-operator `P` and its complement `1 - P`. -/
-inductive SplitTree (V : Type*) [AddCommGroup V] [Module ℂ V] : Type _
-  | leaf : SplitTree V
-  | node : Fin 4 → (V →ₗ[ℂ] V) → SplitTree V → SplitTree V → SplitTree V
-
-namespace SplitTree
-variable {V : Type*} [AddCommGroup V] [Module ℂ V]
-
-/-- The operator tuples of the leaves, composed after an initial tuple `acc`. -/
-def ops : SplitTree V → (Fin 4 → V →ₗ[ℂ] V) → List (Fin 4 → V →ₗ[ℂ] V)
-  | leaf, acc => [acc]
-  | node l P t₁ t₂, acc =>
-      ops t₁ (Function.update acc l (P ∘ₗ acc l)) ++
-        ops t₂ (Function.update acc l ((LinearMap.id - P) ∘ₗ acc l))
-
-/-- The number of leaves. -/
-def leafCount : SplitTree V → ℕ
-  | leaf => 1
-  | node _ _ t₁ t₂ => leafCount t₁ + leafCount t₂
-
-/-- The height: the maximal number of filters along a root-to-leaf path. -/
-def height : SplitTree V → ℕ
-  | leaf => 0
-  | node _ _ t₁ t₂ => max (height t₁) (height t₂) + 1
-
-theorem ops_length (t : SplitTree V) (acc : Fin 4 → V →ₗ[ℂ] V) :
-    (t.ops acc).length = t.leafCount := by
-  induction t generalizing acc with
-  | leaf => rfl
-  | node l P t₁ t₂ ih₁ ih₂ => simp [ops, leafCount, ih₁, ih₂]
-
-end SplitTree
 
 end Auto
 
@@ -2748,47 +2627,6 @@ theorem sum_norm_sq_restrict_le {V : Type*} [Fintype V] (Gd : RealDyadicGrid)
   rw [hy, Set.indicator_of_notMem hyI]
 
 open Classical in
-/-- The cell weights `a_I = Σ_G Σ_s 1_{I ∈ E_{G,s}} ‖1_I D_{G,s}‖² / |I|` of finitely many vectors
-measured on unions of disjoint cells: their integrated mass is the total squared restricted norm
-(`eq:path` for the side states). -/
-theorem cell_weights_mass (Gd : RealDyadicGrid) (Sc : Finset (ℤ × ℤ)) {ι : Type*} [Fintype ι]
-    {V : ι → Type*} [∀ G, Fintype (V G)] (Sd : Finset ℕ) (Ec : ι → ℕ → Finset (ℤ × ℤ))
-    (hsub : ∀ G s, Ec G s ⊆ Sc)
-    (hdis : ∀ G s, Set.PairwiseDisjoint (Ec G s : Set (ℤ × ℤ)) fun I => dyadicGridCell Gd I.1 I.2)
-    (D : ∀ G, ℕ → ColumnL2 (V G)) :
-    dyadicWeightedMass Gd Sc (fun I => ∑ G, ∑ s ∈ Sd, if I ∈ Ec G s then
-        ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
-          (D G s)‖ ^ 2 / dyadicGridLength Gd I.1 else 0) =
-      ∑ G, ∑ s ∈ Sd, ‖columnL2Restriction (⋃ I ∈ Ec G s, dyadicGridCell Gd I.1 I.2)
-        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable Gd I.1 I.2)
-          (D G s)‖ ^ 2 := by
-  unfold dyadicWeightedMass
-  have hcell : ∀ I : ℤ × ℤ, dyadicGridLength Gd I.1 * (∑ G, ∑ s ∈ Sd, if I ∈ Ec G s then
-      ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2) (dyadicGridCell_measurable Gd I.1 I.2)
-        (D G s)‖ ^ 2 / dyadicGridLength Gd I.1 else 0) =
-      ∑ G, ∑ s ∈ Sd, if I ∈ Ec G s then ‖columnL2Restriction (dyadicGridCell Gd I.1 I.2)
-        (dyadicGridCell_measurable Gd I.1 I.2) (D G s)‖ ^ 2 else 0 := by
-    intro I
-    have hI := (dyadicGridLength_pos Gd I.1).ne'
-    rw [Finset.mul_sum]
-    refine Finset.sum_congr rfl fun G _ => ?_
-    rw [Finset.mul_sum]
-    refine Finset.sum_congr rfl fun s _ => ?_
-    split_ifs
-    · field_simp
-    · simp
-  simp_rw [hcell]
-  rw [Finset.sum_comm]
-  refine Finset.sum_congr rfl fun G _ => ?_
-  rw [Finset.sum_comm]
-  refine Finset.sum_congr rfl fun s _ => ?_
-  rw [← Finset.sum_filter, ← sum_norm_sq_restrict_le Gd (Ec G s) (hdis G s) (D G s)]
-  congr 1
-  ext I
-  simp only [Finset.mem_filter, and_iff_right_iff_imp]
-  exact fun h => hsub G s h
-
-open Classical in
 /-- Path caps integrate to square budgets: `Σ_{I ∋ x} a_I ≤ C` everywhere gives
 `Σ_I |I| a_I ≤ C |R|` (blueprint `eq:path`). -/
 theorem integrated_cap_le (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (a : ℤ × ℤ → ℝ)
@@ -2839,27 +2677,6 @@ theorem U_cell_energy (l : Fin 4) (I : ℤ × ℤ) :
     one_mul]
   rfl
 
-open Classical in
-/-- Blueprint `eq:basic-side` on the root: the basic sides of one slot on cell families of
-distinct depths (pairwise disjoint as families) have total `L²` energy at most `E |R|`. -/
-theorem U_cells_energy_le {η₀ E : ℝ} (h : A.SubRootProps η₀ E) (l : Fin 4) (Sd : Finset ℕ)
-    (Tc : ℕ → Finset (ℤ × ℤ)) (hTc : ∀ s ∈ Sd, Tc s ⊆ A.cells)
-    (hdis : Set.PairwiseDisjoint (Sd : Set ℕ) Tc) :
-    ∑ s ∈ Sd, ∑ I ∈ Tc s, ∫ y in dyadicGridCell A.G I.1 I.2, ‖A.U l I y‖ ^ 2 ≤
-      E * dyadicGridLength A.G A.R.1 := by
-  have h1 := (h A.R subset_rfl).1 l
-  rw [← Finset.sum_biUnion hdis]
-  refine le_trans ?_ h1
-  have hsub : Sd.biUnion Tc ⊆ A.cells.filter fun I =>
-      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2 := by
-    intro I hI
-    obtain ⟨s, hs, hIs⟩ := Finset.mem_biUnion.mp hI
-    have hIc := hTc s hs hIs
-    exact Finset.mem_filter.mpr ⟨hIc, A.sub I hIc⟩
-  refine le_trans (le_of_eq (Finset.sum_congr rfl fun I _ => A.U_cell_energy l I)) ?_
-  exact Finset.sum_le_sum_of_subset_of_nonneg hsub fun I _ _ =>
-    mul_nonneg (dyadicGridLength_pos A.G I.1).le (sq_nonneg _)
-
 end ActiveSetup
 
 end Auto
@@ -2873,12 +2690,6 @@ open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
 /-! ### Basic leaf inputs as differences of current projections (blueprint line 1611) -/
-
-/-- Normalized-measure `L²` membership from global `L²` membership. -/
-theorem memLp_normalized_of_memLp {f : ℝ → ℂ} (hf : MemLp f 2 volume) (a r : ℝ) :
-    MemLp f 2 (normalizedIntervalMeasure a r) := by
-  unfold normalizedIntervalMeasure
-  exact (hf.restrict _).smul_measure ENNReal.ofReal_ne_top
 
 end Auto
 

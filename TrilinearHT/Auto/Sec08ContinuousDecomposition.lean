@@ -34,11 +34,6 @@ theorem l2CubeContinuous_toLp {G : Type*} [AddCommGroup G] [MeasurableSpace G]
   intro ω
   exact (l2Representative_ae μ _).trans (MemLp.coeFn_toLp (hfl ω))
 
-theorem l2CubeContinuous_norm_le_one {G : Type*} [AddCommGroup G] [MeasurableSpace G]
-    [MeasurableAdd₂ G] [MeasurableNeg G] (μ : Measure G) [IsProbabilityMeasure μ]
-    [μ.IsAddLeftInvariant] [μ.IsNegInvariant] : ‖l2CubeContinuous μ‖ ≤ 1 :=
-  MultilinearMap.mkContinuous_norm_le _ (by norm_num) _
-
 open scoped BigOperators
 open scoped BigOperators
 open Filter
@@ -375,34 +370,6 @@ theorem l2GowersThreeNorm_smul (c : ℂ) (f : Lp ℂ 2 μ) :
 noncomputable def l2GowersThreeSeminorm : Seminorm ℂ (Lp ℂ 2 μ) :=
   Seminorm.of (l2GowersThreeNorm μ) (l2GowersThreeNorm_add_le μ) (l2GowersThreeNorm_smul μ)
 
-theorem l2CubeContinuous_diagonal_re_nonneg (f : Lp ℂ 2 μ) :
-    0 ≤ (l2CubeContinuous μ (fun _ => f)).re := by
-  refine (Lp.simpleFunc.denseRange (E := ℂ) (μ := μ) (p := 2) (by norm_num)).induction_on
-    (p := fun u => 0 ≤ (l2CubeContinuous μ (fun _ => u)).re) f ?_ ?_
-  · exact isClosed_le continuous_const (Complex.continuous_re.comp
-      ((l2CubeContinuous μ).cont.comp (continuous_pi (fun _ => continuous_id))))
-  · intro u
-    obtain ⟨a, ha, hal, hea, M, hM⟩ := l2_simpleFunc_bounded_representative μ u
-    rw [← hea, l2CubeContinuous_toLp μ (fun _ => a) (fun _ => ha) (fun _ => hal)]
-    exact cubeAverage_diagonal_re_nonneg μ (by norm_num) a ha hM
-
-theorem l2GowersThreeSeminorm_le_norm (f : Lp ℂ 2 μ) :
-    l2GowersThreeSeminorm μ f ≤ ‖f‖ := by
-  have hbound : ‖l2CubeContinuous μ (fun _ => f)‖ ≤ ‖f‖ ^ 8 := by
-    apply ((l2CubeContinuous μ).le_opNorm (fun _ => f)).trans
-    calc
-      _ ≤ 1 * ∏ _ω : Fin 3 → Bool, ‖f‖ :=
-        mul_le_mul_of_nonneg_right (l2CubeContinuous_norm_le_one μ) (by positivity)
-      _ = _ := by simp
-  change (l2CubeContinuous μ (fun _ => f)).re ^ ((8 : ℝ)⁻¹) ≤ ‖f‖
-  calc
-    _ ≤ (‖f‖ ^ 8) ^ ((8 : ℝ)⁻¹) :=
-      Real.rpow_le_rpow (l2CubeContinuous_diagonal_re_nonneg μ f)
-        ((Complex.re_le_norm _).trans hbound) (by positivity)
-    _ = _ := by
-      rw [← Real.rpow_natCast_mul (norm_nonneg f) 8]
-      norm_num
-
 end L2GowersSeminorm
 
 /-! The interval-to-torus L² realization used by `lem:inverse`, line 1218. -/
@@ -415,26 +382,10 @@ instance unitIntervalMeasure_probability : IsProbabilityMeasure unitIntervalMeas
 noncomputable def unitIntervalL2Extension (f : Lp ℂ 2 unitIntervalMeasure) : ℝ → ℂ :=
   (Set.Ico (0 : ℝ) 1).indicator (l2Representative unitIntervalMeasure f)
 
-theorem unitIntervalL2Extension_measurable (f : Lp ℂ 2 unitIntervalMeasure) :
-    Measurable (unitIntervalL2Extension f) :=
-  (l2Representative_measurable unitIntervalMeasure f).indicator measurableSet_Ico
-
 theorem unitIntervalL2Extension_memLp (f : Lp ℂ 2 unitIntervalMeasure) :
     MemLp (unitIntervalL2Extension f) 2 volume :=
   (memLp_indicator_iff_restrict measurableSet_Ico.nullMeasurableSet).mpr
     (l2Representative_memLp unitIntervalMeasure f)
-
-theorem unitIntervalL2Extension_ae (f : Lp ℂ 2 unitIntervalMeasure) :
-    unitIntervalL2Extension f =ᵐ[unitIntervalMeasure] f := by
-  filter_upwards [l2Representative_ae unitIntervalMeasure f,
-    (ae_restrict_mem measurableSet_Ico : ∀ᵐ x ∂unitIntervalMeasure, x ∈ Set.Ico (0 : ℝ) 1)]
-    with x hrep hx
-  rw [unitIntervalL2Extension, Set.indicator_of_mem hx, hrep]
-
-theorem unitIntervalL2Extension_support (f : Lp ℂ 2 unitIntervalMeasure)
-    (x : ℝ) (hx : unitIntervalL2Extension f x ≠ 0) : x ∈ Set.Ico (0 : ℝ) 1 := by
-  by_contra hn
-  exact hx (Set.indicator_of_notMem hn _)
 
 theorem circle_lift_ae_congr {f g : ℝ → ℂ} (hfg : f =ᵐ[volume] g) :
     AddCircle.liftIoc (16 : ℝ) (-8) f =ᵐ[AddCircle.haarAddCircle]
@@ -550,11 +501,6 @@ noncomputable def unitIntervalGowersSeminorm : Seminorm ℂ (Lp ℂ 2 unitInterv
   (l2GowersThreeSeminorm (AddCircle.haarAddCircle : Measure (AddCircle (16 : ℝ)))).comp
     unitIntervalL2CircleLinear
 
-theorem unitIntervalGowersSeminorm_le_norm (f : Lp ℂ 2 unitIntervalMeasure) :
-    unitIntervalGowersSeminorm f ≤ ‖f‖ :=
-  (l2GowersThreeSeminorm_le_norm _ (unitIntervalL2Circle f)).trans
-    (unitIntervalL2Circle_norm_le f)
-
 theorem unitIntervalL2Extension_toLp {f : ℝ → ℂ} (hf : MemLp f 2 unitIntervalMeasure) :
     unitIntervalL2Extension (hf.toLp f) =ᵐ[volume] (Set.Ico (0 : ℝ) 1).indicator f := by
   exact (ae_eq_restrict_iff_indicator_ae_eq measurableSet_Ico).mp
@@ -597,21 +543,6 @@ theorem l2_bounded_measurable_representative {X : Type*} [MeasurableSpace X]
     rw [Set.indicator_of_mem hxs]
     exact hx
 
-theorem unitIntervalL2_inner_correlation {f φ : ℝ → ℂ}
-    (hf : MemLp f 2 unitIntervalMeasure) (hφ : MemLp φ 2 unitIntervalMeasure) :
-    ‖inner ℂ (hf.toLp f) (hφ.toLp φ)‖ =
-      ‖∫ x in (0 : ℝ)..1, f x * conj (φ x)‖ := by
-  rw [← norm_inner_symm]
-  have he : inner ℂ (hφ.toLp φ) (hf.toLp f) =
-      ∫ x, f x * conj (φ x) ∂unitIntervalMeasure := by
-    rw [L2.inner_def]
-    apply integral_congr_ae
-    filter_upwards [MemLp.coeFn_toLp hf, MemLp.coeFn_toLp hφ] with x hx hy
-    rw [hx, hy]
-    simp [inner]
-  rw [he, intervalIntegral.integral_of_le (by norm_num), ← integral_Ico_eq_integral_Ioc]
-  rfl
-
 noncomputable def intervalProbabilityMeasure (a b : ℝ) : Measure ℝ :=
   Measure.map (fun y => a + (b - a) * y) unitIntervalMeasure
 
@@ -634,12 +565,6 @@ noncomputable def intervalL2Pullback (a b : ℝ) :
 noncomputable def intervalL2GowersSeminorm (a b : ℝ) :
     Seminorm ℂ (Lp ℂ 2 (intervalProbabilityMeasure a b)) :=
   unitIntervalGowersSeminorm.comp (intervalL2Pullback a b).toLinearMap
-
-theorem intervalL2GowersSeminorm_le_norm (a b : ℝ)
-    (f : Lp ℂ 2 (intervalProbabilityMeasure a b)) :
-    intervalL2GowersSeminorm a b f ≤ ‖f‖ := by
-  exact (unitIntervalGowersSeminorm_le_norm (intervalL2Pullback a b f)).trans_eq
-    ((intervalL2Pullback a b).norm_map f)
 
 theorem intervalL2GowersSeminorm_toLp (a b : ℝ) {f : ℝ → ℂ} (hf : Measurable f)
     (hfl : MemLp f 2 (intervalProbabilityMeasure a b)) :
@@ -941,8 +866,8 @@ theorem floorChartAmplitude_smooth {d : ℕ} (A : QuadraticChartData d)
         apply contDiff_pi.mpr
         intro i
         fun_prop
-      · exact hη.comp (contDiff_apply ℝ ℝ (Fin.natAdd d (0 : Fin 2)))
-    · exact hρ.comp (contDiff_apply ℝ ℝ (Fin.natAdd d (1 : Fin 2)))
+      · exact hη.comp (contDiff_apply ℝ (fun _ => ℝ) (Fin.natAdd d (0 : Fin 2)))
+    · exact hρ.comp (contDiff_apply ℝ (fun _ => ℝ) (Fin.natAdd d (1 : Fin 2)))
   · apply chart_fourierChar_smooth.comp
     unfold chartMatrixPhase
     fun_prop
@@ -1333,10 +1258,6 @@ noncomputable def floorChartShear {d : ℕ} (A : QuadraticChartData d) :
     ContinuousLinearMap.proj (Fin.castAdd 2 i) -
       A.horizontal i • ContinuousLinearMap.proj (Fin.natAdd d (0 : Fin 2))
 
-theorem floorChartShear_apply {d : ℕ} (A : QuadraticChartData d) (z : Fin (d + 2) → ℝ) :
-    floorChartShear A z =
-      fun i => z (Fin.castAdd 2 i) - A.horizontal i * z (Fin.natAdd d (0 : Fin 2)) := rfl
-
 theorem floorChartShear_norm_le {d : ℕ} (A : QuadraticChartData d) :
     ‖floorChartShear A‖ ≤ 1 + ‖A.horizontal‖ := by
   apply ContinuousLinearMap.opNorm_le_bound _ (by positivity)
@@ -1434,11 +1355,11 @@ theorem floorChartAmplitude_derivative_local {d c₀ K : ℕ} {H T : ℝ}
     mul_le_mul (pow_le_pow_right₀ hT1 hu) (pow_le_pow_right₀ hm1 hw)
       (by positivity) (by positivity)
   have hf : ContDiff ℝ (⊤ : ℕ∞) f := A.smooth.comp (floorChartShear A).contDiff
-  have hg : ContDiff ℝ (⊤ : ℕ∞) g := hη.comp (contDiff_apply ℝ ℝ h)
-  have hb : ContDiff ℝ (⊤ : ℕ∞) b := hρ.comp (contDiff_apply ℝ ℝ r)
+  have hg : ContDiff ℝ (⊤ : ℕ∞) g := hη.comp (contDiff_apply ℝ (fun _ => ℝ) h)
+  have hb : ContDiff ℝ (⊤ : ℕ∞) b := hρ.comp (contDiff_apply ℝ (fun _ => ℝ) r)
   have hp : ContDiff ℝ (⊤ : ℕ∞) p :=
     chart_fourierChar_smooth.comp
-      (((contDiff_apply ℝ ℝ h).mul (floorChartPhaseLinear A).contDiff).add
+      (((contDiff_apply ℝ (fun _ => ℝ) h).mul (floorChartPhaseLinear A).contDiff).add
         (floorChartPhaseTail A).contDiff)
   have hfi (i : ℕ) (hi : i ≤ m) : ‖iteratedFDeriv ℝ i f z‖ ≤ R ^ (i + 1) :=
     (chart_cutoff_linear_geometric hA hc hHT (floorChartShear A) hS m i hi z).trans
@@ -2184,14 +2105,6 @@ theorem quasipolynomialBound_nonneg {f : ℝ → ℝ} (hf : QuasipolynomialBound
   obtain ⟨C, hC, d, hd, hf⟩ := hf
   exact (hf t ht).1
 
-theorem shortReturnSplittingBudget_two_le {t : ℝ} (ht : 2 ≤ t) :
-    2 ≤ shortReturnSplittingBudget t := by
-  have hP := quasipolynomialBound_nonneg shortReturnProjectionBudget_quasipolynomial ht
-  have hS := quasipolynomialBound_nonneg shortReturnSlowBudget_quasipolynomial ht
-  have hQ := quasipolynomialBound_nonneg shortReturnQuadraticBudget_quasipolynomial ht
-  dsimp [shortReturnSplittingBudget]
-  linarith only [hP, hS, hQ]
-
 end Auto
 
 end
@@ -2357,86 +2270,6 @@ theorem continuous_inverse :
     simpa only [add_comm a] using normalizeIntervalFunction_correlation hab f (quadraticChartAtom A)
   rw [he, norm_smul, Real.norm_eq_abs, abs_inv, abs_of_pos (sub_pos.mpr hab)] at hcorr
   exact hcorr
-
-/-- Blueprint `lem:inverse`, line 1239: the finite L2 decomposition on the
-probability unit interval, with explicit quasipolynomial chart and coefficient budgets. -/
-theorem continuous_decomposition_unit_interval :
-    ∃ c₀ C : ℕ, 1 ≤ c₀ ∧ 1 ≤ C ∧
-      ∀ τ : ℝ, 0 < τ → τ < 1 / 2 →
-      ∀ f : Lp ℂ 2 unitIntervalMeasure, (∀ᵐ x ∂unitIntervalMeasure, ‖f x‖ ≤ 1) →
-      ∃ (ι : Type) (s : Finset ι) (c : ι → ℂ) (a : ι → Lp ℂ 2 unitIntervalMeasure)
-        (u v : Lp ℂ 2 unitIntervalMeasure),
-        (∀ i ∈ s, ∃ (d : ℕ) (A : QuadraticChartData d),
-          QuadraticChartComplexity c₀
-            (Real.exp 2 + Real.exp ((C : ℝ) * (1 + Real.log (1 / (τ / 2) ^ 2)) ^ C)) A ∧
-          IsBoundedQuadraticChart A ∧
-          (a i : ℝ → ℂ) =ᵐ[unitIntervalMeasure] quadraticChartAtom A) ∧
-        (∑ i ∈ s, ‖c i‖) ≤
-          2 * (Real.exp 2 + Real.exp ((C : ℝ) * (1 + Real.log (1 / (τ / 2) ^ 2)) ^ C)) ∧
-        unitIntervalGowersSeminorm u ≤ τ ∧ probabilityL2L1Norm unitIntervalMeasure v ≤ τ ∧
-        f = (∑ i ∈ s, c i • a i) + u + v := by
-  obtain ⟨c₀, C, hc₀, hC, hinv⟩ := continuous_inverse
-  refine ⟨c₀, C, hc₀, hC, ?_⟩
-  intro τ hτ hτ2 f hf
-  let σ := τ / 2
-  let H0 := Real.exp ((C : ℝ) * (1 + Real.log (1 / σ ^ 2)) ^ C)
-  let H := Real.exp 2 + H0
-  have hσ : 0 < σ := by dsimp [σ]; positivity
-  have hσ2 : σ ^ 2 < 1 / 2 := by dsimp [σ]; nlinarith only [hτ, hτ2]
-  have hH0 : 0 < H0 := Real.exp_pos _
-  have hH : 0 < H := add_pos (Real.exp_pos _) hH0
-  let atoms : Set (Lp ℂ 2 unitIntervalMeasure) := {a | ∃ (d : ℕ) (A : QuadraticChartData d),
-    QuadraticChartComplexity c₀ H A ∧ IsBoundedQuadraticChart A ∧
-      (a : ℝ → ℂ) =ᵐ[unitIntervalMeasure] quadraticChartAtom A}
-  have atomLp (d : ℕ) (A : QuadraticChartData d) (hb : IsBoundedQuadraticChart A) :
-      MemLp (quadraticChartAtom A) 2 unitIntervalMeasure :=
-    MemLp.of_bound (quadraticChartAtom_measurable A).aestronglyMeasurable 1
-      (Filter.Eventually.of_forall hb)
-  have hane : atoms.Nonempty := by
-    let A := ordinaryQuadraticChart 0 0
-    have hb := ordinaryQuadraticChart_bounded 0 0
-    have hl := atomLp 0 A hb
-    refine ⟨hl.toLp (quadraticChartAtom A), 0, A, ?_, hb, MemLp.coeFn_toLp hl⟩
-    exact ordinaryQuadraticChart_complexity c₀ (le_add_of_nonneg_right hH0.le) 0 0
-  have hInv : ∀ g : Lp ℂ 2 unitIntervalMeasure,
-      (∀ᵐ x ∂unitIntervalMeasure, ‖g x‖ ≤ 1) →
-      σ ^ 2 ≤ unitIntervalGowersSeminorm g →
-      ∃ a ∈ atoms, H⁻¹ ≤ ‖inner ℂ g a‖ := by
-    intro g hg hgU
-    obtain ⟨G, hGm, hGb, hGe⟩ := l2_bounded_measurable_representative unitIntervalMeasure g hg
-    have hGl : MemLp G 2 unitIntervalMeasure := (memLp_congr_ae hGe).mpr (Lp.memLp g)
-    have hGg : hGl.toLp G = g := by
-      apply Lp.ext
-      exact (MemLp.coeFn_toLp hGl).trans hGe
-    have hGU : σ ^ 2 ≤ intervalGowersNorm 0 1 G := by
-      rw [← unitIntervalGowersSeminorm_toLp hGm hGl, hGg]
-      exact hgU
-    obtain ⟨d, A, hA, hAb, hcorr⟩ :=
-      hinv 0 1 (by norm_num) (σ ^ 2) (sq_pos_of_pos hσ) hσ2 G hGm (fun x _ => hGb x) hGU
-    have hAl := atomLp d A hAb
-    refine ⟨hAl.toLp (quadraticChartAtom A),
-      ⟨d, A, quadraticChartComplexity_mono hA (le_add_of_nonneg_left (Real.exp_pos _).le),
-        hAb, MemLp.coeFn_toLp hAl⟩, ?_⟩
-    rw [← hGg, unitIntervalL2_inner_correlation]
-    have hc : H0⁻¹ ≤ ‖∫ x in (0 : ℝ)..1, G x * conj (quadraticChartAtom A x)‖ := by
-      simpa only [sub_zero, inv_one, one_mul] using hcorr
-    have hi : H⁻¹ ≤ H0⁻¹ := by
-      simpa only [one_div] using one_div_le_one_div_of_le hH0
-        (le_add_of_nonneg_left (Real.exp_pos (2 : ℝ)).le)
-    exact hi.trans hc
-  have hfn : ‖f‖ ≤ 1 := by
-    simpa [measureUnivNNReal] using Lp.norm_le_of_ae_bound (by norm_num : (0 : ℝ) ≤ 1) hf
-  have hcost : σ < (2 * H) * H⁻¹ := by
-    rw [mul_assoc, mul_inv_cancel₀ hH.ne', mul_one]
-    dsimp [σ]
-    linarith only [hτ2]
-  obtain ⟨ι, s, c, a, u, v, ha, hc, hu, hv, he⟩ :=
-    probabilityL2_atomic_decomposition unitIntervalMeasure (by positivity : 0 ≤ 2 * H)
-      hσ hσ hcost atoms hane unitIntervalGowersSeminorm hInv hfn
-  refine ⟨ι, s, c, a, u, v, ha, hc, hu.trans ?_, ?_, he⟩
-  · dsimp [σ]
-    linarith only [hτ]
-  · simpa only [σ, add_halves] using hv
 
 /-- Blueprint `lem:inverse`: the finite decomposition on every nondegenerate
 interval with probability normalization and uniform explicit quantitative bounds. -/

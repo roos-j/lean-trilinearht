@@ -331,12 +331,6 @@ def HasWeakTypeOn (T : (α → E) → β → F) (D : Set (α → E)) (a : ℝ) (
   ∀ f ∈ D, ∀ t : ℝ≥0∞, 0 < t →
     distributionFunction (T f) t ν ≤ ((A : ℝ≥0∞) * eLpNorm f (ENNReal.ofReal a) μ / t) ^ a
 
-/-- `T` is of strong type `(a, a)` with constant `A` on `D`:
-`‖T f‖_{L^a(ν)} ≤ A ‖f‖_{L^a(μ)}` for all `f ∈ D`. -/
-def HasStrongTypeOn (T : (α → E) → β → F) (D : Set (α → E)) (a : ℝ) (A : ℝ≥0)
-    (μ : Measure α) (ν : Measure β) : Prop :=
-  ∀ f ∈ D, eLpNorm (T f) (ENNReal.ofReal a) ν ≤ (A : ℝ≥0∞) * eLpNorm f (ENNReal.ofReal a) μ
-
 /-- The `L^∞` endpoint hypothesis with constant `B`: if `‖f x‖ ≤ s` for every `x`, then
 `‖T f y‖ ≤ B s` for `ν`-almost every `y` (for `f ∈ D`). -/
 def HasLinftyBoundOn (T : (α → E) → β → F) (D : Set (α → E)) (B : ℝ≥0) (ν : Measure β) :
@@ -352,25 +346,6 @@ in the proof of the Marcinkiewicz interpolation theorem. -/
 def IsTruncationClosed (D : Set (α → E)) : Prop :=
   ∀ f ∈ D, ∀ s : ℝ, 0 < s →
     {x | s < ‖f x‖}.indicator f ∈ D ∧ {x | ‖f x‖ ≤ s}.indicator f ∈ D
-
-omit [MeasurableSpace α] in
-/-- The class of all functions is truncation closed. -/
-theorem isTruncationClosed_univ : IsTruncationClosed (Set.univ : Set (α → E)) :=
-  fun _ _ _ _ => ⟨Set.mem_univ _, Set.mem_univ _⟩
-
-/-- The class `L^q(μ)` is truncation closed. -/
-theorem isTruncationClosed_memLp {q : ℝ≥0∞} {μ : Measure α} :
-    IsTruncationClosed {f : α → E | MemLp f q μ} := by
-  intro f hf s _
-  have hf' : MemLp f q μ := hf
-  have hm := hf'.aestronglyMeasurable
-  refine ⟨?_, ?_⟩
-  · refine MemLp.mono hf' (hm.indicator₀
-      (nullMeasurableSet_lt aemeasurable_const hm.norm.aemeasurable)) (ae_of_all _ fun x => ?_)
-    by_cases h : s < ‖f x‖ <;> simp [h]
-  · refine MemLp.mono hf' (hm.indicator₀
-      (nullMeasurableSet_le hm.norm.aemeasurable aemeasurable_const)) (ae_of_all _ fun x => ?_)
-    by_cases h : ‖f x‖ ≤ s <;> simp [h]
 
 variable {μ : Measure α} {ν : Measure β}
 
@@ -396,71 +371,6 @@ theorem eLpNorm_ofReal_eq_lintegral_rpow_enorm {f : α → E} (hf : AEStronglyMe
     eLpNorm f (ENNReal.ofReal p) μ = (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ (1 / p) := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp) ENNReal.ofReal_ne_top hf,
     ENNReal.toReal_ofReal hp.le]
-
-/-- **Layer-cake formula**: `‖g‖_p^p = p ∫_0^∞ t^(p-1) ν{‖g‖ > t} dt` for `0 < p < ∞`. -/
-theorem eLpNorm_rpow_eq_lintegral_distributionFunction {g : β → F}
-    (hg : AEStronglyMeasurable g ν) {p : ℝ} (hp : 0 < p) :
-    eLpNorm g (ENNReal.ofReal p) ν ^ p =
-      ENNReal.ofReal p * ∫⁻ t in Ioi (0 : ℝ),
-        ENNReal.ofReal (t ^ (p - 1)) * distributionFunction g (ENNReal.ofReal t) ν := by
-  rw [eLpNorm_ofReal_rpow_eq_lintegral hg hp]
-  have hlhs : ∫⁻ x, ‖g x‖ₑ ^ p ∂ν = ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ p) ∂ν := by
-    refine lintegral_congr fun x => ?_
-    rw [← ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp.le, ofReal_norm]
-  rw [hlhs, lintegral_rpow_eq_lintegral_meas_lt_mul ν (f := fun x => ‖g x‖)
-    (ae_of_all _ fun x => norm_nonneg _) hg.norm.aemeasurable hp]
-  congr 1
-  refine setLIntegral_congr_fun measurableSet_Ioi fun t ht => ?_
-  rw [distributionFunction_ofReal g (le_of_lt ht), mul_comm]
-
-/-- **Chebyshev's inequality**: strong type `(a, a)` implies weak type `(a, a)` with the same
-constant. -/
-theorem HasStrongTypeOn.hasWeakTypeOn {T : (α → E) → β → F} {D : Set (α → E)} {a : ℝ}
-    {A : ℝ≥0} (ha : 0 < a) (h : HasStrongTypeOn T D a A μ ν) : HasWeakTypeOn T D a A μ ν := by
-  intro f hf t ht
-  by_cases htop : t = ∞
-  · simp [distributionFunction, htop]
-  have ha' : ENNReal.ofReal a ≠ 0 := by simpa using ha
-  have hcheb := meas_ge_le_mul_pow_eLpNorm_enorm ν ha' ENNReal.ofReal_ne_top (f := T f)
-    ht.ne' (fun h => absurd h htop)
-  rw [ENNReal.toReal_ofReal ha.le] at hcheb
-  calc distributionFunction (T f) t ν ≤ ν {x | t ≤ ‖T f x‖ₑ} :=
-        measure_mono fun x (hx : t < ‖T f x‖ₑ) => (le_of_lt hx : t ≤ ‖T f x‖ₑ)
-    _ ≤ t⁻¹ ^ a * eLpNorm (T f) (ENNReal.ofReal a) ν ^ a := hcheb
-    _ ≤ t⁻¹ ^ a * ((A : ℝ≥0∞) * eLpNorm f (ENNReal.ofReal a) μ) ^ a := by
-        gcongr
-        exact h f hf
-    _ = ((A : ℝ≥0∞) * eLpNorm f (ENNReal.ofReal a) μ / t) ^ a := by
-        simp only [div_eq_mul_inv, ENNReal.mul_rpow_of_nonneg _ _ ha.le]
-        ring
-
-/-- A weak-type `(a, a)` bound may be checked at real heights `t > 0` only. -/
-theorem hasWeakTypeOn_of_forall_real {T : (α → E) → β → F} {D : Set (α → E)} {a : ℝ}
-    {A : ℝ≥0} (h : ∀ f ∈ D, ∀ t : ℝ, 0 < t → ν {x | t < ‖T f x‖} ≤
-      ((A : ℝ≥0∞) * eLpNorm f (ENNReal.ofReal a) μ / ENNReal.ofReal t) ^ a) :
-    HasWeakTypeOn T D a A μ ν := by
-  intro f hf t ht
-  by_cases htop : t = ∞
-  · simp [distributionFunction, htop]
-  have ht' : 0 < t.toReal := ENNReal.toReal_pos ht.ne' htop
-  have := h f hf t.toReal ht'
-  rwa [← distributionFunction_ofReal _ ht'.le, ENNReal.ofReal_toReal htop] at this
-
-/-- A weak-type bound with constant `0` forces `T f = 0` almost everywhere. -/
-theorem HasWeakTypeOn.ae_eq_zero_of_const_eq_zero {T : (α → E) → β → F} {D : Set (α → E)}
-    {a : ℝ} (ha : 0 < a) (h : HasWeakTypeOn T D a 0 μ ν) {f : α → E} (hf : f ∈ D) :
-    T f =ᵐ[ν] 0 := by
-  have hnull : ν {x | 0 < ‖T f x‖ₑ} = 0 := by
-    have hsub : {x | 0 < ‖T f x‖ₑ} ⊆ ⋃ n : ℕ, {x | ((n : ℝ≥0∞))⁻¹ < ‖T f x‖ₑ} := by
-      intro x hx
-      obtain ⟨n, hn⟩ := ENNReal.exists_inv_nat_lt (ne_of_gt (show 0 < ‖T f x‖ₑ from hx))
-      exact mem_iUnion.mpr ⟨n, hn⟩
-    refine measure_mono_null hsub (measure_iUnion_null fun n => ?_)
-    have := h f hf ((n : ℝ≥0∞))⁻¹ (ENNReal.inv_pos.mpr (ENNReal.natCast_ne_top n))
-    simpa [distributionFunction, ENNReal.zero_rpow_of_pos ha] using this
-  rw [Filter.EventuallyEq, ae_iff]
-  refine measure_mono_null (fun x hx => ?_) hnull
-  simpa [pos_iff_ne_zero] using hx
 
 end Defs
 
@@ -548,93 +458,13 @@ end Truncation
 
 /-! ### Constants -/
 
-/-- The free-parameter interpolation constant
-`p (2^a A^a c^(a-p)/(p-a) + 2^b B^b c^(b-p)/(b-p))`, which bounds `‖T f‖_p^p / ‖f‖_p^p` for
-every truncation parameter `c > 0`. -/
-def marcinkiewiczBound (a b p : ℝ) (A B : ℝ≥0) (c : ℝ) : ℝ≥0∞ :=
-  ENNReal.ofReal (p * (2 ^ a * (A : ℝ) ^ a * c ^ (a - p) / (p - a) +
-    2 ^ b * (B : ℝ) ^ b * c ^ (b - p) / (b - p)))
-
-/-- The Marcinkiewicz constant `C(a, b, p) = (p (2^a/(p-a) + 2^b/(b-p)))^(1/p)`. -/
-def marcinkiewiczConst (a b p : ℝ) : ℝ≥0 :=
-  Real.toNNReal ((p * (2 ^ a / (p - a) + 2 ^ b / (b - p))) ^ (1 / p))
-
 /-- The free-parameter constant `p 2^a A^a c^(a-p)/(p-a)` of the endpoint case `b = ∞`. -/
 def marcinkiewiczBoundTop (a p : ℝ) (A : ℝ≥0) (c : ℝ) : ℝ≥0∞ :=
   ENNReal.ofReal (p * (2 ^ a * (A : ℝ) ^ a * c ^ (a - p) / (p - a)))
 
-/-- The Marcinkiewicz constant of the endpoint case `b = ∞`: `C(a, p) = 2 (p/(p-a))^(1/p)`. -/
-def marcinkiewiczConstTop (a p : ℝ) : ℝ≥0 :=
-  Real.toNNReal (2 * (p / (p - a)) ^ (1 / p))
-
-/-- `marcinkiewiczBound` is finite. -/
-theorem marcinkiewiczBound_ne_top (a b p : ℝ) (A B : ℝ≥0) (c : ℝ) :
-    marcinkiewiczBound a b p A B c ≠ ∞ := ENNReal.ofReal_ne_top
-
 /-- `marcinkiewiczBoundTop` is finite. -/
 theorem marcinkiewiczBoundTop_ne_top (a p : ℝ) (A : ℝ≥0) (c : ℝ) :
     marcinkiewiczBoundTop a p A c ≠ ∞ := ENNReal.ofReal_ne_top
-
-/-- The Marcinkiewicz constant `C(a, b, p)` is finite. -/
-theorem marcinkiewiczConst_ne_top (a b p : ℝ) : (marcinkiewiczConst a b p : ℝ≥0∞) ≠ ∞ :=
-  ENNReal.coe_ne_top
-
-/-- The endpoint Marcinkiewicz constant `C(a, p)` is finite. -/
-theorem marcinkiewiczConstTop_ne_top (a p : ℝ) : (marcinkiewiczConstTop a p : ℝ≥0∞) ≠ ∞ :=
-  ENNReal.coe_ne_top
-
-/-- Optimization of the truncation parameter: with `c = (A^a/B^b)^(1/(b-a))`,
-`(p (2^a A^a c^(a-p)/(p-a) + 2^b B^b c^(b-p)/(b-p)))^(1/p) = C(a,b,p) A^(1-θ) B^θ`. -/
-theorem marcinkiewicz_real_identity {a b p A B : ℝ} (ha : 0 < a) (hap : a < p) (hpb : p < b)
-    (hA : 0 < A) (hB : 0 < B) :
-    (p * (2 ^ a * A ^ a * ((A ^ a / B ^ b) ^ (1 / (b - a))) ^ (a - p) / (p - a) +
-        2 ^ b * B ^ b * ((A ^ a / B ^ b) ^ (1 / (b - a))) ^ (b - p) / (b - p))) ^ (1 / p) =
-      (p * (2 ^ a / (p - a) + 2 ^ b / (b - p))) ^ (1 / p) *
-        A ^ (a * (b - p) / (p * (b - a))) * B ^ (b * (p - a) / (p * (b - a))) := by
-  have hp : 0 < p := ha.trans hap
-  have hba : b - a ≠ 0 := by linarith
-  have hpa : 0 < p - a := by linarith
-  have hbp : 0 < b - p := by linarith
-  set M := A ^ (a * (b - p) / (b - a)) * B ^ (b * (p - a) / (b - a)) with hM
-  have key₁ : A ^ a * ((A ^ a / B ^ b) ^ (1 / (b - a))) ^ (a - p) = M := by
-    rw [hM, ← Real.exp_log hA, ← Real.exp_log hB]
-    simp only [← Real.exp_mul, ← Real.exp_sub, ← Real.exp_add]
-    congr 1
-    field_simp
-    ring
-  have key₂ : B ^ b * ((A ^ a / B ^ b) ^ (1 / (b - a))) ^ (b - p) = M := by
-    rw [hM, ← Real.exp_log hA, ← Real.exp_log hB]
-    simp only [← Real.exp_mul, ← Real.exp_sub, ← Real.exp_add]
-    congr 1
-    field_simp
-    ring
-  rw [mul_assoc (2 ^ a), key₁, mul_assoc (2 ^ b), key₂,
-    show p * (2 ^ a * M / (p - a) + 2 ^ b * M / (b - p)) =
-      p * (2 ^ a / (p - a) + 2 ^ b / (b - p)) * M by ring,
-    Real.mul_rpow (by positivity) (by positivity), mul_assoc]
-  congr 1
-  rw [hM, ← Real.exp_log hA, ← Real.exp_log hB]
-  simp only [← Real.exp_mul, ← Real.exp_add]
-  congr 1
-  field_simp
-
-/-- Optimization of the truncation parameter in the endpoint case: with `c = 1/(2B)`,
-`(p 2^a A^a c^(a-p)/(p-a))^(1/p) = C(a,p) A^(a/p) B^(1-a/p)`. -/
-theorem marcinkiewicz_real_identity_top {a p A B : ℝ} (ha : 0 < a) (hap : a < p) (hA : 0 < A)
-    (hB : 0 < B) :
-    (p * (2 ^ a * A ^ a * (1 / (2 * B)) ^ (a - p) / (p - a))) ^ (1 / p) =
-      2 * (p / (p - a)) ^ (1 / p) * A ^ (a / p) * B ^ (1 - a / p) := by
-  have hp : 0 < p := ha.trans hap
-  have hpa : 0 < p - a := by linarith
-  have hX : 0 < p / (p - a) := div_pos hp hpa
-  rw [show p * (2 ^ a * A ^ a * (1 / (2 * B)) ^ (a - p) / (p - a)) =
-    p / (p - a) * (2 ^ a * A ^ a * (1 / (2 * B)) ^ (a - p)) by ring]
-  rw [← Real.exp_log hA, ← Real.exp_log hB, ← Real.exp_log hX,
-    ← Real.exp_log (two_pos : (0 : ℝ) < 2)]
-  simp only [← Real.exp_mul, ← Real.exp_add, one_div, ← Real.exp_neg]
-  congr 1
-  field_simp
-  ring
 
 /-! ### The Marcinkiewicz interpolation theorem -/
 
@@ -642,105 +472,6 @@ section Interpolation
 
 variable {α β E F : Type*} [MeasurableSpace α] [MeasurableSpace β] [NormedAddCommGroup E]
   [NormedAddCommGroup F] {μ : Measure α} {ν : Measure β}
-
-/-- From `∫ ‖g‖^p ≤ K ∫ ‖f‖^p` to `‖g‖_p ≤ K^(1/p) ‖f‖_p`. -/
-theorem eLpNorm_le_of_lintegral_rpow_le {g : β → F} (hg : AEStronglyMeasurable g ν)
-    {f : α → E} (hf : AEStronglyMeasurable f μ) {p : ℝ} (hp : 0 < p) {K : ℝ≥0∞}
-    (h : ∫⁻ x, ‖g x‖ₑ ^ p ∂ν ≤ K * ∫⁻ x, ‖f x‖ₑ ^ p ∂μ) :
-    eLpNorm g (ENNReal.ofReal p) ν ≤ K ^ (1 / p) * eLpNorm f (ENNReal.ofReal p) μ := by
-  rw [eLpNorm_ofReal_eq_lintegral_rpow_enorm hg hp, eLpNorm_ofReal_eq_lintegral_rpow_enorm hf hp,
-    ← ENNReal.mul_rpow_of_nonneg _ _ (by positivity)]
-  exact ENNReal.rpow_le_rpow h (by positivity)
-
-/-- **Marcinkiewicz interpolation, free truncation parameter** (the displayed estimate in the
-proof of Blueprint Lemma 2.3 (`lem:interpolation`)): if `T` is subadditive on a truncation
-closed class `D`, of weak type `(a, a)` with constant `A` and of weak type `(b, b)` with
-constant `B` on `D`, where `0 < a < p < b < ∞`, then for every `c > 0` and every
-`f ∈ D`,
-`∫ ‖T f‖^p ≤ p (2^a A^a c^(a-p)/(p-a) + 2^b B^b c^(b-p)/(b-p)) ∫ ‖f‖^p`. -/
-theorem lintegral_rpow_le_of_hasWeakTypeOn [SFinite μ] {T : (α → E) → β → F}
-    {D : Set (α → E)} {a b p c : ℝ} {A B : ℝ≥0} (ha : 0 < a) (hap : a < p) (hpb : p < b)
-    (hc : 0 < c) (hTA : HasWeakTypeOn T D a A μ ν) (hTB : HasWeakTypeOn T D b B μ ν)
-    (hsub : IsSublinearOn T D ν) (hD : IsTruncationClosed D) {f : α → E} (hfD : f ∈ D)
-    (hf : AEStronglyMeasurable f μ) (hTf : AEStronglyMeasurable (T f) ν) :
-    ∫⁻ x, ‖T f x‖ₑ ^ p ∂ν ≤ marcinkiewiczBound a b p A B c * ∫⁻ x, ‖f x‖ₑ ^ p ∂μ := by
-  have hb : 0 < b := (ha.trans hap).trans hpb
-  refine lintegral_rpow_enorm_le_of_distribution_split hTf hf ha hap hpb hc (by positivity)
-    (by positivity) fun t ht => ?_
-  have hs : 0 < c * t := mul_pos hc ht
-  obtain ⟨h₁, h₂⟩ := hD f hfD _ hs
-  exact (measure_lt_norm_le_of_isSublinearOn hsub hD hfD hs t).trans (add_le_add
-    (hTA.measure_half_lt_le ha h₁ (aestronglyMeasurable_indicator_lt_norm hf _) ht)
-    (hTB.measure_half_lt_le hb h₂ (aestronglyMeasurable_indicator_norm_le hf _) ht))
-
-/-- **Marcinkiewicz interpolation, free truncation parameter, `Lᵖ` form**: under the hypotheses
-of `lintegral_rpow_le_of_hasWeakTypeOn`, for every `c > 0`,
-`‖T f‖_p ≤ (p (2^a A^a c^(a-p)/(p-a) + 2^b B^b c^(b-p)/(b-p)))^(1/p) ‖f‖_p`. -/
-theorem eLpNorm_le_of_hasWeakTypeOn_of_pos [SFinite μ] {T : (α → E) → β → F}
-    {D : Set (α → E)} {a b p c : ℝ} {A B : ℝ≥0} (ha : 0 < a) (hap : a < p) (hpb : p < b)
-    (hc : 0 < c) (hTA : HasWeakTypeOn T D a A μ ν) (hTB : HasWeakTypeOn T D b B μ ν)
-    (hsub : IsSublinearOn T D ν) (hD : IsTruncationClosed D) {f : α → E} (hfD : f ∈ D)
-    (hf : AEStronglyMeasurable f μ) (hTf : AEStronglyMeasurable (T f) ν) :
-    eLpNorm (T f) (ENNReal.ofReal p) ν ≤
-      marcinkiewiczBound a b p A B c ^ (1 / p) * eLpNorm f (ENNReal.ofReal p) μ :=
-  eLpNorm_le_of_lintegral_rpow_le hTf hf (ha.trans hap)
-    (lintegral_rpow_le_of_hasWeakTypeOn ha hap hpb hc hTA hTB hsub hD hfD hf hTf)
-
-/-- **Marcinkiewicz interpolation theorem** (Blueprint Lemma 2.3 (`lem:interpolation`), first
-assertion): let `T` be subadditive in pointwise norm on a truncation closed class `D` of inputs
-(e.g. all functions, or `L^q`), of weak type `(a, a)` with constant `A` and of weak type `(b, b)`
-with constant `B` on `D`, where `0 < a < p < b < ∞` (in particular `1 ≤ a < p < b < ∞`).
-Then for every a.e. strongly measurable `f ∈ D` with `T f` a.e. strongly measurable,
-`‖T f‖_p ≤ C(a,b,p) A^(1-θ) B^θ ‖f‖_p`, where `1/p = (1-θ)/a + θ/b` and
-`C(a,b,p) = (p (2^a/(p-a) + 2^b/(b-p)))^(1/p) < ∞`. Strong endpoint bounds may be used via
-`HasStrongTypeOn.hasWeakTypeOn`. -/
-theorem eLpNorm_le_of_hasWeakTypeOn [SFinite μ] {T : (α → E) → β → F} {D : Set (α → E)}
-    {a b p θ : ℝ} {A B : ℝ≥0} (ha : 0 < a) (hap : a < p) (hpb : p < b)
-    (hθ : 1 / p = (1 - θ) / a + θ / b) (hTA : HasWeakTypeOn T D a A μ ν)
-    (hTB : HasWeakTypeOn T D b B μ ν) (hsub : IsSublinearOn T D ν) (hD : IsTruncationClosed D)
-    {f : α → E} (hfD : f ∈ D) (hf : AEStronglyMeasurable f μ)
-    (hTf : AEStronglyMeasurable (T f) ν) :
-    eLpNorm (T f) (ENNReal.ofReal p) ν ≤
-      (marcinkiewiczConst a b p : ℝ≥0∞) * (A : ℝ≥0∞) ^ (1 - θ) * (B : ℝ≥0∞) ^ θ *
-        eLpNorm f (ENNReal.ofReal p) μ := by
-  have hp : 0 < p := ha.trans hap
-  have hb : 0 < b := hp.trans hpb
-  have hba : 0 < b - a := by linarith
-  have hθ' : θ = b * (p - a) / (p * (b - a)) := by
-    field_simp at hθ
-    rw [eq_div_iff (by positivity)]
-    linear_combination hθ
-  have h1θ : 1 - θ = a * (b - p) / (p * (b - a)) := by
-    rw [hθ']
-    field_simp
-    ring
-  have hθ0 : 0 ≤ θ := by rw [hθ']; exact div_nonneg (by nlinarith) (by positivity)
-  have h1θ0 : 0 ≤ 1 - θ := by rw [h1θ]; exact div_nonneg (by nlinarith) (by positivity)
-  rcases eq_or_ne A 0 with rfl | hA0
-  · rw [eLpNorm_congr_ae (hTA.ae_eq_zero_of_const_eq_zero ha hfD), eLpNorm_zero]
-    exact zero_le
-  rcases eq_or_ne B 0 with rfl | hB0
-  · rw [eLpNorm_congr_ae (hTB.ae_eq_zero_of_const_eq_zero hb hfD), eLpNorm_zero]
-    exact zero_le
-  have hA : 0 < (A : ℝ) := NNReal.coe_pos.mpr (pos_iff_ne_zero.mpr hA0)
-  have hB : 0 < (B : ℝ) := NNReal.coe_pos.mpr (pos_iff_ne_zero.mpr hB0)
-  set c : ℝ := ((A : ℝ) ^ a / (B : ℝ) ^ b) ^ (1 / (b - a)) with hcdef
-  have hc : 0 < c := by positivity
-  refine (eLpNorm_le_of_hasWeakTypeOn_of_pos ha hap hpb hc hTA hTB hsub hD hfD hf hTf).trans
-    (le_of_eq ?_)
-  congr 1
-  have hX : 0 ≤ p * (2 ^ a * (A : ℝ) ^ a * c ^ (a - p) / (p - a) +
-      2 ^ b * (B : ℝ) ^ b * c ^ (b - p) / (b - p)) := by
-    have hpa : 0 < p - a := by linarith
-    have hbp : 0 < b - p := by linarith
-    positivity
-  rw [marcinkiewiczBound, ENNReal.ofReal_rpow_of_nonneg hX (by positivity), hcdef,
-    marcinkiewicz_real_identity ha hap hpb hA hB, ← h1θ, ← hθ',
-    ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity),
-    ← ENNReal.ofReal_rpow_of_nonneg A.coe_nonneg h1θ0,
-    ← ENNReal.ofReal_rpow_of_nonneg B.coe_nonneg hθ0,
-    ENNReal.ofReal_coe_nnreal, ENNReal.ofReal_coe_nnreal]
-  rfl
 
 /-- **Marcinkiewicz interpolation with an `L^∞` endpoint, free truncation parameter** (the
 endpoint estimate in the proof of Blueprint Lemma 2.3 (`lem:interpolation`)): if `T` is
@@ -779,94 +510,6 @@ theorem lintegral_rpow_le_of_hasWeakTypeOn_of_linfty [SFinite μ] {T : (α → E
   refine (lintegral_rpow_enorm_le_of_distribution_split hTf hf ha hap (by linarith) hc
     (by positivity) le_rfl hsplit).trans_eq ?_
   rw [marcinkiewiczBoundTop, zero_mul, zero_div, add_zero]
-
-/-- **Marcinkiewicz interpolation with an `L^∞` endpoint, free truncation parameter, `Lᵖ` form**:
-under the hypotheses of `lintegral_rpow_le_of_hasWeakTypeOn_of_linfty`,
-`‖T f‖_p ≤ (p 2^a A^a c^(a-p)/(p-a))^(1/p) ‖f‖_p`. -/
-theorem eLpNorm_le_of_hasWeakTypeOn_of_linfty_of_pos [SFinite μ] {T : (α → E) → β → F}
-    {D : Set (α → E)} {a p c : ℝ} {A B : ℝ≥0} (ha : 0 < a) (hap : a < p) (hc : 0 < c)
-    (hBc : (B : ℝ) * c ≤ 1 / 2) (hTA : HasWeakTypeOn T D a A μ ν)
-    (hTB : HasLinftyBoundOn T D B ν) (hsub : IsSublinearOn T D ν) (hD : IsTruncationClosed D)
-    {f : α → E} (hfD : f ∈ D) (hf : AEStronglyMeasurable f μ)
-    (hTf : AEStronglyMeasurable (T f) ν) :
-    eLpNorm (T f) (ENNReal.ofReal p) ν ≤
-      marcinkiewiczBoundTop a p A c ^ (1 / p) * eLpNorm f (ENNReal.ofReal p) μ :=
-  eLpNorm_le_of_lintegral_rpow_le hTf hf (ha.trans hap)
-    (lintegral_rpow_le_of_hasWeakTypeOn_of_linfty ha hap hc hBc hTA hTB hsub hD hfD hf hTf)
-
-/-- **Marcinkiewicz interpolation theorem with an `L^∞` endpoint** (Blueprint Lemma 2.3
-(`lem:interpolation`), second assertion): let `T` be subadditive in pointwise norm on a
-truncation closed class `D`, of weak type `(a, a)` with constant `A` on `D`, and strong type
-`(∞, ∞)` with constant `B` in the form `‖f‖ ≤ s ⇒ ‖T f‖ ≤ B s` a.e. (for `f ∈ D`). Then for
-`0 < a < p < ∞` and every a.e. strongly measurable `f ∈ D` with `T f` a.e. strongly measurable,
-`‖T f‖_p ≤ C(a,p) A^(a/p) B^(1-a/p) ‖f‖_p` with `C(a,p) = 2 (p/(p-a))^(1/p) < ∞`.
-(If `B = 0` we additionally assume `‖f‖_p < ∞`.) -/
-theorem eLpNorm_le_of_hasWeakTypeOn_of_linfty [SFinite μ] {T : (α → E) → β → F}
-    {D : Set (α → E)} {a p : ℝ} {A B : ℝ≥0} (ha : 0 < a) (hap : a < p)
-    (hTA : HasWeakTypeOn T D a A μ ν) (hTB : HasLinftyBoundOn T D B ν)
-    (hsub : IsSublinearOn T D ν) (hD : IsTruncationClosed D) {f : α → E} (hfD : f ∈ D)
-    (hf : AEStronglyMeasurable f μ) (hTf : AEStronglyMeasurable (T f) ν)
-    (hB : 0 < B ∨ eLpNorm f (ENNReal.ofReal p) μ ≠ ∞) :
-    eLpNorm (T f) (ENNReal.ofReal p) ν ≤
-      (marcinkiewiczConstTop a p : ℝ≥0∞) * (A : ℝ≥0∞) ^ (a / p) * (B : ℝ≥0∞) ^ (1 - a / p) *
-        eLpNorm f (ENNReal.ofReal p) μ := by
-  have hp : 0 < p := ha.trans hap
-  have hpa : 0 < p - a := by linarith
-  have hap' : 0 < 1 - a / p := by
-    rw [sub_pos, div_lt_one hp]
-    exact hap
-  rcases eq_or_ne A 0 with rfl | hA0
-  · rw [eLpNorm_congr_ae (hTA.ae_eq_zero_of_const_eq_zero ha hfD), eLpNorm_zero]
-    exact zero_le
-  have hA : 0 < (A : ℝ) := NNReal.coe_pos.mpr (pos_iff_ne_zero.mpr hA0)
-  rcases eq_or_ne B 0 with rfl | hB0
-  · -- `B = 0`: let the truncation parameter tend to infinity
-    have hfp : eLpNorm f (ENNReal.ofReal p) μ ≠ ∞ := by
-      rcases hB with hB | hB
-      · exact absurd hB (lt_irrefl _)
-      · exact hB
-    have hI : ∫⁻ x, ‖f x‖ₑ ^ p ∂μ ≠ ∞ := by
-      rw [← eLpNorm_ofReal_rpow_eq_lintegral hf hp]
-      exact ENNReal.rpow_ne_top_of_nonneg hp.le hfp
-    have hlim : Tendsto (fun c : ℝ => marcinkiewiczBoundTop a p A c * ∫⁻ x, ‖f x‖ₑ ^ p ∂μ)
-        atTop (𝓝 0) := by
-      have h1 : Tendsto (fun c : ℝ => p * 2 ^ a * (A : ℝ) ^ a / (p - a) * c ^ (-(p - a)))
-          atTop (𝓝 (p * 2 ^ a * (A : ℝ) ^ a / (p - a) * 0)) :=
-        (tendsto_rpow_neg_atTop hpa).const_mul _
-      rw [mul_zero] at h1
-      have h2 := ENNReal.Tendsto.mul_const (ENNReal.tendsto_ofReal h1)
-        (b := ∫⁻ x, ‖f x‖ₑ ^ p ∂μ) (Or.inr hI)
-      rw [ENNReal.ofReal_zero, zero_mul] at h2
-      refine h2.congr' (Eventually.of_forall fun c => ?_)
-      unfold marcinkiewiczBoundTop
-      rw [neg_sub]
-      congr 2
-      ring
-    have hle : ∫⁻ x, ‖T f x‖ₑ ^ p ∂ν ≤ 0 := by
-      refine ge_of_tendsto hlim ((eventually_gt_atTop 0).mono fun c hc => ?_)
-      exact lintegral_rpow_le_of_hasWeakTypeOn_of_linfty ha hap hc (by simp) hTA hTB hsub hD
-        hfD hf hTf
-    have h0 : eLpNorm (T f) (ENNReal.ofReal p) ν = 0 := by
-      rw [eLpNorm_ofReal_eq_lintegral_rpow_enorm hTf hp, nonpos_iff_eq_zero.mp hle,
-        ENNReal.zero_rpow_of_pos (by positivity)]
-    rw [h0]
-    exact zero_le
-  have hB' : 0 < (B : ℝ) := NNReal.coe_pos.mpr (pos_iff_ne_zero.mpr hB0)
-  have hc : 0 < 1 / (2 * (B : ℝ)) := by positivity
-  have hBc : (B : ℝ) * (1 / (2 * B)) ≤ 1 / 2 := by
-    rw [show (B : ℝ) * (1 / (2 * B)) = 1 / 2 by field_simp]
-  refine (eLpNorm_le_of_hasWeakTypeOn_of_linfty_of_pos ha hap hc hBc hTA hTB hsub hD hfD hf
-    hTf).trans (le_of_eq ?_)
-  congr 1
-  have hX : 0 ≤ p * (2 ^ a * (A : ℝ) ^ a * (1 / (2 * (B : ℝ))) ^ (a - p) / (p - a)) := by
-    positivity
-  rw [marcinkiewiczBoundTop, ENNReal.ofReal_rpow_of_nonneg hX (by positivity),
-    marcinkiewicz_real_identity_top ha hap hA hB',
-    ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity),
-    ← ENNReal.ofReal_rpow_of_nonneg A.coe_nonneg (by positivity),
-    ← ENNReal.ofReal_rpow_of_nonneg B.coe_nonneg hap'.le,
-    ENNReal.ofReal_coe_nnreal, ENNReal.ofReal_coe_nnreal]
-  rfl
 
 end Interpolation
 
@@ -1068,27 +711,6 @@ theorem hlMaximal_le_of_ae_enorm_le {f : X → E} {c : ℝ≥0∞} (h : ∀ᵐ y
     _ ≤ c * 1 := mul_le_mul_right (ENNReal.inv_mul_le_one _) _
     _ = c := mul_one c
 
-omit [OpensMeasurableSpace X] in
-/-- **Pointwise `L^∞` bound** (Blueprint Lemma 2.4 (`lem:maximal`), case `p = ∞`, constant one):
-`M f(x) ≤ ‖f‖_{L^∞}` for every `x`. -/
-theorem hlMaximal_le_eLpNormEssSup (f : X → E) (x : X) :
-    hlMaximal μ f x ≤ eLpNormEssSup f μ :=
-  hlMaximal_le_of_ae_enorm_le ae_le_eLpNormEssSup x
-
-omit [OpensMeasurableSpace X] in
-/-- **`L^∞` bound** (Blueprint Lemma 2.4 (`lem:maximal`), case `p = ∞`, constant one):
-`‖M f‖_{L^∞} ≤ ‖f‖_{L^∞}` (the measurability hypothesis makes `eLpNorm` meaningful). -/
-theorem eLpNorm_hlMaximal_top_le {f : X → E} (hM : AEMeasurable (hlMaximal μ f) μ) :
-    eLpNorm (hlMaximal μ f) ∞ μ ≤ eLpNorm f ∞ μ := by
-  by_cases hf : AEStronglyMeasurable f μ
-  · rw [eLpNorm_exponent_top hM.aestronglyMeasurable, eLpNorm_exponent_top hf]
-    refine essSup_le_of_ae_le _ (ae_of_all _ fun x => ?_)
-    change ‖hlMaximal μ f x‖ₑ ≤ _
-    rw [enorm_eq_self]
-    exact hlMaximal_le_eLpNormEssSup f x
-  · rw [eLpNorm_of_not_aestronglyMeasurable hf]
-    exact le_top
-
 /-- Continuity of the ball measure from above, in the form used for the maximal function: the
 average over `B(x,r)` is at most the supremum of the averages over `B(x,q)`, `q > r` rational
 (if balls have finite measure). -/
@@ -1182,41 +804,6 @@ theorem measure_biUnion_le_of_lt_hlBallAverage {C : ℝ≥0}
   measure_biUnion_closedBall_le_of_doubling hC F id ρ
     (fun x hx => (measure_closedBall_le_of_lt_hlBallAverage (h x hx)).1) t f
     (fun x hx => (measure_closedBall_le_of_lt_hlBallAverage (h x hx)).2)
-
-/-- **Weak type `(1,1)` on countable spaces** (Blueprint Lemma 2.4 (`lem:maximal`), weak bound,
-the lattice case): if `X` is countable and `μ(B(x,3r)) ≤ C μ(B(x,r))` for all `x` and `r ≥ 0`, then
-for every `f` and every `t`, `μ {M f > t} ≤ C t⁻¹ ∫ ‖f‖` (proved on finite subsets of the level
-set). -/
-theorem hlMaximal_weak_one_of_countable [Countable X] {C : ℝ≥0}
-    (hC : ∀ (x : X) (r : ℝ), 0 ≤ r → μ (closedBall x (3 * r)) ≤ C * μ (closedBall x r))
-    (f : X → E) (t : ℝ≥0∞) :
-    μ {x | t < hlMaximal μ f x} ≤ C / t * ∫⁻ y, ‖f y‖ₑ ∂μ := by
-  classical
-  set L := {x | t < hlMaximal μ f x} with hLdef
-  have hr : ∀ x ∈ L, ∃ r, t < hlBallAverage μ f x r := fun x hx => lt_iSup_iff.1 hx
-  choose! ρ hρ using hr
-  have hL : L = ⋃ F ∈ {F : Finset X | (F : Set X) ⊆ L}, (F : Set X) := by
-    refine Set.ext fun x => ⟨fun hx => mem_biUnion (x := {x}) (by simpa using hx) (by simp),
-      fun hx => ?_⟩
-    obtain ⟨F, hF, hxF⟩ := mem_iUnion₂.1 hx
-    exact hF hxF
-  calc μ L = μ (⋃ F ∈ {F : Finset X | (F : Set X) ⊆ L}, (F : Set X)) := congrArg μ hL
-    _ = ⨆ F ∈ {F : Finset X | (F : Set X) ⊆ L}, μ (F : Set X) := by
-        refine measure_biUnion_eq_iSup (Set.to_countable _) ?_
-        intro F hF G hG
-        refine ⟨F ∪ G, ?_, ?_, ?_⟩
-        · change ((F ∪ G : Finset X) : Set X) ⊆ L
-          rw [Finset.coe_union]
-          exact union_subset hF hG
-        · exact Finset.coe_subset.2 Finset.subset_union_left
-        · exact Finset.coe_subset.2 Finset.subset_union_right
-    _ ≤ C / t * ∫⁻ y, ‖f y‖ₑ ∂μ := by
-        refine iSup₂_le fun F hF => ?_
-        have hF' : ∀ x ∈ F, t < hlBallAverage μ f x (ρ x) := fun x hx => hρ x (hF hx)
-        calc μ (F : Set X) ≤ μ (⋃ x ∈ F, closedBall x (ρ x)) := by
-              refine measure_mono fun x hx => mem_biUnion hx (mem_closedBall_self ?_)
-              exact (measure_closedBall_le_of_lt_hlBallAverage (hF' x hx)).1
-          _ ≤ _ := measure_biUnion_le_of_lt_hlBallAverage hC f t F ρ hF'
 
 /-- **Weak type `(1,1)` on inner regular spaces** (Blueprint Lemma 2.4 (`lem:maximal`), weak bound,
 the Euclidean case): let `X` be second countable, `μ` s-finite and inner regular (with respect to
@@ -1372,26 +959,6 @@ theorem eLpNorm_hlMaximal_le_of_weak [SFinite μ] {C : ℝ≥0} {p : ℝ} (hp : 
   exact ENNReal.rpow_le_rpow (lintegral_hlMaximal_rpow_le_of_weak hp hweak hf hM)
     (by positivity)
 
-/-- **Hardy–Littlewood maximal theorem, strong type `(p, p)`, countable spaces** (Blueprint
-Lemma 2.4 (`lem:maximal`), strong bound, the lattice case): on a countable space with measurable
-singletons and an s-finite measure satisfying `μ(B(x,3r)) ≤ C μ(B(x,r))` (`r ≥ 0`), for
-`1 < p < ∞` and every `f`, `‖M f‖_p ≤ C_p ‖f‖_p` with `C_p = (2^p p C/(p-1))^(1/p)`. -/
-theorem eLpNorm_hlMaximal_le_of_countable [Countable X] [MeasurableSingletonClass X] [SFinite μ]
-    {C : ℝ≥0}
-    (hC : ∀ (x : X) (r : ℝ), 0 ≤ r → μ (closedBall x (3 * r)) ≤ C * μ (closedBall x r))
-    {p : ℝ} (hp : 1 < p) (f : X → E) :
-    eLpNorm (hlMaximal μ f) (ENNReal.ofReal p) μ ≤
-      hlMaximalConst C p * eLpNorm f (ENNReal.ofReal p) μ :=
-  eLpNorm_hlMaximal_le_of_weak hp (fun g _ t => hlMaximal_weak_one_of_countable hC g t)
-    AEStronglyMeasurable.of_discrete (measurable_of_countable _).aemeasurable
-
-omit [OpensMeasurableSpace X] in
-/-- **Hardy–Littlewood maximal theorem, `L^∞` bound, countable spaces** (Blueprint Lemma 2.4
-(`lem:maximal`), `p = ∞`): `‖M f‖_∞ ≤ ‖f‖_∞`. -/
-theorem eLpNorm_hlMaximal_top_le_of_countable [Countable X] [MeasurableSingletonClass X]
-    (f : X → E) : eLpNorm (hlMaximal μ f) ∞ μ ≤ eLpNorm f ∞ μ :=
-  eLpNorm_hlMaximal_top_le (measurable_of_countable _).aemeasurable
-
 /-- **Hardy–Littlewood maximal theorem, strong type `(p, p)`** (Blueprint Lemma 2.4
 (`lem:maximal`), strong bound, the Euclidean case): let `X` be second countable, `μ` s-finite
 and inner regular, with balls of finite measure and `μ(B(x,3r)) ≤ C μ(B(x,r))` (`r ≥ 0`). For
@@ -1410,285 +977,7 @@ end General
 
 /-! ### Cubes in `ℝⁿ`: the sup metric on `Fin n → ℝ` and `E = EuclideanSpace ℝ (Fin n)` -/
 
-section Euclidean
-
-variable {E : Type*} [NormedAddCommGroup E] (n : ℕ)
-
-/-- Doubling of Lebesgue measure for sup-metric balls (cubes) in `Fin n → ℝ`, constant `3ⁿ`. -/
-theorem volume_closedBall_three_mul_le_pi (x : Fin n → ℝ) (r : ℝ) (hr : 0 ≤ r) :
-    volume (closedBall x (3 * r)) ≤ ((3 ^ n : ℝ≥0) : ℝ≥0∞) * volume (closedBall x r) := by
-  rw [Real.volume_pi_closedBall x (by positivity), Real.volume_pi_closedBall x hr,
-    Fintype.card_fin, show (2 * (3 * r)) ^ n = 3 ^ n * (2 * r) ^ n by rw [← mul_pow]; ring,
-    ENNReal.ofReal_mul (by positivity)]
-  apply le_of_eq
-  congr 1
-  rw [ENNReal.ofReal_pow (by norm_num)]
-  simp
-
-/-- Weak type `(1,1)` of the cube maximal function on `Fin n → ℝ` (sup metric), constant `3ⁿ`. -/
-theorem hlMaximal_weak_one_pi {f : (Fin n → ℝ) → E} (hf : AEStronglyMeasurable f volume)
-    (t : ℝ≥0∞) :
-    volume {x | t < hlMaximal volume f x} ≤
-      ((3 ^ n : ℝ≥0) : ℝ≥0∞) / t * ∫⁻ y, ‖f y‖ₑ :=
-  hlMaximal_weak_one (fun _ _ => measure_closedBall_lt_top.ne)
-    (volume_closedBall_three_mul_le_pi n) hf t
-
-/-- Strong type `(p,p)` of the cube maximal function on `Fin n → ℝ` (sup metric). -/
-theorem eLpNorm_hlMaximal_le_pi {p : ℝ} (hp : 1 < p) {f : (Fin n → ℝ) → E}
-    (hf : AEStronglyMeasurable f volume) :
-    eLpNorm (hlMaximal volume f) (ENNReal.ofReal p) volume ≤
-      hlMaximalConst (3 ^ n) p * eLpNorm f (ENNReal.ofReal p) volume :=
-  eLpNorm_hlMaximal_le (fun _ _ => measure_closedBall_lt_top.ne)
-    (volume_closedBall_three_mul_le_pi n) hp hf
-
-/-- The closed axis-parallel cube `{y | ∀ i, |y i - x i| ≤ r}` of half side length `r` centered at
-`x` in `E = EuclideanSpace ℝ (Fin n)`. -/
-def euclideanCube {n : ℕ} (x : EuclideanSpace ℝ (Fin n)) (r : ℝ) :
-    Set (EuclideanSpace ℝ (Fin n)) :=
-  {y | ∀ i, |y i - x i| ≤ r}
-
-/-- The blueprint's maximal function on `E = EuclideanSpace ℝ (Fin n)`: the supremum over all
-radii `r ≥ 0` of the averages of `‖f‖` over the centered closed cubes
-`{y | ∀ i, |y i - x i| ≤ r}` (with respect to Lebesgue measure), valued in `ℝ≥0∞`. -/
-def cubeMaximalEuclidean (f : EuclideanSpace ℝ (Fin n) → E) (x : EuclideanSpace ℝ (Fin n)) :
-    ℝ≥0∞ :=
-  ⨆ (r : ℝ) (_ : 0 ≤ r),
-    (volume (euclideanCube x r))⁻¹ * ∫⁻ y in euclideanCube x r, ‖f y‖ₑ
-
-variable {X : Type*} [PseudoMetricSpace X] [MeasurableSpace X] in
-/-- Averages over balls of negative radius vanish. -/
-theorem hlBallAverage_of_neg (μ : Measure X) (f : X → E) (x : X) {r : ℝ} (hr : r < 0) :
-    hlBallAverage μ f x r = 0 := by
-  simp [hlBallAverage, closedBall_eq_empty.2 hr]
-
-/-- The measure preserving identification `E ≃ᵐ (Fin n → ℝ)`. -/
-abbrev euclideanEquivPi : EuclideanSpace ℝ (Fin n) ≃ᵐ (Fin n → ℝ) :=
-  (MeasurableEquiv.toLp 2 (Fin n → ℝ)).symm
-
-theorem measurePreserving_euclideanEquivPi :
-    MeasurePreserving (euclideanEquivPi n) volume volume :=
-  EuclideanSpace.volume_preserving_symm_measurableEquiv_toLp (Fin n)
-
-/-- Cubes in `E` are sup-metric balls in `Fin n → ℝ`. -/
-theorem euclideanCube_eq_preimage (x : EuclideanSpace ℝ (Fin n)) {r : ℝ} (hr : 0 ≤ r) :
-    euclideanCube x r = euclideanEquivPi n ⁻¹' closedBall (euclideanEquivPi n x) r := by
-  ext y
-  simp only [euclideanCube, mem_ofPred_eq, mem_preimage, mem_closedBall, dist_pi_le_iff hr,
-    Real.dist_eq]
-  rfl
-
-/-- The blueprint's cube maximal function on `E` is the sup-metric ball maximal function on
-`Fin n → ℝ`, transported by `E ≃ᵐ (Fin n → ℝ)`. -/
-theorem cubeMaximalEuclidean_eq (f : EuclideanSpace ℝ (Fin n) → E)
-    (x : EuclideanSpace ℝ (Fin n)) :
-    cubeMaximalEuclidean n f x =
-      hlMaximal volume (f ∘ (euclideanEquivPi n).symm) (euclideanEquivPi n x) := by
-  have he := measurePreserving_euclideanEquivPi n
-  have havg : ∀ r : ℝ, 0 ≤ r →
-      (volume (euclideanCube x r))⁻¹ * ∫⁻ y in euclideanCube x r, ‖f y‖ₑ =
-        hlBallAverage volume (f ∘ (euclideanEquivPi n).symm) (euclideanEquivPi n x) r := by
-    intro r hr
-    rw [euclideanCube_eq_preimage n x hr, hlBallAverage, he.measure_preimage_equiv,
-      ← he.setLIntegral_comp_preimage_emb (euclideanEquivPi n).measurableEmbedding]
-    simp
-  unfold cubeMaximalEuclidean hlMaximal
-  refine le_antisymm (iSup₂_le fun r hr => (havg r hr).trans_le (le_iSup (fun r => _) r))
-    (iSup_le fun r => ?_)
-  rcases lt_or_ge r 0 with hr | hr
-  · rw [hlBallAverage_of_neg _ _ _ hr]
-    exact zero_le
-  · rw [← havg r hr]
-    exact le_iSup₂ (f := fun r (_ : 0 ≤ r) =>
-      (volume (euclideanCube x r))⁻¹ * ∫⁻ y in euclideanCube x r, ‖f y‖ₑ) r hr
-
-/-- The cube maximal function on `E` is measurable (for a.e. strongly measurable `f`). -/
-theorem measurable_cubeMaximalEuclidean {f : EuclideanSpace ℝ (Fin n) → E}
-    (hf : AEStronglyMeasurable f volume) : Measurable (cubeMaximalEuclidean n f) := by
-  have he := measurePreserving_euclideanEquivPi n
-  have hg : AEStronglyMeasurable (f ∘ (euclideanEquivPi n).symm) volume :=
-    hf.comp_measurePreserving he.symm
-  have : cubeMaximalEuclidean n f =
-      hlMaximal volume (f ∘ (euclideanEquivPi n).symm) ∘ euclideanEquivPi n :=
-    funext fun x => cubeMaximalEuclidean_eq n f x
-  rw [this]
-  exact (measurable_hlMaximal (fun _ _ => measure_closedBall_lt_top.ne) hg).comp
-    (euclideanEquivPi n).measurable
-
-/-- **Hardy–Littlewood maximal theorem on `E = ℝⁿ`, weak type `(1,1)`** (Blueprint Lemma 2.4
-(`lem:maximal`), weak bound for `X = E`): for the maximal function over centered closed
-axis-parallel cubes on `EuclideanSpace ℝ (Fin n)`, every a.e. strongly measurable `f` and every
-`t`, `|{M f > t}| ≤ 3ⁿ t⁻¹ ‖f‖₁`. -/
-theorem cubeMaximalEuclidean_weak_one {f : EuclideanSpace ℝ (Fin n) → E}
-    (hf : AEStronglyMeasurable f volume) (t : ℝ≥0∞) :
-    volume {x | t < cubeMaximalEuclidean n f x} ≤
-      ((3 ^ n : ℝ≥0) : ℝ≥0∞) / t * ∫⁻ y, ‖f y‖ₑ := by
-  have he := measurePreserving_euclideanEquivPi n
-  have hg : AEStronglyMeasurable (f ∘ (euclideanEquivPi n).symm) volume :=
-    hf.comp_measurePreserving he.symm
-  have hset : {x | t < cubeMaximalEuclidean n f x} = euclideanEquivPi n ⁻¹'
-      {z | t < hlMaximal volume (f ∘ (euclideanEquivPi n).symm) z} := by
-    ext x
-    simp [cubeMaximalEuclidean_eq n f x]
-  have hint : ∫⁻ y, ‖f y‖ₑ = ∫⁻ z, ‖(f ∘ (euclideanEquivPi n).symm) z‖ₑ := by
-    rw [← he.lintegral_comp_emb (euclideanEquivPi n).measurableEmbedding]
-    simp
-  rw [hset, he.measure_preimage_equiv, hint]
-  exact hlMaximal_weak_one_pi n hg t
-
-/-- **Hardy–Littlewood maximal theorem on `E = ℝⁿ`, strong type `(p,p)`** (Blueprint Lemma 2.4
-(`lem:maximal`), strong bound for `X = E`, `1 < p < ∞`): for the maximal function over centered
-closed axis-parallel cubes on `EuclideanSpace ℝ (Fin n)` and every a.e. strongly measurable `f`,
-`‖M f‖_p ≤ C_{n,p} ‖f‖_p` with `C_{n,p} = (2^p p 3ⁿ/(p-1))^(1/p)`. -/
-theorem eLpNorm_cubeMaximalEuclidean_le {p : ℝ} (hp : 1 < p)
-    {f : EuclideanSpace ℝ (Fin n) → E} (hf : AEStronglyMeasurable f volume) :
-    eLpNorm (cubeMaximalEuclidean n f) (ENNReal.ofReal p) volume ≤
-      hlMaximalConst (3 ^ n) p * eLpNorm f (ENNReal.ofReal p) volume := by
-  have he := measurePreserving_euclideanEquivPi n
-  have hg : AEStronglyMeasurable (f ∘ (euclideanEquivPi n).symm) volume :=
-    hf.comp_measurePreserving he.symm
-  have h1 : cubeMaximalEuclidean n f =
-      hlMaximal volume (f ∘ (euclideanEquivPi n).symm) ∘ euclideanEquivPi n :=
-    funext fun x => cubeMaximalEuclidean_eq n f x
-  have h2 : f = (f ∘ (euclideanEquivPi n).symm) ∘ euclideanEquivPi n := by
-    funext x
-    simp
-  rw [h1, eLpNorm_comp_measurePreserving
-      (measurable_hlMaximal (fun _ _ => measure_closedBall_lt_top.ne) hg).aestronglyMeasurable he,
-    h2, eLpNorm_comp_measurePreserving hg he]
-  exact eLpNorm_hlMaximal_le_pi n hp hg
-
-/-- **Hardy–Littlewood maximal theorem on `E = ℝⁿ`, `L^∞` bound** (Blueprint Lemma 2.4
-(`lem:maximal`), `p = ∞` for `X = E`, constant one): `‖M f‖_∞ ≤ ‖f‖_∞`. -/
-theorem eLpNorm_cubeMaximalEuclidean_top_le {f : EuclideanSpace ℝ (Fin n) → E}
-    (hf : AEStronglyMeasurable f volume) :
-    eLpNorm (cubeMaximalEuclidean n f) ∞ volume ≤ eLpNorm f ∞ volume := by
-  have he := measurePreserving_euclideanEquivPi n
-  have hg : AEStronglyMeasurable (f ∘ (euclideanEquivPi n).symm) volume :=
-    hf.comp_measurePreserving he.symm
-  have h1 : cubeMaximalEuclidean n f =
-      hlMaximal volume (f ∘ (euclideanEquivPi n).symm) ∘ euclideanEquivPi n :=
-    funext fun x => cubeMaximalEuclidean_eq n f x
-  have h2 : f = (f ∘ (euclideanEquivPi n).symm) ∘ euclideanEquivPi n := by
-    funext x
-    simp
-  have hM := measurable_hlMaximal (fun _ _ => measure_closedBall_lt_top.ne) hg
-  rw [h1, eLpNorm_comp_measurePreserving hM.aestronglyMeasurable he, h2,
-    eLpNorm_comp_measurePreserving hg he]
-  exact eLpNorm_hlMaximal_top_le hM.aemeasurable
-
-end Euclidean
-
 /-! ### Cubes in the lattice `G = ℤⁿ` -/
-
-section Lattice
-
-variable {E : Type*} [NormedAddCommGroup E] (n : ℕ)
-
-/-- Sup-metric balls in `Fin n → ℤ` are integer cubes: for `r ≥ 0`,
-`B(x,r) = ∏ᵢ [x i - ⌊r⌋, x i + ⌊r⌋]`. -/
-theorem closedBall_int_eq_piFinset (x : Fin n → ℤ) {r : ℝ} (hr : 0 ≤ r) :
-    closedBall x r =
-      ↑(Fintype.piFinset fun i => Finset.Icc (x i - ⌊r⌋) (x i + ⌊r⌋)) := by
-  ext y
-  simp only [mem_closedBall, dist_pi_le_iff hr, Int.dist_eq, Fintype.coe_piFinset, Set.mem_pi,
-    Set.mem_univ, true_implies, Finset.coe_Icc, Set.mem_Icc]
-  refine forall_congr' fun i => ?_
-  rw [abs_le]
-  have hfl := Int.floor_le r
-  constructor
-  · rintro ⟨h1, h2⟩
-    have h3 : x i - y i ≤ ⌊r⌋ := Int.le_floor.2 (by push_cast; linarith)
-    have h4 : y i - x i ≤ ⌊r⌋ := Int.le_floor.2 (by push_cast; linarith)
-    constructor <;> linarith
-  · rintro ⟨h1, h2⟩
-    have h3 : ((x i - y i : ℤ) : ℝ) ≤ ⌊r⌋ := by exact_mod_cast (by linarith : x i - y i ≤ ⌊r⌋)
-    have h4 : ((y i - x i : ℤ) : ℝ) ≤ ⌊r⌋ := by exact_mod_cast (by linarith : y i - x i ≤ ⌊r⌋)
-    push_cast at h3 h4
-    constructor <;> linarith
-
-/-- The number of lattice points of the cube of radius `r ≥ 0`: `(2⌊r⌋ + 1)ⁿ`. -/
-theorem count_closedBall_int (x : Fin n → ℤ) {r : ℝ} (hr : 0 ≤ r) :
-    Measure.count (closedBall x r) = (((2 * ⌊r⌋ + 1).toNat ^ n : ℕ) : ℝ≥0∞) := by
-  classical
-  rw [closedBall_int_eq_piFinset n x hr, Measure.count_apply_finset, Fintype.card_piFinset]
-  congr 1
-  rw [Finset.prod_congr rfl fun i _ => by
-      rw [Int.card_Icc, show x i + ⌊r⌋ + 1 - (x i - ⌊r⌋) = 2 * ⌊r⌋ + 1 by ring],
-    Finset.prod_const, Finset.card_univ, Fintype.card_fin]
-
-/-- Doubling of counting measure for cubes in `ℤⁿ`, constant `5ⁿ` (all real radii `r ≥ 0`). -/
-theorem count_closedBall_three_mul_le_int (x : Fin n → ℤ) (r : ℝ) (hr : 0 ≤ r) :
-    Measure.count (closedBall x (3 * r)) ≤
-      ((5 ^ n : ℝ≥0) : ℝ≥0∞) * Measure.count (closedBall x r) := by
-  rw [count_closedBall_int n x hr, count_closedBall_int n x (by positivity)]
-  have h1 : ⌊3 * r⌋ < 3 * ⌊r⌋ + 3 :=
-    Int.floor_lt.2 (by push_cast; linarith [Int.lt_floor_add_one r])
-  have h0 : 0 ≤ ⌊r⌋ := Int.floor_nonneg.2 hr
-  have h2 : (2 * ⌊3 * r⌋ + 1).toNat ≤ 5 * (2 * ⌊r⌋ + 1).toNat := by omega
-  have h3 : (2 * ⌊3 * r⌋ + 1).toNat ^ n ≤ 5 ^ n * (2 * ⌊r⌋ + 1).toNat ^ n := by
-    rw [← mul_pow]
-    exact Nat.pow_le_pow_left h2 n
-  have h4 : ((5 ^ n : ℝ≥0) : ℝ≥0∞) = ((5 ^ n : ℕ) : ℝ≥0∞) := by push_cast; rfl
-  rw [h4, ← Nat.cast_mul]
-  exact_mod_cast h3
-
-/-- The lattice cube `{y | ∀ i, |y i - x i| ≤ R}` of integer radius `R` centered at `x ∈ ℤⁿ`. -/
-def intCube {n : ℕ} (x : Fin n → ℤ) (R : ℕ) : Set (Fin n → ℤ) :=
-  {y | ∀ i, |y i - x i| ≤ R}
-
-/-- The blueprint's maximal function on `G = ℤⁿ`: the supremum over integer radii `R ≥ 0`
-(including `R = 0`) of the averages of `‖f‖` over the centered lattice cubes
-`{y | ∀ i, |y i - x i| ≤ R}` with respect to counting measure, valued in `ℝ≥0∞`. -/
-def cubeMaximalInt (f : (Fin n → ℤ) → E) (x : Fin n → ℤ) : ℝ≥0∞ :=
-  ⨆ R : ℕ, (Measure.count (intCube x R))⁻¹ * ∫⁻ y in intCube x R, ‖f y‖ₑ ∂Measure.count
-
-/-- Lattice cubes are sup-metric balls. -/
-theorem intCube_eq_closedBall (x : Fin n → ℤ) (R : ℕ) : intCube x R = closedBall x R := by
-  ext y
-  simp only [intCube, mem_ofPred_eq, mem_closedBall, dist_pi_le_iff (Nat.cast_nonneg R),
-    Int.dist_eq]
-  refine forall_congr' fun i => ?_
-  constructor
-  · intro h
-    exact_mod_cast h
-  · intro h
-    exact_mod_cast h
-
-/-- The lattice cube maximal function is dominated by the ball maximal function. -/
-theorem cubeMaximalInt_le_hlMaximal (f : (Fin n → ℤ) → E) (x : Fin n → ℤ) :
-    cubeMaximalInt n f x ≤ hlMaximal Measure.count f x :=
-  iSup_le fun R => by
-    rw [intCube_eq_closedBall]
-    exact hlBallAverage_le_hlMaximal _ f x R
-
-/-- **Hardy–Littlewood maximal theorem on `G = ℤⁿ`, weak type `(1,1)`** (Blueprint Lemma 2.4
-(`lem:maximal`), weak bound for `X = G`): for the maximal function over centered lattice cubes
-of integer radii `R ≥ 0`, every `f` and every `t`, `#{M f > t} ≤ 5ⁿ t⁻¹ ‖f‖₁`. -/
-theorem cubeMaximalInt_weak_one (f : (Fin n → ℤ) → E) (t : ℝ≥0∞) :
-    Measure.count {x | t < cubeMaximalInt n f x} ≤
-      ((5 ^ n : ℝ≥0) : ℝ≥0∞) / t * ∫⁻ y, ‖f y‖ₑ ∂Measure.count :=
-  (measure_mono fun x hx => lt_of_lt_of_le hx (cubeMaximalInt_le_hlMaximal n f x)).trans
-    (hlMaximal_weak_one_of_countable (count_closedBall_three_mul_le_int n) f t)
-
-/-- **Hardy–Littlewood maximal theorem on `G = ℤⁿ`, strong type `(p,p)`** (Blueprint Lemma 2.4
-(`lem:maximal`), strong bound for `X = G`, `1 < p < ∞`): `‖M f‖_p ≤ C_{n,p} ‖f‖_p` with
-`C_{n,p} = (2^p p 5ⁿ/(p-1))^(1/p)`. -/
-theorem eLpNorm_cubeMaximalInt_le {p : ℝ} (hp : 1 < p) (f : (Fin n → ℤ) → E) :
-    eLpNorm (cubeMaximalInt n f) (ENNReal.ofReal p) Measure.count ≤
-      hlMaximalConst (5 ^ n) p * eLpNorm f (ENNReal.ofReal p) Measure.count :=
-  (eLpNorm_mono_enorm AEStronglyMeasurable.of_discrete fun x => by
-      simpa only [enorm_eq_self] using cubeMaximalInt_le_hlMaximal n f x).trans
-    (eLpNorm_hlMaximal_le_of_countable (count_closedBall_three_mul_le_int n) hp f)
-
-/-- **Hardy–Littlewood maximal theorem on `G = ℤⁿ`, `L^∞` bound** (Blueprint Lemma 2.4
-(`lem:maximal`), `p = ∞` for `X = G`, constant one): `‖M f‖_∞ ≤ ‖f‖_∞`. -/
-theorem eLpNorm_cubeMaximalInt_top_le (f : (Fin n → ℤ) → E) :
-    eLpNorm (cubeMaximalInt n f) ∞ Measure.count ≤ eLpNorm f ∞ Measure.count :=
-  (eLpNorm_mono_enorm AEStronglyMeasurable.of_discrete fun x => by
-      simpa only [enorm_eq_self] using cubeMaximalInt_le_hlMaximal n f x).trans
-    (eLpNorm_hlMaximal_top_le_of_countable f)
-
-end Lattice
 
 end
 
@@ -1700,32 +989,12 @@ open MeasureTheory Metric Set Filter Topology
 open scoped ENNReal NNReal
 noncomputable section
 
-def fsMaximal (n : ℕ) (f : EuclideanSpace ℝ (Fin n) → ℂ) (x : EuclideanSpace ℝ (Fin n)) :
-    ℝ≥0∞ :=
-  ⨆ (r : ℝ) (_ : 0 < r), (volume (closedBall x r))⁻¹ * ∫⁻ y in closedBall x r, ‖f y‖ₑ
-
 section Prelim
 
 variable {n : ℕ}
 
 lemma fs_hfin (x : EuclideanSpace ℝ (Fin n)) (r : ℝ) : volume (closedBall x r) ≠ ∞ :=
   measure_closedBall_lt_top.ne
-
-/-- `fsMaximal` agrees with the maximal function `hlMaximal volume` of
-`VariationalSW.Auto.HardyLittlewoodMaximal` (which also allows radii `r ≤ 0`). -/
-theorem fsMaximal_eq_hlMaximal (f : EuclideanSpace ℝ (Fin n) → ℂ) :
-    fsMaximal n f = hlMaximal volume f := by
-  funext x
-  refine le_antisymm (iSup₂_le fun r _ => hlBallAverage_le_hlMaximal volume f x r)
-    (iSup_le fun r => ?_)
-  rcases lt_trichotomy r 0 with hr | rfl | hr
-  · rw [hlBallAverage_of_neg _ _ _ hr]
-    exact zero_le
-  · refine (hlBallAverage_le_iSup_rat_gt fs_hfin f x 0).trans (iSup₂_le fun q hq => ?_)
-    exact le_iSup₂_of_le (f := fun (r : ℝ) (_ : 0 < r) =>
-      (volume (closedBall x r))⁻¹ * ∫⁻ y in closedBall x r, ‖f y‖ₑ) (q : ℝ) hq le_rfl
-  · exact le_iSup₂_of_le (f := fun (r : ℝ) (_ : 0 < r) =>
-      (volume (closedBall x r))⁻¹ * ∫⁻ y in closedBall x r, ‖f y‖ₑ) r hr le_rfl
 
 /-- Scaling of the volume of Euclidean balls. -/
 lemma fs_volume_closedBall_mul (x : EuclideanSpace ℝ (Fin n)) {c r : ℝ} (hc : 0 ≤ c)
@@ -1761,14 +1030,6 @@ theorem fs_lintegral_maximal_rpow_le {E : Type*} [NormedAddCommGroup E] {q : ℝ
   lintegral_hlMaximal_rpow_le_of_weak hq
     (fun _ hg t => hlMaximal_weak_one fs_hfin fs_doubling hg t) hf
     (fs_measurable_maximal hf).aemeasurable
-
-/-- The `L²` case in integral form, with natural powers. -/
-theorem fs_lintegral_maximal_sq_le {E : Type*} [NormedAddCommGroup E]
-    {f : EuclideanSpace ℝ (Fin n) → E} (hf : AEStronglyMeasurable f volume) :
-    ∫⁻ x, hlMaximal volume f x ^ 2 ≤ fsK n 2 * ∫⁻ x, ‖f x‖ₑ ^ 2 := by
-  have h := fs_lintegral_maximal_rpow_le (q := 2) one_lt_two hf
-  simp only [ENNReal.rpow_two] at h
-  exact h
 
 end Prelim
 

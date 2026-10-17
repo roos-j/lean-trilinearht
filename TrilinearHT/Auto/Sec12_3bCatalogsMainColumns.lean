@@ -204,11 +204,6 @@ theorem mainRange_mono (s : List (CatCol Tg)) (I : ℤ × ℤ) {r r' : ℕ} {M M
   · exact Or.inl ⟨v, h1, hM _ h2, rfl⟩
   · exact Or.inr ⟨n, hn, h1, h2.trans hr, hM _ h3, rfl⟩
 
-theorem mainProj_nest_mono (s : List (CatCol Tg)) (I : ℤ × ℤ) {r r' : ℕ} {M M' : Tg → Prop}
-    (hr : r ≤ r') (hM : ∀ t, M t → M' t) :
-    (mainProj G Mc O s I r M).comp (mainProj G Mc O s I r' M') = mainProj G Mc O s I r M :=
-  Submodule.starProjection_comp_starProjection_of_le (mainRange_mono G Mc O s I hr hM)
-
 /-- Vectors whose template coordinates from the label `n` on vanish. -/
 def MainFresh (n : ℕ) (x : ColumnL2 (V ⊕ Fin Mc)) : Prop :=
   ∀ m : Fin Mc, n ≤ (m : ℕ) →
@@ -983,11 +978,6 @@ theorem avg_residual_eq {P : ℕ} (hP : 0 < P) (Q : ℕ → Fin P → E →L[ℂ
 
 end Filters
 
-/-- The level `τ₃ / (D √n_{r-1})` of the catalog test of the target rank `r`, with
-`τ₃ = D^{-C_τ}` (blueprint eq:catalog-test). -/
-noncomputable def catLevel (D : ℝ) (Cτ : ℕ) (n : ℕ → ℕ) (r : ℕ) : ℝ :=
-  D ^ (-(Cτ : ℝ)) / (D * Real.sqrt (n (r - 1)))
-
 section ResidOK
 variable {W : Type*} [Fintype W]
 
@@ -1103,79 +1093,6 @@ theorem ResidOK.avg {κ : LocalKernelClass} {Tg : Type*} {G : RealDyadicGrid} {I
 end ResidOK
 
 /-! ### Nesting of the main projections in the pad and in depth (blueprint line 1807) -/
-
-section MainRestrict
-variable {V : Type} [Fintype V] {Tg : Type*} {G : RealDyadicGrid} {Mc : ℕ} {O : OrigCols V Tg}
-
-/-- Restricting a main column of a cell to a subcell gives the main column of the subcell. -/
-theorem mainCol_restrict (s : List (CatCol Tg)) {I I' : ℤ × ℤ}
-    (hII' : dyadicGridCell G I'.1 I'.2 ⊆ dyadicGridCell G I.1 I.2) (x : V ⊕ Fin Mc)
-    (hmem : MemLp ((dyadicGridCell G I.1 I.2).indicator
-      (privateColumnValue (mainScalar Mc O s) (mainWeight Mc O) x)) 2 volume) :
-    columnL2Restriction (dyadicGridCell G I'.1 I'.2) (dyadicGridCell_measurable G I'.1 I'.2)
-      (mainCol G Mc O s I x) = mainCol G Mc O s I' x := by
-  have hmem' : MemLp ((dyadicGridCell G I'.1 I'.2).indicator
-      (privateColumnValue (mainScalar Mc O s) (mainWeight Mc O) x)) 2 volume := by
-    have e : (dyadicGridCell G I'.1 I'.2).indicator
-        (privateColumnValue (mainScalar Mc O s) (mainWeight Mc O) x) =
-        (dyadicGridCell G I'.1 I'.2).indicator ((dyadicGridCell G I.1 I.2).indicator
-          (privateColumnValue (mainScalar Mc O s) (mainWeight Mc O) x)) := by
-      funext y
-      by_cases hy : y ∈ dyadicGridCell G I'.1 I'.2
-      · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy, Set.indicator_of_mem (hII' hy)]
-      · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy]
-    rw [e]
-    exact hmem.indicator (dyadicGridCell_measurable G I'.1 I'.2).nullMeasurableSet
-  apply Lp.ext
-  filter_upwards [columnL2Indicator_coeFn (dyadicGridCell G I'.1 I'.2)
-    (dyadicGridCell_measurable G I'.1 I'.2) (mainCol G Mc O s I x), wColumn_coeFn hmem,
-    wColumn_coeFn hmem'] with y h1 h2 h3
-  change (columnL2Indicator (dyadicGridCell G I'.1 I'.2) (dyadicGridCell_measurable G I'.1 I'.2)
-    (mainCol G Mc O s I x) : ℝ → ColumnHilbert (V ⊕ Fin Mc)) y = _
-  rw [h1]
-  change _ = (wColumn (dyadicGridCell G I'.1 I'.2) (mainScalar Mc O s) (mainWeight Mc O) x :
-    ℝ → ColumnHilbert (V ⊕ Fin Mc)) y
-  rw [h3]
-  by_cases hy : y ∈ dyadicGridCell G I'.1 I'.2
-  · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy]
-    change (wColumn (dyadicGridCell G I.1 I.2) (mainScalar Mc O s) (mainWeight Mc O) x :
-      ℝ → ColumnHilbert (V ⊕ Fin Mc)) y = _
-    rw [h2, Set.indicator_of_mem (hII' hy)]
-  · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy]
-
-/-- Main ranges are nested in depth (blueprint line 1807): restricting the range at a cell to a
-subcell lands in the range at the subcell, when the available original columns stay available
-with their vertices in the (larger) mask of the subcell and the template tags in the mask stay in
-it. -/
-theorem mainRange_restrict (s : List (CatCol Tg)) {I I' : ℤ × ℤ}
-    (hII' : dyadicGridCell G I'.1 I'.2 ⊆ dyadicGridCell G I.1 I.2) (r : ℕ)
-    {M M' : Tg → Prop}
-    (hO : ∀ v, O.avail I v → M (O.tag I v) → O.avail I' v ∧ M' (O.tag I' v) ∧
-      MemLp ((dyadicGridCell G I.1 I.2).indicator
-        (privateColumnValue (mainScalar Mc O s) (mainWeight Mc O) (Sum.inl v))) 2 volume)
-    (hMt : ∀ t, M t → M' t) {x : ColumnL2 (V ⊕ Fin Mc)} (hx : x ∈ mainRange G Mc O s I r M) :
-    columnL2Restriction (dyadicGridCell G I'.1 I'.2) (dyadicGridCell_measurable G I'.1 I'.2) x ∈
-      mainRange G Mc O s I' r M' := by
-  have hcell := dyadicGridCell_measurable G I.1 I.2
-  have hvol : volume (dyadicGridCell G I.1 I.2) < ⊤ := by
-    rw [dyadicGridCell_volume]; exact ENNReal.ofReal_lt_top
-  refine Submodule.span_induction (p := fun x _ => columnL2Restriction (dyadicGridCell G I'.1 I'.2)
-    (dyadicGridCell_measurable G I'.1 I'.2) x ∈ mainRange G Mc O s I' r M') ?_ ?_ ?_ ?_ hx
-  · rintro x (⟨v, h1, h2, rfl⟩ | ⟨n, hn, h1, h2, h3, rfl⟩)
-    · obtain ⟨h1', h2', hm⟩ := hO v h1 h2
-      rw [mainCol_restrict s hII' _ hm]
-      exact Submodule.subset_span (Or.inl ⟨v, h1', h2', rfl⟩)
-    · have hm : MemLp ((dyadicGridCell G I.1 I.2).indicator
-          (privateColumnValue (mainScalar Mc O s) (mainWeight Mc O) (Sum.inr n))) 2 volume :=
-        wColumn_memLp hcell hvol _ (catAtom_measurable s n) (C := 1)
-          fun y _ => catAtom_bound s n y
-      rw [mainCol_restrict s hII' _ hm]
-      exact Submodule.subset_span (Or.inr ⟨n, hn, hII'.trans h1, h2, hMt _ h3, rfl⟩)
-  · rw [map_zero]; exact Submodule.zero_mem _
-  · intro x y _ _ hx hy; rw [map_add]; exact Submodule.add_mem _ hx hy
-  · intro c x _ hx; rw [map_smul]; exact Submodule.smul_mem _ c hx
-
-end MainRestrict
 
 namespace ActiveSetup.BasicFamilies
 variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (bf : A.BasicFamilies)
@@ -1312,53 +1229,6 @@ theorem ballFilt_contraction (l : Fin 4) (s : List (CatCol bf.Vtx)) (I : ℤ × 
       Option (Fin A.fcd0 × bf.Vtx × ℤ))) (j : ℕ) :
     ‖fp.ballFilt l s I G j‖ ≤ 1 ∧ ‖ContinuousLinearMap.id ℂ _ - fp.ballFilt l s I G j‖ ≤ 1 :=
   opAvg_starProjection_contraction fp.hP _ fun _ => mainProj_isStarProjection _ _ _ _ _ _ _
-
-/-- The individual projections of a smeared filter are nested in the pad (blueprint line 1807). -/
-theorem cum_nest_pad (l : Fin 4) (s : List (CatCol bf.Vtx)) (I : ℤ × ℤ) (m : ℕ) {p p' : ℕ}
-    (hp : p ≤ p') :
-    (mainProj A.G fp.Mc (bf.origCols l) s I (fp.crank m) (fp.cmask I m p)).comp
-        (mainProj A.G fp.Mc (bf.origCols l) s I (fp.crank m) (fp.cmask I m p')) =
-      mainProj A.G fp.Mc (bf.origCols l) s I (fp.crank m) (fp.cmask I m p) :=
-  mainProj_nest_mono _ _ _ s I le_rfl fun x hx => fp.cmask_pad_mono I m hp x hx
-
-theorem ball_nest_pad (l : Fin 4) (s : List (CatCol bf.Vtx)) (I : ℤ × ℤ)
-    (G : ℕ × (Option (Fin A.fcd0 × bf.Vtx × ℤ) × ℕ × (ℕ × ℕ) ×
-      Option (Fin A.fcd0 × bf.Vtx × ℤ))) (j : ℕ) {p p' : ℕ} (hp : p ≤ p') :
-    (mainProj A.G fp.Mc (bf.origCols l) s I (fp.brank j) (fp.bmask I G j p)).comp
-        (mainProj A.G fp.Mc (bf.origCols l) s I (fp.brank j) (fp.bmask I G j p')) =
-      mainProj A.G fp.Mc (bf.origCols l) s I (fp.brank j) (fp.bmask I G j p) :=
-  mainProj_nest_mono _ _ _ s I le_rfl fun x hx => fp.bmask_pad_mono I G j hp x hx
-
-/-- The main projections of the cumulative filters are nested in depth (blueprint line 1807):
-restricting the range at a cell of the setup to a subcell of the setup lands in the range there. -/
-theorem cum_nest_depth (l : Fin 4) (s : List (CatCol bf.Vtx)) {I J : ℤ × ℤ} (hI : I ∈ A.cells)
-    (hJ : J ∈ A.cells) (h : dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2) (m p : ℕ)
-    {x : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)}
-    (hx : x ∈ mainRange A.G fp.Mc (bf.origCols l) s J (fp.crank m) (fp.cmask J m p)) :
-    columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2) x ∈
-      mainRange A.G fp.Mc (bf.origCols l) s I (fp.crank m) (fp.cmask I m p) := by
-  refine mainRange_restrict s h _ (fun v hv hM => ?_) (fun t ht => fp.cmask_mono hI hJ h m p t ht)
-    hx
-  have hv' : (bf.origCols l).avail I v := ⟨hv.1, bf.occAvail_desc hI h hv.2⟩
-  refine ⟨hv', ?_, bf.origCol_memLp l s hv.2⟩
-  change fp.cmask I m p (bf.vtxAt I v)
-  rw [bf.vtxAt_desc hI hJ h hv.2]
-  exact fp.cmask_mono hI hJ h m p _ hM
-
-theorem ball_nest_depth (l : Fin 4) (s : List (CatCol bf.Vtx)) {I J : ℤ × ℤ} (hI : I ∈ A.cells)
-    (hJ : J ∈ A.cells) (h : dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2)
-    (G : ℕ × (Option (Fin A.fcd0 × bf.Vtx × ℤ) × ℕ × (ℕ × ℕ) ×
-      Option (Fin A.fcd0 × bf.Vtx × ℤ))) (j p : ℕ) {x : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)}
-    (hx : x ∈ mainRange A.G fp.Mc (bf.origCols l) s J (fp.brank j) (fp.bmask J G j p)) :
-    columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2) x ∈
-      mainRange A.G fp.Mc (bf.origCols l) s I (fp.brank j) (fp.bmask I G j p) := by
-  refine mainRange_restrict s h _ (fun v hv hM => ?_)
-    (fun t ht => fp.bmask_mono hI hJ h G j p t ht) hx
-  have hv' : (bf.origCols l).avail I v := ⟨hv.1, bf.occAvail_desc hI h hv.2⟩
-  refine ⟨hv', ?_, bf.origCol_memLp l s hv.2⟩
-  change fp.bmask I G j p (bf.vtxAt I v)
-  rw [bf.vtxAt_desc hI hJ h hv.2]
-  exact fp.bmask_mono hI hJ h G j p _ hM
 
 end ActiveSetup.BasicFamilies.FamParams
 
@@ -1849,20 +1719,6 @@ noncomputable def mainLabels (G : RealDyadicGrid) (Mc : ℕ) (O : OrigCols V Tg)
       dyadicGridCell G (s[(n : ℕ)]).birth.1 (s[(n : ℕ)]).birth.2 ∧ (s[(n : ℕ)]).rank ≤ r) x
 
 open scoped Classical in
-/-- Every main column of rank at most `r` at `I` is the column of a main label. -/
-theorem mainSel_subset_labels (G : RealDyadicGrid) (Mc : ℕ) (O : OrigCols V Tg)
-    (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) :
-    mainSel G Mc O s I r M ⊆ (mainLabels G Mc O s I r).image (mainCol G Mc O s I) := by
-  classical
-  rintro x (⟨v, h1, -, rfl⟩ | ⟨n, hn, h1, h2, -, rfl⟩)
-  · refine Finset.mem_coe.mpr (Finset.mem_image.mpr ⟨Sum.inl v, ?_, rfl⟩)
-    simp only [mainLabels, Finset.mem_filter, Finset.mem_univ, true_and, Sum.elim_inl]
-    exact h1
-  · refine Finset.mem_coe.mpr (Finset.mem_image.mpr ⟨Sum.inr n, ?_, rfl⟩)
-    simp only [mainLabels, Finset.mem_filter, Finset.mem_univ, true_and, Sum.elim_inr]
-    exact ⟨hn, h1, h2⟩
-
-open scoped Classical in
 /-- The main labels of rank at most `r` at `I` are the available originals and the templates,
 counted by their birth cells and ranks. -/
 theorem card_mainLabels_le (G : RealDyadicGrid) (Mc : ℕ) (O : OrigCols V Tg)
@@ -1956,82 +1812,6 @@ theorem allowance_eq {Dv : ℕ} (hDv : 0 < Dv) {τ₃ : ℝ} (hτ₃ : 0 < τ₃
   have hsq : Real.sqrt (n (r - 1)) ^ 2 = n (r - 1) := Real.sq_sqrt hn.le
   conv_rhs => rw [← hsq]
   field_simp
-
-/-- The path counts and the trial cap of lem:closure exist (blueprint line 1828): for any closure
-data there are counts `n_r = exp((r + j) X^{C₂})` with `n_0 ≥ n₀`, ratios
-`n_{r+1} / n_r ≥ 1 + (L + 6) M_p K` with the closure ratio `K` of the trial cap, and a trial cap
-`T ≥ n_{L+5}`. -/
-theorem exists_pathCounts (Lc Mp Kt mH Dv : ℕ) (H₀ τ₃ n₀ : ℝ) :
-    ∃ (n : ℕ → ℝ) (Tmax : ℕ), n₀ ≤ n 0 ∧
-      (∀ r, (1 + (Lc + 6) * Mp * closureRatio Dv Kt mH Tmax H₀ τ₃) * n r ≤ n (r + 1)) ∧
-      n (Lc + 5) ≤ Tmax := by
-  obtain ⟨C₂, k₀, hk₀, h⟩ := closure_parameters (mH + 1)
-  set a : ℝ := (Lc + 6) * Mp * (Kt * (2 * H₀ * Dv / τ₃) ^ 2) with ha
-  have ha0 : 0 ≤ a := by positivity
-  set K : ℝ := 1 + a with hK
-  set j : ℕ := ⌈Real.log n₀⌉₊ with hj
-  set Lr : ℕ := Lc + 6 + j with hLr
-  set X : ℝ := max k₀ (max (Lr : ℝ) (Real.log K)) with hX
-  have hX1 : 1 ≤ X := le_trans (by linarith) (le_max_left _ _)
-  have hXc : X ≤ X ^ (mH + 1) := by
-    calc X = X ^ 1 := (pow_one X).symm
-      _ ≤ X ^ (mH + 1) := pow_le_pow_right₀ hX1 (by omega)
-  have hXC : 1 ≤ X ^ C₂ := one_le_pow₀ hX1
-  set y : ℝ := closureCount C₂ X (Lc + 5 + j) with hy
-  have hy1 : 1 ≤ y := Real.one_le_exp (by positivity)
-  set Tmax : ℕ := ⌈y⌉₊ with hT
-  have hTle : (Tmax : ℝ) ≤ closureCount C₂ X Lr := by
-    have h1 : (Tmax : ℝ) < y + 1 := Nat.ceil_lt_add_one (by linarith)
-    have h2 : closureCount C₂ X Lr = y * Real.exp (X ^ C₂) := by
-      simp only [hy, closureCount, ← Real.exp_add, hLr]
-      congr 1
-      push_cast
-      ring
-    have h3 : (2 : ℝ) ≤ Real.exp (X ^ C₂) := by
-      have := Real.add_one_le_exp (X ^ C₂); linarith
-    rw [h2]
-    nlinarith
-  have hLrX : (Lr : ℝ) ≤ X ^ (mH + 1) :=
-    (le_trans (le_max_left _ _) (le_max_right _ _)).trans hXc
-  have hmX : (mH : ℝ) ≤ ((mH + 1 : ℕ) : ℝ) * (Real.log X + 1) := by
-    have := Real.log_nonneg hX1
-    push_cast
-    nlinarith
-  have hKX : K ≤ Real.exp (X ^ (mH + 1)) := by
-    have hK0 : 0 < K := by linarith
-    calc K = Real.exp (Real.log K) := (Real.exp_log hK0).symm
-      _ ≤ Real.exp (X ^ (mH + 1)) := Real.exp_le_exp.mpr
-        ((le_trans (le_max_right _ _) (le_max_right _ _)).trans hXc)
-  obtain ⟨hrat, -⟩ := @h X (le_max_left _ _) Lr mH K hLrX hmX hKX Tmax hTle
-  refine ⟨fun r => closureCount C₂ X (r + j), Tmax, ?_, fun r => ?_, Nat.le_ceil _⟩
-  · change n₀ ≤ Real.exp (((0 + j : ℕ) : ℝ) * X ^ C₂)
-    rcases le_or_gt n₀ 0 with h0 | h0
-    · exact h0.trans (Real.exp_pos _).le
-    · calc n₀ = Real.exp (Real.log n₀) := (Real.exp_log h0).symm
-        _ ≤ Real.exp (((0 + j : ℕ) : ℝ) * X ^ C₂) := by
-          apply Real.exp_le_exp.mpr
-          have h1 : Real.log n₀ ≤ j := Nat.le_ceil _
-          have h2 : (j : ℝ) ≤ j * X ^ C₂ := le_mul_of_one_le_right (Nat.cast_nonneg _) hXC
-          push_cast
-          linarith
-  · set Q : ℝ := 4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH) with hQ
-    have hQ1 : 1 ≤ Q := by
-      have := projectionPrefixConstant_one_le Tmax
-      exact one_le_mul_of_one_le_of_one_le (one_le_pow₀ (by norm_num)) (one_le_pow₀ this)
-    have hcc := hrat (r + j)
-    have hpos : 0 < closureCount C₂ X (r + j) := Real.exp_pos _
-    have e : r + j + 1 = r + 1 + j := by omega
-    rw [e] at hcc
-    have hle : 1 + (Lc + 6) * Mp * closureRatio Dv Kt mH Tmax H₀ τ₃ ≤ K * Q := by
-      have e2 : (Lc + 6 : ℝ) * Mp * closureRatio Dv Kt mH Tmax H₀ τ₃ = a * Q := by
-        simp only [closureRatio, ha, hQ]
-        ring
-      rw [e2, hK]
-      nlinarith
-    calc (1 + (Lc + 6) * Mp * closureRatio Dv Kt mH Tmax H₀ τ₃) * closureCount C₂ X (r + j)
-        ≤ K * Q * closureCount C₂ X (r + j) := mul_le_mul_of_nonneg_right hle hpos.le
-      _ = closureCount C₂ X (r + j) * K * Q := by ring
-      _ ≤ closureCount C₂ X (r + 1 + j) := hcc.le
 
 namespace ActiveSetup.BasicFamilies
 variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (bf : A.BasicFamilies)
@@ -2623,82 +2403,6 @@ theorem pathCounts_poly (c : ℕ) :
       _ ≤ k ^ (c + 1 + C₂) := hlog
 
 
-/-- The color sizes of line 1715 are polynomial in `k` (blueprint line 1828: `L + 5 = k^{O(1)}`):
-for a vertex bound `1 ≤ D ≤ exp(k^c)` and `P ≤ e^k`, the number of colors `L = d₀^{30}` with
-`d₀ = ⌈1000 log 2D⌉` satisfies `L + 6 ≤ k^{30c + 31}`, and the pad bound `H_max = 100 P (L + 1)`
-satisfies `H_max + 1 ≤ exp(k^{30c + 32})`, for `k ≥ 2001`. -/
-theorem colorSizes_poly (c : ℕ) {k : ℝ} (hk : 2001 ≤ k) {D P : ℕ} (hD1 : 1 ≤ D)
-    (hD : (D : ℝ) ≤ Real.exp (k ^ c)) (hP : (P : ℝ) ≤ Real.exp k) :
-    ((colorDegree D ^ 30 + 6 : ℕ) : ℝ) ≤ k ^ (30 * c + 31) ∧
-      ((100 * P * (colorDegree D ^ 30 + 1) + 1 : ℕ) : ℝ) ≤ Real.exp (k ^ (30 * c + 32)) := by
-  have hk1 : 1 ≤ k := by linarith
-  have hkc : 1 ≤ k ^ c := one_le_pow₀ hk1
-  have hD1' : (1 : ℝ) ≤ D := by exact_mod_cast hD1
-  have hlogD : Real.log D ≤ k ^ c := by
-    rw [Real.log_le_iff_le_exp (by linarith)]; exact hD
-  have hl2 : Real.log 2 ≤ 1 := by have := Real.log_two_lt_d9; linarith
-  have hd0 : (colorDegree D : ℝ) ≤ k ^ (c + 1) := by
-    unfold colorDegree
-    have hlog2D : Real.log (2 * D) ≤ 1 + k ^ c := by
-      rw [Real.log_mul (by norm_num) (by linarith)]; linarith
-    have hpos : 0 ≤ 1000 * Real.log (2 * D) := by
-      have := Real.log_nonneg (show (1 : ℝ) ≤ 2 * D by linarith); linarith
-    calc (⌈1000 * Real.log (2 * D)⌉₊ : ℝ) ≤ 1000 * Real.log (2 * D) + 1 :=
-          (Nat.ceil_lt_add_one hpos).le
-      _ ≤ 1001 * k ^ c + 1000 := by linarith
-      _ ≤ 2001 * k ^ c := by linarith
-      _ ≤ k * k ^ c := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
-      _ = k ^ (c + 1) := by ring
-  have hL : ((colorDegree D ^ 30 : ℕ) : ℝ) ≤ k ^ (30 * c + 30) := by
-    push_cast
-    calc (colorDegree D : ℝ) ^ 30 ≤ (k ^ (c + 1)) ^ 30 :=
-          pow_le_pow_left₀ (Nat.cast_nonneg _) hd0 30
-      _ = k ^ (30 * c + 30) := by rw [← pow_mul]; ring_nf
-  have hk30 : 1 ≤ k ^ (30 * c + 30) := one_le_pow₀ hk1
-  have h1 : ((colorDegree D ^ 30 + 6 : ℕ) : ℝ) ≤ k ^ (30 * c + 31) := by
-    push_cast at hL ⊢
-    calc (colorDegree D : ℝ) ^ 30 + 6 ≤ 7 * k ^ (30 * c + 30) := by linarith
-      _ ≤ k * k ^ (30 * c + 30) := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
-      _ = k ^ (30 * c + 31) := by ring
-  refine ⟨h1, ?_⟩
-  have hL1 : ((colorDegree D ^ 30 + 1 : ℕ) : ℝ) ≤ Real.exp (k ^ (30 * c + 31)) := by
-    have := Real.add_one_le_exp (k ^ (30 * c + 31))
-    push_cast at h1 ⊢
-    linarith
-  have h101 : (101 : ℝ) ≤ Real.exp 5 := by
-    have h := Real.add_one_le_exp (5 : ℝ)
-    have e : Real.exp 5 = Real.exp 1 ^ 5 := by rw [← Real.exp_nat_mul]; norm_num
-    have he := Real.exp_one_gt_d9
-    rw [e]
-    calc (101 : ℝ) ≤ 2.7 ^ 5 := by norm_num
-      _ ≤ Real.exp 1 ^ 5 := pow_le_pow_left₀ (by norm_num) (by linarith) 5
-  have hPm : (max P 1 : ℝ) ≤ Real.exp k := by
-    rcases le_total (P : ℝ) 1 with h | h
-    · rw [max_eq_right h]; exact Real.one_le_exp (by linarith)
-    · rw [max_eq_left h]; exact hP
-  have hX : ((100 * P * (colorDegree D ^ 30 + 1) + 1 : ℕ) : ℝ) ≤
-      101 * max (P : ℝ) 1 * ((colorDegree D ^ 30 + 1 : ℕ) : ℝ) := by
-    push_cast
-    have hm1 : (1 : ℝ) ≤ max (P : ℝ) 1 := le_max_right _ _
-    have hmP : (P : ℝ) ≤ max (P : ℝ) 1 := le_max_left _ _
-    have hc : (1 : ℝ) ≤ (colorDegree D : ℝ) ^ 30 + 1 := by
-      have := pow_nonneg (Nat.cast_nonneg (α := ℝ) (colorDegree D)) 30; linarith
-    nlinarith
-  refine hX.trans ?_
-  calc 101 * max (P : ℝ) 1 * ((colorDegree D ^ 30 + 1 : ℕ) : ℝ)
-      ≤ Real.exp 5 * Real.exp k * Real.exp (k ^ (30 * c + 31)) := by
-        gcongr
-    _ = Real.exp (5 + k + k ^ (30 * c + 31)) := by rw [← Real.exp_add, ← Real.exp_add]
-    _ ≤ Real.exp (k ^ (30 * c + 32)) := by
-        apply Real.exp_le_exp.mpr
-        have h31 : 1 ≤ k ^ (30 * c + 31) := one_le_pow₀ hk1
-        have hk31 : k ≤ k ^ (30 * c + 31) := by
-          calc k = k ^ 1 := (pow_one k).symm
-            _ ≤ k ^ (30 * c + 31) := pow_le_pow_right₀ hk1 (by omega)
-        calc 5 + k + k ^ (30 * c + 31) ≤ 7 * k ^ (30 * c + 31) := by linarith
-          _ ≤ k * k ^ (30 * c + 31) := mul_le_mul_of_nonneg_right (by linarith) (by positivity)
-          _ = k ^ (30 * c + 32) := by ring
-
 namespace ActiveSetup.BasicFamilies.FamParams
 variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
   (fp : bf.FamParams)
@@ -2951,27 +2655,6 @@ theorem inner_single_privateColumnValue {W : Type*} [Fintype W] [DecidableEq W]
 section MainExpansion
 variable {V : Type} [Fintype V] {Tg : Type*} {G : RealDyadicGrid} {Mc : ℕ} {O : OrigCols V Tg}
 
-open scoped Classical in
-/-- Every vector in a main range is a combination of the columns of the main labels. -/
-theorem mainRange_exists_coeff {s : List (CatCol Tg)} {I : ℤ × ℤ} {r : ℕ} {M : Tg → Prop}
-    {x : ColumnL2 (V ⊕ Fin Mc)} (hx : x ∈ mainRange G Mc O s I r M) :
-    ∃ c : V ⊕ Fin Mc → ℂ, x = ∑ v ∈ mainLabels G Mc O s I r, c v • mainCol G Mc O s I v := by
-  refine Submodule.span_induction (R := ℂ) (M := ColumnL2 (V ⊕ Fin Mc)) (p := fun x _ =>
-    ∃ c : V ⊕ Fin Mc → ℂ, x = ∑ v ∈ mainLabels G Mc O s I r, c v • mainCol G Mc O s I v)
-    ?_ ?_ ?_ ?_ hx
-  · intro x hx
-    obtain ⟨v, hv, rfl⟩ := Finset.mem_image.mp (mainSel_subset_labels G Mc O s I r M hx)
-    refine ⟨Pi.single v (1 : ℂ), ?_⟩
-    rw [Finset.sum_eq_single v]
-    · simp
-    · intro b _ hb; simp [hb]
-    · intro h; exact absurd hv h
-  · exact ⟨0, by simp⟩
-  · rintro x y _ _ ⟨c, rfl⟩ ⟨d, rfl⟩
-    exact ⟨c + d, by simp [add_smul, Finset.sum_add_distrib]⟩
-  · rintro a x _ ⟨c, rfl⟩
-    exact ⟨a • c, by simp [Finset.smul_sum, smul_smul]⟩
-
 /-- The pointwise form of a combination of main columns on the cell. -/
 theorem mainCombination_coeFn (s : List (CatCol Tg)) (I : ℤ × ℤ) (F : Finset (V ⊕ Fin Mc))
     (c : V ⊕ Fin Mc → ℂ) (hmem : ∀ v ∈ F, MemLp ((dyadicGridCell G I.1 I.2).indicator
@@ -3081,15 +2764,6 @@ theorem mainCoeff_sum_le (s : List (CatCol Tg)) (I : ℤ × ℤ) (F : Finset (V 
 
 end MainExpansion
 
-/-- The threshold of eq:catalog-test cancels the expansion cost of a lower-rank primal
-(blueprint line 1835: this explains the denominator in eq:catalog-test). -/
-theorem catThreshold_mul_cost {Dv : ℕ} (hDv : 0 < Dv) (τ₃ : ℝ) {n : ℕ → ℝ} {r : ℕ}
-    (hn : 0 < n (r - 1)) : catThreshold Dv τ₃ n r * (Dv * Real.sqrt (n (r - 1))) = τ₃ := by
-  unfold catThreshold
-  have : (0 : ℝ) < Dv * Real.sqrt (n (r - 1)) :=
-    mul_pos (by exact_mod_cast hDv) (Real.sqrt_pos.mpr hn)
-  field_simp
-
 namespace ActiveSetup.BasicFamilies
 variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (bf : A.BasicFamilies)
 
@@ -3122,84 +2796,10 @@ theorem inv_mainWeight_le (l : Fin 4) {Mc : ℕ} (v : bf.Lab ⊕ Fin Mc) :
     change (1 : ℝ)⁻¹ ≤ _
     rw [inv_one]; nlinarith
 
-open scoped Classical in
-/-- Blueprint line 1835: expanding a rank-`r` main primal costs at most `D √n` times its input
-norm, with the inverse-weight budget `D = colBudget` and `n` the number of main labels of rank at
-most `r` at the cell: the rank-`r` main projection of an input at a cell is a combination of the
-columns of these labels whose coefficients have absolute sum at most
-`colBudget √n ‖z‖ / √|I|`. -/
-theorem primal_expansion (l : Fin 4) {Mc : ℕ} (s : List (CatCol bf.Vtx)) (I : ℤ × ℤ) (r : ℕ)
-    (M : bf.Vtx → Prop) (z : ColumnL2 (bf.Lab ⊕ Fin Mc)) :
-    ∃ c : bf.Lab ⊕ Fin Mc → ℂ,
-      mainProj A.G Mc (bf.origCols l) s I r M z =
-        ∑ v ∈ mainLabels A.G Mc (bf.origCols l) s I r,
-          c v • mainCol A.G Mc (bf.origCols l) s I v ∧
-      ∑ v ∈ mainLabels A.G Mc (bf.origCols l) s I r, ‖c v‖ ≤
-        A.colBudget * Real.sqrt (mainLabels A.G Mc (bf.origCols l) s I r).card * ‖z‖ /
-          Real.sqrt (dyadicGridLength A.G I.1) := by
-  have hx : mainProj A.G Mc (bf.origCols l) s I r M z ∈
-      mainRange A.G Mc (bf.origCols l) s I r M :=
-    Submodule.starProjection_apply_mem _ z
-  obtain ⟨c, hc⟩ := mainRange_exists_coeff hx
-  have hcb : (0 : ℝ) ≤ A.colBudget := by
-    have := A.Dc_nonneg; unfold ActiveSetup.colBudget; positivity
-  refine ⟨c, hc, ?_⟩
-  have h := mainCoeff_sum_le s I (mainLabels A.G Mc (bf.origCols l) s I r) c
-    (fun v hv => bf.mainLabel_memLp l s I r hv) hcb (fun v _ => bf.inv_mainWeight_le l v)
-  rw [← hc] at h
-  refine h.trans ?_
-  have hP : ‖mainProj A.G Mc (bf.origCols l) s I r M z‖ ≤ ‖z‖ :=
-    Submodule.norm_starProjection_apply_le _ z
-  have hsr : 0 < Real.sqrt (dyadicGridLength A.G I.1) :=
-    Real.sqrt_pos.mpr (dyadicGridLength_pos A.G I.1)
-  rw [div_le_div_iff_of_pos_right hsr]
-  calc Real.sqrt (mainLabels A.G Mc (bf.origCols l) s I r).card * A.colBudget *
-        ‖mainProj A.G Mc (bf.origCols l) s I r M z‖
-      ≤ Real.sqrt (mainLabels A.G Mc (bf.origCols l) s I r).card * A.colBudget * ‖z‖ :=
-        mul_le_mul_of_nonneg_left hP (by positivity)
-    _ = A.colBudget * Real.sqrt (mainLabels A.G Mc (bf.origCols l) s I r).card * ‖z‖ := by ring
-
-open scoped Classical in
-/-- Blueprint line 1835 with the path counts: for an input supported on the cell and at most
-`n_r` main labels of rank at most `r` there, the expansion of the rank-`r` primal costs at most
-`D √n_r` times the normalized input norm on the cell, `D = colBudget`. -/
-theorem primal_expansion_count (l : Fin 4) {Mc : ℕ} (s : List (CatCol bf.Vtx)) (I : ℤ × ℤ)
-    (r : ℕ) (M : bf.Vtx → Prop) (z : ColumnL2 (bf.Lab ⊕ Fin Mc))
-    (hz : ∀ᵐ y ∂volume, y ∉ dyadicGridCell A.G I.1 I.2 →
-      (z : ℝ → ColumnHilbert (bf.Lab ⊕ Fin Mc)) y = 0) {nr : ℝ}
-    (hn : ((mainLabels A.G Mc (bf.origCols l) s I r).card : ℝ) ≤ nr) :
-    ∃ c : bf.Lab ⊕ Fin Mc → ℂ,
-      mainProj A.G Mc (bf.origCols l) s I r M z =
-        ∑ v ∈ mainLabels A.G Mc (bf.origCols l) s I r,
-          c v • mainCol A.G Mc (bf.origCols l) s I v ∧
-      ∑ v ∈ mainLabels A.G Mc (bf.origCols l) s I r, ‖c v‖ ≤
-        A.colBudget * Real.sqrt nr * cellNorm A.G I z := by
-  obtain ⟨c, hc, hb⟩ := bf.primal_expansion l s I r M z
-  refine ⟨c, hc, hb.trans ?_⟩
-  have hsr : 0 < Real.sqrt (dyadicGridLength A.G I.1) :=
-    Real.sqrt_pos.mpr (dyadicGridLength_pos A.G I.1)
-  have hcb : (0 : ℝ) ≤ A.colBudget := by
-    have := A.Dc_nonneg; unfold ActiveSetup.colBudget; positivity
-  rw [norm_eq_cellNorm_of_support A.G I z hz, div_le_iff₀ hsr]
-  have hcn : 0 ≤ cellNorm A.G I z := Real.sqrt_nonneg _
-  have := Real.sqrt_le_sqrt hn
-  calc A.colBudget * Real.sqrt (mainLabels A.G Mc (bf.origCols l) s I r).card *
-        (Real.sqrt (dyadicGridLength A.G I.1) * cellNorm A.G I z)
-      ≤ A.colBudget * Real.sqrt nr *
-          (Real.sqrt (dyadicGridLength A.G I.1) * cellNorm A.G I z) := by
-        gcongr
-    _ = A.colBudget * Real.sqrt nr * cellNorm A.G I z *
-          Real.sqrt (dyadicGridLength A.G I.1) := by ring
-
 end ActiveSetup.BasicFamilies
 
 namespace ActiveSetup
 variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-
-/-- The common main budget `D_m = colBudget² T U` of an attempt with trial cap `T` and use-count
-bound `U` (blueprint line 1835): it dominates the catalog sizes, the inverse private weights, the
-expansion coefficients and the use counts. -/
-noncomputable def mainBudget (Tmax : ℕ) (U : ℝ) : ℝ := A.colBudget ^ 2 * Tmax * U
 
 theorem two_le_colBudget : (2 : ℝ) ≤ A.colBudget := by
   have := A.Dc_nonneg; unfold ActiveSetup.colBudget
@@ -3213,54 +2813,6 @@ theorem colBudget_le_famVtxBound : A.colBudget ≤ A.famVtxBound := by
   have h2 := A.two_le_colBudget
   unfold famVtxBound
   have := Nat.lt_floor_add_one (8 * A.colBudget)
-  push_cast
-  linarith
-
-theorem expansion_cost_le_threshold (τ₃ : ℝ) (hτ₃ : 0 ≤ τ₃) {n : ℕ → ℝ} {r : ℕ}
-    (hn : 0 < n (r - 1)) :
-    catThreshold A.famVtxBound τ₃ n r * (A.colBudget * Real.sqrt (n (r - 1))) ≤ τ₃ := by
-  have hD : 0 < A.famVtxBound := A.one_le_famVtxBound
-  have h0 : 0 ≤ catThreshold A.famVtxBound τ₃ n r := by
-    unfold catThreshold; positivity
-  calc catThreshold A.famVtxBound τ₃ n r * (A.colBudget * Real.sqrt (n (r - 1)))
-      ≤ catThreshold A.famVtxBound τ₃ n r * (A.famVtxBound * Real.sqrt (n (r - 1))) :=
-        mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right A.colBudget_le_famVtxBound
-          (Real.sqrt_nonneg _)) h0
-    _ = τ₃ := catThreshold_mul_cost hD τ₃ hn
-
-theorem mainBudget_spec {Tmax : ℕ} (hT : 1 ≤ Tmax) {U : ℝ} (hU : 1 ≤ U) :
-    (Tmax : ℝ) ≤ A.mainBudget Tmax U ∧ A.colBudget ^ 2 ≤ A.mainBudget Tmax U ∧
-      A.colBudget * Real.sqrt Tmax ≤ A.mainBudget Tmax U ∧ U ≤ A.mainBudget Tmax U := by
-  have h2 := A.two_le_colBudget
-  have hT' : (1 : ℝ) ≤ Tmax := by exact_mod_cast hT
-  have hs : Real.sqrt Tmax ≤ Tmax := by
-    rw [Real.sqrt_le_left (by linarith)]; nlinarith
-  have hb1 : (1 : ℝ) ≤ A.colBudget ^ 2 := by nlinarith
-  have hbT : (Tmax : ℝ) ≤ A.colBudget ^ 2 * Tmax := le_mul_of_one_le_left (by positivity) hb1
-  have hbT1 : (1 : ℝ) ≤ A.colBudget ^ 2 * Tmax := hT'.trans hbT
-  have hD : A.colBudget ^ 2 * Tmax ≤ A.mainBudget Tmax U :=
-    le_mul_of_one_le_right (by positivity) hU
-  unfold mainBudget at hD ⊢
-  refine ⟨hbT.trans hD, (le_mul_of_one_le_right (by positivity) hT').trans hD, ?_,
-    le_mul_of_one_le_left (by linarith) hbT1⟩
-  calc A.colBudget * Real.sqrt Tmax ≤ A.colBudget ^ 2 * Real.sqrt Tmax := by
-        apply mul_le_mul_of_nonneg_right _ (Real.sqrt_nonneg _); nlinarith
-    _ ≤ A.colBudget ^ 2 * Tmax := mul_le_mul_of_nonneg_left hs (by positivity)
-    _ ≤ _ := hD
-
-/-- `log D_m ≤ k^{O(1)}` (blueprint line 1835): with column budgets at most `exp(k^c)`,
-`log T ≤ k^C` and `log U ≤ k^{C'}`, `log D_m ≤ 2 k^c + k^C + k^{C'}`. -/
-theorem log_mainBudget_le {Tmax : ℕ} (hT : 1 ≤ Tmax) {U : ℝ} (hU : 1 ≤ U) {k : ℝ} {c C C' : ℕ}
-    (hcb : A.colBudget ≤ Real.exp (k ^ c)) (hlogT : Real.log Tmax ≤ k ^ C)
-    (hlogU : Real.log U ≤ k ^ C') :
-    Real.log (A.mainBudget Tmax U) ≤ 2 * k ^ c + k ^ C + k ^ C' := by
-  have h2 := A.two_le_colBudget
-  have hT' : (0 : ℝ) < Tmax := by exact_mod_cast hT
-  unfold mainBudget
-  rw [Real.log_mul (by positivity) (by linarith), Real.log_mul (by positivity) hT'.ne',
-    Real.log_pow]
-  have hl : Real.log A.colBudget ≤ k ^ c := by
-    rw [Real.log_le_iff_le_exp (by linarith)]; exact hcb
   push_cast
   linarith
 

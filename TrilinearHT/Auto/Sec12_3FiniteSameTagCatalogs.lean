@@ -690,10 +690,6 @@ theorem tagSlots_distinct (i : Fin 4) :
       tagFourth i ≠ tagPartner i ∧ tagThird i ≠ tagFourth i := by
   fin_cases i <;> decide
 
-theorem tagSlots_cover (i l : Fin 4) :
-    l = i ∨ l = tagPartner i ∨ l = tagThird i ∨ l = tagFourth i := by
-  fin_cases i <;> fin_cases l <;> decide
-
 theorem tagWeight_self (i : Fin 4) : tagWeight i i = 0 := by simp [tagWeight]
 
 theorem tagWeight_partner (i : Fin 4) : tagWeight i (tagPartner i) = 1 := by
@@ -1184,9 +1180,6 @@ theorem tagCarry_mem (θ : Fin d → ℝ) (i l : Fin 4) (x t : ℝ) (n mp m : Fi
       _ < 5 := by nlinarith [abs_nonneg (1 - (tagWeight i l : ℝ)), abs_nonneg (tagWeight i l : ℝ)]
   have : |tagCarry i l n mp m a| < 5 := by exact_mod_cast hb
   omega
-
-theorem abs_add_three_le (a b c : ℝ) : |a + b + c| ≤ |a| + |b| + |c| :=
-  (abs_add_le _ _).trans (add_le_add (abs_add_le _ _) le_rfl)
 
 /-- Blueprint §12.3, line 1806: the transferred phase at the actual carries is the source
 phase. -/
@@ -2197,7 +2190,8 @@ theorem prod_four_distinct {i j a b : Fin 4} (hij : i ≠ j)
   fin_cases i <;> fin_cases j <;> fin_cases a <;> fin_cases b <;>
     first | exact absurd rfl hij | exact absurd rfl hia | exact absurd rfl hib |
       exact absurd rfl hja | exact absurd rfl hjb | exact absurd rfl hab |
-      (simp only [Fin.prod_univ_four, Fin.reduceFinMk, Fin.isValue] <;> ring)
+      simp only [Fin.prod_univ_four, Fin.reduceFinMk, Fin.isValue, mul_comm, mul_assoc,
+        mul_left_comm]
 
 theorem prod_four_tag (i : Fin 4) (f : Fin 4 → ℂ) :
     ∏ l, f l = f i * f (tagPartner i) * f (tagThird i) * f (tagFourth i) := by
@@ -3083,54 +3077,6 @@ theorem closure_parameters (c : ℕ) :
 
 end CatalogParameters
 
-/-- Blueprint lem:closure (line 1832, `THT.Localization.catalogClosure`). Fix the exponent `c`
-bounding the number of ranks `L + 5 ≤ k^c`, the history length `m ≤ c (1 + log k)` and the
-product `K ≤ exp(k^c)` of the named-context count and the same-tag loss `D² H₀² τ₃⁻²`. Then
-for a fixed `C₂` and all `k ≥ k₀`, with path counts `n_r = exp(r k^{C₂})`: every trial of
-length `T ≤ n_{L+5}` performs fewer than `n_{r+1}` insertions of rank `r + 1`, whenever each
-failed rank-`(r+1)` test (a target increment on a named history, of size above
-`δ ‖base‖` with `|W| δ⁻² ≤ K n_r`) is witnessed by one of the finitely many history-target
-pairs `W`; and `log n_{L+5} ≤ k^{c+C₂}`. The degrees do not depend on later precision
-parameters, and the same statement applies verbatim to the helper closure on fixed bases. -/
-theorem catalogClosure (c : ℕ) :
-    ∃ C₂ : ℕ, ∃ k₀ : ℝ, 2 ≤ k₀ ∧ ∀ {X : ℝ}, k₀ ≤ X → ∀ {Lr m : ℕ} {K : ℝ},
-      (Lr : ℝ) ≤ X ^ c → (m : ℝ) ≤ c * (Real.log X + 1) → K ≤ Real.exp (X ^ c) →
-      ∀ T : ℕ, (T : ℝ) ≤ closureCount C₂ X Lr →
-        Real.log (closureCount C₂ X Lr) ≤ X ^ (c + C₂) ∧
-        ∀ {𝕜 H : Type*} [RCLike 𝕜] [NormedAddCommGroup H] [InnerProductSpace 𝕜 H]
-          [CompleteSpace H] (r : ℕ) {W : Type*} [Fintype W]
-          (Q : W → ℕ → ℕ → H →L[𝕜] H) (θ : W → ℕ → Bool) (P : W → ℕ → H →L[𝕜] H)
-          (g : W → H) (S : Finset ℕ) (wit : ℕ → W) {δ : ℝ},
-          (∀ w, ∀ l < m, ∀ n ≤ T, IsStarProjection (Q w l n)) →
-          (∀ w, ∀ l < m, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (Q w l i).comp (Q w l j) = Q w l i) →
-          (∀ w, ∀ n ≤ T, IsStarProjection (P w n)) →
-          (∀ w, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (P w i).comp (P w j) = P w i) →
-          (∀ n ∈ S, 1 ≤ n ∧ n ≤ T) → 0 < δ →
-          (Fintype.card W : ℝ) ≤ K * closureCount C₂ X r * δ ^ 2 →
-          (∀ n ∈ S, δ * ‖g (wit n)‖ < ‖(P (wit n) n - P (wit n) (n - 1))
-            (operatorComplementProduct (fun l => Q (wit n) l (n - 1)) (θ (wit n)) m
-              (g (wit n)))‖) →
-          (S.card : ℝ) < closureCount C₂ X (r + 1) := by
-  obtain ⟨C₂, k₀, hk₀, hpar⟩ := closure_parameters c
-  refine ⟨C₂, k₀, hk₀, ?_⟩
-  intro X hX Lr m K hLr hm hK T hT
-  obtain ⟨hstep, hlog⟩ := hpar hX hLr hm hK T hT
-  refine ⟨hlog, ?_⟩
-  intro 𝕜 H _ _ _ _ r W _ Q θ P g S wit δ hQ hQnest hP hPnest hS hδ hW hfail
-  have hcount := catalog_rank_count T m Q hQ hQnest θ P hP hPnest g S hS wit hδ hfail
-  set A := 4 ^ m * projectionPrefixConstant T ^ (2 * m) with hA
-  have hA0 : 0 ≤ A := by
-    rw [hA]
-    exact mul_nonneg (by positivity)
-      (pow_nonneg (le_trans zero_le_one (projectionPrefixConstant_one_le T)) _)
-  have hδ2 : 0 < δ ^ 2 := by positivity
-  have h1 : (S.card : ℝ) * δ ^ 2 ≤ (closureCount C₂ X r * K * A) * δ ^ 2 := by
-    calc (S.card : ℝ) * δ ^ 2 ≤ Fintype.card W * A := hcount
-      _ ≤ (K * closureCount C₂ X r * δ ^ 2) * A := mul_le_mul_of_nonneg_right hW hA0
-      _ = _ := by ring
-  have h2 := le_of_mul_le_mul_right h1 hδ2
-  exact lt_of_le_of_lt h2 (hstep r)
-
 end Auto
 
 end
@@ -3265,9 +3211,6 @@ variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
 /-- The relative depth of the finite tree carrying the cells of the setup. -/
 noncomputable def treeDepth : ℕ := A.cells.sup fun I => (I.1 - A.R.1).toNat
 
-/-- A slot occurrence `(l, v)` is available at a cell of the setup with a nonzero coefficient. -/
-def occAvail (I : ℤ × ℤ) (x : Fin 4 × A.L) : Prop := I ∈ A.cells ∧ A.coef x.1 I x.2 ≠ 0
-
 theorem cells_mem_tree {I : ℤ × ℤ} (hI : I ∈ A.cells) :
     I ∈ dyadicFiniteTree A.G A.R A.treeDepth := by
   rw [dyadicFiniteTree_mem_iff]
@@ -3280,64 +3223,11 @@ theorem cells_mem_tree {I : ℤ × ℤ} (hI : I ∈ A.cells) :
 /-- The vertices of the attempt: slot occurrences with their admission cells. -/
 abbrev Vtx := AdmVertex (G := A.G) (R := A.R) (N := A.treeDepth) (Λ := Fin 4 × A.L)
 
-open scoped Classical in
-/-- The admission tree of the setup. -/
-noncomputable def admT : AdmTree A.Vtx :=
-  admTree (G := A.G) (R := A.R) (N := A.treeDepth) A.occAvail
-
 /-- The height parameter of padded charts. -/
 noncomputable def padW : ℝ := max (Real.exp 2) ((tagKρ : ℝ) ^ (2 * tagKρ))
 
-theorem exists_vchart (x : A.Vtx) : ∃ p : Σ d, QuadraticChartData d, 1 ≤ p.1 ∧
-    (A.occAvail x.2.1 x.1 →
-      QuadraticChartComplexity (max c₀ (2 * tagKρ)) (max A.H padW) p.2 ∧
-      IsBoundedQuadraticChart p.2 ∧ A.φ x.2.1 x.1.2 = quadraticChartAtom p.2) := by
-  by_cases h : A.occAvail x.2.1 x.1
-  · obtain ⟨d, B, h1, h2, h3⟩ := A.nested_chart x.2.1 h.1 x.1.2 ⟨x.1.1, h.2⟩
-    rcases Nat.eq_zero_or_pos d with hd | hd
-    · subst hd
-      have hW : Real.exp 2 ≤ max A.H padW := le_trans (le_max_left _ _) (le_max_right _ _)
-      obtain ⟨B', hc, hb, ha, -, -, -⟩ := chart_pad B h2 hW
-        (le_trans (le_max_right _ _) (le_max_right _ _))
-      exact ⟨⟨1, B'⟩, le_rfl, fun _ => ⟨quadraticChartComplexity_mono_order hc
-        (le_max_right _ _), hb, by rw [h3, ha]⟩⟩
-    · exact ⟨⟨d, B⟩, hd, fun _ => ⟨quadraticChartComplexity_mono_order
-        (quadraticChartComplexity_mono h1 (le_max_left _ _)) (le_max_left _ _), h2, h3⟩⟩
-  · exact ⟨⟨1, ⟨fun _ => 0, 0, 0, 0, fun _ => 0, contDiff_const, HasCompactSupport.zero⟩⟩,
-      le_rfl, fun h' => absurd h' h⟩
-
-/-- The chart of a vertex at its admission cell (a fixed default when unavailable). -/
-noncomputable def vchart (x : A.Vtx) : Σ d, QuadraticChartData d :=
-  Classical.choose (A.exists_vchart x)
-
-theorem vchart_spec (x : A.Vtx) (h : A.occAvail x.2.1 x.1) :
-    QuadraticChartComplexity (max c₀ (2 * tagKρ)) (max A.H padW)
-      (A.vchart x).2 ∧ IsBoundedQuadraticChart (A.vchart x).2 ∧
-      A.φ x.2.1 x.1.2 = quadraticChartAtom (A.vchart x).2 :=
-  (Classical.choose_spec (A.exists_vchart x)).2 h
-
-/-- The normalized tag of a vertex: its slot multiplier `c_l` is removed from the matrix and the
-quadratic coefficient (blueprint line 1677). -/
-noncomputable def vtag (x : A.Vtx) : ChartTag where
-  dim := (A.vchart x).1
-  θ := (A.vchart x).2.horizontal
-  C := ((slotCoeff x.1.1 : ℚ)⁻¹) • (A.vchart x).2.matrix
-  lam := (A.vchart x).2.quadratic / slotCoeff x.1.1
-
 theorem slotCoeff_ne_zero (l : Fin 4) : slotCoeff l ≠ 0 := by
   fin_cases l <;> decide
-
-/-- The tag graph at depth `s`: tags joined by an edge at the cell length of depth `s`, or
-equal tags (blueprint lines 1682-1686). -/
-def tagGraphEdge (Hed : ℝ) (s : ℤ) (x y : A.Vtx) : Prop :=
-  tagEdge Hed (dyadicGridLength A.G s) (A.vtag x) (A.vtag y) ∨ A.vtag x = A.vtag y
-
-/-- The graph distances of the tag graph; they decrease with depth. -/
-noncomputable def tagDist (Hed : ℝ) : DepthDistance A.Vtx :=
-  DepthDistance.ofEdges (A.tagGraphEdge Hed)
-    (fun _ _ _ h => h.elim (fun h => Or.inl (tagEdge_symm h)) fun h => Or.inr h.symm)
-    (fun {_ s'} hss _ _ h => h.elim (fun h => Or.inl (tagEdge_refine h
-      (dyadicGridLength_pos A.G s').le ((dyadicGridLength_strictAnti A.G).antitone hss))) Or.inr)
 
 end ActiveSetup
 
@@ -3345,19 +3235,6 @@ section AdmissionColoring
 variable {G : RealDyadicGrid} {R : ℤ × ℤ} {N : ℕ} {Λ : Type*} (av : ℤ × ℤ → Λ → Prop)
 
 /-! ### One attempt: decreasing colors on the admission tree (blueprint lines 1720-1734) -/
-
-/-- At most one vertex per label is present at a cell. -/
-theorem card_admPresent_le [Fintype Λ] (I : AdmCell G R N) :
-    (admPresent av I).card ≤ Fintype.card Λ := by
-  classical
-  unfold admPresent
-  exact Finset.card_image_le.trans (Finset.card_le_univ _)
-
-theorem card_admTree_X_le [Fintype Λ] (c : Option (AdmCell G R N)) :
-    ((admTree av).X c).card ≤ Fintype.card Λ := by
-  cases c with
-  | none => change (∅ : Finset _).card ≤ _; simp
-  | some I => exact card_admPresent_le av I
 
 /-- A cell of the finite tree contained in another one is its descendant in the admission
 tree. -/
@@ -3396,7 +3273,7 @@ theorem admTree_anc [Fintype Λ] {I J : AdmCell G R N}
     exact hn
 
 /-- The point sets of the cells of the admission tree (the top carries no points). -/
-def admCellSet : Option (AdmCell G R N) → Set ℝ
+noncomputable def admCellSet : Option (AdmCell G R N) → Set ℝ
   | none => ∅
   | some I => dyadicGridCell G I.1.1 I.1.2
 
@@ -3456,84 +3333,6 @@ def IsMonotoneColoring {V : Type*} [DecidableEq V] (T : AdmTree V) (dist : Depth
         ((ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).colorData (T.st I) v) =
       (ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).metaKey
         ((ColorSetup.ofArrays dist (colorDegree D) b1 b2 ωp ωh).colorData (T.st J) w))
-
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-
-theorem one_le_vtxBound : 1 ≤ A.vtxBound := Nat.le_add_left 1 _
-
-theorem admT_X_card_le (c : A.admT.Cell) : (A.admT.X c).card ≤ A.vtxBound := by
-  classical
-  have h := card_admTree_X_le (G := A.G) (R := A.R) (N := A.treeDepth) A.occAvail c
-  rw [Fintype.card_prod, Fintype.card_fin] at h
-  exact h.trans (Nat.le_add_right _ 1)
-
-noncomputable instance : Fintype A.admT.Cell :=
-  inferInstanceAs (Fintype (Option (AdmCell A.G A.R A.treeDepth)))
-
-open Classical in
-/-- Blueprint lines 1720-1734 for one attempt: the delays of the decreasing colors on the
-admission tree of the setup can be fixed so that the failed cells have total length at most
-`100 · 2001⁷ |R| / D`, with `D = 4|L| + 1`. -/
-theorem coloring (Hed : ℝ) (b1 b2 : ℕ) :
-    ∃ ωp ωh : Fin (colorDegree A.vtxBound) → A.Vtx → Fin (colorDegree A.vtxBound + 1),
-      IsMonotoneColoring A.admT (A.tagDist Hed) A.vtxBound b1 b2 Finset.univ
-        (admCellSet (G := A.G) (R := A.R) (N := A.treeDepth))
-        (dyadicGridCell A.G A.R.1 A.R.2) ωp ωh := by
-  have hR : volume (dyadicGridCell A.G A.R.1 A.R.2) ≠ ⊤ := by
-    rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top
-  have hnest : ∀ c ∈ (Finset.univ : Finset A.admT.Cell), ∀ c' ∈ (Finset.univ : Finset A.admT.Cell),
-      (admCellSet c ∩ admCellSet c').Nonempty → A.admT.Anc c c' ∨ A.admT.Anc c' c :=
-    fun c _ c' _ h => admCellSet_nest (G := A.G) (R := A.R) (N := A.treeDepth) A.occAvail c c' h
-  obtain ⟨ωp, ωh, h⟩ := monotoneColoring A.admT (A.tagDist Hed) b1 b2 A.one_le_vtxBound
-    A.admT_X_card_le Finset.univ admCellSet admCellSet_measurable
-    (dyadicGridCell_measurable A.G A.R.1 A.R.2) hR (fun c _ => admCellSet_sub c) hnest
-  exact ⟨ωp, ωh, h⟩
-
-/-- The color data of the attempt for fixed delay arrays. -/
-noncomputable def colorSetup (Hed : ℝ) (Hmax : ℕ) (ωp ωh : Fin A.cd0 → A.Vtx → Fin (A.cd0 + 1)) :
-    ColorSetup A.Vtx :=
-  ColorSetup.ofArrays (A.tagDist Hed) A.cd0 (A.cb1 Hmax) (cb2 Hmax) ωp ωh
-
-theorem colorParams (Hed : ℝ) (Hmax : ℕ) (ωp ωh : Fin A.cd0 → A.Vtx → Fin (A.cd0 + 1)) :
-    ColorParams (A.colorSetup Hed Hmax ωp ωh) Hmax where
-  hb2 := rfl
-  hb1 := rfl
-  hd0 := by
-    have := colorDegree_ge A.one_le_vtxBound
-    change 8 ≤ colorDegree A.vtxBound
-    omega
-
-open Classical in
-/-- Blueprint lem:masks for one attempt: the pad masks of the colors of the attempt contain the
-present vertices near a center, are closed under neighbors, have short paths to the primary
-winner, and separate distinct groups of one color. -/
-theorem masks (Hed : ℝ) (Hmax : ℕ) (ωp ωh : Fin A.cd0 → A.Vtx → Fin (A.cd0 + 1)) :
-    let K := A.colorSetup Hed Hmax ωp ωh
-    let T := A.admT
-    (∀ (I : T.Cell) (v : A.Vtx), v ∈ T.X I → K.Success (K.colorData (T.st I) v) →
-      ∀ b ∈ T.X I, ∀ h δ : ℕ, K.dist.d (T.depth I) b v = δ → δ ≤ h → h ≤ Hmax →
-        b ∈ K.mask T A.vtxBound (K.grp T A.vtxBound I v) h I) ∧
-    (∀ (I : T.Cell) (v : A.Vtx), v ∈ T.X I → K.Success (K.colorData (T.st I) v) →
-      ∀ h : ℕ, h < Hmax → ∀ b b' : A.Vtx,
-        b ∈ K.mask T A.vtxBound (K.grp T A.vtxBound I v) h I → b' ∈ T.X I →
-        K.dist.d (T.depth I) b b' ≤ 1 →
-        b' ∈ K.mask T A.vtxBound (K.grp T A.vtxBound I v) (h + 1) I) ∧
-    (∀ G ρ z g, G.2.1 = some (ρ, z, g) → ∀ (h : ℕ) (I : T.Cell) (b : A.Vtx),
-      b ∈ K.mask T A.vtxBound G h I →
-      ∃ k : ℕ, K.dist.d (T.depth I) z b = k ∧ k ≤ (K.d0 + 1) * K.b1 + h) ∧
-    (∀ (I J u₀ u : T.Cell) (v₁ v₂ : A.Vtx), T.Anc I J → T.Anc I u₀ → T.Anc J u →
-      v₁ ∈ T.X u₀ → v₂ ∈ T.X u → K.Success (K.colorData (T.st u₀) v₁) →
-      K.Success (K.colorData (T.st u) v₂) →
-      K.color T A.vtxBound u₀ v₁ = K.color T A.vtxBound u v₂ →
-      K.grp T A.vtxBound u₀ v₁ ≠ K.grp T A.vtxBound u v₂ →
-      ∀ h h' : ℕ, h ≤ Hmax → h' ≤ Hmax → ∀ b b' : A.Vtx,
-        b ∈ K.mask T A.vtxBound (K.grp T A.vtxBound u₀ v₁) h I →
-        b' ∈ K.mask T A.vtxBound (K.grp T A.vtxBound u v₂) h' J →
-        ¬ K.dist.d (T.depth J) b b' ≤ 1) :=
-  historicalMaskSeparation _ (A.colorParams Hed Hmax ωp ωh) A.admT A.vtxBound A.admT_X_card_le
-
-end ActiveSetup
 
 section LocalClosure
 variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H] [CompleteSpace H]
@@ -3750,183 +3549,6 @@ structure CatCol (Tg : Type*) where
   rank : ℕ
   tag : Tg
 
-section CatalogProjections
-variable (G : RealDyadicGrid) {Tg : Type*} (Mc : ℕ)
-
-/-- The available catalog columns at the cell `I` of rank at most `r` with tag in the mask `M`,
-restricted to `I`, on the preallocated labels `Fin Mc`. -/
-def catSel (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) :
-    Set (ColumnL2 (Fin Mc)) :=
-  {x | ∃ (n : Fin Mc) (hn : (n : ℕ) < s.length),
-    dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G (s[(n : ℕ)]).birth.1 (s[(n : ℕ)]).birth.2 ∧
-      (s[(n : ℕ)]).rank ≤ r ∧ M (s[(n : ℕ)]).tag ∧
-        fitColumn (dyadicGridCell G I.1 I.2) (s[(n : ℕ)]).atom n = x}
-
-/-- The catalog range at a cell. -/
-noncomputable def catRange (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) :
-    Submodule ℂ (ColumnL2 (Fin Mc)) :=
-  Submodule.span ℂ (catSel G Mc s I r M)
-
-theorem catSel_finite (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) :
-    (catSel G Mc s I r M).Finite := by
-  classical
-  refine (Set.finite_range fun n : Fin Mc => if h : (n : ℕ) < s.length then
-    fitColumn (dyadicGridCell G I.1 I.2) (s[(n : ℕ)]).atom n else 0).subset ?_
-  rintro x ⟨n, hn, -, -, -, rfl⟩
-  exact ⟨n, by simp only [hn, ↓reduceDIte]⟩
-
-instance (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) :
-    FiniteDimensional ℂ (catRange G Mc s I r M) :=
-  FiniteDimensional.span_of_finite ℂ (catSel_finite G Mc s I r M)
-
-/-- The catalog projection at a cell. -/
-noncomputable def catProj (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) :
-    ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) :=
-  (catRange G Mc s I r M).starProjection
-
-theorem catProj_isStarProjection (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) :
-    IsStarProjection (catProj G Mc s I r M) := isStarProjection_starProjection
-
-theorem catSel_mono (s : List (CatCol Tg)) (d : CatCol Tg) (I : ℤ × ℤ) (r : ℕ)
-    (M : Tg → Prop) : catSel G Mc s I r M ⊆ catSel G Mc (s ++ [d]) I r M := by
-  rintro x ⟨n, hn, h1, h2, h3, rfl⟩
-  have hn' : (n : ℕ) < (s ++ [d]).length := by simp; omega
-  have e : (s ++ [d])[(n : ℕ)]'hn' = s[(n : ℕ)]'hn := List.getElem_append_left hn
-  exact ⟨n, hn', by rw [e]; exact ⟨h1, h2, h3, rfl⟩⟩
-
-theorem catRange_mono (s : List (CatCol Tg)) (d : CatCol Tg) (I : ℤ × ℤ) (r : ℕ)
-    (M : Tg → Prop) : catRange G Mc s I r M ≤ catRange G Mc (s ++ [d]) I r M :=
-  Submodule.span_mono (catSel_mono G Mc s d I r M)
-
-/-- Catalog projections are nested in the insertion index. -/
-theorem catProj_nest (s : List (CatCol Tg)) (d : CatCol Tg) (I : ℤ × ℤ) (r : ℕ)
-    (M : Tg → Prop) :
-    (catProj G Mc s I r M).comp (catProj G Mc (s ++ [d]) I r M) = catProj G Mc s I r M :=
-  Submodule.starProjection_comp_starProjection_of_le (catRange_mono G Mc s d I r M)
-
-/-- Vectors whose coordinates from the label `n` on vanish. -/
-def FreshFrom (n : ℕ) (x : ColumnL2 (Fin Mc)) : Prop :=
-  ∀ m : Fin Mc, n ≤ (m : ℕ) → ∀ᵐ y ∂volume, (x : ℝ → ColumnHilbert (Fin Mc)) y (some m) = 0
-
-variable {G Mc}
-
-theorem FreshFrom.add {n : ℕ} {x x' : ColumnL2 (Fin Mc)} (h : FreshFrom Mc n x)
-    (h' : FreshFrom Mc n x') : FreshFrom Mc n (x + x') := fun m hm => by
-  filter_upwards [h m hm, h' m hm, Lp.coeFn_add x x'] with y hx hx' hy
-  rw [hy, Pi.add_apply, PiLp.add_apply, hx, hx', add_zero]
-
-theorem FreshFrom.smul {n : ℕ} {x : ColumnL2 (Fin Mc)} (h : FreshFrom Mc n x) (c : ℂ) :
-    FreshFrom Mc n (c • x) := fun m hm => by
-  filter_upwards [h m hm, Lp.coeFn_smul c x] with y hx hy
-  rw [hy, Pi.smul_apply, PiLp.smul_apply, hx, smul_zero]
-
-theorem FreshFrom.sub {n : ℕ} {x x' : ColumnL2 (Fin Mc)} (h : FreshFrom Mc n x)
-    (h' : FreshFrom Mc n x') : FreshFrom Mc n (x - x') := by
-  rw [sub_eq_add_neg, ← neg_one_smul ℂ x']
-  exact h.add (h'.smul _)
-
-theorem freshFrom_zero (n : ℕ) : FreshFrom Mc n (0 : ColumnL2 (Fin Mc)) := fun m _ => by
-  filter_upwards [Lp.coeFn_zero (ColumnHilbert (Fin Mc)) 2 volume] with y hy
-  rw [hy]; rfl
-
-/-- The catalog ranges have vanishing coordinates beyond the current length. -/
-theorem catRange_freshFrom (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop)
-    {x : ColumnL2 (Fin Mc)} (hx : x ∈ catRange G Mc s I r M) : FreshFrom Mc s.length x := by
-  intro m hm
-  refine Submodule.span_induction (R := ℂ) (M := ColumnL2 (Fin Mc)) (p := fun x _ =>
-    ∀ᵐ y ∂volume, (x : ℝ → ColumnHilbert (Fin Mc)) y (some m) = 0) ?_ ?_ ?_ ?_ hx
-  · rintro x ⟨n, hn, -, -, -, rfl⟩
-    have hne : m ≠ n := fun he => by rw [he] at hm; omega
-    by_cases h : FitAdmissible (dyadicGridCell G I.1 I.2) (s[(n : ℕ)]).atom
-    · filter_upwards [fitColumn_coeFn h n] with y hy
-      rw [hy]
-      by_cases hys : y ∈ dyadicGridCell G I.1 I.2
-      · rw [Set.indicator_of_mem hys, fitColumnValue_some]
-        simp only [hne, ↓reduceIte]
-      · rw [Set.indicator_of_notMem hys]; rfl
-    · unfold fitColumn
-      simp only [h, ↓reduceDIte]
-      filter_upwards [Lp.coeFn_zero (ColumnHilbert (Fin Mc)) 2 volume] with y hy
-      rw [hy]; rfl
-  · exact freshFrom_zero (Mc := Mc) s.length m hm
-  · intro x y _ _ hx hy
-    filter_upwards [hx, hy, Lp.coeFn_add x y] with z hx hy hz
-    rw [hz, Pi.add_apply, PiLp.add_apply, hx, hy, add_zero]
-  · intro c x _ hx
-    filter_upwards [hx, Lp.coeFn_smul c x] with z hx hz
-    rw [hz, Pi.smul_apply, PiLp.smul_apply, hx, smul_zero]
-
-theorem catProj_freshFrom (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop)
-    (x : ColumnL2 (Fin Mc)) : FreshFrom Mc s.length (catProj G Mc s I r M x) :=
-  catRange_freshFrom s I r M (Submodule.starProjection_apply_mem _ x)
-
-theorem FreshFrom.mono {n n' : ℕ} (hn : n ≤ n') {x : ColumnL2 (Fin Mc)} (h : FreshFrom Mc n x) :
-    FreshFrom Mc n' x := fun m hm => h m (hn.trans hm)
-
-/-- Physical inputs have no private coordinates. -/
-theorem physicalColumnInput_freshFrom (f : Lp ℂ 2 (volume : Measure ℝ)) (n : ℕ) :
-    FreshFrom Mc n (physicalColumnInput (V := Fin Mc) f) := fun m _ => by
-  classical
-  filter_upwards [physicalColumnInput_coeFn (V := Fin Mc) f] with y hy
-  rw [hy]
-  simp
-
-/-- The column of an appended catalog entry lies in the new range when it qualifies. -/
-theorem fitColumn_mem_catRange (s : List (CatCol Tg)) (d : CatCol Tg) (I : ℤ × ℤ) (r : ℕ)
-    (M : Tg → Prop) (hlen : s.length < Mc)
-    (hI : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G d.birth.1 d.birth.2) (hr : d.rank ≤ r)
-    (hM : M d.tag) :
-    fitColumn (dyadicGridCell G I.1 I.2) d.atom (⟨s.length, hlen⟩ : Fin Mc) ∈
-      catRange G Mc (s ++ [d]) I r M := by
-  refine Submodule.subset_span ⟨⟨s.length, hlen⟩, by simp, ?_⟩
-  have e : (s ++ [d])[s.length]'(by simp) = d := by simp
-  simp only [e]
-  exact ⟨hI, hr, hM, by trivial⟩
-
-/-- The gain of an insertion (blueprint line 1825): the target projection grows on a vector
-without fresh coordinates by at least the residual moment of the new column. -/
-theorem catProj_gain (s : List (CatCol Tg)) (d : CatCol Tg) (I : ℤ × ℤ) (r : ℕ)
-    (M : Tg → Prop) (hlen : s.length < Mc)
-    (hI : dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G d.birth.1 d.birth.2) (hr : d.rank ≤ r)
-    (hM : M d.tag) (X : ColumnL2 (Fin Mc)) (hX : FreshFrom Mc s.length X) :
-    ‖∫ y in dyadicGridCell G I.1 I.2, conj (d.atom y) *
-        ((X - catProj G Mc s I r M X : ColumnL2 (Fin Mc)) : ℝ → ColumnHilbert (Fin Mc)) y none‖ ≤
-      2 * Real.sqrt (dyadicGridLength G I.1) *
-        ‖(catProj G Mc (s ++ [d]) I r M - catProj G Mc s I r M) X‖ := by
-  set u := fitColumn (dyadicGridCell G I.1 I.2) d.atom (⟨s.length, hlen⟩ : Fin Mc) with hu
-  set Pn := catProj G Mc (s ++ [d]) I r M
-  set Po := catProj G Mc s I r M
-  have hadm : FitAdmissible (dyadicGridCell G I.1 I.2) d.atom :=
-    ⟨dyadicGridCell_measurable _ _ _, by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_lt_top,
-      d.meas, d.bound⟩
-  have hmem := fitColumn_mem_catRange s d I r M hlen hI hr hM
-  -- the inner product with the residual
-  have hfresh : FreshFrom Mc s.length (X - Po X) := hX.sub (catProj_freshFrom s I r M X)
-  have hin := inner_fitColumn hadm (⟨s.length, hlen⟩ : Fin Mc) (X - Po X)
-    (hfresh ⟨s.length, hlen⟩ le_rfl)
-  rw [← hin]
-  -- the inner product only sees the increment
-  have hPu : Pn u = u := Submodule.starProjection_eq_self_iff.mpr hmem
-  have key : inner ℂ u (X - Po X) = inner ℂ u ((Pn - Po) X) := by
-    rw [sub_apply, inner_sub_right, inner_sub_right]
-    congr 1
-    calc inner ℂ u X = inner ℂ (Pn u) X := by rw [hPu]
-      _ = inner ℂ u (Pn X) := Submodule.inner_starProjection_left_eq_right _ u X
-  rw [key]
-  have hcs := norm_inner_le_norm (𝕜 := ℂ) u ((Pn - Po) X)
-  have hnorm := norm_fitColumn_sq_le hadm (⟨s.length, hlen⟩ : Fin Mc)
-  rw [measureReal_def, dyadicGridCell_volume,
-    ENNReal.toReal_ofReal (dyadicGridLength_pos G I.1).le] at hnorm
-  have hu2 : ‖u‖ ≤ 2 * Real.sqrt (dyadicGridLength G I.1) := by
-    rw [← Real.sqrt_sq (norm_nonneg u)]
-    calc Real.sqrt (‖u‖ ^ 2) ≤ Real.sqrt (4 * dyadicGridLength G I.1) := Real.sqrt_le_sqrt hnorm
-      _ = 2 * Real.sqrt (dyadicGridLength G I.1) := by
-          rw [Real.sqrt_mul (by norm_num), show (4 : ℝ) = 2 ^ 2 by norm_num,
-            Real.sqrt_sq (by norm_num)]
-  exact hcs.trans (mul_le_mul_of_nonneg_right hu2 (norm_nonneg _))
-
-end CatalogProjections
-
 /-! ### Catalog tests at a cell and their closure (blueprint lines 1809-1831) -/
 
 /-- A named catalog test (blueprint eq:catalog-test, lines 1809-1815): the residual slot `t`,
@@ -3941,59 +3563,6 @@ structure CatTest (Tg : Type*) where
   hM : ℕ → Tg → Prop
   θ : ℕ → Bool
   g : Lp ℂ 2 (volume : Measure ℝ)
-
-namespace CatTest
-variable (G : RealDyadicGrid) {Tg : Type*} (Mc : ℕ) (I : ℤ × ℤ) (w : CatTest Tg)
-
-/-- The history factor of index `l` (the identity beyond the history length). -/
-noncomputable def Q (s : List (CatCol Tg)) (l : ℕ) :
-    ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) :=
-  if l < w.m then catProj G Mc s I (w.hr l) (w.hM l) else ContinuousLinearMap.id ℂ _
-
-/-- The history value on the base. -/
-noncomputable def hist (mH : ℕ) (s : List (CatCol Tg)) : ColumnL2 (Fin Mc) :=
-  operatorComplementProduct (fun l => w.Q G Mc I s l) w.θ mH (physicalColumnInput w.g)
-
-/-- The target residual of the history value. -/
-noncomputable def resid (mH : ℕ) (s : List (CatCol Tg)) : ColumnL2 (Fin Mc) :=
-  w.hist G Mc I mH s - catProj G Mc s I w.r w.M (w.hist G Mc I mH s)
-
-theorem Q_isStarProjection (s : List (CatCol Tg)) (l : ℕ) :
-    IsStarProjection (w.Q G Mc I s l) := by
-  unfold Q; split_ifs
-  · exact catProj_isStarProjection G Mc s I _ _
-  · exact IsStarProjection.one _
-
-theorem Q_nest (s : List (CatCol Tg)) (d : CatCol Tg) (l : ℕ) :
-    (w.Q G Mc I s l).comp (w.Q G Mc I (s ++ [d]) l) = w.Q G Mc I s l := by
-  unfold Q; split_ifs
-  · exact catProj_nest G Mc s d I _ _
-  · rfl
-
-variable {G Mc I w}
-
-theorem freshFrom_complementProduct (s : List (CatCol Tg)) (θ : ℕ → Bool) (n : ℕ)
-    (hn : s.length ≤ n) : ∀ (k : ℕ) {x : ColumnL2 (Fin Mc)}, FreshFrom Mc n x →
-      FreshFrom Mc n (operatorComplementProduct (fun l => w.Q G Mc I s l) θ k x)
-  | 0, x, hx => hx
-  | k + 1, x, hx => by
-    have ih := freshFrom_complementProduct s θ n hn k hx
-    set y := operatorComplementProduct (fun l => w.Q G Mc I s l) θ k x
-    have hQ : FreshFrom Mc n (w.Q G Mc I s k y) := by
-      unfold Q; split_ifs
-      · exact (catProj_freshFrom s I _ _ y).mono hn
-      · exact ih
-    change FreshFrom Mc n ((if θ k then ContinuousLinearMap.id ℂ _ - w.Q G Mc I s k else
-      w.Q G Mc I s k) y)
-    split_ifs
-    · rw [sub_apply]; exact ih.sub hQ
-    · exact hQ
-
-theorem hist_freshFrom (mH : ℕ) (s : List (CatCol Tg)) :
-    FreshFrom Mc s.length (w.hist G Mc I mH s) :=
-  freshFrom_complementProduct s w.θ s.length le_rfl mH (physicalColumnInput_freshFrom _ _)
-
-end CatTest
 
 /-- Integrals against the normalized measure of a cell are averages over the cell. -/
 theorem integral_normalized_cell (G : RealDyadicGrid) (I : ℤ × ℤ) (f : ℝ → ℂ) :
@@ -4019,111 +3588,6 @@ noncomputable def templateCol {Tg : Type*} (v : ChartTag) (t : Fin 4) (R : Fin v
   rank := r
   tag := x
 
-namespace CatTest
-variable {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ} {I : ℤ × ℤ} (w : CatTest Tg)
-
-/-- The test passes: every pure source column whose tag lies in the mask has form norm at most
-`τ ‖base‖_{2,I}` against the target residual and two normalized `L²` spectators (blueprint
-eq:catalog-test; `‖g‖ / √|I|` is the normalized norm of the base on its cell). -/
-def Pass (G : RealDyadicGrid) (Mc : ℕ) (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ) (tagOf : Tg → ChartTag)
-    (wI : ℝ × ℝ → ℂ) (τ : ℝ) (mH : ℕ) (s : List (CatCol Tg)) : Prop :=
-  ∀ x, w.M x → ∀ {u a b : Fin 4}, u ≠ w.t → u ≠ a → u ≠ b → w.t ≠ a → w.t ≠ b → a ≠ b →
-    ∀ A : QuadraticChartData (tagOf x).dim, QuadraticChartComplexity c₀ H A →
-      A.horizontal = (tagOf x).θ → A.matrix = (slotCoeff u : ℚ) • (tagOf x).C →
-      A.quadratic = slotCoeff u * (tagOf x).lam →
-    ∀ z : Fin 4 → ℝ → ℂ, z u = quadraticChartAtom A →
-      z w.t = (fun y => (w.resid G Mc I mH s : ℝ → ColumnHilbert (Fin Mc)) y none) →
-      Measurable (z a) → Measurable (z b) →
-      eLpNorm (z a) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
-        (dyadicGridLength G I.1)) ≤ 1 →
-      eLpNorm (z b) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
-        (dyadicGridLength G I.1)) ≤ 1 →
-      ‖localProgressionForm (dyadicGridLength G I.1) wI z‖ ≤
-        τ * ‖physicalColumnInput (V := Fin Mc) w.g‖ / Real.sqrt (dyadicGridLength G I.1)
-
-/-- A failed test is repaired by inserting a same-tag template at the cell (blueprint lines
-1823-1825): the target projection grows on the old history value by more than
-`τ / (2 H₀)` times the base norm. -/
-theorem gain {κ : LocalKernelClass} {c₀ : ℕ} {D : ℕ}
-    (hst : ∀ (H : ℝ), Real.exp 2 ≤ H → ∀ (v : ChartTag), 1 ≤ v.dim →
-      ∀ {i j a b : Fin 4}, i ≠ j → i ≠ a → i ≠ b → j ≠ a → j ≠ b → a ≠ b →
-      ∀ (A : QuadraticChartData v.dim), QuadraticChartComplexity c₀ H A →
-      A.horizontal = v.θ → A.matrix = (slotCoeff i : ℚ) • v.C →
-      A.quadratic = slotCoeff i * v.lam →
-      ∀ {a₀ r : ℝ}, 0 < r → ∀ {w : ℝ × ℝ → ℂ}, IsAdmissibleLocalKernel κ a₀ r w →
-      ∀ (z : Fin 4 → ℝ → ℂ), z i = quadraticChartAtom A → Measurable (z j) →
-      Measurable (z a) → Measurable (z b) → MemLp (z j) 2 (normalizedIntervalMeasure a₀ r) →
-      eLpNorm (z a) 2 (normalizedIntervalMeasure a₀ r) ≤ 1 →
-      eLpNorm (z b) 2 (normalizedIntervalMeasure a₀ r) ≤ 1 →
-      ∃ R ∈ residueBox v.dim 9, ∃ γ : ℝ,
-        ‖localProgressionForm r w z‖ ≤ Real.exp (D * (1 + Real.log H) ^ D) *
-          ‖∫ y, z j y * (starRingEnd ℂ) (quadraticChartAtom
-            (tagTemplateData v.θ v.C v.lam j R) y * (Real.fourierChar (γ * y) : ℂ))
-              ∂(normalizedIntervalMeasure a₀ r)‖)
-    {H : ℝ} (hH : Real.exp 2 ≤ H) {tagOf : Tg → ChartTag} (hdim : ∀ x, 1 ≤ (tagOf x).dim)
-    {wI : ℝ × ℝ → ℂ}
-    (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) wI)
-    {τ : ℝ} {mH : ℕ} {s : List (CatCol Tg)} (hlen : s.length < Mc)
-    (hfail : ¬ w.Pass G Mc I c₀ H tagOf wI τ mH s) :
-    ∃ d : CatCol Tg, d.rank = w.r ∧ d.birth = I ∧ w.M d.tag ∧
-      (∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-        d = templateCol (tagOf d.tag) w.t R γ I w.r d.tag) ∧
-      τ / (2 * Real.exp (D * (1 + Real.log H) ^ D)) * ‖physicalColumnInput (V := Fin Mc) w.g‖ <
-        ‖(catProj G Mc (s ++ [d]) I w.r w.M - catProj G Mc s I w.r w.M)
-          (operatorComplementProduct (fun l => w.Q G Mc I s l) w.θ mH
-            (physicalColumnInput w.g))‖ := by
-  set H₀ := Real.exp (D * (1 + Real.log H) ^ D) with hH₀
-  set r := dyadicGridLength G I.1 with hr_def
-  have hr : 0 < r := dyadicGridLength_pos G I.1
-  unfold Pass at hfail
-  push Not at hfail
-  obtain ⟨x, hx, u, a, b, hut, hua, hub, hta, htb, hab, A, hA, hAθ, hAM, hAq, z, hzu, hzt, hza,
-    hzb, hza2, hzb2, hlt⟩ := hfail
-  have hztm : Measurable (z w.t) := by rw [hzt]; exact columnPhys_measurable _
-  have hzt2 : MemLp (z w.t) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) r) := by
-    rw [hzt]; exact columnPhys_memLp_normalized _ _ _
-  obtain ⟨R, hR, γ, hbd⟩ := hst H hH (tagOf x) (hdim x) hut hua hub hta htb hab A hA hAθ hAM hAq
-    hr hwI z hzu hztm hza hzb hzt2 hza2 hzb2
-  set d : CatCol Tg := templateCol (tagOf x) w.t R γ I w.r x with hd
-  refine ⟨d, rfl, rfl, hx, ⟨R, hR, γ, rfl⟩, ?_⟩
-  have hgain := catProj_gain (G := G) s d I w.r w.M hlen subset_rfl le_rfl hx
-    (w.hist G Mc I mH s) (hist_freshFrom mH s)
-  -- the moment as an average over the cell
-  have hmom : ∫ y, z w.t y * (starRingEnd ℂ) (quadraticChartAtom
-      (tagTemplateData (tagOf x).θ (tagOf x).C (tagOf x).lam w.t R) y *
-        (Real.fourierChar (γ * y) : ℂ)) ∂(normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) r) =
-      (r : ℂ)⁻¹ * ∫ y in dyadicGridCell G I.1 I.2, conj (d.atom y) *
-        ((w.hist G Mc I mH s - catProj G Mc s I w.r w.M (w.hist G Mc I mH s) : ColumnL2 (Fin Mc)) :
-          ℝ → ColumnHilbert (Fin Mc)) y none := by
-    rw [integral_normalized_cell G I]
-    congr 1
-    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
-    simp only [hzt]
-    rw [mul_comm]
-    rfl
-  have hn : ‖((r : ℂ)⁻¹)‖ = r⁻¹ := by
-    rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hr]
-  rw [hmom, norm_mul, hn] at hbd
-  have hsq : 0 < Real.sqrt r := Real.sqrt_pos.mpr hr
-  have hH₀ : 0 < H₀ := Real.exp_pos _
-  set q := ‖(catProj G Mc (s ++ [d]) I w.r w.M - catProj G Mc s I w.r w.M)
-    (w.hist G Mc I mH s)‖ with hq
-  change _ < q
-  have h1 : ‖localProgressionForm r wI z‖ ≤ H₀ * (r⁻¹ * (2 * Real.sqrt r * q)) :=
-    hbd.trans (mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hgain
-      (inv_nonneg.mpr hr.le)) hH₀.le)
-  have e : r⁻¹ * (2 * Real.sqrt r * q) = 2 * q / Real.sqrt r := by
-    rw [show r⁻¹ = (Real.sqrt r * Real.sqrt r)⁻¹ by rw [Real.mul_self_sqrt hr.le]]
-    field_simp
-  rw [e] at h1
-  have h2 : τ * ‖physicalColumnInput (V := Fin Mc) w.g‖ / Real.sqrt r <
-      H₀ * (2 * q / Real.sqrt r) := hlt.trans_le h1
-  rw [mul_div_assoc', div_lt_div_iff_of_pos_right hsq] at h2
-  rw [div_mul_eq_mul_div, div_lt_iff₀ (by positivity)]
-  linarith
-
-end CatTest
-
 theorem projectionPrefixConstant_mono {T T' : ℕ} (h : T ≤ T') :
     projectionPrefixConstant T ≤ projectionPrefixConstant T' := by
   unfold projectionPrefixConstant
@@ -4131,165 +3595,10 @@ theorem projectionPrefixConstant_mono {T T' : ℕ} (h : T ≤ T') :
   have : (Nat.clog 2 (T + 1) : ℝ) ≤ Nat.clog 2 (T' + 1) := by exact_mod_cast this
   linarith
 
-/-- Blueprint lem:closure at one active cell (lines 1820-1831): for finitely many named tests
-at the cell, inserting same-tag templates born at the cell closes the catalog: every test
-passes, fewer than `T_max` columns are inserted, and the insertions of each rank number at most
-`|W| 4^m L^{2m} (2H₀/τ_r)²`, provided this allowance summed over the ranks stays below `T_max`. -/
-theorem cell_closure {κ : LocalKernelClass} {c₀ : ℕ} {D : ℕ}
-    (hst : ∀ (H : ℝ), Real.exp 2 ≤ H → ∀ (v : ChartTag), 1 ≤ v.dim →
-      ∀ {i j a b : Fin 4}, i ≠ j → i ≠ a → i ≠ b → j ≠ a → j ≠ b → a ≠ b →
-      ∀ (A : QuadraticChartData v.dim), QuadraticChartComplexity c₀ H A →
-      A.horizontal = v.θ → A.matrix = (slotCoeff i : ℚ) • v.C →
-      A.quadratic = slotCoeff i * v.lam →
-      ∀ {a₀ r : ℝ}, 0 < r → ∀ {w : ℝ × ℝ → ℂ}, IsAdmissibleLocalKernel κ a₀ r w →
-      ∀ (z : Fin 4 → ℝ → ℂ), z i = quadraticChartAtom A → Measurable (z j) →
-      Measurable (z a) → Measurable (z b) → MemLp (z j) 2 (normalizedIntervalMeasure a₀ r) →
-      eLpNorm (z a) 2 (normalizedIntervalMeasure a₀ r) ≤ 1 →
-      eLpNorm (z b) 2 (normalizedIntervalMeasure a₀ r) ≤ 1 →
-      ∃ R ∈ residueBox v.dim 9, ∃ γ : ℝ,
-        ‖localProgressionForm r w z‖ ≤ Real.exp (D * (1 + Real.log H) ^ D) *
-          ‖∫ y, z j y * (starRingEnd ℂ) (quadraticChartAtom
-            (tagTemplateData v.θ v.C v.lam j R) y * (Real.fourierChar (γ * y) : ℂ))
-              ∂(normalizedIntervalMeasure a₀ r)‖)
-    {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ} {H : ℝ} (hH : Real.exp 2 ≤ H)
-    {tagOf : Tg → ChartTag} (hdim : ∀ x, 1 ≤ (tagOf x).dim) {I : ℤ × ℤ} {wI : ℝ × ℝ → ℂ}
-    (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) wI)
-    {W : Type*} [Fintype W] (tests : W → CatTest Tg) (mH : ℕ) (τ : ℕ → ℝ)
-    (hτ : ∀ w, 0 < τ (tests w).r) (s₀ : List (CatCol Tg)) {Tmax : ℕ}
-    (hMc : s₀.length + Tmax ≤ Mc)
-    (hcap : ∑ r ∈ Finset.univ.image (fun w => (tests w).r),
-      Fintype.card W * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) /
-        (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 < (Tmax : ℝ)) :
-    ∃ s : List (CatCol Tg), (∀ d ∈ s, d.birth = I ∧ ∃ w, d.rank = (tests w).r ∧
-        (tests w).M d.tag ∧ ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-          d = templateCol (tagOf d.tag) (tests w).t R γ I (tests w).r d.tag) ∧ s.length < Tmax ∧
-      (∀ w, (tests w).Pass G Mc I c₀ H tagOf wI (τ (tests w).r) mH (s₀ ++ s)) ∧
-      ∀ r, (((Finset.range s.length).filter
-        (fun j => ∃ hj : j < s.length, s[j].rank = r)).card : ℝ) *
-          (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 ≤
-        Fintype.card W * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) ∨
-        (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ≤ 0 := by
-  classical
-  set H₀ := Real.exp (D * (1 + Real.log H) ^ D) with hH₀
-  have hH₀p : 0 < H₀ := Real.exp_pos _
-  -- the insertable columns
-  let Dt := {d : CatCol Tg // d.birth = I ∧ ∃ w, d.rank = (tests w).r ∧ (tests w).M d.tag ∧
-    ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-      d = templateCol (tagOf d.tag) (tests w).t R γ I (tests w).r d.tag}
-  let cat : List Dt → List (CatCol Tg) := fun s => s₀ ++ s.map Subtype.val
-  have hcat : ∀ (s : List Dt) (d : Dt), cat (s ++ [d]) = cat s ++ [d.1] := by
-    intro s d; simp only [cat, List.map_append, List.map_cons, List.map_nil, List.append_assoc]
-  set Rset := Finset.univ.image (fun w => (tests w).r)
-  set δ : ℕ → ℝ := fun r => τ r / (2 * H₀)
-  set P : W → List Dt → ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) :=
-    fun w s => catProj G Mc (cat s) I (tests w).r (tests w).M
-  set Q : W → ℕ → List Dt → ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) :=
-    fun w l s => (tests w).Q G Mc I (cat s) l
-  have hP : ∀ w s, IsStarProjection (P w s) := fun w s => catProj_isStarProjection _ _ _ _ _ _
-  have hP1 : ∀ w s d, (P w s).comp (P w (s ++ [d])) = P w s := fun w s d => by
-    simp only [P, hcat]; exact catProj_nest _ _ _ _ _ _ _
-  have hQ : ∀ w l s, IsStarProjection (Q w l s) := fun w l s =>
-    CatTest.Q_isStarProjection _ _ _ _ _ _
-  have hQ1 : ∀ w l s d, (Q w l s).comp (Q w l (s ++ [d])) = Q w l s := fun w l s d => by
-    simp only [Q, hcat]; exact CatTest.Q_nest _ _ _ _ _ _ _
-  have hrk : ∀ d : Dt, d.1.rank ∈ Rset := fun d => by
-    obtain ⟨w, hw, -⟩ := d.2.2
-    exact Finset.mem_image.mpr ⟨w, Finset.mem_univ _, hw.symm⟩
-  have hδ : ∀ r ∈ Rset, 0 < δ r := fun r hr => by
-    obtain ⟨w, -, rfl⟩ := Finset.mem_image.mp hr
-    exact div_pos (hτ w) (by positivity)
-  have hbd : ∀ s : List Dt, LocalValid (fun d : Dt => d.1.rank) (fun w => (tests w).r) δ P Q
-      (fun w => (tests w).θ) mH (fun w => physicalColumnInput (tests w).g) s →
-      s.length < Tmax := fun s h =>
-    h.length_lt hP hP1 hQ hQ1 Rset hrk hδ hcap
-  obtain ⟨s, hs, hpass, hlen⟩ := local_closure (rk := fun d : Dt => d.1.rank)
-    (rkW := fun w => (tests w).r) (δ := δ) (P := P) (Q := Q) (θ := fun w => (tests w).θ)
-    (m := mH) (g := fun w => physicalColumnInput (tests w).g) hP hP1 hQ hQ1 Rset hrk hδ hcap
-    (fun w s => (tests w).Pass G Mc I c₀ H tagOf wI (τ (tests w).r) mH (cat s)) (by
-      intro s hs w hw
-      have hlen : (cat s).length < Mc := by
-        have := hbd s hs
-        simp only [cat, List.length_append, List.length_map]
-        omega
-      obtain ⟨d, hdr, hdb, hdM, hdt, hg⟩ := (tests w).gain hst hH hdim hwI hlen hw
-      refine ⟨⟨d, hdb, w, hdr, hdM, hdt⟩, hdr.symm, ?_⟩
-      simp only [P, Q, hcat]
-      exact hg)
-  refine ⟨s.map Subtype.val, fun d hd => ?_, by simpa using hlen, hpass, fun r => ?_⟩
-  · obtain ⟨d', -, rfl⟩ := List.mem_map.mp hd
-    exact d'.2
-  · by_cases hr : δ r ≤ 0
-    · exact Or.inr hr
-    · left
-      have hc := hs.rank_count hP hP1 hQ hQ1 r (lt_of_not_ge hr)
-      have hL : projectionPrefixConstant s.length ≤ projectionPrefixConstant Tmax :=
-        projectionPrefixConstant_mono hlen.le
-      have hL0 : 0 ≤ projectionPrefixConstant s.length :=
-        le_trans zero_le_one (projectionPrefixConstant_one_le _)
-      refine le_trans (le_of_eq ?_) (hc.trans (mul_le_mul_of_nonneg_left
-        (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ hL0 hL _) (by positivity))
-        (Nat.cast_nonneg _)))
-      simp only [List.length_map, List.getElem_map]
-      rfl
-
 section TreeClosure
 variable {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ}
 
 /-! ### The catalog over the tree (blueprint lines 1820-1831) -/
-
-variable (G Mc) in
-theorem catSel_mono_append (s t : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) :
-    catSel G Mc s I r M ⊆ catSel G Mc (s ++ t) I r M := by
-  rintro x ⟨n, hn, h1, h2, h3, rfl⟩
-  have hn' : (n : ℕ) < (s ++ t).length := by simp; omega
-  have e : (s ++ t)[(n : ℕ)]'hn' = s[(n : ℕ)]'hn := List.getElem_append_left hn
-  exact ⟨n, hn', by rw [e]; exact ⟨h1, h2, h3, rfl⟩⟩
-
-/-- Columns born at cells not containing `I` do not change the catalog at `I`. -/
-theorem catSel_append_irrel (s t : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop)
-    (ht : ∀ d ∈ t, ¬ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G d.birth.1 d.birth.2) :
-    catSel G Mc (s ++ t) I r M = catSel G Mc s I r M := by
-  ext x
-  constructor
-  · rintro ⟨n, hn, h1, h2, h3, rfl⟩
-    by_cases hns : (n : ℕ) < s.length
-    · have e : (s ++ t)[(n : ℕ)]'hn = s[(n : ℕ)]'hns := List.getElem_append_left hns
-      rw [e] at h1 h2 h3 ⊢
-      exact ⟨n, hns, h1, h2, h3, rfl⟩
-    · exfalso
-      have hmem : (s ++ t)[(n : ℕ)]'hn ∈ t := by
-        rw [List.getElem_append_right (by omega)]
-        exact List.getElem_mem _
-      exact ht _ hmem h1
-  · intro hx
-    exact catSel_mono_append G Mc s t I r M hx
-
-theorem catProj_append_irrel (s t : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop)
-    (ht : ∀ d ∈ t, ¬ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G d.birth.1 d.birth.2) :
-    catProj G Mc (s ++ t) I r M = catProj G Mc s I r M := by
-  have h : catRange G Mc (s ++ t) I r M = catRange G Mc s I r M := by
-    unfold catRange; rw [catSel_append_irrel s t I r M ht]
-  unfold catProj
-  ext x : 1
-  exact starProjection_congr h x
-
-theorem CatTest.resid_append_irrel (w : CatTest Tg) (I : ℤ × ℤ) (mH : ℕ)
-    (s t : List (CatCol Tg))
-    (ht : ∀ d ∈ t, ¬ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G d.birth.1 d.birth.2) :
-    w.resid G Mc I mH (s ++ t) = w.resid G Mc I mH s := by
-  have hQ : (fun l => w.Q G Mc I (s ++ t) l) = fun l => w.Q G Mc I s l := by
-    funext l; unfold CatTest.Q; split_ifs
-    · exact catProj_append_irrel s t I _ _ ht
-    · rfl
-  unfold CatTest.resid CatTest.hist
-  rw [hQ, catProj_append_irrel s t I _ _ ht]
-
-theorem CatTest.pass_append_irrel (w : CatTest Tg) (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ)
-    (tagOf : Tg → ChartTag) (wI : ℝ × ℝ → ℂ) (τ : ℝ) (mH : ℕ) (s t : List (CatCol Tg))
-    (ht : ∀ d ∈ t, ¬ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G d.birth.1 d.birth.2) :
-    w.Pass G Mc I c₀ H tagOf wI τ mH (s ++ t) ↔ w.Pass G Mc I c₀ H tagOf wI τ mH s := by
-  unfold CatTest.Pass
-  rw [w.resid_append_irrel I mH s t ht]
 
 theorem card_range_filter_getElem {α : Type*} (s : List α) (p : α → Prop) [DecidablePred p] :
     ((Finset.range s.length).filter (fun j => ∃ hj : j < s.length, p s[j])).card =
@@ -4343,148 +3652,10 @@ theorem sameTagBound_exists (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c�
     ∃ D : ℕ, 1 ≤ D ∧ SameTagBound κ c₀ D :=
   sameTagTemplateTest κ c₀ hc
 
-/-- Blueprint lem:closure over a finite tree (lines 1820-1831): processing the cells with
-ancestors first and closing the catalog at each cell (`cell_closure`) gives one catalog that
-passes all tests at all cells; the columns born at a cell are its own insertions, with the rank
-counts of `cell_closure`. -/
-theorem tree_closure {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameTagBound κ c₀ D)
-    {G : RealDyadicGrid} {Tg : Type*} {H : ℝ} (hH : Real.exp 2 ≤ H) {tagOf : Tg → ChartTag}
-    (hdim : ∀ x, 1 ≤ (tagOf x).dim) (L : List (ℤ × ℤ)) (hnd : L.Nodup)
-    (hord : ∀ i j (hi : i < L.length) (hj : j < L.length), i < j →
-      ¬ dyadicGridCell G L[i].1 L[i].2 ⊆ dyadicGridCell G L[j].1 L[j].2)
-    (wI : ℤ × ℤ → ℝ × ℝ → ℂ)
-    (hwI : ∀ I ∈ L, IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)
-      (wI I))
-    (W : ℤ × ℤ → Type*) [∀ I, Fintype (W I)] (tests : ∀ I, W I → CatTest Tg) (mH : ℕ)
-    (τ : ℕ → ℝ) (hτ : ∀ I w, 0 < τ (tests I w).r) {Tmax Mc : ℕ} (hMc : L.length * Tmax ≤ Mc)
-    (hcap : ∀ I ∈ L, ∑ r ∈ Finset.univ.image (fun w => (tests I w).r),
-      Fintype.card (W I) * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) /
-        (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 < (Tmax : ℝ)) :
-    ∃ cat : List (CatCol Tg),
-      (∀ I ∈ L, ∀ w, (tests I w).Pass G Mc I c₀ H tagOf (wI I) (τ (tests I w).r) mH cat) ∧
-      (∀ d ∈ cat, d.birth ∈ L ∧ ∃ w, d.rank = (tests d.birth w).r ∧ (tests d.birth w).M d.tag ∧
-        ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-          d = templateCol (tagOf d.tag) (tests d.birth w).t R γ d.birth (tests d.birth w).r d.tag) ∧
-      (∀ I ∈ L, ∀ r, ((cat.filter (fun d => decide (d.birth = I ∧ d.rank = r))).length : ℝ) *
-          (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 ≤
-        Fintype.card (W I) * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) ∨
-        τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D)) ≤ 0) ∧
-      cat.length ≤ L.length * Tmax := by
-  classical
-  set δ : ℕ → ℝ := fun r => τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))
-  -- the invariant after the first `n` cells
-  set c : ℕ → ℤ × ℤ := fun i => L.getD i (0, 0) with hc
-  have hcL : ∀ i (hi : i < L.length), c i = L[i] := fun i hi => by
-    simp only [hc, List.getD_eq_getElem _ _ hi]
-  have key : ∀ n, n ≤ L.length → ∃ cat : List (CatCol Tg),
-      (∀ i < n, ∀ w, (tests (c i) w).Pass G Mc (c i) c₀ H tagOf (wI (c i))
-        (τ (tests (c i) w).r) mH cat) ∧
-      (∀ d ∈ cat, ∃ i < n, d.birth = c i ∧
-        ∃ w, d.rank = (tests d.birth w).r ∧ (tests d.birth w).M d.tag ∧
-          ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-            d = templateCol (tagOf d.tag) (tests d.birth w).t R γ d.birth (tests d.birth w).r
-              d.tag) ∧
-      (∀ i < n, ∀ r, ((cat.filter (fun d => decide (d.birth = c i ∧ d.rank = r))).length : ℝ) *
-          δ r ^ 2 ≤ Fintype.card (W (c i)) *
-            (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) ∨ δ r ≤ 0) ∧
-      cat.length ≤ n * Tmax := by
-    intro n
-    induction n with
-    | zero =>
-      intro _
-      exact ⟨[], fun i hi => absurd hi (Nat.not_lt_zero _), fun d hd => absurd hd (by simp),
-        fun i hi => absurd hi (Nat.not_lt_zero _), by simp⟩
-    | succ n ih =>
-      intro hn
-      obtain ⟨cat, hpass, hbirth, hcount, hlen⟩ := ih (by omega)
-      set I := c n with hI
-      have hIL : I ∈ L := by rw [hI, hcL n (by omega)]; exact List.getElem_mem _
-      obtain ⟨s, hs, hslen, hspass, hscount⟩ := cell_closure hst hH hdim (hwI I hIL) (tests I) mH
-        τ (hτ I) cat (Tmax := Tmax) (Mc := Mc) (by
-          have := Nat.mul_le_mul_right Tmax hn
-          rw [Nat.succ_mul] at this
-          omega) (hcap I hIL)
-      have hinj : ∀ i j, i < L.length → j < L.length → c i = c j → i = j := by
-        intro i j hi hj he
-        rw [hcL i hi, hcL j hj] at he
-        exact (List.Nodup.getElem_inj_iff hnd).mp he
-      -- the earlier cells are not affected
-      have hirr : ∀ i < n, ∀ d ∈ s,
-          ¬ dyadicGridCell G (c i).1 (c i).2 ⊆ dyadicGridCell G d.birth.1 d.birth.2 := by
-        intro i hi d hd
-        rw [(hs d hd).1, hI, hcL i (by omega), hcL n (by omega)]
-        exact hord i n (by omega) (by omega) hi
-      -- the births of the old catalog are earlier cells
-      have hold : ∀ d ∈ cat, d.birth ≠ I := by
-        intro d hd he
-        obtain ⟨i, hi, hdi, -⟩ := hbirth d hd
-        have := hinj i n (by omega) (by omega) (hdi.symm.trans he)
-        omega
-      refine ⟨cat ++ s, fun i hi w => ?_, fun d hd => ?_, fun i hi r => ?_, ?_⟩
-      · by_cases hin : i < n
-        · exact ((tests _ w).pass_append_irrel _ c₀ H tagOf _ _ mH cat s (hirr i hin)).mpr
-            (hpass i hin w)
-        · have hi' : i = n := by omega
-          subst hi'
-          exact hspass w
-      · rcases List.mem_append.mp hd with hd | hd
-        · obtain ⟨i, hi, h1, h2⟩ := hbirth d hd
-          exact ⟨i, by omega, h1, h2⟩
-        · obtain ⟨h1, h2⟩ := hs d hd
-          refine ⟨n, by omega, h1, ?_⟩
-          rw [h1]; exact h2
-      · rw [List.filter_append, List.length_append]
-        by_cases hin : i < n
-        · have h0 : (s.filter (fun d => decide (d.birth = c i ∧ d.rank = r))).length = 0 := by
-            rw [List.length_eq_zero_iff, List.filter_eq_nil_iff]
-            intro d hd
-            simp only [decide_eq_true_eq, not_and]
-            intro he
-            rw [(hs d hd).1] at he
-            have := hinj n i (by omega) (by omega) he
-            omega
-          rw [h0, Nat.add_zero]
-          exact hcount i hin r
-        · have hi' : i = n := by omega
-          subst hi'
-          have h0 : (cat.filter (fun d => decide (d.birth = I ∧ d.rank = r))).length = 0 := by
-            rw [List.length_eq_zero_iff, List.filter_eq_nil_iff]
-            intro d hd
-            simp only [decide_eq_true_eq, not_and]
-            intro he
-            exact absurd he (hold d hd)
-          rw [h0, Nat.zero_add]
-          have hfs : s.filter (fun d => decide (d.birth = I ∧ d.rank = r)) =
-              s.filter (fun d => decide (d.rank = r)) := by
-            refine List.filter_congr fun d hd => ?_
-            simp [(hs d hd).1]
-          rw [hfs, ← card_range_filter_getElem s (fun d => d.rank = r)]
-          exact hscount r
-      · rw [List.length_append, Nat.succ_mul]
-        omega
-  obtain ⟨cat, hpass, hbirth, hcount, hlen⟩ := key L.length le_rfl
-  refine ⟨cat, fun I hI => ?_, fun d hd => ?_, fun I hI r => ?_, hlen⟩
-  · obtain ⟨i, hi, rfl⟩ := List.mem_iff_getElem.mp hI
-    rw [← hcL i hi]
-    exact hpass i hi
-  · obtain ⟨i, hi, h1, h2⟩ := hbirth d hd
-    exact ⟨by rw [h1, hcL i hi]; exact List.getElem_mem _, h2⟩
-  · obtain ⟨i, hi, rfl⟩ := List.mem_iff_getElem.mp hI
-    rw [← hcL i hi]
-    exact hcount i hi r
-
 section CatalogExpansion
 variable {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ}
 
 /-! ### Expansion of catalog outputs into columns (blueprint lemma coeff, lines 488-497) -/
-
-open scoped Classical in
-/-- The labels of the selected catalog columns at a cell. -/
-noncomputable def catLabels (G : RealDyadicGrid) (Mc : ℕ) (s : List (CatCol Tg)) (I : ℤ × ℤ)
-    (r : ℕ) (M : Tg → Prop) : Finset (Fin Mc) :=
-  Finset.univ.filter fun n : Fin Mc => ∃ hn : (n : ℕ) < s.length,
-    dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G (s[(n : ℕ)]).birth.1 (s[(n : ℕ)]).birth.2 ∧
-      (s[(n : ℕ)]).rank ≤ r ∧ M (s[(n : ℕ)]).tag
 
 /-- The atom of a label (zero beyond the catalog). -/
 noncomputable def catAtom (s : List (CatCol Tg)) (n : ℕ) : ℝ → ℂ :=
@@ -4499,56 +3670,6 @@ theorem catAtom_bound (s : List (CatCol Tg)) (n : ℕ) (y : ℝ) : ‖catAtom s 
   unfold catAtom; split_ifs
   · exact (s[n]).bound y
   · simp
-
-theorem catAtom_admissible (s : List (CatCol Tg)) (n : ℕ) (I : ℤ × ℤ) :
-    FitAdmissible (dyadicGridCell G I.1 I.2) (catAtom s n) :=
-  ⟨dyadicGridCell_measurable _ _ _, by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_lt_top,
-    catAtom_measurable s n, catAtom_bound s n⟩
-
-theorem catRange_exists_coeff {s : List (CatCol Tg)} {I : ℤ × ℤ} {r : ℕ} {M : Tg → Prop}
-    {x : ColumnL2 (Fin Mc)} (hx : x ∈ catRange G Mc s I r M) :
-    ∃ c : Fin Mc → ℂ, x = ∑ n ∈ catLabels G Mc s I r M,
-      c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n := by
-  classical
-  refine Submodule.span_induction (R := ℂ) (M := ColumnL2 (Fin Mc)) (p := fun x _ =>
-    ∃ c : Fin Mc → ℂ, x = ∑ n ∈ catLabels G Mc s I r M,
-      c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n) ?_ ?_ ?_ ?_ hx
-  · rintro x ⟨i, hi, h1, h2, h3, rfl⟩
-    refine ⟨Pi.single i (1 : ℂ), ?_⟩
-    have hmem : i ∈ catLabels G Mc s I r M :=
-      Finset.mem_filter.mpr ⟨Finset.mem_univ i, hi, h1, h2, h3⟩
-    rw [Finset.sum_eq_single i]
-    · simp [catAtom, hi]
-    · intro b _ hb; simp [hb]
-    · intro h; exact absurd hmem h
-  · exact ⟨0, by simp⟩
-  · rintro x y _ _ ⟨c, rfl⟩ ⟨d, rfl⟩
-    exact ⟨c + d, by simp [add_smul, Finset.sum_add_distrib]⟩
-  · rintro a x _ ⟨c, rfl⟩
-    exact ⟨a • c, by simp [Finset.smul_sum, smul_smul]⟩
-
-/-- The pointwise form of a combination of catalog columns on the cell. -/
-theorem catCombination_coeFn (s : List (CatCol Tg)) (I : ℤ × ℤ) (F : Finset (Fin Mc))
-    (c : Fin Mc → ℂ) :
-    ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 →
-      ((∑ n ∈ F, c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n :
-        ColumnL2 (Fin Mc)) : ℝ → ColumnHilbert (Fin Mc)) y =
-        ∑ n ∈ F, c n • fitColumnValue (catAtom s n) n y := by
-  have hcol : ∀ n : Fin Mc, ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 →
-      ((c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n : ColumnL2 (Fin Mc)) :
-        ℝ → ColumnHilbert (Fin Mc)) y = c n • fitColumnValue (catAtom s n) n y := by
-    intro n
-    filter_upwards [Lp.coeFn_smul (c n) (fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n),
-      fitColumn_coeFn (catAtom_admissible (G := G) s n I) n] with y h1 h2 hys
-    rw [h1, Pi.smul_apply, h2, Set.indicator_of_mem hys]
-  have hall : ∀ᵐ y ∂volume, ∀ n ∈ F, y ∈ dyadicGridCell G I.1 I.2 →
-      ((c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n : ColumnL2 (Fin Mc)) :
-        ℝ → ColumnHilbert (Fin Mc)) y = c n • fitColumnValue (catAtom s n) n y :=
-    (Filter.eventually_all_finset _).mpr fun n _ => hcol n
-  filter_upwards [hall, Lp.coeFn_fun_finsetSum F
-    (fun n => c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n)] with y hy hsum hys
-  rw [hsum]
-  exact Finset.sum_congr rfl fun n hn => hy n hn hys
 
 end CatalogExpansion
 
@@ -4757,20 +3878,6 @@ theorem layerOp_eq_complementProduct (Cum : ℕ → H →L[ℂ] H) (ls : List (�
       (θ' := fun l => ((ls ++ [x]).getD l (0, false)).2) ls.length fun l hl => by
         simp only [List.getD_append _ _ _ _ hl, and_self]]
 
-/-- A form with an averaged input in one slot is bounded by any bound of its terms. -/
-theorem norm_map_update_avg_le {V : Type*} [AddCommGroup V] [Module ℂ V]
-    (Λ : MultilinearMap ℂ (fun _ : Fin 4 => V) ℂ) (x : Fin 4 → V) (g : Fin 4) {ι : Type*}
-    (s : Finset ι) (hs : s.Nonempty) (y : ι → V) {B : ℝ}
-    (hB : ∀ i ∈ s, ‖Λ (Function.update x g (y i))‖ ≤ B) :
-    ‖Λ (Function.update x g (((s.card : ℂ))⁻¹ • ∑ i ∈ s, y i))‖ ≤ B := by
-  rw [Λ.map_update_smul, Λ.map_update_sum, smul_eq_mul, norm_mul, norm_inv, Complex.norm_natCast]
-  have hc : (0 : ℝ) < s.card := by exact_mod_cast hs.card_pos
-  rw [inv_mul_le_iff₀ hc]
-  calc ‖∑ i ∈ s, Λ (Function.update x g (y i))‖ ≤ ∑ i ∈ s, ‖Λ (Function.update x g (y i))‖ :=
-        norm_sum_le _ _
-    _ ≤ ∑ _i ∈ s, B := Finset.sum_le_sum hB
-    _ = s.card * B := by rw [Finset.sum_const, nsmul_eq_mul]
-
 end LayerHistories
 
 section ResidualAverages
@@ -4792,155 +3899,7 @@ theorem operatorComplementProduct_id_tail (A : ℕ → H →L[ℂ] H) (θ : ℕ 
 
 end ResidualAverages
 
-namespace CatTest
-variable {Tg : Type*}
-
-/-- The single-choice test of a layered history: target slot `t`, target rank `r` and mask,
-history layers `ls` with layer ranks `rk` and pad masks `msk` at the pad choice `c`. -/
-def ofLayers (t : Fin 4) (r : ℕ) (M : Tg → Prop) (rk : ℕ → ℕ) (msk : ℕ → ℕ → Tg → Prop)
-    {P : ℕ} (hP : 0 < P) (ls : List (ℕ × Bool)) (c : Fin ls.length → Fin P)
-    (g : Lp ℂ 2 (volume : Measure ℝ)) : CatTest Tg where
-  t := t
-  r := r
-  M := M
-  m := ls.length
-  hr := fun i => rk (ls.getD i (0, false)).1
-  hM := fun i => msk (ls.getD i (0, false)).1 (choiceExt hP c i)
-  θ := fun i => if i < ls.length then (ls.getD i (0, false)).2 else false
-  g := g
-
-end CatTest
-
-/-- Blueprint lines 1813, 1850: the residual of an averaged target filter on a layered history
-of averaged catalog filters is the uniform average over the target pads and the history pad
-choices of the residuals of the single-choice tests. -/
-theorem residual_layerOp_eq_avg {Tg : Type*} (G : RealDyadicGrid) (Mc : ℕ) (I : ℤ × ℤ)
-    (cat : List (CatCol Tg)) {P : ℕ} (hP : 0 < P) (rk : ℕ → ℕ) (msk : ℕ → ℕ → Tg → Prop)
-    (t : Fin 4) (r : ℕ) (Mt : Fin P → Tg → Prop) (ls : List (ℕ × Bool)) (mH : ℕ)
-    (hmH : ls.length ≤ mH) (g : Lp ℂ 2 (volume : Measure ℝ)) :
-    let Cum : ℕ → ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) := fun m =>
-      opAvg fun p : Fin P => catProj G Mc cat I (rk m) (msk m p)
-    let X := layerOp Cum ls (physicalColumnInput g)
-    X - opAvg (fun p : Fin P => catProj G Mc cat I r (Mt p)) X =
-      (((Finset.univ : Finset (Fin P × (Fin ls.length → Fin P))).card : ℂ))⁻¹ •
-        ∑ pc : Fin P × (Fin ls.length → Fin P),
-          (CatTest.ofLayers t r (Mt pc.1) rk msk hP ls pc.2 g).resid G Mc I mH cat := by
-  intro Cum X
-  set n := ls.length with hn
-  have hP' : (P : ℂ) ≠ 0 := by exact_mod_cast hP.ne'
-  -- the single-choice histories
-  have hhist : ∀ (M : Tg → Prop) (c : Fin n → Fin P),
-      (CatTest.ofLayers t r M rk msk hP ls c g).hist G Mc I mH cat =
-        operatorComplementProduct (fun i => catProj G Mc cat I (rk (ls.getD i (0, false)).1)
-          (msk (ls.getD i (0, false)).1 (choiceExt hP c i))) (fun i => (ls.getD i (0, false)).2)
-          n (physicalColumnInput g) := by
-    intro M c
-    unfold CatTest.hist
-    set w := CatTest.ofLayers t r M rk msk hP ls c g
-    have htail := operatorComplementProduct_id_tail (fun l => w.Q G Mc I cat l) w.θ n
-      (fun l hl => by
-        change (if l < n then _ else _) = _
-        rw [ite_eq_right (by omega)])
-      (fun l hl => by change (if l < n then _ else false) = false; rw [ite_eq_right (by omega)])
-      (mH - n)
-    rw [show mH = n + (mH - n) by omega, htail]
-    rw [operatorComplementProduct_congr₂ (B := fun i => catProj G Mc cat I
-        (rk (ls.getD i (0, false)).1) (msk (ls.getD i (0, false)).1 (choiceExt hP c i)))
-      (θ' := fun i => (ls.getD i (0, false)).2) n fun i hi => by
-        refine ⟨?_, ?_⟩
-        · change (if i < n then _ else _) = _
-          rw [ite_eq_left hi]; rfl
-        · change (if i < n then _ else false) = _
-          rw [ite_eq_left hi]]
-    rfl
-  -- the history as an average over the pad choices
-  have hX : X = (((P : ℂ) ^ n))⁻¹ • ∑ c : Fin n → Fin P,
-      operatorComplementProduct (fun i => catProj G Mc cat I (rk (ls.getD i (0, false)).1)
-        (msk (ls.getD i (0, false)).1 (choiceExt hP c i))) (fun i => (ls.getD i (0, false)).2)
-        n (physicalColumnInput g) := by
-    change layerOp Cum ls (physicalColumnInput g) = _
-    rw [layerOp_eq_complementProduct]
-    exact complementProduct_opAvg hP (fun i p => catProj G Mc cat I (rk (ls.getD i (0, false)).1)
-      (msk (ls.getD i (0, false)).1 p)) _ n _
-  -- assemble
-  set hc : (Fin n → Fin P) → ColumnL2 (Fin Mc) := fun c =>
-    operatorComplementProduct (fun i => catProj G Mc cat I (rk (ls.getD i (0, false)).1)
-      (msk (ls.getD i (0, false)).1 (choiceExt hP c i))) (fun i => (ls.getD i (0, false)).2)
-      n (physicalColumnInput g) with hhc
-  set T : Fin P → ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) := fun p =>
-    catProj G Mc cat I r (Mt p) with hT
-  have hcard : ((Finset.univ : Finset (Fin P × (Fin n → Fin P))).card : ℂ) = P * P ^ n := by
-    rw [Finset.card_univ, Fintype.card_prod, Fintype.card_fun, Fintype.card_fin, Fintype.card_fin]
-    push_cast; ring
-  have hres : ∀ (p : Fin P) (c : Fin n → Fin P),
-      (CatTest.ofLayers t r (Mt p) rk msk hP ls c g).resid G Mc I mH cat =
-        hc c - T p (hc c) := by
-    intro p c
-    unfold CatTest.resid
-    rw [hhist]
-    rfl
-  rw [hcard, Fintype.sum_prod_type]
-  simp only [hres]
-  calc X - opAvg T X = (P : ℂ)⁻¹ • ∑ p : Fin P, (X - T p X) := by
-        unfold opAvg
-        rw [smul_apply, sum_apply, Finset.sum_sub_distrib, smul_sub, Finset.sum_const,
-          Finset.card_univ, Fintype.card_fin, ← Nat.cast_smul_eq_nsmul ℂ, smul_smul,
-          inv_mul_cancel₀ hP', one_smul]
-    _ = (P : ℂ)⁻¹ • ∑ p : Fin P, (((P : ℂ) ^ n)⁻¹ • ∑ c : Fin n → Fin P,
-          (hc c - T p (hc c))) := by
-        congr 1
-        refine Finset.sum_congr rfl fun p _ => ?_
-        rw [hX, map_smul, map_sum, ← smul_sub, ← Finset.sum_sub_distrib]
-    _ = _ := by
-        rw [mul_inv, mul_smul]
-        simp only [Finset.smul_sum]
-        rfl
-
 /-! ### Square-summed coefficients of catalog combinations (blueprint line 1835) -/
-
-/-- The coefficients of a combination of catalog columns on a cell are square summable with
-`Σ |c_n|² |I| ≤ ‖x‖²` (orthonormal private coordinates of weight one). -/
-theorem catCombination_l2_le {Tg : Type*} {G : RealDyadicGrid} {Mc : ℕ} (s : List (CatCol Tg))
-    (I : ℤ × ℤ) (F : Finset (Fin Mc)) (c : Fin Mc → ℂ) :
-    (∑ n ∈ F, ‖c n‖ ^ 2) * dyadicGridLength G I.1 ≤
-      ‖(∑ n ∈ F, c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n :
-        ColumnL2 (Fin Mc))‖ ^ 2 := by
-  classical
-  set x : ColumnL2 (Fin Mc) := ∑ n ∈ F, c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n
-  have hco := catCombination_coeFn (G := G) s I F c
-  have hpriv : ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 → ∀ m ∈ F,
-      (x : ℝ → ColumnHilbert (Fin Mc)) y (some m) = c m := by
-    filter_upwards [hco] with y hy hys m hm
-    rw [hy hys, columnHilbert_sum_apply]
-    simp only [PiLp.smul_apply, fitColumnValue_some, smul_eq_mul, mul_ite, mul_one, mul_zero]
-    rw [Finset.sum_ite_eq, ite_eq_left hm]
-  have hr := dyadicGridLength_pos G I.1
-  have hle : ∫ y in dyadicGridCell G I.1 I.2, (∑ n ∈ F, ‖c n‖ ^ 2) ≤
-      ∫ y, ‖(x : ℝ → ColumnHilbert (Fin Mc)) y‖ ^ 2 := by
-    calc ∫ y in dyadicGridCell G I.1 I.2, (∑ n ∈ F, ‖c n‖ ^ 2)
-        = ∫ y in dyadicGridCell G I.1 I.2,
-            ∑ n ∈ F, ‖(x : ℝ → ColumnHilbert (Fin Mc)) y (some n)‖ ^ 2 := by
-          refine setIntegral_congr_ae (dyadicGridCell_measurable _ _ _) ?_
-          filter_upwards [hpriv] with y hy hys
-          exact Finset.sum_congr rfl fun n hn => by rw [hy hys n hn]
-      _ ≤ ∫ y in dyadicGridCell G I.1 I.2, ‖(x : ℝ → ColumnHilbert (Fin Mc)) y‖ ^ 2 := by
-          refine setIntegral_mono_on ?_ ?_ (dyadicGridCell_measurable _ _ _) fun y _ => ?_
-          · exact (integrable_finsetSum _ fun n _ =>
-              ((memLp_column_coord x (some n)).integrable_norm_pow two_ne_zero)).integrableOn
-          · exact ((Lp.memLp x).integrable_norm_pow two_ne_zero).integrableOn
-          · rw [EuclideanSpace.norm_eq, Real.sq_sqrt (Finset.sum_nonneg fun _ _ => by positivity)]
-            calc ∑ n ∈ F, ‖(x : ℝ → ColumnHilbert (Fin Mc)) y (some n)‖ ^ 2
-                = ∑ i ∈ F.map ⟨some, Option.some_injective _⟩,
-                    ‖(x : ℝ → ColumnHilbert (Fin Mc)) y i‖ ^ 2 := by rw [Finset.sum_map]; rfl
-              _ ≤ ∑ i, ‖(x : ℝ → ColumnHilbert (Fin Mc)) y i‖ ^ 2 :=
-                  Finset.sum_le_sum_of_subset_of_nonneg (Finset.subset_univ _)
-                    fun _ _ _ => by positivity
-      _ ≤ _ := setIntegral_le_integral ((Lp.memLp x).integrable_norm_pow two_ne_zero)
-          (Filter.Eventually.of_forall fun _ => by positivity)
-  rw [setIntegral_const, smul_eq_mul, measureReal_def, dyadicGridCell_volume,
-    ENNReal.toReal_ofReal hr.le] at hle
-  rw [columnInput_norm_sq_integral, mul_comm]
-  exact hle
 
 /-! ### Cell inputs as `L²` classes -/
 
@@ -4952,57 +3911,6 @@ noncomputable def cellLp (G : RealDyadicGrid) (I : ℤ × ℤ) (f : ℝ → ℂ)
 
 namespace ActiveSetup
 variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-
-open Classical in
-/-- A present vertex within pad `h ≤ H_max` of a successful current center lies in the ball
-mask of its group (blueprint lem:masks, first assertion). -/
-theorem mem_mask_of_near (Hed : ℝ) (Hmax : ℕ) (ωp ωh : Fin A.cd0 → A.Vtx → Fin (A.cd0 + 1))
-    {I : A.admT.Cell} {w b : A.Vtx} (hw : w ∈ A.admT.X I)
-    (hs : (A.colorSetup Hed Hmax ωp ωh).Success
-      ((A.colorSetup Hed Hmax ωp ωh).colorData (A.admT.st I) w))
-    (hb : b ∈ A.admT.X I) {h : ℕ} (hd : (A.tagDist Hed).d (A.admT.depth I) b w ≤ h)
-    (hh : h ≤ Hmax) :
-    b ∈ (A.colorSetup Hed Hmax ωp ωh).mask A.admT A.vtxBound
-      ((A.colorSetup Hed Hmax ωp ωh).grp A.admT A.vtxBound I w) h I := by
-  obtain ⟨δ, hδ⟩ : ∃ δ : ℕ, (A.tagDist Hed).d (A.admT.depth I) b w = δ :=
-    ⟨_, (ENat.natCast_toNat (ne_top_of_le_ne_top (by simp) hd)).symm⟩
-  have hδh : δ ≤ h := by rw [hδ] at hd; exact_mod_cast hd
-  exact (A.masks Hed Hmax ωp ωh).1 I w hw hs b hb h δ hδ hδh hh
-
-open Classical in
-/-- Distinct current groups of one color have separated masks at the current cell (blueprint
-lem:masks, last assertion). -/
-theorem mask_sep (Hed : ℝ) (Hmax : ℕ) (ωp ωh : Fin A.cd0 → A.Vtx → Fin (A.cd0 + 1))
-    {I : A.admT.Cell} {w₁ w₂ : A.Vtx} (hw₁ : w₁ ∈ A.admT.X I) (hw₂ : w₂ ∈ A.admT.X I)
-    (hs₁ : (A.colorSetup Hed Hmax ωp ωh).Success
-      ((A.colorSetup Hed Hmax ωp ωh).colorData (A.admT.st I) w₁))
-    (hs₂ : (A.colorSetup Hed Hmax ωp ωh).Success
-      ((A.colorSetup Hed Hmax ωp ωh).colorData (A.admT.st I) w₂))
-    (hcol : (A.colorSetup Hed Hmax ωp ωh).color A.admT A.vtxBound I w₁ =
-      (A.colorSetup Hed Hmax ωp ωh).color A.admT A.vtxBound I w₂)
-    (hne : (A.colorSetup Hed Hmax ωp ωh).grp A.admT A.vtxBound I w₁ ≠
-      (A.colorSetup Hed Hmax ωp ωh).grp A.admT A.vtxBound I w₂)
-    {h h' : ℕ} (hh : h ≤ Hmax) (hh' : h' ≤ Hmax) {b b' : A.Vtx}
-    (hb : b ∈ (A.colorSetup Hed Hmax ωp ωh).mask A.admT A.vtxBound
-      ((A.colorSetup Hed Hmax ωp ωh).grp A.admT A.vtxBound I w₁) h I)
-    (hb' : b' ∈ (A.colorSetup Hed Hmax ωp ωh).mask A.admT A.vtxBound
-      ((A.colorSetup Hed Hmax ωp ωh).grp A.admT A.vtxBound I w₂) h' I) :
-    ¬ (A.tagDist Hed).d (A.admT.depth I) b b' ≤ 1 :=
-  (A.masks Hed Hmax ωp ωh).2.2.2 I I I I w₁ w₂ (A.admT.anc_refl I) (A.admT.anc_refl I)
-    (A.admT.anc_refl I) hw₁ hw₂ hs₁ hs₂ hcol hne h h' hh hh' b b' hb hb'
-
-/-- Vertices at graph distance greater than one carry tags not joined by an edge. -/
-theorem not_tagEdge_of_dist (Hed : ℝ) {s : ℤ} {b b' : A.Vtx}
-    (h : ¬ (A.tagDist Hed).d s b b' ≤ 1) :
-    ¬ tagEdge Hed (dyadicGridLength A.G s) (A.vtag b) (A.vtag b') := fun he =>
-  h (graphDist_le_one_of_edge (edge := A.tagGraphEdge Hed) (Or.inl he))
-
-/-- The admission cell of a cell of the setup (the top otherwise). -/
-noncomputable def admAt (I : ℤ × ℤ) : A.admT.Cell := by
-  classical
-  exact if h : I ∈ A.cells then
-    (some ⟨I, A.cells_mem_tree h⟩ : Option (AdmCell A.G A.R A.treeDepth)) else
-    (none : Option (AdmCell A.G A.R A.treeDepth))
 
 /-- The groups of the attempt: a color with its complete color data. -/
 abbrev Grp := ℕ × (Option (Fin A.cd0 × A.Vtx × ℤ) × ℕ × (ℕ × ℕ) × Option (Fin A.cd0 × A.Vtx × ℤ))
@@ -5027,53 +3935,12 @@ structure AttemptParams where
 namespace AttemptParams
 variable {A} (ap : A.AttemptParams)
 
-/-- The color data of the attempt. -/
-noncomputable abbrev K : ColorSetup A.Vtx := A.colorSetup ap.Hed ap.Hmax ap.ωp ap.ωh
-
-/-- The base pad of the cumulative split `m` (blueprint line 1807). -/
-def cbase (m : ℕ) : ℕ := 10 * ap.P * (ap.Lc - m + 1)
-
-/-- The base pad of the ball level `j` (blueprint line 1807). -/
-def bbase (j : ℕ) : ℕ := 20 * ap.P * (ap.Lc + 1) + 10 * (j - 1) * ap.P
-
-open Classical in
-/-- The cumulative masks of the cell `I` at the split `m` and pad index `p`. -/
-def cmask (I : ℤ × ℤ) (m p : ℕ) : A.Vtx → Prop := fun x =>
-  x ∈ ap.K.cumMask A.admT A.vtxBound m (ap.cbase m + p + 1) (A.admAt I)
-
-open Classical in
-/-- The ball masks of the cell `I` for the group `G` at level `j` and pad index `p`. -/
-def bmask (I : ℤ × ℤ) (G : A.Grp) (j p : ℕ) : A.Vtx → Prop := fun x =>
-  x ∈ ap.K.mask A.admT A.vtxBound G (ap.bbase j + p + 1) (A.admAt I)
-
-/-- The base inputs of the cell `I`. -/
-noncomputable def base (I : ℤ × ℤ) (l : Fin 4) : Lp ℂ 2 (volume : Measure ℝ) :=
-  cellLp A.G I (ap.z I l)
-
-open Classical in
-/-- The current groups of the cell `I` at the color `k`. -/
-noncomputable def groupsAt (I : ℤ × ℤ) (k : ℕ) : Finset A.Grp :=
-  ((A.admT.X (A.admAt I)).filter fun w => ap.K.color A.admT A.vtxBound (A.admAt I) w = k).image
-    (ap.K.grp A.admT A.vtxBound (A.admAt I))
-
 /-- The inner history of a positive chain (outermost first) after removing its `k` outermost
 layers, as positive layers, innermost first. -/
 def chainHist (ch : List ℕ) (k : ℕ) : List (ℕ × Bool) :=
   ((ch.drop k).reverse).map fun m => (m, false)
 
 end AttemptParams
-
-/-- A present vertex is available at its admission cell. -/
-theorem occAvail_of_mem {c : A.admT.Cell} {x : A.Vtx} (hx : x ∈ A.admT.X c) :
-    A.occAvail x.2.1 x.1 := by
-  classical
-  rcases c with _ | I
-  · exact absurd hx (Finset.notMem_empty x)
-  · change x ∈ admPresent A.occAvail I at hx
-    obtain ⟨hne, hx2⟩ := (mem_admPresent A.occAvail).mp hx
-    have hspec := (admCellOf_spec A.occAvail hne).1
-    rw [← hx2] at hspec
-    exact ((mem_admAnc A.occAvail).mp hspec).2
 
 end ActiveSetup
 
@@ -5109,107 +3976,12 @@ theorem exp_two_le_Hsrc : Real.exp 2 ≤ A.Hsrc := A.exp_two_le_Hm.trans A.Hm_le
 /-- The common source Gevrey order. -/
 noncomputable def csrc (_A : ActiveSetup κ c₀) : ℕ := max c₀ (2 * tagKρ)
 
-/-- The templates of the tag of an available vertex in any slot are pure sources of that tag in
-that slot, of the common source complexity. -/
-theorem templateCol_source {x : A.Vtx} (hx : A.occAvail x.2.1 x.1) (t : Fin 4)
-    {R : Fin (A.vtag x).dim → ℕ} (hR : R ∈ residueBox (A.vtag x).dim 9) (γ : ℝ) (I : ℤ × ℤ)
-    (r : ℕ) :
-    ∃ A' : QuadraticChartData (A.vtag x).dim, QuadraticChartComplexity A.csrc A.Hsrc A' ∧
-      A'.horizontal = (A.vtag x).θ ∧ A'.matrix = (slotCoeff t : ℚ) • (A.vtag x).C ∧
-      A'.quadratic = slotCoeff t * (A.vtag x).lam ∧
-      (templateCol (A.vtag x) t R γ I r x : CatCol A.Vtx).atom = quadraticChartAtom A' := by
-  obtain ⟨hc, -, -⟩ := A.vchart_spec x hx
-  have hHm := A.one_le_Hm
-  have hdim : ((A.vtag x).dim : ℝ) ≤ Real.log A.Hm := hc.dimension
-  have hlogHm : Real.log A.Hm ≤ A.Hm := (Real.log_le_sub_one_of_pos (by linarith)).trans
-    (by linarith)
-  have hHm2 : A.Hm ≤ A.Hm ^ 2 := le_self_pow₀ hHm (by norm_num)
-  have hMW : ∀ a b, (chartRationalHeight (((slotCoeff t : ℚ) • (A.vtag x).C) a b) : ℝ) ≤
-      A.Hsrc := by
-    intro a b
-    have e : (((slotCoeff t : ℚ) • (A.vtag x).C) a b) =
-        ((slotCoeff t : ℚ) * (slotCoeff x.1.1 : ℚ)⁻¹) * (A.vchart x).2.matrix a b := by
-      change (slotCoeff t : ℚ) * ((slotCoeff x.1.1 : ℚ)⁻¹ * (A.vchart x).2.matrix a b) = _
-      ring
-    change (rationalHeight _ : ℝ) ≤ _
-    rw [e]
-    refine (rationalHeight_mul_le _ _).trans ?_
-    have h1 : (rationalHeight ((slotCoeff t : ℚ) * (slotCoeff x.1.1 : ℚ)⁻¹) : ℝ) ≤ 3 := by
-      exact_mod_cast rationalHeight_slotCoeff_ratio t x.1.1
-    have h2 : (rationalHeight ((A.vchart x).2.matrix a b) : ℝ) ≤ A.Hm := hc.height a b
-    have h0 : (0 : ℝ) ≤ rationalHeight ((slotCoeff t : ℚ) * (slotCoeff x.1.1 : ℚ)⁻¹) :=
-      Nat.cast_nonneg _
-    have h0' : (0 : ℝ) ≤ rationalHeight ((A.vchart x).2.matrix a b) := Nat.cast_nonneg _
-    calc 2 * ((rationalHeight ((slotCoeff t : ℚ) * (slotCoeff x.1.1 : ℚ)⁻¹) : ℝ) *
-          rationalHeight ((A.vchart x).2.matrix a b)) ^ 2 ≤ 2 * (3 * A.Hm) ^ 2 := by
-          gcongr
-      _ = 18 * A.Hm ^ 2 := by ring
-      _ ≤ A.Hsrc := by
-          unfold Hsrc
-          have : (0 : ℝ) ≤ (tagKρ : ℝ) ^ (2 * tagKρ) * A.Hm ^ 2 := by positivity
-          nlinarith
-  have hBW : ((A.vtag x).dim : ℝ) * (tagKρ : ℝ) ^ (2 * tagKρ) + 2 * Real.pi * (A.vtag x).dim ≤
-      A.Hsrc := by
-    have hpi : 2 * Real.pi ≤ 7 := by linarith [Real.pi_lt_d2]
-    have hd0 : (0 : ℝ) ≤ (A.vtag x).dim := Nat.cast_nonneg _
-    have hdHm : ((A.vtag x).dim : ℝ) ≤ A.Hm ^ 2 := hdim.trans (hlogHm.trans hHm2)
-    calc ((A.vtag x).dim : ℝ) * (tagKρ : ℝ) ^ (2 * tagKρ) + 2 * Real.pi * (A.vtag x).dim
-        ≤ A.Hm ^ 2 * (tagKρ : ℝ) ^ (2 * tagKρ) + 7 * A.Hm ^ 2 := by
-          have h0 : (0 : ℝ) ≤ (tagKρ : ℝ) ^ (2 * tagKρ) := by positivity
-          gcongr
-      _ ≤ A.Hsrc := by unfold Hsrc; nlinarith [sq_nonneg A.Hm]
-  obtain ⟨A', hA', hθ, hM, hq, he⟩ := templateCol_chart (A.vtag x) t hR γ I r x
-    A.exp_two_le_Hsrc (hdim.trans (Real.log_le_log (by linarith) A.Hm_le_Hsrc)) hMW hBW
-  exact ⟨A', quadraticChartComplexity_mono_order hA' (le_max_right _ _), hθ, hM, hq, he⟩
-
 /-! ### Separation of the current groups (blueprint lines 1851-1853) -/
-
-theorem admAt_of_mem {I : ℤ × ℤ} (hI : I ∈ A.cells) :
-    A.admAt I = some ⟨I, A.cells_mem_tree hI⟩ := by
-  unfold admAt; exact dite_eq_left_of_eq_true (eq_true hI)
-
-theorem depth_admAt {I : ℤ × ℤ} (hI : I ∈ A.cells) : A.admT.depth (A.admAt I) = I.1 := by
-  rw [A.admAt_of_mem hI]; rfl
 
 /-- The constant of the declaration graph at the common source order. -/
 noncomputable def Dg : ℕ := Classical.choose (curvatureGraph κ (A.csrc + 1) (by omega))
 
 variable {A}
-
-/-- The atom of a selected template column of a present tag is a bounded pure chart of that tag in
-its slot, of the common source complexity. -/
-theorem catAtom_chart (cat : List (CatCol A.Vtx)) (t : Fin 4)
-    (hT : ∀ d ∈ cat, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-      d = templateCol (A.vtag d.tag) t R γ d.birth d.rank d.tag)
-    {Mc : ℕ} {n : Fin Mc} (hnl : (n : ℕ) < cat.length)
-    (hav : A.occAvail (cat[(n : ℕ)]).tag.2.1 (cat[(n : ℕ)]).tag.1) :
-    ∃ A' : QuadraticChartData (A.vtag (cat[(n : ℕ)]).tag).dim,
-      QuadraticChartComplexity A.csrc A.Hsrc A' ∧ IsBoundedQuadraticChart A' ∧
-      A'.horizontal = (A.vtag (cat[(n : ℕ)]).tag).θ ∧
-      A'.matrix = (slotCoeff t : ℚ) • (A.vtag (cat[(n : ℕ)]).tag).C ∧
-      A'.quadratic = slotCoeff t * (A.vtag (cat[(n : ℕ)]).tag).lam ∧
-      catAtom cat n = quadraticChartAtom A' := by
-  set d := cat[(n : ℕ)]
-  obtain ⟨R, hR, γ, hdt⟩ := hT d (List.getElem_mem _)
-  obtain ⟨A', hA', hθ, hMat, hq, he⟩ := A.templateCol_source hav t hR γ d.birth d.rank
-  have hatom : d.atom = quadraticChartAtom A' := by
-    rw [← he]; exact congrArg CatCol.atom hdt
-  refine ⟨A', hA', fun y => ?_, hθ, hMat, hq, ?_⟩
-  · rw [← hatom]; exact d.bound y
-  · unfold catAtom
-    rw [dite_eq_left_of_eq_true (eq_true hnl)]
-    exact hatom
-
-end ActiveSetup
-
-namespace ActiveSetup
-
-/-- The leaf error of `leaf_main` with the group count bounded by `G_c`. -/
-noncomputable def leafErr {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-    (Gc Sz Nu Nt τo τm τr τ₂ : ℝ) : ℝ :=
-  (Real.sqrt Nu * Sz + Fintype.card A.L * A.Dc) *
-      ((Gc + 1) * (τo * Sz ^ 3) + τm * Sz ^ 3 + Gc * (τ₂ * Sz ^ 3 * Real.sqrt Nt)) +
-    Gc * (3 * ((Real.sqrt Nt * Sz) * (τr * Sz ^ 3)))
 
 end ActiveSetup
 
@@ -5218,49 +3990,6 @@ end ActiveSetup
 theorem length_filter_cons {α : Type*} (q : α → Bool) (d : α) (s : List α) :
     ((d :: s).filter q).length = (s.filter q).length + if q d then 1 else 0 := by
   rw [List.filter_cons]; split <;> simp_all
-
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-
-/-- Blueprint lines 1834-1836 and 1855: a target-rank test cancels the expansion cost of a
-lower-rank primal, so the leaf error is `O(G_c τ₃)` in the sizes. -/
-theorem leafErr_le {Gc Sz Nu Nt τo τm τr τ₂ τ₃ : ℝ} (hGc : 0 ≤ Gc) (hSz : 0 ≤ Sz)
-    (hτo : 0 ≤ τo)
-    (h1 : Real.sqrt Nu * τo ≤ τ₃) (h2 : τo ≤ τ₃) (h3 : Real.sqrt Nu * τm ≤ τ₃) (h4 : τm ≤ τ₃)
-    (h5 : Real.sqrt Nu * (Real.sqrt Nt * τ₂) ≤ τ₃) (h6 : Real.sqrt Nt * τ₂ ≤ τ₃)
-    (h7 : Real.sqrt Nt * τr ≤ τ₃) :
-    A.leafErr Gc Sz Nu Nt τo τm τr τ₂ ≤
-      5 * (Gc + 2) * (Sz ^ 4 + Fintype.card A.L * A.Dc * Sz ^ 3) * τ₃ := by
-  have hLD : (0 : ℝ) ≤ Fintype.card A.L * A.Dc := mul_nonneg (Nat.cast_nonneg _) A.Dc_nonneg
-  have hτ₃ : 0 ≤ τ₃ := le_trans hτo h2
-  set LD := (Fintype.card A.L : ℝ) * A.Dc
-  have hsu := Real.sqrt_nonneg Nu
-  have hst := Real.sqrt_nonneg Nt
-  have hS3 : 0 ≤ Sz ^ 3 := by positivity
-  unfold leafErr
-  have e1 : Real.sqrt Nu * Sz * ((Gc + 1) * (τo * Sz ^ 3) + τm * Sz ^ 3 +
-      Gc * (τ₂ * Sz ^ 3 * Real.sqrt Nt)) = Sz ^ 4 * ((Gc + 1) * (Real.sqrt Nu * τo) +
-        Real.sqrt Nu * τm + Gc * (Real.sqrt Nu * (Real.sqrt Nt * τ₂))) := by ring
-  have e2 : LD * ((Gc + 1) * (τo * Sz ^ 3) + τm * Sz ^ 3 + Gc * (τ₂ * Sz ^ 3 * Real.sqrt Nt)) =
-      LD * Sz ^ 3 * ((Gc + 1) * τo + τm + Gc * (Real.sqrt Nt * τ₂)) := by ring
-  have e3 : Gc * (3 * ((Real.sqrt Nt * Sz) * (τr * Sz ^ 3))) =
-      3 * Gc * Sz ^ 4 * (Real.sqrt Nt * τr) := by ring
-  rw [add_mul, e1, e2, e3]
-  have k1 : Sz ^ 4 * ((Gc + 1) * (Real.sqrt Nu * τo) + Real.sqrt Nu * τm +
-      Gc * (Real.sqrt Nu * (Real.sqrt Nt * τ₂))) ≤ Sz ^ 4 * ((2 * Gc + 2) * τ₃) := by
-    gcongr
-    nlinarith
-  have k2 : LD * Sz ^ 3 * ((Gc + 1) * τo + τm + Gc * (Real.sqrt Nt * τ₂)) ≤
-      LD * Sz ^ 3 * ((2 * Gc + 2) * τ₃) := by
-    have := mul_nonneg hLD hS3
-    gcongr
-    nlinarith
-  have k3 : 3 * Gc * Sz ^ 4 * (Real.sqrt Nt * τr) ≤ 3 * Gc * Sz ^ 4 * τ₃ := by gcongr
-  have hS4 : 0 ≤ Sz ^ 4 := by positivity
-  nlinarith [mul_nonneg hS4 hτ₃, mul_nonneg (mul_nonneg hLD hS3) hτ₃, mul_nonneg hGc hτ₃,
-    mul_nonneg (mul_nonneg hGc hS4) hτ₃, mul_nonneg (mul_nonneg hGc (mul_nonneg hLD hS3)) hτ₃]
-
-end ActiveSetup
 
 end Auto
 
@@ -5277,71 +4006,6 @@ variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
 
 /-! ### Short tag paths (blueprint lem:graph, line 1704, used at first match, line 1903) -/
 
-/-- A walk of length `n` in the tag graph collapses to a path of at most `n` tag edges between
-the endpoint tags (equal-tag steps are removed). -/
-theorem tagWalk_path (Hed : ℝ) (s : ℤ) :
-    ∀ (n : ℕ) (x y : A.Vtx), reachIn (A.tagGraphEdge Hed) s n x y →
-      ∃ L ≤ n, ∃ v : Fin (L + 1) → ChartTag, v 0 = A.vtag x ∧ v (Fin.last L) = A.vtag y ∧
-        (∀ i, ∃ w : A.Vtx, v i = A.vtag w) ∧
-        ∀ j : Fin L, tagEdge Hed (dyadicGridLength A.G s) (v j.castSucc) (v j.succ) := by
-  intro n
-  induction n with
-  | zero =>
-    intro x y h
-    change x = y at h
-    subst h
-    exact ⟨0, le_rfl, fun _ => A.vtag x, rfl, rfl, fun _ => ⟨x, rfl⟩, fun j => j.elim0⟩
-  | succ n ih =>
-    intro x y h
-    obtain ⟨u, hu, huy⟩ := h
-    obtain ⟨L, hL, v, h0, hl, hrange, hedge⟩ := ih x u hu
-    rcases huy with he | heq
-    · refine ⟨L + 1, by omega, Fin.snoc v (A.vtag y), ?_, by simp, fun i => ?_, fun j => ?_⟩
-      · rw [show (0 : Fin (L + 2)) = (0 : Fin (L + 1)).castSucc from rfl, Fin.snoc_castSucc]
-        exact h0
-      · refine Fin.lastCases ⟨y, by simp⟩ (fun i => ?_) i
-        rw [Fin.snoc_castSucc]; exact hrange i
-      · refine Fin.lastCases ?_ (fun j => ?_) j
-        · rw [Fin.succ_last, Fin.snoc_last, Fin.snoc_castSucc, hl]
-          simpa using he
-        · rw [show j.castSucc.castSucc = (j.castSucc).castSucc from rfl, Fin.snoc_castSucc,
-            show j.castSucc.succ = j.succ.castSucc from rfl, Fin.snoc_castSucc]
-          exact hedge j
-    · exact ⟨L, by omega, v, h0, hl.trans heq, hrange, hedge⟩
-
-/-- Blueprint lem:graph, short paths: two vertices at tag-graph distance at most `n` carry equal
-tags or tags joined by an edge of height `exp(10⁵ ((n+1)(d+1))⁸ log(2 H_ed))`, given tag
-dimensions at most `d` and matrix heights at most `H_ed`. -/
-theorem tagEdge_of_dist {Hed : ℝ} (hHed : 2 ≤ Hed) {dB : ℕ}
-    (hdim : ∀ w : A.Vtx, (A.vtag w).dim ≤ dB)
-    (hC : ∀ (w : A.Vtx) a b, (rationalHeight ((A.vtag w).C a b) : ℝ) ≤ Hed)
-    {s : ℤ} {x y : A.Vtx} {n : ℕ} (hd : (A.tagDist Hed).d s x y ≤ n) :
-    A.vtag x = A.vtag y ∨
-      tagEdge (Real.exp (100000 * ((n + 1) * (dB + 1) : ℝ) ^ 8 * Real.log (2 * Hed)))
-        (dyadicGridLength A.G s) (A.vtag x) (A.vtag y) := by
-  obtain ⟨k, hk⟩ : ∃ k : ℕ, (A.tagDist Hed).d s x y = k :=
-    ⟨_, (ENat.natCast_toNat (ne_top_of_le_ne_top (by simp) hd)).symm⟩
-  have hkn : k ≤ n := by rw [hk] at hd; exact_mod_cast hd
-  have hw := exists_reachIn_of_graphDist_eq (edge := A.tagGraphEdge Hed) hk
-  obtain ⟨L, hLk, v, h0, hl, hrange, hedge⟩ := A.tagWalk_path Hed s k x y hw
-  rcases Nat.eq_zero_or_pos L with hL0 | hL1
-  · subst hL0
-    left; rw [← h0, ← hl]; rfl
-  · right
-    have hp := tagEdge_path hHed hL1 v
-      (fun i => by obtain ⟨w, hw⟩ := hrange i; rw [hw]; exact hdim w)
-      (fun i => by obtain ⟨w, hw⟩ := hrange i; rw [hw]; exact hC w) hedge
-    rw [h0, hl] at hp
-    refine tagEdge_mono hp (Real.exp_le_exp.mpr ?_)
-    have hlog : 0 ≤ Real.log (2 * Hed) := Real.log_nonneg (by linarith)
-    have hLn : (L : ℝ) ≤ n := by exact_mod_cast hLk.trans hkn
-    have h1 : ((L + 1) * (dB + 1) : ℝ) ≤ (n + 1) * (dB + 1) := by
-      have : (0 : ℝ) ≤ dB + 1 := by positivity
-      nlinarith
-    have h2 : ((L + 1) * (dB + 1) : ℝ) ^ 8 ≤ ((n + 1) * (dB + 1) : ℝ) ^ 8 :=
-      pow_le_pow_left₀ (by positivity) h1 8
-    nlinarith
-
 end ActiveSetup
 
 noncomputable def diagAvgR (d : ℕ) : Matrix (Fin (d + d)) (Fin (d + d)) ℝ :=
@@ -5352,69 +4016,7 @@ variable (G : RealDyadicGrid) {Tg : Type*} (T : Finset (ℤ × ℤ)) (root : ℤ
 
 /-! ### Catalog projections as column-tree projections (blueprint lines 470-483, 1805-1809) -/
 
-theorem fitColumnValue_eq_private {Mc : ℕ} (φ : Fin Mc → ℝ → ℂ) (n : Fin Mc) (y : ℝ) :
-    privateColumnValue φ (fun _ => 1) n y = fitColumnValue (φ n) n y := by
-  ext i
-  simp only [privateColumnValue, fitColumnValue, PiLp.add_apply, PiLp.smul_apply,
-    PiLp.single_apply, Real.sqrt_one, Complex.ofReal_one, one_smul]
-  congr
-
-/-- The column tree of a catalog: labels `Fin Mc`, the catalog atoms as scalars, the catalog
-births (the root beyond the catalog) and private weight one. -/
-noncomputable def catTree (hbr : ∀ c ∈ T, dyadicGridCell G c.1 c.2 ⊆
-      dyadicGridCell G root.1 root.2) (hroot : root ∈ T) (s : List (CatCol Tg)) (Mc : ℕ)
-    (hb : ∀ d ∈ s, d.birth ∈ T) : ColumnTreeData (Fin Mc) where
-  grid := G
-  cells := T
-  root := root
-  below_root := hbr
-  birth := fun n => if h : (n : ℕ) < s.length then (s[(n : ℕ)]).birth else root
-  birth_mem := fun n => by
-    by_cases h : (n : ℕ) < s.length
-    · simp only [h, ↓reduceDIte]; exact hb _ (List.getElem_mem h)
-    · simp only [h, ↓reduceDIte]; exact hroot
-  scalar := fun n => catAtom s n
-  scalar_measurable := fun n => catAtom_measurable s n
-  privateWeight := fun _ => 1
-  privateWeight_pos := fun _ => one_pos
-  budget := max 2 Mc
-  two_le_budget := le_max_left _ _
-  private_lower := fun _ => by
-    rw [Real.sqrt_one]
-    exact inv_le_one_of_one_le₀ (le_trans (by norm_num) (le_max_left _ _))
-  column_bound := fun n => Filter.Eventually.of_forall fun y => by
-    refine le_trans ?_ (le_max_left _ _)
-    unfold privateColumnValue
-    refine (norm_add_le _ _).trans ?_
-    simp only [norm_smul]
-    norm_num
-    linarith [catAtom_bound s n y]
-  path_count := fun y => by
-    refine le_trans ?_ (le_max_right _ _)
-    exact_mod_cast (Finset.card_le_univ _).trans (by simp)
-
 variable {G T root}
-
-open Classical in
-/-- The inherited mask of a catalog of rank `r` with cell-dependent vertex masks `M`, which grow
-in depth. -/
-noncomputable def catMask {hbr : ∀ c ∈ T, dyadicGridCell G c.1 c.2 ⊆
-      dyadicGridCell G root.1 root.2} {hroot : root ∈ T} {s : List (CatCol Tg)} {Mc : ℕ}
-    {hb : ∀ d ∈ s, d.birth ∈ T} (r : ℕ) (M : ℤ × ℤ → Tg → Prop)
-    (hM : ∀ c ∈ T, ∀ d ∈ T, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2 →
-      ∀ x, M d x → M c x) :
-    InheritedColumnMask (catTree G T root hbr hroot s Mc hb) where
-  labels := fun c => catLabels G Mc s c r (M c)
-  available := fun c _ n hn => by
-    simp only [catLabels, Finset.mem_filter, Finset.mem_univ, true_and] at hn
-    obtain ⟨hnl, h1, -, -⟩ := hn
-    change _ ⊆ dyadicGridCell G (if h : (n : ℕ) < s.length then (s[(n : ℕ)]).birth else root).1
-      (if h : (n : ℕ) < s.length then (s[(n : ℕ)]).birth else root).2
-    simp only [hnl, ↓reduceDIte]; exact h1
-  inherited := fun c hc d hd hcd n hn => by
-    simp only [catLabels, Finset.mem_filter, Finset.mem_univ, true_and] at hn ⊢
-    obtain ⟨hnl, h1, h2, h3⟩ := hn
-    exact ⟨hnl, hcd.trans h1, h2, hM c hc d hd hcd _ h3⟩
 
 end CatalogTree
 
@@ -5450,35 +4052,6 @@ theorem mask_anc {Nv : ℕ}
   linarith
 
 end ColorSetup
-
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-
-/-- Nested cells of the setup have admission cells in ancestor relation. -/
-theorem admAt_anc {I J : ℤ × ℤ} (hI : I ∈ A.cells) (hJ : J ∈ A.cells)
-    (h : dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2) :
-    A.admT.Anc (A.admAt J) (A.admAt I) := by
-  rw [A.admAt_of_mem hI, A.admAt_of_mem hJ]
-  exact admTree_anc A.occAvail h
-
-namespace AttemptParams
-variable {A} (ap : A.AttemptParams)
-
-open Classical in
-theorem cmask_mono {I J : ℤ × ℤ} (hI : I ∈ A.cells) (hJ : J ∈ A.cells)
-    (h : dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2) (m p : ℕ) (x : A.Vtx)
-    (hx : ap.cmask J m p x) : ap.cmask I m p x :=
-  ColorSetup.cumMask_anc A.admT_X_card_le (A.admAt_anc hI hJ h) hx
-
-open Classical in
-theorem bmask_mono {I J : ℤ × ℤ} (hI : I ∈ A.cells) (hJ : J ∈ A.cells)
-    (h : dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2) (G : A.Grp) (j p : ℕ)
-    (x : A.Vtx) (hx : ap.bmask J G j p x) : ap.bmask I G j p x :=
-  ColorSetup.mask_anc (A.admAt_anc hI hJ h) hx
-
-end AttemptParams
-
-end ActiveSetup
 
 section AugModes
 variable {V : Type*} [Fintype V] [DecidableEq V]
@@ -5526,252 +4099,11 @@ noncomputable def occDepths {ι V : Type*} [Fintype ι] [Fintype V]
     (occ : ι → V → Finset (ℤ × ℤ)) : Finset ℤ :=
   Finset.univ.biUnion fun G => Finset.univ.biUnion fun v => (occ G v).image Prod.fst
 
-open Classical in
-/-- The last separating depth of two catalog labels among the occurrence depths. -/
-noncomputable def lastSep (cat : List (CatCol A.Vtx)) {ι : Type*} [Fintype ι]
-    (occ : ι → Fin ap.Mc → Finset (ℤ × ℤ)) (v w : Fin ap.Mc) : ℤ :=
-  if h : ((occDepths occ).filter fun s => ∀ (hv : (v : ℕ) < cat.length)
-      (hw : (w : ℕ) < cat.length), ¬ (A.tagDist ap.Hed).d s (cat[(v : ℕ)]).tag
-        (cat[(w : ℕ)]).tag ≤ 1).Nonempty
-  then ((occDepths occ).filter fun s => ∀ (hv : (v : ℕ) < cat.length)
-      (hw : (w : ℕ) < cat.length), ¬ (A.tagDist ap.Hed).d s (cat[(v : ℕ)]).tag
-        (cat[(w : ℕ)]).tag ≤ 1).max' h
-  else 0
-
-open Classical in
-/-- Blueprint lem:masks, separation clause, for endpoints: tags in the ball masks of distinct
-groups of one color on nested endpoint cells `J ⊆ I` (with later actual uses `u ⊆ I`, `u' ⊆ J`)
-are at distance greater than one at the finer endpoint. -/
-theorem endpoint_sep {k : ℕ} {I J u u' : ℤ × ℤ} (hI : I ∈ A.cells) (hJ : J ∈ A.cells)
-    (hJI : dyadicGridCell A.G J.1 J.2 ⊆ dyadicGridCell A.G I.1 I.2) (hu : u ∈ A.cells)
-    (hu' : u' ∈ A.cells) (huI : dyadicGridCell A.G u.1 u.2 ⊆ dyadicGridCell A.G I.1 I.2)
-    (huJ : dyadicGridCell A.G u'.1 u'.2 ⊆ dyadicGridCell A.G J.1 J.2) {w w' : A.Vtx}
-    (hw : w ∈ A.admT.X (A.admAt u)) (hw' : w' ∈ A.admT.X (A.admAt u'))
-    (hs : ap.K.Success (ap.K.colorData (A.admT.st (A.admAt u)) w))
-    (hs' : ap.K.Success (ap.K.colorData (A.admT.st (A.admAt u')) w'))
-    (hc : ap.K.color A.admT A.vtxBound (A.admAt u) w = k)
-    (hc' : ap.K.color A.admT A.vtxBound (A.admAt u') w' = k)
-    (hne : ap.K.grp A.admT A.vtxBound (A.admAt u) w ≠ ap.K.grp A.admT A.vtxBound (A.admAt u') w')
-    {h h' : ℕ} (hh : h ≤ ap.Hmax) (hh' : h' ≤ ap.Hmax) {b b' : A.Vtx}
-    (hb : b ∈ ap.K.mask A.admT A.vtxBound (ap.K.grp A.admT A.vtxBound (A.admAt u) w) h
-      (A.admAt I))
-    (hb' : b' ∈ ap.K.mask A.admT A.vtxBound (ap.K.grp A.admT A.vtxBound (A.admAt u') w') h'
-      (A.admAt J)) :
-    ¬ (A.tagDist ap.Hed).d J.1 b b' ≤ 1 := by
-  have h4 := (A.masks ap.Hed ap.Hmax ap.ωp ap.ωh).2.2.2 (A.admAt I) (A.admAt J) (A.admAt u)
-    (A.admAt u') w w' (A.admAt_anc hJ hI hJI) (A.admAt_anc hu hI huI)
-    (A.admAt_anc hu' hJ huJ) hw hw' hs hs' (hc.trans hc'.symm) hne h h' hh hh' b b' hb hb'
-  rwa [A.depth_admAt hJ] at h4
-
-open Classical in
-/-- An endpoint occurrence of the catalog label `v` for the group `G` of color `k` on the cell
-`I`: the label is available with its tag in a pad mask of `G` at `I`, and `I` contains a later
-actual use of `G` (blueprint lem:whole-ranges: "usable endpoint cells whose masks contain their
-tags"). -/
-def OccOK (cat : List (CatCol A.Vtx)) (k : ℕ) (G : A.Grp) (v : Fin ap.Mc) (I : ℤ × ℤ) : Prop :=
-  I ∈ A.cells ∧ ∃ hv : (v : ℕ) < cat.length, ∃ h ≤ ap.Hmax,
-    (cat[(v : ℕ)]).tag ∈ ap.K.mask A.admT A.vtxBound G h (A.admAt I) ∧
-    ∃ u ∈ A.cells, dyadicGridCell A.G u.1 u.2 ⊆ dyadicGridCell A.G I.1 I.2 ∧
-      ∃ w ∈ A.admT.X (A.admAt u), ap.K.Success (ap.K.colorData (A.admT.st (A.admAt u)) w) ∧
-        ap.K.color A.admT A.vtxBound (A.admAt u) w = k ∧
-        ap.K.grp A.admT A.vtxBound (A.admAt u) w = G
-
-open Classical in
-/-- Overlapping occurrences of two labels in distinct groups of one color are separated at the
-finer of the two depths. -/
-theorem occ_overlap_sep (cat : List (CatCol A.Vtx)) {k : ℕ} {G G' : A.Grp} (hGG : G ≠ G')
-    {v w : Fin ap.Mc} {I J : ℤ × ℤ} (hI : ap.OccOK cat k G v I) (hJ : ap.OccOK cat k G' w J)
-    (hov : (dyadicGridCell A.G I.1 I.2 ∩ dyadicGridCell A.G J.1 J.2).Nonempty) :
-    ∃ s, I.1 ≤ s ∧ J.1 ≤ s ∧ (s = I.1 ∨ s = J.1) ∧ ∀ (hv : (v : ℕ) < cat.length)
-      (hw : (w : ℕ) < cat.length), ¬ (A.tagDist ap.Hed).d s (cat[(v : ℕ)]).tag
-        (cat[(w : ℕ)]).tag ≤ 1 := by
-  obtain ⟨hIc, hv, h, hh, hbm, u, hu, huI, x, hx, hs, hc, hg⟩ := hI
-  obtain ⟨hJc, hw, h', hh', hbm', u', hu', huJ, x', hx', hs', hc', hg'⟩ := hJ
-  have hne : ap.K.grp A.admT A.vtxBound (A.admAt u) x ≠
-      ap.K.grp A.admT A.vtxBound (A.admAt u') x' := by rw [hg, hg']; exact hGG
-  rw [← hg] at hbm
-  rw [← hg'] at hbm'
-  rcases le_total I.1 J.1 with hle | hle
-  · rcases dyadicGridCell_nested_or_disjoint_of_le A.G hle I.2 J.2 with hd | hsub
-    · exact absurd (Set.disjoint_iff_inter_eq_empty.mp hd) hov.ne_empty
-    refine ⟨J.1, hle, le_rfl, Or.inr rfl, fun _ _ => ?_⟩
-    exact ap.endpoint_sep hIc hJc hsub hu hu' huI huJ hx hx' hs hs' hc hc' hne hh hh' hbm hbm'
-  · rcases dyadicGridCell_nested_or_disjoint_of_le A.G hle J.2 I.2 with hd | hsub
-    · rw [Set.inter_comm] at hov
-      exact absurd (Set.disjoint_iff_inter_eq_empty.mp hd) hov.ne_empty
-    refine ⟨I.1, le_rfl, hle, Or.inl rfl, fun _ _ => ?_⟩
-    have := ap.endpoint_sep hJc hIc hsub hu' hu huJ huI hx' hx hs' hs hc' hc (Ne.symm hne)
-      hh' hh hbm' hbm
-    rwa [(A.tagDist ap.Hed).symm] at this
-
-open Classical in
-/-- Blueprint lem:whole-ranges (lines 1777-1789) for one slot `t` and color `k` of the attempt:
-group outputs built from available catalog columns with coefficients constant on whole usable
-endpoint cells (whose masks contain the column tags) are almost orthogonal,
-`‖Σ_G Z_G‖² ≤ (1 + τ N) Σ_G ‖Z_G‖²`, when the edge height dominates the declaration-graph
-threshold at `τ` and at most `N` group-label pairs are present at each point. -/
-theorem attempt_wholeRanges (cat : List (CatCol A.Vtx)) (t : Fin 4)
-    (hT : ∀ d ∈ cat, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-      d = templateCol (A.vtag d.tag) t R γ d.birth d.rank d.tag)
-    {ι : Type*} [Fintype ι] (grp : ι → A.Grp) (hgrp : Function.Injective grp)
-    (k : ℕ) (occ : ι → Fin ap.Mc → Finset (ℤ × ℤ))
-    (hocc : ∀ G v, ∀ I ∈ occ G v, ap.OccOK cat k (grp G) v I)
-    (c : ι → Fin ap.Mc → ℤ × ℤ → ℂ) {Mc' : ℝ} (hMc : 0 ≤ Mc') (hc : ∀ G v I, ‖c G v I‖ ≤ Mc')
-    {K₀ : ℕ} (hK : ∀ G v, (occ G v).card ≤ K₀) {ra rb : ℝ}
-    (hroot : ∀ G v, ∀ I ∈ occ G v, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
-    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
-    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ ap.Hed)
-    {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × Fin ap.Mc)).filter
-      (fun p => occCoef A.G occ c p.1 p.2 y ≠ 0)).card ≤ N) :
-    ∫ y, ‖∑ G, groupOutput (fun v : Fin ap.Mc => catAtom cat v) (fun _ => 1)
-        (occCoef A.G occ c G) y‖ ^ 2 ≤
-      (1 + τ * N * 1 ^ 2) * ∑ G, ∫ y, ‖groupOutput (fun v : Fin ap.Mc => catAtom cat v) (fun _ => 1)
-        (occCoef A.G occ c G) y‖ ^ 2 := by
-  set S : Fin ap.Mc → Fin ap.Mc → Finset ℤ := fun v w => (occDepths occ).filter fun s =>
-    ∀ (hv : (v : ℕ) < cat.length) (hw : (w : ℕ) < cat.length),
-      ¬ (A.tagDist ap.Hed).d s (cat[(v : ℕ)]).tag (cat[(w : ℕ)]).tag ≤ 1
-  -- overlapping cross occurrences give a separating depth in `S`
-  have hS : ∀ G G', G ≠ G' → ∀ v w, ∀ I ∈ occ G v, ∀ J ∈ occ G' w,
-      (dyadicGridCell A.G I.1 I.2 ∩ dyadicGridCell A.G J.1 J.2).Nonempty →
-      ∃ s ∈ S v w, I.1 ≤ s ∧ J.1 ≤ s := by
-    intro G G' hne v w I hI J hJ hov
-    obtain ⟨s, hIs, hJs, hs, hsep⟩ := ap.occ_overlap_sep cat (hgrp.ne hne) (hocc G v I hI)
-      (hocc G' w J hJ) hov
-    refine ⟨s, Finset.mem_filter.mpr ⟨?_, hsep⟩, hIs, hJs⟩
-    simp only [occDepths, Finset.mem_biUnion, Finset.mem_univ, true_and, Finset.mem_image]
-    rcases hs with rfl | rfl
-    · exact ⟨G, v, I, hI, rfl⟩
-    · exact ⟨G', w, J, hJ, rfl⟩
-  have hsepE : ∀ v w (h : (S v w).Nonempty), ap.lastSep cat occ v w = (S v w).max' h :=
-    fun v w h => dite_eq_left_of_eq_true (eq_true h)
-  refine usableRangeBessel A.G (fun v : Fin ap.Mc => catAtom cat v) (fun _ => 1) (fun _ => one_pos)
-    (W₀ := 1) (fun _ => by norm_num) (fun v => catAtom_measurable cat v) (Mφ := 1)
-    (fun v y => catAtom_bound cat v y) occ c hMc hc hK hroot (ap.lastSep cat occ)
-    (fun G G' hne v w I hI J hJ hov => ?_) hτ.le (fun G G' hne v w hov n => ?_)
-    (fun G G' hne v I hI J hJ => ?_) hN
-  · -- the separating depths
-    obtain ⟨s, hs, hIs, hJs⟩ := hS G G' hne v w I hI J hJ hov
-    rw [hsepE v w ⟨s, hs⟩]
-    exact ⟨hIs.trans ((S v w).le_max' s hs), hJs.trans ((S v w).le_max' s hs)⟩
-  · -- the cell pairings at the separating depth
-    obtain ⟨I, hI, J, hJ, hIJ⟩ := hov
-    obtain ⟨s, hs, -, -⟩ := hS G G' hne v w I hI J hJ hIJ
-    have hne' : (S v w).Nonempty := ⟨s, hs⟩
-    rw [hsepE v w hne']
-    set s₀ := (S v w).max' hne'
-    have hs₀ := (Finset.mem_filter.mp ((S v w).max'_mem hne')).2
-    obtain ⟨_, hv, h0, _, hbm, _⟩ := hocc G v I hI
-    obtain ⟨_, hw, h0', _, hbm', _⟩ := hocc G' w J hJ
-    have hsep := hs₀ hv hw
-    have hnE := A.not_tagEdge_of_dist ap.Hed hsep
-    obtain ⟨Av, hAv, hAvb, hθv, hMv, hqv, hev⟩ := catAtom_chart cat t hT hv
-      (A.occAvail_of_mem hbm.1)
-    obtain ⟨Aw, hAw, hAwb, hθw, hMw, hqw, hew⟩ := catAtom_chart cat t hT hw
-      (A.occAvail_of_mem hbm'.1)
-    have h := A.Dg_same A.Hsrc τ A.exp_two_le_Hsrc hτ hτ1 _ _ (slotCoeff t) (slotCoeff_ne_zero t)
-      Av Aw (quadraticChartComplexity_mono_order hAv (by omega))
-      (quadraticChartComplexity_mono_order hAw (by omega)) hAvb hAwb hθv hMv hqv hθw hMw hqw
-      (dyadicGridLeft A.G s₀ n) (dyadicGridLength A.G s₀) (dyadicGridLength_pos A.G s₀)
-      (fun hE => hnE (tagEdge_mono hE hHed))
-    rw [← hev, ← hew] at h
-    exact norm_setIntegral_Ico_conj_le (dyadicGridLength_pos A.G s₀) h
-  · -- the same label never occurs on overlapping cells of distinct groups
-    rw [Set.disjoint_iff_inter_eq_empty]
-    by_contra hne'
-    obtain ⟨s, hs, -, -⟩ := hS G G' hne v v I hI J hJ (Set.nonempty_iff_ne_empty.mpr hne')
-    obtain ⟨-, hv, -⟩ := hocc G v I hI
-    have := (Finset.mem_filter.mp hs).2 hv hv
-    rw [(A.tagDist ap.Hed).self] at this
-    exact this (by simp)
-
 end AttemptParams
 
 end ActiveSetup
 
 /-! ### Catalog range outputs as group outputs (blueprint lines 1782-1784, 2071) -/
-
-/-- Blueprint lines 1782-1784: a finite sum of catalog columns on endpoint cells `u_i` is, as a
-function, the group output whose combined coefficient of the label `n` is
-`Σ_{v ∈ occ n} c_{n,v} 1_v` with `occ n` the endpoint cells carrying `n` and `c_{n,v}` the summed
-coefficients on `v`. -/
-theorem sum_fitColumns_ae (G : RealDyadicGrid) {Tg : Type*} {Mc : ℕ} (s : List (CatCol Tg))
-    {κ : Type*} (T : Finset κ) (u : κ → ℤ × ℤ) (L : κ → Finset (Fin Mc))
-    (β : κ → Fin Mc → ℂ) :
-    ((∑ i ∈ T, ∑ n ∈ L i, β i n • fitColumn (dyadicGridCell G (u i).1 (u i).2) (catAtom s n) n :
-      ColumnL2 (Fin Mc)) : ℝ → ColumnHilbert (Fin Mc)) =ᵐ[volume]
-      groupOutput (fun n => catAtom s n) (fun _ => 1) (fun n y =>
-        ∑ v ∈ (T.filter fun i => n ∈ L i).image u, (dyadicGridCell G v.1 v.2).indicator
-          (fun _ => ∑ i ∈ T.filter (fun i => n ∈ L i ∧ u i = v), β i n) y) := by
-  classical
-  -- pointwise representatives of the summands
-  have hall : ∀ᵐ y ∂volume, ∀ p ∈ T ×ˢ (Finset.univ : Finset (Fin Mc)),
-      ((β p.1 p.2 • fitColumn (dyadicGridCell G (u p.1).1 (u p.1).2) (catAtom s p.2) p.2 :
-        ColumnL2 (Fin Mc)) : ℝ → ColumnHilbert (Fin Mc)) y =
-        β p.1 p.2 • (dyadicGridCell G (u p.1).1 (u p.1).2).indicator
-          (fitColumnValue (catAtom s p.2) p.2) y := by
-    rw [Filter.eventually_all_finset]
-    intro p _
-    filter_upwards [Lp.coeFn_smul (β p.1 p.2)
-      (fitColumn (dyadicGridCell G (u p.1).1 (u p.1).2) (catAtom s p.2) p.2),
-      fitColumn_coeFn (catAtom_admissible (G := G) s p.2 (u p.1)) p.2] with y h1 h2
-    rw [h1, Pi.smul_apply, h2]
-  have hsum : ((∑ i ∈ T, ∑ n ∈ L i, β i n • fitColumn (dyadicGridCell G (u i).1 (u i).2)
-      (catAtom s n) n : ColumnL2 (Fin Mc)) : ℝ → ColumnHilbert (Fin Mc)) =ᵐ[volume]
-      fun y => ∑ i ∈ T, ∑ n ∈ L i, ((β i n • fitColumn (dyadicGridCell G (u i).1 (u i).2)
-        (catAtom s n) n : ColumnL2 (Fin Mc)) : ℝ → ColumnHilbert (Fin Mc)) y := by
-    refine (Lp.coeFn_fun_finsetSum _ _).trans ?_
-    have hin : ∀ᵐ y ∂volume, ∀ i ∈ T, ((∑ n ∈ L i, β i n • fitColumn
-        (dyadicGridCell G (u i).1 (u i).2) (catAtom s n) n : ColumnL2 (Fin Mc)) :
-          ℝ → ColumnHilbert (Fin Mc)) y = ∑ n ∈ L i, ((β i n • fitColumn
-            (dyadicGridCell G (u i).1 (u i).2) (catAtom s n) n : ColumnL2 (Fin Mc)) :
-              ℝ → ColumnHilbert (Fin Mc)) y := by
-      rw [Filter.eventually_all_finset]
-      intro i _
-      exact Lp.coeFn_fun_finsetSum _ _
-    filter_upwards [hin] with y hy
-    exact Finset.sum_congr rfl hy
-  filter_upwards [hsum, hall] with y h1 h2
-  rw [h1]
-  have e1 : ∑ i ∈ T, ∑ n ∈ L i, ((β i n • fitColumn (dyadicGridCell G (u i).1 (u i).2)
-      (catAtom s n) n : ColumnL2 (Fin Mc)) : ℝ → ColumnHilbert (Fin Mc)) y =
-      ∑ i ∈ T, ∑ n ∈ L i, β i n • (dyadicGridCell G (u i).1 (u i).2).indicator
-        (fitColumnValue (catAtom s n) n) y := by
-    refine Finset.sum_congr rfl fun i hi => Finset.sum_congr rfl fun n _ => ?_
-    exact h2 (i, n) (Finset.mem_product.mpr ⟨hi, Finset.mem_univ _⟩)
-  rw [e1]
-  have hcomm : ∑ i ∈ T, ∑ n ∈ L i, β i n • (dyadicGridCell G (u i).1 (u i).2).indicator
-        (fitColumnValue (catAtom s n) n) y =
-      ∑ n, ∑ i ∈ T.filter (fun i => n ∈ L i), β i n •
-        (dyadicGridCell G (u i).1 (u i).2).indicator (fitColumnValue (catAtom s n) n) y := by
-    refine Finset.sum_comm' fun i n => ?_
-    simp only [Finset.mem_filter, Finset.mem_univ, and_true]
-  rw [hcomm]
-  unfold groupOutput
-  refine Finset.sum_congr rfl fun n _ => ?_
-  rw [fitColumnValue_eq_private]; dsimp only
-  have hind : ∀ i, β i n • (dyadicGridCell G (u i).1 (u i).2).indicator
-      (fitColumnValue (catAtom s n) n) y =
-      ((dyadicGridCell G (u i).1 (u i).2).indicator (fun _ => β i n) y) •
-        fitColumnValue (catAtom s n) n y := by
-    intro i
-    by_cases hy : y ∈ dyadicGridCell G (u i).1 (u i).2
-    · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy]
-    · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy, smul_zero, zero_smul]
-  simp_rw [hind, ← Finset.sum_smul]
-  congr 1
-  rw [← Finset.sum_fiberwise_of_maps_to (s := T.filter fun i => n ∈ L i)
-    (t := (T.filter fun i => n ∈ L i).image u) (g := u) (fun i hi => Finset.mem_image_of_mem u hi)]
-  refine Finset.sum_congr rfl fun v _ => ?_
-  rw [Finset.filter_filter]
-  by_cases hy : y ∈ dyadicGridCell G v.1 v.2
-  · rw [Set.indicator_of_mem hy]
-    refine Finset.sum_congr rfl fun i hi => ?_
-    have hv := (Finset.mem_filter.mp hi).2.2
-    rw [hv, Set.indicator_of_mem hy]
-  · rw [Set.indicator_of_notMem hy]
-    refine Finset.sum_eq_zero fun i hi => ?_
-    have hv := (Finset.mem_filter.mp hi).2.2
-    rw [hv, Set.indicator_of_notMem hy]
 
 end Auto
 
@@ -5788,29 +4120,6 @@ variable (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
 
 /-! ### Masks inherited from the deepest active ancestor (blueprint lines 1879-1890) -/
 
-open Classical in
-/-- The cells of `S` containing the cell `c`. -/
-noncomputable def ancIn (c : ℤ × ℤ) : Finset (ℤ × ℤ) :=
-  S.filter fun d => dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2
-
-theorem mem_ancIn {c d : ℤ × ℤ} :
-    d ∈ ancIn G S c ↔ d ∈ S ∧ dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2 := by
-  classical
-  unfold ancIn; rw [Finset.mem_filter]
-
-open Classical in
-/-- The deepest cell of `S` containing `c` (the cell `c` itself if there is none). -/
-noncomputable def deepestIn (c : ℤ × ℤ) : ℤ × ℤ :=
-  if h : (ancIn G S c).Nonempty then
-    Classical.choose ((ancIn G S c).exists_max_image Prod.fst h)
-  else c
-
-theorem deepestIn_spec {c : ℤ × ℤ} (h : (ancIn G S c).Nonempty) :
-    deepestIn G S c ∈ ancIn G S c ∧ ∀ d ∈ ancIn G S c, d.1 ≤ (deepestIn G S c).1 := by
-  unfold deepestIn
-  rw [dite_eq_left_of_eq_true (eq_true h)]
-  exact Classical.choose_spec ((ancIn G S c).exists_max_image Prod.fst h)
-
 /-- Two cells containing a common cell are nested according to their depths. -/
 theorem dyadicGridCell_subset_of_common {c d d' : ℤ × ℤ}
     (hd : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2)
@@ -5822,69 +4131,12 @@ theorem dyadicGridCell_subset_of_common {c d d' : ℤ × ℤ}
     exact Set.disjoint_left.mp hdis (hd' hy) (hd hy)
   · exact hs
 
-/-- Deepest ancestors are monotone: a finer cell has a finer (or equal) deepest ancestor. -/
-theorem deepestIn_mono {c d : ℤ × ℤ} (hcd : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2)
-    (hd : (ancIn G S d).Nonempty) :
-    (ancIn G S c).Nonempty ∧ dyadicGridCell G (deepestIn G S c).1 (deepestIn G S c).2 ⊆
-      dyadicGridCell G (deepestIn G S d).1 (deepestIn G S d).2 := by
-  obtain ⟨hmd, -⟩ := deepestIn_spec G S hd
-  obtain ⟨hdS, hdsub⟩ := (mem_ancIn G S).mp hmd
-  have hmc : deepestIn G S d ∈ ancIn G S c := (mem_ancIn G S).mpr ⟨hdS, hcd.trans hdsub⟩
-  have hc : (ancIn G S c).Nonempty := ⟨_, hmc⟩
-  obtain ⟨hmc', hmax⟩ := deepestIn_spec G S hc
-  obtain ⟨-, hcsub⟩ := (mem_ancIn G S).mp hmc'
-  exact ⟨hc, dyadicGridCell_subset_of_common G hcsub (hcd.trans hdsub) (hmax _ hmc)⟩
-
-theorem deepestIn_mem {c : ℤ × ℤ} (h : (ancIn G S c).Nonempty) :
-    deepestIn G S c ∈ S ∧ dyadicGridCell G c.1 c.2 ⊆
-      dyadicGridCell G (deepestIn G S c).1 (deepestIn G S c).2 :=
-  (mem_ancIn G S).mp (deepestIn_spec G S h).1
-
-/-- Masks monotone in depth on `S` extend to all cells below a root of `S` by inheritance from
-the deepest ancestor in `S`. -/
-theorem extMask_mono {Tg : Type*} {root : ℤ × ℤ} (hroot : root ∈ S) (M : ℤ × ℤ → Tg → Prop)
-    (hM : ∀ c ∈ S, ∀ d ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2 →
-      ∀ x, M d x → M c x)
-    {c d : ℤ × ℤ} (hd : dyadicGridCell G d.1 d.2 ⊆ dyadicGridCell G root.1 root.2)
-    (hcd : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2) (x : Tg)
-    (hx : M (deepestIn G S d) x) : M (deepestIn G S c) x := by
-  have hdn : (ancIn G S d).Nonempty := ⟨root, (mem_ancIn G S).mpr ⟨hroot, hd⟩⟩
-  obtain ⟨hcn, hsub⟩ := deepestIn_mono G S hcd hdn
-  exact hM _ (deepestIn_mem G S hcn).1 _ (deepestIn_mem G S hdn).1 hsub x hx
-
 end DeepestAncestor
 
 section CatalogDepthFamily
 variable {G : RealDyadicGrid} {S : Finset (ℤ × ℤ)} {R : ℤ × ℤ} {Nd : ℕ} {Tg : Type*} {Mc : ℕ}
 
 /-! ### Nested depth projections of a catalog on the complete tree (blueprint lines 1879-1890) -/
-
-theorem dyadicFiniteTree_below (G : RealDyadicGrid) (R : ℤ × ℤ) (Nd : ℕ) :
-    ∀ c ∈ dyadicFiniteTree G R Nd, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G R.1 R.2 :=
-  fun c hc => ((dyadicFiniteTree_mem_iff G R c Nd).mp hc).1
-
-theorem root_mem_dyadicFiniteTree (G : RealDyadicGrid) (R : ℤ × ℤ) (Nd : ℕ) :
-    R ∈ dyadicFiniteTree G R Nd :=
-  (dyadicFiniteTree_mem_iff G R R Nd).mpr ⟨subset_rfl, by omega⟩
-
-/-- The catalog column tree on the complete finite tree below `R` of depth `Nd`. -/
-noncomputable def catFullTree (G : RealDyadicGrid) (R : ℤ × ℤ) (Nd : ℕ) (s : List (CatCol Tg))
-    (Mc : ℕ) (hb : ∀ d ∈ s, d.birth ∈ dyadicFiniteTree G R Nd) : ColumnTreeData (Fin Mc) :=
-  catTree G (dyadicFiniteTree G R Nd) R (dyadicFiniteTree_below G R Nd)
-    (root_mem_dyadicFiniteTree G R Nd) s Mc hb
-
-/-- The nested depth projections of a catalog of rank `r` whose masks `M`, monotone in depth on
-the active cells `S`, are inherited on the complete tree from the deepest active ancestor. -/
-noncomputable def catDepthFamily (hR : R ∈ S) (s : List (CatCol Tg))
-    (hb : ∀ d ∈ s, d.birth ∈ dyadicFiniteTree G R Nd) (r : ℕ) (M : ℤ × ℤ → Tg → Prop)
-    (hM : ∀ c ∈ S, ∀ d ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2 →
-      ∀ x, M d x → M c x) : ColumnDepthFamily (Fin Mc) where
-  D := catFullTree G R Nd s Mc hb
-  A := catMask r (fun c => M (deepestIn G S c)) fun c _ d hd hcd x hx =>
-    extMask_mono G S hR M hM (dyadicFiniteTree_below G R Nd d hd) hcd x hx
-  N := R.1 + Nd
-  root_le := by change R.1 ≤ R.1 + Nd; omega
-  complete := fun c hc hN => (dyadicFiniteTree_mem_iff G R c Nd).mpr ⟨hc, hN⟩
 
 end CatalogDepthFamily
 
@@ -5894,125 +4146,6 @@ namespace AttemptParams
 variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
 
 /-! ### Whole endpoint ranges for vectors of catalog ranges (blueprint lines 1777-1789) -/
-
-open Classical in
-/-- Blueprint lem:whole-ranges (lines 1777-1789) in vector form: group vectors that are sums of
-elements of catalog ranges on certified active cells, with the group's ball masks at heights at
-most `H_max`, are almost orthogonal across the groups of one color. -/
-theorem catRange_wholeRanges (cat : List (CatCol A.Vtx)) (t : Fin 4)
-    (hT : ∀ d ∈ cat, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-      d = templateCol (A.vtag d.tag) t R γ d.birth d.rank d.tag)
-    {ι κ : Type*} [Fintype ι] (grp : ι → A.Grp) (hgrp : Function.Injective grp) (k : ℕ)
-    (T : ι → Finset κ) (u : ι → κ → ℤ × ℤ) (hu : ∀ G, ∀ q ∈ T G, u G q ∈ A.cells)
-    (rk hq : ι → κ → ℕ) (hqH : ∀ G q, hq G q ≤ ap.Hmax) (w : ι → κ → ColumnL2 (Fin ap.Mc))
-    (hw : ∀ G, ∀ q ∈ T G, w G q ∈ catRange A.G ap.Mc cat (u G q) (rk G q)
-      (fun x => x ∈ ap.K.mask A.admT A.vtxBound (grp G) (hq G q) (A.admAt (u G q))))
-    (hcert : ∀ G, ∀ q ∈ T G, ∃ u' ∈ A.cells,
-      dyadicGridCell A.G u'.1 u'.2 ⊆ dyadicGridCell A.G (u G q).1 (u G q).2 ∧
-      ∃ x ∈ A.admT.X (A.admAt u'), ap.K.Success (ap.K.colorData (A.admT.st (A.admAt u')) x) ∧
-        ap.K.color A.admT A.vtxBound (A.admAt u') x = k ∧
-        ap.K.grp A.admT A.vtxBound (A.admAt u') x = grp G)
-    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
-    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
-    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ ap.Hed)
-    {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × Fin ap.Mc)).filter fun p => ∃ q ∈ T p.1,
-      y ∈ dyadicGridCell A.G (u p.1 q).1 (u p.1 q).2 ∧
-        p.2 ∈ catLabels A.G ap.Mc cat (u p.1 q) (rk p.1 q)
-          (fun x => x ∈ ap.K.mask A.admT A.vtxBound (grp p.1) (hq p.1 q)
-            (A.admAt (u p.1 q)))).card ≤ N) :
-    ‖∑ G, ∑ q ∈ T G, w G q‖ ^ 2 ≤ (1 + τ * N * 1 ^ 2) * ∑ G, ‖∑ q ∈ T G, w G q‖ ^ 2 := by
-  have hex : ∀ G q, ∃ β : Fin ap.Mc → ℂ, q ∈ T G → w G q = ∑ n ∈ catLabels A.G ap.Mc cat
-      (u G q) (rk G q) (fun x => x ∈ ap.K.mask A.admT A.vtxBound (grp G) (hq G q)
-        (A.admAt (u G q))), β n • fitColumn (dyadicGridCell A.G (u G q).1 (u G q).2)
-          (catAtom cat n) n := by
-    intro G q
-    by_cases h : q ∈ T G
-    · obtain ⟨β, hβ⟩ := catRange_exists_coeff (hw G q h)
-      exact ⟨β, fun _ => hβ⟩
-    · exact ⟨0, fun h' => absurd h' h⟩
-  choose β hβ using hex
-  set L : ι → κ → Finset (Fin ap.Mc) := fun G q => catLabels A.G ap.Mc cat (u G q) (rk G q)
-    (fun x => x ∈ ap.K.mask A.admT A.vtxBound (grp G) (hq G q) (A.admAt (u G q)))
-  have hS : ∀ G, ∑ q ∈ T G, w G q = ∑ q ∈ T G, ∑ n ∈ L G q, β G q n •
-      fitColumn (dyadicGridCell A.G (u G q).1 (u G q).2) (catAtom cat n) n :=
-    fun G => Finset.sum_congr rfl fun q hq' => hβ G q hq'
-  set occ : ι → Fin ap.Mc → Finset (ℤ × ℤ) := fun G v =>
-    ((T G).filter fun q => v ∈ L G q).image (u G)
-  set cc : ι → Fin ap.Mc → ℤ × ℤ → ℂ := fun G v I =>
-    ∑ q ∈ (T G).filter (fun q => v ∈ L G q ∧ u G q = I), β G q v
-  have hae : ∀ G, ((∑ q ∈ T G, ∑ n ∈ L G q, β G q n •
-      fitColumn (dyadicGridCell A.G (u G q).1 (u G q).2) (catAtom cat n) n :
-        ColumnL2 (Fin ap.Mc)) : ℝ → ColumnHilbert (Fin ap.Mc)) =ᵐ[volume]
-      groupOutput (fun v : Fin ap.Mc => catAtom cat v) (fun _ => 1)
-        (occCoef A.G occ cc G) := fun G =>
-    sum_fitColumns_ae A.G cat (T G) (u G) (L G) (β G)
-  have hall : ∀ᵐ y ∂volume, ∀ G, ((∑ q ∈ T G, ∑ n ∈ L G q, β G q n •
-      fitColumn (dyadicGridCell A.G (u G q).1 (u G q).2) (catAtom cat n) n :
-        ColumnL2 (Fin ap.Mc)) : ℝ → ColumnHilbert (Fin ap.Mc)) y =
-      groupOutput (fun v : Fin ap.Mc => catAtom cat v) (fun _ => 1)
-        (occCoef A.G occ cc G) y := Filter.eventually_all.mpr hae
-  have hwr := ap.attempt_wholeRanges cat t hT grp hgrp k occ ?_ cc
-    (Mc' := ∑ G, ∑ v, ∑ q ∈ T G, ‖β G q v‖) (by positivity) ?_
-    (K₀ := ∑ G, (T G).card) ?_ (ra := ra) (rb := rb) ?_ hτ hτ1 hHed (N := N) ?_
-  rotate_left
-  · intro G v I hI
-    obtain ⟨q, hqq, rfl⟩ := Finset.mem_image.mp hI
-    obtain ⟨hqT, hvL⟩ := Finset.mem_filter.mp hqq
-    simp only [L, catLabels, Finset.mem_filter, Finset.mem_univ, true_and] at hvL
-    obtain ⟨hvl, -, -, hmask⟩ := hvL
-    exact ⟨hu G q hqT, hvl, hq G q, hqH G q, hmask, hcert G q hqT⟩
-  · intro G v I
-    refine (norm_sum_le _ _).trans ?_
-    refine le_trans ?_ (Finset.single_le_sum (f := fun G => ∑ v, ∑ q ∈ T G, ‖β G q v‖)
-      (fun _ _ => by positivity) (Finset.mem_univ G))
-    refine le_trans ?_ (Finset.single_le_sum (f := fun v => ∑ q ∈ T G, ‖β G q v‖)
-      (fun _ _ => by positivity) (Finset.mem_univ v))
-    exact Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
-      fun _ _ _ => norm_nonneg _
-  · intro G v
-    refine (Finset.card_image_le.trans (Finset.card_filter_le _ _)).trans ?_
-    exact Finset.single_le_sum (f := fun G => (T G).card) (fun _ _ => Nat.zero_le _)
-      (Finset.mem_univ G)
-  · intro G v I hI
-    obtain ⟨q, hqq, rfl⟩ := Finset.mem_image.mp hI
-    exact hroot _ (hu G q (Finset.mem_filter.mp hqq).1)
-  · intro y
-    refine le_trans (Finset.card_le_card fun p hp => ?_) (hN y)
-    obtain ⟨-, hp⟩ := Finset.mem_filter.mp hp
-    simp only [occCoef] at hp
-    obtain ⟨I, hI, hne⟩ := Finset.exists_ne_zero_of_sum_ne_zero hp
-    have hyI : y ∈ dyadicGridCell A.G I.1 I.2 := by
-      by_contra hy; exact hne (Set.indicator_of_notMem hy _)
-    obtain ⟨q', hq', rfl⟩ := Finset.mem_image.mp hI
-    obtain ⟨hqT, hvL⟩ := Finset.mem_filter.mp hq'
-    exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, q', hqT, hyI, hvL⟩
-  simp_rw [hS]
-  rw [columnL2_norm_sq_eq]
-  have e1 : ∫ y, ‖((∑ G, ∑ q ∈ T G, ∑ n ∈ L G q, β G q n •
-      fitColumn (dyadicGridCell A.G (u G q).1 (u G q).2) (catAtom cat n) n :
-        ColumnL2 (Fin ap.Mc)) : ℝ → ColumnHilbert (Fin ap.Mc)) y‖ ^ 2 =
-      ∫ y, ‖∑ G, groupOutput (fun v : Fin ap.Mc => catAtom cat v) (fun _ => 1)
-        (occCoef A.G occ cc G) y‖ ^ 2 := by
-    refine integral_congr_ae ?_
-    filter_upwards [Lp.coeFn_fun_finsetSum (Finset.univ : Finset ι) (fun G =>
-      (∑ q ∈ T G, ∑ n ∈ L G q, β G q n •
-        fitColumn (dyadicGridCell A.G (u G q).1 (u G q).2) (catAtom cat n) n :
-          ColumnL2 (Fin ap.Mc))), hall] with y h1 h2
-    rw [h1]
-    simp only [h2]
-  have e2 : ∀ G, ‖(∑ q ∈ T G, ∑ n ∈ L G q, β G q n •
-      fitColumn (dyadicGridCell A.G (u G q).1 (u G q).2) (catAtom cat n) n :
-        ColumnL2 (Fin ap.Mc))‖ ^ 2 =
-      ∫ y, ‖groupOutput (fun v : Fin ap.Mc => catAtom cat v) (fun _ => 1)
-        (occCoef A.G occ cc G) y‖ ^ 2 := by
-    intro G
-    rw [columnL2_norm_sq_eq]
-    refine integral_congr_ae ?_
-    filter_upwards [hae G] with y hy
-    rw [hy]
-  rw [e1]
-  simp_rw [e2]
-  exact hwr
 
 end AttemptParams
 
@@ -6043,42 +4176,6 @@ noncomputable def globHist (Ψ : ColumnDepthFamily V) {P : ℕ}
 
 end GlobalHistories
 
-namespace ActiveSetup
-variable {κ' : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ' c₀)
-
-namespace AttemptParams
-variable {A} (ap : A.AttemptParams)
-
-theorem births_tree {cat : List (CatCol A.Vtx)} (hb : ∀ d ∈ cat, d.birth ∈ A.cells) :
-    ∀ d ∈ cat, d.birth ∈ dyadicFiniteTree A.G A.R A.treeDepth :=
-  fun d hd => A.cells_mem_tree (hb d hd)
-
-/-- The nested depth projections of the ball filter of group `G`, level `j`, pad `p` and rank
-`r`, on the complete tree with masks inherited from the deepest active ancestor. -/
-noncomputable def ballFam (cat : List (CatCol A.Vtx)) (hR : A.R ∈ A.cells)
-    (hb : ∀ d ∈ cat, d.birth ∈ A.cells) (r j : ℕ) (G : A.Grp) (p : ℕ) :
-    ColumnDepthFamily (Fin ap.Mc) :=
-  catDepthFamily (G := A.G) (S := A.cells) (Nd := A.treeDepth) hR cat (births_tree hb) r
-    (fun c => ap.bmask c G j p) fun _ hc _ hd hcd x hx => ap.bmask_mono hc hd hcd G j p x hx
-
-/-- The base family of the cumulative layers (the complete catalog tree). -/
-noncomputable def cumBase (cat : List (CatCol A.Vtx)) (hR : A.R ∈ A.cells)
-    (hb : ∀ d ∈ cat, d.birth ∈ A.cells) : ColumnDepthFamily (Fin ap.Mc) :=
-  catDepthFamily (G := A.G) (S := A.cells) (Nd := A.treeDepth) hR cat (births_tree hb) 0
-    (fun _ _ => False) fun _ _ _ _ _ _ hx => hx
-
-/-- The inherited masks of the cumulative layer `m` and pad `p`. -/
-noncomputable def cumMask (cat : List (CatCol A.Vtx)) (hR : A.R ∈ A.cells)
-    (hb : ∀ d ∈ cat, d.birth ∈ A.cells) (m : ℕ) (p : Fin ap.P) :
-    InheritedColumnMask (ap.cumBase cat hR hb).D :=
-  (catDepthFamily (G := A.G) (S := A.cells) (Nd := A.treeDepth) (Mc := ap.Mc) hR cat
-    (births_tree hb) (ap.Lc - m + 1) (fun c => ap.cmask c m p)
-    fun _ hc _ hd hcd x hx => ap.cmask_mono hc hd hcd m p x hx).A
-
-end AttemptParams
-
-end ActiveSetup
-
 /-! ### Catalog tests on fixed vector bases: the helper closure (lines 1815-1831) -/
 
 structure VTest (Tg : Type*) (Mc : ℕ) where
@@ -6090,425 +4187,6 @@ structure VTest (Tg : Type*) (Mc : ℕ) where
   hM : ℕ → Tg → Prop
   θ : ℕ → Bool
   base : ColumnL2 (Fin Mc)
-
-namespace VTest
-variable (G : RealDyadicGrid) {Tg : Type*} (Mc : ℕ) (I : ℤ × ℤ) (w : VTest Tg Mc)
-
-/-- The history factor of index `l` (the identity beyond the history length). -/
-noncomputable def Q (s : List (CatCol Tg)) (l : ℕ) :
-    ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) :=
-  if l < w.m then catProj G Mc s I (w.hr l) (w.hM l) else ContinuousLinearMap.id ℂ _
-
-/-- The history value on the base. -/
-noncomputable def hist (mH : ℕ) (s : List (CatCol Tg)) : ColumnL2 (Fin Mc) :=
-  operatorComplementProduct (fun l => w.Q G Mc I s l) w.θ mH (w.base)
-
-/-- The target residual of the history value. -/
-noncomputable def resid (mH : ℕ) (s : List (CatCol Tg)) : ColumnL2 (Fin Mc) :=
-  w.hist G Mc I mH s - catProj G Mc s I w.r w.M (w.hist G Mc I mH s)
-
-theorem Q_isStarProjection (s : List (CatCol Tg)) (l : ℕ) :
-    IsStarProjection (w.Q G Mc I s l) := by
-  unfold Q; split_ifs
-  · exact catProj_isStarProjection G Mc s I _ _
-  · exact IsStarProjection.one _
-
-theorem Q_nest (s : List (CatCol Tg)) (d : CatCol Tg) (l : ℕ) :
-    (w.Q G Mc I s l).comp (w.Q G Mc I (s ++ [d]) l) = w.Q G Mc I s l := by
-  unfold Q; split_ifs
-  · exact catProj_nest G Mc s d I _ _
-  · rfl
-
-variable {G Mc I w}
-
-theorem freshFrom_complementProduct (s : List (CatCol Tg)) (θ : ℕ → Bool) (n : ℕ)
-    (hn : s.length ≤ n) : ∀ (k : ℕ) {x : ColumnL2 (Fin Mc)}, FreshFrom Mc n x →
-      FreshFrom Mc n (operatorComplementProduct (fun l => w.Q G Mc I s l) θ k x)
-  | 0, x, hx => hx
-  | k + 1, x, hx => by
-    have ih := freshFrom_complementProduct s θ n hn k hx
-    set y := operatorComplementProduct (fun l => w.Q G Mc I s l) θ k x
-    have hQ : FreshFrom Mc n (w.Q G Mc I s k y) := by
-      unfold Q; split_ifs
-      · exact (catProj_freshFrom s I _ _ y).mono hn
-      · exact ih
-    change FreshFrom Mc n ((if θ k then ContinuousLinearMap.id ℂ _ - w.Q G Mc I s k else
-      w.Q G Mc I s k) y)
-    split_ifs
-    · rw [sub_apply]; exact ih.sub hQ
-    · exact hQ
-
-theorem hist_freshFrom (mH : ℕ) (s : List (CatCol Tg)) (hb : FreshFrom Mc s.length w.base) :
-    FreshFrom Mc s.length (w.hist G Mc I mH s) :=
-  freshFrom_complementProduct s w.θ s.length le_rfl mH hb
-
-end VTest
-
-namespace VTest
-variable {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ} {I : ℤ × ℤ} (w : VTest Tg Mc)
-
-/-- The test passes: every pure source column whose tag lies in the mask has form norm at most
-`τ ‖base‖_{2,I}` against the target residual and two normalized `L²` spectators (blueprint
-eq:catalog-test; `‖g‖ / √|I|` is the normalized norm of the base on its cell). -/
-def Pass (G : RealDyadicGrid) (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ) (tagOf : Tg → ChartTag)
-    (wI : ℝ × ℝ → ℂ) (τ : ℝ) (mH : ℕ) (s : List (CatCol Tg)) : Prop :=
-  ∀ x, w.M x → ∀ {u a b : Fin 4}, u ≠ w.t → u ≠ a → u ≠ b → w.t ≠ a → w.t ≠ b → a ≠ b →
-    ∀ A : QuadraticChartData (tagOf x).dim, QuadraticChartComplexity c₀ H A →
-      A.horizontal = (tagOf x).θ → A.matrix = (slotCoeff u : ℚ) • (tagOf x).C →
-      A.quadratic = slotCoeff u * (tagOf x).lam →
-    ∀ z : Fin 4 → ℝ → ℂ, z u = quadraticChartAtom A →
-      z w.t = (fun y => (w.resid G Mc I mH s : ℝ → ColumnHilbert (Fin Mc)) y none) →
-      Measurable (z a) → Measurable (z b) →
-      eLpNorm (z a) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
-        (dyadicGridLength G I.1)) ≤ 1 →
-      eLpNorm (z b) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
-        (dyadicGridLength G I.1)) ≤ 1 →
-      ‖localProgressionForm (dyadicGridLength G I.1) wI z‖ ≤
-        τ * ‖w.base‖ / Real.sqrt (dyadicGridLength G I.1)
-
-/-- A failed test is repaired by inserting a same-tag template at the cell (blueprint lines
-1823-1825): the target projection grows on the old history value by more than
-`τ / (2 H₀)` times the base norm. -/
-theorem gain {κ : LocalKernelClass} {c₀ : ℕ} {D : ℕ}
-    (hst : ∀ (H : ℝ), Real.exp 2 ≤ H → ∀ (v : ChartTag), 1 ≤ v.dim →
-      ∀ {i j a b : Fin 4}, i ≠ j → i ≠ a → i ≠ b → j ≠ a → j ≠ b → a ≠ b →
-      ∀ (A : QuadraticChartData v.dim), QuadraticChartComplexity c₀ H A →
-      A.horizontal = v.θ → A.matrix = (slotCoeff i : ℚ) • v.C →
-      A.quadratic = slotCoeff i * v.lam →
-      ∀ {a₀ r : ℝ}, 0 < r → ∀ {w : ℝ × ℝ → ℂ}, IsAdmissibleLocalKernel κ a₀ r w →
-      ∀ (z : Fin 4 → ℝ → ℂ), z i = quadraticChartAtom A → Measurable (z j) →
-      Measurable (z a) → Measurable (z b) → MemLp (z j) 2 (normalizedIntervalMeasure a₀ r) →
-      eLpNorm (z a) 2 (normalizedIntervalMeasure a₀ r) ≤ 1 →
-      eLpNorm (z b) 2 (normalizedIntervalMeasure a₀ r) ≤ 1 →
-      ∃ R ∈ residueBox v.dim 9, ∃ γ : ℝ,
-        ‖localProgressionForm r w z‖ ≤ Real.exp (D * (1 + Real.log H) ^ D) *
-          ‖∫ y, z j y * (starRingEnd ℂ) (quadraticChartAtom
-            (tagTemplateData v.θ v.C v.lam j R) y * (Real.fourierChar (γ * y) : ℂ))
-              ∂(normalizedIntervalMeasure a₀ r)‖)
-    {H : ℝ} (hH : Real.exp 2 ≤ H) {tagOf : Tg → ChartTag} (hdim : ∀ x, 1 ≤ (tagOf x).dim)
-    {wI : ℝ × ℝ → ℂ}
-    (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) wI)
-    {τ : ℝ} {mH : ℕ} {s : List (CatCol Tg)} (hlen : s.length < Mc)
-    (hfresh : FreshFrom Mc s.length w.base) (hfail : ¬ w.Pass G I c₀ H tagOf wI τ mH s) :
-    ∃ d : CatCol Tg, d.rank = w.r ∧ d.birth = I ∧ w.M d.tag ∧
-      (∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-        d = templateCol (tagOf d.tag) w.t R γ I w.r d.tag) ∧
-      τ / (2 * Real.exp (D * (1 + Real.log H) ^ D)) * ‖w.base‖ <
-        ‖(catProj G Mc (s ++ [d]) I w.r w.M - catProj G Mc s I w.r w.M)
-          (operatorComplementProduct (fun l => w.Q G Mc I s l) w.θ mH
-            (w.base))‖ := by
-  set H₀ := Real.exp (D * (1 + Real.log H) ^ D) with hH₀
-  set r := dyadicGridLength G I.1 with hr_def
-  have hr : 0 < r := dyadicGridLength_pos G I.1
-  unfold Pass at hfail
-  push Not at hfail
-  obtain ⟨x, hx, u, a, b, hut, hua, hub, hta, htb, hab, A, hA, hAθ, hAM, hAq, z, hzu, hzt, hza,
-    hzb, hza2, hzb2, hlt⟩ := hfail
-  have hztm : Measurable (z w.t) := by rw [hzt]; exact columnPhys_measurable _
-  have hzt2 : MemLp (z w.t) 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) r) := by
-    rw [hzt]; exact columnPhys_memLp_normalized _ _ _
-  obtain ⟨R, hR, γ, hbd⟩ := hst H hH (tagOf x) (hdim x) hut hua hub hta htb hab A hA hAθ hAM hAq
-    hr hwI z hzu hztm hza hzb hzt2 hza2 hzb2
-  set d : CatCol Tg := templateCol (tagOf x) w.t R γ I w.r x with hd
-  refine ⟨d, rfl, rfl, hx, ⟨R, hR, γ, rfl⟩, ?_⟩
-  have hgain := catProj_gain (G := G) s d I w.r w.M hlen subset_rfl le_rfl hx
-    (w.hist G Mc I mH s) (hist_freshFrom mH s hfresh)
-  -- the moment as an average over the cell
-  have hmom : ∫ y, z w.t y * (starRingEnd ℂ) (quadraticChartAtom
-      (tagTemplateData (tagOf x).θ (tagOf x).C (tagOf x).lam w.t R) y *
-        (Real.fourierChar (γ * y) : ℂ)) ∂(normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2) r) =
-      (r : ℂ)⁻¹ * ∫ y in dyadicGridCell G I.1 I.2, conj (d.atom y) *
-        ((w.hist G Mc I mH s - catProj G Mc s I w.r w.M (w.hist G Mc I mH s) : ColumnL2 (Fin Mc)) :
-          ℝ → ColumnHilbert (Fin Mc)) y none := by
-    rw [integral_normalized_cell G I]
-    congr 1
-    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
-    simp only [hzt]
-    rw [mul_comm]
-    rfl
-  have hn : ‖((r : ℂ)⁻¹)‖ = r⁻¹ := by
-    rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hr]
-  rw [hmom, norm_mul, hn] at hbd
-  have hsq : 0 < Real.sqrt r := Real.sqrt_pos.mpr hr
-  have hH₀ : 0 < H₀ := Real.exp_pos _
-  set q := ‖(catProj G Mc (s ++ [d]) I w.r w.M - catProj G Mc s I w.r w.M)
-    (w.hist G Mc I mH s)‖ with hq
-  change _ < q
-  have h1 : ‖localProgressionForm r wI z‖ ≤ H₀ * (r⁻¹ * (2 * Real.sqrt r * q)) :=
-    hbd.trans (mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hgain
-      (inv_nonneg.mpr hr.le)) hH₀.le)
-  have e : r⁻¹ * (2 * Real.sqrt r * q) = 2 * q / Real.sqrt r := by
-    rw [show r⁻¹ = (Real.sqrt r * Real.sqrt r)⁻¹ by rw [Real.mul_self_sqrt hr.le]]
-    field_simp
-  rw [e] at h1
-  have h2 : τ * ‖w.base‖ / Real.sqrt r <
-      H₀ * (2 * q / Real.sqrt r) := hlt.trans_le h1
-  rw [mul_div_assoc', div_lt_div_iff_of_pos_right hsq] at h2
-  rw [div_mul_eq_mul_div, div_lt_iff₀ (by positivity)]
-  linarith
-
-end VTest
-
-/-- Blueprint lem:closure at one active cell (lines 1820-1831): for finitely many named tests
-at the cell, inserting same-tag templates born at the cell closes the catalog: every test
-passes, fewer than `T_max` columns are inserted, and the insertions of each rank number at most
-`|W| 4^m L^{2m} (2H₀/τ_r)²`, provided this allowance summed over the ranks stays below `T_max`. -/
-theorem vcell_closure {κ : LocalKernelClass} {c₀ : ℕ} {D : ℕ}
-    (hst : ∀ (H : ℝ), Real.exp 2 ≤ H → ∀ (v : ChartTag), 1 ≤ v.dim →
-      ∀ {i j a b : Fin 4}, i ≠ j → i ≠ a → i ≠ b → j ≠ a → j ≠ b → a ≠ b →
-      ∀ (A : QuadraticChartData v.dim), QuadraticChartComplexity c₀ H A →
-      A.horizontal = v.θ → A.matrix = (slotCoeff i : ℚ) • v.C →
-      A.quadratic = slotCoeff i * v.lam →
-      ∀ {a₀ r : ℝ}, 0 < r → ∀ {w : ℝ × ℝ → ℂ}, IsAdmissibleLocalKernel κ a₀ r w →
-      ∀ (z : Fin 4 → ℝ → ℂ), z i = quadraticChartAtom A → Measurable (z j) →
-      Measurable (z a) → Measurable (z b) → MemLp (z j) 2 (normalizedIntervalMeasure a₀ r) →
-      eLpNorm (z a) 2 (normalizedIntervalMeasure a₀ r) ≤ 1 →
-      eLpNorm (z b) 2 (normalizedIntervalMeasure a₀ r) ≤ 1 →
-      ∃ R ∈ residueBox v.dim 9, ∃ γ : ℝ,
-        ‖localProgressionForm r w z‖ ≤ Real.exp (D * (1 + Real.log H) ^ D) *
-          ‖∫ y, z j y * (starRingEnd ℂ) (quadraticChartAtom
-            (tagTemplateData v.θ v.C v.lam j R) y * (Real.fourierChar (γ * y) : ℂ))
-              ∂(normalizedIntervalMeasure a₀ r)‖)
-    {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ} {H : ℝ} (hH : Real.exp 2 ≤ H)
-    {tagOf : Tg → ChartTag} (hdim : ∀ x, 1 ≤ (tagOf x).dim) {I : ℤ × ℤ} {wI : ℝ × ℝ → ℂ}
-    (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) wI)
-    {W : Type*} [Fintype W] (tests : W → VTest Tg Mc) (mH : ℕ) (τ : ℕ → ℝ)
-    (hτ : ∀ w, 0 < τ (tests w).r) (s₀ : List (CatCol Tg)) {Tmax : ℕ}
-    (hMc : s₀.length + Tmax ≤ Mc) (hfresh : ∀ w, FreshFrom Mc s₀.length (tests w).base)
-    (hcap : ∑ r ∈ Finset.univ.image (fun w => (tests w).r),
-      Fintype.card W * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) /
-        (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 < (Tmax : ℝ)) :
-    ∃ s : List (CatCol Tg), (∀ d ∈ s, d.birth = I ∧ ∃ w, d.rank = (tests w).r ∧
-        (tests w).M d.tag ∧ ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-          d = templateCol (tagOf d.tag) (tests w).t R γ I (tests w).r d.tag) ∧ s.length < Tmax ∧
-      (∀ w, (tests w).Pass G I c₀ H tagOf wI (τ (tests w).r) mH (s₀ ++ s)) ∧
-      ∀ r, (((Finset.range s.length).filter
-        (fun j => ∃ hj : j < s.length, s[j].rank = r)).card : ℝ) *
-          (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 ≤
-        Fintype.card W * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) ∨
-        (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ≤ 0 := by
-  classical
-  set H₀ := Real.exp (D * (1 + Real.log H) ^ D) with hH₀
-  have hH₀p : 0 < H₀ := Real.exp_pos _
-  -- the insertable columns
-  let Dt := {d : CatCol Tg // d.birth = I ∧ ∃ w, d.rank = (tests w).r ∧ (tests w).M d.tag ∧
-    ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-      d = templateCol (tagOf d.tag) (tests w).t R γ I (tests w).r d.tag}
-  let cat : List Dt → List (CatCol Tg) := fun s => s₀ ++ s.map Subtype.val
-  have hcat : ∀ (s : List Dt) (d : Dt), cat (s ++ [d]) = cat s ++ [d.1] := by
-    intro s d; simp only [cat, List.map_append, List.map_cons, List.map_nil, List.append_assoc]
-  set Rset := Finset.univ.image (fun w => (tests w).r)
-  set δ : ℕ → ℝ := fun r => τ r / (2 * H₀)
-  set P : W → List Dt → ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) :=
-    fun w s => catProj G Mc (cat s) I (tests w).r (tests w).M
-  set Q : W → ℕ → List Dt → ColumnL2 (Fin Mc) →L[ℂ] ColumnL2 (Fin Mc) :=
-    fun w l s => (tests w).Q G Mc I (cat s) l
-  have hP : ∀ w s, IsStarProjection (P w s) := fun w s => catProj_isStarProjection _ _ _ _ _ _
-  have hP1 : ∀ w s d, (P w s).comp (P w (s ++ [d])) = P w s := fun w s d => by
-    simp only [P, hcat]; exact catProj_nest _ _ _ _ _ _ _
-  have hQ : ∀ w l s, IsStarProjection (Q w l s) := fun w l s =>
-    VTest.Q_isStarProjection _ _ _ _ _ _
-  have hQ1 : ∀ w l s d, (Q w l s).comp (Q w l (s ++ [d])) = Q w l s := fun w l s d => by
-    simp only [Q, hcat]; exact VTest.Q_nest _ _ _ _ _ _ _
-  have hrk : ∀ d : Dt, d.1.rank ∈ Rset := fun d => by
-    obtain ⟨w, hw, -⟩ := d.2.2
-    exact Finset.mem_image.mpr ⟨w, Finset.mem_univ _, hw.symm⟩
-  have hδ : ∀ r ∈ Rset, 0 < δ r := fun r hr => by
-    obtain ⟨w, -, rfl⟩ := Finset.mem_image.mp hr
-    exact div_pos (hτ w) (by positivity)
-  have hbd : ∀ s : List Dt, LocalValid (fun d : Dt => d.1.rank) (fun w => (tests w).r) δ P Q
-      (fun w => (tests w).θ) mH (fun w => (tests w).base) s →
-      s.length < Tmax := fun s h =>
-    h.length_lt hP hP1 hQ hQ1 Rset hrk hδ hcap
-  obtain ⟨s, hs, hpass, hlen⟩ := local_closure (rk := fun d : Dt => d.1.rank)
-    (rkW := fun w => (tests w).r) (δ := δ) (P := P) (Q := Q) (θ := fun w => (tests w).θ)
-    (m := mH) (g := fun w => (tests w).base) hP hP1 hQ hQ1 Rset hrk hδ hcap
-    (fun w s => (tests w).Pass G I c₀ H tagOf wI (τ (tests w).r) mH (cat s)) (by
-      intro s hs w hw
-      have hlen : (cat s).length < Mc := by
-        have := hbd s hs
-        simp only [cat, List.length_append, List.length_map]
-        omega
-      obtain ⟨d, hdr, hdb, hdM, hdt, hg⟩ := (tests w).gain hst hH hdim hwI hlen
-        ((hfresh w).mono (by simp only [cat, List.length_append]; omega)) hw
-      refine ⟨⟨d, hdb, w, hdr, hdM, hdt⟩, hdr.symm, ?_⟩
-      simp only [P, Q, hcat]
-      exact hg)
-  refine ⟨s.map Subtype.val, fun d hd => ?_, by simpa using hlen, hpass, fun r => ?_⟩
-  · obtain ⟨d', -, rfl⟩ := List.mem_map.mp hd
-    exact d'.2
-  · by_cases hr : δ r ≤ 0
-    · exact Or.inr hr
-    · left
-      have hc := hs.rank_count hP hP1 hQ hQ1 r (lt_of_not_ge hr)
-      have hL : projectionPrefixConstant s.length ≤ projectionPrefixConstant Tmax :=
-        projectionPrefixConstant_mono hlen.le
-      have hL0 : 0 ≤ projectionPrefixConstant s.length :=
-        le_trans zero_le_one (projectionPrefixConstant_one_le _)
-      refine le_trans (le_of_eq ?_) (hc.trans (mul_le_mul_of_nonneg_left
-        (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ hL0 hL _) (by positivity))
-        (Nat.cast_nonneg _)))
-      simp only [List.length_map, List.getElem_map]
-      rfl
-
-section VTreeClosure
-variable {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ}
-
-theorem VTest.resid_append_irrel (w : VTest Tg Mc) (I : ℤ × ℤ) (mH : ℕ)
-    (s t : List (CatCol Tg))
-    (ht : ∀ d ∈ t, ¬ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G d.birth.1 d.birth.2) :
-    w.resid G Mc I mH (s ++ t) = w.resid G Mc I mH s := by
-  have hQ : (fun l => w.Q G Mc I (s ++ t) l) = fun l => w.Q G Mc I s l := by
-    funext l; unfold VTest.Q; split_ifs
-    · exact catProj_append_irrel s t I _ _ ht
-    · rfl
-  unfold VTest.resid VTest.hist
-  rw [hQ, catProj_append_irrel s t I _ _ ht]
-
-theorem VTest.pass_append_irrel (w : VTest Tg Mc) (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ)
-    (tagOf : Tg → ChartTag) (wI : ℝ × ℝ → ℂ) (τ : ℝ) (mH : ℕ) (s t : List (CatCol Tg))
-    (ht : ∀ d ∈ t, ¬ dyadicGridCell G I.1 I.2 ⊆ dyadicGridCell G d.birth.1 d.birth.2) :
-    w.Pass G I c₀ H tagOf wI τ mH (s ++ t) ↔ w.Pass G I c₀ H tagOf wI τ mH s := by
-  unfold VTest.Pass
-  rw [w.resid_append_irrel I mH s t ht]
-
-/-- Blueprint lem:closure over a finite tree (lines 1820-1831): processing the cells with
-ancestors first and closing the catalog at each cell (`cell_closure`) gives one catalog that
-passes all tests at all cells; the columns born at a cell are its own insertions, with the rank
-counts of `cell_closure`. -/
-theorem vtree_closure {κ : LocalKernelClass} {c₀ D : ℕ} (hst : SameTagBound κ c₀ D)
-    {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ} {H : ℝ} (hH : Real.exp 2 ≤ H)
-    {tagOf : Tg → ChartTag}
-    (hdim : ∀ x, 1 ≤ (tagOf x).dim) (L : List (ℤ × ℤ)) (hnd : L.Nodup)
-    (hord : ∀ i j (hi : i < L.length) (hj : j < L.length), i < j →
-      ¬ dyadicGridCell G L[i].1 L[i].2 ⊆ dyadicGridCell G L[j].1 L[j].2)
-    (wI : ℤ × ℤ → ℝ × ℝ → ℂ)
-    (hwI : ∀ I ∈ L, IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1)
-      (wI I))
-    (W : ℤ × ℤ → Type*) [∀ I, Fintype (W I)] (tests : ∀ I, W I → VTest Tg Mc) (mH : ℕ)
-    (τ : ℕ → ℝ) (hτ : ∀ I w, 0 < τ (tests I w).r) {Tmax : ℕ}
-    (s₀ : List (CatCol Tg)) (hMc : s₀.length + L.length * Tmax ≤ Mc)
-    (hfresh : ∀ I w, FreshFrom Mc s₀.length (tests I w).base)
-    (hcap : ∀ I ∈ L, ∑ r ∈ Finset.univ.image (fun w => (tests I w).r),
-      Fintype.card (W I) * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) /
-        (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 < (Tmax : ℝ)) :
-    ∃ cat : List (CatCol Tg),
-      (∀ I ∈ L, ∀ w, (tests I w).Pass G I c₀ H tagOf (wI I) (τ (tests I w).r) mH (s₀ ++ cat)) ∧
-      (∀ d ∈ cat, d.birth ∈ L ∧ ∃ w, d.rank = (tests d.birth w).r ∧ (tests d.birth w).M d.tag ∧
-        ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-          d = templateCol (tagOf d.tag) (tests d.birth w).t R γ d.birth (tests d.birth w).r d.tag) ∧
-      (∀ I ∈ L, ∀ r, ((cat.filter (fun d => decide (d.birth = I ∧ d.rank = r))).length : ℝ) *
-          (τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))) ^ 2 ≤
-        Fintype.card (W I) * (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) ∨
-        τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D)) ≤ 0) ∧
-      cat.length ≤ L.length * Tmax := by
-  classical
-  set δ : ℕ → ℝ := fun r => τ r / (2 * Real.exp (D * (1 + Real.log H) ^ D))
-  -- the invariant after the first `n` cells
-  set c : ℕ → ℤ × ℤ := fun i => L.getD i (0, 0) with hc
-  have hcL : ∀ i (hi : i < L.length), c i = L[i] := fun i hi => by
-    simp only [hc, List.getD_eq_getElem _ _ hi]
-  have key : ∀ n, n ≤ L.length → ∃ cat : List (CatCol Tg),
-      (∀ i < n, ∀ w, (tests (c i) w).Pass G (c i) c₀ H tagOf (wI (c i))
-        (τ (tests (c i) w).r) mH (s₀ ++ cat)) ∧
-      (∀ d ∈ cat, ∃ i < n, d.birth = c i ∧
-        ∃ w, d.rank = (tests d.birth w).r ∧ (tests d.birth w).M d.tag ∧
-          ∃ R ∈ residueBox (tagOf d.tag).dim 9, ∃ γ : ℝ,
-            d = templateCol (tagOf d.tag) (tests d.birth w).t R γ d.birth (tests d.birth w).r
-              d.tag) ∧
-      (∀ i < n, ∀ r, ((cat.filter (fun d => decide (d.birth = c i ∧ d.rank = r))).length : ℝ) *
-          δ r ^ 2 ≤ Fintype.card (W (c i)) *
-            (4 ^ mH * projectionPrefixConstant Tmax ^ (2 * mH)) ∨ δ r ≤ 0) ∧
-      cat.length ≤ n * Tmax := by
-    intro n
-    induction n with
-    | zero =>
-      intro _
-      exact ⟨[], fun i hi => absurd hi (Nat.not_lt_zero _), fun d hd => absurd hd (by simp),
-        fun i hi => absurd hi (Nat.not_lt_zero _), by simp⟩
-    | succ n ih =>
-      intro hn
-      obtain ⟨cat, hpass, hbirth, hcount, hlen⟩ := ih (by omega)
-      set I := c n with hI
-      have hIL : I ∈ L := by rw [hI, hcL n (by omega)]; exact List.getElem_mem _
-      obtain ⟨s, hs, hslen, hspass, hscount⟩ := vcell_closure hst hH hdim (hwI I hIL) (tests I) mH
-        τ (hτ I) (s₀ ++ cat) (Tmax := Tmax) (Mc := Mc) (by
-          have := Nat.mul_le_mul_right Tmax hn
-          rw [Nat.succ_mul] at this
-          simp only [List.length_append]
-          omega) (fun w => (hfresh I w).mono (by simp)) (hcap I hIL)
-      have hinj : ∀ i j, i < L.length → j < L.length → c i = c j → i = j := by
-        intro i j hi hj he
-        rw [hcL i hi, hcL j hj] at he
-        exact (List.Nodup.getElem_inj_iff hnd).mp he
-      -- the earlier cells are not affected
-      have hirr : ∀ i < n, ∀ d ∈ s,
-          ¬ dyadicGridCell G (c i).1 (c i).2 ⊆ dyadicGridCell G d.birth.1 d.birth.2 := by
-        intro i hi d hd
-        rw [(hs d hd).1, hI, hcL i (by omega), hcL n (by omega)]
-        exact hord i n (by omega) (by omega) hi
-      -- the births of the old catalog are earlier cells
-      have hold : ∀ d ∈ cat, d.birth ≠ I := by
-        intro d hd he
-        obtain ⟨i, hi, hdi, -⟩ := hbirth d hd
-        have := hinj i n (by omega) (by omega) (hdi.symm.trans he)
-        omega
-      refine ⟨cat ++ s, fun i hi w => ?_, fun d hd => ?_, fun i hi r => ?_, ?_⟩
-      · by_cases hin : i < n
-        · rw [← List.append_assoc]
-          exact ((tests _ w).pass_append_irrel _ c₀ H tagOf _ _ mH (s₀ ++ cat) s
-            (hirr i hin)).mpr (hpass i hin w)
-        · have hi' : i = n := by omega
-          subst hi'
-          rw [← List.append_assoc]
-          exact hspass w
-      · rcases List.mem_append.mp hd with hd | hd
-        · obtain ⟨i, hi, h1, h2⟩ := hbirth d hd
-          exact ⟨i, by omega, h1, h2⟩
-        · obtain ⟨h1, h2⟩ := hs d hd
-          refine ⟨n, by omega, h1, ?_⟩
-          rw [h1]; exact h2
-      · rw [List.filter_append, List.length_append]
-        by_cases hin : i < n
-        · have h0 : (s.filter (fun d => decide (d.birth = c i ∧ d.rank = r))).length = 0 := by
-            rw [List.length_eq_zero_iff, List.filter_eq_nil_iff]
-            intro d hd
-            simp only [decide_eq_true_eq, not_and]
-            intro he
-            rw [(hs d hd).1] at he
-            have := hinj n i (by omega) (by omega) he
-            omega
-          rw [h0, Nat.add_zero]
-          exact hcount i hin r
-        · have hi' : i = n := by omega
-          subst hi'
-          have h0 : (cat.filter (fun d => decide (d.birth = I ∧ d.rank = r))).length = 0 := by
-            rw [List.length_eq_zero_iff, List.filter_eq_nil_iff]
-            intro d hd
-            simp only [decide_eq_true_eq, not_and]
-            intro he
-            exact absurd he (hold d hd)
-          rw [h0, Nat.zero_add]
-          have hfs : s.filter (fun d => decide (d.birth = I ∧ d.rank = r)) =
-              s.filter (fun d => decide (d.rank = r)) := by
-            refine List.filter_congr fun d hd => ?_
-            simp [(hs d hd).1]
-          rw [hfs, ← card_range_filter_getElem s (fun d => d.rank = r)]
-          exact hscount r
-      · rw [List.length_append, Nat.succ_mul]
-        omega
-  obtain ⟨cat, hpass, hbirth, hcount, hlen⟩ := key L.length le_rfl
-  refine ⟨cat, fun I hI => ?_, fun d hd => ?_, fun I hI r => ?_, hlen⟩
-  · obtain ⟨i, hi, rfl⟩ := List.mem_iff_getElem.mp hI
-    rw [← hcL i hi]
-    exact hpass i hi
-  · obtain ⟨i, hi, h1, h2⟩ := hbirth d hd
-    exact ⟨by rw [h1, hcL i hi]; exact List.getElem_mem _, h2⟩
-  · obtain ⟨i, hi, rfl⟩ := List.mem_iff_getElem.mp hI
-    rw [← hcL i hi]
-    exact hcount i hi r
-
-end VTreeClosure
 
 end Auto
 
@@ -6551,12 +4229,6 @@ end BasicInputs
 section BasicInputs2
 variable {V W : Type*} [Fintype V] [Fintype W]
 
-theorem memLp_physCoord (x : ColumnL2 V) :
-    MemLp (fun y => (x : ℝ → ColumnHilbert V) y none) 2 volume := by
-  have h := ContinuousLinearMap.coeFn_compLp (EuclideanSpace.proj (none : Option V) :
-    ColumnHilbert V →L[ℂ] ℂ) x
-  exact (Lp.memLp _).ae_eq (h.mono fun y hy => by rw [hy]; rfl)
-
 /-- The depth ancestor of a cell below the root lies in the depth partition of its depth. -/
 theorem ColumnDepthFamily.anc_mem_partition (Ψ : ColumnDepthFamily V) {I : ℤ × ℤ}
     (hI : dyadicGridCell Ψ.D.grid I.1 I.2 ⊆ dyadicGridCell Ψ.D.grid Ψ.D.root.1 Ψ.D.root.2)
@@ -6574,65 +4246,7 @@ theorem ColumnDepthFamily.anc_mem_partition (Ψ : ColumnDepthFamily V) {I : ℤ 
     exact Set.disjoint_left.mp hdis (hI hy) (hsub hy)
   · exact hs
 
-open scoped Classical in
-/-- Blueprint line 1805 ("original labels have rank zero"): on a cell below the root, the
-physical part of the depth projection of a basic family at the cell's depth is the cell input of
-its current basic projection. -/
-theorem ColumnDepthFamily.restrict_physEmbed_proj (Ψ : ColumnDepthFamily V) {I : ℤ × ℤ}
-    (hI : dyadicGridCell Ψ.D.grid I.1 I.2 ⊆ dyadicGridCell Ψ.D.grid Ψ.D.root.1 Ψ.D.root.2)
-    (hroot : Ψ.D.root.1 ≤ I.1) (Z : ColumnL2 V) :
-    columnL2Restriction (dyadicGridCell Ψ.D.grid I.1 I.2)
-        (dyadicGridCell_measurable Ψ.D.grid I.1 I.2) (physEmbed V W (Ψ.proj I.1 Z)) =
-      physicalColumnInput (cellLp Ψ.D.grid I (Ψ.currentZ Z I)) := by
-  have hQ := Ψ.anc_mem_partition hI hroot
-  have hQc : Ψ.anc I ∈ Ψ.D.cells := (Ψ.partition I.1).subset hQ
-  have hsub := Ψ.cell_sub_anc I
-  set P := cellColumnProjection Ψ.D Ψ.A hQc Z
-  have hcur : Ψ.currentZ Z I = fun y => (P : ℝ → ColumnHilbert V) y none := by
-    funext y
-    unfold ColumnDepthFamily.currentZ
-    exact dite_eq_left_of_eq_true (eq_true hQc) ..
-  have hmem : MemLp ((dyadicGridCell Ψ.D.grid I.1 I.2).indicator (Ψ.currentZ Z I)) 2
-      volume := by
-    rw [hcur]
-    exact (memLp_physCoord P).indicator (dyadicGridCell_measurable _ _ _).nullMeasurableSet
-  have hcell : (cellLp Ψ.D.grid I (Ψ.currentZ Z I) : ℝ → ℂ) =ᵐ[volume]
-      (dyadicGridCell Ψ.D.grid I.1 I.2).indicator (Ψ.currentZ Z I) := by
-    unfold cellLp
-    rw [dite_eq_left_of_eq_true (eq_true hmem)]
-    exact MemLp.coeFn_toLp _
-  have hae := (ae_restrict_iff' (dyadicGridCell_measurable _ _ _)).mp
-    (Ψ.proj_ae_cell I.1 Z hQ)
-  apply Lp.ext
-  change (columnL2Indicator (dyadicGridCell Ψ.D.grid I.1 I.2)
-    (dyadicGridCell_measurable Ψ.D.grid I.1 I.2) (physEmbed V W (Ψ.proj I.1 Z)) :
-      ℝ → ColumnHilbert W) =ᵐ[volume] _
-  filter_upwards [columnL2Indicator_coeFn _ (dyadicGridCell_measurable Ψ.D.grid I.1 I.2)
-    (physEmbed V W (Ψ.proj I.1 Z)), physEmbed_coeFn (W := W) (Ψ.proj I.1 Z),
-    physicalColumnInput_coeFn (V := W) (cellLp Ψ.D.grid I (Ψ.currentZ Z I)), hcell, hae]
-    with y h1 h2 h3 h4 h5
-  rw [h1, h3, h4]
-  by_cases hy : y ∈ dyadicGridCell Ψ.D.grid I.1 I.2
-  · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy, h2, h5 (hsub hy), hcur]
-  · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy, zero_smul]
-
 end BasicInputs2
-
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
-
-/-- The global ball output of an attempt as an operator. -/
-noncomputable def globOutL (cat : List (CatCol A.Vtx)) (hR : A.R ∈ A.cells)
-    (hb : ∀ d ∈ cat, d.birth ∈ A.cells) (r j : ℕ) (G : A.Grp) (ls : List (ℕ × Bool)) (h : ℤ) :
-    ColumnL2 (Fin ap.Mc) →L[ℂ] ColumnL2 (Fin ap.Mc) :=
-  (opAvg (fun p : Fin ap.P => (ap.ballFam cat hR hb r j G p).proj h)).comp
-    (globHist (ap.cumBase cat hR hb) (ap.cumMask cat hR hb) ls h)
-
-end AttemptParams
-
-end ActiveSetup
 
 section ComplementExpansion
 variable {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℂ E]
@@ -6697,30 +4311,6 @@ variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : 
 
 /-! ### Unsuccessful groups and certificates of current groups (blueprint lines 1741-1747) -/
 
-/-- Blueprint line 1747 (masks are defined for successful groups): a group whose color data are
-not successful has empty ball masks. -/
-theorem bmask_of_not_success {G : A.Grp} (hG : ¬ ap.K.Success G.2) (I : ℤ × ℤ) (j p : ℕ)
-    (x : A.Vtx) : ¬ ap.bmask I G j p x := by
-  rintro ⟨-, I₀, -, v₀, -, hgrp, hM⟩
-  obtain ⟨ρ, z, g, m, l, n, ρ', a, g₂, hc, hl, -⟩ := hM
-  refine hG ⟨ρ, z, g, m, l, n, ρ', a, g₂, ?_, hl⟩
-  rw [← hgrp]
-  exact hc
-
-open Classical in
-/-- The certificate of a successful current group at its own cell (the hypothesis `hcert` of the
-quantitative budgets). -/
-theorem groupsAt_cert {I : ℤ × ℤ} (hI : I ∈ A.cells) {k : ℕ} {G : A.Grp}
-    (hG : G ∈ ap.groupsAt I k) (hS : ap.K.Success G.2) :
-    ∃ u' ∈ A.cells, dyadicGridCell A.G u'.1 u'.2 ⊆ dyadicGridCell A.G I.1 I.2 ∧
-      ∃ x ∈ A.admT.X (A.admAt u'), ap.K.Success (ap.K.colorData (A.admT.st (A.admAt u')) x) ∧
-        ap.K.color A.admT A.vtxBound (A.admAt u') x = k ∧
-        ap.K.grp A.admT A.vtxBound (A.admAt u') x = G := by
-  unfold groupsAt at hG
-  obtain ⟨x, hx, rfl⟩ := Finset.mem_image.mp hG
-  obtain ⟨hxX, hxk⟩ := Finset.mem_filter.mp hx
-  exact ⟨I, hI, le_rfl, x, hxX, hS, hxk, rfl⟩
-
 end AttemptParams
 
 end ActiveSetup
@@ -6753,68 +4343,12 @@ def CellPass (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadi
 
 variable (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft G I.1 I.2) (dyadicGridLength G I.1) wI)
 
-/-- Blueprint lines 1810-1811 ("histories include every individual pad choice, so the tests also
-hold for averages"): an average of residuals passing at level `β` passes at level `β`. -/
-theorem CellPass.avg {c₀ : ℕ} {H : ℝ} {tagOf : Tg → ChartTag} {t : Fin 4} {M : Tg → Prop}
-    {ι : Type*} (s : Finset ι) (hs : s.Nonempty) (R : ι → ColumnL2 V) {β : ℝ}
-    (h : ∀ i ∈ s, CellPass hwI c₀ H tagOf t M (R i) β) :
-    CellPass hwI c₀ H tagOf t M (((s.card : ℂ))⁻¹ • ∑ i ∈ s, R i) β := by
-  intro x hx u a b hut hua hub hta htb hab A hA hAθ hAM hAq X hXu hXt Sa Sb hSa hSb hXa hXb
-  have hXe : X = Function.update X t (((s.card : ℂ))⁻¹ • ∑ i ∈ s, R i) := by
-    rw [← hXt, Function.update_eq_self]
-  rw [hXe]
-  refine norm_map_update_avg_le _ X t s hs R fun i hi => ?_
-  refine h i hi x hx hut hua hub hta htb hab A hA hAθ hAM hAq _ ?_ (Function.update_self _ _ _)
-    hSa hSb ?_ ?_
-  · rw [Function.update_of_ne hut]; exact hXu
-  · rw [Function.update_of_ne hta.symm]; exact hXa
-  · rw [Function.update_of_ne htb.symm]; exact hXb
-
 end CellPass
-
-/-- Blueprint lines 1834-1836 ("expanding a rank-`r` outer primal costs at most `D √n_r` times
-its input norm"): the coefficients of a catalog combination have absolute sum at most
-`√(#labels) ‖x‖ / √|I|`. -/
-theorem catCoeff_l1_le {Tg : Type*} {G : RealDyadicGrid} {Mc : ℕ} (s : List (CatCol Tg))
-    (I : ℤ × ℤ) (F : Finset (Fin Mc)) (c : Fin Mc → ℂ) :
-    ∑ n ∈ F, ‖c n‖ ≤ Real.sqrt F.card *
-      (‖(∑ n ∈ F, c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n :
-        ColumnL2 (Fin Mc))‖ / Real.sqrt (dyadicGridLength G I.1)) := by
-  have hr := dyadicGridLength_pos G I.1
-  have hl2 := catCombination_l2_le (G := G) s I F c
-  have h1 := sum_mul_le_sqrt_mul_sqrt' F (fun _ => (1 : ℝ)) (fun n => ‖c n‖)
-  simp only [one_mul, one_pow, Finset.sum_const, nsmul_eq_mul, mul_one] at h1
-  refine h1.trans (mul_le_mul_of_nonneg_left ?_ (Real.sqrt_nonneg _))
-  rw [le_div_iff₀ (Real.sqrt_pos.mpr hr), ← Real.sqrt_mul (Finset.sum_nonneg fun _ _ =>
-    sq_nonneg _)]
-  calc Real.sqrt ((∑ n ∈ F, ‖c n‖ ^ 2) * dyadicGridLength G I.1)
-      ≤ Real.sqrt (‖(∑ n ∈ F, c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n :
-          ColumnL2 (Fin Mc))‖ ^ 2) := Real.sqrt_le_sqrt hl2
-    _ = _ := Real.sqrt_sq (norm_nonneg _)
 
 section FarHelper
 variable {Tg : Type*}
 
 /-! ### Far bands: the helper band above the complement band (blueprint lines 2253-2254) -/
-
-/-- The zero residual passes at level zero against every mask. -/
-theorem ResidPass.zero (G : RealDyadicGrid) {V : Type} [Fintype V] (I : ℤ × ℤ) (c₀ : ℕ) (H : ℝ)
-    (tagOf : Tg → ChartTag) (wI : ℝ × ℝ → ℂ) (t : Fin 4) (M : Tg → Prop) :
-    ResidPass G I c₀ H tagOf wI t M (0 : ColumnL2 V) 0 := by
-  intro x _ u a b _ _ _ _ _ _ A _ _ _ _ z _ hzt _ _ _ _
-  have h0 : z t =ᵐ[volume] 0 := by
-    rw [hzt]
-    filter_upwards [Lp.coeFn_zero (ColumnHilbert V) 2 volume] with y hy
-    rw [hy]; rfl
-  have hz : localProgressionForm (dyadicGridLength G I.1) wI z =
-      localProgressionForm (dyadicGridLength G I.1) wI (Function.update z t 0) := by
-    refine localProgressionForm_congr_ae _ _ fun j => ?_
-    by_cases hj : j = t
-    · subst hj; rw [Function.update_self]; exact h0
-    · rw [Function.update_of_ne hj]
-  rw [hz, norm_le_zero_iff]
-  unfold localProgressionForm
-  simp [Finset.prod_eq_zero (Finset.mem_univ t)]
 
 end FarHelper
 
@@ -6846,110 +4380,7 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ}
-
-/-- Padding an active setup by `m` unused labels with zero coefficients, carrying the atom of a
-fixed label `v₀` (blueprint lines 1741-1745: the vertex bound `D` of the coloring may be taken as
-large as required, so that marking failures have an arbitrarily small root fraction). -/
-noncomputable def pad (A : ActiveSetup κ c₀) (v₀ : A.L) (m : ℕ) : ActiveSetup κ c₀ where
-  G := A.G
-  R := A.R
-  cells := A.cells
-  sub := A.sub
-  w := A.w
-  adm := A.adm
-  L := A.L ⊕ Fin m
-  φ := fun I v => Sum.elim (A.φ I) (fun _ => A.φ I v₀) v
-  φ_meas := fun I v => by cases v <;> exact A.φ_meas I _
-  φ_bound := fun I v x => by cases v <;> exact A.φ_bound I _ x
-  H := A.H
-  coef := fun l I v => Sum.elim (A.coef l I) (fun _ => 0) v
-  path_chart := fun y v => by
-    cases v with
-    | inl v => exact A.path_chart y v
-    | inr j =>
-      obtain ⟨d, B, h1, h2, -⟩ := A.path_chart y v₀
-      exact ⟨d, B, h1, h2, fun I _ _ hl => absurd hl (by simp)⟩
-  nested_chart := fun I hI v hv => by
-    cases v with
-    | inl v => exact A.nested_chart I hI v hv
-    | inr j => exact absurd hv (by simp)
-  nested_cons := fun I hI I' hI' hII v hv hv' => by
-    cases v with
-    | inl v => exact A.nested_cons I hI I' hI' hII v hv hv'
-    | inr j => exact absurd hv (by simp)
-  Dc := A.Dc
-  Dc_nonneg := A.Dc_nonneg
-  coef_le := fun l I v => by
-    cases v with
-    | inl v => exact A.coef_le l I v
-    | inr j => simpa using A.Dc_nonneg
-  a := A.a
-  b := A.b
-  hab := A.hab
-  U := A.U
-  U_meas := A.U_meas
-  S := A.S
-  U_L2 := A.U_L2
-  U_le := A.U_le
-  η := A.η
-  small := fun I hI => by
-    have h := A.small I hI
-    convert h using 4 with l x
-    simp [Fintype.sum_sum_type]
-
-variable (A : ActiveSetup κ c₀) (v₀ : A.L) (m : ℕ)
-
-@[simp] theorem pad_G : (A.pad v₀ m).G = A.G := rfl
-
-@[simp] theorem pad_R : (A.pad v₀ m).R = A.R := rfl
-
-@[simp] theorem pad_cells : (A.pad v₀ m).cells = A.cells := rfl
-
-@[simp] theorem pad_w : (A.pad v₀ m).w = A.w := rfl
-
-@[simp] theorem pad_η : (A.pad v₀ m).η = A.η := rfl
-
-@[simp] theorem pad_H : (A.pad v₀ m).H = A.H := rfl
-
-@[simp] theorem pad_Dc : (A.pad v₀ m).Dc = A.Dc := rfl
-
-@[simp] theorem pad_S : (A.pad v₀ m).S = A.S := rfl
-
-@[simp] theorem pad_a : (A.pad v₀ m).a = A.a := rfl
-
-@[simp] theorem pad_b : (A.pad v₀ m).b = A.b := rfl
-
-@[simp] theorem pad_U : (A.pad v₀ m).U = A.U := rfl
-
-theorem pad_active (δ : ℝ) (I : ℤ × ℤ) : (A.pad v₀ m).active δ I ↔ A.active δ I := by
-  constructor
-  · rintro ⟨n, w₀, w₁, w₂, ⟨h₀, h₁, h₂⟩, hδ⟩
-    cases w₀ with
-    | inr j => exact absurd h₀ (by simp [pad])
-    | inl w₀ =>
-    cases w₁ with
-    | inr j => exact absurd h₁ (by simp [pad])
-    | inl w₁ =>
-    cases w₂ with
-    | inr j => exact absurd h₂ (by simp [pad])
-    | inl w₂ => exact ⟨n, w₀, w₁, w₂, ⟨h₀, h₁, h₂⟩, hδ⟩
-  · rintro ⟨n, w₀, w₁, w₂, ⟨h₀, h₁, h₂⟩, hδ⟩
-    exact ⟨n, Sum.inl w₀, Sum.inl w₁, Sum.inl w₂, ⟨h₀, h₁, h₂⟩, hδ⟩
-
-end ActiveSetup
-
 /-! ### The helper catalog of an attempt (blueprint lines 1812-1817, 2236-2238) -/
-
-/-- Passing helper tests stay passing for a larger complexity order of the sources. -/
-theorem VTest.pass_mono_order {Tg : Type*} {Mc : ℕ} (w : VTest Tg Mc) {G : RealDyadicGrid}
-    {I : ℤ × ℤ} {c₀ c₁ : ℕ} {H : ℝ} {tagOf : Tg → ChartTag} {wI : ℝ × ℝ → ℂ} {τ : ℝ}
-    {mH : ℕ} {cat : List (CatCol Tg)} (h : w.Pass G I c₁ H tagOf wI τ mH cat) (hc : c₀ ≤ c₁) :
-    w.Pass G I c₀ H tagOf wI τ mH cat :=
-  fun x hx _ _ _ hut hua hub hta htb hab A hA hAθ hAM hAq z hzu hzt hza hzb hza2 hzb2 =>
-    h x hx hut hua hub hta htb hab A (quadraticChartComplexity_mono_order hA hc) hAθ hAM hAq z
-      hzu hzt hza hzb hza2 hzb2
 
 end Auto
 

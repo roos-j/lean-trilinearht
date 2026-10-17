@@ -246,13 +246,6 @@ variable {d : ℕ}
 noncomputable def branchLift (ρ u : Fin d → ℝ) : Fin d → ℝ :=
   fun i => ρ i + Int.fract (u i - ρ i)
 
-/-- The lattice point of the branch: `u - d_ρ(u) = ⌊u - ρ⌋`. -/
-theorem branchLift_sub (ρ u : Fin d → ℝ) :
-    u - branchLift ρ u = fun i => ((⌊u i - ρ i⌋ : ℤ) : ℝ) := by
-  funext i
-  simp only [branchLift, Pi.sub_apply, Int.fract]
-  ring
-
 /-- Blueprint lines 1906-1908: a cut-off branch of the group-center phase is a chart. If the
 amplitude `g` vanishes outside the open branch cube `ρ + (0,1)ᵈ`, the chart with horizontal
 `θ`, matrix `-cC`, quadratic `-cλ` and amplitude `g` has atom `g(d_ρ) e(-c p_ρ)` with
@@ -312,90 +305,6 @@ lines 1906-1908). -/
 noncomputable def branchChart (z : ChartTag) (c : ℤ) {g : (Fin z.dim → ℝ) → ℂ}
     (hg : ContDiff ℝ (⊤ : ℕ∞) g) (hgc : HasCompactSupport g) : QuadraticChartData z.dim :=
   mkQuadraticChart z.θ (-(c : ℝ) * z.lam) 0 (((-c : ℤ) : ℚ) • z.C) g hg hgc
-
-/-- Blueprint §13.1, `eq:firstmatch` and `eq:mode-differences` (lines 1913-1922). Let a primary
-`Φ` of tag `v` in a slot of multiplier `c` be matched to a group center `z` whose tag is joined
-to `v` by an edge (or a short path, `tagEdge_path`) at length `r` and threshold `B`. Then on the
-window `|t| ≤ R r` the product of `φ_Φ` with the cut-off demodulation `g(d_ρ) e(-c p_ρ)` is an
-exact absolutely convergent sum of modes `e(λ_* t² + γ_ℓ t)` with one common curvature
-`λ_* = c(λ_v - λ_z) + θᵀ M θ`, `|λ_*| r² ≤ D₁`, and frequency differences
-`γ_ℓ - γ_ℓ' = (σ_ℓ - σ_ℓ')·(θ_v, θ_z)` with rational `σ` of height `D₁(1+|ℓ|)`, where `D₁` is
-quasipolynomial in the complexity and `B`. -/
-theorem firstMatchExpansion (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
-    ∃ D : ℕ, 1 ≤ D ∧ ∀ (v z : ChartTag) (c : ℤ), c ≠ 0 → |c| ≤ 3 →
-    ∀ (H B r : ℝ) (Φ : QuadraticChartData v.dim) (ρ : Fin z.dim → ℝ)
-      {g : (Fin z.dim → ℝ) → ℂ} (hg : ContDiff ℝ (⊤ : ℕ∞) g) (hgc : HasCompactSupport g),
-      (∀ w, g w ≠ 0 → ∀ i, ρ i < w i ∧ w i < ρ i + 1) →
-      Φ.horizontal = v.θ → Φ.matrix = (c : ℚ) • v.C → Φ.quadratic = c * v.lam →
-      QuadraticChartComplexity c₀ H (productQuadraticChart Φ (branchChart z c hg hgc)) →
-      0 < r → 2 ≤ B → tagEdge B r v z →
-      let P := productQuadraticChart Φ (branchChart z c hg hgc)
-      let X := 1 + Real.log H + Real.log (3 * B)
-      ∃ M : Matrix (Fin (v.dim + z.dim)) (Fin (v.dim + z.dim)) ℚ,
-        (∀ i j, (rationalHeight (M i j) : ℝ) ≤ Real.exp (D * X ^ D)) ∧
-        |P.quadratic + ∑ i, ∑ j, P.horizontal i * (M i j : ℝ) * P.horizontal j| * r ^ 2 ≤
-          Real.exp (D * X ^ D) ∧
-        ∃ (ι : Type) (_ : Fintype ι)
-          (σ : ι × (Fin ((v.dim + z.dim) + (v.dim + z.dim)) → ℤ) → Fin (v.dim + z.dim) → ℚ),
-          (Fintype.card ι : ℝ) ≤ Real.exp (D * X ^ D) ∧
-          (∀ p i, (rationalHeight (σ p i) : ℝ) ≤
-            Real.exp (D * X ^ D) * (1 + frequencyLength p.2)) ∧
-          ∃ a : ι × (Fin ((v.dim + z.dim) + (v.dim + z.dim)) → ℤ) → ℂ,
-            (∀ t : ℝ, |t| ≤ R * r →
-              HasSum (fun p => a p * (Real.fourierChar ((P.quadratic +
-                  ∑ i, ∑ j, P.horizontal i * (M i j : ℝ) * P.horizontal j) * t ^ 2 +
-                  (Φ.linear + ∑ i, (σ p i : ℝ) * P.horizontal i) * t) : ℂ))
-                (quadraticChartAtom Φ t * (g (branchLift ρ (fun i => z.θ i * t)) *
-                  (Real.fourierChar (-(c : ℝ) * (z.lam * t ^ 2 +
-                    chartMatrixPhase z.C (fun i => z.θ i * t)
-                      (branchLift ρ (fun i => z.θ i * t)))) : ℂ)))) ∧
-            Summable (fun p => ‖a p‖) ∧ (∑' p, ‖a p‖) ≤ Real.exp (D * X ^ D) := by
-  obtain ⟨D, hD, _DJ, hsp⟩ := splitPhase c₀ hc R hR
-  refine ⟨D, hD, ?_⟩
-  intro v z c hc0 hc3 H B r Φ ρ g hg hgc hgs hθ hM hq hP hr hB hE P X
-  -- the splitting of the product chart
-  have hW : WeylSplitData (3 * B) (fun i _ => r * P.horizontal i) P.matrix
-      (fun _ _ => r ^ 2 * P.quadratic) := by
-    have h := (WeylSplitData.smul hc0 hE).mono (B' := 3 * B) (by
-      have hc3' : |(c : ℝ)| ≤ 3 := by rw [← Int.cast_abs]; exact_mod_cast hc3
-      exact mul_le_mul_of_nonneg_right hc3' (by linarith))
-    have hV : tagDiffV r v z = fun i _ => r * P.horizontal i := by
-      funext i j
-      simp [tagDiffV, P, productQuadraticChart, branchChart, mkQuadraticChart, hθ]
-    have hCm : (c : ℚ) • tagDiffC v z = P.matrix := by
-      simp only [tagDiffC, P, productQuadraticChart, branchChart, mkQuadraticChart, hM]
-      rw [← chartBlockMatrix_smul]
-      congr 1
-      ext i j; simp
-    have hL : (c : ℝ) • tagDiffΛ r v z = fun _ _ => r ^ 2 * P.quadratic := by
-      funext i j
-      simp [tagDiffΛ, P, productQuadraticChart, branchChart, mkQuadraticChart, hq]
-      ring
-    rw [hV, hCm, hL] at h
-    exact h
-  obtain ⟨M, hMh, hlam, ι, hι, σ, hcard, hσ, a, hexp, hsumm, htot, -⟩ :=
-    hsp H (3 * B) r P hP hr (by linarith) hW
-  refine ⟨M, hMh, hlam, ι, hι, σ, hcard, hσ, a, fun t ht => ?_, hsumm, htot⟩
-  have h := (hexp t ht).mul_left (Real.fourierChar ((P.quadratic +
-    ∑ i, ∑ j, P.horizontal i * (M i j : ℝ) * P.horizontal j) * t ^ 2 + P.linear * t) : ℂ)
-  have hatom : quadraticChartAtom P t = quadraticChartAtom Φ t *
-      (g (branchLift ρ (fun i => z.θ i * t)) * (Real.fourierChar (-(c : ℝ) * (z.lam * t ^ 2 +
-        chartMatrixPhase z.C (fun i => z.θ i * t) (branchLift ρ (fun i => z.θ i * t)))) : ℂ)) := by
-    rw [productQuadraticChart_atom]
-    congr 1
-    exact branchChart_atom z.θ z.C z.lam c ρ hg hgc hgs t
-  have hlin : P.linear = Φ.linear := by
-    simp [P, productQuadraticChart, branchChart, mkQuadraticChart]
-  rw [← mul_assoc, ← Circle.coe_mul, ← AddChar.map_add_eq_mul,
-    show (P.quadratic + ∑ i, ∑ j, P.horizontal i * (M i j : ℝ) * P.horizontal j) * t ^ 2 +
-      P.linear * t + -((P.quadratic + ∑ i, ∑ j, P.horizontal i * (M i j : ℝ) * P.horizontal j) *
-        t ^ 2 + P.linear * t) = 0 by ring, AddChar.map_zero_eq_one, Circle.coe_one, one_mul,
-    hatom] at h
-  convert h using 1
-  funext p
-  rw [mul_left_comm, ← Circle.coe_mul, ← AddChar.map_add_eq_mul, hlin]
-  congr 3
-  ring
 
 section ModeLift
 variable {Pr Md : Type*} [Fintype Pr] [Fintype Md] [DecidableEq Pr]
@@ -468,80 +377,6 @@ variable {Pr Md : Type*} [Fintype Pr] [Fintype Md] [DecidableEq Pr]
 theorem columnHilbert_norm_sq {V : Type*} [Fintype V] (x : ColumnHilbert V) :
     ‖x‖ ^ 2 = ‖x none‖ ^ 2 + ∑ v, ‖x (some v)‖ ^ 2 := by
   rw [EuclideanSpace.norm_sq_eq, Fintype.sum_option]
-
-/-- Blueprint lines 1938-1940: the lift has an absolute norm bound, `‖R F‖² ≤ 5 ‖F‖²`, when
-`|s| ≤ 1`, the physical corrections satisfy `|q_Φ| ≤ δ` with `δ² Σ_Φ ε_Φ⁻¹ ≤ 1`, and the mode
-weights are small: `Σ_{m ∈ Φ} ε_m |a_m|² ≤ ε_Φ`. -/
-theorem modeLift_norm_sq_le (own : Md → Pr) {s : ℂ} (hs : ‖s‖ ≤ 1) (q : Pr → ℂ) {δ : ℝ}
-    (hq : ∀ Φ, ‖q Φ‖ ≤ δ) (a : Md → ℂ) (εP : Pr → ℝ) (hεP : ∀ Φ, 0 < εP Φ)
-    (hδ : δ ^ 2 * ∑ Φ, (εP Φ)⁻¹ ≤ 1) (εM : Md → ℝ) (hεM : ∀ m, 0 ≤ εM m)
-    (hw : ∀ Φ, ∑ m ∈ Finset.univ.filter (fun m => own m = Φ), εM m * ‖a m‖ ^ 2 ≤ εP Φ)
-    (F : ColumnHilbert Pr) :
-    ‖modeLift own s q a εP εM F‖ ^ 2 ≤ 5 * ‖F‖ ^ 2 := by
-  set Fp := ∑ Φ, ‖F (some Φ)‖ ^ 2 with hFp
-  have hF : ‖F‖ ^ 2 = ‖F none‖ ^ 2 + Fp := columnHilbert_norm_sq F
-  have hFp0 : 0 ≤ Fp := Finset.sum_nonneg fun _ _ => sq_nonneg _
-  have hsq : ∀ Φ, 0 < Real.sqrt (εP Φ) := fun Φ => Real.sqrt_pos.mpr (hεP Φ)
-  rw [columnHilbert_norm_sq]
-  -- the mode coordinates
-  have hmode : ∑ m, ‖modeLift own s q a εP εM F (some m)‖ ^ 2 ≤ Fp := by
-    have he : ∀ m, ‖modeLift own s q a εP εM F (some m)‖ ^ 2 =
-        εM m * ‖a m‖ ^ 2 * (‖F (some (own m))‖ ^ 2 / εP (own m)) := by
-      intro m
-      simp only [modeLift]
-      change ‖(Real.sqrt (εM m) : ℂ) * a m * F (some (own m)) /
-        (Real.sqrt (εP (own m)) : ℂ)‖ ^ 2 = _
-      rw [norm_div, norm_mul, norm_mul, Complex.norm_real, Complex.norm_real,
-        Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg (Real.sqrt_nonneg _),
-        abs_of_nonneg (Real.sqrt_nonneg _), div_pow, mul_pow, mul_pow, Real.sq_sqrt (hεM m),
-        Real.sq_sqrt (hεP _).le]
-      ring
-    simp_rw [he]
-    rw [← Finset.sum_fiberwise Finset.univ own]
-    apply Finset.sum_le_sum; intro Φ _
-    calc ∑ m ∈ Finset.univ.filter (fun m => own m = Φ),
-          εM m * ‖a m‖ ^ 2 * (‖F (some (own m))‖ ^ 2 / εP (own m)) =
-        (∑ m ∈ Finset.univ.filter (fun m => own m = Φ), εM m * ‖a m‖ ^ 2) *
-          (‖F (some Φ)‖ ^ 2 / εP Φ) := by
-          rw [Finset.sum_mul]
-          apply Finset.sum_congr rfl; intro m hm
-          rw [(Finset.mem_filter.mp hm).2]
-      _ ≤ εP Φ * (‖F (some Φ)‖ ^ 2 / εP Φ) :=
-          mul_le_mul_of_nonneg_right (hw Φ) (by have := hεP Φ; positivity)
-      _ = ‖F (some Φ)‖ ^ 2 := by field_simp [(hεP Φ).ne']
-  -- the physical coordinate
-  have hphys : ‖modeLift own s q a εP εM F none‖ ≤ ‖F none‖ + Real.sqrt Fp := by
-    simp only [modeLift]
-    change ‖s * F none + ∑ Φ, F (some Φ) / (Real.sqrt (εP Φ) : ℂ) * q Φ‖ ≤ _
-    refine (norm_add_le _ _).trans (add_le_add ?_ ?_)
-    · rw [norm_mul]; exact mul_le_of_le_one_left (norm_nonneg _) hs
-    · refine (norm_sum_le _ _).trans ?_
-      have hterm : ∀ Φ, ‖F (some Φ) / (Real.sqrt (εP Φ) : ℂ) * q Φ‖ ≤
-          ‖F (some Φ)‖ * ((Real.sqrt (εP Φ))⁻¹ * |δ|) := by
-        intro Φ
-        rw [norm_mul, norm_div, Complex.norm_real, Real.norm_eq_abs,
-          abs_of_pos (hsq Φ), div_eq_mul_inv, mul_assoc]
-        exact mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left
-          ((hq Φ).trans (le_abs_self δ)) (inv_nonneg.mpr (hsq Φ).le)) (norm_nonneg _)
-      refine (Finset.sum_le_sum fun Φ _ => hterm Φ).trans ?_
-      refine (Real.sum_mul_le_sqrt_mul_sqrt _ _ _).trans ?_
-      have hw2 : ∑ Φ, ((Real.sqrt (εP Φ))⁻¹ * |δ|) ^ 2 ≤ 1 := by
-        calc ∑ Φ, ((Real.sqrt (εP Φ))⁻¹ * |δ|) ^ 2 = δ ^ 2 * ∑ Φ, (εP Φ)⁻¹ := by
-              rw [Finset.mul_sum]
-              apply Finset.sum_congr rfl; intro Φ _
-              rw [mul_pow, inv_pow, Real.sq_sqrt (hεP Φ).le, sq_abs]; ring
-          _ ≤ 1 := hδ
-      calc Real.sqrt (∑ Φ, ‖F (some Φ)‖ ^ 2) *
-            Real.sqrt (∑ Φ, ((Real.sqrt (εP Φ))⁻¹ * |δ|) ^ 2) ≤ Real.sqrt Fp * 1 :=
-            mul_le_mul_of_nonneg_left (Real.sqrt_le_one.mpr hw2) (Real.sqrt_nonneg _)
-        _ = Real.sqrt Fp := mul_one _
-  have hph2 : ‖modeLift own s q a εP εM F none‖ ^ 2 ≤ 2 * ‖F none‖ ^ 2 + 2 * Fp := by
-    have h := pow_le_pow_left₀ (norm_nonneg _) hphys 2
-    have hs2 := Real.sq_sqrt hFp0
-    nlinarith [sq_nonneg (‖F none‖ - Real.sqrt Fp)]
-  rw [hF]
-  have : 0 ≤ ‖F none‖ ^ 2 := sq_nonneg _
-  linarith
 
 /-- `modeLift_norm_sq_le` with the physical corrections weighted pointwise: the lift has the
 absolute norm bound `‖R F‖² ≤ 5 ‖F‖²` when `|s| ≤ 1`, `Σ_Φ |q_Φ|² / ε_Φ ≤ 1` and the mode weights
@@ -814,25 +649,6 @@ theorem branchProfile_eq_zero_near_cut {δ s : ℝ} (hδ : 0 < δ) (hs : s ≤ �
   · exact gevreyIntervalCutoff_zero_left (by linarith) (by linarith)
   · exact gevreyIntervalCutoff_zero_right (by linarith) (by linarith)
 
-/-- Blueprint lines 1896-1898: the periodic branch cutoff `ζ^ρ`, with values in `[0,1]`, vanishes
-within `δ` of each branch cut (some coordinate `{u_i - ρ_i}` within `δ` of an integer) and equals
-one at distance at least `2 δ` from all cuts; for zero horizontal dimension it is one. -/
-theorem branchCutoffValue_cuts {d : ℕ} {δ : ℝ} (hδ : 0 < δ) (ρ u : Fin d → ℝ) :
-    branchCutoffValue δ ρ u ∈ Set.Icc (0 : ℝ) 1 ∧
-      ((∃ i, Int.fract (u i - ρ i) ≤ δ ∨ 1 - δ ≤ Int.fract (u i - ρ i)) →
-        branchCutoffValue δ ρ u = 0) ∧
-      ((∀ i, 2 * δ ≤ Int.fract (u i - ρ i) ∧ Int.fract (u i - ρ i) ≤ 1 - 2 * δ) →
-        branchCutoffValue δ ρ u = 1) ∧
-      (d = 0 → branchCutoffValue δ ρ u = 1) := by
-  refine ⟨branchCutoffValue_mem δ ρ u, fun ⟨i, hi⟩ => ?_, fun h => ?_, fun hd => ?_⟩
-  · unfold branchCutoffValue
-    exact Finset.prod_eq_zero (Finset.mem_univ i) (branchProfile_eq_zero_near_cut hδ hi)
-  · unfold branchCutoffValue
-    exact Finset.prod_eq_one fun i _ => branchProfile_eq_one hδ (h i).1 (h i).2
-  · subst hd
-    unfold branchCutoffValue
-    exact Finset.prod_of_isEmpty _
-
 end OffsetMean2
 
 /-- The branch amplitude `w ↦ Π_i β(w_i - ρ_i)`, supported in the open branch cube. -/
@@ -845,7 +661,7 @@ theorem branchAmp_smooth {d : ℕ} (δ : ℝ) (ρ : Fin d → ℝ) :
   apply contDiff_prod
   intro i _
   exact Complex.ofRealCLM.contDiff.comp ((contDiff_infty.mpr fun n =>
-    gevreyIntervalCutoff_contDiff n _ _ _ _).comp ((contDiff_apply ℝ ℝ i).sub contDiff_const))
+    gevreyIntervalCutoff_contDiff n _ _ _ _).comp ((contDiff_apply ℝ _ i).sub contDiff_const))
 
 theorem branchAmp_support {d : ℕ} {δ : ℝ} (hδ : 0 < δ) (_hδ' : δ < 1 / 4) {ρ w : Fin d → ℝ}
     (hw : branchAmp δ ρ w ≠ 0) (i : Fin d) : ρ i < w i ∧ w i < ρ i + 1 := by
@@ -873,53 +689,6 @@ theorem branchAmp_branchLift {d : ℕ} (δ : ℝ) (ρ u : Fin d → ℝ) :
   push_cast
   rfl
 
-/-- Blueprint §13.1, `first-match` (line 1936, `THT.Modes.firstMatchExpansionAndLift`), the
-expansion part with the explicit periodic Gevrey branch cutoff `ζ^ρ`
-(`branchCutoffValue`, offset average `offsetMean`): for a primary `Φ` of tag `v` matched to a
-group center `z` with `tagEdge` at length `r`,
-`φ_Φ(t) ζ^ρ(t) e(-c p_ρ(t)) = Σ_ℓ a_ℓ e(λ_* t² + γ_ℓ t)` exactly on `|t| ≤ R r`, with one common
-curvature, rational frequency differences and quasipolynomial counts and coefficient norms.
-The pointwise lift to modes is `modeLift` (`modeLift_synthesis`, `modeLift_norm_sq_le`). -/
-theorem firstMatchExpansionAndLift (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 ≤ R) :
-    ∃ D : ℕ, 1 ≤ D ∧ ∀ (v z : ChartTag) (c : ℤ), c ≠ 0 → |c| ≤ 3 →
-    ∀ (H B r δ : ℝ) (hδ : 0 < δ) (hδ' : δ < 1 / 4) (Φ : QuadraticChartData v.dim)
-      (ρ : Fin z.dim → ℝ),
-      Φ.horizontal = v.θ → Φ.matrix = (c : ℚ) • v.C → Φ.quadratic = c * v.lam →
-      QuadraticChartComplexity c₀ H (productQuadraticChart Φ
-        (branchChart z c (branchAmp_smooth δ ρ) (branchAmp_hasCompactSupport hδ hδ' ρ))) →
-      0 < r → 2 ≤ B → tagEdge B r v z →
-      let P := productQuadraticChart Φ
-        (branchChart z c (branchAmp_smooth δ ρ) (branchAmp_hasCompactSupport hδ hδ' ρ))
-      let X := 1 + Real.log H + Real.log (3 * B)
-      ∃ M : Matrix (Fin (v.dim + z.dim)) (Fin (v.dim + z.dim)) ℚ,
-        (∀ i j, (rationalHeight (M i j) : ℝ) ≤ Real.exp (D * X ^ D)) ∧
-        |P.quadratic + ∑ i, ∑ j, P.horizontal i * (M i j : ℝ) * P.horizontal j| * r ^ 2 ≤
-          Real.exp (D * X ^ D) ∧
-        ∃ (ι : Type) (_ : Fintype ι)
-          (σ : ι × (Fin ((v.dim + z.dim) + (v.dim + z.dim)) → ℤ) → Fin (v.dim + z.dim) → ℚ),
-          (Fintype.card ι : ℝ) ≤ Real.exp (D * X ^ D) ∧
-          (∀ p i, (rationalHeight (σ p i) : ℝ) ≤
-            Real.exp (D * X ^ D) * (1 + frequencyLength p.2)) ∧
-          ∃ a : ι × (Fin ((v.dim + z.dim) + (v.dim + z.dim)) → ℤ) → ℂ,
-            (∀ t : ℝ, |t| ≤ R * r →
-              HasSum (fun p => a p * (Real.fourierChar ((P.quadratic +
-                  ∑ i, ∑ j, P.horizontal i * (M i j : ℝ) * P.horizontal j) * t ^ 2 +
-                  (Φ.linear + ∑ i, (σ p i : ℝ) * P.horizontal i) * t) : ℂ))
-                (quadraticChartAtom Φ t * ((branchCutoffValue δ ρ (fun i => z.θ i * t) : ℂ) *
-                  (Real.fourierChar (-(c : ℝ) * (z.lam * t ^ 2 +
-                    chartMatrixPhase z.C (fun i => z.θ i * t)
-                      (branchLift ρ (fun i => z.θ i * t)))) : ℂ)))) ∧
-            Summable (fun p => ‖a p‖) ∧ (∑' p, ‖a p‖) ≤ Real.exp (D * X ^ D) := by
-  obtain ⟨D, hD, hfm⟩ := firstMatchExpansion c₀ hc R hR
-  refine ⟨D, hD, ?_⟩
-  intro v z c hc0 hc3 H B r δ hδ hδ' Φ ρ hθ hM hq hP hr hB hE P X
-  obtain ⟨M, hMh, hlam, ι, hι, σ, hcard, hσ, a, hexp, hsumm, htot⟩ :=
-    hfm v z c hc0 hc3 H B r Φ ρ (branchAmp_smooth δ ρ) (branchAmp_hasCompactSupport hδ hδ' ρ)
-      (fun w hw i => branchAmp_support hδ hδ' hw i) hθ hM hq hP hr hB hE
-  refine ⟨M, hMh, hlam, ι, hι, σ, hcard, hσ, a, fun t ht => ?_, hsumm, htot⟩
-  have h := hexp t ht
-  rwa [branchAmp_branchLift] at h
-
 section GaugeCancel
 variable {d : ℕ}
 
@@ -931,21 +700,6 @@ noncomputable def gaugeCarry (θ : Fin d → ℝ) (ρ : Fin 4 → Fin d → ℝ)
   branchLift (ρ j) (fun b => θ b * (x + ((j : ℕ) : ℝ) * t)) a -
     (1 - ((j : ℕ) : ℝ)) * branchLift (ρ 0) (fun b => θ b * (x + ((0 : Fin 4) : ℕ) * t)) a -
     ((j : ℕ) : ℝ) * branchLift (ρ 1) (fun b => θ b * (x + ((1 : Fin 4) : ℕ) * t)) a
-
-/-- The carries are integer vectors, for arbitrary offsets. -/
-theorem gaugeCarry_int (θ : Fin d → ℝ) (ρ : Fin 4 → Fin d → ℝ) (x t : ℝ) (j : Fin 4)
-    (a : Fin d) : ∃ n : ℤ, gaugeCarry θ ρ x t j a = n := by
-  have hsub (i : Fin 4) := congrFun (branchLift_sub (ρ i)
-    (fun b => θ b * (x + ((i : ℕ) : ℝ) * t))) a
-  simp only [Pi.sub_apply] at hsub
-  refine ⟨⌊θ a * (x + (((j : ℕ) : ℝ)) * t) - ρ j a⌋ * (-1) +
-    (1 - (j : ℕ)) * ⌊θ a * (x + ((0 : Fin 4) : ℕ) * t) - ρ 0 a⌋ +
-    (j : ℕ) * ⌊θ a * (x + ((1 : Fin 4) : ℕ) * t) - ρ 1 a⌋, ?_⟩
-  have h0 := hsub 0; have h1 := hsub 1; have hj := hsub j
-  simp only [gaugeCarry]
-  push_cast
-  simp only [Fin.isValue, Fin.val_zero, Fin.val_one, Nat.cast_zero, Nat.cast_one] at h0 h1 ⊢
-  linear_combination (-1 : ℝ) * hj + (1 - ((j : ℕ) : ℝ)) * h0 + ((j : ℕ) : ℝ) * h1
 
 /-- Blueprint `eq:gauge-cancel` (line 1942): with four offsets, the product of the demodulation
 phases `e(c_j p_{ρ_j}(y_j))` of a group center over the four slots is the linear carry
@@ -978,24 +732,6 @@ theorem gauge_cancel (θ : Fin d → ℝ) (C : Matrix (Fin d) (Fin d) ℚ) (lam 
 
 end GaugeCancel
 
-/-- Blueprint `eq:slope-variation` (line 1966): a mode `e(λ y² + γ y)` with `|λ| r_I² ≤ D` on its
-first-match cell `I` has, on a subcell `J` of length `r_J = 2^{-n} r_I`, frequency oscillation
-`r_J osc_J ω ≤ 2 D 4^{-n}`, `ω(y) = 2λ y + γ`. -/
-theorem slope_variation {lam γ rI D : ℝ} (hrI : 0 < rI) (hlam : |lam| * rI ^ 2 ≤ D) (n : ℕ)
-    {a : ℝ} {y y' : ℝ} (hy : y ∈ Set.Icc a (a + rI / 2 ^ n))
-    (hy' : y' ∈ Set.Icc a (a + rI / 2 ^ n)) :
-    rI / 2 ^ n * |(2 * lam * y' + γ) - (2 * lam * y + γ)| ≤ 2 * D / 4 ^ n := by
-  have h2 : (0 : ℝ) < 2 ^ n := by positivity
-  have hyy : |y' - y| ≤ rI / 2 ^ n := by
-    rw [abs_le]; constructor <;> linarith [hy.1, hy.2, hy'.1, hy'.2]
-  have he : (2 * lam * y' + γ) - (2 * lam * y + γ) = 2 * lam * (y' - y) := by ring
-  rw [he, abs_mul, abs_mul, abs_of_pos (by norm_num : (0 : ℝ) < 2)]
-  have h4 : (4 : ℝ) ^ n = 2 ^ n * 2 ^ n := by rw [← mul_pow]; norm_num
-  calc rI / 2 ^ n * (2 * |lam| * |y' - y|) ≤ rI / 2 ^ n * (2 * |lam| * (rI / 2 ^ n)) := by
-        gcongr
-    _ = 2 * (|lam| * rI ^ 2) / 4 ^ n := by rw [h4]; field_simp
-    _ ≤ 2 * D / 4 ^ n := by gcongr
-
 section ModeSchedule
 
 /-- The parameters of blueprint `eq:mode-parameters` and `eq:lags` (lines 1950-1962). -/
@@ -1024,13 +760,6 @@ noncomputable def Eh (h : ℕ) : ℝ := S.A0 ^ (h + 1)
 
 /-- `Ξ = D_*^{1000}`. -/
 noncomputable def Ξ : ℝ := S.Dstar ^ 1000
-
-/-- The block lags `u_b = b - 4K`, `v_b = b - 2K`, `t_b = b + K` of `eq:lags`. -/
-def lagU (b : ℤ) : ℤ := b - 4 * S.K
-
-def lagV (b : ℤ) : ℤ := b - 2 * S.K
-
-def lagT (b : ℤ) : ℤ := b + S.K
 
 /-- The defining inequalities of `eq:mode-parameters`, with absolute constants `Cj, CA, CT, CK`,
 a small absolute `δ_*` and the packet width `W` of lem:height at height `H`. -/
@@ -1490,54 +1219,6 @@ variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.
 
 /-! ### Primaries of a ball are joined to the group center (blueprint lines 1893-1903) -/
 
-/-- The graph radius of a ball mask around its center. -/
-noncomputable def ballRadius (g : ℤ) (h : ℕ) : ℕ :=
-  (ap.K.b1 * ap.K.d0 - (g - 1) * ap.K.b1 + h).toNat
-
-/-- The edge height of the ball radius `n` in the tag graph. -/
-noncomputable def ballEdgeH (dB n : ℕ) : ℝ :=
-  Real.exp (100000 * ((n + 1) * (dB + 1) : ℝ) ^ 8 * Real.log (2 * ap.Hed))
-
-theorem two_le_ballEdgeH (hHed : 2 ≤ ap.Hed) (dB n : ℕ) : 2 ≤ ap.ballEdgeH dB n := by
-  unfold ballEdgeH
-  have hl : 1 ≤ Real.log (2 * ap.Hed) := by
-    rw [Real.le_log_iff_exp_le (by linarith)]
-    have := Real.exp_one_lt_d9; linarith
-  have h1 : (1 : ℝ) ≤ ((n + 1) * (dB + 1) : ℝ) ^ 8 := one_le_pow₀ (by
-    have : (0 : ℝ) ≤ n := Nat.cast_nonneg n
-    have : (0 : ℝ) ≤ dB := Nat.cast_nonneg dB
-    nlinarith)
-  have h2 : 1 ≤ 100000 * ((n + 1) * (dB + 1) : ℝ) ^ 8 * Real.log (2 * ap.Hed) := by nlinarith
-  calc (2 : ℝ) ≤ Real.exp 1 := by have := Real.add_one_le_exp (1 : ℝ); linarith
-    _ ≤ _ := Real.exp_le_exp.mpr h2
-
-open Classical in
-/-- Blueprint line 1903 (first match, short-path part of lem:graph): a vertex of the ball mask of
-a group at an active cell carries a tag joined to the tag of the group center by an edge at the
-cell length, of height `ballEdgeH` of the ball radius. -/
-theorem mask_tagEdge_center {I : ℤ × ℤ} (hI : I ∈ A.cells) {G : A.Grp} {h : ℕ} {b : A.Vtx}
-    (hb : b ∈ ap.K.mask A.admT A.vtxBound G h (A.admAt I)) {ρ : Fin ap.K.d0} {z : A.Vtx} {g : ℤ}
-    (hG : G.2.1 = some (ρ, z, g)) (hHed : 2 ≤ ap.Hed) {dB : ℕ}
-    (hdim : ∀ w : A.Vtx, (A.vtag w).dim ≤ dB)
-    (hC : ∀ (w : A.Vtx) a c, (rationalHeight ((A.vtag w).C a c) : ℝ) ≤ ap.Hed) :
-    tagEdge (ap.ballEdgeH dB (ap.ballRadius g h)) (dyadicGridLength A.G I.1) (A.vtag b)
-      (A.vtag z) := by
-  obtain ⟨k, hk, hkb⟩ := ColorSetup.mask_center_dist ap.K A.admT A.vtxBound hb hG
-  have hDp := ap.K.Dp_le ρ z
-  have hkn : k ≤ ap.ballRadius g h := by
-    unfold ballRadius
-    have : (ap.K.Dp ρ z : ℤ) ≤ ap.K.d0 := by exact_mod_cast hDp
-    have hb1 : (0 : ℤ) ≤ ap.K.b1 := Int.natCast_nonneg _
-    have : (ap.K.b1 : ℤ) * ap.K.Dp ρ z ≤ ap.K.b1 * ap.K.d0 := by nlinarith
-    omega
-  have hd : (A.tagDist ap.Hed).d (A.admT.depth (A.admAt I)) z b ≤ ap.ballRadius g h := by
-    change ap.K.dist.d _ z b ≤ _
-    rw [hk]; exact_mod_cast hkn
-  rw [A.depth_admAt hI] at hd
-  rcases A.tagEdge_of_dist (le_trans (by norm_num) hHed) hdim hC hd with he | he
-  · rw [he]; exact tagEdge_refl (ap.two_le_ballEdgeH hHed dB _) _ _
-  · exact tagEdge_symm he
-
 end AttemptParams
 
 end ActiveSetup
@@ -1739,122 +1420,7 @@ theorem firstMatchExpansion_at (c₀ : ℕ) (hc : 1 ≤ c₀) (R : ℝ) (hR : 0 
 theorem slotCoeff_abs_le (l : Fin 4) : |slotCoeff l| ≤ 3 := by
   fin_cases l <;> decide
 
-namespace ActiveSetup
-
-namespace AttemptParams
-
-open Classical in
-/-- Blueprint first-match (lines 1903-1922, `eq:firstmatch`, `eq:mode-differences`) for an
-attempt: a primary of the outer ball of a group (a catalog column of slot `l` whose tag lies in
-the group's ball mask at a cell `I`) is a pure template chart `Φ`, and on the window
-`|t| ≤ R |I|` at the left end `a_I` of the cell, the product chart `P` of `Φ` with the branch
-chart of the group center (cutoff of width `δ`, demodulation `e(-c_l p_ρ)`) has an exact
-absolutely convergent mode expansion `φ_P(a_I + t) = Σ a_ℓ e(λ_* t² + (β + σ_ℓ·θ) t)` with one
-common curvature, rational frequency differences and counts, heights and coefficient sums at
-most `exp(D X^D)`, `X = 1 + log T(H⁶) + log(3B)` (`T` the translation budget, `B` the edge
-height of the ball radius). -/
-theorem firstMatch_attempt (κ : LocalKernelClass) (c₀ : ℕ) (R : ℝ) (hR : 0 ≤ R) :
-    ∃ D : ℕ, 1 ≤ D ∧ ∀ (A : ActiveSetup κ c₀) (ap : A.AttemptParams)
-      (cat : Fin 4 → List (CatCol A.Vtx))
-      (_hT : ∀ l, ∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-        d = templateCol (A.vtag d.tag) l R γ d.birth d.rank d.tag)
-      {I : ℤ × ℤ} (_hI : I ∈ A.cells) (l : Fin 4) {G : A.Grp} {j p r : ℕ} {n : Fin ap.Mc}
-      (_hn : n ∈ catLabels A.G ap.Mc (cat l) I r (ap.bmask I G j p))
-      {ρ₀ : Fin ap.K.d0} {z : A.Vtx} {g : ℤ} (_hG : G.2.1 = some (ρ₀, z, g))
-      (_hHed : 2 ≤ ap.Hed) {dB : ℕ} (_hdim : ∀ w : A.Vtx, (A.vtag w).dim ≤ dB)
-      (_hC : ∀ (w : A.Vtx) a c, (rationalHeight ((A.vtag w).C a c) : ℝ) ≤ ap.Hed)
-      {δ : ℝ} (hδ : 0 < δ) (hδ' : δ < 1 / 4) (ρ : Fin (A.vtag z).dim → ℝ)
-      (_hρ : ∀ i, ρ i ∈ Set.Icc (0 : ℝ) 1) {H : ℝ} (_hHs : A.Hsrc ≤ H)
-      (_hdz : ((A.vtag z).dim : ℝ) ≤ Real.log H)
-      (_hCz : ∀ i k, (chartRationalHeight ((((-slotCoeff l : ℤ) : ℚ) • (A.vtag z).C) i k) : ℝ) ≤
-        H)
-      (_hHδ : ((A.vtag z).dim : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ)) ≤ H),
-      ∃ (x : A.Vtx) (Φ : QuadraticChartData (A.vtag x).dim),
-        catAtom (cat l) n = quadraticChartAtom Φ ∧ IsBoundedQuadraticChart Φ ∧
-        Φ.horizontal = (A.vtag x).θ ∧ Φ.matrix = (slotCoeff l : ℚ) • (A.vtag x).C ∧
-        Φ.quadratic = slotCoeff l * (A.vtag x).lam ∧
-      let P := productQuadraticChart Φ (branchChart (A.vtag z) (slotCoeff l)
-        (branchAmp_smooth δ ρ) (branchAmp_hasCompactSupport hδ hδ' ρ))
-      let X := 1 + Real.log (chartTranslationBudget (H ^ 6)) +
-        Real.log (3 * ap.ballEdgeH dB (ap.ballRadius g (ap.bbase j + p + 1)))
-      ∃ M : Matrix (Fin ((A.vtag x).dim + (A.vtag z).dim))
-          (Fin ((A.vtag x).dim + (A.vtag z).dim)) ℚ,
-        (∀ i k, (rationalHeight (M i k) : ℝ) ≤ Real.exp (D * X ^ D)) ∧
-        |P.quadratic + ∑ i, ∑ k, P.horizontal i * (M i k : ℝ) * P.horizontal k| *
-            dyadicGridLength A.G I.1 ^ 2 ≤ Real.exp (D * X ^ D) ∧
-        ∃ (ι : Type) (_ : Fintype ι)
-          (σ : ι × (Fin (((A.vtag x).dim + (A.vtag z).dim) +
-            ((A.vtag x).dim + (A.vtag z).dim)) → ℤ) →
-              Fin ((A.vtag x).dim + (A.vtag z).dim) → ℚ),
-          (Fintype.card ι : ℝ) ≤ Real.exp (D * X ^ D) ∧
-          (∀ q i, (rationalHeight (σ q i) : ℝ) ≤
-            Real.exp (D * X ^ D) * (1 + frequencyLength q.2)) ∧
-          ∃ (β : ℝ) (a : ι × (Fin (((A.vtag x).dim + (A.vtag z).dim) +
-              ((A.vtag x).dim + (A.vtag z).dim)) → ℤ) → ℂ),
-            (∀ t : ℝ, |t| ≤ R * dyadicGridLength A.G I.1 →
-              HasSum (fun q => a q * (Real.fourierChar ((P.quadratic +
-                  ∑ i, ∑ k, P.horizontal i * (M i k : ℝ) * P.horizontal k) * t ^ 2 +
-                  (β + ∑ i, (σ q i : ℝ) * P.horizontal i) * t) : ℂ))
-                (quadraticChartAtom P (dyadicGridLeft A.G I.1 I.2 + t))) ∧
-            Summable (fun q => ‖a q‖) ∧ (∑' q, ‖a q‖) ≤ Real.exp (D * X ^ D) ∧
-            ∀ T : ℝ, 1 ≤ T → (∑ f : ι, ∑ w ∈ frequencyShell (((A.vtag x).dim + (A.vtag z).dim) +
-              ((A.vtag x).dim + (A.vtag z).dim)) T, ‖a (f, w)‖) * T ≤ Real.exp (D * X ^ D) := by
-  obtain ⟨D, hD, hfm⟩ := firstMatchExpansion_at (max (max c₀ (2 * tagKρ)) 32)
-    (le_trans (by norm_num) (le_max_right _ _)) R hR
-  refine ⟨D, hD, ?_⟩
-  intro A ap cat hT I hI l G j p r n hn ρ₀ z g hG hHed dB hdim hC δ hδ hδ' ρ hρ H hHs hdz hCz hHδ
-  have hn' := hn
-  simp only [catLabels, Finset.mem_filter, Finset.mem_univ, true_and] at hn'
-  obtain ⟨hnl, -, -, hMx⟩ := hn'
-  set x := ((cat l)[(n : ℕ)]).tag
-  have hav : A.occAvail x.2.1 x.1 := A.occAvail_of_mem (ap.bmask_present hMx)
-  obtain ⟨Φ, hΦ, hΦb, hθ, hM, hq, he⟩ := catAtom_chart (cat l) l (hT l) hnl hav
-  refine ⟨x, Φ, he, hΦb, hθ, hM, hq, ?_⟩
-  -- the complexities
-  have hH2 : Real.exp 2 ≤ H := A.exp_two_le_Hsrc.trans hHs
-  have hbr := branchChart_complexity (A.vtag z) (slotCoeff l) hδ hδ' ρ hρ hH2 hdz hCz hHδ
-  have hΦH : QuadraticChartComplexity (max (max c₀ (2 * tagKρ)) 32) H Φ :=
-    quadraticChartComplexity_mono_order (quadraticChartComplexity_mono hΦ hHs)
-      (le_max_left _ _)
-  have hbrH : QuadraticChartComplexity (max (max c₀ (2 * tagKρ)) 32) H
-      (branchChart (A.vtag z) (slotCoeff l) (branchAmp_smooth δ ρ)
-        (branchAmp_hasCompactSupport hδ hδ' ρ)) :=
-    quadraticChartComplexity_mono_order hbr (le_max_right _ _)
-  have hP := productQuadraticChart_complexity hΦH hbrH
-    (le_trans (by norm_num) (le_max_right _ _))
-  have hE := ap.mask_tagEdge_center hI hMx hG hHed hdim hC
-  exact hfm (A.vtag x) (A.vtag z) (slotCoeff l) (by fin_cases l <;> decide)
-    (slotCoeff_abs_le l) (H ^ 6) _ (dyadicGridLength A.G I.1) Φ _ _ hθ hM hq hP
-    (dyadicGridLength_pos A.G I.1) (ap.two_le_ballEdgeH hHed dB _) hE
-    (dyadicGridLeft A.G I.1 I.2)
-
-end AttemptParams
-
-end ActiveSetup
-
 /-! ### Finite first-match expansions (blueprint line 1907: `+ O(δ_c)`) -/
-
-/-- An absolutely convergent expansion in unimodular modes is uniformly approximated by a finite
-partial sum: for every `ε > 0` there is a finite set of modes with uniform remainder `≤ ε`. -/
-theorem hasSum_unimodular_truncate {ι T : Type*} (a : ι → ℂ) (ha : Summable fun p => ‖a p‖)
-    {ε : ℝ} (hε : 0 < ε) :
-    ∃ S : Finset ι, ∀ (e : ι → T → ℂ) (_he : ∀ p t, ‖e p t‖ = 1) (F : T → ℂ) (t : T),
-      HasSum (fun p => a p * e p t) (F t) → ‖F t - ∑ p ∈ S, a p * e p t‖ ≤ ε := by
-  have htend := tendsto_tsum_compl_atTop_zero (fun p => ‖a p‖)
-  obtain ⟨S, hS⟩ := (htend.eventually (gt_mem_nhds hε)).exists
-  refine ⟨S, fun e he F t hF => ?_⟩
-  have hsum : Summable fun p => a p * e p t := by
-    refine Summable.of_norm (ha.congr fun p => ?_)
-    rw [norm_mul, he, mul_one]
-  have h1 := hsum.sum_add_tsum_compl (s := S)
-  rw [hF.tsum_eq] at h1
-  have h2 : F t - ∑ p ∈ S, a p * e p t =
-      ∑' p : ↑((S : Set ι)ᶜ), a p * e p t := by rw [← h1]; ring
-  rw [h2]
-  have hsc : Summable fun p : ↑((S : Set ι)ᶜ) => ‖a p * e p t‖ :=
-    (hsum.norm).subtype _
-  refine (norm_tsum_le_tsum_norm hsc).trans (le_of_lt (lt_of_le_of_lt (le_of_eq ?_) hS))
-  exact tsum_congr fun p => by rw [norm_mul, he, mul_one]
 
 section GlobalLift
 variable {Pr Md : Type*} [Fintype Pr] [Fintype Md] [DecidableEq Pr] [DecidableEq Md]
@@ -2244,476 +1810,9 @@ theorem hasSum_box_truncate {ι T : Type*} [Fintype ι] {d : ℕ} (a : ι × (Fi
     true_and] at hq
   exact hq
 
-namespace ActiveSetup
-
-namespace AttemptParams
-
-open Classical in
-/-- Blueprint `eq:firstmatch` (line 1907) on the first-match cell: finitely many modes
-`e(λ (y - a_I)² + γ_k (y - a_I))`, with one curvature and frequencies `γ_k = β + σ_k·Θ`
-(`σ_k` rational, `Θ = (θ_v, θ_z)`), approximate `φ_Φ ζ^ρ e(-c_l p_ρ)` within `δ_c` on the whole
-cell, with coefficient sum and `|λ| |I|²` at most `exp(D X^D)`. -/
-theorem firstMatch_finite (κ : LocalKernelClass) (c₀ : ℕ) :
-    ∃ D : ℕ, 1 ≤ D ∧ ∀ (A : ActiveSetup κ c₀) (ap : A.AttemptParams)
-      (cat : Fin 4 → List (CatCol A.Vtx))
-      (_hT : ∀ l, ∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-        d = templateCol (A.vtag d.tag) l R γ d.birth d.rank d.tag)
-      {I : ℤ × ℤ} (_hI : I ∈ A.cells) (l : Fin 4) {G : A.Grp} {j p r : ℕ} {n : Fin ap.Mc}
-      (_hn : n ∈ catLabels A.G ap.Mc (cat l) I r (ap.bmask I G j p))
-      {ρ₀ : Fin ap.K.d0} {z : A.Vtx} {g : ℤ} (_hG : G.2.1 = some (ρ₀, z, g))
-      (_hHed : 2 ≤ ap.Hed) {dB : ℕ} (_hdim : ∀ w : A.Vtx, (A.vtag w).dim ≤ dB)
-      (_hC : ∀ (w : A.Vtx) a c, (rationalHeight ((A.vtag w).C a c) : ℝ) ≤ ap.Hed)
-      {δ : ℝ} (_hδ : 0 < δ) (_hδ' : δ < 1 / 4) (ρ : Fin (A.vtag z).dim → ℝ)
-      (_hρ : ∀ i, ρ i ∈ Set.Icc (0 : ℝ) 1) {H : ℝ} (_hHs : A.Hsrc ≤ H)
-      (_hdz : ((A.vtag z).dim : ℝ) ≤ Real.log H)
-      (_hCz : ∀ i k, (chartRationalHeight ((((-slotCoeff l : ℤ) : ℚ) • (A.vtag z).C) i k) : ℝ) ≤
-        H)
-      (_hHδ : ((A.vtag z).dim : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ)) ≤ H) {δc : ℝ} (_hδc : 0 < δc),
-      let X := 1 + Real.log (chartTranslationBudget (H ^ 6)) +
-        Real.log (3 * ap.ballEdgeH dB (ap.ballRadius g (ap.bbase j + p + 1)))
-      ∃ (Ny : Type) (_ : Fintype Ny) (coef : Ny → ℂ) (lam : ℝ) (γ : Ny → ℝ) (dv : ℕ)
-        (θv : Fin dv → ℝ) (σ : Ny → Fin (dv + (A.vtag z).dim) → ℚ) (β : ℝ),
-        (∀ k, γ k = β + ∑ i, (σ k i : ℝ) * Fin.append θv (A.vtag z).θ i) ∧ dv ≤ dB ∧
-        (Fintype.card Ny : ℝ) ≤ Real.exp (D * X ^ D) *
-          (4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1) ^
-            ((dv + (A.vtag z).dim) + (dv + (A.vtag z).dim)) ∧
-        (∀ k i, (rationalHeight (σ k i) : ℝ) ≤ Real.exp (D * X ^ D) *
-          (1 + 4 * ((dv + (A.vtag z).dim : ℕ) + 1) * max 1 (4 * Real.exp (D * X ^ D) / δc))) ∧
-        (∑ k, ‖coef k‖) ≤ Real.exp (D * X ^ D) ∧
-        |lam| * dyadicGridLength A.G I.1 ^ 2 ≤ Real.exp (D * X ^ D) ∧
-        ∀ y ∈ dyadicGridCell A.G I.1 I.2,
-          ‖∑ k, coef k * (Real.fourierChar (lam * (y - dyadicGridLeft A.G I.1 I.2) ^ 2 +
-              γ k * (y - dyadicGridLeft A.G I.1 I.2)) : ℂ) -
-            catAtom (cat l) n y * ((centerCut (A.vtag z) δ ρ y : ℂ) *
-              (Real.fourierChar (-(slotCoeff l : ℝ) * centerPhase (A.vtag z) ρ y) : ℂ))‖ ≤ δc := by
-  obtain ⟨D, hD, hfm⟩ := firstMatch_attempt κ c₀ 1 zero_le_one
-  refine ⟨D, hD, ?_⟩
-  intro A ap cat hT I hI l G j p r n hn ρ₀ z g hG hHed dB hdim hC δ hδ hδ' ρ hρ H hHs hdz hCz hHδ
-    δc hδc X
-  obtain ⟨x, Φ, he, -, hθ, -, -, M, -, hlam, ι, hι, σ, hcard, hσ, β, a, hexp, hsumm, htot,
-    hshell⟩ :=
-    hfm A ap cat hT hI l hn hG hHed hdim hC hδ hδ' ρ hρ hHs hdz hCz hHδ
-  set P := productQuadraticChart Φ (branchChart (A.vtag z) (slotCoeff l) (branchAmp_smooth δ ρ)
-    (branchAmp_hasCompactSupport hδ hδ' ρ))
-  set lam := P.quadratic + ∑ i, ∑ k, P.horizontal i * (M i k : ℝ) * P.horizontal k
-  have hPh : P.horizontal = Fin.append (A.vtag x).θ (A.vtag z).θ := by
-    simp [P, productQuadraticChart, branchChart, mkQuadraticChart, hθ]
-  set B := Real.exp (D * X ^ D)
-  have hB0 : 0 ≤ B := (Real.exp_pos _).le
-  have hex : ∃ K : ℕ, 2 * B / δc ≤ 2 ^ K := pow_unbounded_of_one_lt _ (by norm_num) |>.imp
-    fun _ h => h.le
-  set K := Nat.find hex
-  have hK : 2 * B / δc ≤ 2 ^ K := Nat.find_spec hex
-  have hKt : 2 * B / 2 ^ K ≤ δc := by
-    rw [div_le_iff₀ (by positivity)]; rw [div_le_iff₀ hδc] at hK; linarith
-  have hKm : (2 : ℝ) ^ K ≤ max 1 (4 * B / δc) := by
-    rcases Nat.eq_zero_or_pos K with h0 | hpos
-    · rw [h0, pow_zero]; exact le_max_left _ _
-    · obtain ⟨k, hk⟩ : ∃ k, K = k + 1 := ⟨K - 1, by omega⟩
-      have hmin := Nat.find_min hex (show k < K by omega)
-      rw [not_le] at hmin
-      refine le_trans ?_ (le_max_right _ _)
-      rw [hk, pow_succ]
-      have : 4 * B / δc = 2 * (2 * B / δc) := by ring
-      rw [this]; linarith
-  set S := (Finset.univ : Finset ι) ×ˢ
-    frequencyBox (((A.vtag x).dim + (A.vtag z).dim) + ((A.vtag x).dim + (A.vtag z).dim))
-      (2 ^ (K + 1))
-  refine ⟨{q // q ∈ S}, inferInstance, fun q => a q, lam,
-    fun q => β + ∑ i, (σ q i : ℝ) * P.horizontal i, (A.vtag x).dim, (A.vtag x).θ, fun q => σ q,
-    β, fun q => by rw [hPh], hdim x, ?_, fun q i => ?_, ?_, hlam,
-    fun y hy => ?_⟩
-  · rw [Fintype.card_coe, Finset.card_product, Finset.card_univ, card_frequencyBox]
-    push_cast
-    refine mul_le_mul hcard (pow_le_pow_left₀ (by positivity) ?_ _) (by positivity) hB0
-    have : (2 : ℝ) * 2 ^ (K + 1) + 1 = 4 * 2 ^ K + 1 := by ring
-    rw [this]; linarith
-  · have hq := q.2
-    simp only [S, Finset.mem_product] at hq
-    have hlen := frequencyLength_le_of_mem_box hq.2
-    refine (hσ q.1 i).trans (mul_le_mul_of_nonneg_left ?_ hB0)
-    have hmax : (2 : ℝ) ^ K ≤ max 1 (4 * B / δc) := hKm
-    push_cast at hlen ⊢
-    have h2 : ((2 : ℝ) ^ (K + 1)) = 2 * 2 ^ K := by ring
-    rw [h2] at hlen
-    have hdθ0 : (0 : ℝ) ≤ ((A.vtag x).dim + (A.vtag z).dim : ℕ) := Nat.cast_nonneg _
-    push_cast at hdθ0
-    nlinarith [hmax, frequencyLength_nonneg q.1.2, le_max_left (1 : ℝ) (4 * B / δc)]
-  · refine le_trans ?_ htot
-    rw [Finset.sum_coe_sort S (fun q => ‖a q‖)]
-    exact hsumm.sum_le_tsum _ fun q _ => norm_nonneg _
-  · set a₀ := dyadicGridLeft A.G I.1 I.2
-    have hy' := hy
-    simp only [dyadicGridCell, Set.mem_Ico] at hy'
-    have ht : |y - a₀| ≤ 1 * dyadicGridLength A.G I.1 := by
-      rw [one_mul, abs_of_nonneg (by linarith)]; linarith
-    have h := hasSum_box_truncate a hsumm hB0 hshell K (fun q t => (Real.fourierChar (lam * t ^ 2 +
-        (β + ∑ i, (σ q i : ℝ) * P.horizontal i) * t) : ℂ)) (fun _ _ => Circle.norm_coe _)
-      (fun t => quadraticChartAtom P (a₀ + t)) (y - a₀) (hexp _ ht)
-    rw [add_sub_cancel] at h
-    refine le_trans ?_ hKt
-    rw [Finset.sum_coe_sort S (fun q => a q * (Real.fourierChar (lam * (y - a₀) ^ 2 +
-      (β + ∑ i, (σ q i : ℝ) * P.horizontal i) * (y - a₀)) : ℂ))]
-    rw [norm_sub_rev, he, ← firstMatch_atom Φ (A.vtag z) (slotCoeff l) hδ hδ' ρ y]
-    exact h
-
-end AttemptParams
-
-end ActiveSetup
-
 theorem measurable_fourierChar_comp {f : ℝ → ℝ} (hf : Measurable f) :
     Measurable fun y => (Real.fourierChar (f y) : ℂ) :=
   (continuous_subtype_val.comp Real.continuous_fourierChar).measurable.comp hf
-
-namespace ActiveSetup
-
-namespace AttemptParams
-
-open Classical in
-/-- Blueprint lines 1924-1940 for an attempt: for one role (slot `l`, outer ball of group `G` at
-level `j`, pad `p`, rank `r`), offset `ρ` and cutoff `δ`, there is a global mode lift `R_{l,G}`:
-the primaries are the catalog labels; their first-match cells are the maximal active cells where
-they are labels of the outer ball; the modes of a primary on a first-match cell are a finite
-first-match expansion there (zero off the cell), with physical parts
-`ψ_m = ζ^ρ e(c_l p_ρ) e(λ (y - a)² + γ_m (y - a))`; the physical corrections
-`q_Φ = Σ a_m ψ_m - (ζ^ρ)² φ_Φ` hold exactly on the matched region (zero elsewhere) and are at most
-`δ_c` there. -/
-theorem attemptLift (κ : LocalKernelClass) (c₀ : ℕ) :
-    ∃ D : ℕ, 1 ≤ D ∧ ∀ (A : ActiveSetup κ c₀) (ap : A.AttemptParams)
-      (cat : Fin 4 → List (CatCol A.Vtx))
-      (_hT : ∀ l, ∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-        d = templateCol (A.vtag d.tag) l R γ d.birth d.rank d.tag)
-      (cs : Finset (ℤ × ℤ)) (_hcs : cs ⊆ A.cells) (l : Fin 4) {G : A.Grp} {j p r : ℕ}
-      {ρ₀ : Fin ap.K.d0} {z : A.Vtx} {g : ℤ} (_hG : G.2.1 = some (ρ₀, z, g))
-      (_hHed : 2 ≤ ap.Hed) {dB : ℕ} (_hdim : ∀ w : A.Vtx, (A.vtag w).dim ≤ dB)
-      (_hC : ∀ (w : A.Vtx) a c, (rationalHeight ((A.vtag w).C a c) : ℝ) ≤ ap.Hed)
-      {δ : ℝ} (_hδ : 0 < δ) (_hδ' : δ < 1 / 4) (ρ : Fin (A.vtag z).dim → ℝ)
-      (_hρ : ∀ i, ρ i ∈ Set.Icc (0 : ℝ) 1) {H : ℝ} (_hHs : A.Hsrc ≤ H)
-      (_hdz : ((A.vtag z).dim : ℝ) ≤ Real.log H)
-      (_hCz : ∀ i k, (chartRationalHeight ((((-slotCoeff l : ℤ) : ℚ) • (A.vtag z).C) i k) : ℝ) ≤
-        H)
-      (_hHδ : ((A.vtag z).dim : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ)) ≤ H) {δc : ℝ} (_hδc : 0 < δc)
-      (_hδcM : δc ^ 2 * ap.Mc ≤ 1),
-      let FM := fun n : Fin ap.Mc => maxCells A.G
-        (cs.filter fun I => n ∈ catLabels A.G ap.Mc (cat l) I r (ap.bmask I G j p))
-      let X := 1 + Real.log (chartTranslationBudget (H ^ 6)) +
-        Real.log (3 * ap.ballEdgeH dB (ap.ballRadius g (ap.bbase j + p + 1)))
-      ∃ (Md : Type) (_ : Fintype Md) (L : LiftData (Fin ap.Mc) Md) (ψ : Md → ℝ → ℂ),
-        (∀ Φ, L.εP Φ = 1) ∧ L.δ = δc ∧ (∀ m, 0 < L.εM m) ∧
-        (∀ y, L.s y = ((centerCut (A.vtag z) δ ρ y : ℝ) : ℂ) ^ 2) ∧
-        (∀ m, Measurable (ψ m)) ∧
-        (∀ n y, (∀ I ∈ FM n, y ∉ dyadicGridCell A.G I.1 I.2) →
-          ∀ m, L.own m = n → L.a m y = 0) ∧
-        (∀ n y, (∃ I ∈ FM n, y ∈ dyadicGridCell A.G I.1 I.2) →
-          L.q n y = ∑ m ∈ Finset.univ.filter (fun m => L.own m = n), L.a m y * ψ m y -
-            L.s y * catAtom (cat l) n y) ∧
-        (∃ (cellOf : Md → ℤ × ℤ) (lamOf γOf : Md → ℝ),
-          (∀ m, cellOf m ∈ FM (L.own m) ∧
-            (∀ y, L.a m y = (dyadicGridCell A.G (cellOf m).1 (cellOf m).2).indicator
-              (fun _ => L.a m (dyadicGridLeft A.G (cellOf m).1 (cellOf m).2)) y) ∧
-            |lamOf m| * dyadicGridLength A.G (cellOf m).1 ^ 2 ≤ Real.exp (D * X ^ D) ∧
-            ∀ y, ψ m y = (centerCut (A.vtag z) δ ρ y : ℂ) *
-              (Real.fourierChar ((slotCoeff l : ℝ) * centerPhase (A.vtag z) ρ y) : ℂ) *
-              (Real.fourierChar (lamOf m * (y - dyadicGridLeft A.G (cellOf m).1 (cellOf m).2) ^ 2 +
-                γOf m * (y - dyadicGridLeft A.G (cellOf m).1 (cellOf m).2)) : ℂ)) ∧
-          (∀ y, ((Finset.univ.filter fun m =>
-              y ∈ dyadicGridCell A.G (cellOf m).1 (cellOf m).2).card : ℝ) ≤ ap.Mc *
-            (Real.exp (D * X ^ D) * (4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1) ^ (4 * dB))) ∧
-          ∃ (Key : Type) (keyOf : Md → Key) (dvOf : Key → ℕ) (θvOf : ∀ k, Fin (dvOf k) → ℝ)
-            (βOf : Key → ℝ) (σOf : ∀ m, Fin (dvOf (keyOf m) + (A.vtag z).dim) → ℚ),
-            (∀ m m', L.own m = L.own m' → cellOf m = cellOf m' → keyOf m = keyOf m') ∧
-            (∀ m m', keyOf m = keyOf m' → lamOf m = lamOf m') ∧ (∀ k, dvOf k ≤ dB) ∧
-            (∀ m i, (rationalHeight (σOf m i) : ℝ) ≤ Real.exp (D * X ^ D) *
-              (1 + 4 * (2 * dB + 1) * max 1 (4 * Real.exp (D * X ^ D) / δc))) ∧
-            (∀ m, γOf m = βOf (keyOf m) +
-              ∑ i, (σOf m i : ℝ) * Fin.append (θvOf (keyOf m)) (A.vtag z).θ i) ∧
-            (∀ m m', keyOf m = keyOf m' → L.own m = L.own m' ∧ cellOf m = cellOf m') ∧
-            ∀ m m', keyOf m = keyOf m' → ∃ a b : Fin (dvOf (keyOf m) + (A.vtag z).dim) → ℚ,
-              (∀ i, (rationalHeight (a i) : ℝ) ≤ Real.exp (D * X ^ D) *
-                (1 + 4 * (2 * dB + 1) * max 1 (4 * Real.exp (D * X ^ D) / δc))) ∧
-              (∀ i, (rationalHeight (b i) : ℝ) ≤ Real.exp (D * X ^ D) *
-                (1 + 4 * (2 * dB + 1) * max 1 (4 * Real.exp (D * X ^ D) / δc))) ∧
-              γOf m - γOf m' =
-                ∑ i, ((a - b) i : ℝ) * Fin.append (θvOf (keyOf m)) (A.vtag z).θ i) ∧
-        ∀ y, ((Finset.univ.filter fun m => L.a m y ≠ 0).card : ℝ) ≤ ap.Mc *
-          (Real.exp (D * X ^ D) * (4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1) ^ (4 * dB)) := by
-  obtain ⟨D, hD, hfin⟩ := firstMatch_finite κ c₀
-  refine ⟨D, hD, ?_⟩
-  intro A ap cat hT cs hcs l G j p r ρ₀ z g hG hHed dB hdim hC δ hδ hδ' ρ hρ H hHs hdz hCz hHδ
-    δc hδc hδcM FM X
-  set K : Finset (Σ _ : Fin ap.Mc, ℤ × ℤ) := Finset.univ.sigma FM
-  have hK : ∀ k : {k // k ∈ K}, k.1.2 ∈ cs ∧
-      k.1.1 ∈ catLabels A.G ap.Mc (cat l) k.1.2 r (ap.bmask k.1.2 G j p) := fun k => by
-    have h := (Finset.mem_sigma.mp k.2).2
-    have h' := (mem_maxCells.mp h).1
-    exact Finset.mem_filter.mp h'
-  have hdata := fun k : {k // k ∈ K} => hfin A ap cat hT (hcs (hK k).1) l (hK k).2 hG hHed hdim
-    hC hδ hδ' ρ hρ hHs hdz hCz hHδ hδc
-  choose Ny hNy coef lam γ dv θv σ β hγ hdv hcount hσh hsum hlam happrox using hdata
-  set ζ : ℝ → ℝ := centerCut (A.vtag z) δ ρ
-  set cell : {k // k ∈ K} → Set ℝ := fun k => dyadicGridCell A.G k.1.2.1 k.1.2.2
-  set a₀ : {k // k ∈ K} → ℝ := fun k => dyadicGridLeft A.G k.1.2.1 k.1.2.2
-  set ψ : (Σ k : {k // k ∈ K}, Ny k) → ℝ → ℂ := fun m y => (ζ y : ℂ) *
-    (Real.fourierChar ((slotCoeff l : ℝ) * centerPhase (A.vtag z) ρ y) : ℂ) *
-    (Real.fourierChar (lam m.1 * (y - a₀ m.1) ^ 2 + γ m.1 m.2 * (y - a₀ m.1)) : ℂ)
-  set am : (Σ k : {k // k ∈ K}, Ny k) → ℝ → ℂ := fun m => (cell m.1).indicator fun _ =>
-    coef m.1 m.2
-  set E : Fin ap.Mc → Set ℝ := fun n => ⋃ I ∈ FM n, dyadicGridCell A.G I.1 I.2
-  set sf : ℝ → ℂ := fun y => ((ζ y : ℝ) : ℂ) ^ 2
-  set qf : Fin ap.Mc → ℝ → ℂ := fun n => (E n).indicator fun y =>
-    ∑ m ∈ Finset.univ.filter (fun m : (Σ k : {k // k ∈ K}, Ny k) => m.1.1.1 = n),
-      am m y * ψ m y - sf y * catAtom (cat l) n y
-  have hζm : Measurable ζ := centerCut_measurable _ _ _
-  have hζ1 : ∀ y, ‖(ζ y : ℂ)‖ ≤ 1 := fun y => by
-    rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (centerCut_mem _ _ _ y).1]
-    exact (centerCut_mem _ _ _ y).2
-  have hψm : ∀ m, Measurable (ψ m) := fun m => by
-    refine ((Complex.measurable_ofReal.comp hζm).mul ?_).mul ?_
-    · exact measurable_fourierChar_comp
-        (measurable_const.mul (centerPhase_measurable _ _))
-    · exact measurable_fourierChar_comp (by fun_prop)
-  have ham : ∀ m, Measurable (am m) := fun m =>
-    measurable_const.indicator (dyadicGridCell_measurable _ _ _)
-  have hEm : ∀ n, MeasurableSet (E n) := fun n =>
-    Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable _ _ _
-  have hsfm : Measurable sf := (Complex.measurable_ofReal.comp hζm).pow_const 2
-  have hsf1 : ∀ y, ‖sf y‖ ≤ 1 := fun y => by
-    simp only [sf, norm_pow]; exact pow_le_one₀ (norm_nonneg _) (hζ1 y)
-  have hqm : ∀ n, Measurable (qf n) := fun n => by
-    refine Measurable.indicator ?_ (hEm n)
-    refine (Finset.measurable_sum _ fun m _ => (ham m).mul (hψm m)).sub
-      (hsfm.mul (catAtom_measurable _ _))
-  -- the reduction of the sum over the modes of `n` to its first-match cell at `y`
-  have hred : ∀ n y (I₀ : ℤ × ℤ) (hI₀ : I₀ ∈ FM n) (hy : y ∈ dyadicGridCell A.G I₀.1 I₀.2),
-      ∑ m ∈ Finset.univ.filter (fun m : (Σ k : {k // k ∈ K}, Ny k) => m.1.1.1 = n),
-        am m y * ψ m y =
-      ∑ i, coef ⟨⟨n, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩ i *
-        ψ ⟨⟨⟨n, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩, i⟩ y := by
-    intro n y I₀ hI₀ hy
-    set k₀ : {k // k ∈ K} := ⟨⟨n, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩
-    rw [Finset.sum_filter, Fintype.sum_sigma, Finset.sum_eq_single k₀]
-    · refine Finset.sum_congr rfl fun i _ => ?_
-      simp only [k₀, ↓reduceIte, am, cell]
-      rw [Set.indicator_of_mem hy]
-    · intro k _ hk
-      refine Finset.sum_eq_zero fun i _ => ?_
-      split_ifs with h
-      · have hkI : k.1.2 ∈ FM n := h ▸ (Finset.mem_sigma.mp k.2).2
-        have hyk : y ∉ cell k := fun hyk => hk (Subtype.ext (Sigma.ext h (heq_of_eq
-          (maxCells_eq_of_mem hkI hI₀ hyk hy))))
-        simp only [am]; rw [Set.indicator_of_notMem hyk, zero_mul]
-      · rfl
-    · intro h; exact absurd (Finset.mem_univ k₀) h
-  have hqle : ∀ n y, ‖qf n y‖ ≤ δc := fun n y => by
-    by_cases hy : y ∈ E n
-    · simp only [qf]; rw [Set.indicator_of_mem hy]
-      obtain ⟨I₀, hI₀, hyI⟩ := Set.mem_iUnion₂.mp hy
-      rw [hred n y I₀ hI₀ hyI]
-      set k₀ : {k // k ∈ K} := ⟨⟨n, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩
-      have h := happrox k₀ y hyI
-      set u : ℂ := (Real.fourierChar ((slotCoeff l : ℝ) * centerPhase (A.vtag z) ρ y) : ℂ)
-      set w : ℂ := (Real.fourierChar (-(slotCoeff l : ℝ) * centerPhase (A.vtag z) ρ y) : ℂ)
-      have huw : u * w = 1 := by
-        simp only [u, w]
-        rw [← Circle.coe_mul, ← AddChar.map_add_eq_mul, show (slotCoeff l : ℝ) *
-          centerPhase (A.vtag z) ρ y + -(slotCoeff l : ℝ) * centerPhase (A.vtag z) ρ y = 0 by
-          ring, AddChar.map_zero_eq_one, Circle.coe_one]
-      have hu : ‖u‖ = 1 := Circle.norm_coe _
-      have e : ∑ i, coef k₀ i * ψ ⟨k₀, i⟩ y - sf y * catAtom (cat l) n y =
-          ((ζ y : ℂ) * u) * (∑ i, coef k₀ i * (Real.fourierChar (lam k₀ * (y - a₀ k₀) ^ 2 +
-            γ k₀ i * (y - a₀ k₀)) : ℂ) - catAtom (cat l) n y * ((ζ y : ℂ) * w)) := by
-        simp only [ψ, sf, mul_sub, Finset.mul_sum]
-        congr 1
-        · exact Finset.sum_congr rfl fun i _ => by ring
-        · linear_combination (-(catAtom (cat l) n y) * (ζ y : ℂ) ^ 2) * huw
-      rw [e, norm_mul, norm_mul, hu, mul_one]
-      exact (mul_le_mul (hζ1 y) h (norm_nonneg _) zero_le_one).trans (le_of_eq (one_mul _))
-    · simp only [qf]; rw [Set.indicator_of_notMem hy, norm_zero]; exact hδc.le
-  set Ncard : ℝ := (Fintype.card (Σ k : {k // k ∈ K}, Ny k) : ℝ)
-  set εM : (Σ k : {k // k ∈ K}, Ny k) → ℝ := fun m => (Ncard * (‖coef m.1 m.2‖ ^ 2 + 1))⁻¹
-  have hεM0 : ∀ m, 0 ≤ εM m := fun m => by positivity
-  have hterm : ∀ m y, εM m * ‖am m y‖ ^ 2 ≤ Ncard⁻¹ := fun m y => by
-    have h1 : ‖am m y‖ ≤ ‖coef m.1 m.2‖ := by
-      simp only [am]
-      by_cases h : y ∈ cell m.1
-      · rw [Set.indicator_of_mem h]
-      · rw [Set.indicator_of_notMem h, norm_zero]; exact norm_nonneg _
-    have h2 : ‖am m y‖ ^ 2 ≤ ‖coef m.1 m.2‖ ^ 2 + 1 := by
-      nlinarith [pow_le_pow_left₀ (norm_nonneg _) h1 2]
-    simp only [εM]
-    have hN : (0 : ℝ) ≤ Ncard := Nat.cast_nonneg _
-    rw [mul_inv, mul_assoc]
-    calc Ncard⁻¹ * ((‖coef m.1 m.2‖ ^ 2 + 1)⁻¹ * ‖am m y‖ ^ 2) ≤ Ncard⁻¹ * 1 := by
-          gcongr
-          rw [inv_mul_le_iff₀ (by positivity), mul_one]; exact h2
-      _ = Ncard⁻¹ := mul_one _
-  have hweights : ∀ (n : Fin ap.Mc) y, ∑ m ∈ Finset.univ.filter
-      (fun m : (Σ k : {k // k ∈ K}, Ny k) => m.1.1.1 = n), εM m * ‖am m y‖ ^ 2 ≤ 1 := by
-    intro n y
-    refine (Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ _)
-      fun m _ _ => mul_nonneg (hεM0 m) (sq_nonneg _)).trans ?_
-    refine (Finset.sum_le_card_nsmul _ _ _ fun m _ => hterm m y).trans ?_
-    rw [nsmul_eq_mul, Finset.card_univ]
-    by_cases h0 : Ncard = 0
-    · rw [h0]; simp
-    · rw [mul_inv_cancel₀ h0]
-  refine ⟨Σ k : {k // k ∈ K}, Ny k, inferInstance,
-    { own := fun m => m.1.1.1
-      s := sf
-      q := qf
-      a := am
-      εP := fun _ => 1
-      εM := εM
-      δ := δc
-      a_meas := ham
-      s_meas := hsfm
-      s_le := hsf1
-      q_meas := hqm
-      q_le := hqle
-      εP_pos := fun _ => one_pos
-      q_sum := fun y => by
-        calc ∑ n, ‖qf n y‖ ^ 2 / 1 ≤ ∑ _n : Fin ap.Mc, δc ^ 2 := Finset.sum_le_sum fun n _ => by
-              rw [div_one]; exact pow_le_pow_left₀ (norm_nonneg _) (hqle n y) 2
-          _ = δc ^ 2 * ap.Mc := by
-              rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]; ring
-          _ ≤ 1 := hδcM
-      εM_nonneg := hεM0
-      weights := fun n y => by simpa using hweights n y }, ψ,
-    fun _ => rfl, rfl, fun m => ?_, fun _ => rfl, hψm, ?_, ?_, ?_, fun y => ?_⟩
-  · have hN : (0 : ℝ) < Ncard := by
-      have : 0 < Fintype.card (Σ k : {k // k ∈ K}, Ny k) := Fintype.card_pos_iff.mpr ⟨m⟩
-      simp only [Ncard]; exact_mod_cast this
-    change 0 < (Ncard * (‖coef m.1 m.2‖ ^ 2 + 1))⁻¹
-    positivity
-  · intro n y hy m hm
-    have hk : m.1.1.2 ∈ FM n := hm ▸ (Finset.mem_sigma.mp m.1.2).2
-    change am m y = 0
-    simp only [am]; rw [Set.indicator_of_notMem (hy _ hk)]
-  · intro n y hy
-    change qf n y = _
-    simp only [qf]
-    obtain ⟨I, hI, hyI⟩ := hy
-    rw [Set.indicator_of_mem (Set.mem_iUnion₂.mpr ⟨I, hI, hyI⟩)]
-  · have hσB : ∀ (k : {k // k ∈ K}) (i : Ny k) j, (rationalHeight (σ k i j) : ℝ) ≤
-        Real.exp (D * X ^ D) * (1 + 4 * (2 * dB + 1) * max 1 (4 * Real.exp (D * X ^ D) / δc)) := by
-      intro k i j
-      refine (hσh k i j).trans (mul_le_mul_of_nonneg_left ?_ (Real.exp_pos _).le)
-      have h1 : ((dv k + (A.vtag z).dim : ℕ) : ℝ) ≤ 2 * dB := by
-        have := hdv k; have := hdim z
-        exact_mod_cast (by omega : dv k + (A.vtag z).dim ≤ 2 * dB)
-      nlinarith [le_max_left (1 : ℝ) (4 * Real.exp (D * X ^ D) / δc)]
-    refine ⟨fun m => m.1.1.2, fun m => lam m.1, fun m => γ m.1 m.2, fun m => ⟨(Finset.mem_sigma.mp
-      m.1.2).2, fun y => ?_, hlam m.1, fun y => rfl⟩, fun y => ?_, {k // k ∈ K}, fun m => m.1,
-      dv, θv, β,
-      fun m => σ m.1 m.2, fun m m' hown hcell => ?_, fun m m' hk => ?_, hdv,
-      fun m i => hσB m.1 m.2 i, fun m => hγ m.1 m.2, fun m m' hk => ?_, fun m m' hk => ?_⟩
-    · change am m y = (cell m.1).indicator (fun _ => am m (a₀ m.1)) y
-      have hl : a₀ m.1 ∈ cell m.1 := dyadicGridCell_left_mem A.G _ _
-      simp only [am, Set.indicator_of_mem hl]
-    · -- the number of modes whose first-match cell contains `y`
-      have hbase : (1 : ℝ) ≤ 4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1 := by
-        have := le_max_left (1 : ℝ) (4 * Real.exp (D * X ^ D) / δc); linarith
-      have hNk : ∀ k, (Fintype.card (Ny k) : ℝ) ≤ Real.exp (D * X ^ D) *
-          (4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1) ^ (4 * dB) := fun k =>
-        (hcount k).trans (mul_le_mul_of_nonneg_left (pow_le_pow_right₀ hbase (by
-          have := hdv k; have := hdim z; omega)) (Real.exp_pos _).le)
-      rw [Finset.card_eq_sum_card_fiberwise (f := fun m => m.1.1.1) (t := Finset.univ)
-        (fun _ _ => Finset.mem_univ _)]
-      push_cast
-      refine (Finset.sum_le_sum fun n _ => ?_).trans (le_of_eq (by
-        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]))
-      by_cases hy : ∃ I ∈ FM n, y ∈ dyadicGridCell A.G I.1 I.2
-      · obtain ⟨I₀, hI₀, hyI⟩ := hy
-        set k₀ : {k // k ∈ K} := ⟨⟨n, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩
-        have hsub : ((Finset.univ.filter fun m : (Σ k : {k // k ∈ K}, Ny k) =>
-            y ∈ dyadicGridCell A.G m.1.1.2.1 m.1.1.2.2).filter fun m => m.1.1.1 = n) ⊆
-            (Finset.univ : Finset (Ny k₀)).map ⟨fun i => (⟨k₀, i⟩ : Σ k : {k // k ∈ K}, Ny k),
-              fun i i' h => by simpa using h⟩ := by
-          intro m hm
-          obtain ⟨hm1, hm2⟩ := Finset.mem_filter.mp hm
-          have hyc := (Finset.mem_filter.mp hm1).2
-          have hkI : m.1.1.2 ∈ FM n := hm2 ▸ (Finset.mem_sigma.mp m.1.2).2
-          have heq : m.1.1.2 = I₀ := maxCells_eq_of_mem hkI hI₀ hyc hyI
-          have hk : m.1 = k₀ := Subtype.ext (Sigma.ext hm2 (heq_of_eq heq))
-          rcases m with ⟨k, i⟩
-          simp only at hk
-          subst hk
-          exact Finset.mem_map.mpr ⟨i, Finset.mem_univ _, rfl⟩
-        refine (Nat.cast_le.mpr (Finset.card_le_card hsub)).trans ?_
-        rw [Finset.card_map, Finset.card_univ]; exact hNk k₀
-      · have hempty : ((Finset.univ.filter fun m : (Σ k : {k // k ∈ K}, Ny k) =>
-            y ∈ dyadicGridCell A.G m.1.1.2.1 m.1.1.2.2).filter fun m => m.1.1.1 = n) = ∅ := by
-          refine Finset.eq_empty_of_forall_notMem fun m hm => ?_
-          obtain ⟨hm1, hm2⟩ := Finset.mem_filter.mp hm
-          have hkI : m.1.1.2 ∈ FM n := hm2 ▸ (Finset.mem_sigma.mp m.1.2).2
-          exact hy ⟨_, hkI, (Finset.mem_filter.mp hm1).2⟩
-        rw [hempty, Finset.card_empty, Nat.cast_zero]
-        exact mul_nonneg (Real.exp_pos _).le (pow_nonneg (by linarith) _)
-    · exact Subtype.ext (Sigma.ext hown (heq_of_eq hcell))
-    · exact congrArg lam hk
-    · exact ⟨congrArg (fun k : {k // k ∈ K} => k.1.1) hk,
-        congrArg (fun k : {k // k ∈ K} => k.1.2) hk⟩
-    · obtain ⟨k, i⟩ := m
-      obtain ⟨k', i'⟩ := m'
-      simp only at hk
-      subst hk
-      refine ⟨σ k i, σ k i', hσB k i, hσB k i', ?_⟩
-      change γ k i - γ k i' = _
-      rw [hγ k i, hγ k i']
-      simp only [Pi.sub_apply, Rat.cast_sub, sub_mul, Finset.sum_sub_distrib]
-      ring
-  · -- the number of modes alive at `y`
-    set bnd : ℝ := Real.exp (D * X ^ D) * (4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1) ^
-      (4 * dB)
-    have hbase : (1 : ℝ) ≤ 4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1 := by
-      have := le_max_left (1 : ℝ) (4 * Real.exp (D * X ^ D) / δc); linarith
-    have hNk : ∀ k, (Fintype.card (Ny k) : ℝ) ≤ bnd := fun k =>
-      (hcount k).trans (mul_le_mul_of_nonneg_left (pow_le_pow_right₀ hbase (by
-        have := hdv k; have := hdim z; omega)) (Real.exp_pos _).le)
-    change ((Finset.univ.filter fun m => am m y ≠ 0).card : ℝ) ≤ _
-    rw [Finset.card_eq_sum_card_fiberwise (f := fun m => m.1.1.1) (t := Finset.univ)
-      (fun _ _ => Finset.mem_univ _)]
-    push_cast
-    have hfib : ∀ n : Fin ap.Mc, (((Finset.univ.filter fun m => am m y ≠ 0).filter
-        fun m => m.1.1.1 = n).card : ℝ) ≤ bnd := by
-      intro n
-      by_cases hy : ∃ I ∈ FM n, y ∈ dyadicGridCell A.G I.1 I.2
-      · obtain ⟨I₀, hI₀, hyI⟩ := hy
-        set k₀ : {k // k ∈ K} := ⟨⟨n, I₀⟩, Finset.mem_sigma.mpr ⟨Finset.mem_univ _, hI₀⟩⟩
-        have hsub : ((Finset.univ.filter fun m => am m y ≠ 0).filter fun m => m.1.1.1 = n) ⊆
-            (Finset.univ : Finset (Ny k₀)).map ⟨fun i => (⟨k₀, i⟩ : Σ k : {k // k ∈ K}, Ny k),
-              fun i i' h => by simpa using h⟩ := by
-          intro m hm
-          obtain ⟨hm1, hm2⟩ := Finset.mem_filter.mp hm
-          have hma := (Finset.mem_filter.mp hm1).2
-          have hyc : y ∈ cell m.1 := by
-            by_contra hc; exact hma (by simp only [am]; rw [Set.indicator_of_notMem hc])
-          have hkI : m.1.1.2 ∈ FM n := hm2 ▸ (Finset.mem_sigma.mp m.1.2).2
-          have heq : m.1.1.2 = I₀ := maxCells_eq_of_mem hkI hI₀ hyc hyI
-          have hk : m.1 = k₀ := Subtype.ext (Sigma.ext hm2 (heq_of_eq heq))
-          rcases m with ⟨k, i⟩
-          simp only at hk
-          subst hk
-          exact Finset.mem_map.mpr ⟨i, Finset.mem_univ _, rfl⟩
-        refine (Nat.cast_le.mpr (Finset.card_le_card hsub)).trans ?_
-        rw [Finset.card_map, Finset.card_univ]; exact hNk k₀
-      · have hempty : ((Finset.univ.filter fun m => am m y ≠ 0).filter
-            fun m => m.1.1.1 = n) = ∅ := by
-          refine Finset.eq_empty_of_forall_notMem fun m hm => ?_
-          obtain ⟨hm1, hm2⟩ := Finset.mem_filter.mp hm
-          have hma := (Finset.mem_filter.mp hm1).2
-          have hkI : m.1.1.2 ∈ FM n := hm2 ▸ (Finset.mem_sigma.mp m.1.2).2
-          have hyc : y ∈ cell m.1 := by
-            by_contra hc; exact hma (by simp only [am]; rw [Set.indicator_of_notMem hc])
-          exact hy ⟨_, hkI, hyc⟩
-        rw [hempty, Finset.card_empty, Nat.cast_zero]
-        exact (mul_nonneg (Real.exp_pos _).le (pow_nonneg (by linarith) _))
-    refine (Finset.sum_le_sum fun n _ => hfib n).trans ?_
-    rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
-
-end AttemptParams
-
-end ActiveSetup
 
 /-! ### Bounded expansions in a basis (blueprint line 1958: "Expressing a height-`D_*` vector in a
 basis of such vectors in dimension at most `d_max` costs coefficients and common denominator at
@@ -2883,10 +1982,6 @@ variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc)
 
 /-! ### The frozen evaluation on a pre-cell as a mode synthesis (blueprint lines 1934-1937, 1959) -/
 
-theorem a_zero (m : Ms.Md) {y : ℝ}
-    (hy : y ∉ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2) : Ms.L.a m y = 0 := by
-  rw [Ms.a_ind, Set.indicator_of_notMem hy]
-
 theorem wave_measurable (m : Ms.Md) : Measurable (Ms.wave m) :=
   modeWave_measurable _ _ _ _ _ _ _
 
@@ -2897,157 +1992,6 @@ theorem wave_norm_le (m : Ms.Md) (y : ℝ) : ‖Ms.wave m y‖ ≤ 1 :=
 noncomputable def cellMode (J : ℤ × ℤ) (m : Ms.Md) : ColumnL2 Ms.Md :=
   (augMode_memLp (dyadicGridCell_measurable Gd J.1 J.2) (dyadicGridCell_volume_ne_top Gd J)
     (Ms.wave_measurable m) (Ms.wave_norm_le m) (Ms.L.εM m) m).toLp
-
-/-- The catalog output at a decision cell as a main augmented value. -/
-theorem sum_fitColumnValue_eq {Tg : Type*} (cat : List (CatCol Tg)) (Lb : Finset (Fin Mc))
-    (β : Fin Mc → ℂ) (y : ℝ) :
-    ∑ n ∈ Lb, β n • fitColumnValue (catAtom cat n) n y =
-      augmentedMain (fun n : Fin Mc => catAtom cat n y) (fun _ => 1)
-        (fun n : Fin Mc => if n ∈ Lb then β n else 0) := by
-  classical
-  ext o
-  rcases o with _ | Φ
-  · simp only [augmentedMain, WithLp.ofLp_sum, Finset.sum_apply, PiLp.smul_apply, fitColumnValue,
-      PiLp.add_apply, smul_eq_mul]
-    rw [← Finset.sum_filter_add_sum_filter_not Finset.univ (· ∈ Lb)]
-    simp only [Finset.filter_mem_eq_inter, Finset.univ_inter]
-    rw [Finset.sum_eq_zero (s := Finset.univ.filter fun n => n ∉ Lb)
-      (fun n hn => by simp [(Finset.mem_filter.mp hn).2]), add_zero]
-    refine Finset.sum_congr rfl fun n hn => ?_
-    simp [hn]
-  · simp only [augmentedMain, WithLp.ofLp_sum, Finset.sum_apply, PiLp.smul_apply, fitColumnValue,
-      PiLp.add_apply, smul_eq_mul, Real.sqrt_one, Complex.ofReal_one, one_mul]
-    by_cases hΦ : Φ ∈ Lb
-    · rw [Finset.sum_eq_single Φ]
-      · simp [hΦ]
-      · intro n _ hn; simp [Ne.symm hn]
-      · intro h; exact absurd hΦ h
-    · rw [Finset.sum_eq_zero]
-      · simp [hΦ]
-      · intro n hn
-        have : Φ ≠ n := fun h => hΦ (h ▸ hn)
-        simp [this]
-
-theorem augMode_eq_augmentedMode (J : Set ℝ) (ψ : Ms.Md → ℝ → ℂ) (εM : Ms.Md → ℝ) (m : Ms.Md)
-    {y : ℝ} (hy : y ∈ J) :
-    augMode J (ψ m) (εM m) m y = augmentedMode (fun m => ψ m y) εM m := by
-  classical
-  rw [augMode, Set.indicator_of_mem hy]
-  ext o
-  rcases o with _ | m'
-  · simp [augmentedMode]
-  · by_cases h : m' = m
-    · subst h; simp [augmentedMode]
-    · have : (some m' : Option Ms.Md) ≠ some m := fun h' => h (Option.some_injective _ h')
-      simp [augmentedMode, h, this]
-
-open Classical in
-/-- Blueprint lines 1934-1937 and 1959: on a pre-cell `J` inside a decision cell `u`, the mode lift
-of a catalog output with coefficients `β` on `u` is exactly the synthesis of the modes whose
-first-match cell contains `u`, with coefficients `β_{own m} a_m`, when the physical corrections
-are exact on `u` for the labels involved and every first-match cell of these labels either
-contains `u` or misses it. -/
-theorem op_synthesis {Tg : Type*} (cat : List (CatCol Tg)) (hεP : ∀ Φ, Ms.L.εP Φ = 1)
-    {u J : ℤ × ℤ} (hJu : dyadicGridCell Gd J.1 J.2 ⊆ dyadicGridCell Gd u.1 u.2)
-    (Lb : Finset (Fin Mc)) (β : Fin Mc → ℂ)
-    (hq : ∀ n ∈ Lb, ∀ y ∈ dyadicGridCell Gd u.1 u.2, Ms.L.q n y =
-      ∑ m ∈ Finset.univ.filter (fun m => Ms.L.own m = n), Ms.L.a m y * Ms.wave m y -
-        Ms.L.s y * catAtom cat n y)
-    (hcov : ∀ m, Ms.L.own m ∈ Lb →
-      dyadicGridCell Gd u.1 u.2 ⊆ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2 ∨
-        Disjoint (dyadicGridCell Gd u.1 u.2)
-          (dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2)) :
-    columnL2Restriction (dyadicGridCell Gd J.1 J.2) (dyadicGridCell_measurable Gd J.1 J.2)
-        (Ms.L.op (∑ n ∈ Lb, β n • fitColumn (dyadicGridCell Gd u.1 u.2) (catAtom cat n) n)) =
-      ∑ m ∈ Finset.univ.filter (fun m => Ms.L.own m ∈ Lb ∧
-          dyadicGridCell Gd u.1 u.2 ⊆ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2),
-        (β (Ms.L.own m) * Ms.L.a m (dyadicGridLeft Gd (Ms.cellOf m).1 (Ms.cellOf m).2)) •
-          Ms.cellMode J m := by
-  set Z : ColumnL2 (Fin Mc) :=
-    ∑ n ∈ Lb, β n • fitColumn (dyadicGridCell Gd u.1 u.2) (catAtom cat n) n
-  set T := Finset.univ.filter (fun m => Ms.L.own m ∈ Lb ∧
-    dyadicGridCell Gd u.1 u.2 ⊆ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2)
-  set c : Ms.Md → ℂ := fun m =>
-    β (Ms.L.own m) * Ms.L.a m (dyadicGridLeft Gd (Ms.cellOf m).1 (Ms.cellOf m).2)
-  -- pointwise representative of the catalog output
-  have hZ : (Z : ℝ → ColumnHilbert (Fin Mc)) =ᵐ[volume] fun y =>
-      ∑ n ∈ Lb, β n • (dyadicGridCell Gd u.1 u.2).indicator
-        (fitColumnValue (catAtom cat n) n) y := by
-    refine (Lp.coeFn_fun_finsetSum _ _).trans ?_
-    have hall : ∀ᵐ y ∂volume, ∀ n ∈ Lb,
-        ((β n • fitColumn (dyadicGridCell Gd u.1 u.2) (catAtom cat n) n : ColumnL2 (Fin Mc)) :
-          ℝ → ColumnHilbert (Fin Mc)) y =
-        β n • (dyadicGridCell Gd u.1 u.2).indicator (fitColumnValue (catAtom cat n) n) y := by
-      rw [Filter.eventually_all_finset]
-      intro n _
-      filter_upwards [Lp.coeFn_smul (β n) (fitColumn (dyadicGridCell Gd u.1 u.2)
-        (catAtom cat n) n), fitColumn_coeFn (catAtom_admissible (G := Gd) cat n u) n]
-        with y h1 h2
-      rw [h1, Pi.smul_apply, h2]
-    filter_upwards [hall] with y hy
-    exact Finset.sum_congr rfl hy
-  -- pointwise representative of the right side
-  have hR : ((∑ m ∈ T, c m • Ms.cellMode J m : ColumnL2 Ms.Md) : ℝ → ColumnHilbert Ms.Md)
-      =ᵐ[volume] fun y => ∑ m ∈ T, c m • augMode (dyadicGridCell Gd J.1 J.2) (Ms.wave m)
-        (Ms.L.εM m) m y := by
-    refine (Lp.coeFn_fun_finsetSum _ _).trans ?_
-    have hall : ∀ᵐ y ∂volume, ∀ m ∈ T,
-        ((c m • Ms.cellMode J m : ColumnL2 Ms.Md) : ℝ → ColumnHilbert Ms.Md) y =
-        c m • augMode (dyadicGridCell Gd J.1 J.2) (Ms.wave m) (Ms.L.εM m) m y := by
-      rw [Filter.eventually_all_finset]
-      intro m _
-      filter_upwards [Lp.coeFn_smul (c m) (Ms.cellMode J m), MemLp.coeFn_toLp
-        (augMode_memLp (dyadicGridCell_measurable Gd J.1 J.2) (dyadicGridCell_volume_ne_top Gd J)
-          (Ms.wave_measurable m) (Ms.wave_norm_le m) (Ms.L.εM m) m)] with y h1 h2
-      rw [h1, Pi.smul_apply]
-      congr 1
-    filter_upwards [hall] with y hy
-    exact Finset.sum_congr rfl hy
-  refine Lp.ext ?_
-  change (columnL2Indicator (dyadicGridCell Gd J.1 J.2) (dyadicGridCell_measurable Gd J.1 J.2)
-    (Ms.L.op Z) : ℝ → ColumnHilbert Ms.Md) =ᵐ[volume] _
-  filter_upwards [columnL2Indicator_coeFn (dyadicGridCell Gd J.1 J.2)
-    (dyadicGridCell_measurable Gd J.1 J.2) (Ms.L.op Z), Ms.L.op_coeFn Z, hZ, hR] with y h1 h2 h3 h4
-  rw [h1, h4]
-  by_cases hyJ : y ∈ dyadicGridCell Gd J.1 J.2
-  · have hyu : y ∈ dyadicGridCell Gd u.1 u.2 := hJu hyJ
-    rw [Set.indicator_of_mem hyJ, h2, h3]
-    have e1 : ∑ n ∈ Lb, β n • (dyadicGridCell Gd u.1 u.2).indicator
-        (fitColumnValue (catAtom cat n) n) y = ∑ n ∈ Lb, β n • fitColumnValue (catAtom cat n) n y :=
-      Finset.sum_congr rfl fun n _ => by rw [Set.indicator_of_mem hyu]
-    rw [e1, sum_fitColumnValue_eq]
-    change modeLift Ms.L.own (Ms.L.s y) (fun Φ => Ms.L.q Φ y) (fun m => Ms.L.a m y) Ms.L.εP
-      Ms.L.εM _ = _
-    rw [show Ms.L.εP = fun _ => 1 from funext hεP]
-    rw [modeLift_synthesis_supp Ms.L.own (Ms.L.s y) (fun n : Fin Mc => catAtom cat n y)
-      (fun m => Ms.L.a m y) (fun m => Ms.wave m y) (fun _ => 1) (fun _ => one_pos)
-      Ms.L.εM (fun Φ => Ms.L.q Φ y) _ (fun Φ hΦ => by
-        have hΦL : Φ ∈ Lb := by by_contra h; exact hΦ (by simp [h])
-        exact hq Φ hΦL y hyu)]
-    rw [← Finset.sum_filter_add_sum_filter_not Finset.univ
-      (fun m => Ms.L.own m ∈ Lb ∧ dyadicGridCell Gd u.1 u.2 ⊆
-        dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2)]
-    rw [Finset.sum_eq_zero (s := Finset.univ.filter fun m => ¬ (Ms.L.own m ∈ Lb ∧
-        dyadicGridCell Gd u.1 u.2 ⊆ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2))
-      (fun m hm => ?_), add_zero]
-    · refine Finset.sum_congr rfl fun m hm => ?_
-      obtain ⟨hmL, hmu⟩ := (Finset.mem_filter.mp hm).2
-      have hym : y ∈ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2 := hmu hyu
-      rw [augMode_eq_augmentedMode Ms _ _ _ _ hyJ]
-      simp only [c, hmL, ↓reduceIte]
-      rw [Ms.a_ind m y, Set.indicator_of_mem hym]
-    · have hm' := (Finset.mem_filter.mp hm).2
-      by_cases hmL : Ms.L.own m ∈ Lb
-      · have hdis : Disjoint (dyadicGridCell Gd u.1 u.2)
-            (dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2) :=
-          (hcov m hmL).resolve_left fun h => hm' ⟨hmL, h⟩
-        have hym : y ∉ dyadicGridCell Gd (Ms.cellOf m).1 (Ms.cellOf m).2 := fun h =>
-          Set.disjoint_left.mp hdis hyu h
-        simp only [Ms.a_zero m hym, mul_zero, zero_smul]
-      · simp [hmL]
-  · rw [Set.indicator_of_notMem hyJ]
-    refine (Finset.sum_eq_zero fun m _ => ?_).symm
-    simp only [augMode, Set.indicator_of_notMem hyJ, smul_zero]
 
 end ModeSystem
 
@@ -3063,33 +2007,6 @@ open scoped FourierTransform ComplexConjugate ENNReal
 
 /-! ### Frozen evaluations as lifted ball outputs (blueprint lines 1959, 2112-2116) -/
 
-theorem exists_maxCells_above (G : RealDyadicGrid) {C : Finset (ℤ × ℤ)} {u : ℤ × ℤ}
-    (hu : u ∈ C) : ∃ I ∈ maxCells G C, dyadicGridCell G u.1 u.2 ⊆ dyadicGridCell G I.1 I.2 := by
-  classical
-  set D := C.filter fun I => dyadicGridCell G u.1 u.2 ⊆ dyadicGridCell G I.1 I.2
-  have hD : D.Nonempty := ⟨u, Finset.mem_filter.mpr ⟨hu, subset_rfl⟩⟩
-  obtain ⟨I, hI, hmin⟩ := D.exists_min_image Prod.fst hD
-  obtain ⟨hIC, huI⟩ := Finset.mem_filter.mp hI
-  refine ⟨I, mem_maxCells.mpr ⟨hIC, fun J hJ hIJ => ?_⟩, huI⟩
-  have hJD : J ∈ D := Finset.mem_filter.mpr ⟨hJ, huI.trans hIJ⟩
-  have h1 := hmin J hJD
-  have h2 := dyadicGridCell_depth_le_of_subset G I J hIJ
-  exact dyadicGridCell_eq_of_meet G (by omega)
-    ⟨_, hIJ (dyadicGridCell_left_mem G I.1 I.2), dyadicGridCell_left_mem G I.1 I.2⟩
-
-namespace ModeSystem
-variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc)
-
-open Classical in
-/-- The frozen coefficients of a catalog output with coefficients `β`: `β_{own m} a_m` for the
-modes of the labels used. -/
-noncomputable def frozenCoef (Lb : Finset (Fin Mc)) (β : Fin Mc → ℂ) (m : Ms.Md) : ℂ :=
-  if Ms.L.own m ∈ Lb then
-    β (Ms.L.own m) * Ms.L.a m (dyadicGridLeft Gd (Ms.cellOf m).1 (Ms.cellOf m).2)
-  else 0
-
-end ModeSystem
-
 end Auto
 
 end
@@ -3099,119 +2016,6 @@ section
 namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
-
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
-
-open Classical in
-/-- Ball masks increase with the pad. -/
-theorem bmask_pad_mono {I : ℤ × ℤ} {G : A.Grp} {j p p' : ℕ} (hp : p ≤ p') {x : A.Vtx}
-    (hx : ap.bmask I G j p x) : ap.bmask I G j p' x :=
-  ap.K.mask_pad_mono A.admT A.vtxBound (by omega) hx
-
-end AttemptParams
-
-namespace AttemptParams
-
-/-- The bound `e^{D X^D} (4 max(1, 4 e^{D X^D}/δ_c) + 1)^{4 d_B}` on the number of modes of one
-primary on its first-match cell (blueprint line 1922, counted finite expansions). -/
-noncomputable def modeCount (D : ℕ) (X δc : ℝ) (dB : ℕ) : ℝ :=
-  Real.exp (D * X ^ D) * (4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1) ^ (4 * dB)
-
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
-
-open Classical in
-/-- Blueprint line 1959 (`Z̃_{l,G,b} = R Z_{u_b}` on `J`), exact form: for the ball output of a
-group at a decision cell `U`, there are frozen coefficients such that on every pre-cell `J ⊆ U`
-the lifted ball output is exactly the synthesis of the modes alive at `U`. -/
-theorem ballAt_frozen_exact (cat : List (CatCol A.Vtx)) (cs : Finset (ℤ × ℤ)) (r j : ℕ)
-    (G : A.Grp) (Ms : ModeSystem A.G ap.Mc) (hεP : ∀ Φ, Ms.L.εP Φ = 1)
-    (hq : ∀ n y, (∃ I ∈ maxCells A.G (cs.filter fun I =>
-        n ∈ catLabels A.G ap.Mc cat I r (ap.bmask I G j (ap.P - 1))),
-          y ∈ dyadicGridCell A.G I.1 I.2) →
-      Ms.L.q n y = ∑ m ∈ Finset.univ.filter (fun m => Ms.L.own m = n),
-        Ms.L.a m y * Ms.wave m y - Ms.L.s y * catAtom cat n y)
-    (hcell : ∀ m, Ms.cellOf m ∈ maxCells A.G (cs.filter fun I =>
-      Ms.L.own m ∈ catLabels A.G ap.Mc cat I r (ap.bmask I G j (ap.P - 1))))
-    {U : ℤ × ℤ} (hU : U ∈ cs) (x : ColumnL2 (Fin ap.Mc)) :
-    ∃ c : Ms.Md → ℂ, ∀ {J : ℤ × ℤ}, dyadicGridCell A.G J.1 J.2 ⊆ dyadicGridCell A.G U.1 U.2 →
-      columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
-          (Ms.L.op (ap.ballAt cat r j G U x)) =
-        ∑ m ∈ Ms.alive U, c m • Ms.cellMode J m := by
-  obtain ⟨β, -, hrep⟩ := opAvg_catProj_l2 (G := A.G) (Mc := ap.Mc) cat U r
-    (fun p : Fin ap.P => ap.bmask U G j p) (ap.bmask U G j (ap.P - 1))
-    (fun p x hx => ap.bmask_pad_mono (by have := p.2; omega) hx) x
-  set Lb := catLabels A.G ap.Mc cat U r (ap.bmask U G j (ap.P - 1))
-  have hball : ap.ballAt cat r j G U x =
-      ∑ n ∈ Lb, β n • fitColumn (dyadicGridCell A.G U.1 U.2) (catAtom cat n) n := hrep
-  refine ⟨Ms.frozenCoef Lb β, fun {J} hJU => ?_⟩
-  set C : Fin ap.Mc → Finset (ℤ × ℤ) := fun n => cs.filter fun I =>
-    n ∈ catLabels A.G ap.Mc cat I r (ap.bmask I G j (ap.P - 1))
-  have hLb : ∀ n ∈ Lb, U ∈ C n := fun n hn => Finset.mem_filter.mpr ⟨hU, hn⟩
-  have hq' : ∀ n ∈ Lb, ∀ y ∈ dyadicGridCell A.G U.1 U.2, Ms.L.q n y =
-      ∑ m ∈ Finset.univ.filter (fun m => Ms.L.own m = n), Ms.L.a m y * Ms.wave m y -
-        Ms.L.s y * catAtom cat n y := by
-    intro n hn y hy
-    obtain ⟨I, hI, huI⟩ := exists_maxCells_above A.G (hLb n hn)
-    exact hq n y ⟨I, hI, huI hy⟩
-  have hcov : ∀ m, Ms.L.own m ∈ Lb →
-      dyadicGridCell A.G U.1 U.2 ⊆ dyadicGridCell A.G (Ms.cellOf m).1 (Ms.cellOf m).2 ∨
-        Disjoint (dyadicGridCell A.G U.1 U.2)
-          (dyadicGridCell A.G (Ms.cellOf m).1 (Ms.cellOf m).2) := by
-    intro m hm
-    have huC := hLb _ hm
-    obtain ⟨-, hmax⟩ := mem_maxCells.mp (hcell m)
-    rcases le_total (Ms.cellOf m).1 U.1 with h | h
-    · rcases dyadicGridCell_nested_or_disjoint_of_le A.G h (Ms.cellOf m).2 U.2 with hd | hs
-      · exact Or.inr hd.symm
-      · exact Or.inl hs
-    · rcases dyadicGridCell_nested_or_disjoint_of_le A.G h U.2 (Ms.cellOf m).2 with hd | hs
-      · exact Or.inr hd
-      · have := hmax U huC hs
-        rw [this]
-        exact Or.inl subset_rfl
-  rw [hball, Ms.op_synthesis cat hεP hJU Lb β hq' hcov]
-  simp only [ModeSystem.frozenCoef, ite_smul, zero_smul]
-  rw [← Finset.sum_filter]
-  refine Finset.sum_congr ?_ fun _ _ => rfl
-  ext m
-  simp only [Finset.mem_filter, Ms.mem_alive, Finset.mem_univ, true_and]
-  tauto
-
-end AttemptParams
-
-end ActiveSetup
-
-/-- Blueprint line 1942 ("for fixed carries the right side is an integer character on
-`(ϑ y_{l'}, ϑ t)` for any anchor `l'`, because `Q₀` clears `C_z`"): with `ϑ = θ / Q₀`, `Q₀ C`
-integral and integer carries `k_j`, the carry phase `Σ_j c_j (θ y_j)ᵀ C k_j` at `y_j = x + j t`
-equals `N · (ϑ y_{l'}) + M · (ϑ t)` for integer vectors `N, M`. -/
-theorem gauge_char_int {d : ℕ} (θ : Fin d → ℝ) (C : Matrix (Fin d) (Fin d) ℚ) {Q0 : ℕ}
-    (hQ0 : 0 < Q0) (hQ : ∀ a b, ∃ z : ℤ, (Q0 : ℝ) * (C a b : ℝ) = z)
-    (k : Fin 4 → Fin d → ℝ) (hk : ∀ j a, ∃ n : ℤ, k j a = n) (x t : ℝ) (l' : Fin 4) :
-    ∃ N M : Fin d → ℤ, ∑ j : Fin 4, (slotCoeff j : ℝ) *
-        chartMatrixPhase C (fun a => θ a * (x + ((j : ℕ) : ℝ) * t)) (k j) =
-      ∑ a, (θ a / Q0 * (x + ((l' : ℕ) : ℝ) * t)) * N a + ∑ a, (θ a / Q0 * t) * M a := by
-  choose z hz using hQ
-  choose n hn using hk
-  have hQ0' : (Q0 : ℝ) ≠ 0 := by exact_mod_cast hQ0.ne'
-  refine ⟨fun a => ∑ j : Fin 4, ∑ b, slotCoeff j * z a b * n j b,
-    fun a => ∑ j : Fin 4, ∑ b, slotCoeff j * (((j : ℕ) : ℤ) - ((l' : ℕ) : ℤ)) * z a b * n j b, ?_⟩
-  simp only [chartMatrixPhase, Finset.mul_sum]
-  push_cast
-  simp only [Finset.mul_sum]
-  rw [← Finset.sum_add_distrib]
-  rw [Finset.sum_comm]
-  refine Finset.sum_congr rfl fun a _ => ?_
-  rw [← Finset.sum_add_distrib]
-  refine Finset.sum_congr rfl fun j _ => ?_
-  rw [← Finset.sum_add_distrib]
-  refine Finset.sum_congr rfl fun b _ => ?_
-  rw [hn j b, ← hz a b]
-  field_simp
-  ring
 
 section GaugeMultiplier
 variable {d : ℕ}
@@ -3687,48 +2491,6 @@ theorem gaugeMult_periodic (δ : ℝ) (Q0 : ℕ) (l' : Fin 4) (C : Matrix (Fin d
 
 end GaugeMultiplier6
 
-/-- Truncation of a smooth periodic function with a derivative bound `A` of order `d + 1` and
-supremum bound `B`: its Fourier sum over the box `|v|_∞ ≤ 2^(K+1)` approximates it uniformly
-within `2 · 7^d A √d^(d+1) / 2^K`, with coefficients bounded by `B`. -/
-theorem periodic_truncate {d : ℕ} (hd : 1 ≤ d) (f : (Fin d → ℝ) → ℂ) (hf : ContDiff ℝ (⊤ : ℕ∞) f)
-    (hper : ∀ x (j : Fin d → ℤ), f (x + fun i => (j i : ℝ)) = f x) {A B : ℝ} (hA : 0 ≤ A)
-    (hAd : ∀ x, ‖iteratedFDeriv ℝ (d + 1) f x‖ ≤ A) (hB : ∀ x, ‖f x‖ ≤ B) (K : ℕ) :
-    ∃ c : (Fin d → ℤ) → ℂ, (∀ v, ‖c v‖ ≤ B) ∧ ∀ w,
-      ‖f w - ∑ v ∈ frequencyBox d (2 ^ (K + 1)),
-        c v * (Real.fourierChar (∑ i, (v i : ℝ) * w i) : ℂ)‖ ≤
-      2 * ((7 : ℝ) ^ d * A * Real.sqrt d ^ (d + 1)) / 2 ^ K := by
-  obtain ⟨hsum, hsumm, hdecay, hbd⟩ := periodic_fourier_expansion_of_fderiv (m := d + 1) (A := A)
-    (B := B) hd (Nat.lt_succ_self d) f hf hper hAd hB
-  set c := periodicFourierCoeff f
-  clear_value c
-  refine ⟨c, hbd, fun w => ?_⟩
-  have hB0 : 0 ≤ (7 : ℝ) ^ d * A * Real.sqrt d ^ (d + 1) := by positivity
-  have hshell : ∀ T : ℝ, 1 ≤ T → (∑ f : Unit, ∑ v ∈ frequencyShell d T, ‖c (f, v).2‖) * T ≤
-      (7 : ℝ) ^ d * A * Real.sqrt d ^ (d + 1) := by
-    intro T hT
-    have h := sum_frequencyShell_le hA hT c hdecay
-    simp only [Finset.univ_unique, Finset.sum_singleton]
-    have hTp : 0 < T := by linarith
-    have e : T ^ ((d : ℝ) - ((d + 1 : ℕ) : ℝ)) = T⁻¹ := by
-      rw [show (d : ℝ) - ((d + 1 : ℕ) : ℝ) = -1 by push_cast; ring, Real.rpow_neg_one]
-    rw [e] at h
-    calc (∑ v ∈ frequencyShell d T, ‖c v‖) * T ≤
-        (7 : ℝ) ^ d * A * Real.sqrt d ^ (d + 1) * T⁻¹ * T := by gcongr
-      _ = _ := by field_simp
-  have hsa : Summable fun p : Unit × (Fin d → ℤ) => ‖c p.2‖ := by
-    exact (Equiv.punitProd (Fin d → ℤ)).summable_iff.mpr hsumm
-  have hF : HasSum (fun p : Unit × (Fin d → ℤ) => c p.2 *
-      (Real.fourierChar (∑ i, (p.2 i : ℝ) * w i) : ℂ)) (f w) :=
-    (Equiv.punitProd (Fin d → ℤ)).hasSum_iff (f := fun v => c v *
-      (Real.fourierChar (∑ i, (v i : ℝ) * w i) : ℂ)) |>.mpr (hsum w)
-  have he : ∀ (p : Unit × (Fin d → ℤ)) (w : Fin d → ℝ),
-      ‖(Real.fourierChar (∑ i, (p.2 i : ℝ) * w i) : ℂ)‖ = 1 := fun p w => Circle.norm_coe _
-  have h := hasSum_box_truncate (ι := Unit) (T := Fin d → ℝ)
-    (fun p : Unit × (Fin d → ℤ) => c p.2) hsa hB0 hshell K
-    (fun p w => (Real.fourierChar (∑ i, (p.2 i : ℝ) * w i) : ℂ)) he f w (by exact hF)
-  convert h using 3
-  rw [Finset.sum_product, Fintype.sum_unique]
-
 section GaugeMultiplier7
 variable {d : ℕ}
 
@@ -3742,30 +2504,6 @@ theorem gaugeMult_norm_le (δ : ℝ) (Q0 : ℕ) (l' : Fin 4) (C : Matrix (Fin d)
   have := branchProfile_mem δ (torusW Q0 l' j x a - ρ j a - gaugeFloor Q0 l' ρ x j a)
   rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg this.1]
   exact this.2
-
-/-- Blueprint lines 1942-1944 ("its Gevrey and absolute Fourier bounds are uniform in offsets
-... only then truncate the Fourier series"): for offsets in `[0, 1]`, `Q₀ C` integral and
-`|C_{ab}| ≤ C_m`, the multiplier is, uniformly in the torus point and the offsets, its Fourier
-sum over the box `|v|_∞ ≤ 2^(K+1)` up to `2 · 7^{2d} A √(2d)^{2d+1} / 2^K`, with coefficients
-bounded by one, where `A` is the derivative bound of order `2d + 1` of `gaugeMult_deriv_le`. -/
-theorem gaugeMult_truncate (hd : 1 ≤ d) {δ : ℝ} (hδ : 0 < δ) (Q0 : ℕ) (l' : Fin 4)
-    (C : Matrix (Fin d) (Fin d) ℚ) (ρ : Fin 4 → Fin d → ℝ)
-    (hρ : ∀ j a, ρ j a ∈ Set.Icc (0 : ℝ) 1) (hQ : ∀ a b, ∃ z : ℤ, (Q0 : ℝ) * (C a b : ℝ) = z)
-    {Cm : ℝ} (hCm0 : 0 ≤ Cm) (hCm : ∀ a b, |(C a b : ℝ)| ≤ Cm) (K : ℕ) :
-    ∃ c : (Fin (d + d) → ℤ) → ℂ, (∀ v, ‖c v‖ ≤ 1) ∧ ∀ w,
-      ‖gaugeMult δ Q0 l' C ρ w - ∑ v ∈ frequencyBox (d + d) (2 ^ (K + 1)),
-        c v * (Real.fourierChar (∑ i, (v i : ℝ) * w i) : ℂ)‖ ≤
-      2 * ((7 : ℝ) ^ (d + d) * (3 ^ (4 * d) * (4 * (4 * Q0 * (d * profR δ (d + d + 1))) +
-        2 * Real.pi * (8 * ((d : ℝ) * ((d : ℝ) * (Cm * 18 * (4 * Q0)))))) ^ (d + d + 1)) *
-          Real.sqrt (d + d : ℕ) ^ (d + d + 1)) / 2 ^ K := by
-  have h := periodic_truncate (d := d + d) (by omega) (gaugeMult δ Q0 l' C ρ)
-    (gaugeMult_contDiff hδ Q0 l' C ρ) (gaugeMult_periodic δ Q0 l' C ρ hQ)
-    (A := 3 ^ (4 * d) * (4 * (4 * Q0 * (d * profR δ (d + d + 1))) +
-        2 * Real.pi * (8 * ((d : ℝ) * ((d : ℝ) * (Cm * 18 * (4 * Q0)))))) ^ (d + d + 1))
-    (by have := profR_nonneg hδ (d + d + 1); positivity)
-    (fun x => gaugeMult_deriv_le hδ Q0 l' C ρ hρ hCm0 hCm (d + d + 1) x)
-    (gaugeMult_norm_le δ Q0 l' C ρ) K
-  exact h
 
 end GaugeMultiplier7
 
@@ -3920,40 +2658,6 @@ theorem gauge_factors_eq_mult {δ δ'' : ℝ} (hδ : 0 < δ) (hδ'' : 0 < δ'') 
 
 end GaugeMultiplier8
 
-namespace ModeSystem
-variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc)
-
-/-- Blueprint `eq:slope-variation` (line 1966) for a frozen mode: on any cell `J` (in particular a
-subcell of its first-match cell), the frequency `ω_m(y) = 2λ_m y + γ` has
-`r_J osc_J ω_m ≤ 2 Λ (r_J / r_{cell(m)})²`; for a pre-cell `2K` depths below the decision cell
-this is at most `2 Λ 4^{-2K}`. -/
-theorem slope_variation_mode (m : Ms.Md) {J : ℤ × ℤ} {y y' : ℝ}
-    (hy : y ∈ dyadicGridCell Gd J.1 J.2) (hy' : y' ∈ dyadicGridCell Gd J.1 J.2) :
-    dyadicGridLength Gd J.1 *
-        |(2 * Ms.lamOf m * y' + Ms.γOf m) - (2 * Ms.lamOf m * y + Ms.γOf m)| ≤
-      2 * Ms.Λ * (dyadicGridLength Gd J.1 / dyadicGridLength Gd (Ms.cellOf m).1) ^ 2 := by
-  set r := dyadicGridLength Gd J.1
-  set R := dyadicGridLength Gd (Ms.cellOf m).1
-  have hr := dyadicGridLength_pos Gd J.1
-  have hR := dyadicGridLength_pos Gd (Ms.cellOf m).1
-  have hyy : |y' - y| ≤ r := by
-    simp only [dyadicGridCell, Set.mem_Ico] at hy hy'
-    rw [abs_le]; constructor <;> linarith [hy.1, hy.2, hy'.1, hy'.2]
-  have hlam := Ms.lam_le m
-  have he : (2 * Ms.lamOf m * y' + Ms.γOf m) - (2 * Ms.lamOf m * y + Ms.γOf m) =
-      2 * Ms.lamOf m * (y' - y) := by ring
-  rw [he, abs_mul, abs_mul, abs_of_pos (by norm_num : (0 : ℝ) < 2)]
-  have hR2 : 0 < R ^ 2 := by positivity
-  have hlamR : |Ms.lamOf m| ≤ Ms.Λ / R ^ 2 := by
-    rw [le_div_iff₀ hR2]; exact hlam
-  have hΛ : 0 ≤ Ms.Λ := le_trans (by positivity) hlam
-  have h2 : 0 ≤ 2 * (Ms.Λ / R ^ 2) := by have := div_nonneg hΛ hR2.le; linarith
-  calc r * (2 * |Ms.lamOf m| * |y' - y|) ≤ r * (2 * (Ms.Λ / R ^ 2) * r) :=
-        mul_le_mul_of_nonneg_left (mul_le_mul (by linarith) hyy (abs_nonneg _) h2) hr.le
-    _ = 2 * Ms.Λ * (r / R) ^ 2 := by field_simp
-
-end ModeSystem
-
 end Auto
 
 end
@@ -4006,36 +2710,6 @@ theorem ballLabels_subset_primaries (l : Fin 4) (s : List (CatCol bf.Vtx)) (G : 
       fp.primaries l s G j d I :=
   mainLabelsM_mono s I _ (fun x hx => fp.bmask_pad_mono I G j hp x hx) d
 
-open Classical in
-/-- Every output of the role's outer ball at a cell is a combination of the columns of its
-primaries there (blueprint line 1888: the primaries are the main columns available to the maximal
-pad). -/
-theorem ballFilt_comb (l : Fin 4) (s : List (CatCol bf.Vtx)) (G : bf.Grp) (j : ℕ) (d : bf.Vtx)
-    (I : ℤ × ℤ) (x : ColumnL2 (bf.Lab ⊕ Fin fp.Mc)) :
-    ∃ c : bf.Lab ⊕ Fin fp.Mc → ℂ, fp.ballFilt l s I G j x =
-      ∑ v ∈ fp.primaries l s G j d I, c v • mainCol A.G fp.Mc (bf.origCols l) s I v := by
-  have hex : ∀ p : Fin fp.P, ∃ c : bf.Lab ⊕ Fin fp.Mc → ℂ,
-      mainProj A.G fp.Mc (bf.origCols l) s I (fp.brank j) (fp.bmask I G j (p + 1)) x =
-        ∑ v ∈ fp.primaries l s G j d I, c v • mainCol A.G fp.Mc (bf.origCols l) s I v := by
-    intro p
-    obtain ⟨c, hc⟩ := mainRange_exists_coeffM d (Submodule.starProjection_apply_mem
-      (mainRange A.G fp.Mc (bf.origCols l) s I (fp.brank j) (fp.bmask I G j (p + 1))) x)
-    have hsub := fp.ballLabels_subset_primaries l s G j d I (p := p + 1) (by have := p.2; omega)
-    refine ⟨fun v => if v ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
-      (fp.bmask I G j (p + 1)) d then c v else 0, ?_⟩
-    change (mainRange A.G fp.Mc (bf.origCols l) s I (fp.brank j)
-      (fp.bmask I G j (p + 1))).starProjection x = _
-    rw [hc]
-    rw [← Finset.sum_subset hsub (fun v _ hv => by simp [hv])]
-    exact Finset.sum_congr rfl fun v hv => by simp [hv]
-  choose c hc using hex
-  refine ⟨fun v => ((fp.P : ℂ))⁻¹ * ∑ p, c p v, ?_⟩
-  unfold ballFilt opAvg
-  simp only [smul_apply, FunLike.coe_sum, Finset.sum_apply, hc, Finset.smul_sum, smul_smul]
-  rw [Finset.sum_comm]
-  refine Finset.sum_congr rfl fun v _ => ?_
-  rw [Finset.mul_sum, Finset.sum_smul]
-
 /-- The primaries are nested in depth (blueprint line 1888: "the mode lists, including primaries
 whose coefficients are zero, are nested"; a primary keeps its role on every descendant). -/
 theorem primaries_desc (l : Fin 4) (s : List (CatCol bf.Vtx)) (G : bf.Grp) (j : ℕ) (d : bf.Vtx)
@@ -4080,16 +2754,6 @@ theorem firstCell_unique (cs : Finset (ℤ × ℤ)) (l : Fin 4) (s : List (CatCo
     I₀ = I₁ := by
   classical
   exact maxCells_eq_of_mem h₀ h₁ hy₀ hy₁
-
-/-- Distinct first-match cells of one primary are disjoint (blueprint line 1888: separate
-first-match branches). -/
-theorem firstCells_disjoint (cs : Finset (ℤ × ℤ)) (l : Fin 4) (s : List (CatCol bf.Vtx))
-    (G : bf.Grp) (j : ℕ) (d : bf.Vtx) {v : bf.Lab ⊕ Fin fp.Mc} {I₀ I₁ : ℤ × ℤ}
-    (h₀ : I₀ ∈ fp.firstCells cs l s G j d v) (h₁ : I₁ ∈ fp.firstCells cs l s G j d v)
-    (hne : I₀ ≠ I₁) :
-    Disjoint (dyadicGridCell A.G I₀.1 I₀.2) (dyadicGridCell A.G I₁.1 I₁.2) :=
-  Set.disjoint_left.mpr fun _ hy₀ hy₁ =>
-    hne (fp.firstCell_unique cs l s G j d h₀ h₁ hy₀ hy₁)
 
 /-- A primary is a primary on every active descendant of its first-match cell (blueprint line
 1888: "keep its modes and labels on every descendant"). -/
@@ -4235,40 +2899,6 @@ end ActiveSetup.BasicFamilies.FamParams
 
 namespace ActiveSetup.BasicFamilies
 variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (bf : A.BasicFamilies)
-
-theorem vTag_vKey (Mc : ℕ) (l : Fin 4) (s : List (CatCol bf.Vtx)) (d : bf.Vtx) (I : ℤ × ℤ)
-    (v : bf.Lab ⊕ Fin Mc) :
-    bf.vTag Mc s d (bf.vKey Mc I v) = labelTag (bf.origCols l) s I d v := by
-  rcases v with x | n <;> rfl
-
-/-- A main label available at a cell (rank and catalog arbitrary) occurs there as a
-vertex-labelled main label. -/
-theorem vOccurs_of_mainLabels (l : Fin 4) {Mc : ℕ} (s : List (CatCol bf.Vtx)) {I : ℤ × ℤ}
-    {r : ℕ} {v : bf.Lab ⊕ Fin Mc} (hv : v ∈ mainLabels A.G Mc (bf.origCols l) s I r) :
-    bf.VOccurs l s I (bf.vKey Mc I v) := by
-  rcases v with x | n
-  · exact ⟨x, mem_mainLabels.mp hv, rfl⟩
-  · obtain ⟨hn, -⟩ := (mem_mainLabels.mp hv : ∃ hn : (n : ℕ) < s.length, _)
-    exact hn
-
-/-- On the cell, the scalar of an available main label is the scalar of its vertex-labelled
-label. -/
-theorem mainScalar_eq_vPhi (l : Fin 4) {Mc : ℕ} (s : List (CatCol bf.Vtx)) {I : ℤ × ℤ} {r : ℕ}
-    {v : bf.Lab ⊕ Fin Mc} (hv : v ∈ mainLabels A.G Mc (bf.origCols l) s I r) {y : ℝ}
-    (hy : y ∈ dyadicGridCell A.G I.1 I.2) :
-    mainScalar Mc (bf.origCols l) s v y = bf.vPhi Mc s (bf.vKey Mc I v) y := by
-  classical
-  rcases v with x | n
-  · have hx : (bf.origCols l).avail I x := mem_mainLabels.mp hv
-    obtain ⟨-, -, -, -, -, he⟩ := bf.origCol_source l hx
-    have hav : bf.occAvail (bf.vtxAt I x).2.1 (bf.vtxAt I x).1 := by
-      rw [bf.vtxAt_fst]; exact (bf.vtxAt_spec hx.2).1
-    change (bf.origCols l).scalar x y =
-      (if bf.occAvail (bf.vtxAt I x).2.1 (bf.vtxAt I x).1 then
-        quadraticChartAtom (bf.vchart (bf.vtxAt I x)).2 else 0) y
-    rw [ite_eq_left_of_eq_true _ _ (eq_true hav)]
-    exact he y hy
-  · rfl
 
 /-- An available main label is, on the cell, a pure chart of its tag in the slot, of the common
 source complexity (blueprint line 1798: pure main columns; line 1903: the primary at first
@@ -4511,64 +3141,6 @@ theorem mainFirstMatch_finite (κ : LocalKernelClass) (c₀ : ℕ) :
       (β + ∑ i, (σ q i : ℝ) * P.horizontal i) * (y - a₀)) : ℂ))]
     rw [norm_sub_rev, he y hy, ← firstMatch_atom Φ (bf.vtag z) (slotCoeff l) hδ hδ' ρ y]
     exact h
-
-end ActiveSetup.BasicFamilies.FamParams
-
-namespace ActiveSetup.BasicFamilies.FamParams
-
-open Classical in
-/-- Blueprint lines 1888 and 1903-1910 ("at its first match on `I₀`, choose one expansion and keep
-its modes and labels on every descendant"): for every primary `v` of the role and every
-first-match cell `I₀` of `v` among the cells `cs`, one finite first-match expansion is chosen on
-`I₀`; on every active descendant `J` of `I₀` the label `v` is still a primary and the same modes
-approximate `φ_v ζ^ρ e(-c_l p_ρ)` within `δ_c`. -/
-theorem mainFirstMatch_kept (κ : LocalKernelClass) (c₀ : ℕ) :
-    ∃ D : ℕ, 1 ≤ D ∧ ∀ (A : ActiveSetup κ c₀) (bf : A.BasicFamilies) (fp : bf.FamParams)
-      (l : Fin 4) (s : List (CatCol bf.Vtx))
-      (_hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
-        e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
-      (_htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx)
-      (cs : Finset (ℤ × ℤ)) (_hcs : cs ⊆ A.cells) {G : bf.Grp} {j : ℕ}
-      {ρ₀ : Fin fp.K.d0} {z : bf.Vtx} {g : ℤ} (_hG : G.2.1 = some (ρ₀, z, g))
-      (_hHed : 2 ≤ fp.Hed) {dB : ℕ} (_hdim : ∀ w : bf.Vtx, (bf.vtag w).dim ≤ dB)
-      (_hC : ∀ (w : bf.Vtx) a c, (rationalHeight ((bf.vtag w).C a c) : ℝ) ≤ fp.Hed)
-      {δ : ℝ} (_hδ : 0 < δ) (_hδ' : δ < 1 / 4) (ρ : Fin (bf.vtag z).dim → ℝ)
-      (_hρ : ∀ i, ρ i ∈ Set.Icc (0 : ℝ) 1) {H : ℝ} (_hHs : A.Hsrc ≤ H)
-      (_hdz : ((bf.vtag z).dim : ℝ) ≤ Real.log H)
-      (_hCz : ∀ i k, (chartRationalHeight ((((-slotCoeff l : ℤ) : ℚ) • (bf.vtag z).C) i k) : ℝ) ≤
-        H)
-      (_hHδ : ((bf.vtag z).dim : ℝ) * (bumpConst * 8 ^ 32 * (2 / δ)) ≤ H) {δc : ℝ} (_hδc : 0 < δc)
-      (v : bf.Lab ⊕ Fin fp.Mc) (I₀ : ℤ × ℤ) (_hI₀ : I₀ ∈ fp.firstCells cs l s G j d v),
-      let X := 1 + Real.log (chartTranslationBudget (H ^ 6)) +
-        Real.log (3 * fp.ballEdgeH dB (fp.ballRadius g (fp.bbase j + fp.P)))
-      ∃ (Ny : Type) (_ : Fintype Ny) (coef : Ny → ℂ) (lam : ℝ) (γ : Ny → ℝ) (dv : ℕ)
-        (θv : Fin dv → ℝ) (σ : Ny → Fin (dv + (bf.vtag z).dim) → ℚ) (β : ℝ),
-        (∀ k, γ k = β + ∑ i, (σ k i : ℝ) * Fin.append θv (bf.vtag z).θ i) ∧ dv ≤ dB ∧
-        (Fintype.card Ny : ℝ) ≤ Real.exp (D * X ^ D) *
-          (4 * max 1 (4 * Real.exp (D * X ^ D) / δc) + 1) ^
-            ((dv + (bf.vtag z).dim) + (dv + (bf.vtag z).dim)) ∧
-        (∀ k i, (rationalHeight (σ k i) : ℝ) ≤ Real.exp (D * X ^ D) *
-          (1 + 4 * ((dv + (bf.vtag z).dim : ℕ) + 1) * max 1 (4 * Real.exp (D * X ^ D) / δc))) ∧
-        (∑ k, ‖coef k‖) ≤ Real.exp (D * X ^ D) ∧
-        |lam| * dyadicGridLength A.G I₀.1 ^ 2 ≤ Real.exp (D * X ^ D) ∧
-        ∀ J ∈ A.cells, dyadicGridCell A.G J.1 J.2 ⊆ dyadicGridCell A.G I₀.1 I₀.2 →
-          v ∈ fp.primaries l s G j d J ∧ ∀ y ∈ dyadicGridCell A.G J.1 J.2,
-            ‖∑ k, coef k * (Real.fourierChar (lam * (y - dyadicGridLeft A.G I₀.1 I₀.2) ^ 2 +
-                γ k * (y - dyadicGridLeft A.G I₀.1 I₀.2)) : ℂ) -
-              mainScalar fp.Mc (bf.origCols l) s v y * ((centerCut (bf.vtag z) δ ρ y : ℂ) *
-                (Real.fourierChar (-(slotCoeff l : ℝ) * centerPhase (bf.vtag z) ρ y) : ℂ))‖ ≤
-              δc := by
-  obtain ⟨D, hD, hfin⟩ := mainFirstMatch_finite κ c₀
-  refine ⟨D, hD, ?_⟩
-  intro A bf fp l s hT htag d cs hcs G j ρ₀ z g hG hHed dB hdim hC δ hδ hδ' ρ hρ H hHs hdz hCz
-    hHδ δc hδc v I₀ hI₀ X
-  obtain ⟨hI₀f, -⟩ := mem_maxCells.mp hI₀
-  obtain ⟨hI₀cs, hv⟩ := Finset.mem_filter.mp hI₀f
-  obtain ⟨Ny, hNy, coef, lam, γ, dv, θv, σ, β, hγ, hdv, hcard, hσ, hcoef, hlam, happ⟩ :=
-    hfin A bf fp l s hT htag d (hcs hI₀cs) hv hG hHed hdim hC hδ hδ' ρ hρ hHs hdz hCz hHδ hδc
-  refine ⟨Ny, hNy, coef, lam, γ, dv, θv, σ, β, hγ, hdv, hcard, hσ, hcoef, hlam,
-    fun J hJ hJI₀ => ⟨fp.primaries_of_firstCell cs hcs l s G j d hI₀ hJ hJI₀,
-      fun y hy => happ y (hJI₀ hy)⟩⟩
 
 end ActiveSetup.BasicFamilies.FamParams
 
@@ -5122,46 +3694,6 @@ theorem card_grp_chain_le
 
 end ColorSetup
 
-namespace ActiveSetup.BasicFamilies
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (bf : A.BasicFamilies)
-
-/-- The main labels of a rank at a cell are main labels at every active subcell (availability and
-template births are inherited). -/
-theorem mainLabels_desc (l : Fin 4) {Mc : ℕ} (s : List (CatCol bf.Vtx)) {I J : ℤ × ℤ}
-    (hJ : J ∈ A.cells) (hJI : dyadicGridCell A.G J.1 J.2 ⊆ dyadicGridCell A.G I.1 I.2) (r : ℕ) :
-    mainLabels A.G Mc (bf.origCols l) s I r ⊆ mainLabels A.G Mc (bf.origCols l) s J r := by
-  intro v hv
-  rcases v with x | n
-  · obtain ⟨hl, hav⟩ := (mem_mainLabels.mp hv : (bf.origCols l).avail I x)
-    exact mem_mainLabels.mpr (⟨hl, bf.occAvail_desc hJ hJI hav⟩ : (bf.origCols l).avail J x)
-  · obtain ⟨hn, hb, hr⟩ := (mem_mainLabels.mp hv : ∃ hn : (n : ℕ) < s.length, _)
-    exact mem_mainLabels.mpr (⟨hn, hJI.trans hb, hr⟩ : ∃ hn : (n : ℕ) < s.length, _)
-
-open Classical in
-/-- The main labels at the active cells containing a point all occur at the deepest of them;
-hence they number at most any bound `N` for the main labels at one cell (blueprint line 1934:
-"actual main uses along a path"). -/
-theorem card_mainLabels_path_le (l : Fin 4) {Mc : ℕ} (s : List (CatCol bf.Vtx)) (r : ℕ)
-    {N : ℝ} (hN0 : 0 ≤ N)
-    (hN : ∀ I ∈ A.cells, ((mainLabels A.G Mc (bf.origCols l) s I r).card : ℝ) ≤ N) (y : ℝ) :
-    (((A.cells.filter fun I => y ∈ dyadicGridCell A.G I.1 I.2).biUnion fun I =>
-      mainLabels A.G Mc (bf.origCols l) s I r).card : ℝ) ≤ N := by
-  set T := A.cells.filter fun I => y ∈ dyadicGridCell A.G I.1 I.2
-  rcases T.eq_empty_or_nonempty with hT | hT
-  · rw [hT, Finset.biUnion_empty, Finset.card_empty, Nat.cast_zero]; exact hN0
-  obtain ⟨J, hJ, hmax⟩ := T.exists_max_image (fun I => I.1) hT
-  obtain ⟨hJc, hyJ⟩ := Finset.mem_filter.mp hJ
-  have hsub : T.biUnion (fun I => mainLabels A.G Mc (bf.origCols l) s I r) ⊆
-      mainLabels A.G Mc (bf.origCols l) s J r := by
-    intro v hv
-    obtain ⟨I, hI, hvI⟩ := Finset.mem_biUnion.mp hv
-    obtain ⟨-, hyI⟩ := Finset.mem_filter.mp hI
-    exact bf.mainLabels_desc l s hJc
-      (dyadicGridCell_subset_of_common_point A.G hyJ hyI (hmax I hI)) r hvI
-  exact (Nat.cast_le.mpr (Finset.card_le_card hsub)).trans (hN J hJc)
-
-end ActiveSetup.BasicFamilies
-
 namespace ActiveSetup.BasicFamilies.FamParams
 variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
   (fp : bf.FamParams)
@@ -5399,33 +3931,6 @@ theorem le_modeStar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) (hHed : 2 ≤ fp.Hed)
       exact mul_le_mul this hBB (by linarith) (by positivity)
     linarith
 
-/-- Blueprint line 1934: the budget `D_*` dominates the clearing integer `Q₀` of the center tag of a
-group (line 1893: `Q₀` is in the main budget). -/
-theorem clearInt_le_modeStar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) (hHed : 2 ≤ fp.Hed)
-    (hN0 : 0 ≤ N) (hdim : ∀ w : bf.Vtx, (bf.vtag w).dim ≤ dB)
-    (hC : ∀ (w : bf.Vtx) a c, (rationalHeight ((bf.vtag w).C a c) : ℝ) ≤ fp.Hed) (z : bf.Vtx) :
-    (clearInt (bf.vtag z).C : ℝ) ≤ fp.modeStar D dB H δc N k := by
-  have h1 := clearInt_le (bf.vtag z).C (hC z)
-  have h2 : fp.Hed ^ ((bf.vtag z).dim * (bf.vtag z).dim) ≤ fp.Hed ^ (dB * dB) :=
-    pow_le_pow_right₀ (by linarith) (Nat.mul_le_mul (hdim z) (hdim z))
-  have hcb : 2 ≤ A.colBudget := by
-    have := A.Dc_nonneg; unfold ActiveSetup.colBudget
-    have : (0 : ℝ) ≤ Fintype.card A.L * (1 + A.Dc) := by positivity
-    linarith
-  set Bm := Real.exp (D * fp.Xmax dB H ^ D)
-  have hBm : 0 < Bm := Real.exp_pos _
-  have hmax : 0 ≤ max 1 (4 * Bm / δc) := le_trans zero_le_one (le_max_left _ _)
-  have hS : fp.Hed ^ (dB * dB) ≤ fp.modeStar D dB H δc N k := by
-    unfold modeStar
-    have : (0 : ℝ) ≤ A.famVtxBound * (fp.K.potMax A.famVtxBound + 1) * (N + 1) *
-        (Bm * (4 * max 1 (4 * Bm / δc) + 1) ^ (4 * dB)) := by positivity
-    have : (0 : ℝ) ≤ Bm * (1 + 4 * (2 * dB + 1) * max 1 (4 * Bm / δc)) := by positivity
-    have : (0 : ℝ) ≤ A.colBudget ^ 2 * (Bm ^ 2 + 1) := by positivity
-    have : (0 : ℝ) ≤ (Real.sqrt N + 1) * A.colBudget * Bm := by positivity
-    have := Real.exp_pos k
-    linarith
-  linarith
-
 end ActiveSetup.BasicFamilies.FamParams
 
 namespace ActiveSetup.BasicFamilies.FamParams
@@ -5528,7 +4033,7 @@ theorem log_modeStar_le_aux (D dB : ℕ) {H δc N k E : ℝ} (hk : 0 ≤ k) (hE 
           rw [hp]
           gcongr
       _ = Real.exp (E + 3 + Lp + (E + 1) + (LB + 4 * dB * (LB + E + 4))) := by
-          simp only [B, Real.exp_add]; try ring
+          simp only [B, Real.exp_add]
       _ ≤ Real.exp T0 := Real.exp_le_exp.mpr (by
           have : 4 * (dB : ℝ) * (LB + E + 4) = 4 * (dB * LB) + 4 * (dB * E) + 16 * dB := by ring
           linarith)
@@ -5586,7 +4091,7 @@ theorem log_modeStar_le_aux (D dB : ℕ) {H δc N k E : ℝ} (hk : 0 ≤ k) (hE 
       rw [Real.exp_add]; linarith [mul_le_mul_of_nonneg_left he2 (Real.exp_pos E).le]
     calc t6 ≤ Real.exp (E + 2) * Real.exp E * B := by
           simp only [t6]; gcongr
-      _ = Real.exp (E + 2 + E + LB) := by simp only [B, Real.exp_add]; try ring
+      _ = Real.exp (E + 2 + E + LB) := by simp only [B, Real.exp_add]
       _ ≤ Real.exp T0 := Real.exp_le_exp.mpr (by linarith)
   have hpos : 0 < fp.modeStar D dB H δc N k := by
     rw [hS]
@@ -5992,87 +4497,6 @@ theorem grp_top_nonneg {Nv : ℕ} {I : T.Cell} {v : V} (hv : v ∈ T.X I) {ρ : 
 
 end ColorSetup
 
-namespace ActiveSetup.BasicFamilies.FamParams
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
-  (fp : bf.FamParams)
-
-open Classical in
-/-- Blueprint line 1934 ("it also bounds the absolute coefficient sums of `R_(l,G) Z_(l,G,s)` on
-every normalized endpoint cell, at any depth `s`"): for a lift with exact synthesis on matched
-primaries and per-primary coefficient sums at most `B` (the exports of `mainAttemptLift`), a main
-output with coefficients `c_Φ` on the primaries at a cell `J` of the family is lifted, at every
-point of `J`, to the mode synthesis with coefficients `c_Φ a_(Φ,m)`, whose absolute sum is at most
-`B Σ_Φ |c_Φ|`. -/
-theorem lift_endpoint {Md : Type} [Fintype Md] (cs : Finset (ℤ × ℤ)) (l : Fin 4)
-    (s : List (CatCol bf.Vtx)) (G : bf.Grp) (j : ℕ) (d : bf.Vtx)
-    (L : LiftData (bf.Lab ⊕ Fin fp.Mc) Md) (ψ : Md → ℝ → ℂ) {B : ℝ}
-    (hsyn : ∀ y (β : bf.Lab ⊕ Fin fp.Mc → ℂ),
-      (∀ Φ, β Φ ≠ 0 → ∃ I ∈ fp.firstCells cs l s G j d Φ, y ∈ dyadicGridCell A.G I.1 I.2) →
-      L.at_ y (augmentedMain (fun Φ => mainScalar fp.Mc (bf.origCols l) s Φ y) L.εP β) =
-        ∑ m, (β (L.own m) * L.a m y) • augmentedMode (fun m => ψ m y) L.εM m)
-    (hcoef : ∀ Φ y, ∑ m ∈ Finset.univ.filter (fun m => L.own m = Φ), ‖L.a m y‖ ≤ B)
-    {J : ℤ × ℤ} (hJ : J ∈ cs) (c : bf.Lab ⊕ Fin fp.Mc → ℂ)
-    (hc : ∀ Φ, c Φ ≠ 0 → Φ ∈ fp.primaries l s G j d J) {y : ℝ}
-    (hy : y ∈ dyadicGridCell A.G J.1 J.2) :
-    L.at_ y (augmentedMain (fun Φ => mainScalar fp.Mc (bf.origCols l) s Φ y) L.εP c) =
-        ∑ m, (c (L.own m) * L.a m y) • augmentedMode (fun m => ψ m y) L.εM m ∧
-      ∑ m, ‖c (L.own m) * L.a m y‖ ≤ B * ∑ Φ, ‖c Φ‖ := by
-  refine ⟨hsyn y c fun Φ hΦ => ?_, ?_⟩
-  · obtain ⟨I₀, hI₀, hJI₀⟩ := fp.exists_firstCell cs l s G j d hJ (hc Φ hΦ)
-    exact ⟨I₀, hI₀, hJI₀ hy⟩
-  · rw [← Finset.sum_fiberwise Finset.univ L.own (fun m => ‖c (L.own m) * L.a m y‖),
-      Finset.mul_sum]
-    refine Finset.sum_le_sum fun Φ _ => ?_
-    calc ∑ m ∈ Finset.univ.filter (fun m => L.own m = Φ), ‖c (L.own m) * L.a m y‖
-        = ‖c Φ‖ * ∑ m ∈ Finset.univ.filter (fun m => L.own m = Φ), ‖L.a m y‖ := by
-          rw [Finset.mul_sum]
-          exact Finset.sum_congr rfl fun m hm => by rw [(Finset.mem_filter.mp hm).2, norm_mul]
-      _ ≤ ‖c Φ‖ * B := mul_le_mul_of_nonneg_left (hcoef Φ y) (norm_nonneg _)
-      _ = B * ‖c Φ‖ := mul_comm _ _
-
-open Classical in
-/-- Blueprint line 1934 with private-coordinate recovery on the cell: for a main output
-`x = Σ_Φ c_Φ main_Φ` over the primaries at a cell `J` with at most `N` main labels, the
-coefficient sum `B Σ_Φ |c_Φ|` of its lift (`lift_endpoint`), `B` the first-match bound of a role
-with a nonnegative top score at a level `j ≤ 4`, is at most `D_*` times the normalized norm
-`‖x‖ / √|J|`; this does not depend on the depth of `J` or on the branch offsets. -/
-theorem endpoint_coeff_le_modeStar (D dB : ℕ) {H δc N : ℝ} (k : ℝ) (hHed : 2 ≤ fp.Hed)
-    (hH : 1 ≤ H) (hδc : 0 < δc) (hN0 : 0 ≤ N) (l : Fin 4) (s : List (CatCol bf.Vtx))
-    (G : bf.Grp) {j : ℕ} (hj : j ≤ 4) (d : bf.Vtx) {g : ℤ} (hg : 0 ≤ g) {J : ℤ × ℤ}
-    (hN : ((mainLabels A.G fp.Mc (bf.origCols l) s J (fp.brank j)).card : ℝ) ≤ N)
-    (c : bf.Lab ⊕ Fin fp.Mc → ℂ) :
-    Real.exp (D * (1 + Real.log (chartTranslationBudget (H ^ 6)) +
-      Real.log (3 * fp.ballEdgeH dB (fp.ballRadius g (fp.bbase j + fp.P)))) ^ D) *
-        ∑ Φ ∈ fp.primaries l s G j d J, ‖c Φ‖ ≤
-      fp.modeStar D dB H δc N k *
-        (‖(∑ Φ ∈ fp.primaries l s G j d J, c Φ • mainCol A.G fp.Mc (bf.origCols l) s J Φ :
-          ColumnL2 (bf.Lab ⊕ Fin fp.Mc))‖ / Real.sqrt (dyadicGridLength A.G J.1)) := by
-  set B := Real.exp (D * (1 + Real.log (chartTranslationBudget (H ^ 6)) +
-    Real.log (3 * fp.ballEdgeH dB (fp.ballRadius g (fp.bbase j + fp.P)))) ^ D)
-  set F := fp.primaries l s G j d J
-  set nx := ‖(∑ Φ ∈ F, c Φ • mainCol A.G fp.Mc (bf.origCols l) s J Φ :
-    ColumnL2 (bf.Lab ⊕ Fin fp.Mc))‖ / Real.sqrt (dyadicGridLength A.G J.1)
-  have hcb := two_le_colBudget (A := A)
-  have hrec := mainCoeff_sum_le s J F c
-    (fun v hv => bf.mainLabel_memLp l s J (fp.brank j) (mainLabelsM_subset _ _ _ _ _ hv))
-    (by linarith) (fun v _ => bf.inv_mainWeight_le l v)
-  have hcard : (F.card : ℝ) ≤ N :=
-    (Nat.cast_le.mpr (Finset.card_le_card (mainLabelsM_subset _ _ _ _ _))).trans hN
-  obtain ⟨-, -, -, -, -, -, h7, -, -⟩ := fp.le_modeStar D dB k hHed hH hδc hN0 hg hj
-  have hnx : 0 ≤ nx := div_nonneg (norm_nonneg _) (Real.sqrt_nonneg _)
-  have hB0 : 0 ≤ B := (Real.exp_pos _).le
-  have hsum : ∑ Φ ∈ F, ‖c Φ‖ ≤ Real.sqrt N * A.colBudget * nx := by
-    refine hrec.trans ?_
-    rw [mul_div_assoc]
-    exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (Real.sqrt_le_sqrt hcard)
-      (by linarith)) hnx
-  calc B * ∑ Φ ∈ F, ‖c Φ‖ ≤ B * (Real.sqrt N * A.colBudget * nx) :=
-        mul_le_mul_of_nonneg_left hsum hB0
-    _ = Real.sqrt N * A.colBudget * B * nx := by ring
-    _ ≤ fp.modeStar D dB H δc N k * nx := mul_le_mul_of_nonneg_right h7 hnx
-
-end ActiveSetup.BasicFamilies.FamParams
-
 /-! ### The Fourier expansion of the squared gauge `(ζ^ρ)²` (blueprint lines 1944 and 2056) -/
 
 /-- The periodic branch profile `t ↦ b(fract t)`. -/
@@ -6405,54 +4829,10 @@ noncomputable def gaugeMultTail (d : ℕ) (Q0 Cm δ : ℝ) : ℝ :=
 noncomputable def gaugeMultNorm (d : ℕ) (Q0 Cm δ : ℝ) : ℝ :=
   5 ^ (d + d) + 2 * gaugeMultTail d Q0 Cm δ
 
-/-- Blueprint lines 1942-1944 ("its Gevrey and absolute Fourier bounds are uniform in offsets"):
-for offsets in `[0, 1]`, `Q₀ C` integral and `|C_{ab}| ≤ C_m`, the multiplier is the sum of its
-absolutely convergent Fourier series on the torus, with full Fourier norm at most
-`gaugeMultNorm`. -/
-theorem gaugeMult_fourier (hd : 1 ≤ d) {δ : ℝ} (hδ : 0 < δ) (Q0 : ℕ) (l' : Fin 4)
-    (C : Matrix (Fin d) (Fin d) ℚ) (ρ : Fin 4 → Fin d → ℝ)
-    (hρ : ∀ j a, ρ j a ∈ Set.Icc (0 : ℝ) 1) (hQ : ∀ a b, ∃ z : ℤ, (Q0 : ℝ) * (C a b : ℝ) = z)
-    {Cm : ℝ} (hCm0 : 0 ≤ Cm) (hCm : ∀ a b, |(C a b : ℝ)| ≤ Cm) :
-    (∀ x, HasSum (fun v => periodicFourierCoeff (gaugeMult δ Q0 l' C ρ) v *
-        (Real.fourierChar (∑ i, (v i : ℝ) * x i) : ℂ)) (gaugeMult δ Q0 l' C ρ x)) ∧
-      Summable (fun v => ‖periodicFourierCoeff (gaugeMult δ Q0 l' C ρ) v‖) ∧
-      ∑' v, ‖periodicFourierCoeff (gaugeMult δ Q0 l' C ρ) v‖ ≤ gaugeMultNorm d Q0 Cm δ := by
-  have h := periodic_fourierNorm_le (d := d + d) (by omega) (gaugeMult δ Q0 l' C ρ)
-    (gaugeMult_contDiff hδ Q0 l' C ρ) (gaugeMult_periodic δ Q0 l' C ρ hQ)
-    (A := gaugeMultA d Q0 Cm δ)
-    (by unfold gaugeMultA; have := profR_nonneg hδ (d + d + 1); positivity)
-    (fun x => gaugeMult_deriv_le hδ Q0 l' C ρ hρ hCm0 hCm (d + d + 1) x)
-    (gaugeMult_norm_le δ Q0 l' C ρ)
-  refine ⟨h.1, h.2.1, h.2.2.trans (le_of_eq ?_)⟩
-  unfold gaugeMultNorm gaugeMultTail
-  ring
-
-/-- In horizontal dimension zero the multiplier is one. -/
-theorem gaugeMult_dim_zero (δ : ℝ) (Q0 : ℕ) (l' : Fin 4) (C : Matrix (Fin 0) (Fin 0) ℚ)
-    (ρ : Fin 4 → Fin 0 → ℝ) (x : Fin (0 + 0) → ℝ) : gaugeMult δ Q0 l' C ρ x = 1 := by
-  simp [gaugeMult, gaugeTerm, chartMatrixPhase]
-
 end GaugeFourier
 
 /-- The full Fourier norm bound of the squared gauge `(ζ^ρ)²`. -/
 noncomputable def gaugeSqNorm (d : ℕ) (δ : ℝ) : ℝ := 5 ^ d + 2 * gaugeTail d δ
-
-/-- Blueprint line 1944 ("enlarge `D_*` to cover these full Fourier norms, including `(ζ^ρ)²`"):
-the squared gauge is the sum of its absolutely convergent Fourier series on the torus, with full
-Fourier norm at most `gaugeSqNorm`, uniformly in the offset. -/
-theorem gaugeSq_fourier {d : ℕ} (hd : 1 ≤ d) {δ : ℝ} (hδ : 0 < δ) (ρ : Fin d → ℝ) :
-    (∀ x, HasSum (fun v => periodicFourierCoeff (gaugeSq δ ρ) v *
-        (Real.fourierChar (∑ i, (v i : ℝ) * x i) : ℂ)) (gaugeSq δ ρ x)) ∧
-      Summable (fun v => ‖periodicFourierCoeff (gaugeSq δ ρ) v‖) ∧
-      ∑' v, ‖periodicFourierCoeff (gaugeSq δ ρ) v‖ ≤ gaugeSqNorm d δ := by
-  have h := periodic_fourierNorm_le hd (gaugeSq δ ρ) (gaugeSq_contDiff hδ ρ)
-    (fun w j => gaugeSq_periodic δ ρ w j)
-    (A := (2 * ((d : ℝ) * (2 * (bumpConst * (8 * (((d + 1 : ℕ) : ℝ) + 1)) ^ 32 *
-      (2 / δ))))) ^ (d + 1)) (by have := one_le_bumpConst; positivity)
-    (fun w => gaugeSq_iteratedFDeriv_le hδ ρ w (d + 1)) (fun w => gaugeSq_norm_le δ ρ w)
-  refine ⟨h.1, h.2.1, h.2.2.trans (le_of_eq ?_)⟩
-  unfold gaugeSqNorm gaugeTail
-  ring
 
 /-- Truncation of a smooth `1`-periodic function with its Fourier coefficients: the coefficients
 `ĉ_v` are bounded by the supremum bound `B`, every finite absolute coefficient sum is at most the
@@ -7107,121 +5487,6 @@ theorem log_Bstar_le (D dB : ℕ) {H δc N : ℝ} {k : ℝ} (hk0 : 0 ≤ k) {δ 
 
 end ActiveSetup.BasicFamilies.FamParams
 
-namespace ActiveSetup.BasicFamilies.FamParams
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
-  (fp : bf.FamParams)
-
-/-- Blueprint lines 1942-1944 for the multiplier of a group center: the multiplier with the
-enlarged cutoff `δ/2` and the clearing integer `Q₀` of the center is the sum of its Fourier
-series, its coefficients are bounded by one, every absolute coefficient sum is at most the
-enlarged budget `D_*`, and its Fourier sum over the box `|v|_∞ ≤ B_* = 2^(K_*+1)` approximates it
-within `D_*^(-300)`, uniformly in the torus point, the anchor and the offsets. -/
-theorem gaugeMult_star (D dB : ℕ) {H δc N : ℝ} (k : ℝ) {δ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1)
-    (hHed : 2 ≤ fp.Hed) (hH : 1 ≤ H) (hδc : 0 < δc) (hN0 : 0 ≤ N)
-    (hdim : ∀ w : bf.Vtx, (bf.vtag w).dim ≤ dB)
-    (hC : ∀ (w : bf.Vtx) a c, (rationalHeight ((bf.vtag w).C a c) : ℝ) ≤ fp.Hed)
-    (z : bf.Vtx) (hz : 1 ≤ (bf.vtag z).dim) (l' : Fin 4)
-    (ρ : Fin 4 → Fin (bf.vtag z).dim → ℝ) (hρ : ∀ j a, ρ j a ∈ Set.Icc (0 : ℝ) 1) :
-    (∀ x, HasSum (fun v => periodicFourierCoeff
-        (gaugeMult (δ / 2) (clearInt (bf.vtag z).C) l' (bf.vtag z).C ρ) v *
-        (Real.fourierChar (∑ i, (v i : ℝ) * x i) : ℂ))
-        (gaugeMult (δ / 2) (clearInt (bf.vtag z).C) l' (bf.vtag z).C ρ x)) ∧
-      (∀ v, ‖periodicFourierCoeff
-        (gaugeMult (δ / 2) (clearInt (bf.vtag z).C) l' (bf.vtag z).C ρ) v‖ ≤ 1) ∧
-      (∀ s : Finset (Fin ((bf.vtag z).dim + (bf.vtag z).dim) → ℤ), ∑ v ∈ s,
-        ‖periodicFourierCoeff (gaugeMult (δ / 2) (clearInt (bf.vtag z).C) l' (bf.vtag z).C ρ) v‖ ≤
-          fp.modeStarG D dB H δc N k δ) ∧
-      ∀ w, ‖gaugeMult (δ / 2) (clearInt (bf.vtag z).C) l' (bf.vtag z).C ρ w -
-        ∑ v ∈ frequencyBox ((bf.vtag z).dim + (bf.vtag z).dim)
-          (2 ^ (fp.Kstar D dB H δc N k δ + 1)),
-          periodicFourierCoeff (gaugeMult (δ / 2) (clearInt (bf.vtag z).C) l' (bf.vtag z).C ρ) v *
-            (Real.fourierChar (∑ i, (v i : ℝ) * w i) : ℂ)‖ ≤
-        (fp.modeStarG D dB H δc N k δ ^ 300)⁻¹ := by
-  set C := (bf.vtag z).C
-  set Q0 := clearInt C
-  have hδ2 : 0 < δ / 2 := half_pos hδ
-  have hδ21 : δ / 2 ≤ 1 := by linarith
-  have hQ : ∀ a b, ∃ z : ℤ, (Q0 : ℝ) * (C a b : ℝ) = z := clearInt_clears C
-  have hCm : ∀ a b, |(C a b : ℝ)| ≤ fp.Hed := fun a b => abs_rat_le_of_height (hC z a b)
-  have hQ0le : (Q0 : ℝ) ≤ fp.Hed ^ (dB * dB) :=
-    (clearInt_le C (hC z)).trans (pow_le_pow_right₀ (by linarith)
-      (Nat.mul_le_mul (hdim z) (hdim z)))
-  have hQ1 : (1 : ℝ) ≤ fp.Hed ^ (dB * dB) := one_le_pow₀ (by linarith)
-  have hdB1 : 1 ≤ dB := hz.trans (hdim z)
-  have hA0 : 0 ≤ gaugeMultA (bf.vtag z).dim Q0 fp.Hed (δ / 2) :=
-    gaugeMultA_nonneg hδ2 (bf.vtag z).dim (Nat.cast_nonneg _) (by linarith)
-  have hder := fun x => gaugeMult_deriv_le hδ2 Q0 l' C ρ hρ (by linarith) hCm
-    ((bf.vtag z).dim + (bf.vtag z).dim + 1) x
-  obtain ⟨hcoef, hsum, htrunc⟩ := periodic_truncate_full
-    (d := (bf.vtag z).dim + (bf.vtag z).dim) (by omega)
-    (gaugeMult (δ / 2) Q0 l' C ρ) (gaugeMult_contDiff hδ2 Q0 l' C ρ)
-    (gaugeMult_periodic (δ / 2) Q0 l' C ρ hQ)
-    (A := gaugeMultA (bf.vtag z).dim Q0 fp.Hed (δ / 2)) hA0 hder
-    (gaugeMult_norm_le (δ / 2) Q0 l' C ρ) (fp.Kstar D dB H δc N k δ)
-  obtain ⟨hhas, -, -⟩ := periodic_fourierNorm_le
-    (d := (bf.vtag z).dim + (bf.vtag z).dim) (by omega)
-    (gaugeMult (δ / 2) Q0 l' C ρ) (gaugeMult_contDiff hδ2 Q0 l' C ρ)
-    (gaugeMult_periodic (δ / 2) Q0 l' C ρ hQ) hA0 hder
-    (gaugeMult_norm_le (δ / 2) Q0 l' C ρ)
-  obtain ⟨-, -, hGM, -, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
-  have hnorm : gaugeMultNorm (bf.vtag z).dim Q0 fp.Hed (δ / 2) ≤
-      gaugeMultNorm dB (fp.Hed ^ (dB * dB)) fp.Hed (δ / 2) :=
-    gaugeMultNorm_mono hδ2 hδ21 hdB1 (hdim z) (Nat.cast_nonneg _) hQ0le hQ1 (by linarith) le_rfl
-  have htail : gaugeMultTail (bf.vtag z).dim Q0 fp.Hed (δ / 2) ≤ fp.tailStar dB δ := by
-    unfold tailStar
-    have := gaugeMultTail_mono hδ2 hδ21 hdB1 (hdim z) (Nat.cast_nonneg _) hQ0le hQ1
-      (by linarith) (le_refl fp.Hed)
-    have := gaugeTail_nonneg dB hδ
-    linarith
-  refine ⟨hhas, fun v => hcoef v, fun s => ?_, fun w => ?_⟩
-  · refine (hsum s).trans (le_trans (le_of_eq ?_) (hnorm.trans hGM))
-    unfold gaugeMultNorm gaugeMultTail; ring
-  · refine (htrunc w).trans ?_
-    have h := fp.tail_le_Kstar D dB k hδ hHed hH hδc hN0
-      (gaugeMultTail_nonneg (bf.vtag z).dim hδ2 (Nat.cast_nonneg _) (by linarith)) htail
-    unfold gaugeMultTail at h
-    exact h
-
-/-- Blueprint line 1944 and 2055 for the squared gauge `(ζ^ρ)²` of a center of dimension
-`1 ≤ d ≤ d_B`: it is the sum of its Fourier series, its coefficients are bounded by one, every
-absolute coefficient sum is at most the enlarged budget `D_*`, and its Fourier sum over the box
-`|v|_∞ ≤ B_*` approximates it within `D_*^(-300)`, uniformly in the offset. -/
-theorem gaugeSq_star (D dB : ℕ) {H δc N : ℝ} (k : ℝ) {δ : ℝ} (hδ : 0 < δ) (hδ1 : δ ≤ 1)
-    (hHed : 2 ≤ fp.Hed) (hH : 1 ≤ H) (hδc : 0 < δc) (hN0 : 0 ≤ N) {d : ℕ} (hd1 : 1 ≤ d)
-    (hd : d ≤ dB) (ρ : Fin d → ℝ) :
-    (∀ x, HasSum (fun v => periodicFourierCoeff (gaugeSq δ ρ) v *
-        (Real.fourierChar (∑ i, (v i : ℝ) * x i) : ℂ)) (gaugeSq δ ρ x)) ∧
-      (∀ v, ‖periodicFourierCoeff (gaugeSq δ ρ) v‖ ≤ 1) ∧
-      (∀ s : Finset (Fin d → ℤ), ∑ v ∈ s, ‖periodicFourierCoeff (gaugeSq δ ρ) v‖ ≤
-        fp.modeStarG D dB H δc N k δ) ∧
-      ∀ w, ‖gaugeSq δ ρ w - ∑ v ∈ frequencyBox d (2 ^ (fp.Kstar D dB H δc N k δ + 1)),
-          periodicFourierCoeff (gaugeSq δ ρ) v * (Real.fourierChar (∑ i, (v i : ℝ) * w i) : ℂ)‖ ≤
-        (fp.modeStarG D dB H δc N k δ ^ 300)⁻¹ := by
-  have hA0 : (0 : ℝ) ≤ (2 * ((d : ℝ) * (2 * (bumpConst * (8 * (((d + 1 : ℕ) : ℝ) + 1)) ^ 32 *
-      (2 / δ))))) ^ (d + 1) := by have := one_le_bumpConst; positivity
-  obtain ⟨hcoef, hsum, htrunc⟩ := periodic_truncate_full hd1 (gaugeSq δ ρ)
-    (gaugeSq_contDiff hδ ρ) (fun w j => gaugeSq_periodic δ ρ w j) hA0
-    (fun w => gaugeSq_iteratedFDeriv_le hδ ρ w (d + 1)) (fun w => gaugeSq_norm_le δ ρ w)
-    (fp.Kstar D dB H δc N k δ)
-  obtain ⟨hhas, -, -⟩ := gaugeSq_fourier hd1 hδ ρ
-  obtain ⟨-, -, -, hGS, -⟩ := fp.le_modeStarG D dB k hδ hHed hH hδc hN0
-  have hnorm : gaugeSqNorm d δ ≤ gaugeSqNorm dB δ := gaugeSqNorm_mono hδ hδ1 hd
-  have htail : gaugeTail d δ ≤ fp.tailStar dB δ := by
-    unfold tailStar
-    have := gaugeTail_mono hδ hδ1 hd
-    have := gaugeMultTail_nonneg dB (Q0 := fp.Hed ^ (dB * dB)) (Cm := fp.Hed) (half_pos hδ)
-      (pow_nonneg (by linarith) _) (by linarith)
-    linarith
-  refine ⟨hhas, fun v => hcoef v, fun s => ?_, fun w => ?_⟩
-  · refine (hsum s).trans (le_trans (le_of_eq ?_) (hnorm.trans hGS))
-    unfold gaugeSqNorm gaugeTail; ring
-  · refine (htrunc w).trans ?_
-    have h := fp.tail_le_Kstar D dB k hδ hHed hH hδc hN0 (gaugeTail_nonneg d hδ) htail
-    unfold gaugeTail at h
-    exact h
-
-end ActiveSetup.BasicFamilies.FamParams
-
 /-- The polynomial size of the Fourier exponents `T_G + T_S ≤ (5κ + 4682) E⁴` for `E ≥ 1`. -/
 theorem fourier_exponents_le {E κb : ℝ} (hE1 : 1 ≤ E) (hκ : 0 ≤ κb) :
     (12 * E + (2 * E + 1) * (E ^ 3 + κb + 514 * E + 523) + 2 * E * (2 * E + 1)) +
@@ -7735,23 +6000,6 @@ noncomputable def frozenLift {Md : Type} [Fintype Md] (L : LiftData (bf.Lab ⊕ 
   columnL2Restriction (⋃ J ∈ fp.retainedV G b K, dyadicGridCell A.G J.1 J.2)
     (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
     (L.op (fp.frozenZ l s mb G j ls (b - 4 * K)))
-
-open Classical in
-/-- The frozen lifted output vanishes off the retained `v_b`-cells (blueprint line 1967). -/
-theorem frozenLift_off {Md : Type} [Fintype Md] (L : LiftData (bf.Lab ⊕ Fin fp.Mc) Md)
-    (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s) (G : bf.Grp) (j : ℕ)
-    (ls : List (ℕ × Bool)) (b : ℤ) (K : ℕ) :
-    ∀ᵐ y ∂volume, (∀ J ∈ fp.retainedV G b K, y ∉ dyadicGridCell A.G J.1 J.2) →
-      (fp.frozenLift L l s mb G j ls b K : ℝ → ColumnHilbert Md) y = 0 := by
-  filter_upwards [columnL2Restriction_coeFn (⋃ J ∈ fp.retainedV G b K,
-    dyadicGridCell A.G J.1 J.2)
-    (Finset.measurableSet_biUnion _ fun J _ => dyadicGridCell_measurable A.G J.1 J.2)
-    (L.op (fp.frozenZ l s mb G j ls (b - 4 * K)))] with y hy hoff
-  unfold frozenLift
-  rw [hy, Set.indicator_of_notMem]
-  intro hmem
-  obtain ⟨J, hJ, hyJ⟩ := Set.mem_iUnion₂.mp hmem
-  exact hoff J hJ hyJ
 
 open Classical in
 /-- Blueprint line 1967: on a retained `v_b`-cell `J` inside a cell `U` of the depth partition at

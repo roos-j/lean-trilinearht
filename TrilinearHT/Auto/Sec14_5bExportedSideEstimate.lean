@@ -175,153 +175,6 @@ def unflM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (ca
         (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j (A.blkStart K I.1))‖ ^ 2 ≤
       (2 * C₀) ^ 2 * dyadicGridLength A.G J.1
 
-open Classical in
-/-- Blueprint line 2393 (flags as strong factors): if the current complements are bounded by `C₀`
-on the active cells, the flagged uses of one step and offset have length-weighted flag cost
-`C₀⁴ |I|` at most `C₀² K` times the freeze differences at the cells of their blocks (the
-propagation of a flag through its block costs at most `K`), on the main columns. -/
-theorem flag_budgetM (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.MainBudget (cat l))
-    (a c d : Fin 4) (G : bf.Grp) (jc jd : ℕ) (Dl : List (Bool × ℕ × Option ℕ)) (j o : ℕ) {K : ℕ}
-    {C₀ : ℝ} (hC₀ : 0 < C₀) (hK1 : 1 ≤ K) (S : Finset (ℤ × ℤ))
-    (hcur : ∀ J ∈ A.cells, ∑ p ∈ fp.uoM o, ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
-        (dyadicGridCell_measurable A.G J.1 J.2) (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j o
-            J.1 p)‖ ^ 2 ≤
-          C₀ ^ 2 * dyadicGridLength A.G J.1 ∧
-      ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
-        (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j J.1)‖ ^ 2 ≤ C₀ ^ 2 * dyadicGridLength A.G
-            J.1)
-    (Sc : Finset (ℤ × ℤ)) (hSc : ∀ I ∈ S, ∀ J ∈ A.cells,
-      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G J.1 J.2 → A.blkStart K I.1 ≤ J.1 → J ∈ Sc) :
-    ∑ I ∈ S, (if fp.unflM cat mbs a c d G jc jd Dl j o K C₀ I then 0 else C₀ ^ 4 *
-        dyadicGridLength A.G I.1) ≤
-      C₀ ^ 2 * K * ∑ J ∈ Sc, (∑ p ∈ fp.uoM o,
-        ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
-          (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j o J.1 p - fp.YfrM cat mbs a c d (fp.Lc +
-              5) G jc jd Dl j o (A.blkStart K J.1) p)‖ ^ 2 +
-        ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
-          (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j J.1 - fp.FfrM cat mbs a c d (fp.Lc + 5)
-              G jc jd Dl j (A.blkStart K J.1))‖ ^ 2) := by
-  set Dj : ℤ × ℤ → ℝ := fun J => ∑ p ∈ fp.uoM o,
-        ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
-          (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j o J.1 p - fp.YfrM cat mbs a c d (fp.Lc +
-              5) G jc jd Dl j o (A.blkStart K J.1) p)‖ ^ 2 +
-        ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
-          (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j J.1 - fp.FfrM cat mbs a c d (fp.Lc + 5)
-              G jc jd Dl j (A.blkStart K J.1))‖ ^ 2 with hDj
-  have hDj0 : ∀ J, 0 ≤ Dj J := fun J => by positivity
-  set rel : ℤ × ℤ → ℤ × ℤ → Prop := fun I J => dyadicGridCell A.G I.1 I.2 ⊆
-    dyadicGridCell A.G J.1 J.2 ∧ A.blkStart K I.1 ≤ J.1 with hrel
-  -- a flagged use is charged to one ancestor of its block
-  have hflag : ∀ I ∈ S, (if fp.unflM cat mbs a c d G jc jd Dl j o K C₀ I then 0 else
-      C₀ ^ 4 * dyadicGridLength A.G I.1) ≤
-      C₀ ^ 2 * ∑ J ∈ Sc.filter (rel I), dyadicGridLength A.G I.1 * (Dj J / dyadicGridLength A.G J.1)
-          := by
-    intro I hI
-    have hsum0 : 0 ≤ ∑ J ∈ Sc.filter (rel I),
-        dyadicGridLength A.G I.1 * (Dj J / dyadicGridLength A.G J.1) :=
-      Finset.sum_nonneg fun J _ => mul_nonneg (dyadicGridLength_pos A.G I.1).le
-        (div_nonneg (hDj0 J) (dyadicGridLength_pos A.G J.1).le)
-    split_ifs with hu
-    · positivity
-    · unfold unflM at hu
-      push Not at hu
-      obtain ⟨J, hJ, hsub, hbl, hbad⟩ := hu
-      have hJS : J ∈ Sc.filter (rel I) := Finset.mem_filter.mpr ⟨hSc I hI J hJ hsub hbl, hsub, hbl⟩
-      have hLJ := dyadicGridLength_pos A.G J.1
-      have hblk : A.blkStart K J.1 = A.blkStart K I.1 := by
-        have h1 := A.blkStart_bounds hK1 I.1
-        have h2 := A.blkStart_bounds hK1 J.1
-        have hJI : J.1 ≤ I.1 := dyadicGridCell_depth_le_of_subset A.G I J hsub
-        have d := dvd_sub (A.blkStart_dvd K I.1) (A.blkStart_dvd K J.1)
-        have e : A.blkStart K I.1 - A.R.1 - (A.blkStart K J.1 - A.R.1) =
-            A.blkStart K I.1 - A.blkStart K J.1 := by ring
-        rw [e] at d
-        have hz := Int.eq_zero_of_abs_lt_dvd d (by rw [abs_lt]; constructor <;> omega)
-        omega
-      have hone := flag_band_one (fp.uoM o)
-        (fun p => columnL2Restriction (dyadicGridCell A.G J.1 J.2)
-          (dyadicGridCell_measurable A.G J.1 J.2) (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j
-              o (A.blkStart K I.1) p))
-        (fun p => columnL2Restriction (dyadicGridCell A.G J.1 J.2)
-          (dyadicGridCell_measurable A.G J.1 J.2) (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j
-              o J.1 p))
-        (columnL2Restriction (dyadicGridCell A.G J.1 J.2)
-          (dyadicGridCell_measurable A.G J.1 J.2) (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j
-              (A.blkStart K I.1)))
-        (columnL2Restriction (dyadicGridCell A.G J.1 J.2)
-          (dyadicGridCell_measurable A.G J.1 J.2) (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j
-              J.1))
-        (by positivity) (hcur J hJ).1 (hcur J hJ).2 (by
-          by_cases hY : ∑ p ∈ fp.uoM o, ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
-              (dyadicGridCell_measurable A.G J.1 J.2)
-              (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j o (A.blkStart K I.1) p)‖ ^ 2 ≤ (2 *
-                  C₀) ^ 2 * dyadicGridLength A.G
-                  J.1
-          · right; have := hbad hY; nlinarith
-          · left; push Not at hY; nlinarith)
-      have hD : (∑ p ∈ fp.uoM o, ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
-          (dyadicGridCell_measurable A.G J.1 J.2) (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j
-              o (A.blkStart K I.1) p) -
-          columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
-            (fp.YfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j o J.1 p)‖ ^ 2 +
-          ‖columnL2Restriction (dyadicGridCell A.G J.1 J.2)
-          (dyadicGridCell_measurable A.G J.1 J.2) (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j
-              (A.blkStart K I.1)) -
-          columnL2Restriction (dyadicGridCell A.G J.1 J.2) (dyadicGridCell_measurable A.G J.1 J.2)
-            (fp.FfrM cat mbs a c d (fp.Lc + 5) G jc jd Dl j J.1)‖ ^ 2) = Dj J := by
-        simp only [hDj, hblk, ← map_sub]
-        congr 1
-        · exact Finset.sum_congr rfl fun p _ => by rw [map_sub, map_sub, norm_sub_rev]
-        · rw [map_sub, map_sub, norm_sub_rev]
-      rw [hD, le_div_iff₀ (by positivity), one_mul] at hone
-      have hI0 := (dyadicGridLength_pos A.G I.1).le
-      calc C₀ ^ 4 * dyadicGridLength A.G I.1
-          = C₀ ^ 2 * (dyadicGridLength A.G I.1 * ((C₀ ^ 2 * dyadicGridLength A.G J.1) /
-            dyadicGridLength A.G J.1)) := by field_simp
-        _ ≤ C₀ ^ 2 * (dyadicGridLength A.G I.1 * (Dj J / dyadicGridLength A.G J.1)) := by gcongr
-        _ ≤ C₀ ^ 2 * ∑ J ∈ Sc.filter (rel I),
-            dyadicGridLength A.G I.1 * (Dj J / dyadicGridLength A.G J.1) := by
-          gcongr
-          exact Finset.single_le_sum (f := fun J => dyadicGridLength A.G I.1 *
-            (Dj J / dyadicGridLength A.G J.1)) (fun J _ => mul_nonneg hI0
-              (div_nonneg (hDj0 J) (dyadicGridLength_pos A.G J.1).le)) hJS
-  have hwin : ∀ J ∈ Sc, ∑ I ∈ S.filter (fun I => rel I J), dyadicGridLength A.G I.1 ≤
-      K * dyadicGridLength A.G J.1 := by
-    intro J _
-    refine depth_window_length_le A.G _ J K (fun I hI => (Finset.mem_filter.mp hI).2.1)
-      fun I hI => ?_
-    obtain ⟨-, hsub, hbl⟩ := Finset.mem_filter.mp hI
-    have h1 := dyadicGridCell_depth_le_of_subset A.G I J hsub
-    have h2 := (A.blkStart_bounds hK1 I.1).2
-    constructor <;> omega
-  calc ∑ I ∈ S, (if fp.unflM cat mbs a c d G jc jd Dl j o K C₀ I then 0 else C₀ ^ 4 *
-      dyadicGridLength A.G I.1)
-      ≤ ∑ I ∈ S, C₀ ^ 2 * ∑ J ∈ Sc.filter (rel I),
-          dyadicGridLength A.G I.1 * (Dj J / dyadicGridLength A.G J.1) := Finset.sum_le_sum hflag
-    _ = C₀ ^ 2 * ∑ J ∈ Sc, (Dj J / dyadicGridLength A.G J.1) *
-          ∑ I ∈ S.filter (fun I => rel I J), dyadicGridLength A.G I.1 := by
-        rw [← Finset.mul_sum]
-        congr 1
-        refine (Finset.sum_comm' (t' := Sc) (s' := fun J => S.filter (fun I => rel I J))
-          (f := fun I J => dyadicGridLength A.G I.1 * (Dj J / dyadicGridLength A.G J.1))
-          ?_).trans ?_
-        · intro I J
-          simp only [Finset.mem_filter]
-          tauto
-        · refine Finset.sum_congr rfl fun J _ => ?_
-          rw [Finset.mul_sum]
-          exact Finset.sum_congr rfl fun I _ => by ring
-    _ ≤ C₀ ^ 2 * ∑ J ∈ Sc, (Dj J / dyadicGridLength A.G J.1) *
-          (K * dyadicGridLength A.G J.1) := by
-        gcongr with J hJ
-        · exact div_nonneg (hDj0 J) (dyadicGridLength_pos A.G J.1).le
-        · exact hwin J hJ
-    _ = C₀ ^ 2 * K * ∑ J ∈ Sc, Dj J := by
-        rw [Finset.mul_sum, Finset.mul_sum]
-        refine Finset.sum_congr rfl fun J _ => ?_
-        have := (dyadicGridLength_pos A.G J.1).ne'
-        field_simp
-
 end ActiveSetup.BasicFamilies.FamParams
 
 /-! ## The bound of one slot tuple at one cell on the main columns (blueprint lines 2241-2394) -/
@@ -2900,21 +2753,6 @@ noncomputable def frzGr (C₀ : ℝ) (a c d : Fin 4) (G : bf.Grp) (t t' : List �
       C₀ * (Real.sqrt (T.dFe a c d G t t' j I) / Real.sqrt (dyadicGridLength A.G I.1)) +
         C₀ ^ 2 * T.fI (T.dFe a c d G t t' j) (C₀ ^ 2) I)
 
-theorem frzSh_nonneg {C₀ : ℝ} (hC₀ : 0 ≤ C₀) (a c d : Fin 4) (G : bf.Grp) (t t' : List ℕ)
-    (j : ℕ) (I : ℤ × ℤ) : 0 ≤ T.frzSh C₀ a c d G t t' j I := by
-  unfold frzSh
-  have := T.fI_nonneg (T.iYe a c d G t t' j) (C₀ ^ 2 / 8) I
-  have := T.fI_nonneg (T.pYe a c d G t t' j) (C₀ ^ 2 / 8) I
-  have := T.fI_nonneg (T.dFe a c d G t t' j) (C₀ ^ 2) I
-  split_ifs <;> positivity
-
-theorem frzGr_nonneg {C₀ : ℝ} (hC₀ : 0 ≤ C₀) (a c d : Fin 4) (G : bf.Grp) (t t' : List ℕ)
-    (j : ℕ) (I : ℤ × ℤ) : 0 ≤ T.frzGr C₀ a c d G t t' j I := by
-  unfold frzGr
-  have := T.fI_nonneg (T.pYe a c d G t t' j) (C₀ ^ 2 / 8) I
-  have := T.fI_nonneg (T.dFe a c d G t t' j) (C₀ ^ 2) I
-  split_ifs <;> positivity
-
 theorem frzSh_indep (C₀ : ℝ) (a c d : Fin 4) (G G' : bf.Grp) (t t' : List ℕ) (j : ℕ)
     (I : ℤ × ℤ) : T.frzSh C₀ a c d G t t' j I = T.frzSh C₀ a c d G' t t' j I := by
   unfold frzSh
@@ -4865,9 +4703,7 @@ theorem cmpMaskM_cum (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.Mai
   have h2 : (D.getD k (true, 0, none)).2.2 = some m := by rw [hm]
   unfold cmpMaskM cumMaskT
   congr 1
-  all_goals first
-    | exact h1
-    | (funext c'; rw [h2]; rfl)
+  all_goals funext c'; rw [h2]; rfl
 
 /-- The layers of slot `v` with cumulative descriptors are the averaged cumulative projections of
 the main tree of its slot. -/
@@ -4994,9 +4830,6 @@ theorem merge_after_cum (jc jd : ℕ) (t t' : List ℕ) (j : ℕ) :
 namespace SideLeafM
 variable (T : fp.SideLeafM)
 
-theorem desc_eq (c d : Fin 4) (t t' : List ℕ) :
-    T.desc c d t t' = fp.mergeDescM (T.Lf.role c) (T.Lf.role d) t t' := rfl
-
 /-- The later descriptors of the slot of a step of a chain pair are cumulative. -/
 theorem desc_after_cum (c d : Fin 4) (t t' : List ℕ) (j : ℕ) :
     ∀ e ∈ (T.desc c d t t').drop (j + 1),
@@ -5094,9 +4927,7 @@ theorem cmpMaskM_ball (cat : Fin 4 → List (CatCol bf.Vtx)) (mbs : ∀ l, bf.Ma
   have h2 : (D.getD k (true, 0, none)).2.2 = none := by rw [hm]
   unfold cmpMaskM ballMaskT
   congr 1
-  all_goals first
-    | exact h1
-    | (funext c'; rw [h2]; rfl)
+  all_goals funext c'; rw [h2]; rfl
 
 namespace SideLeafM
 variable (T : fp.SideLeafM)
@@ -6149,10 +5980,6 @@ variable (D : fp.SideInput) (q : ℕ)
 
 @[simp] theorem withQ0_S : (D.withQ0 q).S = D.S.withQ0 q := rfl
 @[simp] theorem withQ0_SP : (D.withQ0 q).SP = D.SP := rfl
-@[simp] theorem withQ0_Ms : (D.withQ0 q).Ms = D.Ms := rfl
-@[simp] theorem withQ0_c : (D.withQ0 q).c = D.c := rfl
-@[simp] theorem withQ0_cat : (D.withQ0 q).cat = D.cat := rfl
-@[simp] theorem withQ0_Lf : (D.withQ0 q).Lf = D.Lf := rfl
 @[simp] theorem withQ0_u : (D.withQ0 q).u = D.u := rfl
 
 end SideInput
@@ -6238,12 +6065,6 @@ noncomputable def toLeafQ (qG : bf.Grp → ℕ) : fp.SideLeafM where
 
 theorem toLeafQ_sv (qG : bf.Grp → ℕ) (l : Fin 4) (G : bf.Grp) (I : ℤ × ℤ) :
     (D.toLeafQ qG).sv l G I = (D.withQ0 (qG G)).toLeaf.sv l G I := rfl
-
-theorem toLeafQ_gside (qG : bf.Grp → ℕ) (l : Fin 4) (G : bf.Grp) (h : ℤ) :
-    (D.toLeafQ qG).gside l G h = (D.withQ0 (qG G)).gs' l G h := rfl
-
-theorem toLeafQ_Wb (qG : bf.Grp → ℕ) (l : Fin 4) (G : bf.Grp) (b : ℤ) :
-    (D.toLeafQ qG).Wb l G b = (D.withQ0 (qG G)).Wr l G b := rfl
 
 theorem toLeafQ_out (qG : bf.Grp → ℕ) (l : Fin 4) (G : bf.Grp) (I : ℤ × ℤ) :
     (D.toLeafQ qG).out l G I = (D.withQ0 (qG G)).toLeaf.out l G I := by
@@ -6426,10 +6247,6 @@ theorem sum_sub_eq_ite {g gset : Finset bf.Grp} (hg : g ⊆ gset) (f : bf.Grp �
 
 namespace SideInput
 variable (D : fp.SideInput)
-
-theorem sideState_self (l : Fin 4) (G : bf.Grp) (b : ℤ) :
-    fp.sideState (D.Ms l G) l (D.cat l) (D.mbs l) G (D.Lf.role l) (D.Lf.layers l) D.S D.hA D.SP
-      (D.c l G b) b b = D.Wr l G b := rfl
 
 theorem gs'_nat (l : Fin 4) (G : bf.Grp) (t : ℕ) :
     D.gs' l G (A.R.1 + t) = fp.sideState (D.Ms l G) l (D.cat l) (D.mbs l) G (D.Lf.role l)
@@ -7441,21 +7258,6 @@ def restrictTo (A : ActiveSetup κ c₀) (R' : ℤ × ℤ) (C : Finset (ℤ × �
 variable (A : ActiveSetup κ c₀) (R' : ℤ × ℤ) (C : Finset (ℤ × ℤ))
   (hC : ∀ I ∈ C, I ∈ A.cells ∧ dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2)
 
-@[simp] theorem restrictTo_cells : (A.restrictTo R' C hC).cells = C := rfl
-
-@[simp] theorem restrictTo_R : (A.restrictTo R' C hC).R = R' := rfl
-
-@[simp] theorem restrictTo_G : (A.restrictTo R' C hC).G = A.G := rfl
-
-@[simp] theorem restrictTo_w : (A.restrictTo R' C hC).w = A.w := rfl
-
-theorem restrictTo_Hf (I : ℤ × ℤ) (F : Fin 4 → ℝ → ℂ) : (A.restrictTo R' C hC).Hf I F = A.Hf I F :=
-  rfl
-
-theorem restrictTo_z (p : Fin 4) (I : ℤ × ℤ) : (A.restrictTo R' C hC).z p I = A.z p I := rfl
-
-theorem restrictTo_Y (I : ℤ × ℤ) : (A.restrictTo R' C hC).Y I = A.Y I := rfl
-
 end ActiveSetup
 
 namespace ActiveSetup
@@ -7475,74 +7277,6 @@ open Classical in
     dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2 := rfl
 
 @[simp] theorem below_R : (A.below R').R = R' := rfl
-
-@[simp] theorem below_G : (A.below R').G = A.G := rfl
-
-@[simp] theorem below_w : (A.below R').w = A.w := rfl
-
-@[simp] theorem below_η : (A.below R').η = A.η := rfl
-
-@[simp] theorem below_U : (A.below R').U = A.U := rfl
-
-@[simp] theorem below_L : (A.below R').L = A.L := rfl
-
-theorem below_B : (A.below R').B = A.B := rfl
-
-theorem below_z : (A.below R').z = A.z := rfl
-
-theorem below_Y : (A.below R').Y = A.Y := rfl
-
-theorem below_μ : (A.below R').μ = A.μ := rfl
-
-end ActiveSetup
-
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-
-open Classical in
-/-- Blueprint line 2451 for the active cells: below a sub-root of the root the active cells stay
-closed under ancestors. -/
-theorem below_ancClosed (hanc : A.AncClosed) {R' : ℤ × ℤ}
-    (hR' : dyadicGridCell A.G R'.1 R'.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2) :
-    (A.below R').AncClosed := by
-  intro I hI J hIJ hJR
-  rw [below_cells] at hI ⊢
-  obtain ⟨hIc, -⟩ := Finset.mem_filter.mp hI
-  exact Finset.mem_filter.mpr ⟨hanc I hIc J hIJ (hJR.trans hR'), hJR⟩
-
-open Classical in
-/-- Blueprint line 2451 for the base data ("every hypothesis is available anew on a normalized
-subroot by the base construction"): the sub-root properties of prop:base (basic-side energy
-`eq:basic-side`, the two-`U` term and the column representation below every sub-root) hold for
-every restriction to a sub-root. -/
-theorem restrictTo_subRootProps {η₀ E : ℝ} (h : A.SubRootProps η₀ E) {R' : ℤ × ℤ}
-    (hR' : dyadicGridCell A.G R'.1 R'.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2) (C : Finset (ℤ × ℤ))
-    (hC : ∀ I ∈ C, I ∈ A.cells ∧ dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R'.1 R'.2) :
-    (A.restrictTo R' C hC).SubRootProps η₀ E := by
-  intro R'' hR''
-  obtain ⟨h1, h2, h3⟩ := h R'' (hR''.trans hR')
-  have hsub : (C.filter fun I => dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R''.1 R''.2) ⊆
-      A.cells.filter fun I => dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G R''.1 R''.2 :=
-    fun I hI => by
-      obtain ⟨hIC, hIR⟩ := Finset.mem_filter.mp hI
-      exact Finset.mem_filter.mpr ⟨(hC I hIC).1, hIR⟩
-  refine ⟨fun l => le_trans (Finset.sum_le_sum_of_subset_of_nonneg hsub fun I _ _ =>
-      mul_nonneg (dyadicGridLength_pos A.G I.1).le (sq_nonneg _)) (h1 l),
-    le_trans (Finset.sum_le_sum_of_subset_of_nonneg hsub fun I _ _ =>
-      mul_nonneg (dyadicGridLength_pos A.G I.1).le (norm_nonneg _)) h2, fun l => ?_⟩
-  obtain ⟨P₁, P₂, hb₁, hb₂, c₁, c₂, e₁, e₂, hP⟩ := h3 l
-  exact ⟨P₁, P₂, hb₁, hb₂, c₁.mono (fun I hI => ⟨(hC I hI.1).1, hI.2⟩) le_rfl le_rfl,
-    c₂.mono (fun I hI => ⟨(hC I hI.1).1, hI.2⟩) le_rfl le_rfl,
-    e₁.mono (fun I hI => ⟨(hC I hI.1).1, hI.2⟩), e₂.mono (fun I hI => ⟨(hC I hI.1).1, hI.2⟩),
-    fun I hI hIR => hP I (hC I hI).1 hIR⟩
-
-/-- Blueprint line 2451 for the basic families: below a sub-root the base construction provides
-new basic families (the inherited extensions of the column representation below the sub-root). -/
-theorem below_families {η₀ E : ℝ} (h : A.SubRootProps η₀ E) {R' : ℤ × ℤ}
-    (hR' : dyadicGridCell A.G R'.1 R'.2 ⊆ dyadicGridCell A.G A.R.1 A.R.2) :
-    Nonempty (A.below R').BasicFamilies :=
-  HasColumnRep.families (hasColumnRep_of_below _
-    ((A.restrictTo_subRootProps h hR' _ _) R' subset_rfl).2.2)
 
 end ActiveSetup
 

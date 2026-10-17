@@ -170,62 +170,6 @@ theorem quadratic_short_returns_isotropic {d k : ℕ}
     omega
   exact_mod_cast he
 
-theorem quadraticReturnFrequency_zero_dim {k : ℕ}
-    (C : Matrix (Fin 0) (Fin 0) ℝ) (V : Matrix (Fin 0) (Fin k) ℝ)
-    (Λ : Matrix (Fin k) (Fin k) ℝ) (h : Fin k → ℝ) (m : Fin 0 → ℝ) :
-    quadraticReturnFrequency C V Λ h m = (2 • Λ).mulVec h := by
-  ext i
-  simp [quadraticReturnFrequency, Matrix.mulVec, dotProduct, two_smul]
-
-theorem zero_dimensional_short_return_bound {k : ℕ}
-    (C : Matrix (Fin 0) (Fin 0) ℝ) (V : Matrix (Fin 0) (Fin k) ℝ)
-    (Λ : Matrix (Fin k) (Fin k) ℝ) {a M : ℝ} (ha : 0 < a) (hM : 0 ≤ M)
-    (hΩ : ∀ h : Fin k → ℝ, ‖WithLp.toLp 2 h‖ ≤ a →
-      ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h 0)‖ ≤ M) :
-    (∀ i j, |Λ i j| ≤ M / a) ∧
-      ‖realMatrixOperator Λ‖ ≤ (k : ℝ) ^ 2 * (M / a) := by
-  have hentry (i j : Fin k) : |Λ i j| ≤ M / a := by
-    let h : Fin k → ℝ := Pi.single j (a / 2)
-    have hh : ‖WithLp.toLp 2 h‖ ≤ a := by
-      change ‖EuclideanSpace.single j (a / 2)‖ ≤ a
-      rw [PiLp.norm_single, Real.norm_eq_abs, abs_of_pos (div_pos ha (by norm_num))]
-      linarith only [ha]
-    have hb := hΩ h hh
-    rw [quadraticReturnFrequency_zero_dim] at hb
-    have hc := (PiLp.norm_apply_le (WithLp.toLp 2 ((2 • Λ).mulVec h)) i).trans hb
-    have he : ((2 • Λ).mulVec h) i = a * Λ i j := by
-      simp [Matrix.mulVec, dotProduct, h, Pi.single_apply, two_smul]
-      ring
-    change ‖((2 • Λ).mulVec h) i‖ ≤ M at hc
-    rw [he, norm_mul, Real.norm_eq_abs, abs_of_pos ha, Real.norm_eq_abs] at hc
-    exact (le_div_iff₀ ha).mpr (by nlinarith only [hc])
-  refine ⟨hentry, ?_⟩
-  have hb := realMatrixOperator_norm_le Λ (div_nonneg hM ha.le) hentry
-  simpa only [pow_two, mul_assoc] using hb
-
-/-- Blueprint lem:return-splitting, line 1271: in dimension zero, testing each
-coordinate direction bounds all quadratic coefficients and the operator norm. -/
-theorem zero_dimensional_short_return_bound_full {k : ℕ}
-    (C : Matrix (Fin 0) (Fin 0) ℝ) (V : Matrix (Fin 0) (Fin k) ℝ)
-    (Λ : Matrix (Fin k) (Fin k) ℝ) (P : ℤ) {a M : ℝ} (ha : 0 < a) (hM : 0 ≤ M)
-    (hΩ : ∀ (h : Fin k → ℝ) (n : Fin 0 → ℤ),
-      ‖WithLp.toLp 2 h‖ +
-        ‖WithLp.toLp 2 (V.mulVec h - fun i => (P : ℝ) * n i)‖ ≤ a →
-      ‖WithLp.toLp 2 (quadraticReturnFrequency C V Λ h (fun i => (P : ℝ) * n i))‖ ≤ M) :
-    (∀ i j, |Λ i j| ≤ M / a) ∧
-      ‖realMatrixOperator Λ‖ ≤ (k : ℝ) ^ 2 * (M / a) := by
-  apply zero_dimensional_short_return_bound C V Λ ha hM
-  intro h hh
-  have hd : V.mulVec h = 0 := Subsingleton.elim _ _
-  have hm : (fun i : Fin 0 => (P : ℝ) * ((0 : Fin 0 → ℤ) i : ℝ)) = 0 := by
-    ext i
-    simp
-  have hs := hΩ h (0 : Fin 0 → ℤ)
-  rw [hm] at hs
-  apply hs
-  rw [hd, sub_self, WithLp.toLp_zero, norm_zero, add_zero]
-  exact hh
-
 /-- The exact quadratic-lattice phase increment in the Weyl return identity
 (blueprint lem:weyl, lines 1323–1332), before discarding an integer phase. -/
 theorem quadratic_lattice_return_phase {d k : ℕ}
@@ -466,18 +410,6 @@ end
 section
 
 namespace Auto
-open scoped BigOperators NNReal
-
-theorem cyclicBohrNorm_nonneg {q : ℕ} [NeZero q] (S : Finset (ZMod q)) (x : ZMod q) :
-    0 ≤ cyclicBohrNorm S x := NNReal.coe_nonneg _
-
-end Auto
-
-end
-
-section
-
-namespace Auto
 open Filter MeasureTheory
 open scoped Topology ENNReal
 
@@ -698,16 +630,6 @@ theorem scaled_shortReturnBody_gives_return {d k : ℕ}
 
 noncomputable def coordinateIntegerLattice (d : ℕ) : Submodule ℤ (EuclideanSpace ℝ (Fin d)) :=
   Submodule.span ℤ (Set.range (EuclideanSpace.basisFun (Fin d) ℝ).toBasis)
-
-instance coordinateIntegerLattice_discrete (d : ℕ) :
-    DiscreteTopology (coordinateIntegerLattice d) := by
-  unfold coordinateIntegerLattice
-  infer_instance
-
-instance coordinateIntegerLattice_full (d : ℕ) :
-    IsZLattice ℝ (coordinateIntegerLattice d) := by
-  unfold coordinateIntegerLattice
-  infer_instance
 
 theorem mem_coordinateIntegerLattice {d : ℕ} (x : EuclideanSpace ℝ (Fin d)) :
     x ∈ coordinateIntegerLattice d ↔ ∀ i, ∃ n : ℤ, (n : ℝ) = x i := by
@@ -2216,11 +2138,6 @@ open Filter
 open scoped Topology
 open Polynomial MeasureTheory
 open AddCircle
-
-theorem fourierRowBump_eq_one {x : ℝ} (hx : x ∈ Set.Icc (0 : ℝ) 1) :
-    fourierRowBump x = 1 := by
-  simp [fourierRowBump, gevreyIntervalCutoff_eq_one (by norm_num : (-1 : ℝ) < 0)
-    (by norm_num : (1 : ℝ) < 2) hx]
 
 open scoped ComplexConjugate FourierTransform
 open scoped ENNReal

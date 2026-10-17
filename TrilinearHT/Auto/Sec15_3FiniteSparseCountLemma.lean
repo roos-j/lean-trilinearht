@@ -55,37 +55,6 @@ theorem minimal_growth_iteration (X B : Finset G)
           rw [div_pow, div_pow, pow_succ, pow_succ]
           field_simp
 
-omit [DecidableEq G] in
-/-- Blueprint lines 2675-2676 (packing bound): if the translates `Y - p`, `p ∈ P ⊆ mB`, are
-pairwise disjoint subsets of `X - mB`, `|Y| ≥ |X|/M` and `|X - mB| ≤ r^m |X|`, then
-`|P| ≤ r^m M`. -/
-theorem packing_card_le (X Y P S : Finset G) (hPS : ∀ p ∈ P, ∀ y ∈ Y, y - p ∈ S)
-    (hdisj : ∀ p ∈ P, ∀ p' ∈ P, ∀ y ∈ Y, ∀ y' ∈ Y, y - p = y' - p' → p = p')
-    {ρ M : ℚ} (hS : (S.card : ℚ) ≤ ρ * X.card) (hY : (X.card : ℚ) ≤ M * Y.card)
-    (hYpos : 0 < Y.card) (hρ : 0 ≤ ρ) : (P.card : ℚ) ≤ ρ * M := by
-  classical
-  have hinj : (P ×ˢ Y).card ≤ S.card := by
-    apply Finset.card_le_card_of_injOn (fun q => q.2 - q.1)
-    · intro q hq
-      obtain ⟨hp, hy⟩ := Finset.mem_product.mp hq
-      exact hPS _ hp _ hy
-    · intro q hq q' hq' heq
-      obtain ⟨hp, hy⟩ := Finset.mem_product.mp hq
-      obtain ⟨hp', hy'⟩ := Finset.mem_product.mp hq'
-      have h1 := hdisj _ hp _ hp' _ hy _ hy' heq
-      have h2 : q.2 = q'.2 := by
-        have : q.2 - q.1 = q'.2 - q'.1 := heq
-        rw [h1] at this; exact sub_left_injective this
-      exact Prod.ext h1 h2
-  rw [Finset.card_product] at hinj
-  have hY0 : (0 : ℚ) < Y.card := by exact_mod_cast hYpos
-  have : (P.card : ℚ) * Y.card ≤ ρ * M * Y.card := by
-    calc (P.card : ℚ) * Y.card ≤ S.card := by exact_mod_cast hinj
-      _ ≤ ρ * X.card := hS
-      _ ≤ ρ * (M * Y.card) := mul_le_mul_of_nonneg_left hY hρ
-      _ = ρ * M * Y.card := by ring
-  exact le_of_mul_le_mul_right this hY0
-
 end SparseCount
 
 /-- Blueprint `eq:count-balance` (lines 2700-2703): with `J₀ ≤ 3Lτ^{-2}`, `η = τ³/L`, `L ≥ 1`,
@@ -1370,9 +1339,6 @@ theorem R_strictMono : StrictMono D.R := fun s t h =>
 
 theorem R_add (s : ℤ) (g : ℕ) : D.R (s + g) = 2 ^ g * D.R s := by
   unfold R; rw [zpow_add₀ (by norm_num), zpow_natCast]; ring
-
-/-- Occurrences of a tuple `x` with its scale `s`. -/
-abbrev Occ := ℤ × (Fin 4 → ℤ)
 
 /-- Three distinct core roles exist besides any given core role. -/
 theorem exists_two_other (D : SparseCountData) {i : Fin 4} (hi : i ∈ D.core) :
@@ -3404,8 +3370,6 @@ theorem gridLabel_err {h : ℝ} (hh : 0 < h) (x : ℝ) : |h * gridLabel h x - x|
   rw [e, abs_mul, abs_of_pos (by positivity), abs_sub_comm]
   nlinarith
 
-theorem gridLabel_zero (h : ℝ) : gridLabel h 0 = 0 := by simp [gridLabel]
-
 theorem six_dvd_gridLabel (h x : ℝ) : (6 : ℤ) ∣ gridLabel h x := ⟨_, rfl⟩
 
 theorem round_err {h : ℝ} (hh : 0 < h) (x : ℝ) : |h * round (x / h) - x| ≤ h / 2 := by
@@ -3787,36 +3751,6 @@ theorem sparse_count_explicit :
   rw [hsum] at hfinal
   exact sparse_count_final_arith hδ0 hL hμ (by linarith) hfinal
 
-/-- Blueprint `lem:sparse-count` (lines 2587-2705), `eq:sparse-count`, with absolute constants
-`C, C_res` (`sparse_count_explicit` gives `C = 3 · 10^{11}`, `C_res = 7200000`). -/
-theorem sparse_count :
-    ∃ C Cres : ℝ, 0 < C ∧ 0 < Cres ∧
-    ∀ (d : ℕ) (ζ : Fin d → ℝ) (core : Finset (Fin 4)), (core.card = 3 ∨ core.card = 4) →
-    ∀ (A : Fin 4 → Finset ℝ) (M L : ℝ), 1 ≤ M → 1 ≤ L → (∀ i ∈ core, ((A i).card : ℝ) ≤ M) →
-    ∀ (B Sg Q μ ν R₀ : ℝ), 1 ≤ B → 0 < μ → μ ≤ 1 → 1 ≤ ν → 0 < R₀ →
-    ∀ (S : Finset ℤ) (E : ℤ → Finset (Fin 4 → ℝ)),
-    (∀ s ∈ S, ∀ x ∈ E s, (∀ i ∈ core, x i ∈ A i) ∧ ∀ i ∉ core, x i = 0) →
-    (∀ i ∈ core, ∀ j ∈ core, i ≠ j → ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s',
-      x i = x' i → x j = x' j → x = x') →
-    (∀ x, ((S.filter fun s => x ∈ E s).card : ℝ) ≤ L) →
-    (core.card = 3 → ∃ w : ℤ → ℝ, (∀ s, 0 ≤ w s) ∧ ∑ s ∈ S, w s ≤ M ∧
-      ∀ s ∈ S, ∀ i ∈ core, ∀ a, (((E s).filter fun x => x i = a).card : ℝ) ≤ w s) →
-    (∀ i ∈ core, ∀ s ∈ S, ∀ s' ∈ S, ∀ x ∈ E s, ∀ x' ∈ E s', x i ≠ x' i →
-      ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
-        Sg * max (R₀ * 2 ^ s) (R₀ * 2 ^ s') < |x i - x' i + ∑ k, (n k : ℝ) * ζ k|) →
-    (∀ T ⊆ core, T.card = 3 → ∀ l, l ∉ T → ∀ s ∈ S, ∀ x ∈ E s, ∃ n : Fin d → ℤ,
-      (∀ k, |(n k : ℝ)| ≤ B) ∧
-        μ * (R₀ * 2 ^ s) ≤ |∑ i ∈ T, (roleCoeff i l : ℝ) * x i + 36 * ∑ k, (n k : ℝ) * ζ k| ∧
-        |∑ i ∈ T, (roleCoeff i l : ℝ) * x i + 36 * ∑ k, (n k : ℝ) * ζ k| ≤ ν * (R₀ * 2 ^ s)) →
-    (∀ s ∈ S, (E s).Nonempty → ∀ n : Fin d → ℤ, (∀ k, |(n k : ℝ)| ≤ Q) →
-      |∑ k, (n k : ℝ) * ζ k| ∉ Set.Icc (μ * (R₀ * 2 ^ s) / 1000) (1000 * ν * (R₀ * 2 ^ s))) →
-    Cres * ((d : ℝ) + 1) ^ 2 * B ≤ Q → Cres * ((d : ℝ) + 1) ^ 2 * ν ≤ Sg →
-    ∀ δ : ℝ, 0 < δ → δ ≤ 1 →
-      ∑ s ∈ S.filter (fun s => ((E s).card : ℝ) ≤ δ * M ^ 2), ((E s).card : ℝ) ≤
-        C * (1 + Real.logb 2 (2 + ((d : ℝ) + 1) ^ 2 * ν / μ)) * L ^ 12 *
-          δ ^ (1 / 300 : ℝ) * M ^ 2 :=
-  ⟨3 * 10 ^ 11, 7200000, by norm_num, by norm_num, sparse_count_explicit⟩
-
 end Auto
 
 end
@@ -3834,91 +3768,6 @@ def ThreeRef {d : ℕ} (ζ : Fin d → ℝ) (l : Fin 4) (B μ ν R : ℝ) (x : F
   ∃ m : Fin d → ℤ, (∀ p, |(m p : ℝ)| ≤ B) ∧
     μ * R ≤ |∑ i ∈ Finset.univ.erase l, (roleCoeff i l : ℝ) * x i + 36 * ∑ p, (m p : ℝ) * ζ p| ∧
     |∑ i ∈ Finset.univ.erase l, (roleCoeff i l : ℝ) * x i + 36 * ∑ p, (m p : ℝ) * ζ p| ≤ ν * R
-
-end Auto
-
-end
-
-section
-
-namespace Auto
-open MeasureTheory Metric
-open scoped FourierTransform ComplexConjugate ENNReal
-
-namespace ActiveSetup
-
-namespace AttemptParams
-
-namespace LeafSplit
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {ap : A.AttemptParams}
-  {D : ap.LeafSplit}
-
-namespace CellCoreData
-variable {I : ℤ × ℤ} {G : A.Grp} (Cd : D.CellCoreData I G)
-
-/-- The test quantities `μ = min(1, r|β|)` and `ν = max(1, r|β|)` of a three-core tuple. -/
-noncomputable def mu3 (h' : ℕ) (l : Fin 4) (a : ∀ j, j ≠ l → (D.Ms j G).alive (D.decCell I))
-    (xs : ℝ) (Bf : ℕ) : ℝ :=
-  min 1 (dyadicGridLength A.G I.1 * |Cd.beta3 h' l a xs Bf|)
-
-noncomputable def nu3 (h' : ℕ) (l : Fin 4) (a : ∀ j, j ≠ l → (D.Ms j G).alive (D.decCell I))
-    (xs : ℝ) (Bf : ℕ) : ℝ :=
-  max 1 (dyadicGridLength A.G I.1 * |Cd.beta3 h' l a xs Bf|)
-
-/-- The anchored linear form of the labels of a three-core tuple is `T_l`:
-`Σ_{i ≠ l} (i - l) γ_i = Σ_j j γ_j - l Σ_j γ_j` (`γ_l = 0`). -/
-theorem roleCoeff_sum_refγ3 (l : Fin 4) (a : ∀ j, j ≠ l → (D.Ms j G).alive (D.decCell I))
-    (xs : ℝ) :
-    ∑ i ∈ Finset.univ.erase l, (roleCoeff i l : ℝ) * D.refγ3 G I xs l a i = D.refT3 G I l a xs := by
-  have hl : D.refγ3 G I xs l a l = 0 := by simp [refγ3]
-  rw [Finset.sum_erase _ (by rw [hl, mul_zero])]
-  unfold refT3
-  simp only [roleCoeff, Int.cast_sub, Int.cast_natCast, sub_mul, Finset.sum_sub_distrib,
-    Finset.mul_sum]
-
-/-- Blueprint lines 2537 and 2718-2723 (the tested three-core tuple as a labelled tuple): if a tuple
-of representatives `a` passes the three-core test at `x*` (torus height `h'`, full box `B_f`), its
-labels `x_j = ω_{a_j}(x*)` (`x_l = 0`) satisfy `ThreeRef` at the scale `R = |I|⁻¹` with the
-separation vector `ζ` (`36 ζ = ξ`), the box `B_f` and the dyadic bin values `μ = 2^{⌊log₂ μ⌋}`,
-`ν = 2^{⌊log₂ ν⌋ + 1}` of `μ = min(1, r|β|)`, `ν = max(1, r|β|)` (`eq:triple-test`). -/
-theorem passes_threeRef {h' : ℕ} (l : Fin 4) (a : ∀ j, j ≠ l → (D.Ms j G).alive (D.decCell I))
-    (xs : ℝ) (Bf : ℕ) (ζ : Fin Cd.z.dim → ℝ) (hζ : ∀ k, 36 * ζ k = D.xiH Cd.z h' k)
-    (hP : Cd.passes3 h' l a xs Bf) :
-    ThreeRef ζ l Bf ((2 : ℝ) ^ dyBin (Cd.mu3 h' l a xs Bf))
-      (2 * (2 : ℝ) ^ dyBin (Cd.nu3 h' l a xs Bf)) (A.G.baseLength⁻¹ * 2 ^ I.1)
-      (D.refγ3 G I xs l a) := by
-  have hr := dyadicGridLength_pos A.G I.1
-  have hR : A.G.baseLength⁻¹ * 2 ^ I.1 = (dyadicGridLength A.G I.1)⁻¹ :=
-    baseLength_inv_zpow A.G I.1
-  have hp : Cd.refPick3 h' l a xs Bf ∈ Cd.refSet3 h' l a xs Bf := finPick_mem hP.1
-  have hpbox := (Finset.mem_filter.mp hp).1
-  have hform : ∑ i ∈ Finset.univ.erase l, (roleCoeff i l : ℝ) * D.refγ3 G I xs l a i +
-      36 * ∑ p, (Cd.refPick3 h' l a xs Bf p : ℝ) * ζ p = Cd.beta3 h' l a xs Bf := by
-    rw [roleCoeff_sum_refγ3 l a xs, Finset.mul_sum]
-    unfold beta3
-    congr 1
-    refine Finset.sum_congr rfl fun p _ => ?_
-    rw [← hζ p]; ring
-  have hμ : 0 < Cd.mu3 h' l a xs Bf := lt_min one_pos (lt_of_lt_of_le (inv_pos.mpr Cd.hU₀) hP.2)
-  refine ⟨Cd.refPick3 h' l a xs Bf, fun p => abs_le_of_mem_frequencyBox hpbox p, ?_, ?_⟩
-  · rw [hform, hR, ← div_eq_mul_inv, div_le_iff₀ hr]
-    have h1 := dyBin_le hμ
-    have h2 : Cd.mu3 h' l a xs Bf ≤ dyadicGridLength A.G I.1 * |Cd.beta3 h' l a xs Bf| :=
-      min_le_right _ _
-    nlinarith
-  · rw [hform, hR, ← div_eq_mul_inv, le_div_iff₀ hr]
-    have h1 : dyadicGridLength A.G I.1 * |Cd.beta3 h' l a xs Bf| ≤ Cd.nu3 h' l a xs Bf :=
-      le_max_right _ _
-    have h2 := le_two_mul_dyBin (Cd.nu3 h' l a xs Bf)
-    nlinarith [abs_nonneg (Cd.beta3 h' l a xs Bf)]
-
-end CellCoreData
-
-end LeafSplit
-
-end AttemptParams
-
-end ActiveSetup
 
 end Auto
 

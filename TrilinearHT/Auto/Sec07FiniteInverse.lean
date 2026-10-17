@@ -2725,16 +2725,6 @@ noncomputable abbrev cyclicLiftLattice {ι : Type*} [Fintype ι] [DecidableEq ι
     (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) : Submodule ℤ (EuclideanSpace ℝ ι) :=
   Submodule.span ℤ (Set.range (cyclicLiftBasis q a i₀))
 
-instance cyclicLiftLattice_discrete {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) : DiscreteTopology (cyclicLiftLattice q a i₀) := by
-  unfold cyclicLiftLattice
-  infer_instance
-
-instance cyclicLiftLattice_full {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) : IsZLattice ℝ (cyclicLiftLattice q a i₀) := by
-  unfold cyclicLiftLattice
-  infer_instance
-
 /-- Real coordinates in the cyclic basis have a triangular explicit formula. -/
 theorem cyclicLiftBasis_repr {ι : Type*} [Fintype ι] [DecidableEq ι]
     (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (x : EuclideanSpace ℝ ι) (i : ι) :
@@ -2778,14 +2768,6 @@ theorem cyclicLiftProjection_basis {ι : Type*} [Fintype ι] [DecidableEq ι]
     ((cyclicLiftBasis q a i₀).restrictScalars ℤ i)) i₀ : ZMod q) = _
   rw [Module.Basis.repr_self]
   by_cases hi : i = i₀ <;> simp [hi]
-
-theorem cyclicLiftProjection_surjective {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) :
-    Function.Surjective (cyclicLiftProjection q a i₀) := by
-  intro z
-  refine ⟨z.val • (cyclicLiftBasis q a i₀).restrictScalars ℤ i₀, ?_⟩
-  rw [map_nsmul, cyclicLiftProjection_basis]
-  simp
 
 /-- The kernel consists exactly of the vectors with integer coordinates. -/
 theorem cyclicLiftProjection_eq_zero_iff {ι : Type*} [Fintype ι] [DecidableEq ι]
@@ -2850,19 +2832,6 @@ theorem cyclicLiftProjection_character {ι : Type*} [Fintype ι] [DecidableEq ι
       ZMod.toAddCircle ((a i : ZMod q) * (z i₀ : ZMod q))
     rw [← Int.cast_mul, ZMod.toAddCircle_intCast, hx, AddCircle.coe_add]
     simp
-
-/-- Containment of the integer lattice makes every vector in the dual lattice integral. -/
-theorem cyclicLiftDual_integer {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (q : ℕ) [NeZero q] (a : ι → ℤ) (i₀ : ι) (u : EuclideanSpace ℝ ι)
-    (hu : u ∈ euclideanDualLattice (cyclicLiftLattice q a i₀)) (i : ι) :
-    ∃ z : ℤ, u i = z := by
-  have he : EuclideanSpace.single i (1 : ℝ) ∈ cyclicLiftLattice q a i₀ := by
-    convert integerVector_mem_cyclicLiftLattice q a i₀ (Pi.single i 1) using 1
-    ext j
-    simp [Pi.single_apply]
-  obtain ⟨z, hz⟩ := (mem_euclideanDualLattice _ _).mp hu _ he
-  refine ⟨z, ?_⟩
-  simpa only [EuclideanSpace.inner_single_right, one_mul, conj_trivial] using hz.symm
 
 /-- Two cyclic lifts less than one apart cannot have the same projection unless equal. -/
 theorem cyclicLiftProjection_injective_near {ι : Type*} [Fintype ι] [DecidableEq ι]
@@ -3095,7 +3064,7 @@ theorem chartCoordinateProduct_smooth {d : ℕ} {f : ℝ → ℝ}
     ContDiff ℝ (⊤ : ℕ∞) (chartCoordinateProduct (d := d) f) := by
   apply contDiff_prod
   intro i _
-  exact Complex.ofRealCLM.contDiff.comp (hf.comp (contDiff_apply ℝ ℝ i))
+  exact Complex.ofRealCLM.contDiff.comp (hf.comp (contDiff_apply ℝ _ i))
 
 theorem chartCoordinateProduct_compact {d : ℕ} {f : ℝ → ℝ}
     (hf : HasCompactSupport f) :
@@ -3126,7 +3095,7 @@ theorem chartQuadraticAmplitude_smooth {d : ℕ} {f : ℝ → ℝ}
   intro i _
   apply ContDiff.sum
   intro j _
-  exact (contDiff_const.mul (contDiff_apply ℝ ℝ i)).mul (contDiff_apply ℝ ℝ j)
+  exact (contDiff_const.mul (contDiff_apply ℝ _ i)).mul (contDiff_apply ℝ _ j)
 
 theorem chartQuadraticAmplitude_compact {d : ℕ} {f : ℝ → ℝ}
     (hf : HasCompactSupport f) (C : Fin d → Fin d → ℝ) :
@@ -3389,7 +3358,7 @@ theorem coordinate_product_derivative_norm {d : ℕ} (z : Fin d → ℝ)
     (hz : ∀ i, |z i| ≤ 1) (i j : Fin d) (m : ℕ) :
     ‖iteratedFDeriv ℝ m (fun y : Fin d → ℝ => y i * y j) z‖ ≤ (2 : ℝ) ^ m := by
   simpa only [one_add_one_eq_two] using derivative_product_geometric
-    (contDiff_apply ℝ ℝ i) (contDiff_apply ℝ ℝ j) z
+    (contDiff_apply ℝ _ i) (contDiff_apply ℝ _ j) z
     (by norm_num : (0 : ℝ) ≤ 1) (by norm_num : (0 : ℝ) ≤ 1)
     (fun k _ => by simpa only [one_pow] using coordinate_projection_derivative_norm z hz i k)
     (fun k _ => by simpa only [one_pow] using coordinate_projection_derivative_norm z hz j k)
@@ -3400,7 +3369,7 @@ theorem bounded_quadratic_derivative_norm {d : ℕ} (C : Fin d → Fin d → ℝ
     ‖iteratedFDeriv ℝ m (fun y : Fin d → ℝ => ∑ i, ∑ j, C i j * y i * y j) z‖ ≤
       (d : ℝ) ^ 2 * (2 : ℝ) ^ m := by
   have hsm (i j : Fin d) : ContDiff ℝ m (fun y : Fin d → ℝ => C i j * y i * y j) :=
-    (contDiff_const.mul (contDiff_apply ℝ ℝ i)).mul (contDiff_apply ℝ ℝ j)
+    (contDiff_const.mul (contDiff_apply ℝ _ i)).mul (contDiff_apply ℝ _ j)
   have hmono (i j : Fin d) :
       ‖iteratedFDeriv ℝ m (fun y : Fin d → ℝ => C i j * y i * y j) z‖ ≤ (2 : ℝ) ^ m := by
     have he : (fun y : Fin d → ℝ => C i j * y i * y j) =
@@ -3408,7 +3377,7 @@ theorem bounded_quadratic_derivative_norm {d : ℕ} (C : Fin d → Fin d → ℝ
       funext y
       simp only [smul_eq_mul, mul_assoc]
     rw [he, iteratedFDeriv_const_smul_apply'
-      (((contDiff_apply ℝ ℝ i).mul (contDiff_apply ℝ ℝ j) :
+      (((contDiff_apply ℝ _ i).mul (contDiff_apply ℝ _ j) :
         ContDiff ℝ m (fun y : Fin d → ℝ => y i * y j)).contDiffAt),
       norm_smul, Real.norm_eq_abs]
     calc
@@ -3440,7 +3409,7 @@ theorem bounded_quadratic_phase_derivative_norm {d : ℕ} (C : Fin d → Fin d �
     intro i _
     apply ContDiff.sum
     intro j _
-    exact (contDiff_const.mul (contDiff_apply ℝ ℝ i)).mul (contDiff_apply ℝ ℝ j)
+    exact (contDiff_const.mul (contDiff_apply ℝ _ i)).mul (contDiff_apply ℝ _ j)
   have hpi : 1 ≤ 2 * Real.pi := by linarith [Real.pi_gt_three]
   have houter (i : ℕ) (hi : i ≤ m) :
       ‖iteratedFDeriv ℝ i (fun t : ℝ => (Real.fourierChar t : ℂ)) (Q z)‖ ≤
@@ -3474,7 +3443,7 @@ theorem chartCoordinateProduct_derivative_geometric {d : ℕ} {f : ℝ → ℝ}
     (hfi : ∀ i ≤ m, ∀ x : ℝ, |iteratedDeriv i f x| ≤ R ^ i) :
     ‖iteratedFDeriv ℝ m (chartCoordinateProduct (d := d) f) z‖ ≤ ((d : ℝ) * R) ^ m := by
   have hs (j : Fin d) : ContDiff ℝ (⊤ : ℕ∞) (fun y : Fin d → ℝ => f (y j)) :=
-    hf.comp (contDiff_apply ℝ ℝ j)
+    hf.comp (contDiff_apply ℝ _ j)
   have hd (j : Fin d) (i : ℕ) (hi : i ≤ m) :
       ‖iteratedFDeriv ℝ i (fun y : Fin d → ℝ => f (y j)) z‖ ≤ R ^ i := by
     apply (coordinate_composition_derivative_norm hf j z i).trans
@@ -3536,7 +3505,7 @@ theorem chartQuadraticAmplitude_derivative_geometric {d : ℕ} {f : ℝ → ℝ}
     intro j _
     apply ContDiff.sum
     intro k _
-    exact (contDiff_const.mul (contDiff_apply ℝ ℝ j)).mul (contDiff_apply ℝ ℝ k)
+    exact (contDiff_const.mul (contDiff_apply ℝ _ j)).mul (contDiff_apply ℝ _ k)
   exact derivative_product_geometric (chartCoordinateProduct_smooth hf) hphase z
     (mul_nonneg (Nat.cast_nonneg _) hR) (by positivity)
     (fun j hj => chartCoordinateProduct_derivative_geometric hf z hR
@@ -3890,24 +3859,6 @@ theorem bohrLiftProjection_character {q : ℕ} [NeZero q]
   rw [hfreq] at h
   exact h
 
-/-- Blueprint `lem:local-chart`, lines 1035-1039: a full discrete lattice containing
- the integer lattice, with cyclic quotient, exact character coordinates and integral dual. -/
-theorem bohr_lattice_model {q : ℕ} [NeZero q]
-    (S : Finset (ZMod q)) (hS : 1 ∈ S) :
-    DiscreteTopology (bohrLiftLattice S hS) ∧ IsZLattice ℝ (bohrLiftLattice S hS) ∧
-      Function.Surjective (bohrLiftProjection S hS) ∧
-      (∀ z : S → ℤ, WithLp.toLp 2 (fun s => (z s : ℝ)) ∈ bohrLiftLattice S hS) ∧
-      (∀ x : bohrLiftLattice S hS, bohrLiftProjection S hS x = 0 ↔
-        ∀ s, ∃ z : ℤ, (x : EuclideanSpace ℝ S) s = z) ∧
-      (∀ (x : bohrLiftLattice S hS) (s : S),
-        ((x : EuclideanSpace ℝ S) s : UnitAddCircle) =
-          ZMod.toAddCircle (s.val * bohrLiftProjection S hS x)) ∧
-      ∀ u ∈ euclideanDualLattice (bohrLiftLattice S hS), ∀ s : S, ∃ z : ℤ, u s = z := by
-  refine ⟨inferInstance, inferInstance,
-    cyclicLiftProjection_surjective q _ _, integerVector_mem_cyclicLiftLattice q _ _,
-    cyclicLiftProjection_eq_zero_iff q _ _, bohrLiftProjection_character S hS, ?_⟩
-  exact cyclicLiftDual_integer q _ _
-
 /-- Coefficient boxes commute with linear changes of basis. -/
 theorem integerCoefficientBox_map {E F : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
     [NormedAddCommGroup F] [NormedSpace ℝ F] {n : ℕ}
@@ -3978,14 +3929,6 @@ theorem bohrLiftProjection_mem {q : ℕ} [NeZero q]
   rw [← bohrLiftProjection_character S hS x ⟨s, hs⟩]
   exact QuotientAddGroup.norm_mk_le_norm.trans_lt
     ((PiLp.norm_apply_le (x : EuclideanSpace ℝ S) ⟨s, hs⟩).trans_lt hx)
-
-/-- The coefficient box consists of points of the integer span of its basis. -/
-theorem integerCoefficientBox_subset_span {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
-    {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (I : Finset (Fin n)) (a : Fin n → ℤ) :
-    integerCoefficientBox b I a ⊆ Submodule.span ℤ (Set.range b) := by
-  rintro x ⟨z, _, _, rfl⟩
-  exact Submodule.sum_mem _ (fun i _ => Submodule.smul_mem _ _
-    (Submodule.subset_span (Set.mem_range_self i)))
 
 /-- Blueprint `lem:local-chart`, line 1041: the rescaled full-basis coefficient box,
  including every partial-sum bound, Bohr projection, and injectivity of that projection. -/
@@ -4238,35 +4181,6 @@ theorem bohr_supported_lift_in_box {q d : ℕ} [NeZero q]
   rw [Metric.mem_closedBall, dist_zero_right]
   have hpos := mul_pos (latticeBoxRadius_pos hD) hρ
   linarith
-
-/-- At radius below one half there is exactly one integer shift with all coordinates
- in the supporting interval, as used in blueprint `lem:local-chart`, line 1054. -/
-theorem bohr_supported_integer_shift {q : ℕ} [NeZero q]
-    (S : Finset (ZMod q)) (hS : 1 ∈ S) (n : ℤ) {r : ℝ} (hr : r < 1 / 2)
-    (hn : (n : ZMod q) ∈ graphBohrSet S r) :
-    ∃! k : S → ℤ, ∀ s : S,
-      |(n • (bohrLiftDirection S hS : EuclideanSpace ℝ S) -
-        WithLp.toLp 2 (fun j => (k j : ℝ))) s| < r := by
-  obtain ⟨k, hk⟩ := bohrCenteredLift_integer_difference S hS n
-  have hkc (s : S) :
-      |(n • (bohrLiftDirection S hS : EuclideanSpace ℝ S) -
-        WithLp.toLp 2 (fun j => (k j : ℝ))) s| < r := by
-    rw [← hk]
-    exact bohrCenteredLift_coord S n hn s
-  refine ⟨k, hkc, ?_⟩
-  intro l hl
-  funext s
-  let x := (n • (bohrLiftDirection S hS : EuclideanSpace ℝ S)) s
-  have hk' : |x - (k s : ℝ)| < r := hkc s
-  have hl' : |x - (l s : ℝ)| < r := hl s
-  have heq : ((l s : ℝ) - (k s : ℝ)) = (x - (k s : ℝ)) - (x - (l s : ℝ)) := by ring
-  have hreal : |((l s - k s : ℤ) : ℝ)| < 1 := by
-    rw [Int.cast_sub, heq]
-    have h := abs_sub (x - (k s : ℝ)) (x - (l s : ℝ))
-    linarith
-  have hint : |l s - k s| < (1 : ℤ) := by exact_mod_cast hreal
-  have h := abs_lt.mp hint
-  omega
 
 /-- Integer monomials do not distinguish a coefficient from its fractional part. -/
 theorem unitCircle_fract_mul_int (a : ℝ) (z : ℤ) :
@@ -4560,23 +4474,6 @@ theorem bohrLocalQuadraticChart_matrix_height {q : ℕ} [NeZero q]
     chartRationalHeight
       ((bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr).matrix i j) = 1 :=
   localizedQuadraticChart_height _ _ _ _ _ _ _ _ _ _ i j
-
-/-- The constructed Bohr chart has exactly the partition-canceled source lattice formula. -/
-theorem bohrLocalQuadraticChart_atom {q : ℕ} [NeZero q]
-    (S : Finset (ZMod q)) (hS : 1 ∈ S) (ell : ℝ) (v : S → ℝ) (C : S → S → ℝ)
-    (cutoff : ℝ → ℝ) (hf : ContDiff ℝ (⊤ : ℕ∞) cutoff)
-    (hsupp : ∀ x, 1 ≤ |x| → cutoff x = 0) {r : ℝ} (hr : 0 < r) (y : ℝ) :
-    let θ : Fin S.card → ℝ := fun i =>
-      (bohrLiftDirection S hS : EuclideanSpace ℝ S) (bohrFrequencyEquiv S i)
-    quadraticChartAtom (bohrLocalQuadraticChart S hS ell v C cutoff hf hsupp hr) y =
-      (Real.fourierChar (ell * y ^ 2) : ℂ) *
-        ∑' k : Fin S.card → ℤ,
-          (∏ i, (cutoff ((θ i * y - (k i : ℝ)) / r) : ℂ)) *
-            (Real.fourierChar
-              ((∑ i, ∑ j, C (bohrFrequencyEquiv S i) (bohrFrequencyEquiv S j) *
-                (θ i * y - (k i : ℝ)) * (θ j * y - (k j : ℝ))) +
-                y * ∑ i, v (bohrFrequencyEquiv S i) * (θ i * y - (k i : ℝ))) : ℂ) := by
-  exact localizedQuadraticChart_atom _ _ _ _ _ _ _ _ _ _ gevreyPartition_tsum y
 
 theorem bohrCenteredLift_weight {q : ℕ} [NeZero q]
     (S : Finset (ZMod q)) (cutoff : ℝ → ℝ) (r : ℝ) (n : ℤ) :

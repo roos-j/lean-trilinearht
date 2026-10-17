@@ -1458,11 +1458,6 @@ theorem PathCharts.mono {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ :
   obtain ⟨d, B, hBc, hBb, hB⟩ := h.1 I hI v (hav I v hv)
   exact ⟨d, B, quadraticChartComplexity_mono hBc hH, hBb, hB⟩
 
-theorem PathCharts.subset {G : RealDyadicGrid} {cells cells' : Finset (ℤ × ℤ)} {Λ : Type*}
-    {φ : ℤ × ℤ → Λ → ℝ → ℂ} {av : ℤ × ℤ → Λ → Prop} {c₀ : ℕ} {H : ℝ}
-    (h : PathCharts G cells φ av c₀ H) (hs : cells' ⊆ cells) : PathCharts G cells' φ av c₀ H :=
-  ⟨fun I hI => h.1 I (hs hI), fun I hI I' hI' => h.2 I (hs hI) I' (hs hI')⟩
-
 /-- Path charts of two label families combine. -/
 theorem PathCharts.sum {G : RealDyadicGrid} {cells : Finset (ℤ × ℤ)} {Λ₁ Λ₂ : Type*}
     {φ₁ : ℤ × ℤ → Λ₁ → ℝ → ℂ} {φ₂ : ℤ × ℤ → Λ₂ → ℝ → ℂ} {av₁ : ℤ × ℤ → Λ₁ → Prop}
@@ -1486,22 +1481,6 @@ theorem LowList.pathCharts {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {R : 
     fun I hI I' hI' hII' l hl hl' => ?_
   unfold LowList.atom
   rw [X.birth_eq_of_le (X.coef_avail I l hl) (X.coef_avail I' l hl') hII']
-
-/-- The adaptive fits have path charts on each segment. -/
-theorem IsAdaptiveFit.pathCharts {c₂ : ℕ} {B : ℝ} {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ}
-    {w : ℤ × ℤ → ℝ × ℝ → ℂ} {j : Fin 4} {q : ℝ} {f : ℝ → ℂ} {k M : ℕ}
-    {roots : Finset (ℤ × ℤ)} {seg : ℤ × ℤ → ℤ × ℤ} {n : ℤ × ℤ → ℕ}
-    {a : ℤ × ℤ → ℕ → ℝ → ℂ} {g : ℤ × ℤ → ℝ → ℂ}
-    (hF : IsAdaptiveFit c₂ B G J N w j q f k M roots seg n a g) (K : ℤ × ℤ)
-    (cells : Finset (ℤ × ℤ)) (hcells : ∀ I ∈ cells, I ∈ dyadicFiniteTree G J N) :
-    PathCharts G cells (fun I (m : Fin M) => a I m) (fun I m => (m : ℕ) < n I ∧ seg I = K) c₂ B :=
-        by
-  refine PathCharts.of_nested (fun I hI m hm => ?_) fun I hI I' hI' hII' m hm hm' => ?_
-  · obtain ⟨d, Φ, h1, h2, h3⟩ := (hF.2.2.2.2 I (hcells I hI)).2.2.2.2.1 m hm.1
-    exact ⟨d, Φ, h1, h2, h3⟩
-  · have hinh := (hF.2.2.2.2 I (hcells I hI)).2.2.2.1 I' (hcells I' hI') hII' (by
-      rw [hm.2, ← hm'.2]; exact (hF.2.2.2.2 I' (hcells I' hI')).2.1)
-    exact (hinh.2.2 m hm'.1).symm
 
 namespace AccSetup
 variable {S : AccSetup}
@@ -1687,10 +1666,6 @@ noncomputable def ColumnDepthFamily.currentZ {V : Type*} [Fintype V] (Ψ : Colum
     (cellColumnProjection Ψ.D Ψ.A h Z : ℝ → ColumnHilbert V) y none
   else 0
 
-theorem ColumnDepthFamily.current_eq_currentZ {V : Type*} [Fintype V] (Ψ : ColumnDepthFamily V)
-    (f : Lp ℂ 2 (volume : Measure ℝ)) : Ψ.current f = Ψ.currentZ (physicalColumnInput f) :=
-  rfl
-
 /-- A basic projection below the root `R`: an inherited column depth family on the grid of `R`
 whose root contains `R`, and an augmented input `Z` of energy at most `CF |R|` on `R`; its value
 at a cell `I` is the physical part of the current projection `(P_I Z)_phys` (blueprint prop:base,
@@ -1741,18 +1716,6 @@ theorem zero_val (P : BasicProjection G R CF) (hCF : 0 ≤ CF) (I : ℤ × ℤ) 
     rw [hy]; rfl
   · exact Filter.Eventually.of_forall fun _ => rfl
 
-/-- Enlarging the energy constant. -/
-def mono (P : BasicProjection G R CF) {CF' : ℝ} (h : CF ≤ CF') : BasicProjection G R CF' where
-  V := P.V
-  Ψ := P.Ψ
-  Z := P.Z
-  grid := P.grid
-  root_sub := P.root_sub
-  energy := P.energy.trans (mul_le_mul_of_nonneg_right h (dyadicGridLength_pos G R.1).le)
-
-theorem mono_val (P : BasicProjection G R CF) {CF' : ℝ} (h : CF ≤ CF') :
-    (P.mono h).val = P.val := rfl
-
 /-- A column budget `X` bounds the inverse private weights of a basic projection by `X²`
 (eq:columnbudget, `budget⁻¹ ≤ √ε_v`). -/
 theorem inv_privateWeight_le (P : BasicProjection G R CF) {X : ℝ} (hX : P.Ψ.D.budget ≤ X)
@@ -1797,10 +1760,6 @@ def CellEnergyOn (P : BasicProjection G R CF) (S : Set (ℤ × ℤ)) : Prop :=
 theorem CellEnergyOn.mono {P : BasicProjection G R CF} {S S' : Set (ℤ × ℤ)}
     (h : P.CellEnergyOn S) (hS : S' ⊆ S) : P.CellEnergyOn S' := fun c hc => h c (hS hc)
 
-theorem CellEnergyOn.mono_cf {P : BasicProjection G R CF} {S : Set (ℤ × ℤ)}
-    (h : P.CellEnergyOn S) {CF' : ℝ} (hCF : CF ≤ CF') : (P.mono hCF).CellEnergyOn S :=
-  fun c hc => (h c hc).trans (mul_le_mul_of_nonneg_right hCF (dyadicGridLength_pos G c.1).le)
-
 theorem zero_cellEnergyOn (P : BasicProjection G R CF) (hCF : 0 ≤ CF) (S : Set (ℤ × ℤ)) :
     (P.zero hCF).CellEnergyOn S := fun c _ => by
   have : ∫ y in dyadicGridCell G c.1 c.2, ‖((0 : ColumnL2 P.V) : ℝ → ColumnHilbert P.V) y‖ ^ 2
@@ -1836,11 +1795,6 @@ def HasColumnRep (CF : ℝ) : Prop :=
     P₂.HasChartsOn ↑A.cells c₀ A.H ∧ P₁.CellEnergyOn ↑A.cells ∧ P₂.CellEnergyOn ↑A.cells ∧
     ∀ I ∈ A.cells,
     ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 → A.B l I y = P₁.val I y - P₂.val I y
-
-theorem HasColumnRep.mono {A : ActiveSetup κ c₀} {CF CF' : ℝ} (h : A.HasColumnRep CF)
-    (hCF : CF ≤ CF') : A.HasColumnRep CF' := fun l => by
-  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h l
-  exact ⟨P₁.mono hCF, P₂.mono hCF, h₁, h₂, c₁, c₂, e₁.mono_cf hCF, e₂.mono_cf hCF, hP⟩
 
 /-- The column representation below a sub-root `R'`: on every cell of the setup below `R'` each
 basic argument is the difference of two current basic projections below `R'` with column budgets
@@ -1954,29 +1908,6 @@ theorem PathColumnSystem.budget_le {G : RealDyadicGrid} {J : ℤ × ℤ} {N : �
     Finset.sum_le_sum fun v _ => inv_anti₀ (Real.sqrt_pos.mpr hε) (Real.sqrt_le_sqrt (hw v))
   rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul] at this
   linarith
-
-/-- The fit opponent of an attempt root containing `R`, as a basic projection below `R`: its
-input is `1_J f`, whose energy on a tree cell `R` normalized by `‖f‖_{q,R} ≤ 1` (`q ≥ 2`) is at most
-`|R|`. -/
-theorem fitOpponent_basicProjection {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {f : ℝ → ℂ}
-    {roots : Finset (ℤ × ℤ)} {seg : ℤ × ℤ → ℤ × ℤ} {g : ℤ × ℤ → ℝ → ℂ} {C Bd : ℝ} {c : ℕ}
-    {Hc : ℝ} (h : IsFitOpponent G J N f roots seg g C Bd c Hc) {K R : ℤ × ℤ} (hK : K ∈ roots)
-    (hRK : dyadicGridCell G R.1 R.2 ⊆ dyadicGridCell G K.1 K.2) {CF : ℝ}
-    (hf : ∫ y in dyadicGridCell G R.1 R.2, ‖(dyadicGridCell G J.1 J.2).indicator f y‖ ^ 2 ≤
-      CF * dyadicGridLength G R.1) :
-    ∃ z : ℤ × ℤ → ℝ → ℂ,
-      (∀ I ∈ dyadicFiniteTree G J N, seg I = K →
-        ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 → z I y = g I y) ∧
-      (∀ J' ∈ dyadicFiniteTree G J N, dyadicGridCell G J'.1 J'.2 ⊆ dyadicGridCell G K.1 K.2 →
-        IsAdmissibleOpponent G J' f z C ∧ HasDepthEnergy G J' f z 1) ∧
-      ∃ P : BasicProjection G R CF, P.Ψ.D.budget ≤ Bd ∧ ∀ I, z I = P.val I := by
-  obtain ⟨z, -, hz2, hz3, V, _, Ψ, F, hgrid, hroot, hbud, -, hzΨ, hF⟩ := h K hK
-  refine ⟨z, hz2, hz3, ⟨V, Ψ, physicalColumnInput F, hgrid, by rw [hroot]; exact hRK, ?_⟩,
-    hbud, fun I => hzΨ I⟩
-  rw [integral_physical_sq]
-  refine le_of_eq_of_le (integral_congr_ae (ae_restrict_of_ae ?_)) hf
-  filter_upwards [hF] with y hy
-  rw [hy]
 
 section BaseActive
 variable {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {c₀ : ℕ} {H : ℝ}
@@ -3053,14 +2984,6 @@ theorem Hyp.phys_eLpNorm_le (h : S.Hyp) {I : ℤ × ℤ} (hIc : I ∈ dyadicFini
 
 end AccSetup
 
-theorem LowList.eLpNorm_val_le {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {R : ℤ × ℤ} {c₀ : ℕ}
-    {H : ℝ} (X : LowList G J N R c₀ H) (I : ℤ × ℤ) {a r : ℝ} (hr : 0 < r) :
-    eLpNorm (X.val I) 2 (normalizedIntervalMeasure a r) ≤ ENNReal.ofReal (Fintype.card X.Λ) := by
-  have := normalizedIntervalMeasure_probability a hr
-  refine (eLpNorm_le_of_ae_bound (X.val_measurable I).aestronglyMeasurable
-    (Filter.Eventually.of_forall (X.val_bound I))).trans ?_
-  simp
-
 /-! ### The base data on one root -/
 
 /-- A family of cell functions that is a basic projection below every tree cell: the physical part
@@ -3090,17 +3013,6 @@ theorem kernelHull_below_iff {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ}
     exact ⟨c', ((dyadicFiniteTree_below_iff G J N hR c').mp hc').1, hsub, hw⟩
   · rintro ⟨c', hc', hsub, hw⟩
     exact ⟨c', (dyadicFiniteTree_below_iff G J N hR c').mpr ⟨hc', hsub.trans hc⟩, hsub, hw⟩
-
-theorem IsBasicOn.restrict {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF Bd : ℝ} {c : ℕ}
-    {Hc : ℝ} {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF Bd c Hc w z)
-    {R : ℤ × ℤ} (hR : R ∈ dyadicFiniteTree G J N) :
-    IsBasicOn G R (dyadicRemainingDepth J N R) CF Bd c Hc w z := by
-  obtain ⟨V, _, Ψ, Z, hG, hJ, hb, hch, hE, hz⟩ := h
-  refine ⟨V, inferInstance, Ψ, Z, hG, (((dyadicFiniteTree_mem_iff G J R N).mp hR).1).trans hJ,
-    hb, fun c' hc' => hch c' ((dyadicFiniteTree_below_iff G J N hR c').mp hc').1,
-    fun R' hR' hR'H => ?_, hz⟩
-  have hb := (dyadicFiniteTree_below_iff G J N hR R').mp hR'
-  exact hE R' hb.1 ((kernelHull_below_iff hR hb.2).mp hR'H)
 
 theorem IsBasicOn.basicProjection {G : RealDyadicGrid} {J : ℤ × ℤ} {N : ℕ} {CF Bd : ℝ} {c : ℕ}
     {Hc : ℝ} {w : ℤ × ℤ → ℝ × ℝ → ℂ} {z : ℤ × ℤ → ℝ → ℂ} (h : IsBasicOn G J N CF Bd c Hc w z)
@@ -4772,12 +4684,6 @@ noncomputable def mono (X : LowList G J N R c₀ H) (hc : c₀ ≤ c₀') (hH : 
   complexity := fun K l =>
     quadraticChartComplexity_order_mono (quadraticChartComplexity_mono (X.complexity K l) hH) hc
   bounded := X.bounded
-
-theorem mono_val (X : LowList G J N R c₀ H) (hc : c₀ ≤ c₀') (hH : H ≤ H') (I : ℤ × ℤ) (y : ℝ) :
-    (X.mono hc hH).val I y = X.val I y := rfl
-
-theorem mono_card (X : LowList G J N R c₀ H) (hc : c₀ ≤ c₀') (hH : H ≤ H') :
-    Fintype.card (X.mono hc hH).Λ = Fintype.card X.Λ := rfl
 
 theorem sub_card (X Y : LowList G J N R c₀ H) :
     Fintype.card (X.sub Y).Λ = Fintype.card X.Λ + Fintype.card Y.Λ := by

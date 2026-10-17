@@ -35,25 +35,6 @@ noncomputable def bogolyubovBaseFunction {G : Type*} [AddCommGroup G] [Decidable
     (A : Finset G) (x : G) : ℝ :=
   𝔼 a ∈ A, 𝔼 b ∈ A, if x - a - b ∈ -(A + A) then 1 else 0
 
-theorem bogolyubovBaseFunction_nonneg {G : Type*} [AddCommGroup G] [DecidableEq G]
-    (A : Finset G) (x : G) : 0 ≤ bogolyubovBaseFunction A x := by
-  apply Finset.expect_nonneg
-  intro a _
-  apply Finset.expect_nonneg
-  intro b _
-  split_ifs <;> norm_num
-
-theorem bogolyubovBaseFunction_le_one {G : Type*} [AddCommGroup G] [DecidableEq G]
-    (A : Finset G) (hA : A.Nonempty) (x : G) : bogolyubovBaseFunction A x ≤ 1 := by
-  calc
-    _ ≤ 𝔼 _a ∈ A, 𝔼 _b ∈ A, (1 : ℝ) := by
-      apply Finset.expect_le_expect
-      intro a _
-      apply Finset.expect_le_expect
-      intro b _
-      split_ifs <;> norm_num
-    _ = 1 := by simp [Finset.expect_const hA]
-
 /-- The witness is exactly one at the identity, not merely bounded below. -/
 theorem bogolyubovBaseFunction_zero {G : Type*} [AddCommGroup G] [DecidableEq G]
     (A : Finset G) (hA : A.Nonempty) : bogolyubovBaseFunction A 0 = 1 := by
@@ -913,17 +894,6 @@ theorem bogolyubov_radius_bounds {α : ℝ} (hα : 0 < α) (hα1 : α ≤ 1) (d 
     apply mul_le_mul_of_nonneg_right _ (inv_nonneg.mpr hα.le)
     nlinarith
 
-/-- The general Bohr cardinality bound, specialized to the local cyclic definition. -/
-theorem bogolyubovBohrSet_density_lower {q : ℕ} [NeZero q]
-    (S : Finset (ZMod q)) {ρ : ℝ} (hρ : 0 < ρ) (hρhalf : ρ < 1 / 2) :
-    (ρ / 3) ^ S.card ≤ ((bogolyubovBohrSet S ρ).card : ℝ) / q := by
-  have he : cyclicBohrSet S ρ = bogolyubovBohrSet S ρ := by
-    ext u
-    rw [mem_cyclicBohrSet, mem_bogolyubovBohrSet]
-  have h := cyclicBohrSet_card_lower S hρ hρhalf
-  rw [he] at h
-  exact (le_div_iff₀ (Nat.cast_pos.mpr (NeZero.pos q) : (0 : ℝ) < q)).mpr h
-
 /-- The logarithm of the inverse radius costs only one more logarithmic factor. -/
 theorem bogolyubov_radius_log_bound {α : ℝ} (hα : 0 < α) (hα1 : α ≤ 1) (d : ℕ)
     (hd : (d : ℝ) ≤ 10 ^ 14 * bogolyubovLog α ^ 4) :
@@ -948,68 +918,5 @@ theorem bogolyubov_radius_log_bound {α : ℝ} (hα : 0 < α) (hα1 : α ≤ 1) 
   change Real.log (3 / bogolyubovRadius α d) ≤ 4 * 10 ^ 18 * L
   norm_num at hh hc ⊢
   nlinarith
-
-/-- The Bohr cardinality factor has the required exponential lower bound. -/
-theorem bogolyubov_radius_power_lower {α : ℝ} (hα : 0 < α) (hα1 : α ≤ 1) (d : ℕ)
-    (hd : (d : ℝ) ≤ 10 ^ 14 * bogolyubovLog α ^ 4) :
-    Real.exp (-(10 ^ 36 * bogolyubovLog α ^ 5)) ≤ (bogolyubovRadius α d / 3) ^ d := by
-  let L := bogolyubovLog α
-  have hL : 1 ≤ L := bogolyubovLog_one_le hα hα1
-  have hL0 : 0 ≤ L := by linarith
-  obtain ⟨hρ, hρhalf, _⟩ := bogolyubov_radius_bounds hα hα1 d hd
-  have hlog := bogolyubov_radius_log_bound hα hα1 d hd
-  have hlog0 : 0 ≤ Real.log (3 / bogolyubovRadius α d) := by
-    apply Real.log_nonneg
-    apply (one_le_div hρ).mpr
-    linarith
-  have hm : (d : ℝ) * Real.log (3 / bogolyubovRadius α d) ≤ 10 ^ 36 * L ^ 5 := by
-    calc
-      _ ≤ (10 ^ 14 * L ^ 4) * (4 * 10 ^ 18 * L) :=
-        mul_le_mul hd hlog hlog0 (by positivity)
-      _ ≤ _ := by nlinarith [pow_nonneg hL0 5]
-  have he : Real.log (bogolyubovRadius α d / 3) =
-      -Real.log (3 / bogolyubovRadius α d) := by
-    rw [Real.log_div hρ.ne' (by norm_num), Real.log_div (by norm_num) hρ.ne']
-    ring
-  rw [← Real.rpow_natCast (bogolyubovRadius α d / 3) d,
-    Real.rpow_def_of_pos (by positivity : 0 < bogolyubovRadius α d / 3),
-    Real.exp_le_exp, he]
-  change -(10 ^ 36 * L ^ 5) ≤ -Real.log (3 / bogolyubovRadius α d) * d
-  nlinarith
-
-/-- Quasipolynomial dense Bogolyubov theorem, blueprint `lem:dense-Bohr`, lines 786-820.
-Every nonempty subset of a finite cyclic group has a double difference set containing a Bohr
-set with rank `O(log^4(1/alpha))`, reciprocal radius `O(alpha^(-1) log^4(1/alpha))`, and
-density at least `exp(-O(log^5(1/alpha)))`. The same absolute constant works for all moduli. -/
-theorem dense_bogolyubov :
-    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (A : Finset (ZMod q)), A.Nonempty →
-      let α := (A.card : ℝ) / q
-      ∃ (S : Finset (ZMod q)) (ρ : ℝ), 0 < ρ ∧ ρ < 1 / 2 ∧
-        (S.card : ℝ) ≤ C * (1 + Real.log (1 / α)) ^ 4 ∧
-        ρ⁻¹ ≤ C * α⁻¹ * (1 + Real.log (1 / α)) ^ 4 ∧
-        bogolyubovBohrSet S ρ ⊆ 2 • A - 2 • A ∧
-        Real.exp (-(C * (1 + Real.log (1 / α)) ^ 5)) ≤
-          ((bogolyubovBohrSet S ρ).card : ℝ) / q := by
-  refine ⟨10 ^ 36, by positivity, ?_⟩
-  intro q _ A hA
-  dsimp only
-  let α : ℝ := (A.card : ℝ) / q
-  have hq : (0 : ℝ) < q := Nat.cast_pos.mpr (NeZero.pos q)
-  have hα : 0 < α := by dsimp [α]; positivity
-  have hα1 : α ≤ 1 := by
-    apply (div_le_one hq).mpr
-    exact_mod_cast (show A.card ≤ q by simpa only [ZMod.card] using Finset.card_le_univ A)
-  obtain ⟨S, hcard, hsub⟩ := bogolyubov_bohr_containment A hA
-  obtain ⟨hρ, hρhalf, hinv⟩ := bogolyubov_radius_bounds hα hα1 S.card hcard
-  refine ⟨S, bogolyubovRadius α S.card, hρ, hρhalf, ?_, ?_, hsub, ?_⟩
-  · apply hcard.trans
-    change 10 ^ 14 * bogolyubovLog α ^ 4 ≤ 10 ^ 36 * bogolyubovLog α ^ 4
-    gcongr <;> norm_num
-  · apply hinv.trans
-    change 10 ^ 18 * α⁻¹ * bogolyubovLog α ^ 4 ≤
-      10 ^ 36 * α⁻¹ * bogolyubovLog α ^ 4
-    gcongr <;> norm_num
-  · exact (bogolyubov_radius_power_lower hα hα1 S.card hcard).trans
-      (bogolyubovBohrSet_density_lower S hρ hρhalf)
 
 end Auto

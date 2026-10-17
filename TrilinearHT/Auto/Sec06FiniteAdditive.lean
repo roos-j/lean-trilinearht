@@ -661,32 +661,6 @@ theorem unit_cutoff_hasCompactSupport (b : ℝ → ℝ) (hsupp : ∀ a, 1 ≤ |a
     exact ha (hsupp a (le_of_not_gt hn))
   exact ⟨(abs_lt.mp hlt).1.le, (abs_lt.mp hlt).2.le⟩
 
-/-- Blueprint `lem:Bohr-weight`: all three estimates hold with one fixed positive constant.
-The conclusion holds already for C1 cutoffs, and in particular for the fixed Gevrey cutoff. -/
-theorem smooth_bohr_weight (b : ℝ → ℝ) (hcont : ContDiff ℝ 1 b)
-    (hb : ∀ a, 0 ≤ b a) (hb1 : ∀ a, b a ≤ 1)
-    (hbone : ∀ a, |a| ≤ 1 / 2 → b a = 1) (hsupp : ∀ a, 1 ≤ |a| → b a = 0) :
-    ∃ C : ℝ, 0 < C ∧ ∀ (q : ℕ) [NeZero q] (S : Finset (ZMod q))
-      (r : ℝ), 0 < r → r < 1 / 8 →
-      ((r / 6) ^ S.card ≤ cyclicBohrMass b S r ∧ cyclicBohrMass b S r ≤ 1) ∧
-      (∀ x t : ZMod q, |cyclicBohrWeight b S r (x + t) - cyclicBohrWeight b S r x| ≤
-        C * S.card * cyclicBohrNorm S t / r) ∧
-      ∀ φ : ZMod q → UnitAddCircle,
-        (∀ x ∈ cyclicBohrSet S (3 * r), ∀ y ∈ cyclicBohrSet S (3 * r),
-          x + y ∈ cyclicBohrSet S (3 * r) → φ (x + y) = φ x + φ y) →
-        ∀ τ : ℝ, 0 < τ → τ ≤ ‖weightedCircleAverage (cyclicBohrMeasure b S r) φ‖ →
-        ∀ t ∈ cyclicBohrSet S r,
-          ‖φ t‖ ≤ C * S.card * cyclicBohrNorm S t / (r * cyclicBohrMass b S r * τ) := by
-  obtain ⟨L, hLip⟩ := ContDiff.lipschitzWith_of_hasCompactSupport
-    (unit_cutoff_hasCompactSupport b hsupp) hcont (by norm_num)
-  refine ⟨max (L : ℝ) 1, lt_of_lt_of_le zero_lt_one (le_max_right _ _), ?_⟩
-  intro q hq S r hr hrsmall
-  refine ⟨cyclicBohrMass_bounds b hb hb1 hbone S hr hrsmall,
-    cyclicBohrWeight_translation b hLip hb hb1 hsupp S hr hrsmall, ?_⟩
-  intro φ hadd τ hτ hcorr t ht
-  exact cyclicBohrWeight_local_fourier_decay b hLip hb hb1 hbone hsupp S hr hrsmall
-    φ hadd hτ hcorr t ht
-
 end Auto
 
 end
@@ -733,15 +707,6 @@ noncomputable def finiteShiftCorrelation {G K : Type*} [AddCommGroup G]
 noncomputable def finiteShiftCorrelationSquare {G K : Type*} [AddCommGroup G]
     [Fintype G] [Fintype K] (A v : G → K → ℂ) : ℝ :=
   𝔼 k, 𝔼 x, ‖𝔼 h, conj (A (x + h) k) * v h k‖ ^ 2
-
-theorem finiteShiftCorrelationSquare_nonneg {G K : Type*} [AddCommGroup G]
-    [Fintype G] [Fintype K] (A v : G → K → ℂ) :
-    0 ≤ finiteShiftCorrelationSquare A v := by
-  apply Finset.expect_nonneg
-  intro k _
-  apply Finset.expect_nonneg
-  intro x _
-  positivity
 
 /-- First Cauchy-Schwarz step, valid for an arbitrary unit-bounded finite kernel. -/
 theorem finiteShiftCorrelation_first_cs {G K : Type*} [AddCommGroup G]
@@ -1569,22 +1534,6 @@ theorem log_inverse_le_of_power_density {α δ C : ℝ} (hα : 0 < α)
 noncomputable def localSymmetryInnerRadius (C : ℝ) (d : ℕ) (r ζ : ℝ) : ℝ :=
   r * min 1 (ζ ^ 2) / (1000 * (C + 1) * (d + 1))
 
-theorem localSymmetryInnerRadius_le_tolerance {C r ζ : ℝ} (hC : 0 < C)
-    (hr : 0 < r) (d : ℕ) (hd : 0 < d) :
-    localSymmetryInnerRadius C d r ζ ≤ ζ ^ 2 * r / (100 * C * d) := by
-  have hdpos : (0 : ℝ) < d := by exact_mod_cast hd
-  have hsmall : 0 < 100 * C * (d : ℝ) := by positivity
-  have hden : 100 * C * (d : ℝ) ≤ 1000 * (C + 1) * (d + 1) := by
-    nlinarith [mul_pos hC hdpos]
-  unfold localSymmetryInnerRadius
-  calc
-    _ ≤ r * ζ ^ 2 / (1000 * (C + 1) * (d + 1)) := by
-      apply div_le_div_of_nonneg_right _ (by positivity)
-      exact mul_le_mul_of_nonneg_left (min_le_right _ _) hr.le
-    _ ≤ r * ζ ^ 2 / (100 * C * d) :=
-      div_le_div_of_nonneg_left (by positivity) hsmall hden
-    _ = _ := by ring
-
 end Auto
 
 end
@@ -1715,115 +1664,7 @@ open scoped Pointwise
 
 /-! ### Difference-set growth from minimal growth -/
 
-/-- Blueprint `lem:sumset-growth`, lines 701-728: Ruzsa's triangle inequality
-in the source orientation. Mathlib supplies the injection-counting proof. -/
-theorem finite_difference_triangle {G : Type*} [AddCommGroup G] [DecidableEq G]
-    (B X C : Finset G) : (B - C).card * X.card ≤ (B - X).card * (X - C).card := by
-  have h := Finset.ruzsa_triangle_inequality_sub_sub_sub B X C
-  have he : (C - X).card = (X - C).card := by
-    rw [← Finset.card_neg (C - X), neg_sub]
-  simpa only [he] using h
-
-/-- Blueprint `lem:sumset-growth`, lines 701-728: the exact `K^(m+n)|A|`
-bound for all iterated sumset differences, including zero-fold sumsets.
-This specializes Mathlib's Plünnecke-Ruzsa theorem, whose proof uses a
-minimal-growth subset and the Petridis iteration from the source. -/
-theorem finite_difference_growth {G : Type*} [AddCommGroup G] [DecidableEq G]
-    (A : Finset G) (hA : A.Nonempty) {K : ℝ} (_hK : 1 ≤ K)
-    (hsmall : ((A - A).card : ℝ) ≤ K * A.card) (m n : ℕ) :
-    ((m • A - n • A).card : ℝ) ≤ K ^ (m + n) * A.card := by
-  have h := Finset.pluennecke_ruzsa_inequality_nsmul_sub_nsmul_sub hA A m n
-  have hr : ((m • A - n • A).card : ℝ) ≤
-      (((A - A).card : ℝ) / A.card) ^ (m + n) * A.card := by
-    simpa only [NNRat.cast_natCast, NNRat.cast_mul, NNRat.cast_pow, NNRat.cast_div] using
-      (NNRat.cast_le (K := ℝ)).mpr h
-  have hn : (0 : ℝ) < A.card := by exact_mod_cast hA.card_pos
-  have hratio : ((A - A).card : ℝ) / A.card ≤ K := (div_le_iff₀ hn).mpr hsmall
-  apply hr.trans
-  gcongr
-
 /-! ### Chang's theorem with the source Fourier normalization -/
-
-/-- The Fourier transform of `mu_X = 1_X/(|X|/q)` is the average of the
-negative-exponent character on `X`, including the empty-set convention. -/
-theorem finiteFourier_setDensity_eq_characterMean {q : ℕ} [NeZero q]
-    (X : Finset (ZMod q)) (ξ : ZMod q) :
-    finiteFourier (finiteSetDensity X) ξ = characterMean X (cyclicFrequencyEquiv q ξ) := by
-  rw [finiteFourier_eq_average, characterMean, Finset.expect_eq_sum_div_card]
-  simp only [finiteAverage, finiteSetDensity, ZMod.card, ite_mul, zero_mul,
-    cyclicFrequencyEquiv_apply]
-  rw [Finset.sum_ite_mem, ← Finset.mul_sum]
-  simp only [Finset.univ_inter]
-  have hq : (q : ℂ) ≠ 0 := by exact_mod_cast (NeZero.ne q)
-  field_simp
-
-/-- The exact large spectrum of the probability-normalized measure in the blueprint. -/
-noncomputable def finiteLargeSpectrum {q : ℕ} [NeZero q]
-    (X : Finset (ZMod q)) (η : ℝ) : Finset (ZMod q) := by
-  classical
-  exact Finset.univ.filter (fun ξ => η ≤ ‖finiteFourier (finiteSetDensity X) ξ‖)
-
-theorem mem_finiteLargeSpectrum {q : ℕ} [NeZero q]
-    (X : Finset (ZMod q)) (η : ℝ) (ξ : ZMod q) :
-    ξ ∈ finiteLargeSpectrum X η ↔ η ≤ ‖finiteFourier (finiteSetDensity X) ξ‖ := by
-  classical
-  simp [finiteLargeSpectrum]
-
-theorem finiteLargeSpectrum_character_iff {q : ℕ} [NeZero q]
-    (X : Finset (ZMod q)) (η : ℝ) (ξ : ZMod q) :
-    ξ ∈ finiteLargeSpectrum X η ↔ cyclicFrequencyEquiv q ξ ∈ largeCharacterSpectrum X η := by
-  rw [mem_finiteLargeSpectrum, mem_largeCharacterSpectrum,
-    finiteFourier_setDensity_eq_characterMean]
-
-/-- Blueprint `lem:Chang`, lines 739-764: the large Fourier spectrum of
-`mu_X` is contained in a signed span with at most
-`4 eta^(-2) log(q/|X|)` generators, with coefficients in `{-1,0,1}`. -/
-theorem cyclic_spectrum_generators {q : ℕ} [NeZero q]
-    (X : Finset (ZMod q)) (hX : X.Nonempty) {η : ℝ} (hη : 0 < η) (hη1 : η ≤ 1) :
-    ∃ Λ : Finset (ZMod q), Λ ⊆ finiteLargeSpectrum X η ∧
-      (Λ.card : ℝ) ≤ 4 / η ^ 2 * Real.log ((q : ℝ) / X.card) ∧
-      finiteLargeSpectrum X η ⊆ Λ.addSpan := by
-  classical
-  obtain ⟨Λ, hΛ, hcard, hspan⟩ := characterSpectrum_generators X hX hη hη1
-  let e := cyclicFrequencyEquiv q
-  refine ⟨Λ.image e.symm, ?_, ?_, ?_⟩
-  · intro ξ hξ
-    rcases Finset.mem_image.mp hξ with ⟨ψ, hψ, rfl⟩
-    apply (finiteLargeSpectrum_character_iff X η (e.symm ψ)).mpr
-    simpa only [e, AddEquiv.apply_symm_apply] using hΛ hψ
-  · simpa only [Finset.card_image_of_injective _ e.symm.injective, ZMod.card] using hcard
-  · intro ξ hξ
-    rw [addSpan_image_equiv]
-    exact Finset.mem_image.mpr ⟨e ξ,
-      hspan ((finiteLargeSpectrum_character_iff X η ξ).mp hξ), e.symm_apply_apply ξ⟩
-
-/-- At full density the source spectrum consists exactly of zero. -/
-theorem finiteLargeSpectrum_univ {q : ℕ} [NeZero q] {η : ℝ}
-    (hη : 0 < η) (hη1 : η ≤ 1) :
-    finiteLargeSpectrum (Finset.univ : Finset (ZMod q)) η = {0} := by
-  classical
-  ext ξ
-  rw [finiteLargeSpectrum_character_iff, largeCharacterSpectrum_univ hη hη1]
-  simp only [Finset.mem_singleton, EmbeddingLike.map_eq_zero_iff]
-
-/-- The empty set of generators suffices when the source density is one. -/
-theorem cyclic_spectrum_density_one {q : ℕ} [NeZero q]
-    (X : Finset (ZMod q)) (hβ : (X.card : ℝ) / q = 1)
-    {η : ℝ} (hη : 0 < η) (hη1 : η ≤ 1) :
-    finiteLargeSpectrum X η = {0} ∧
-      finiteLargeSpectrum X η ⊆ (∅ : Finset (ZMod q)).addSpan := by
-  have hq : (q : ℝ) ≠ 0 := by exact_mod_cast NeZero.ne q
-  have hc : X.card = q := by
-    have h := (div_eq_iff hq).mp hβ
-    exact_mod_cast (by simpa using h : (X.card : ℝ) = q)
-  have hX : X = Finset.univ := Finset.eq_of_subset_of_card_le (Finset.subset_univ X)
-    (by simp [hc])
-  rw [hX, finiteLargeSpectrum_univ hη hη1]
-  refine ⟨rfl, ?_⟩
-  intro ξ hξ
-  have hξ0 := Finset.mem_singleton.mp hξ
-  subst ξ
-  exact Finset.mem_addSpan.mpr ⟨fun _ => 0, fun _ => Or.inr (Or.inl rfl), by simp⟩
 
 /-! ### Derivative graph frequency selection -/
 
@@ -2063,16 +1904,6 @@ theorem derivativeGraphCorrelation_eq_shift {q : ℕ} [NeZero q]
   simp only [derivativeGraphCorrelation, he]
   rw [finite_expect_reverse_three]
   simp only [finiteShiftCorrelation, Finset.mul_expect, mul_assoc]
-
-/-- Blueprint `lem:derivative-graph`, lines 842-848: first Cauchy-Schwarz and the exact
-translated square expansion, now specialized to the derivative kernel. -/
-theorem derivativeGraphCorrelation_first_cs {q : ℕ} [NeZero q]
-    (f : ZMod q → ℂ) (hf : ∀ x, ‖f x‖ ≤ 1)
-    (H : Finset (ZMod q)) (ξ : ZMod q → ZMod q) :
-    ‖derivativeGraphCorrelation f H ξ‖ ^ 2 ≤
-      finiteShiftCorrelationSquare (derivativeGraphKernel f) (derivativeGraphCharacter H ξ) := by
-  rw [derivativeGraphCorrelation_eq_shift]
-  exact finiteShiftCorrelation_first_cs _ _ (derivativeGraphKernel_norm_le f hf)
 
 /-- Blueprint `lem:derivative-graph`, lines 849-855: two Cauchy-Schwarz steps leave only
 the squared averages of differenced selected characters. -/

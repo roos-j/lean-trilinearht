@@ -24,81 +24,6 @@ namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
 
-namespace SplitTree
-variable {V : Type*} [AddCommGroup V] [Module ℂ V]
-
-/-- Blueprint prop:localize, lines 1841-1843: inserting a filter and its complement at every
-node is an exact expansion of a multilinear form over the leaves. -/
-theorem form_eq_sum_ops (Λ : MultilinearMap ℂ (fun _ : Fin 4 => V) ℂ) (t : SplitTree V)
-    (acc : Fin 4 → V →ₗ[ℂ] V) (z : Fin 4 → V) :
-    Λ (fun l => acc l (z l)) = ((t.ops acc).map fun B => Λ (fun l => B l (z l))).sum := by
-  induction t generalizing acc with
-  | leaf => simp [ops]
-  | node l P t₁ t₂ ih₁ ih₂ =>
-    rw [ops, List.map_append, List.sum_append, ← ih₁, ← ih₂]
-    have h1 : (fun l' => Function.update acc l (P ∘ₗ acc l) l' (z l')) =
-        Function.update (fun l' => acc l' (z l')) l (P (acc l (z l))) := by
-      funext l'
-      by_cases h : l' = l
-      · subst h; simp
-      · simp [Function.update_of_ne h]
-    have h2 : (fun l' => Function.update acc l ((LinearMap.id - P) ∘ₗ acc l) l' (z l')) =
-        Function.update (fun l' => acc l' (z l')) l ((acc l (z l)) - P (acc l (z l))) := by
-      funext l'
-      by_cases h : l' = l
-      · subst h; simp
-      · simp [Function.update_of_ne h]
-    rw [h1, h2, ← Λ.map_update_add]
-    congr 1
-    funext l'
-    by_cases h : l' = l
-    · subst h; simp
-    · simp [Function.update_of_ne h]
-
-end SplitTree
-
-/-- The binary search over a color interval `[ℓ, h]` (blueprint lines 1841-1843): split at
-`m = ⌊(ℓ+h)/2⌋` with the cumulative filter `Cum s m` of the slot `s = rule ℓ h`; the positive
-branch keeps `[ℓ, m]` and the residual branch `[m+1, h]`. -/
-def colorSearch {V : Type*} [AddCommGroup V] [Module ℂ V] (rule : ℕ → ℕ → Fin 4)
-    (Cum : Fin 4 → ℕ → V →ₗ[ℂ] V) : ℕ → ℕ → ℕ → SplitTree V
-  | 0, _, _ => SplitTree.leaf
-  | fuel + 1, ℓ, h =>
-      if ℓ < h then
-        SplitTree.node (rule ℓ h) (Cum (rule ℓ h) ((ℓ + h) / 2))
-          (colorSearch rule Cum fuel ℓ ((ℓ + h) / 2))
-          (colorSearch rule Cum fuel ((ℓ + h) / 2 + 1) h)
-      else SplitTree.leaf
-
-theorem colorSearch_leafCount {V : Type*} [AddCommGroup V] [Module ℂ V] (rule : ℕ → ℕ → Fin 4)
-    (Cum : Fin 4 → ℕ → V →ₗ[ℂ] V) (fuel ℓ h : ℕ) (hℓ : ℓ ≤ h) (hfuel : h - ℓ < 2 ^ fuel) :
-    (colorSearch rule Cum fuel ℓ h).leafCount = h - ℓ + 1 := by
-  induction fuel generalizing ℓ h with
-  | zero =>
-    simp only [pow_zero] at hfuel
-    simp only [colorSearch, SplitTree.leafCount]; omega
-  | succ fuel ih =>
-    simp only [colorSearch]
-    split_ifs with hlt
-    · simp only [SplitTree.leafCount]
-      rw [ih ℓ ((ℓ + h) / 2) (by omega) (by rw [pow_succ] at hfuel; omega),
-        ih ((ℓ + h) / 2 + 1) h (by omega) (by rw [pow_succ] at hfuel; omega)]
-      omega
-    · simp only [SplitTree.leafCount]; omega
-
-theorem colorSearch_height_le {V : Type*} [AddCommGroup V] [Module ℂ V] (rule : ℕ → ℕ → Fin 4)
-    (Cum : Fin 4 → ℕ → V →ₗ[ℂ] V) (fuel ℓ h : ℕ) :
-    (colorSearch rule Cum fuel ℓ h).height ≤ fuel := by
-  induction fuel generalizing ℓ h with
-  | zero => simp [colorSearch, SplitTree.height]
-  | succ fuel ih =>
-    simp only [colorSearch]
-    split_ifs
-    · simp only [SplitTree.height]
-      have := ih ℓ ((ℓ + h) / 2); have := ih ((ℓ + h) / 2 + 1) h
-      omega
-    · simp [SplitTree.height]
-
 section LeafLocalization
 variable {V : Type*} [AddCommGroup V] [Module ℂ V]
   (Λ : MultilinearMap ℂ (fun _ : Fin 4 => V) ℂ)
@@ -339,28 +264,6 @@ theorem cell_min_leaves {ιc σ : Type*} (cells : Finset ιc) (wt : ιc → ℝ)
         · rw [min_eq_left h']; exact (min_le_left _ _).trans (by linarith)
         · rw [min_eq_right h']; exact (min_le_right _ _).trans hle
 
-namespace SplitTree
-variable {V : Type*} [AddCommGroup V] [Module ℂ V]
-
-/-- The operator tuple of the `s`-th leaf. -/
-def leafOp (t : SplitTree V) (s : ℕ) : Fin 4 → V →ₗ[ℂ] V :=
-  (t.ops fun _ => LinearMap.id).getD s fun _ => LinearMap.id
-
-theorem form_eq_sum_leafOp (Λ : MultilinearMap ℂ (fun _ : Fin 4 => V) ℂ) (t : SplitTree V)
-    (z : Fin 4 → V) :
-    Λ z = ∑ s ∈ Finset.range t.leafCount, Λ (fun l => t.leafOp s l (z l)) := by
-  have h := form_eq_sum_ops Λ t (fun _ => LinearMap.id) z
-  simp only [LinearMap.id_apply] at h
-  rw [h, ← ops_length t (fun _ => LinearMap.id), Finset.sum_range]
-  rw [← List.sum_ofFn]
-  congr 1
-  apply List.ext_get
-  · simp
-  · intro n h1 h2
-    simp [leafOp]
-
-end SplitTree
-
 /-- The data of the localization at one search leaf and one cell: the leaf inputs `x`, the
 expanded outer primal in slot `u`, the third slot `t`, the current groups with their filters,
 and the test bounds of `leaf_localization`. -/
@@ -400,47 +303,6 @@ structure LeafLocalData (V : Type*) [AddCommGroup V] [Module ℂ V]
     ∀ G ∈ Gs, G ≠ G₀ →
       ‖Λ (Function.update (Function.update x u (φ v)) t (L G t (x t)))‖ ≤ εs
   hres : ∀ G ∈ Gs, ∀ i, ‖Λ (leafResiduals L x u t p q G i)‖ ≤ εr
-
-namespace LeafLocalData
-variable {V : Type*} [AddCommGroup V] [Module ℂ V] {Λ : MultilinearMap ℂ (fun _ : Fin 4 => V) ℂ}
-  {x : Fin 4 → V} (D : LeafLocalData V Λ x)
-
-/-- The localized main term `Σ_G H_I(Z_{0,G}, …, Z_{3,G})`. -/
-noncomputable def main : ℂ := ∑ G ∈ D.Gs, Λ (leafGroupOutput D.L x G)
-
-/-- The error budget of the leaf. -/
-noncomputable def err : ℝ :=
-  (∑ v ∈ D.S, ‖D.a v‖) * ((D.Gs.card + 1) * D.εo + D.εm + D.Gs.card * D.εs) +
-    D.Gs.card * (3 * D.εr)
-
-theorem bound : ‖Λ x - D.main‖ ≤ D.err :=
-  leaf_localization Λ D.L x D.hut D.hup D.huq D.htp D.htq D.hpq D.S D.a D.φ D.hx D.Gs D.grp
-    D.hold D.hcur D.hres D.hεo D.hεm D.hεs
-
-end LeafLocalData
-
-/-- Blueprint §12.4, prop:localize (line 1856, `THT.Localization.binaryGroupExpansion`).
-On every cell `I` the binary search tree `T I` over the color interval (with `N` leaves,
-e.g. `colorSearch`, at most `L` leaves and height `O(log L)`) expands the form exactly over
-its leaves; at each leaf the outer primal is expanded and the current groups are localized
-with the test bounds of `LeafLocalData`. Then the weighted cell minima are at most the sum
-over the leaves of the weighted minima of the current-group sums
-`Σ_G H_I(Z_{0,G,s}, …, Z_{3,G,s})`, `Z_{l,G,s} = L_{l,G,s} B_{l,s} z_l`, plus the weighted sum of
-the leaf errors. -/
-theorem binaryGroupExpansion {V : Type*} [AddCommGroup V] [Module ℂ V] {ιc : Type*}
-    (cells : Finset ιc) (wt : ιc → ℝ) (hwt : ∀ I, 0 ≤ wt I) {η : ℝ} (hη : 0 ≤ η)
-    (Λ : ιc → MultilinearMap ℂ (fun _ : Fin 4 => V) ℂ) (z : ιc → Fin 4 → V)
-    (T : ιc → SplitTree V) (N : ℕ) (hN : ∀ I ∈ cells, (T I).leafCount = N)
-    (D : ∀ I s, LeafLocalData V (Λ I) (fun l => (T I).leafOp s l (z I l))) :
-    ∑ I ∈ cells, wt I * min η ‖Λ I (z I)‖ ≤
-      ∑ s ∈ Finset.range N, ∑ I ∈ cells, wt I * min η ‖(D I s).main‖ +
-        ∑ I ∈ cells, wt I * ∑ s ∈ Finset.range N, (D I s).err := by
-  have h := cell_min_leaves cells wt hwt hη (fun I => Λ I (z I)) (Finset.range N)
-    (fun I s => Λ I (fun l => (T I).leafOp s l (z I l)))
-    (fun I hI => by rw [← hN I hI]; exact SplitTree.form_eq_sum_leafOp (Λ I) (T I) (z I))
-    (fun I s => (D I s).main) (fun I s => (D I s).err)
-    (fun I _ s _ => (D I s).bound)
-  exact h
 
 section CertifiedVariation
 variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H] [CompleteSpace H]
@@ -523,59 +385,6 @@ end CertifiedVariation
 section CertifiedVariation2
 variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H] [CompleteSpace H]
 
-/-- Blueprint lem:variation, lines 1870-1871: telescoping the shared history `B'_t - B'_r`
-into changed middle factors, discarding the left contractions, and inserting the right factors
-at `r` by compression (cost `G₀` per layer). -/
-theorem product_jumps_compression (P : ℕ → ℕ → H →L[ℂ] H) (T m : ℕ)
-    (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n))
-    (hnest : ∀ l < m, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (P l i).comp (P l j) = P l i)
-    {ι : Type*} [Fintype ι] (r t : ι → ℕ) (hrt : ∀ i, r i ≤ t i) (ht : ∀ i, t i ≤ T)
-    (hdis : ∀ i j, i ≠ j → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r j) (t j)))
-    (F : H) {G₀ : ℝ} (hG₀ : 0 ≤ G₀)
-    (hcomp : ∀ l < m, ∀ c : ℝ, 0 ≤ c →
-      (∀ h, ∑ i, ‖(P l (t i) - P l (r i)) h‖ ^ 2 ≤ c * ‖h‖ ^ 2) →
-      ∑ i, ‖(P l (t i) - P l (r i)) (nestedProjectionProduct P l (r i) F)‖ ^ 2 ≤
-        c * G₀ * ‖F‖ ^ 2) :
-    ∑ i, ‖nestedProjectionProduct P m (t i) F - nestedProjectionProduct P m (r i) F‖ ^ 2 ≤
-      (m : ℝ) ^ 2 * G₀ * ‖F‖ ^ 2 := by
-  have key : finiteRowNorm (fun i => nestedProjectionProduct P m (t i) F -
-      nestedProjectionProduct P m (r i) F) ≤ m * (Real.sqrt G₀ * ‖F‖) := by
-    induction m with
-    | zero => simp [nestedProjectionProduct, finiteRowNorm]; rfl
-    | succ m ih =>
-      have hi := ih (fun l hl => hP l (by omega)) (fun l hl => hnest l (by omega))
-        (fun l hl => hcomp l (by omega))
-      have hbes : ∀ h, ∑ i, ‖(P m (t i) - P m (r i)) h‖ ^ 2 ≤ 1 * ‖h‖ ^ 2 := fun h => by
-        rw [one_mul]
-        exact projection_interval_differences_bessel (P m) T (hP m (by omega))
-          (hnest m (by omega)) r t hrt ht hdis h
-      have hc := hcomp m (by omega) 1 zero_le_one hbes
-      have hrow : finiteRowNorm (fun i => (P m (t i) - P m (r i))
-          (nestedProjectionProduct P m (r i) F)) ≤ Real.sqrt G₀ * ‖F‖ := by
-        apply finiteRowNorm_le_of_sq_le _ (by positivity)
-        rw [mul_pow, Real.sq_sqrt hG₀]
-        linarith
-      have he : (fun i => nestedProjectionProduct P (m + 1) (t i) F -
-          nestedProjectionProduct P (m + 1) (r i) F) =
-          (fun i => P m (t i) (nestedProjectionProduct P m (t i) F -
-            nestedProjectionProduct P m (r i) F)) +
-          (fun i => (P m (t i) - P m (r i)) (nestedProjectionProduct P m (r i) F)) :=
-        funext fun i => nestedProjectionProduct_jump_split P m (r i) (t i) F
-      rw [he]
-      calc _ ≤ finiteRowNorm (fun i => P m (t i) (nestedProjectionProduct P m (t i) F -
-            nestedProjectionProduct P m (r i) F)) +
-          finiteRowNorm (fun i => (P m (t i) - P m (r i))
-            (nestedProjectionProduct P m (r i) F)) := finiteRowNorm_add_le _ _
-        _ ≤ m * (Real.sqrt G₀ * ‖F‖) + Real.sqrt G₀ * ‖F‖ := by
-          apply add_le_add _ hrow
-          exact (finiteRowNorm_mono _ _ fun i =>
-            starProjection_norm_apply_le (P m (t i)) (hP m (by omega) (t i) (ht i)) _).trans hi
-        _ = ((m + 1 : ℕ) : ℝ) * (Real.sqrt G₀ * ‖F‖) := by push_cast; ring
-  have h0 : 0 ≤ (m : ℝ) * (Real.sqrt G₀ * ‖F‖) := by positivity
-  have hsq := pow_le_pow_left₀ (finiteRowNorm_nonneg _) key 2
-  rw [finiteRowNorm_sq, mul_pow, mul_pow, Real.sq_sqrt hG₀] at hsq
-  linarith
-
 theorem sum_filter_fst {γ ι : Type*} [Fintype γ] [Fintype ι] [DecidableEq γ]
     (f : γ × ι → ℝ) (G : γ) :
     ∑ k ∈ (Finset.univ : Finset (γ × ι)).filter (fun k => k.1 = G), f k = ∑ i, f (G, i) := by
@@ -584,102 +393,6 @@ theorem sum_filter_fst {γ ι : Type*} [Fintype γ] [Fintype ι] [DecidableEq γ
   · simp
   · intro b _ hb; simp [hb]
   · intro h; exact absurd (Finset.mem_univ G) h
-
-/-- Blueprint §12.4, lem:variation (line 1879, `THT.Localization.certifiedVariation`), for the
-basic coarse outputs `Z_{G,s} = L_{G,s} B'_s F` with individual nested ball projections
-`L_{G,s}` and a shared product `B'_s` of `m` nested projection layers, restricted at the right
-endpoints by contractions `E_{G,[r,t]}` (the certified unions). On disjoint depth intervals,
-`Σ_{G,[r,t]} ‖E (Z_{G,t} - Z_{G,r})‖² ≤ 2 C_w G₀ (1 + m²) ‖F‖²`, given `eq:whole-ranges` for
-the ball rows (constant `C_w`, as adjoint almost-orthogonality across groups) and the
-compression estimate (cost `G₀`) for the rows used. The row Bessel bounds are proved here:
-orthogonal increments of nested projections within a group, joint across groups by
-`joint_bessel_of_wholeRanges`. -/
-theorem certifiedVariation {γ ι : Type*} [Fintype γ] [DecidableEq γ] [Fintype ι] (T m : ℕ)
-    (P : ℕ → ℕ → H →L[ℂ] H) (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n))
-    (hnest : ∀ l < m, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (P l i).comp (P l j) = P l i)
-    (L : γ → ℕ → H →L[ℂ] H) (hL : ∀ G, ∀ n ≤ T, IsStarProjection (L G n))
-    (hLnest : ∀ G, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (L G i).comp (L G j) = L G i)
-    (E : γ → ι → H →L[ℂ] H) (hE : ∀ G i y, ‖E G i y‖ ≤ ‖y‖)
-    (r t : ι → ℕ) (hrt : ∀ i, r i ≤ t i) (ht : ∀ i, t i ≤ T)
-    (hdis : ∀ i j, i ≠ j → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r j) (t j)))
-    (F : H) {Cw G₀ : ℝ} (hCw : 0 ≤ Cw) (hG₀ : 0 ≤ G₀)
-    (hwr1 : ∀ x : γ × ι → H, ‖∑ k, ContinuousLinearMap.adjoint
-        ((E k.1 k.2).comp (L k.1 (t k.2) - L k.1 (r k.2))) (x k)‖ ^ 2 ≤
-      Cw * ∑ G, ‖∑ k ∈ (Finset.univ : Finset (γ × ι)).filter (fun k => k.1 = G),
-        ContinuousLinearMap.adjoint ((E k.1 k.2).comp (L k.1 (t k.2) - L k.1 (r k.2))) (x k)‖ ^ 2)
-    (hcomp1 : ∀ c : ℝ, 0 ≤ c → (∀ h, ∑ k : γ × ι,
-        ‖(E k.1 k.2).comp (L k.1 (t k.2) - L k.1 (r k.2)) h‖ ^ 2 ≤ c * ‖h‖ ^ 2) →
-      ∑ k : γ × ι, ‖(E k.1 k.2).comp (L k.1 (t k.2) - L k.1 (r k.2))
-        (nestedProjectionProduct P m (r k.2) F)‖ ^ 2 ≤ c * G₀ * ‖F‖ ^ 2)
-    (hwr2 : ∀ i, ∀ x : γ → H, ‖∑ G, ContinuousLinearMap.adjoint
-        ((E G i).comp (L G (t i))) (x G)‖ ^ 2 ≤
-      Cw * ∑ G, ‖∑ G' ∈ (Finset.univ : Finset γ).filter (fun G' => G' = G),
-        ContinuousLinearMap.adjoint ((E G' i).comp (L G' (t i))) (x G')‖ ^ 2)
-    (hcompL : ∀ l < m, ∀ c : ℝ, 0 ≤ c →
-      (∀ h, ∑ i, ‖(P l (t i) - P l (r i)) h‖ ^ 2 ≤ c * ‖h‖ ^ 2) →
-      ∑ i, ‖(P l (t i) - P l (r i)) (nestedProjectionProduct P l (r i) F)‖ ^ 2 ≤
-        c * G₀ * ‖F‖ ^ 2) :
-    ∑ k : γ × ι, ‖E k.1 k.2 (L k.1 (t k.2) (nestedProjectionProduct P m (t k.2) F) -
-        L k.1 (r k.2) (nestedProjectionProduct P m (r k.2) F))‖ ^ 2 ≤
-      2 * Cw * G₀ * (1 + (m : ℝ) ^ 2) * ‖F‖ ^ 2 := by
-  set B' := fun s => nestedProjectionProduct P m s F
-  set R1 : γ × ι → H →L[ℂ] H := fun k => (E k.1 k.2).comp (L k.1 (t k.2) - L k.1 (r k.2))
-  -- first term: joint Bessel and compression
-  have hgrp1 : ∀ G h, ∑ k ∈ (Finset.univ : Finset (γ × ι)).filter (fun k => k.1 = G),
-      ‖R1 k h‖ ^ 2 ≤ ‖h‖ ^ 2 := by
-    intro G h
-    rw [sum_filter_fst (fun k => ‖R1 k h‖ ^ 2) G]
-    calc ∑ i, ‖R1 (G, i) h‖ ^ 2 ≤ ∑ i, ‖(L G (t i) - L G (r i)) h‖ ^ 2 :=
-          Finset.sum_le_sum fun i _ => pow_le_pow_left₀ (norm_nonneg _)
-            (by simp only [R1, ContinuousLinearMap.comp_apply]; exact hE G i _) 2
-      _ ≤ ‖h‖ ^ 2 := projection_interval_differences_bessel (L G) T (hL G) (hLnest G) r t hrt
-          ht hdis h
-  have hjoint1 : ∀ h, ∑ k : γ × ι, ‖R1 k h‖ ^ 2 ≤ Cw * ‖h‖ ^ 2 :=
-    fun h => joint_bessel_of_wholeRanges Finset.univ Prod.fst R1 hgrp1 hCw hwr1 h
-  have hterm1 := hcomp1 Cw hCw hjoint1
-  -- second term: whole ranges at the right endpoints and the product jumps
-  have hjoint2 : ∀ i y, ∑ G, ‖(E G i).comp (L G (t i)) y‖ ^ 2 ≤ Cw * ‖y‖ ^ 2 := by
-    intro i y
-    apply joint_bessel_of_wholeRanges Finset.univ id (fun G => (E G i).comp (L G (t i))) _ hCw
-      (hwr2 i) y
-    intro G h
-    rw [Finset.sum_filter, Finset.sum_eq_single G (fun b _ hb => by simp [hb])
-      (fun h' => absurd (Finset.mem_univ G) h')]
-    simp only [id, ite_true, ContinuousLinearMap.comp_apply]
-    exact pow_le_pow_left₀ (norm_nonneg _) ((hE G i _).trans
-      (starProjection_norm_apply_le _ (hL G (t i) (ht i)) _)) 2
-  have hjump := product_jumps_compression P T m hP hnest r t hrt ht hdis F hG₀ hcompL
-  have hterm2 : ∑ k : γ × ι, ‖E k.1 k.2 (L k.1 (t k.2) (B' (t k.2) - B' (r k.2)))‖ ^ 2 ≤
-      Cw * ((m : ℝ) ^ 2 * G₀ * ‖F‖ ^ 2) := by
-    rw [Fintype.sum_prod_type, Finset.sum_comm]
-    calc ∑ i, ∑ G, ‖E G i (L G (t i) (B' (t i) - B' (r i)))‖ ^ 2 ≤
-        ∑ i, Cw * ‖B' (t i) - B' (r i)‖ ^ 2 := Finset.sum_le_sum fun i _ => hjoint2 i _
-      _ = Cw * ∑ i, ‖B' (t i) - B' (r i)‖ ^ 2 := by rw [Finset.mul_sum]
-      _ ≤ _ := mul_le_mul_of_nonneg_left hjump hCw
-  -- combine
-  have hsplit : ∀ k : γ × ι, E k.1 k.2 (L k.1 (t k.2) (B' (t k.2)) - L k.1 (r k.2) (B' (r k.2))) =
-      R1 k (B' (r k.2)) + E k.1 k.2 (L k.1 (t k.2) (B' (t k.2) - B' (r k.2))) := by
-    intro k
-    simp only [R1, ContinuousLinearMap.comp_apply, sub_apply, map_sub]
-    abel
-  calc ∑ k : γ × ι, ‖E k.1 k.2 (L k.1 (t k.2) (B' (t k.2)) - L k.1 (r k.2) (B' (r k.2)))‖ ^ 2
-      ≤ ∑ k : γ × ι, (2 * ‖R1 k (B' (r k.2))‖ ^ 2 +
-          2 * ‖E k.1 k.2 (L k.1 (t k.2) (B' (t k.2) - B' (r k.2)))‖ ^ 2) := by
-        apply Finset.sum_le_sum; intro k _
-        rw [hsplit]
-        have := norm_add_le (R1 k (B' (r k.2))) (E k.1 k.2 (L k.1 (t k.2) (B' (t k.2) -
-          B' (r k.2))))
-        have h0 := norm_nonneg (R1 k (B' (r k.2)) + E k.1 k.2 (L k.1 (t k.2) (B' (t k.2) -
-          B' (r k.2))))
-        nlinarith [sq_nonneg (‖R1 k (B' (r k.2))‖ -
-          ‖E k.1 k.2 (L k.1 (t k.2) (B' (t k.2) - B' (r k.2)))‖)]
-    _ = 2 * ∑ k : γ × ι, ‖R1 k (B' (r k.2))‖ ^ 2 +
-        2 * ∑ k : γ × ι, ‖E k.1 k.2 (L k.1 (t k.2) (B' (t k.2) - B' (r k.2)))‖ ^ 2 := by
-        rw [Finset.sum_add_distrib, Finset.mul_sum, Finset.mul_sum]
-    _ ≤ 2 * (Cw * G₀ * ‖F‖ ^ 2) + 2 * (Cw * ((m : ℝ) ^ 2 * G₀ * ‖F‖ ^ 2)) :=
-        add_le_add (mul_le_mul_of_nonneg_left hterm1 (by norm_num))
-          (mul_le_mul_of_nonneg_left hterm2 (by norm_num))
-    _ = _ := by ring
 
 end CertifiedVariation2
 
@@ -692,79 +405,6 @@ section
 namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
-
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-
-theorem vchart_dim (x : A.Vtx) : 1 ≤ (A.vchart x).1 :=
-  (Classical.choose_spec (A.exists_vchart x)).1
-
-end ActiveSetup
-
-section CatalogExpansion
-variable {G : RealDyadicGrid} {Tg : Type*} {Mc : ℕ}
-
-/-- Blueprint lemma coeff (private-coordinate recovery): a vector of a catalog range is, on its
-cell, the combination `Σ c_n ψ_n` of the selected atoms, and each coefficient satisfies
-`|c_n|² |I| ≤ ‖x‖²` (private weights one). -/
-theorem catRange_expansion {s : List (CatCol Tg)} {I : ℤ × ℤ} {r : ℕ} {M : Tg → Prop}
-    {x : ColumnL2 (Fin Mc)} (hx : x ∈ catRange G Mc s I r M) :
-    ∃ c : Fin Mc → ℂ, (∀ n, ‖c n‖ ^ 2 * dyadicGridLength G I.1 ≤ ‖x‖ ^ 2) ∧
-      (∀ n ∉ catLabels G Mc s I r M, c n = 0) ∧
-      (∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 →
-        (x : ℝ → ColumnHilbert (Fin Mc)) y none =
-          ∑ n ∈ catLabels G Mc s I r M, c n * catAtom s n y) ∧
-      x = ∑ n ∈ catLabels G Mc s I r M,
-        c n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n := by
-  classical
-  obtain ⟨c, hc⟩ := catRange_exists_coeff hx
-  set F := catLabels G Mc s I r M
-  have hco := catCombination_coeFn (G := G) s I F c
-  rw [← hc] at hco
-  set c' : Fin Mc → ℂ := fun n => if n ∈ F then c n else 0 with hc'
-  refine ⟨c', fun m => ?_, fun n hn => by simp only [hc', hn, ↓reduceIte], ?_, ?_⟩
-  rotate_left 2
-  · rw [hc]
-    refine Finset.sum_congr rfl fun n hn => ?_
-    simp only [hc', hn, ↓reduceIte]
-  · -- the private coordinate `m` on the cell is `c' m`
-    have hpriv : ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 →
-        (x : ℝ → ColumnHilbert (Fin Mc)) y (some m) = c' m := by
-      filter_upwards [hco] with y hy hys
-      rw [hy hys, columnHilbert_sum_apply]
-      simp only [PiLp.smul_apply, fitColumnValue_some, smul_eq_mul, mul_ite, mul_one, mul_zero]
-      rw [Finset.sum_ite_eq]
-    have hle : ∫ y in dyadicGridCell G I.1 I.2, ‖c' m‖ ^ 2 ≤
-        ∫ y, ‖(x : ℝ → ColumnHilbert (Fin Mc)) y‖ ^ 2 := by
-      calc ∫ y in dyadicGridCell G I.1 I.2, ‖c' m‖ ^ 2
-          = ∫ y in dyadicGridCell G I.1 I.2,
-              ‖(x : ℝ → ColumnHilbert (Fin Mc)) y (some m)‖ ^ 2 := by
-            refine setIntegral_congr_ae (dyadicGridCell_measurable _ _ _) ?_
-            filter_upwards [hpriv] with y hy hys
-            rw [hy hys]
-        _ ≤ ∫ y in dyadicGridCell G I.1 I.2, ‖(x : ℝ → ColumnHilbert (Fin Mc)) y‖ ^ 2 := by
-            refine setIntegral_mono_on ?_ ?_ (dyadicGridCell_measurable _ _ _) fun y _ => ?_
-            · exact ((memLp_column_coord x (some m)).integrable_norm_pow two_ne_zero).integrableOn
-            · exact ((Lp.memLp x).integrable_norm_pow two_ne_zero).integrableOn
-            · have : ‖(x : ℝ → ColumnHilbert (Fin Mc)) y (some m)‖ ≤
-                  ‖(x : ℝ → ColumnHilbert (Fin Mc)) y‖ := by
-                rw [EuclideanSpace.norm_eq]
-                exact Real.le_sqrt_of_sq_le (Finset.single_le_sum (f := fun i =>
-                  ‖(x : ℝ → ColumnHilbert (Fin Mc)) y i‖ ^ 2) (fun _ _ => by positivity)
-                  (Finset.mem_univ (some m)))
-              exact pow_le_pow_left₀ (norm_nonneg _) this 2
-        _ ≤ _ := setIntegral_le_integral ((Lp.memLp x).integrable_norm_pow two_ne_zero)
-            (Filter.Eventually.of_forall fun _ => by positivity)
-    rw [setIntegral_const, smul_eq_mul, measureReal_def, dyadicGridCell_volume,
-      ENNReal.toReal_ofReal (dyadicGridLength_pos G I.1).le] at hle
-    rw [columnInput_norm_sq_integral, mul_comm]
-    exact hle
-  · filter_upwards [hco] with y hy hys
-    rw [hy hys, columnHilbert_sum_apply]
-    refine Finset.sum_congr rfl fun n hn => ?_
-    simp only [PiLp.smul_apply, fitColumnValue_none, smul_eq_mul, hc', hn, ↓reduceIte]
-
-end CatalogExpansion
 
 namespace ColorSetup
 variable {V : Type*} [DecidableEq V] (K : ColorSetup V) (T : AdmTree V)
@@ -864,189 +504,9 @@ def SearchInv (up₀ : Fin 4) (ℓ₀ h₀ : ℕ) (ℓ h : ℕ) (up : Fin 4) (lo
     ((∃ ls', ls up = ls' ++ [(h, false)]) ∨ (up = up₀ ∧ ls up = [] ∧ h = h₀)) ∧
     ((low = none ∧ ℓ = ℓ₀) ∨ ∃ g ls', low = some g ∧ ls g = ls' ++ [(ℓ - 1, true)] ∧ 1 ≤ ℓ)
 
-/-- With enough fuel every leaf is a single color. -/
-theorem searchLeaves_single :
-    ∀ (fuel ℓ h : ℕ) (up : Fin 4) (low : Option (Fin 4)) (ls : Fin 4 → List (ℕ × Bool)),
-      ℓ ≤ h → h - ℓ < 2 ^ fuel → ∀ L ∈ searchLeaves fuel ℓ h up low ls, L.k = L.hi := by
-  intro fuel
-  induction fuel with
-  | zero =>
-    intro ℓ h up low ls hℓ hf L hL
-    simp only [searchLeaves, List.mem_singleton] at hL; subst hL; simp at hf ⊢; omega
-  | succ fuel ih =>
-    intro ℓ h up low ls hℓ hf L hL
-    simp only [searchLeaves] at hL
-    rw [pow_succ] at hf
-    split_ifs at hL with hlt
-    · rcases List.mem_append.mp hL with hL | hL
-      · exact ih _ _ _ _ _ (by omega) (by omega) L hL
-      · exact ih _ _ _ _ _ (by omega) (by omega) L hL
-    · rw [List.mem_singleton] at hL; subst hL; simp; omega
-
-/-- The leaves enumerate the colors in increasing order. -/
-theorem searchLeaves_colors :
-    ∀ (fuel ℓ h : ℕ) (up : Fin 4) (low : Option (Fin 4)) (ls : Fin 4 → List (ℕ × Bool)),
-      ℓ ≤ h → h - ℓ < 2 ^ fuel →
-        (searchLeaves fuel ℓ h up low ls).map SearchLeaf.k = List.range' ℓ (h - ℓ + 1) := by
-  intro fuel
-  induction fuel with
-  | zero =>
-    intro ℓ h up low ls hℓ hf
-    simp at hf
-    have : h = ℓ := by omega
-    subst this
-    simp [searchLeaves]
-  | succ fuel ih =>
-    intro ℓ h up low ls hℓ hf
-    simp only [searchLeaves]
-    rw [pow_succ] at hf
-    split_ifs with hlt
-    · rw [List.map_append, ih _ _ _ _ _ (by omega) (by omega),
-        ih _ _ _ _ _ (by omega) (by omega)]
-      rw [show h - ℓ + 1 = ((ℓ + h) / 2 - ℓ + 1) + (h - ((ℓ + h) / 2 + 1) + 1) by omega]
-      conv_rhs => rw [← List.range'_append_1]
-      rw [show ℓ + ((ℓ + h) / 2 - ℓ + 1) = (ℓ + h) / 2 + 1 by omega]
-    · have : h = ℓ := by omega
-      subst this
-      simp
-
 end GuardedSearch
 
 /-! ### Expansion of averaged catalog filters (blueprint lines 1850, 1835) -/
-
-theorem catLabels_mono {Tg : Type*} {G : RealDyadicGrid} {Mc : ℕ} (s : List (CatCol Tg))
-    (I : ℤ × ℤ) (r : ℕ) {M M' : Tg → Prop} (h : ∀ x, M x → M' x) :
-    catLabels G Mc s I r M ⊆ catLabels G Mc s I r M' := by
-  classical
-  intro n hn
-  simp only [catLabels, Finset.mem_filter, Finset.mem_univ, true_and] at hn ⊢
-  obtain ⟨hn, h1, h2, h3⟩ := hn
-  exact ⟨hn, h1, h2, h _ h3⟩
-
-theorem norm_catProj_le {Tg : Type*} (G : RealDyadicGrid) (Mc : ℕ) (s : List (CatCol Tg))
-    (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) (X : ColumnL2 (Fin Mc)) :
-    ‖catProj G Mc s I r M X‖ ≤ ‖X‖ :=
-  Submodule.norm_starProjection_apply_le _ X
-
-/-- The output of an averaged catalog filter with masks increasing in the pad is a combination
-of the columns of the largest mask, with coefficients at most `‖X‖ / √|I|` (private-coordinate
-recovery, blueprint line 1835). -/
-theorem opAvg_catProj_expansion {Tg : Type*} {G : RealDyadicGrid} {Mc : ℕ}
-    (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) {P : ℕ} (M : Fin P → Tg → Prop) (Mtop : Tg → Prop)
-    (hM : ∀ p x, M p x → Mtop x) (X : ColumnL2 (Fin Mc)) :
-    ∃ a : Fin Mc → ℂ, (∀ n, ‖a n‖ * Real.sqrt (dyadicGridLength G I.1) ≤ ‖X‖) ∧
-      opAvg (fun p => catProj G Mc s I r (M p)) X =
-        ∑ n ∈ catLabels G Mc s I r Mtop,
-          a n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n := by
-  classical
-  have hr := dyadicGridLength_pos G I.1
-  have hsq := Real.sqrt_pos.mpr hr
-  have hexp := fun p : Fin P => catRange_expansion (G := G) (s := s) (I := I) (r := r)
-    (M := M p) (Submodule.starProjection_apply_mem (catRange G Mc s I r (M p)) X)
-  choose c hcb hc0 _hcphys hcx using hexp
-  set F := catLabels G Mc s I r Mtop
-  have hsub : ∀ p, catLabels G Mc s I r (M p) ⊆ F := fun p => catLabels_mono s I r (hM p)
-  refine ⟨fun n => (P : ℂ)⁻¹ * ∑ p, c p n, fun n => ?_, ?_⟩
-  · -- the coefficient bound
-    have hcn : ∀ p, ‖c p n‖ * Real.sqrt (dyadicGridLength G I.1) ≤ ‖X‖ := by
-      intro p
-      have h1 := hcb p n
-      have h2 := norm_catProj_le G Mc s I r (M p) X
-      have h3 : (‖c p n‖ * Real.sqrt (dyadicGridLength G I.1)) ^ 2 ≤ ‖X‖ ^ 2 := by
-        rw [mul_pow, Real.sq_sqrt hr.le]
-        exact h1.trans (pow_le_pow_left₀ (norm_nonneg _) h2 2)
-      exact (pow_le_pow_iff_left₀ (by positivity) (norm_nonneg _) two_ne_zero).mp h3
-    rcases Nat.eq_zero_or_pos P with hP | hP
-    · subst hP; simp [norm_nonneg]
-    · rw [norm_mul, norm_inv, Complex.norm_natCast]
-      have hPr : (0 : ℝ) < P := by exact_mod_cast hP
-      calc (P : ℝ)⁻¹ * ‖∑ p, c p n‖ * Real.sqrt (dyadicGridLength G I.1)
-          ≤ (P : ℝ)⁻¹ * ∑ p, ‖c p n‖ * Real.sqrt (dyadicGridLength G I.1) := by
-            rw [mul_assoc, ← Finset.sum_mul]
-            exact mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_right (norm_sum_le _ _)
-              hsq.le) (by positivity)
-        _ ≤ (P : ℝ)⁻¹ * ∑ _p : Fin P, ‖X‖ :=
-            mul_le_mul_of_nonneg_left (Finset.sum_le_sum fun p _ => hcn p) (by positivity)
-        _ = ‖X‖ := by
-            rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul, ← mul_assoc,
-              inv_mul_cancel₀ hPr.ne', one_mul]
-  · -- the vector identity
-    unfold opAvg
-    rw [smul_apply, sum_apply]
-    have hext : ∀ p, catProj G Mc s I r (M p) X = ∑ n ∈ F,
-        c p n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n := by
-      intro p
-      change (catRange G Mc s I r (M p)).starProjection X = _
-      rw [hcx p]
-      refine Finset.sum_subset (hsub p) fun n _ hn => ?_
-      rw [hc0 p n hn, zero_smul]
-    simp only [hext]
-    rw [Finset.sum_comm, Finset.smul_sum]
-    refine Finset.sum_congr rfl fun n _ => ?_
-    rw [← Finset.sum_smul, smul_smul]
-
-/-- Square-summed coefficients of an averaged catalog filter output. -/
-theorem opAvg_catProj_l2 {Tg : Type*} {G : RealDyadicGrid} {Mc : ℕ}
-    (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) {P : ℕ} (M : Fin P → Tg → Prop) (Mtop : Tg → Prop)
-    (hM : ∀ p x, M p x → Mtop x) (X : ColumnL2 (Fin Mc)) :
-    ∃ a : Fin Mc → ℂ,
-      (∑ n ∈ catLabels G Mc s I r Mtop, ‖a n‖ ^ 2) * dyadicGridLength G I.1 ≤ ‖X‖ ^ 2 ∧
-      opAvg (fun p => catProj G Mc s I r (M p)) X =
-        ∑ n ∈ catLabels G Mc s I r Mtop,
-          a n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n := by
-  classical
-  have hr := dyadicGridLength_pos G I.1
-  have hexp := fun p : Fin P => catRange_expansion (G := G) (s := s) (I := I) (r := r)
-    (M := M p) (Submodule.starProjection_apply_mem (catRange G Mc s I r (M p)) X)
-  choose c _hcb hc0 _hcphys hcx using hexp
-  set F := catLabels G Mc s I r Mtop
-  have hsub : ∀ p, catLabels G Mc s I r (M p) ⊆ F := fun p => catLabels_mono s I r (hM p)
-  have hext : ∀ p, catProj G Mc s I r (M p) X = ∑ n ∈ F,
-      c p n • fitColumn (dyadicGridCell G I.1 I.2) (catAtom s n) n := by
-    intro p
-    change (catRange G Mc s I r (M p)).starProjection X = _
-    rw [hcx p]
-    refine Finset.sum_subset (hsub p) fun n _ hn => ?_
-    rw [hc0 p n hn, zero_smul]
-  refine ⟨fun n => (P : ℂ)⁻¹ * ∑ p, c p n, ?_, ?_⟩
-  · rcases Nat.eq_zero_or_pos P with hP | hP
-    · subst hP; simp [norm_nonneg]
-    have hPr : (0 : ℝ) < P := by exact_mod_cast hP
-    -- each pad output
-    have hp : ∀ p, (∑ n ∈ F, ‖c p n‖ ^ 2) * dyadicGridLength G I.1 ≤ ‖X‖ ^ 2 := by
-      intro p
-      refine (catCombination_l2_le (G := G) s I F (c p)).trans ?_
-      rw [← hext p]
-      exact pow_le_pow_left₀ (norm_nonneg _) (norm_catProj_le _ _ _ _ _ _ X) 2
-    -- convexity of the square
-    have hconv : ∀ n, ‖(P : ℂ)⁻¹ * ∑ p, c p n‖ ^ 2 ≤ (P : ℝ)⁻¹ * ∑ p, ‖c p n‖ ^ 2 := by
-      intro n
-      rw [norm_mul, norm_inv, Complex.norm_natCast, mul_pow]
-      have hcs : ‖∑ p, c p n‖ ^ 2 ≤ P * ∑ p, ‖c p n‖ ^ 2 := by
-        calc ‖∑ p, c p n‖ ^ 2 ≤ (∑ p, ‖c p n‖) ^ 2 :=
-              pow_le_pow_left₀ (norm_nonneg _) (norm_sum_le _ _) 2
-          _ ≤ (Finset.univ : Finset (Fin P)).card * ∑ p, ‖c p n‖ ^ 2 :=
-              sq_sum_le_card_mul_sum_sq
-          _ = P * ∑ p, ‖c p n‖ ^ 2 := by rw [Finset.card_univ, Fintype.card_fin]
-      calc (P : ℝ)⁻¹ ^ 2 * ‖∑ p, c p n‖ ^ 2 ≤ (P : ℝ)⁻¹ ^ 2 * (P * ∑ p, ‖c p n‖ ^ 2) :=
-            mul_le_mul_of_nonneg_left hcs (by positivity)
-        _ = (P : ℝ)⁻¹ * ∑ p, ‖c p n‖ ^ 2 := by field_simp
-    calc (∑ n ∈ F, ‖(P : ℂ)⁻¹ * ∑ p, c p n‖ ^ 2) * dyadicGridLength G I.1
-        ≤ (∑ n ∈ F, (P : ℝ)⁻¹ * ∑ p, ‖c p n‖ ^ 2) * dyadicGridLength G I.1 :=
-          mul_le_mul_of_nonneg_right (Finset.sum_le_sum fun n _ => hconv n) hr.le
-      _ = (P : ℝ)⁻¹ * ∑ p, (∑ n ∈ F, ‖c p n‖ ^ 2) * dyadicGridLength G I.1 := by
-          rw [← Finset.mul_sum, Finset.sum_comm, mul_assoc, Finset.sum_mul]
-      _ ≤ (P : ℝ)⁻¹ * ∑ _p : Fin P, ‖X‖ ^ 2 :=
-          mul_le_mul_of_nonneg_left (Finset.sum_le_sum fun p _ => hp p) (by positivity)
-      _ = ‖X‖ ^ 2 := by
-          rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, nsmul_eq_mul, ← mul_assoc,
-            inv_mul_cancel₀ hPr.ne', one_mul]
-  · unfold opAvg
-    rw [smul_apply, sum_apply]
-    simp only [hext]
-    rw [Finset.sum_comm, Finset.smul_sum]
-    refine Finset.sum_congr rfl fun n _ => ?_
-    rw [← Finset.sum_smul, smul_smul]
 
 section Contractions
 variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H]
@@ -1085,14 +545,6 @@ theorem norm_layerOp_apply_le (Cum : ℕ → H →L[ℂ] H) (h1 : ∀ m x, ‖Cu
 
 end Contractions
 
-theorem norm_catProj_complement_le {Tg : Type*} (G : RealDyadicGrid) (Mc : ℕ)
-    (s : List (CatCol Tg)) (I : ℤ × ℤ) (r : ℕ) (M : Tg → Prop) (X : ColumnL2 (Fin Mc)) :
-    ‖X - catProj G Mc s I r M X‖ ≤ ‖X‖ := by
-  have h := Submodule.starProjection_orthogonal_val (K := catRange G Mc s I r M) X
-  change ‖X - (catRange G Mc s I r M).starProjection X‖ ≤ ‖X‖
-  rw [← h]
-  exact Submodule.norm_starProjection_apply_le _ X
-
 /-! ### The leaf of an attempt (blueprint prop:localize, lines 1848-1856) -/
 
 /-- The data of the filters of an attempt at one cell: slot catalogs, the number `P` of pads,
@@ -1110,37 +562,6 @@ structure LeafFilters (Tg γ : Type*) where
   rkB : ℕ → ℕ
   bm : γ → ℕ → ℕ → Tg → Prop
   g : Fin 4 → Lp ℂ 2 (volume : Measure ℝ)
-
-namespace LeafFilters
-variable {Tg γ : Type*} (F : LeafFilters Tg γ)
-
-/-- The averaged cumulative filter of slot `l` at the split `m`. -/
-noncomputable def cum (l : Fin 4) (m : ℕ) : ColumnL2 (Fin F.Mc) →L[ℂ] ColumnL2 (Fin F.Mc) :=
-  opAvg fun p : Fin F.P => catProj F.G F.Mc (F.cat l) F.I (F.rkC m) (F.cm m p)
-
-/-- The input of slot `l` at a leaf with layers `ls`. -/
-noncomputable def input (ls : Fin 4 → List (ℕ × Bool)) (l : Fin 4) : ColumnL2 (Fin F.Mc) :=
-  layerOp (F.cum l) (ls l) (physicalColumnInput (F.g l))
-
-end LeafFilters
-
-theorem augPhys_fitColumn_ae {Mc : ℕ} {s : Set ℝ} {ψ : ℝ → ℂ} (h : FitAdmissible s ψ)
-    (n : Fin Mc) : ∀ᵐ y ∂volume, y ∈ s → augPhys (fitColumn s ψ n) y = ψ y := by
-  filter_upwards [fitColumn_coeFn h n] with y hy hys
-  simp only [augPhys, hy, Set.indicator_of_mem hys, fitColumnValue_none]
-
-namespace LeafFilters
-variable {Tg γ : Type*} (F : LeafFilters Tg γ)
-
-/-- The source condition: a pure chart of the tag in slot `u` equal to the vector on the cell. -/
-def IsSource (c₀ : ℕ) (H : ℝ) (tagOf : Tg → ChartTag) (u : Fin 4) (x : Tg)
-    (φ : ColumnL2 (Fin F.Mc)) : Prop :=
-  ∃ A : QuadraticChartData (tagOf x).dim, QuadraticChartComplexity c₀ H A ∧
-    A.horizontal = (tagOf x).θ ∧ A.matrix = (slotCoeff u : ℚ) • (tagOf x).C ∧
-    A.quadratic = slotCoeff u * (tagOf x).lam ∧
-    ∀ᵐ y ∂volume, y ∈ dyadicGridCell F.G F.I.1 F.I.2 → augPhys φ y = quadraticChartAtom A y
-
-end LeafFilters
 
 /-- A default search leaf. -/
 def dfltLeaf : SearchLeaf := ⟨0, 0, 0, none, fun _ => []⟩
@@ -1216,20 +637,6 @@ variable {V : Type*} [DecidableEq V] (K : ColorSetup V) (T : AdmTree V)
 
 /-! ### Mask facts of an attempt (blueprint lem:masks, lines 1760-1762) -/
 
-/-- Ball masks increase with the pad. -/
-theorem mask_mono_pad (Nv : ℕ) {G : ℕ × (Option (Fin K.d0 × V × ℤ) × ℕ × (ℕ × ℕ) ×
-    Option (Fin K.d0 × V × ℤ))} {h h' : ℕ} (hh : h ≤ h') {I : T.Cell} {b : V}
-    (hb : b ∈ K.mask T Nv G h I) : b ∈ K.mask T Nv G h' I := by
-  obtain ⟨hbI, I₀, hI₀, v₀, hv₀, hgrp, hpred⟩ := hb
-  refine ⟨hbI, I₀, hI₀, v₀, hv₀, hgrp, ?_⟩
-  obtain ⟨ρ, z, g, m, l, n, ρ', a, g₂, hc, hl, ⟨k, hk, hkg⟩, h2, h3⟩ := hpred
-  refine ⟨ρ, z, g, m, l, n, ρ', a, g₂, hc, hl, ⟨k, hk, ?_⟩, h2.trans (by exact_mod_cast hh), ?_⟩
-  · have : (h : ℤ) ≤ h' := by exact_mod_cast hh
-    linarith
-  · refine h3.trans ?_
-    have hR : (0 : ℝ) ≤ 10 * K.Rl l := by unfold Rl; positivity
-    exact mul_le_mul_of_nonneg_left (by exact_mod_cast hh) hR
-
 end ColorSetup
 
 /-! ### Roles at a leaf -/
@@ -1252,168 +659,6 @@ def SearchLeaf.role (L : SearchLeaf) (l : Fin 4) : ℕ :=
 namespace ActiveSetup
 variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
 
-namespace AttemptParams
-variable {A} (ap : A.AttemptParams)
-
-/-- The filters of the cell `I` for slot catalogs `cat`. -/
-noncomputable def filters (cat : Fin 4 → List (CatCol A.Vtx)) (I : ℤ × ℤ) :
-    LeafFilters A.Vtx A.Grp where
-  G := A.G
-  I := I
-  Mc := ap.Mc
-  cat := cat
-  P := ap.P
-  hP := ap.hP
-  rkC := fun m => ap.Lc - m + 1
-  cm := ap.cmask I
-  rkB := fun j => ap.Lc + j
-  bm := ap.bmask I
-  g := ap.base I
-
-end AttemptParams
-
-end ActiveSetup
-
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.AttemptParams)
-
-open Classical in
-theorem bmask_present {I : ℤ × ℤ} {G : A.Grp} {j p : ℕ} {x : A.Vtx} (hx : ap.bmask I G j p x) :
-    x ∈ A.admT.X (A.admAt I) := hx.1
-
-/-- A selected catalog column of a slot whose mask consists of present vertices is a pure source
-of its tag in that slot (blueprint line 1798: a source may itself be a template). -/
-theorem catColumn_source (cat : Fin 4 → List (CatCol A.Vtx)) (l : Fin 4)
-    (hT : ∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-      d = templateCol (A.vtag d.tag) l R γ d.birth d.rank d.tag)
-    (I : ℤ × ℤ) {r : ℕ} {M : A.Vtx → Prop} (hM : ∀ x, M x → x ∈ A.admT.X (A.admAt I))
-    {n : Fin ap.Mc} (hn : n ∈ catLabels A.G ap.Mc (cat l) I r M) :
-    ∃ x : A.Vtx, M x ∧ (ap.filters cat I).IsSource A.csrc A.Hsrc A.vtag l x
-      (fitColumn (dyadicGridCell A.G I.1 I.2) (catAtom (cat l) n) n) := by
-  classical
-  simp only [catLabels, Finset.mem_filter, Finset.mem_univ, true_and] at hn
-  obtain ⟨hnl, -, -, hMx⟩ := hn
-  set d := (cat l)[(n : ℕ)]
-  have hd : d ∈ cat l := List.getElem_mem _
-  obtain ⟨R, hR, γ, hdt⟩ := hT d hd
-  have hav : A.occAvail d.tag.2.1 d.tag.1 := A.occAvail_of_mem (hM _ hMx)
-  obtain ⟨A', hA', hθ, hMat, hq, he⟩ := A.templateCol_source hav l hR γ d.birth d.rank
-  refine ⟨d.tag, hMx, A', hA', hθ, hMat, hq, ?_⟩
-  have hatom : catAtom (cat l) n = quadraticChartAtom A' := by
-    unfold catAtom
-    rw [dite_eq_left_of_eq_true (eq_true hnl)]
-    change d.atom = _
-    rw [← he]
-    exact congrArg CatCol.atom hdt
-  filter_upwards [augPhys_fitColumn_ae (catAtom_admissible (G := A.G) (cat l) n I) n]
-    with y hy hyI
-  exact (hy hyI).trans (congrFun hatom y)
-
-end AttemptParams
-
-end ActiveSetup
-
-namespace LeafFilters
-variable {Tg γ : Type*} (F : LeafFilters Tg γ)
-
-theorem norm_layerOp_le (l : Fin 4) (ls : List (ℕ × Bool)) (X : ColumnL2 (Fin F.Mc)) :
-    ‖layerOp (F.cum l) ls X‖ ≤ ‖X‖ := by
-  refine norm_layerOp_apply_le _ (fun m x => ?_) (fun m x => ?_) _ _
-  · exact norm_opAvg_apply_le _ (fun _ y => norm_catProj_le _ _ _ _ _ _ y) x
-  · exact norm_id_sub_opAvg_apply_le F.hP _
-      (fun _ y => norm_catProj_complement_le _ _ _ _ _ _ y) x
-
-/-- Blueprint line 1835: an upper guard whose last layer is a cumulative filter at the split `h`
-expands in the catalog columns of its masks, with square-summable coefficients. -/
-theorem upper_expansion (ls : Fin 4 → List (ℕ × Bool)) (u : Fin 4) {ls' : List (ℕ × Bool)}
-    {h : ℕ} (hls : ls u = ls' ++ [(h, false)]) :
-    ∃ a : Fin F.Mc → ℂ,
-      (∑ n ∈ catLabels F.G F.Mc (F.cat u) F.I (F.rkC h) (fun x => ∃ p : Fin F.P, F.cm h p x),
-          ‖a n‖ ^ 2) * dyadicGridLength F.G F.I.1 ≤
-        ‖physicalColumnInput (V := Fin F.Mc) (F.g u)‖ ^ 2 ∧
-      F.input ls u = ∑ n ∈ catLabels F.G F.Mc (F.cat u) F.I (F.rkC h)
-          (fun x => ∃ p : Fin F.P, F.cm h p x),
-        a n • fitColumn (dyadicGridCell F.G F.I.1 F.I.2) (catAtom (F.cat u) n) n := by
-  set X := layerOp (F.cum u) ls' (physicalColumnInput (V := Fin F.Mc) (F.g u))
-  obtain ⟨a, ha, hx⟩ := opAvg_catProj_l2 (G := F.G) (F.cat u) F.I (F.rkC h)
-    (fun p : Fin F.P => F.cm h p) (fun x => ∃ p : Fin F.P, F.cm h p x)
-    (fun p x hx => ⟨p, hx⟩) X
-  refine ⟨a, ha.trans (pow_le_pow_left₀ (norm_nonneg _) (F.norm_layerOp_le u ls' _) 2), ?_⟩
-  rw [← hx]
-  unfold input
-  rw [hls, layerOp_append]
-  rfl
-
-end LeafFilters
-
-theorem physicalColumnInput_sum {V : Type*} [Fintype V] {ι : Type*} (s : Finset ι) (c : ι → ℂ)
-    (f : ι → Lp ℂ 2 (volume : Measure ℝ)) :
-    physicalColumnInput (V := V) (∑ v ∈ s, c v • f v) =
-      ∑ v ∈ s, c v • physicalColumnInput (V := V) (f v) := by
-  classical
-  have h := map_sum ((ContinuousLinearMap.toSpanSingleton ℂ
-    (EuclideanSpace.single (none : Option V) (1 : ℂ))).compLpL 2 (volume : Measure ℝ))
-    (fun v => c v • f v) s
-  simp only [map_smul] at h
-  exact h
-
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.AttemptParams)
-
-theorem cbase_succ_le {k : ℕ} (hk : 1 ≤ k) (hkL : k ≤ ap.Lc) :
-    ap.cbase k + ap.P ≤ ap.cbase (k - 1) := by
-  unfold cbase
-  have e : ap.Lc - (k - 1) + 1 = (ap.Lc - k + 1) + 1 := by omega
-  rw [e]
-  nlinarith [Nat.zero_le ap.P]
-
-theorem cbase_le_bbase (k j : ℕ) : ap.cbase k + ap.P ≤ ap.bbase j := by
-  unfold cbase bbase
-  have h1 : ap.Lc - k + 1 ≤ ap.Lc + 1 := by omega
-  have h2 : 10 * ap.P * (ap.Lc - k + 1) ≤ 10 * ap.P * (ap.Lc + 1) := Nat.mul_le_mul_left _ h1
-  have h3 : ap.P ≤ 10 * ap.P * (ap.Lc + 1) := by nlinarith
-  nlinarith [Nat.zero_le (10 * (j - 1) * ap.P)]
-
-open Classical in
-/-- Blueprint line 1850: a vertex of the upper cumulative mask at color `k` is old (in every lower
-guard mask at `k - 1`) or lies, at every pad, in the first ball mask of a current group of color
-`k`. -/
-theorem classify (I : ℤ × ℤ)
-    (hsucc : ∀ w ∈ A.admT.X (A.admAt I),
-      ap.K.Success (ap.K.colorData (A.admT.st (A.admAt I)) w))
-    {k hpad : ℕ} (hk : 1 ≤ k) (hkL : k ≤ ap.Lc) (hpadle : hpad ≤ ap.cbase k + ap.P)
-    (hHmax : hpad ≤ ap.Hmax) {x : A.Vtx}
-    (hx : x ∈ ap.K.cumMask A.admT A.vtxBound k hpad (A.admAt I)) :
-    (∀ p' : ℕ, ap.cmask I (k - 1) p' x) ∨
-      ∃ G ∈ ap.groupsAt I k, ∀ p' : ℕ, ap.bmask I G 1 p' x := by
-  obtain ⟨k', rfl⟩ : ∃ k', k = k' + 1 := ⟨k - 1, by omega⟩
-  rcases ColorSetup.cumMask_succ hx with hold | ⟨w, hw, hc, hd⟩
-  · left
-    intro p'
-    have hle := ap.cbase_succ_le hk hkL
-    exact ColorSetup.cumMask_mono le_rfl (by simp only [Nat.add_sub_cancel] at hle ⊢; omega) _
-      hold
-  · right
-    refine ⟨ap.K.grp A.admT A.vtxBound (A.admAt I) w, ?_, fun p' => ?_⟩
-    · unfold groupsAt
-      exact Finset.mem_image.mpr ⟨w, Finset.mem_filter.mpr ⟨hw, hc⟩, rfl⟩
-    · have hd' : (A.tagDist ap.Hed).d (A.admT.depth (A.admAt I)) x w ≤ hpad := by
-        rw [(A.tagDist ap.Hed).symm]; exact hd
-      have hm := A.mem_mask_of_near ap.Hed ap.Hmax ap.ωp ap.ωh hw (hsucc w hw) hx.1 hd' hHmax
-      have hb := ap.cbase_le_bbase (k' + 1) 1
-      exact ColorSetup.mask_mono_pad _ _ A.vtxBound (by omega) hm
-
-end AttemptParams
-
-end ActiveSetup
-
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
-
 /-- The distinct-slot separation of the declaration graph at the common source order. -/
 theorem Dg_sep : ∀ (H τ : ℝ), Real.exp 2 ≤ H → 0 < τ → τ ≤ 1 →
     ∀ (v w : ChartTag) {a i k b : Fin 4}, a ≠ i → a ≠ k → a ≠ b → i ≠ k → i ≠ b → k ≠ b →
@@ -1432,76 +677,12 @@ theorem Dg_sep : ∀ (H τ : ℝ), Real.exp 2 ≤ H → 0 < τ → τ ≤ 1 →
 
 variable {A}
 
-namespace AttemptParams
-variable (ap : A.AttemptParams)
-
-open Classical in
-/-- Blueprint lines 1851-1853: a pure chart of a vertex of the first ball mask of one current group
-is pair-separated (`PairSmall` with `τ₂`) from every catalog column of the first ball level of a
-different current group of the same color. -/
-theorem sep_pair {I : ℤ × ℤ} (hI : I ∈ A.cells)
-    (hsucc : ∀ w ∈ A.admT.X (A.admAt I),
-      ap.K.Success (ap.K.colorData (A.admT.st (A.admAt I)) w))
-    {k : ℕ} {G₀ G : A.Grp} (hG₀ : G₀ ∈ ap.groupsAt I k) (hG : G ∈ ap.groupsAt I k)
-    (hne : G ≠ G₀) (hPH : ap.bbase 1 + ap.P ≤ ap.Hmax) {τ₂ : ℝ} (hτ₂ : 0 < τ₂) (hτ₂1 : τ₂ ≤ 1)
-    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ₂⁻¹) ^ A.Dg) ≤ ap.Hed)
-    {u t : Fin 4} (hut : u ≠ t) {x : A.Vtx} (hx : ap.bmask I G₀ 1 0 x)
-    (Ax : QuadraticChartData (A.vtag x).dim) (hAx : QuadraticChartComplexity A.csrc A.Hsrc Ax)
-    (hAb : IsBoundedQuadraticChart Ax) (hθ : Ax.horizontal = (A.vtag x).θ)
-    (hM : Ax.matrix = (slotCoeff u : ℚ) • (A.vtag x).C)
-    (hq : Ax.quadratic = slotCoeff u * (A.vtag x).lam)
-    (cat : List (CatCol A.Vtx))
-    (hT : ∀ d ∈ cat, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-      d = templateCol (A.vtag d.tag) t R γ d.birth d.rank d.tag)
-    {n : Fin ap.Mc}
-    (hn : n ∈ catLabels A.G ap.Mc cat I (ap.Lc + 1) (fun y => ∃ p : Fin ap.P, ap.bmask I G 1 p y))
-    {wI : ℝ × ℝ → ℂ}
-    (hwI : IsAdmissibleLocalKernel κ (dyadicGridLeft A.G I.1 I.2) (dyadicGridLength A.G I.1) wI) :
-    PairSmall (dyadicGridLeft A.G I.1 I.2) (dyadicGridLength A.G I.1) wI u t
-      (quadraticChartAtom Ax) (catAtom cat n) τ₂ := by
-  simp only [catLabels, Finset.mem_filter, Finset.mem_univ, true_and] at hn
-  obtain ⟨hnl, -, -, p, hp⟩ := hn
-  set y := (cat[(n : ℕ)]).tag
-  have hav : A.occAvail y.2.1 y.1 := A.occAvail_of_mem (ap.bmask_present hp)
-  obtain ⟨A', hA', hA'b, hθ', hM', hq', he⟩ := catAtom_chart cat t hT hnl hav
-  rw [he]
-  -- the groups
-  obtain ⟨w₀, hw₀, rfl⟩ := Finset.mem_image.mp hG₀
-  obtain ⟨w, hw, rfl⟩ := Finset.mem_image.mp hG
-  rw [Finset.mem_filter] at hw₀ hw
-  have hsep := A.mask_sep ap.Hed ap.Hmax ap.ωp ap.ωh hw₀.1 hw.1 (hsucc _ hw₀.1) (hsucc _ hw.1)
-    (hw₀.2.trans hw.2.symm) (Ne.symm hne) (h := ap.bbase 1 + 0 + 1) (h' := ap.bbase 1 + p + 1)
-    (by have := ap.hP; omega) (by have := p.2; omega) hx hp
-  have hnE := A.not_tagEdge_of_dist ap.Hed hsep
-  rw [A.depth_admAt hI] at hnE
-  obtain ⟨a, b, hab, hau, hat, hbu, hbt, -⟩ := fin4_other_two u t hut
-  exact A.Dg_sep A.Hsrc τ₂ A.exp_two_le_Hsrc hτ₂ hτ₂1 (A.vtag x) (A.vtag y)
-    hau hat hab hut hbu.symm hbt.symm (A.vchart_dim x) (A.vchart_dim y) Ax A'
-    (quadraticChartComplexity_mono_order hAx (by omega))
-    (quadraticChartComplexity_mono_order hA' (by omega)) hAb hA'b hθ hM hq hθ' hM' hq'
-    (dyadicGridLength_pos A.G I.1) hwI (fun hE => hnE (tagEdge_mono hE hHed))
-
-end AttemptParams
-
 end ActiveSetup
 
 /-! ### One leaf of an attempt at one cell (blueprint prop:localize, lines 1848-1856) -/
 
 theorem fin4_fourth : ∀ u t g : Fin 4, u ≠ t → g ≠ u → g ≠ t → ∃ b, b ≠ u ∧ b ≠ t ∧ g ≠ b := by
   decide
-
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.AttemptParams)
-
-/-- The cell form of an attempt (zero off the cells). -/
-noncomputable def Λc (I : ℤ × ℤ) : MultilinearMap ℂ (fun _ : Fin 4 => ColumnL2 (Fin ap.Mc)) ℂ :=
-  if h : I ∈ A.cells then cellForm (dyadicGridLength_pos A.G I.1) (A.adm I h) (Fin ap.Mc) else 0
-
-end AttemptParams
-
-end ActiveSetup
 
 end Auto
 
@@ -1525,21 +706,6 @@ theorem columnL2Restriction_eq_self {V : Type*} [Fintype V] (s : Set ℝ) (hs : 
   · rw [Set.indicator_of_mem hy]
   · rw [Set.indicator_of_notMem hy, h2 hy]
 
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
-
-/-- The outer averaged ball projection of the group `G` at the cell `u` for the catalog `cat` and
-ball level `j`, rank `r`. -/
-noncomputable def ballAt (cat : List (CatCol A.Vtx)) (r j : ℕ) (G : A.Grp) (u : ℤ × ℤ) :
-    ColumnL2 (Fin ap.Mc) →L[ℂ] ColumnL2 (Fin ap.Mc) :=
-  opAvg fun p : Fin ap.P => catProj A.G ap.Mc cat u r (ap.bmask u G j p)
-
-end AttemptParams
-
-end ActiveSetup
-
 theorem columnL2Restriction_comp_of_subset {V : Type*} [Fintype V] {s t : Set ℝ}
     (hs : MeasurableSet s) (ht : MeasurableSet t) (hst : s ⊆ t) :
     (columnL2Restriction (V := V) s hs).comp (columnL2Restriction t ht) =
@@ -1554,20 +720,6 @@ theorem columnL2Restriction_comp_of_subset {V : Type*} [Fintype V] {s t : Set �
   by_cases hy : y ∈ s
   · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy, h2, Set.indicator_of_mem (hst hy)]
   · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy]
-
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
-
-/-- The averaged cumulative layer projection of slot catalog `cat` at the cell `u`, split `m`. -/
-noncomputable def cumAt (cat : List (CatCol A.Vtx)) (u : ℤ × ℤ) (m : ℕ) :
-    ColumnL2 (Fin ap.Mc) →L[ℂ] ColumnL2 (Fin ap.Mc) :=
-  opAvg fun p : Fin ap.P => catProj A.G ap.Mc cat u (ap.Lc - m + 1) (ap.cmask u m p)
-
-end AttemptParams
-
-end ActiveSetup
 
 end Auto
 
@@ -1645,33 +797,12 @@ end DepthBlocks2
 section GlobalJumps
 variable {V : Type*} [Fintype V]
 
-theorem ColumnDepthFamily.withMask_partition (Ψ : ColumnDepthFamily V)
-    (A : InheritedColumnMask Ψ.D) (h : ℤ) : (Ψ.withMask A).partition h = Ψ.partition h := rfl
-
 theorem norm_sub_starProjection_le {E : Type*} [NormedAddCommGroup E] [InnerProductSpace ℂ E]
     [CompleteSpace E] (P : E →L[ℂ] E) (hP : IsStarProjection P) (x : E) : ‖x - P x‖ ≤ ‖x‖ := by
   have h := starProjection_norm_apply_le (1 - P) hP.one_sub x
   simpa using h
 
 end GlobalJumps
-
-namespace ActiveSetup
-variable {κ' : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ' c₀)
-
-namespace AttemptParams
-variable {A} (ap : A.AttemptParams)
-
-/-- The global ball output of group `G` at depth `h`: the averaged ball projections applied to
-the global averaged cumulative history of the layers `ls`. -/
-noncomputable def globOut (cat : List (CatCol A.Vtx)) (hR : A.R ∈ A.cells)
-    (hb : ∀ d ∈ cat, d.birth ∈ A.cells) (r j : ℕ) (G : A.Grp) (ls : List (ℕ × Bool)) (h : ℤ)
-    (z : ColumnL2 (Fin ap.Mc)) : ColumnL2 (Fin ap.Mc) :=
-  opAvg (fun p : Fin ap.P => (ap.ballFam cat hR hb r j G p).proj h)
-    (globHist (ap.cumBase cat hR hb) (ap.cumMask cat hR hb) ls h z)
-
-end AttemptParams
-
-end ActiveSetup
 
 section GlobalStacks
 variable {V : Type*} [Fintype V]
@@ -1751,22 +882,6 @@ theorem ColumnDepthFamily.proj_commute_restrict (Φ : ColumnDepthFamily V) (h : 
 
 end DepthLocality
 
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
-
-theorem norm_globOutL_apply_le (cat : List (CatCol A.Vtx)) (hR : A.R ∈ A.cells)
-    (hb : ∀ d ∈ cat, d.birth ∈ A.cells) (r j : ℕ) (G : A.Grp) (ls : List (ℕ × Bool)) (h : ℤ)
-    (z : ColumnL2 (Fin ap.Mc)) : ‖ap.globOutL cat hR hb r j G ls h z‖ ≤ ‖z‖ := by
-  refine (norm_opAvg_apply_le _ (fun p y => starProjection_norm_apply_le _
-    ((ap.ballFam cat hR hb r j G p).isStarProjection_proj h) y) _).trans ?_
-  exact globHist_norm_le _ ap.hP _ ls h z
-
-end AttemptParams
-
-end ActiveSetup
-
 end Auto
 
 end
@@ -1784,177 +899,18 @@ variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : 
 
 /-! ### The objects of one search leaf (blueprint lines 2838, 1959-1962) -/
 
-/-- The ball rank of slot `l` in the leaf `s` (`L + j`). -/
-def leafR (s : ℕ) (l : Fin 4) : ℕ := ap.Lc + (leafAt ap.fuel ap.Lc ap.up₀ s).role l
-
-/-- The ball level of slot `l` in the leaf `s`. -/
-def leafJ (s : ℕ) (l : Fin 4) : ℕ := (leafAt ap.fuel ap.Lc ap.up₀ s).role l
-
-/-- The layered input of slot `l` of the leaf `s` at the cell `U`: the cumulative history of the
-leaf applied to the physical input of the slot function on `U`. -/
-noncomputable def leafIn (cat : Fin 4 → List (CatCol A.Vtx)) (s : ℕ) (l : Fin 4) (U : ℤ × ℤ) :
-    ColumnL2 (Fin ap.Mc) :=
-  layerOp (ap.cumAt (cat l) U) ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l)
-    (physicalColumnInput (ap.base U l))
-
-/-- The output of slot `l` and group `G` of the leaf `s` at the cell `I` (the ball filter of the
-group applied to the layered input). -/
-noncomputable def leafOut (cat : Fin 4 → List (CatCol A.Vtx)) (s : ℕ) (I : ℤ × ℤ) (l : Fin 4)
-    (G : A.Grp) : ColumnL2 (Fin ap.Mc) :=
-  ap.ballAt (cat l) (ap.leafR s l) (ap.leafJ s l) G I (ap.leafIn cat s l I)
-
 end AttemptParams
 
 end ActiveSetup
-
-/-- The current values of a column depth family are square integrable on every cell. -/
-theorem ColumnDepthFamily.currentZ_memLp {V : Type*} [Fintype V] (Ψ : ColumnDepthFamily V)
-    (Z : ColumnL2 V) (I : ℤ × ℤ) (a r : ℝ) :
-    MemLp (Ψ.currentZ Z I) 2 (normalizedIntervalMeasure a r) := by
-  classical
-  refine memLp_normalized_of_memLp ?_ a r
-  unfold ColumnDepthFamily.currentZ
-  split_ifs with h
-  · exact memLp_column_coord _ none
-  · exact MemLp.zero
-
-/-- Cell inputs of functions agreeing almost everywhere on the cell with a difference. -/
-theorem cellLp_eq_sub {G : RealDyadicGrid} {I : ℤ × ℤ} {f g h : ℝ → ℂ}
-    (hf : MemLp f 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
-      (dyadicGridLength G I.1)))
-    (hg : MemLp g 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
-      (dyadicGridLength G I.1)))
-    (hh : MemLp h 2 (normalizedIntervalMeasure (dyadicGridLeft G I.1 I.2)
-      (dyadicGridLength G I.1)))
-    (he : ∀ᵐ y ∂volume, y ∈ dyadicGridCell G I.1 I.2 → f y = g y - h y) :
-    cellLp G I f = cellLp G I g - cellLp G I h := by
-  refine Lp.ext ?_
-  filter_upwards [cellLp_ae hf, cellLp_ae hg, cellLp_ae hh, he,
-    Lp.coeFn_sub (cellLp G I g) (cellLp G I h)] with y h1 h2 h3 h4 h5
-  rw [h1, h5, Pi.sub_apply, h2, h3]
-  by_cases hy : y ∈ dyadicGridCell G I.1 I.2
-  · rw [Set.indicator_of_mem hy, Set.indicator_of_mem hy, Set.indicator_of_mem hy, h4 hy]
-  · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy, Set.indicator_of_notMem hy,
-      sub_zero]
 
 namespace ActiveSetup
 
 namespace AttemptParams
 variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} (ap : A.AttemptParams)
 
-/-- Blueprint line 1611 on a leaf: in a basic slot (`z U l = B_l U`) whose basic argument is a
-difference of two current basic projections on `U` (`ColumnRepBelow`), the layered leaf input at
-`U` is the difference of the two layered projection inputs. -/
-theorem leafIn_eq_sub (cat : Fin 4 → List (CatCol A.Vtx)) (s : ℕ) (l : Fin 4) (U : ℤ × ℤ)
-    (hz : ap.z U l = A.B l U) {R' : ℤ × ℤ} {CF : ℝ} (P₁ P₂ : BasicProjection A.G R' CF)
-    (hP : ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G U.1 U.2 → A.B l U y = P₁.val U y - P₂.val U y) :
-    ap.leafIn cat s l U =
-      layerOp (ap.cumAt (cat l) U) ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l)
-          (physicalColumnInput (cellLp A.G U (P₁.Ψ.currentZ P₁.Z U))) -
-        layerOp (ap.cumAt (cat l) U) ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l)
-          (physicalColumnInput (cellLp A.G U (P₂.Ψ.currentZ P₂.Z U))) := by
-  unfold leafIn base
-  rw [hz, cellLp_eq_sub (A.B_memLp l U) (P₁.Ψ.currentZ_memLp P₁.Z U _ _)
-    (P₂.Ψ.currentZ_memLp P₂.Z U _ _) hP, ← map_sub]
-  congr 1
-  have h := physicalColumnInput_sum (V := Fin ap.Mc) (Finset.univ : Finset (Fin 2))
-    ![1, -1] ![cellLp A.G U (P₁.Ψ.currentZ P₁.Z U), cellLp A.G U (P₂.Ψ.currentZ P₂.Z U)]
-  simp only [Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one, one_smul, neg_smul,
-    ← sub_eq_add_neg] at h
-  exact h
-
-/-- The ball filter of an unsuccessful group vanishes. -/
-theorem ballAt_of_not_success (cat : List (CatCol A.Vtx)) (r j : ℕ) {G : A.Grp}
-    (hG : ¬ ap.K.Success G.2) (u : ℤ × ℤ) : ap.ballAt cat r j G u = 0 := by
-  unfold ballAt opAvg
-  have h : ∀ p : Fin ap.P, catProj A.G ap.Mc cat u r (ap.bmask u G j p) = 0 := by
-    intro p
-    have hsel : catSel A.G ap.Mc cat u r (ap.bmask u G j p) = ∅ := by
-      ext x
-      simp only [Set.mem_empty_iff_false, iff_false]
-      rintro ⟨n, hn, -, -, hM, -⟩
-      exact ap.bmask_of_not_success hG u j p _ hM
-    have hbot : catRange A.G ap.Mc cat u r (ap.bmask u G j p) = ⊥ := by
-      unfold catRange
-      rw [hsel, Submodule.span_empty]
-    ext1 x
-    have hm : catProj A.G ap.Mc cat u r (ap.bmask u G j p) x ∈
-        catRange A.G ap.Mc cat u r (ap.bmask u G j p) :=
-      Submodule.starProjection_apply_mem _ x
-    rw [hbot] at hm
-    exact (Submodule.mem_bot ℂ).mp hm
-  simp [h]
-
-/-- The leaf outputs of an unsuccessful group vanish. -/
-theorem leafOut_of_not_success (cat : Fin 4 → List (CatCol A.Vtx)) (s : ℕ) (I : ℤ × ℤ)
-    (l : Fin 4) {G : A.Grp} (hG : ¬ ap.K.Success G.2) : ap.leafOut cat s I l G = 0 := by
-  unfold leafOut
-  rw [ap.ballAt_of_not_success _ _ _ hG]
-  rfl
-
-/-- Unsuccessful groups do not contribute to the leaf form. -/
-theorem leaf_form_of_not_success (cat : Fin 4 → List (CatCol A.Vtx)) (s : ℕ) (I : ℤ × ℤ)
-    {G : A.Grp} (hG : ¬ ap.K.Success G.2) : ap.Λc I (fun l => ap.leafOut cat s I l G) = 0 :=
-  (ap.Λc I).map_coord_zero 0 (ap.leafOut_of_not_success cat s I 0 hG)
-
-open Classical in
-/-- The leaf group sum only involves successful current groups. -/
-theorem leaf_sum_success (cat : Fin 4 → List (CatCol A.Vtx)) (s : ℕ) (I : ℤ × ℤ) (k : ℕ) :
-    ∑ G ∈ ap.groupsAt I k, ap.Λc I (fun l => ap.leafOut cat s I l G) =
-      ∑ G ∈ (ap.groupsAt I k).filter (fun G => ap.K.Success G.2),
-        ap.Λc I (fun l => ap.leafOut cat s I l G) := by
-  rw [Finset.sum_filter]
-  refine Finset.sum_congr rfl fun G _ => ?_
-  split_ifs with h
-  · rfl
-  · exact ap.leaf_form_of_not_success cat s I h
-
 /-! ### Leaf outputs of basic slots as global outputs (blueprint lines 1611, 2159-2162) -/
 
-/-- The global output of a basic projection at depth `h`. -/
-noncomputable def projOut (cat : List (CatCol A.Vtx)) (hR : A.R ∈ A.cells)
-    (hb : ∀ d ∈ cat, d.birth ∈ A.cells) (r j : ℕ) (G : A.Grp) (ls : List (ℕ × Bool)) {CF : ℝ}
-    (P : BasicProjection A.G A.R CF) (h : ℤ) : ColumnL2 (Fin ap.Mc) :=
-  ap.globOut cat hR hb r j G ls h (physEmbed P.V (Fin ap.Mc) (P.Ψ.proj h P.Z))
-
 /-! ### Cell values of the transfer steps as restrictions of global values (lines 2386-2391) -/
-
-/-- The global basic input of a slot at depth `h`: the difference of the physical embeddings of the
-two basic projections at depth `h`. -/
-noncomputable def gIn {CF : ℝ} (P₁ P₂ : BasicProjection A.G A.R CF) (h : ℤ) :
-    ColumnL2 (Fin ap.Mc) :=
-  physEmbed P₁.V (Fin ap.Mc) (P₁.Ψ.proj h P₁.Z) - physEmbed P₂.V (Fin ap.Mc) (P₂.Ψ.proj h P₂.Z)
-
-/-- Blueprint line 1611 on a cell: the basic slot input of a cell is the restriction of the global
-basic input at the depth of the cell. -/
-theorem base_eq_gIn (l : Fin 4) {I : ℤ × ℤ} (hI : I ∈ A.cells) (hz : ap.z I l = A.B l I)
-    {CF : ℝ} (P₁ P₂ : BasicProjection A.G A.R CF)
-    (hP : ∀ᵐ y ∂volume, y ∈ dyadicGridCell A.G I.1 I.2 → A.B l I y = P₁.val I y - P₂.val I y) :
-    physicalColumnInput (V := Fin ap.Mc) (ap.base I l) =
-      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
-        (ap.gIn P₁ P₂ I.1) := by
-  have hr : ∀ P : BasicProjection A.G A.R CF, P.Ψ.D.root.1 ≤ A.R.1 := fun P =>
-    dyadicGridCell_depth_le_of_subset A.G A.R P.Ψ.D.root P.root_sub
-  have hIR := A.sub I hI
-  have hroot : ∀ P : BasicProjection A.G A.R CF, P.Ψ.D.root.1 ≤ I.1 := fun P =>
-    le_trans (hr P) (dyadicGridCell_depth_le_of_subset A.G I A.R hIR)
-  have e : ∀ P : BasicProjection A.G A.R CF,
-      columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
-        (physEmbed P.V (Fin ap.Mc) (P.Ψ.proj I.1 P.Z)) =
-      physicalColumnInput (V := Fin ap.Mc) (cellLp A.G I (P.Ψ.currentZ P.Z I)) := by
-    intro P
-    have h := P.Ψ.restrict_physEmbed_proj (W := Fin ap.Mc) (I := I)
-      (by rw [P.grid]; exact hIR.trans P.root_sub) (hroot P) P.Z
-    rw [P.grid] at h
-    exact h
-  unfold gIn base
-  rw [map_sub, e P₁, e P₂, hz, cellLp_eq_sub (A.B_memLp l I) (P₁.Ψ.currentZ_memLp P₁.Z I _ _)
-    (P₂.Ψ.currentZ_memLp P₂.Z I _ _) hP]
-  have h := physicalColumnInput_sum (V := Fin ap.Mc) (Finset.univ : Finset (Fin 2))
-    ![1, -1] ![cellLp A.G I (P₁.Ψ.currentZ P₁.Z I), cellLp A.G I (P₂.Ψ.currentZ P₂.Z I)]
-  simp only [Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one, one_smul, neg_smul,
-    ← sub_eq_add_neg] at h
-  exact h
 
 end AttemptParams
 
@@ -1969,31 +925,6 @@ section
 namespace Auto
 open MeasureTheory Metric
 open scoped FourierTransform ComplexConjugate ENNReal
-
-/-- Blueprint prop:localize (the cell order of the search): every finite family of dyadic cells
-has a duplicate-free enumeration in which no cell is contained in a later one (coarser cells
-first, by depth). -/
-theorem exists_coarse_first_list (G : RealDyadicGrid) (cs : Finset (ℤ × ℤ)) :
-    ∃ L : List (ℤ × ℤ), L.toFinset = cs ∧ L.Nodup ∧
-      ∀ i j (hi : i < L.length) (hj : j < L.length), i < j →
-        ¬ dyadicGridCell G L[i].1 L[i].2 ⊆ dyadicGridCell G L[j].1 L[j].2 := by
-  classical
-  set le : ℤ × ℤ → ℤ × ℤ → Bool := fun a b => decide (a.1 ≤ b.1)
-  set L := cs.toList.mergeSort le
-  have hperm : L.Perm cs.toList := List.mergeSort_perm _ _
-  have hsorted : L.Pairwise (fun a b => le a b) := List.pairwise_mergeSort
-    (fun {a b c} hab hbc => by simp only [le, decide_eq_true_eq] at hab hbc ⊢; omega)
-    (fun a b => by simp only [le, Bool.or_eq_true, decide_eq_true_eq]; omega) _
-  have hnd : L.Nodup := hperm.nodup_iff.mpr cs.nodup_toList
-  refine ⟨L, by rw [List.toFinset_eq_of_perm _ _ hperm, Finset.toList_toFinset], hnd,
-    fun i j hi hj hij hsub => ?_⟩
-  have hle : L[i].1 ≤ L[j].1 := by
-    have := List.pairwise_iff_getElem.mp hsorted i j hi hj hij
-    simpa [le] using this
-  have hge := dyadicGridCell_depth_le_of_subset G L[i] L[j] hsub
-  have heq : L[i] = L[j] :=
-    anc_eq_of_depth (G := G) (I := L[i]) subset_rfl hsub (by omega)
-  exact absurd (List.Nodup.getElem_inj_iff hnd |>.mp heq) (by omega)
 
 /-- Each search step appends at most one layer to one slot: the layer lists of the leaves of a
 search with fuel `f` are at most `f` longer than the initial ones. -/
@@ -2034,18 +965,6 @@ theorem leafAt_layers_length_le (fuel Lc : ℕ) (up₀ : Fin 4) (s : ℕ) (l : F
     simpa using this
   · rw [List.getD_eq_default _ _ (by omega)]
     simp [dfltLeaf]
-
-/-- With fuel `⌈log₂ n⌉ + 1` the search has at most `2^{fuel} ≤ 4n` leaves. -/
-theorem two_pow_clog_succ_le {n : ℕ} (hn : 1 ≤ n) : 2 ^ (Nat.clog 2 n + 1) ≤ 4 * n := by
-  rcases Nat.lt_or_ge 1 n with h | h
-  · have h1 := Nat.pow_pred_clog_lt_self one_lt_two h
-    rw [Nat.pred_eq_sub_one] at h1
-    have h2 := Nat.clog_pos one_lt_two h
-    have e : 2 ^ (Nat.clog 2 n + 1) = 4 * 2 ^ (Nat.clog 2 n - 1) := by
-      rw [show Nat.clog 2 n + 1 = (Nat.clog 2 n - 1) + 2 by omega, pow_add]; ring
-    rw [e]; omega
-  · have : n = 1 := by omega
-    subst this; simp
 
 end Auto
 
@@ -2157,17 +1076,6 @@ theorem searchLeaves_inv {up₀ : Fin 4} {ℓ₀ h₀ : ℕ} :
         · rw [Function.update_of_ne hsu.symm]; exact hup
         · simp
     · rw [List.mem_singleton] at hL; subst hL; exact hI
-
-/-- Cauchy-Schwarz for the coefficient sums: `Σ |a_n| ≤ √N · ‖X‖ / √|I|`. -/
-theorem sum_norm_le_sqrt_card {ι : Type*} (F : Finset ι) (a : ι → ℂ) {B : ℝ}
-    (h : ∑ n ∈ F, ‖a n‖ ^ 2 ≤ B ^ 2) (hB : 0 ≤ B) :
-    ∑ n ∈ F, ‖a n‖ ≤ Real.sqrt F.card * B := by
-  have hcs := sq_sum_le_card_mul_sum_sq (s := F) (f := fun n => ‖a n‖)
-  have h2 : (∑ n ∈ F, ‖a n‖) ^ 2 ≤ (Real.sqrt F.card * B) ^ 2 := by
-    rw [mul_pow, Real.sq_sqrt (Nat.cast_nonneg _)]
-    exact hcs.trans (mul_le_mul_of_nonneg_left h (Nat.cast_nonneg _))
-  exact (pow_le_pow_iff_left₀ (Finset.sum_nonneg fun _ _ => norm_nonneg _)
-    (by positivity) two_ne_zero).mp h2
 
 /-! ### Spectator sizes and pair separation at a leaf -/
 
@@ -5826,55 +4734,6 @@ theorem basic_history (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget
   rw [colRelabel_adjoint_of_mem_range (bf.rv_injective fp.Mc s)
     (bf.basicIn_mem_range fp.Mc s mb l hI)]
 
-/-- Blueprint line 1859: for a basic `B` slot, `B_{l,s} B_l` on an active cell is a fixed signed
-sum, over the two basic families `j` with signs `(-1)^j`, of uniform averages over the pad choices
-`ω` of products of `|ls|` global main depth projections or their complements, acting on the family
-inputs `F_{l,j}` through the basic depth projections; the expression does not involve the groups
-(shared across groups). -/
-theorem basic_history_expand (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
-    (ls : List (ℕ × Bool)) {I : ℤ × ℤ} (hI : I ∈ A.cells) :
-    layerOp (fun m => fp.cumFilt l s I m) ls (bf.basicIn fp.Mc l I) =
-      ∑ j : Fin 2, ((-1 : ℂ) ^ (j : ℕ)) •
-        columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
-          (colRelabel (bf.rv fp.Mc s) (((fp.P : ℂ) ^ ls.length)⁻¹ •
-            ∑ ω : Fin ls.length → Fin fp.P, operatorComplementProduct
-              (layerFactor (fun m p => ((bf.mainBase fp.Mc s mb).withMask
-                (fp.cumMaskT l s mb m p)).proj I.1) ls ω) (layerPattern ls) ls.length
-              (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s))
-                (bf.famEmb fp.Mc l j ((bf.P l j).Ψ.proj I.1 (bf.P l j).Z))))) := by
-  rw [fp.basic_history l s mb ls hI, Fin.sum_univ_two]
-  have hexp : ∀ x, fp.gHist l s mb ls I.1 x = ((fp.P : ℂ) ^ ls.length)⁻¹ •
-      ∑ ω : Fin ls.length → Fin fp.P, operatorComplementProduct
-        (layerFactor (fun m p => ((bf.mainBase fp.Mc s mb).withMask
-          (fp.cumMaskT l s mb m p)).proj I.1) ls ω) (layerPattern ls) ls.length x :=
-    fun x => by unfold gHist globHist; exact layerOp_opAvg_expand fp.hP _ ls x
-  rw [← hexp, ← hexp]
-  unfold ActiveSetup.BasicFamilies.gBasic
-  simp only [Fin.val_zero, pow_zero, one_smul, Fin.val_one, pow_one, neg_one_smul,
-    sub_eq_add_neg, map_add, map_neg]
-
-/-- Blueprint line 1859 at a search leaf: the shared history of a basic `B` slot at a leaf of the
-guarded color search has at most `fuel = O(log L)` factors (`L - 1 < 2^fuel`), and on an active cell
-it is the fixed signed sum of averaged products of `basic_history_expand`. -/
-theorem basic_leaf_expand (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
-    (fuel : ℕ) (up₀ : Fin 4) (s' : ℕ) {I : ℤ × ℤ} (hI : I ∈ A.cells) :
-    ((leafAt fuel fp.Lc up₀ s').layers l).length ≤ fuel ∧
-    layerOp (fun m => fp.cumFilt l s I m) ((leafAt fuel fp.Lc up₀ s').layers l)
-        (bf.basicIn fp.Mc l I) =
-      ∑ j : Fin 2, ((-1 : ℂ) ^ (j : ℕ)) •
-        columnL2Restriction (dyadicGridCell A.G I.1 I.2) (dyadicGridCell_measurable A.G I.1 I.2)
-          (colRelabel (bf.rv fp.Mc s)
-            (((fp.P : ℂ) ^ ((leafAt fuel fp.Lc up₀ s').layers l).length)⁻¹ •
-            ∑ ω : Fin ((leafAt fuel fp.Lc up₀ s').layers l).length → Fin fp.P,
-              operatorComplementProduct
-                (layerFactor (fun m p => ((bf.mainBase fp.Mc s mb).withMask
-                  (fp.cumMaskT l s mb m p)).proj I.1) ((leafAt fuel fp.Lc up₀ s').layers l) ω)
-                (layerPattern ((leafAt fuel fp.Lc up₀ s').layers l))
-                ((leafAt fuel fp.Lc up₀ s').layers l).length
-              (ContinuousLinearMap.adjoint (colRelabel (bf.rv fp.Mc s))
-                (bf.famEmb fp.Mc l j ((bf.P l j).Ψ.proj I.1 (bf.P l j).Z))))) :=
-  ⟨leafAt_layers_length_le fuel fp.Lc up₀ s' l, fp.basic_history_expand l s mb _ hI⟩
-
 /-- Blueprint line 1859, the leaf outputs of a basic `B` slot: on an active cell the ball output
 `Z_{l,G,s} = L_{l,G,s} B_{l,s} B_l` is the cell restriction of the global ball filter applied to the
 global shared history of the global basic input. -/
@@ -6352,28 +5211,6 @@ noncomputable def MainBudget.ofCounts (Mc : ℕ) (s : List (CatCol bf.Vtx)) (hMc
     linarith
 
 end ActiveSetup.BasicFamilies
-
-/-- `log (2 D_m) ≤ k^{c+1}` for the main budget `8 colBudget + N` when the column budget and the
-count `N` are at most `exp(k^c)` and `k ≥ 4` (blueprint line 1835: `log D_m ≤ k^{O(1)}`). -/
-theorem log_two_mainB_le {a N k : ℝ} {c : ℕ} (hk : 4 ≤ k)
-    (haE : a ≤ Real.exp (k ^ c)) (hNE : N ≤ Real.exp (k ^ c)) (hpos : 0 < 8 * a + N) :
-    Real.log (2 * (8 * a + N)) ≤ k ^ (c + 1) := by
-  have hE0 := Real.exp_pos (k ^ c)
-  have h18 : 2 * (8 * a + N) ≤ 18 * Real.exp (k ^ c) := by linarith
-  have hlog : Real.log (2 * (8 * a + N)) ≤ Real.log 18 + k ^ c := by
-    calc Real.log (2 * (8 * a + N)) ≤ Real.log (18 * Real.exp (k ^ c)) :=
-          Real.log_le_log (by linarith) h18
-      _ = Real.log 18 + k ^ c := by rw [Real.log_mul (by norm_num) hE0.ne', Real.log_exp]
-  have h3 : Real.log 18 ≤ 3 := by
-    rw [Real.log_le_iff_le_exp (by norm_num)]
-    have he := Real.exp_one_gt_d9
-    have : Real.exp 3 = Real.exp 1 ^ 3 := by rw [← Real.exp_nat_mul]; norm_num
-    rw [this]
-    nlinarith [sq_nonneg (Real.exp 1)]
-  have hk1 : 1 ≤ k ^ c := one_le_pow₀ (by linarith)
-  have hkc : k ^ (c + 1) = k * k ^ c := by ring
-  nlinarith
-
 
 /-! ## Certified variation on the main columns (blueprint lem:variation, lines 1861-1879) -/
 
@@ -6933,26 +5770,6 @@ theorem certifiedVariation_avg {γ ι : Type*} [Fintype γ] [DecidableEq γ] [Fi
         (hwr1 p) (hcomp1 p) (hwr2 p) hjump
 
 end CertifiedVariationAvg
-
-/-- Depths in one residue class modulo `M` with left endpoints closer than `M` have disjoint
-depth intervals. -/
-theorem Ioc_disjoint_of_mod {M : ℕ} (u : ℕ → ℕ) (hu : ∀ s, u s ≤ s) (hM : ∀ s, s - u s < M)
-    {s s' : ℕ} (hmod : s % M = s' % M) (hne : s ≠ s') :
-    Disjoint (Finset.Ioc (u s) s) (Finset.Ioc (u s') s') := by
-  have key : ∀ a b, a % M = b % M → a < b → Disjoint (Finset.Ioc (u a) a) (Finset.Ioc (u b) b) := by
-    intro a b hab hlt
-    have hd : M ∣ b - a := (Nat.modEq_iff_dvd' hlt.le).mp hab
-    have hMpos : 0 < M := lt_of_le_of_lt (Nat.zero_le _) (hM a)
-    have hge : M ≤ b - a := Nat.le_of_dvd (by omega) hd
-    have h1 := hM b
-    have h2 := hu b
-    rw [Finset.disjoint_left]
-    intro x hx hx'
-    rw [Finset.mem_Ioc] at hx hx'
-    omega
-  rcases lt_or_gt_of_ne hne with h | h
-  · exact key s s' hmod h
-  · exact (key s' s hmod.symm h).symm
 
 /-! ### Whole endpoint ranges on the main columns (blueprint lines 1777-1789, 1875) -/
 
@@ -9115,63 +7932,6 @@ theorem basic_onetime (l : Fin 4) (s : List (CatCol bf.Vtx))
         nlinarith
 
 open Classical in
-/-- Blueprint lem:variation, bounded overlap ("bounded overlap multiplies the bound by its
-multiplicity"; "color the depth intervals to handle bounded overlap"): if the depth intervals are
-colored with `M` colors such that intervals of one color are disjoint, the bound of
-`basic_variation` is multiplied by `M`. -/
-theorem basic_variation_overlap (l : Fin 4) (s : List (CatCol bf.Vtx))
-    (hT : ∀ e ∈ s, ∃ R ∈ residueBox (bf.vtag e.tag).dim 9, ∃ γ : ℝ,
-      e = templateCol (bf.vtag e.tag) l R γ e.birth e.rank e.tag)
-    (htag : ∀ e ∈ s, bf.occAvail e.tag.2.1 e.tag.1) (d : bf.Vtx) (mb : bf.MainBudget s)
-    (hanc : A.AncClosed) (hne : A.cells.Nonempty) {ι ι' : Type*} [Fintype ι] [Fintype ι']
-    (grp : ι → bf.Grp) (hgrp : Function.Injective grp) (k j : ℕ)
-    (hPH : fp.bbase j + fp.P ≤ fp.Hmax) (ls : List (ℕ × Bool)) (r t : ι' → ℕ)
-    (hrt : ∀ i, r i ≤ t i) {M : ℕ} (col : ι' → Fin M)
-    (hdis : ∀ i i', i ≠ i' → col i = col i' →
-      Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
-    (htd : ∀ i, t i ≤ A.treeDepth) (Ec : ι → ι' → Finset (ℤ × ℤ))
-    (hEc : ∀ G i, ∀ I ∈ Ec G i, I ∈ A.cells ∧ I.1 = A.R.1 + t i)
-    (hcert : ∀ G i, ∀ I ∈ Ec G i, fp.Cert k (grp G) I)
-    {ra rb : ℝ} (hroot : ∀ I ∈ A.cells, dyadicGridCell A.G I.1 I.2 ⊆ Set.Icc ra rb)
-    {τ : ℝ} (hτ : 0 < τ) (hτ1 : τ ≤ 1)
-    (hHed : Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log τ⁻¹) ^ A.Dg) ≤ fp.Hed)
-    {N : ℕ} (hN : ∀ y, ((Finset.univ : Finset (ι × (bf.Lab ⊕ Fin fp.Mc))).filter fun q =>
-      ∃ I ∈ A.cells, (∃ k', fp.Cert k' (grp q.1) I) ∧
-        ∃ p : Fin fp.P, y ∈ dyadicGridCell A.G I.1 I.2 ∧
-        q.2 ∈ mainLabelsM A.G fp.Mc (bf.origCols l) s I (fp.brank j)
-          (fp.bmask I (grp q.1) j (p + 1)) d).card ≤ N) :
-    ∑ q : ι × ι', ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2, dyadicGridCell A.G I.1 I.2)
-        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
-        (fp.basicOut l s mb (grp q.1) j ls (A.R.1 + t q.2) -
-          fp.basicOut l s mb (grp q.1) j ls (A.R.1 + r q.2))‖ ^ 2 ≤
-      M * ∑ jb : Fin 2, 2 * (2 * ((2 * (1 + τ * N * A.colBudget ^ 2) *
-          (compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 +
-            ls.length * (∑ m ∈ Finset.range ls.length,
-              compressionC (bf.mainTree fp.Mc s mb) m ^ 2))) *
-          compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2 * (1 + τ * N * A.colBudget ^ 2)) *
-        ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
-          (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 := by
-  set F : ι × ι' → ℝ := fun q => ‖columnL2Restriction (⋃ I ∈ Ec q.1 q.2,
-    dyadicGridCell A.G I.1 I.2) (Finset.measurableSet_biUnion _ fun I _ =>
-      dyadicGridCell_measurable A.G I.1 I.2)
-      (fp.basicOut l s mb (grp q.1) j ls (A.R.1 + t q.2) -
-        fp.basicOut l s mb (grp q.1) j ls (A.R.1 + r q.2))‖ ^ 2
-  change ∑ q, F q ≤ _
-  rw [Fintype.sum_prod_type, Finset.sum_comm]
-  refine sum_le_of_coloring col (fun i => ∑ G, F (G, i)) fun c => ?_
-  have hb := fp.basic_variation (ι' := {i // col i = c}) l s hT htag d mb hanc hne grp hgrp k j
-    hPH ls (fun i => r i.1) (fun i => t i.1) (fun i => hrt i.1)
-    (fun i i' hii' => hdis i.1 i'.1 (fun h => hii' (Subtype.ext h)) (i.2.trans i'.2.symm))
-    (fun i => htd i.1) (fun G i => Ec G i.1) (fun G i => hEc G i.1) (fun G i => hcert G i.1)
-    hroot hτ hτ1 hHed hN
-  calc ∑ i ∈ Finset.univ.filter (fun i => col i = c), ∑ G, F (G, i)
-      = ∑ i : {i // col i = c}, ∑ G, F (G, i.1) :=
-        Finset.sum_subtype _ (fun i => by simp) (fun i => ∑ G, F (G, i))
-    _ = ∑ q : ι × {i // col i = c}, F (q.1, q.2.1) := by
-        rw [Finset.sum_comm, Fintype.sum_prod_type]
-    _ ≤ _ := hb
-
-open Classical in
 /-- Blueprint lem:variation (`eq:variation`, lines 1861-1866) with the compression loss `G₀`:
 under `log (2 D_m) ≤ k^c`, `log (2 colBudget) ≤ k^c`, histories of `O(log k)` layers and a pair
 threshold with `τ N colBudget² ≤ 1` (chosen after the counts, line 1854),
@@ -9257,68 +8017,6 @@ theorem basic_variation_G0 (l : Fin 4) (s : List (CatCol bf.Vtx))
     positivity
   have h0 := mul_le_mul hV0 hE0 hn0 hG0
   have h1 := mul_le_mul hV1 hE1 hn1 hG0
-  nlinarith
-
-end ActiveSetup.BasicFamilies.FamParams
-
-namespace ActiveSetup.BasicFamilies.FamParams
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} {bf : A.BasicFamilies}
-  (fp : bf.FamParams)
-
-/-- Blueprint lem:variation, shared-history assertion with the compression loss `G₀`:
-`Σ_i ‖1_{E_i} (B'_{t_i} B_l - B'_{r_i} B_l)‖² ≤ 2 G₀ Σ_{j_b} 2 ‖1_R F_{l,j_b}‖² ≤ 8 G₀ |R|`. -/
-theorem basic_history_variation_G0 (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudget s)
-    (hne : A.cells.Nonempty) {ι' : Type*} [Fintype ι'] (ls : List (ℕ × Bool))
-    (r t : ι' → ℕ) (hrt : ∀ i, r i ≤ t i)
-    (hdis : ∀ i i', i ≠ i' → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r i') (t i')))
-    (htd : ∀ i, t i ≤ A.treeDepth) (Ec : ι' → Finset (ℤ × ℤ))
-    (hEc : ∀ i, ∀ I ∈ Ec i, I ∈ A.cells) (c : ℕ) (hc : 1 ≤ c) {kk : ℝ} (hk : 1 ≤ kk)
-    (hDm : Real.log (2 * mb.B) ≤ kk ^ c) (hDb : Real.log (2 * A.colBudget) ≤ kk ^ c)
-    (hn : (ls.length : ℝ) ≤ c * (Real.log kk + 1)) :
-    ∑ i, ‖columnL2Restriction (⋃ I ∈ Ec i, dyadicGridCell A.G I.1 I.2)
-        (Finset.measurableSet_biUnion _ fun I _ => dyadicGridCell_measurable A.G I.1 I.2)
-        (fp.histOut l s mb ls (A.R.1 + t i) - fp.histOut l s mb ls (A.R.1 + r i))‖ ^ 2 ≤
-      Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
-        (1 + Real.log (2 * kk)) ^ 2) * (8 * dyadicGridLength A.G A.R.1) := by
-  have h := fp.basic_history_variation l s mb hne ls r t hrt hdis htd Ec hEc
-  refine h.trans ?_
-  set G0 := Real.exp ((4096 * (c + 1) * (1024 * (c + 1) + c + 7) + c ^ 2 + 3) *
-    (1 + Real.log (2 * kk)) ^ 2)
-  set Sn := ∑ m ∈ Finset.range ls.length, compressionC (bf.mainTree fp.Mc s mb) m ^ 2
-  have hSn : 0 ≤ Sn := Finset.sum_nonneg fun _ _ => sq_nonneg _
-  have hV : ∀ jb : Fin 2, 2 * ((ls.length * Sn) * compressionC (bf.P l jb).Ψ.D 1 ^ 2) + 2 ≤
-      2 * G0 := by
-    intro jb
-    have hDb' : Real.log (2 * (bf.P l jb).Ψ.D.budget) ≤ kk ^ c := by
-      have hb := (bf.P l jb).Ψ.D.two_le_budget
-      refine le_trans (Real.log_le_log (by linarith) ?_) hDb
-      have := bf.budget l jb
-      linarith
-    have hl := variation_loss_le (bf.mainTree fp.Mc s mb) (bf.P l jb).Ψ.D ls.length c hc hk hDm
-      hDb' hn (Cw := 1) (by norm_num)
-    have hC0 := sq_nonneg (compressionC (bf.mainTree fp.Mc s mb) ls.length)
-    have hC1 := sq_nonneg (compressionC (bf.P l jb).Ψ.D 1)
-    have hn0 : (0 : ℝ) ≤ ls.length := Nat.cast_nonneg _
-    have hprod : 0 ≤ compressionC (bf.mainTree fp.Mc s mb) ls.length ^ 2 *
-        compressionC (bf.P l jb).Ψ.D 1 ^ 2 := mul_nonneg hC0 hC1
-    have hnS : 0 ≤ (ls.length : ℝ) * Sn * compressionC (bf.P l jb).Ψ.D 1 ^ 2 :=
-      mul_nonneg (mul_nonneg hn0 hSn) hC1
-    nlinarith
-  have hE : ∀ jb : Fin 2, ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
-      (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l jb).Z‖ ^ 2 ≤
-      dyadicGridLength A.G A.R.1 := fun jb => famInput_energy (bf := bf) l jb
-  have hG0 : 0 ≤ G0 := (Real.exp_pos _).le
-  rw [Fin.sum_univ_two]
-  have hV0 := hV 0
-  have hV1 := hV 1
-  have hE0 := hE 0
-  have hE1 := hE 1
-  have hn0 := sq_nonneg ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
-    (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l 0).Z‖
-  have hn1 := sq_nonneg ‖columnL2Restriction (dyadicGridCell A.G A.R.1 A.R.2)
-    (dyadicGridCell_measurable A.G A.R.1 A.R.2) (bf.P l 1).Z‖
-  have h0 := mul_le_mul hV0 hE0 hn0 (by positivity)
-  have h1 := mul_le_mul hV1 hE1 hn1 (by positivity)
   nlinarith
 
 end ActiveSetup.BasicFamilies.FamParams

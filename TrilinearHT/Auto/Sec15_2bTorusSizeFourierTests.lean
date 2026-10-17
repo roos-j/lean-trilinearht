@@ -2197,21 +2197,6 @@ theorem threeBands_spec (hD : 0 ≤ D.S.Dstar) (hU : 1 ≤ D.U0) {G : bf.Grp} {I
   have hνb2 := lt_two_mul_dyadicBand ν
   exact ⟨hμb, hμb2, by linarith, hμb.trans hμ1, hνb, hνb2, one_le_dyadicBand hν1, hνb.trans hνU⟩
 
-/-- Blueprint lines 2540-2541 at the reference of a three-core tuple: Fourier integration in `t`
-gives the anchor function `W_β`, whose pairings with `e(k(y - x*)/r)` satisfy
-`|W_β(k)| ≤ C_{J,A} μ ν^{-J} (1 + |k - r α|)^{-A-2}` with `μ = min(1, |β|)`, `ν = max(1, |β|)` (the
-zero at `β = 0` is the anchor marginal; integration by parts gives the decay, `anchorK_entry`). -/
-theorem three_core_anchor_entry {I : ℤ × ℤ} (hI : I ∈ A.cells) (G : bf.Grp) (xs : ℝ) (h' : ℕ)
-    (l : Fin 4)
-    (a : Fin 4 → ℝ)
-    (α : ℝ) (J Aw : ℕ) (k : ℤ) :
-    ‖anchorK (dyadicGridLeft A.G I.1 I.2) (dyadicGridLength A.G I.1) (A.w I) l xs α
-        (threeT l a + ∑ i, ((D.threeRef G I xs h' l a) i : ℝ) *
-          (D.Ms 0 G).torusξ D.S h' i) k‖ ≤
-      entryC κ' J Aw (D.threeBeta G I xs h' l a) *
-        (1 + |(k : ℝ) - dyadicGridLength A.G I.1 * α|)⁻¹ ^ (Aw + 2) :=
-  anchorK_entry (dyadicGridLength_pos A.G I.1) (A.adm I hI) l xs α _ J Aw k
-
 end SideInput
 
 end ActiveSetup.BasicFamilies.FamParams
@@ -2510,98 +2495,6 @@ theorem box_dichotomy64 {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA 
 end SideInput
 
 end ActiveSetup.BasicFamilies.FamParams
-
-open Classical in
-/-- Blueprint lines 2543-2547 ("duality and `eq:Haar-four` give `‖D_m‖₂ ≤ C Π_{j ≠ l} a'_j` ...
-Parseval bounds their `ℓ²` norm by this quantity"), with the Fourier truncations made explicit:
-the re-anchored truncated multiplier `R_z(u - l v, v)` is bounded by `1 + τ_m` (`multTrunc_sup`)
-and the truncated side cutoff `g_l` by `1 + τ_c` (`trunc_cut_sup`), so the Haar coefficients of the
-dual slice `D_m` at references `N` in distinct cosets of `K_B ∩ ℤ^d` satisfy
-`Σ_{n ∈ N} |⟨D_m, χ_n⟩|² ≤ ((1 + τ_m)(1 + τ_c) Π_{j ≠ l} ‖g_j‖_{L²(𝓗)})²`. -/
-theorem dual_slice_parseval_of {d : ℕ} (V : Submodule ℚ (Fin d → ℚ)) {δ δ'' : ℝ}
-    (θ : Fin d → ℝ) (C : Matrix (Fin d) (Fin d) ℚ) (ρ : Fin 4 → Fin d → ℝ) {Q0 : ℕ} (L Kt : ℕ)
-    (xs : ℝ) {Cm : ℝ} {ι : Fin 4 → Type*} (F : ∀ j, Finset (ι j)) (c : ∀ j, ι j → ℂ)
-    (n : ∀ j, ι j → Fin d → ℤ) (l : Fin 4) {k₀ : ι l} (hFl : F l = {k₀}) (hcl : c l k₀ = 1)
-    (hnl : n l k₀ = 0) (cc0 : Fin 4 → (Fin d → ℤ) → ℂ)
-    (hccT : ∀ j w, ‖cutoffP δ (ρ j) w - ∑ v ∈ frequencyBox d (2 ^ (Kt + 1)),
-      cc0 j v * (Real.fourierChar (∑ i, (v i : ℝ) * w i) : ℂ)‖ ≤ cutTail d δ Kt)
-    (cm0 : (Fin (d + d) → ℤ) → ℂ)
-    (hcmT : ∀ w, ‖gaugeMult δ'' Q0 0 C ρ w - ∑ v ∈ frequencyBox (d + d) (2 ^ (Kt + 1)),
-      cm0 v * (Real.fourierChar (∑ i, (v i : ℝ) * w i) : ℂ)‖ ≤ multTail d δ'' Q0 Cm Kt)
-    (m : Fin d → ℤ) (N : Finset (Fin d → ℤ))
-    (hN : ∀ n ∈ N, ∀ n' ∈ N, n ≠ n' → n - n' ∉ rationalIntegerIntersection V) :
-    ∑ k ∈ N, ‖∫ u, dualSlice V (coreRA V L (Q0 * L) (2 ^ (Kt + 1)) F c n
-        (fun j v => cc0 j v * (Real.fourierChar (∑ i, (v i : ℝ) * (θ i * xs)) : ℂ))
-        (fun v => cm0 v *
-          (Real.fourierChar (∑ a, (v (Fin.castAdd d a) : ℝ) * (θ a * xs / Q0)) : ℂ)) l) l
-        (fun i u => coreG (Q0 * L) (2 ^ (Kt + 1)) F c n
-          (fun j v => cc0 j v * (Real.fourierChar (∑ i, (v i : ℝ) * (θ i * xs)) : ℂ)) i u) m u *
-        starRingEnd ℂ (torusCharacter k u)
-        ∂torusAnnihilatorHaar (rationalIntegerIntersection V)‖ ^ 2 ≤
-      ((1 + multTail d δ'' Q0 Cm Kt) * (1 + cutTail d δ Kt) *
-        ∏ i ∈ Finset.univ.erase l, (eLpNorm (fun u : torusAnnihilator
-          (rationalIntegerIntersection V) => coreG (Q0 * L) (2 ^ (Kt + 1)) F c n
-            (fun j v => cc0 j v * (Real.fourierChar (∑ i, (v i : ℝ) * (θ i * xs)) : ℂ)) i u) 2
-          (torusAnnihilatorHaar (rationalIntegerIntersection V))).toReal) ^ 2 := by
-  set cc : Fin 4 → (Fin d → ℤ) → ℂ :=
-    fun j v => cc0 j v * (Real.fourierChar (∑ i, (v i : ℝ) * (θ i * xs)) : ℂ) with hcc
-  set cm : (Fin (d + d) → ℤ) → ℂ := fun v => cm0 v *
-    (Real.fourierChar (∑ a, (v (Fin.castAdd d a) : ℝ) * (θ a * xs / Q0)) : ℂ) with hcm
-  have hτm : 0 ≤ multTail d δ'' Q0 Cm Kt := (norm_nonneg _).trans (hcmT 0)
-  have hτc : 0 ≤ cutTail d δ Kt := (norm_nonneg _).trans (hccT 0 0)
-  -- the sup bounds of the re-anchored multiplier and the side cutoff
-  have hR : ∀ u v : StandardTorus d, ‖coreR L (2 ^ (Kt + 1)) cm u v‖ ≤
-      1 + multTail d δ'' Q0 Cm Kt := fun u v =>
-    multTrunc_sup 0 C ρ Kt cm0 hcmT θ xs L u v
-  have hGl : ∀ u, ‖coreG (Q0 * L) (2 ^ (Kt + 1)) F c n cc l u‖ ≤ 1 + cutTail d δ Kt := by
-    intro u
-    have e : coreG (Q0 * L) (2 ^ (Kt + 1)) F c n cc l u =
-        ∑ v ∈ frequencyBox d (2 ^ (Kt + 1)), cc0 l v *
-          (Real.fourierChar (∑ i, (v i : ℝ) * (θ i * xs)) : ℂ) *
-          torusCharacter (((Q0 * L : ℕ) : ℤ) • v) u := by
-      unfold coreG
-      rw [hFl, Finset.sum_product]
-      refine Finset.sum_congr rfl fun v _ => ?_
-      rw [Finset.sum_singleton, hcl, hnl, add_zero, mul_one]
-    rw [e]
-    exact trunc_cut_sup (ρ l) Kt (cc0 l) (hccT l) θ xs (Q0 * L) u
-  have hRm : Continuous (coreRA V L (Q0 * L) (2 ^ (Kt + 1)) F c n cc cm l) := by
-    have hR' : Continuous (fun p : StandardTorus d × StandardTorus d =>
-        coreR L (2 ^ (Kt + 1)) cm p.1 p.2) := by
-      unfold coreR
-      exact continuous_finsetSum _ fun q _ => continuous_const.mul
-        (((continuous_torusCharacter _).comp continuous_fst).mul
-          ((continuous_torusCharacter _).comp continuous_snd))
-    have hG : Continuous (coreG (Q0 * L) (2 ^ (Kt + 1)) F c n cc l) := by
-      unfold coreG
-      exact continuous_finsetSum _ fun p _ => continuous_const.mul (continuous_torusCharacter _)
-    have hs : Continuous (fun uv : torusAnnihilator (rationalIntegerIntersection V) ×
-        torusAnnihilator (rationalIntegerIntersection V) =>
-        ((uv.1 : StandardTorus d) - ((l : ℕ) : ℤ) • (uv.2 : StandardTorus d),
-          (uv.2 : StandardTorus d))) := by fun_prop
-    exact (hR'.comp hs).mul (hG.comp (continuous_subtype_val.comp continuous_fst))
-  have hg : ∀ i, Continuous (fun u : torusAnnihilator (rationalIntegerIntersection V) =>
-      coreG (Q0 * L) (2 ^ (Kt + 1)) F c n cc i u) := fun i => by
-    unfold coreG
-    exact continuous_finsetSum _ fun p _ => continuous_const.mul
-      ((continuous_torusCharacter _).comp continuous_subtype_val)
-  have hW : 0 ≤ (1 + multTail d δ'' Q0 Cm Kt) * (1 + cutTail d δ Kt) := by positivity
-  have hRmb : ∀ uv, ‖coreRA V L (Q0 * L) (2 ^ (Kt + 1)) F c n cc cm l uv‖ ≤
-      (1 + multTail d δ'' Q0 Cm Kt) * (1 + cutTail d δ Kt) := fun uv => by
-    unfold coreRA
-    rw [norm_mul]
-    exact mul_le_mul (hR _ _) (hGl _) (norm_nonneg _) (by linarith)
-  have hbes := torus_bessel V _ (continuous_dualSlice V _ hRm l
-    (fun i u => coreG (Q0 * L) (2 ^ (Kt + 1)) F c n cc i u) hg m) N hN
-  have hdual := dual_slice_bound V _ hRm hW hRmb l
-    (fun i u => coreG (Q0 * L) (2 ^ (Kt + 1)) F c n cc i u) hg m
-  have hI0 : 0 ≤ ∫ u, ‖dualSlice V (coreRA V L (Q0 * L) (2 ^ (Kt + 1)) F c n cc cm l) l
-      (fun i u => coreG (Q0 * L) (2 ^ (Kt + 1)) F c n cc i u) m u‖ ^ 2
-      ∂torusAnnihilatorHaar (rationalIntegerIntersection V) :=
-    integral_nonneg fun _ => sq_nonneg _
-  refine hbes.trans ?_
-  rw [← Real.sq_sqrt hI0]
-  exact pow_le_pow_left₀ (Real.sqrt_nonneg _) hdual 2
 
 namespace ActiveSetup.BasicFamilies.FamParams
 variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
@@ -6549,132 +6442,6 @@ end SideInput
 
 end ActiveSetup.BasicFamilies.FamParams
 
-open Classical in
-/-- Expanding absolute coefficient sums over the component tuples of a pattern: the sum over the
-tuples of the products of the entries is the product over the slots of the sums over the
-components (core slots) or the single entry (other slots). -/
-theorem sum_compIdx_prod (σ : Fin 4 → Fin 3) {κ : Fin 4 → Type*} (Ks : ∀ l, Finset (κ l))
-    (g : ∀ l, κ l → ℝ) (s : Fin 4 → ℝ) :
-    ∑ r ∈ Fintype.piFinset (compIdx σ Ks), ∏ l, (r l).elim (s l) (g l) =
-      ∏ l, (if σ l = 0 then ∑ K ∈ Ks l, g l K else s l) := by
-  have e : ∀ l, (if σ l = 0 then ∑ K ∈ Ks l, g l K else s l) =
-      ∑ o ∈ compIdx σ Ks l, o.elim (s l) (g l) := fun l => by
-    unfold compIdx
-    by_cases hl : σ l = 0
-    · simp only [hl, ↓reduceIte, Finset.sum_map, Function.Embedding.some_apply, Option.elim]
-    · simp only [hl, ↓reduceIte, Finset.sum_singleton, Option.elim]
-  rw [Finset.prod_congr rfl fun l _ => e l, Finset.prod_univ_sum]
-
-/-- Blueprint `eq:core-numerical` (lines 2565-2567, "path multiplicities, coefficient sums, and
-retained size caps make their integrated sum `O(e^{-k}|R|)`"): if on the cells `I ∈ S` (lengths
-`|I|`) and current groups `G ∈ gs(I)` the numerical errors of every pattern are at most
-`C D_*^{-100} A^3 max(A, B)` (three or four absolute coefficient sums `A`, the local side size `B`
-when present), the length-weighted group multiplicity is at most `M`, and the coefficient sums, the
-side sizes and the multiplicity are fixed powers of `D_*` (`A ≤ D_*^a`, `B ≤ D_*^b`,
-`M ≤ D_*^c |R|` with `4a + b + c ≤ 99`, `a, b ≥ 0`), then with `D_* ≥ e^k` the integrated error over
-`m` patterns is at most `m C e^{-k} |R|`. -/
-theorem core_numerical_integrated {ι γ π : Type*} (S : Finset ι) (len : ι → ℝ)
-    (hlen : ∀ I ∈ S, 0 ≤ len I) (gs : ι → Finset γ) (pats : Finset π) (E : ι → γ → π → ℝ)
-    {C D A B M R : ℝ} {k : ℝ} {a b c : ℕ} (hC : 0 ≤ C) (hD : 1 ≤ D) (hA0 : 0 ≤ A)
-    (hE : ∀ I ∈ S, ∀ G ∈ gs I, ∀ p ∈ pats, E I G p ≤ C * (D ^ 100)⁻¹ * (A ^ 3 * max A B))
-    (hM : ∑ I ∈ S, len I * (gs I).card ≤ M) (hA : A ≤ D ^ a) (hB : B ≤ D ^ b)
-    (hMc : M ≤ D ^ c * R) (habc : 4 * a + b + c ≤ 99) (hDk : Real.exp k ≤ D) :
-    ∑ I ∈ S, len I * ∑ G ∈ gs I, ∑ p ∈ pats, E I G p ≤ pats.card * C * Real.exp (-k) * R := by
-  have hD0 : 0 < D := by linarith
-  set Q := C * (D ^ 100)⁻¹ * (A ^ 3 * max A B) with hQ
-  have hQ0 : 0 ≤ Q := by positivity
-  have hcell : ∀ I ∈ S, len I * ∑ G ∈ gs I, ∑ p ∈ pats, E I G p ≤ pats.card * Q * (len I *
-      (gs I).card) := by
-    intro I hI
-    have h1 : ∑ G ∈ gs I, ∑ p ∈ pats, E I G p ≤ ∑ G ∈ gs I, ∑ p ∈ pats, Q :=
-      Finset.sum_le_sum fun G hG => Finset.sum_le_sum fun p hp => hE I hI G hG p hp
-    rw [Finset.sum_const, Finset.sum_const, nsmul_eq_mul, nsmul_eq_mul] at h1
-    have := mul_le_mul_of_nonneg_left h1 (hlen I hI)
-    calc _ ≤ len I * ((gs I).card * (pats.card * Q)) := this
-      _ = _ := by ring
-  have hM0 : 0 ≤ M := le_trans (Finset.sum_nonneg fun I hI => mul_nonneg (hlen I hI)
-    (Nat.cast_nonneg _)) hM
-  have hsum : ∑ I ∈ S, len I * ∑ G ∈ gs I, ∑ p ∈ pats, E I G p ≤ pats.card * Q * M := by
-    calc _ ≤ ∑ I ∈ S, pats.card * Q * (len I * (gs I).card) := Finset.sum_le_sum hcell
-      _ = pats.card * Q * ∑ I ∈ S, len I * (gs I).card := by rw [Finset.mul_sum]
-      _ ≤ pats.card * Q * M := mul_le_mul_of_nonneg_left hM (by positivity)
-  refine hsum.trans ?_
-  -- the budget: `A^3 max(A, B) M ≤ D^{99} R`
-  have hR0 : 0 ≤ R := by
-    by_contra hR
-    push Not at hR
-    have : D ^ c * R < 0 := mul_neg_of_pos_of_neg (by positivity) hR
-    linarith
-  have hAB : A ^ 3 * max A B ≤ D ^ (3 * a) * D ^ (a + b) := by
-    have h1 : A ^ 3 ≤ D ^ (3 * a) := by
-      rw [pow_mul']; exact pow_le_pow_left₀ hA0 hA 3
-    have h2 : max A B ≤ D ^ (a + b) := by
-      refine max_le (hA.trans (pow_le_pow_right₀ hD (by omega)))
-        (hB.trans (pow_le_pow_right₀ hD (by omega)))
-    exact mul_le_mul h1 h2 (le_max_of_le_left hA0) (by positivity)
-  have hbud : A ^ 3 * max A B * M ≤ D ^ 99 * R := by
-    calc A ^ 3 * max A B * M ≤ D ^ (3 * a) * D ^ (a + b) * (D ^ c * R) :=
-          mul_le_mul hAB hMc hM0 (by positivity)
-      _ = D ^ (4 * a + b + c) * R := by rw [← pow_add, ← mul_assoc, ← pow_add]; ring_nf
-      _ ≤ D ^ 99 * R := mul_le_mul_of_nonneg_right (pow_le_pow_right₀ hD habc) hR0
-  have hk1 : (D ^ 100)⁻¹ * D ^ 99 ≤ Real.exp (-k) := by
-    have e : (D ^ 100)⁻¹ * D ^ 99 = D⁻¹ := by
-      rw [show D ^ 100 = D ^ 99 * D by rw [← pow_succ]]
-      field_simp
-    rw [e, Real.exp_neg]
-    exact inv_anti₀ (Real.exp_pos k) hDk
-  calc (pats.card : ℝ) * Q * M = pats.card * C * ((D ^ 100)⁻¹ * (A ^ 3 * max A B * M)) := by
-        rw [hQ]; ring
-    _ ≤ pats.card * C * ((D ^ 100)⁻¹ * (D ^ 99 * R)) := by gcongr
-    _ = pats.card * C * ((D ^ 100)⁻¹ * D ^ 99) * R := by ring
-    _ ≤ pats.card * C * Real.exp (-k) * R := by gcongr
-
-namespace ActiveSetup.BasicFamilies.FamParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
-  {fp : bf.FamParams}
-
-namespace SideInput
-variable (D : fp.SideInput)
-
-open Classical in
-/-- Blueprint `eq:core-numerical` (lines 2565-2566, "these errors do not pay for failure histories:
-after expanding absolute coefficient sums, each pure tuple has first-success weight one"): on a cell
-`I` and group `G`, if the numerical error of every component tuple `r` of a pattern `σ` is at most
-`C Π_l g_l(r_l)` with `g_l(K) = Σ_{m ∈ K} |α_m|` on the core slots and the local sizes `s_l` on the
-others, then the first-success weighted sum of the errors over the trial counts, assignments,
-words and final heights converges to the sum over the tuples (every tuple has weight one), and it is
-at most `C Π_{core l} (Σ_{K} Σ_{m ∈ K} |α_m|) Π_{other l} s_l`. -/
-theorem pattern_error_first_success (G : bf.Grp) (I : ℤ × ℤ) (σ : Fin 4 → Fin 3)
-    (hJ : 2 ≤ D.SP.Jst) (hδ : 0 < D.SP.δs) (hδ16 : D.SP.δs ≤ 1 / 16)
-    (err : (∀ l, Option (Finset (D.Ms l G).Md)) → ℝ) {C : ℝ} (s : Fin 4 → ℝ)
-    (herr : ∀ r ∈ Fintype.piFinset (compIdx σ (fun l => D.compsAt l G I)),
-      err r ≤ C * ∏ l, (r l).elim (s l)
-        (fun K => ∑ m ∈ K, ‖D.c l G (A.blkStart D.S.K I.1) (D.preAt I) m‖)) :
-    HasSum (fun n : ℕ => ∑ a : Fin n → Fin 4,
-      ∑ w ∈ Fintype.piFinset (fun _ : Fin n => ModeComponents.upperHeights D.SP.Jst D.SP.δs),
-      ∑ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs,
-        (((ModeComponents.upperHeights D.SP.Jst D.SP.δs).card : ℝ) ^ (n + 1))⁻¹ •
-        ∑ r ∈ (Fintype.piFinset (compIdx σ (fun l => D.compsAt l G I))).filter
-          (fun r => ∀ l, roleMask (D.slotGood G I l) l a w h (r l)), err r)
-      (∑ r ∈ Fintype.piFinset (compIdx σ (fun l => D.compsAt l G I)), err r) ∧
-    ∑ r ∈ Fintype.piFinset (compIdx σ (fun l => D.compsAt l G I)), err r ≤
-      C * ∏ l, (if σ l = 0 then ∑ K ∈ D.compsAt l G I,
-        ∑ m ∈ K, ‖D.c l G (A.blkStart D.S.K I.1) (D.preAt I) m‖ else s l) := by
-  refine ⟨first_success_masked _ _ (fun l h o => D.slotGood G I l h o) err
-    (D.tuple_success G I σ hJ hδ hδ16), ?_⟩
-  calc ∑ r ∈ Fintype.piFinset (compIdx σ (fun l => D.compsAt l G I)), err r ≤
-        ∑ r ∈ Fintype.piFinset (compIdx σ (fun l => D.compsAt l G I)), C * ∏ l, (r l).elim (s l)
-          (fun K => ∑ m ∈ K, ‖D.c l G (A.blkStart D.S.K I.1) (D.preAt I) m‖) :=
-          Finset.sum_le_sum herr
-    _ = C * ∏ l, (if σ l = 0 then ∑ K ∈ D.compsAt l G I,
-        ∑ m ∈ K, ‖D.c l G (A.blkStart D.S.K I.1) (D.preAt I) m‖ else s l) := by
-      rw [← Finset.mul_sum, sum_compIdx_prod σ (fun l => D.compsAt l G I)
-        (fun l K => ∑ m ∈ K, ‖D.c l G (A.blkStart D.S.K I.1) (D.preAt I) m‖) s]
-
-end SideInput
-
-end ActiveSetup.BasicFamilies.FamParams
-
 /-! ## Moments of the core torus sizes over the failure histories (blueprint lines 2569-2577) -/
 
 open Classical in
@@ -6723,31 +6490,6 @@ theorem role_moments_of_le {κ : Type*} {m₀ : ℕ} (H : Finset ℕ) (good : �
       _ ≤ c ^ 2 * ((H.card : ℝ) ^ n)⁻¹ * (ρ ^ (Finset.univ.filter fun i => a i = j).card *
           (H.card : ℝ) ^ n * ∑ K ∈ T, b K) := by gcongr
       _ = _ := by field_simp
-
-/-- Blueprint lines 2576-2577 ("the sum over `m₀^n` assignments and all `n` converges for the
-chosen small absolute `δ_*`"): when `4 (2δ)^{1/4} < 1`, the moment bounds
-`36⁴ ((2δ)^n)^{1/4} Z` of all `4^n` assignments of `n` failed trials sum over `n` to
-`36⁴ Z / (1 - 4 (2δ)^{1/4})`. -/
-theorem assignment_moments_hasSum {δ Z : ℝ} (hδ : 0 ≤ δ)
-    (hsmall : 4 * (2 * δ) ^ (1 / (4 : ℝ)) < 1) :
-    HasSum (fun n : ℕ => ∑ _asg : Fin n → Fin 4, 36 ^ 4 * ((2 * δ) ^ n) ^ (1 / (4 : ℝ)) * Z)
-      (36 ^ 4 * Z / (1 - 4 * (2 * δ) ^ (1 / (4 : ℝ)))) := by
-  set q := (2 * δ) ^ (1 / (4 : ℝ)) with hq
-  have h2δ : 0 ≤ 2 * δ := by linarith
-  have hq0 : 0 ≤ q := Real.rpow_nonneg h2δ _
-  have hpow : ∀ n : ℕ, ((2 * δ) ^ n) ^ (1 / (4 : ℝ)) = q ^ n := fun n => by
-    rw [hq, ← Real.rpow_natCast, ← Real.rpow_natCast, ← Real.rpow_mul h2δ, ← Real.rpow_mul h2δ,
-      mul_comm (n : ℝ)]
-  have e : ∀ n : ℕ, ∑ _asg : Fin n → Fin 4, 36 ^ 4 * ((2 * δ) ^ n) ^ (1 / (4 : ℝ)) * Z =
-      36 ^ 4 * Z * (4 * q) ^ n := by
-    intro n
-    rw [Finset.sum_const, Finset.card_univ, Fintype.card_fun, Fintype.card_fin, Fintype.card_fin,
-      nsmul_eq_mul, hpow, mul_pow]
-    push_cast
-    ring
-  have hgeo := (hasSum_geometric_of_lt_one (by positivity) hsmall).mul_left (36 ^ 4 * Z)
-  rw [← div_eq_mul_inv] at hgeo
-  exact (funext e).symm ▸ hgeo
 
 namespace ModeSystem
 variable {Gd : RealDyadicGrid} {Mc : ℕ} (Ms : ModeSystem Gd Mc) (S : ModeSchedule)
@@ -6994,30 +6736,6 @@ theorem maskSel_units (hstab : D.Stab) (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4)
       exact hK'core
 
 open Classical in
-/-- Blueprint lines 2467-2471 and 2569 for the masked selection: for every assignment and word,
-the selected modes of a core role with the final class of a good mode `m` have the torus form
-`eq:core-torus-form` at `h - Δ` with any anchor `a ∈ E_{h-Δ}(m)` (`core_torus_form`). -/
-theorem maskSel_torus_form (hstab : D.Stab) (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4) {h : ℕ}
-    (hh : h ≤ D.SP.Jst) (hQ : 1 ≤ D.S.Q0) (hD : 2 ≤ D.S.Dstar)
-    (hcard : (((D.Ms j G).alive (ancAt A.G (D.preAt I)
-      (A.blkStart D.S.K I.1 - 4 * D.S.K))).card : ℝ) ≤ D.S.Dstar)
-    (hΛ : (D.Ms j G).Λ ≤ D.S.Dstar) (hK : D.S.Dstar ^ 600 ≤ (2 : ℝ) ^ D.S.K)
-    {m a : (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))}
-    (hm : ((D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).Good D.SP.Δ
-      ((D.Ms j G).goodP D.S D.SP (A.blkStart D.S.K I.1)) h m)
-    (ha : a ∈ ((D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).E
-      (h - D.SP.Δ) m) {n : ℕ} (asg : Fin n → Fin 4) (w : Fin n → ℕ) {xs : ℝ}
-    (hxs : xs ∈ dyadicGridCell A.G I.1 I.2) :
-    ∃ ns, D.TorusFormAt G I j (h - D.SP.Δ) xs (D.maskSel G I j asg w h (D.finCls G I j h m))
-      ns a := by
-  obtain ⟨ns, h1, h2⟩ := D.core_torus_form hstab G I j hh hQ hD hcard hΛ hK
-    (D.maskComps G I j asg w h (D.finCls G I j h m))
-    (fun K hK => (Finset.mem_filter.mp hK).2.1.1) hm
-    (fun K hK => (Finset.mem_filter.mp hK).2.2.symm) ha
-    (D.maskSel G I j asg w h (D.finCls G I j h m)) (fun x hx => (Finset.mem_filter.mp hx).2) hxs
-  exact ⟨ns, h1, h2⟩
-
-open Classical in
 /-- Blueprint line 2466 for minimal CURRENT components: on the upper heights a minimal CURRENT
 component of a core role is bad at a proportion at most `2δ_*` (its core components share their
 good predicates, `compGood_iff_of_same_class_le`, `coreComp_bad_card`). -/
@@ -7054,24 +6772,6 @@ theorem unitGood_bad_card (hstab : D.Stab) (G : bf.Grp) (I : ℤ × ℤ) (j : Fi
         hng fun K hK hKU => absurd ⟨K, hK, hKU⟩ hex
     rw [h0, Finset.card_empty, Nat.cast_zero]
     positivity
-
-open Classical in
-/-- A failure assigned to a role that is not a core role of the pattern leaves no masked tuples
-(the other slots are always good). -/
-theorem masked_tuples_empty (G : bf.Grp) (I : ℤ × ℤ) (σ : Fin 4 → Fin 3) {n : ℕ}
-    (asg : Fin n → Fin 4) (w : Fin n → ℕ) (h : ℕ) {i : Fin n} (hi : σ (asg i) ≠ 0) :
-    (Fintype.piFinset (compIdx σ (fun l => D.compsAt l G I))).filter
-      (fun r => ∀ l, roleMask (D.slotGood G I l) l asg w h (r l)) = ∅ := by
-  refine Finset.filter_eq_empty_iff.mpr fun r hr hmask => ?_
-  have hrl : r (asg i) ∈ compIdx σ (fun l => D.compsAt l G I) (asg i) :=
-    Fintype.mem_piFinset.mp hr _
-  have hnone : r (asg i) = none := by
-    unfold compIdx at hrl
-    simp only [hi, ↓reduceIte] at hrl
-    exact Finset.mem_singleton.mp hrl
-  have h1 := (hmask (asg i)).2.1 i rfl
-  rw [hnone] at h1
-  exact h1 trivial
 
 end SideInput
 
@@ -7180,160 +6880,6 @@ theorem role_size_moments {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj C
         (D.preAt I) h m (D.c j G (A.blkStart D.S.K I.1) (D.preAt I)) := rfl
   rw [e]
   norm_num
-
-open Classical in
-/-- Blueprint lines 2569-2576 on a leaf cell of the side states (Hölder with `m₀` factors): for a
-pattern `σ`, a final upper height `h`, final classes `F_j = F_h(m_j)` of good modes in the core
-roles (`σ_j = 0`), an assignment `asg` of the `n` failed trials to core roles and torus forms of
-the selected modes for all words, the word average of the product of the core torus sizes `a'_j`
-(the other roles contribute the factor `1`) is at most
-`36⁴ ((2δ_*)^n)^{1/4} Π_{core j} σ_{F_j}` (`role_size_moments`, `word_moment_bound_real`: the
-deterministic bound passes from second to fourth moments). -/
-theorem masked_sizes_moment {Cj CA CT CK : ℕ} {δs W : ℝ} (hV : D.S.Valid Cj CA CT CK δs W)
-    (hCA : 1 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax) (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar)
-    (hQ : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs) (hstab : D.Stab) (I : ℤ × ℤ)
-    (G : bf.Grp) (σ : Fin 4 → Fin 3) (hdim : ∀ j, (D.Ms j G).zc.dim ≤ D.S.dmax)
-    (hδc : ∀ j, 0 < (D.Ms j G).δc)
-    (hDg : ∀ j, gaugeSqNorm (D.Ms j G).zc.dim (D.Ms j G).δc ≤ D.S.Dstar) {Kf : ℕ}
-    (hKf : ∀ j, 2 * gaugeTail (D.Ms j G).zc.dim (D.Ms j G).δc / 2 ^ Kf * D.S.Dstar ^ 300 ≤ 1)
-    (hQB : (D.S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ D.S.Bstar)
-    (hεw : ∀ j m, D.S.Dstar⁻¹ ≤ (D.Ms j G).L.εM m)
-    (hcard : ∀ j, (((D.Ms j G).alive (ancAt A.G (D.preAt I)
-      (A.blkStart D.S.K I.1 - 4 * D.S.K))).card : ℝ) ≤ D.S.Dstar)
-    (hΛ : ∀ j, (D.Ms j G).Λ ≤ D.S.Dstar) (hJ : 2 ≤ D.SP.Jst) (hδ : 0 < D.SP.δs)
-    (hδ16 : D.SP.δs ≤ 1 / 16) (hδJ : ⌈4 * D.SP.δs * D.SP.Jst⌉₊ ≤ D.SP.Jst) {h : ℕ}
-    (hh : h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs)
-    (m : ∀ j, (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K)))
-    (hgood : ∀ j, σ j = 0 → ((D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1)
-      (D.preAt I)).Good D.SP.Δ ((D.Ms j G).goodP D.S D.SP (A.blkStart D.S.K I.1)) h (m j))
-    {n : ℕ} (asg : Fin n → Fin 4) (hasg : ∀ i, σ (asg i) = 0)
-    (ns : ∀ j, (Fin n → ℕ) → (D.Ms j G).alive (ancAt A.G (D.preAt I)
-      (A.blkStart D.S.K I.1 - 4 * D.S.K)) → Fin (D.Ms j G).zc.dim → ℤ)
-    (a : ∀ j, (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K)))
-    {xs : ℝ} (hxs : xs ∈ dyadicGridCell A.G I.1 I.2)
-    (hform : ∀ j, σ j = 0 → ∀ w ∈ Fintype.piFinset
-      (fun _ : Fin n => ModeComponents.upperHeights D.SP.Jst D.SP.δs),
-      D.TorusFormAt G I j (h - D.SP.Δ) xs (D.maskSel G I j asg w h (D.finCls G I j h (m j)))
-        (ns j w) (a j)) :
-    ∑ w ∈ Fintype.piFinset (fun _ : Fin n => ModeComponents.upperHeights D.SP.Jst D.SP.δs),
-      (((ModeComponents.upperHeights D.SP.Jst D.SP.δs).card : ℝ) ^ n)⁻¹ *
-        ∏ j, (if σ j = 0 then D.coreSize G I xs (h - D.SP.Δ) j
-          (D.maskSel G I j asg w h (D.finCls G I j h (m j))) (ns j w) else 1) ≤
-      36 ^ 4 * ((2 * D.SP.δs) ^ n) ^ (1 / (4 : ℝ)) *
-        ∏ j, (if σ j = 0 then Real.sqrt ((D.Ms j G).compSizeSq D.S D.hA D.SP I
-          (A.blkStart D.S.K I.1) (D.preAt I) h (m j)
-          (D.c j G (A.blkStart D.S.K I.1) (D.preAt I))) else 1) := by
-  have hmom := fun j (hj : σ j = 0) => D.role_size_moments hV hCA hCT hd2 hD hB hQ hSP hstab I j
-    G (hdim j) (hδc j) (hDg j) (hKf j) hQB (hεw j) (hcard j) (hΛ j) hJ hδ hδ16 hδJ hh
-    (hgood j hj) asg (ns j) (a j) hxs (hform j hj)
-  have hS0 : ∀ j, 0 ≤ (D.Ms j G).compSizeSq D.S D.hA D.SP I (A.blkStart D.S.K I.1) (D.preAt I) h
-      (m j) (D.c j G (A.blkStart D.S.K I.1) (D.preAt I)) :=
-    fun j => Finset.sum_nonneg fun _ _ => sq_nonneg _
-  have hw := word_moment_bound_real (ModeComponents.upperHeights D.SP.Jst D.SP.δs) n (m₀ := 4)
-    (by norm_num)
-    (fun j w => if σ j = 0 then D.coreSize G I xs (h - D.SP.Δ) j
-      (D.maskSel G I j asg w h (D.finCls G I j h (m j))) (ns j w) else 1)
-    (fun j w => by
-      by_cases hj : σ j = 0
-      · simp only [hj, ↓reduceIte]; exact D.coreSize_nonneg _ _ _ _ _ _ _
-      · simp only [hj, ↓reduceIte]; norm_num)
-    (by norm_num : (1 : ℝ) ≤ 36) (by linarith : (0 : ℝ) ≤ 2 * D.SP.δs)
-    (fun j => if σ j = 0 then Real.sqrt ((D.Ms j G).compSizeSq D.S D.hA D.SP I
-      (A.blkStart D.S.K I.1) (D.preAt I) h (m j) (D.c j G (A.blkStart D.S.K I.1) (D.preAt I)))
-      else 1)
-    (fun j => by
-      by_cases hj : σ j = 0
-      · simp only [hj, ↓reduceIte]; exact Real.sqrt_nonneg _
-      · simp only [hj, ↓reduceIte]; norm_num)
-    (fun j => (Finset.univ.filter fun i => asg i = j).card) ?_ ?_
-  · have h4 : ((4 : ℕ) : ℝ) = 4 := by norm_num
-    rwa [sum_assigned_card, h4] at hw
-  · intro j w hw'
-    by_cases hj : σ j = 0
-    · simp only [hj, ↓reduceIte]
-      have h1 := (hmom j hj).1 w hw'
-      have h0 := Real.sqrt_nonneg ((D.Ms j G).compSizeSq D.S D.hA D.SP I
-        (A.blkStart D.S.K I.1) (D.preAt I) h (m j) (D.c j G (A.blkStart D.S.K I.1) (D.preAt I)))
-      linarith
-    · simp only [hj, ↓reduceIte]; norm_num
-  · intro j
-    by_cases hj : σ j = 0
-    · simp only [hj, ↓reduceIte]
-      rw [Real.sq_sqrt (hS0 j)]
-      exact (hmom j hj).2
-    · simp only [hj, ↓reduceIte]
-      have hcnt : (Finset.univ.filter fun i => asg i = j).card = 0 := by
-        rw [Finset.card_eq_zero, Finset.filter_eq_empty_iff]
-        intro i _ hi
-        exact hj (hi ▸ hasg i)
-      rw [hcnt, pow_zero]
-      simp only [one_pow, mul_one, Finset.sum_const, Fintype.card_piFinset, Finset.prod_const,
-        Finset.card_univ, Fintype.card_fin, nsmul_eq_mul]
-      push_cast
-      by_cases hc : ((ModeComponents.upperHeights D.SP.Jst D.SP.δs).card : ℝ) ^ n = 0
-      · rw [hc]; norm_num
-      · rw [mul_inv_cancel₀ hc]; norm_num
-
-open Classical in
-/-- Blueprint lines 2569-2576 on a leaf cell of the side states ("for a fixed final height and
-component tuple, an assignment of the previous failures gives ..."): for a pattern `σ`, a final
-upper height `h`, final classes `F_h(m_j)` of good modes in the core roles with anchors
-`a_j ∈ E_{h-Δ}(m_j)`, and an assignment of the `n` failed trials to core roles, the selected
-modes of every word have torus forms (`maskSel_torus_form`) whose core torus sizes satisfy
-`E_w Π_{core j} a'_j ≤ 36⁴ ((2δ_*)^n)^{1/4} Π_{core j} σ_{F_j}` (`masked_sizes_moment`). -/
-theorem masked_sizes_moment_exists {Cj CA CT CK : ℕ} {δs W : ℝ}
-    (hV : D.S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax)
-    (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar) (hQ : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs)
-    (hstab : D.Stab) (hK : D.S.Dstar ^ 600 ≤ (2 : ℝ) ^ D.S.K) (I : ℤ × ℤ) (G : bf.Grp)
-    (σ : Fin 4 → Fin 3) (hdim : ∀ j, (D.Ms j G).zc.dim ≤ D.S.dmax)
-    (hδc : ∀ j, 0 < (D.Ms j G).δc)
-    (hDg : ∀ j, gaugeSqNorm (D.Ms j G).zc.dim (D.Ms j G).δc ≤ D.S.Dstar) {Kf : ℕ}
-    (hKf : ∀ j, 2 * gaugeTail (D.Ms j G).zc.dim (D.Ms j G).δc / 2 ^ Kf * D.S.Dstar ^ 300 ≤ 1)
-    (hQB : (D.S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ D.S.Bstar)
-    (hεw : ∀ j m, D.S.Dstar⁻¹ ≤ (D.Ms j G).L.εM m)
-    (hcard : ∀ j, (((D.Ms j G).alive (ancAt A.G (D.preAt I)
-      (A.blkStart D.S.K I.1 - 4 * D.S.K))).card : ℝ) ≤ D.S.Dstar)
-    (hΛ : ∀ j, (D.Ms j G).Λ ≤ D.S.Dstar) (hJ : 2 ≤ D.SP.Jst) (hδ : 0 < D.SP.δs)
-    (hδ16 : D.SP.δs ≤ 1 / 16) (hδJ : ⌈4 * D.SP.δs * D.SP.Jst⌉₊ ≤ D.SP.Jst) {h : ℕ}
-    (hh : h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs)
-    (m : ∀ j, (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K)))
-    (hgood : ∀ j, σ j = 0 → ((D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1)
-      (D.preAt I)).Good D.SP.Δ ((D.Ms j G).goodP D.S D.SP (A.blkStart D.S.K I.1)) h (m j))
-    (a : ∀ j, (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K)))
-    (ha : ∀ j, σ j = 0 → a j ∈ ((D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1)
-      (D.preAt I)).E (h - D.SP.Δ) (m j))
-    {n : ℕ} (asg : Fin n → Fin 4) (hasg : ∀ i, σ (asg i) = 0) {xs : ℝ}
-    (hxs : xs ∈ dyadicGridCell A.G I.1 I.2) :
-    ∃ ns : ∀ j, (Fin n → ℕ) → (D.Ms j G).alive (ancAt A.G (D.preAt I)
-        (A.blkStart D.S.K I.1 - 4 * D.S.K)) → Fin (D.Ms j G).zc.dim → ℤ,
-      (∀ j, σ j = 0 → ∀ w, D.TorusFormAt G I j (h - D.SP.Δ) xs
-        (D.maskSel G I j asg w h (D.finCls G I j h (m j))) (ns j w) (a j)) ∧
-      ∑ w ∈ Fintype.piFinset (fun _ : Fin n => ModeComponents.upperHeights D.SP.Jst D.SP.δs),
-        (((ModeComponents.upperHeights D.SP.Jst D.SP.δs).card : ℝ) ^ n)⁻¹ *
-          ∏ j, (if σ j = 0 then D.coreSize G I xs (h - D.SP.Δ) j
-            (D.maskSel G I j asg w h (D.finCls G I j h (m j))) (ns j w) else 1) ≤
-        36 ^ 4 * ((2 * D.SP.δs) ^ n) ^ (1 / (4 : ℝ)) *
-          ∏ j, (if σ j = 0 then Real.sqrt ((D.Ms j G).compSizeSq D.S D.hA D.SP I
-            (A.blkStart D.S.K I.1) (D.preAt I) h (m j)
-            (D.c j G (A.blkStart D.S.K I.1) (D.preAt I))) else 1) := by
-  have hhJ : h ≤ D.SP.Jst := by
-    have := (Finset.mem_filter.mp hh).1
-    rw [Finset.mem_range] at this
-    omega
-  have hex : ∀ j, ∃ nsj : (Fin n → ℕ) → (D.Ms j G).alive (ancAt A.G (D.preAt I)
-      (A.blkStart D.S.K I.1 - 4 * D.S.K)) → Fin (D.Ms j G).zc.dim → ℤ,
-      σ j = 0 → ∀ w, D.TorusFormAt G I j (h - D.SP.Δ) xs
-        (D.maskSel G I j asg w h (D.finCls G I j h (m j))) (nsj w) (a j) := by
-    intro j
-    by_cases hj : σ j = 0
-    · choose f hf using fun w => D.maskSel_torus_form hstab G I j hhJ hQ hD (hcard j) (hΛ j) hK
-        (hgood j hj) (ha j hj) asg w hxs
-      exact ⟨f, fun _ w => hf w⟩
-    · exact ⟨fun _ _ _ => 0, fun h' => absurd h' hj⟩
-  choose ns hns using hex
-  exact ⟨ns, hns, D.masked_sizes_moment hV hCA hCT hd2 hD hB hQ hSP hstab I G σ hdim hδc hDg hKf
-    hQB hεw hcard hΛ hJ hδ hδ16 hδJ hh m hgood asg hasg ns a hxs
-    fun j hj w _ => hns j hj w⟩
 
 end SideInput
 
@@ -7957,51 +7503,6 @@ theorem four_core_binned (hD : 2 ≤ D.S.Dstar) {I : ℤ × ℤ} (hI : I ∈ A.c
     · unfold fourCoef
       simp only [hpass, ↓reduceIte, zero_mul]
 
-open Classical in
-/-- The anchor of a final class of good core components is one of its modes, so distinct final
-classes have distinct anchors (each representative tuple is counted at most once). -/
-theorem anchor_mem_cls {G : bf.Grp} {I : ℤ × ℤ}
-    {anc : ℕ → ∀ j, Finset (D.Ms j G).Md →
-      (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))}
-    (hanc : D.AnchorOK G I anc) {h : ℕ} (hh : h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs)
-    {j : Fin 4} {F : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h) : (anc h j F).1 ∈ F := by
-  set C := (D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)
-  obtain ⟨K, hK, rfl⟩ := Finset.mem_image.mp hF
-  obtain ⟨hKc, hKg⟩ := Finset.mem_filter.mp hK
-  obtain ⟨x, hKx, -⟩ := id hKg
-  have hxK : x.1 ∈ K := by rw [hKx]; exact Finset.mem_map_of_mem _ (C.E_self 0 x)
-  have hx := hanc h hh j K hKc hKg x hxK
-  have hE := C.E_comp (h - D.SP.Δ) _ x hx
-  have ha : anc h j ((D.Ms j G).compClass D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I) h K) ∈
-      C.F h x := by
-    refine C.F_mono (h - D.SP.Δ) h x (Nat.sub_le _ _) (C.E_le_F _ x ?_)
-    rw [hE]
-    exact C.E_self _ _
-  rw [hKx, (D.Ms j G).compClass_eq D.S D.hA _ _ h x] at ha ⊢
-  exact Finset.mem_map_of_mem _ ha
-
-open Classical in
-theorem anchor_injective {G : bf.Grp} {I : ℤ × ℤ}
-    {anc : ℕ → ∀ j, Finset (D.Ms j G).Md →
-      (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))}
-    (hanc : D.AnchorOK G I anc) {h : ℕ} (hh : h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs)
-    {j : Fin 4} {F F' : Finset (D.Ms j G).Md} (hF : F ∈ D.goodCls G I j h)
-    (hF' : F' ∈ D.goodCls G I j h) (he : anc h j F = anc h j F') : F = F' := by
-  set C := (D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)
-  have h1 := D.anchor_mem_cls hanc hh hF
-  have h2 := D.anchor_mem_cls hanc hh hF'
-  rw [he] at h1
-  generalize (anc h j F').1 = z at h1 h2
-  obtain ⟨m, -, hmF⟩ := D.mem_goodCls hF
-  obtain ⟨m', -, hmF'⟩ := D.mem_goodCls hF'
-  subst hmF hmF'
-  unfold finCls at h1 h2 ⊢
-  obtain ⟨y, hy, rfl⟩ := Finset.mem_map.mp h1
-  obtain ⟨y', hy', hyy⟩ := Finset.mem_map.mp h2
-  have : y' = y := Subtype.val_injective hyy
-  subst this
-  rw [← C.F_comp h m y' hy, ← C.F_comp h m' y' hy']
-
 end SideInput
 
 end ActiveSetup.BasicFamilies.FamParams
@@ -8264,12 +7765,6 @@ def AnchorOKAt (G : bf.Grp) (I : ℤ × ℤ) (j : Fin 4)
     ∀ x : (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K)), x.1 ∈ K →
       x ∈ ((D.Ms j G).blockComps D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I)).E (h - D.SP.Δ)
         (anc h ((D.Ms j G).compClass D.S D.hA (A.blkStart D.S.K I.1) (D.preAt I) h K))
-
-theorem anchorOKAt_of {G : bf.Grp} {I : ℤ × ℤ}
-    {anc : ℕ → ∀ j, Finset (D.Ms j G).Md →
-      (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K))}
-    (hanc : D.AnchorOK G I anc) (j : Fin 4) : D.AnchorOKAt G I j (fun h => anc h j) :=
-  fun h hh K hK hg x hx => hanc h hh j K hK hg x hx
 
 open Classical in
 /-- The selected modes of a final class lie in the PRE predecessor of its anchor (one role). -/
@@ -8827,112 +8322,6 @@ end SideInput
 end ActiveSetup.BasicFamilies.FamParams
 
 /-! ## The declaration `frequency-tests` (blueprint lines 2482-2585) -/
-
-namespace ActiveSetup.BasicFamilies.FamParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {bf : A.BasicFamilies}
-  {fp : bf.FamParams}
-
-namespace SideInput
-variable (D : fp.SideInput)
-
-open Classical in
-/-- Blueprint declaration `frequency-tests` (`THT.Core.principalFrequencyTests`, lines
-2482-2585). On a leaf cell `I` and group `G` of the side states, with anchors of the final
-classes (`AnchorOK`):
-* the four-core pattern form is at most
-  `2⁴/(1 - 4(2δ_*)^{1/4}) Σ_{h ∈ H} |H|⁻¹ Σ_{bins} C_J 2μ ν^{-J} Π_j 6(2σ_j) N_{h,bin}` plus
-  `C_J D_*^{-100} Π_l Σ_{m core in l} |α_m|`;
-* for every side role `l`, the three-core pattern form is at most the corresponding sum over the
-  bins `(μ, ν, Λ, b_Λ, σ)` of `C_{J,A} μ ν^{-J} Λ^{-(A+1)} b_Λ Π_{j ≠ l} σ_j N_{h,bin}` plus
-  `C_{J,A} D_*^{-100} σ Π_{j ≠ l} Σ_{m core in j} |α_m|`, where `σ` is the local side size;
-* distinct final classes have distinct anchors, so every representative tuple is counted at most
-  once.
-
-The ingredients are `four_core_principal_bins`, `three_core_principal_bins`, `anchor_injective`,
-and `sum_compIdx_prod` for the absolute coefficient sums. -/
-theorem principalFrequencyTests {Cj CA CT CK : ℕ} {δs W : ℝ}
-    (hV : D.S.Valid Cj CA CT CK δs W) (hCA : 1 ≤ CA) (hCT : 4 ≤ CT) (hd2 : 2 ≤ D.S.dmax)
-    (hD : 2 ≤ D.S.Dstar) (hB : 2 ≤ D.S.Bstar) (hQ : 1 ≤ D.S.Q0) (hSP : D.SP = D.S.sideParams δs)
-    (hstab : D.Stab) (hK : D.S.Dstar ^ 600 ≤ (2 : ℝ) ^ D.S.K) {I : ℤ × ℤ} (hI : I ∈ A.cells)
-    (G : bf.Grp) (hz : ∀ j, (D.Ms j G).zc = (D.Ms 0 G).zc) (hdim : (D.Ms 0 G).zc.dim ≤ D.S.dmax)
-    {δ : ℝ} (hδ : 0 < δ) (hdδ : 8 * (D.Ms 0 G).zc.dim * δ ≤ 1) (hδ8 : δ ≤ 1 / 8)
-    (hδc : ∀ j, (D.Ms j G).δc = δ) (hcl : ∀ j, (D.Ms j G).cl = slotCoeff j)
-    (hρ : ∀ j k, (D.Ms j G).ρ k ∈ Set.Icc (0 : ℝ) 1)
-    (hQC : ∀ a b, ∃ k : ℤ, (D.S.Q0 : ℝ) * ((D.Ms 0 G).zc.C a b : ℝ) = k) {Cm : ℝ}
-    (hCm0 : 0 ≤ Cm) (hCm : ∀ a b, |((D.Ms 0 G).zc.C a b : ℝ)| ≤ Cm)
-    {Kt : ℕ} (hQB : (D.S.Q0 : ℝ) * 2 ^ (Kt + 1) ≤ D.S.Bstar)
-    (hτc : cutTail (D.Ms 0 G).zc.dim δ Kt ≤ (D.S.Dstar ^ 300)⁻¹)
-    (hτm : multTail (D.Ms 0 G).zc.dim (δ / 2) D.S.Q0 Cm Kt ≤ (D.S.Dstar ^ 300)⁻¹)
-    (hMN : multNorm (D.Ms 0 G).zc.dim (δ / 2) D.S.Q0 Cm ≤ D.S.Dstar)
-    (hCN : cutNorm (D.Ms 0 G).zc.dim δ ≤ D.S.Dstar) {J : ℕ} (hJ3 : 3 ≤ J)
-    (hDg : ∀ j, gaugeSqNorm (D.Ms j G).zc.dim (D.Ms j G).δc ≤ D.S.Dstar) {Kf : ℕ}
-    (hKf : ∀ j, 2 * gaugeTail (D.Ms j G).zc.dim (D.Ms j G).δc / 2 ^ Kf * D.S.Dstar ^ 300 ≤ 1)
-    (hQBf : (D.S.Q0 : ℝ) * 2 ^ (Kf + 1) ≤ D.S.Bstar)
-    (hεw : ∀ j m, D.S.Dstar⁻¹ ≤ (D.Ms j G).L.εM m)
-    (hcard : ∀ j, (((D.Ms j G).alive (ancAt A.G (D.preAt I)
-      (A.blkStart D.S.K I.1 - 4 * D.S.K))).card : ℝ) ≤ D.S.Dstar)
-    (hΛ : ∀ j, (D.Ms j G).Λ ≤ D.S.Dstar) (hJ : 2 ≤ D.SP.Jst) (hδs : 0 < D.SP.δs)
-    (hδ16 : D.SP.δs ≤ 1 / 16) (hδJ : ⌈4 * D.SP.δs * D.SP.Jst⌉₊ ≤ D.SP.Jst)
-    (hq : 4 * (2 * D.SP.δs) ^ (1 / (4 : ℝ)) < 1)
-    (anc : ℕ → ∀ j, Finset (D.Ms j G).Md →
-      (D.Ms j G).alive (ancAt A.G (D.preAt I) (A.blkStart D.S.K I.1 - 4 * D.S.K)))
-    (hanc : D.AnchorOK G I anc) {xs : ℝ} (hxs : xs ∈ dyadicGridCell A.G I.1 I.2)
-    (L : ∀ l G, LiftData (bf.Lab ⊕ Fin fp.Mc) (D.Ms l G).Md) (Aw Iw : ℕ)
-    (hAw : 1 ≤ Aw) (hIw : D.U0 ≤ 2 ^ (Iw + 1)) :
-    ‖fp.Λc I (patternPiece (fun l => D.coreAt l G I) (fun l => D.toLeaf.sv l G I)
-        (fun l => D.errAt L l G I) (fun _ => 0))‖ ≤
-      2 ^ 4 * (∑ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs,
-        ((ModeComponents.upperHeights D.SP.Jst D.SP.δs).card : ℝ)⁻¹ *
-          ∑ c ∈ (D.fourTested G I xs anc h).image (D.fourBinOf G I xs anc h),
-            fourBinVal κ' J c * (((D.fourTested G I xs anc h).filter
-              fun p => D.fourBinOf G I xs anc h p = c).card : ℝ)) /
-        (1 - 4 * (2 * D.SP.δs) ^ (1 / (4 : ℝ))) +
-      fourErrC κ' J * (D.S.Dstar ^ 100)⁻¹ *
-        ∏ l, ∑ K ∈ D.compsAt l G I, ∑ m ∈ K, ‖D.c l G (A.blkStart D.S.K I.1) (D.preAt I) m‖ ∧
-    (∀ l : Fin 4, ‖fp.Λc I (patternPiece (fun l => D.coreAt l G I) (fun l => D.toLeaf.sv l G I)
-        (fun l => D.errAt L l G I) (fun k => if k = l then 1 else 0))‖ ≤
-      2 ^ 4 * (∑ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs,
-        ((ModeComponents.upperHeights D.SP.Jst D.SP.δs).card : ℝ)⁻¹ *
-          ∑ c ∈ (D.threeTested G I xs l (fun h j _ => anc h j) (D.toLeaf.sv l G I) Iw h).image
-              (D.threeBinOf G I xs l (fun h j _ => anc h j) (D.toLeaf.sv l G I) h),
-            threeBinVal κ' J Aw l c *
-              (((D.threeTested G I xs l (fun h j _ => anc h j) (D.toLeaf.sv l G I) Iw h).filter
-                fun q => D.threeBinOf G I xs l (fun h j _ => anc h j) (D.toLeaf.sv l G I) h q =
-                  c).card : ℝ)) /
-          (1 - 4 * (2 * D.SP.δs) ^ (1 / (4 : ℝ))) +
-      threeErrC κ' J Aw * (D.S.Dstar ^ 100)⁻¹ *
-        Real.sqrt ((dyadicGridLength A.G I.1)⁻¹ * ∫ y in (dyadicGridLeft A.G I.1 I.2)..
-          dyadicGridLeft A.G I.1 I.2 + dyadicGridLength A.G I.1,
-            ‖augPhys (D.toLeaf.sv l G I) y‖ ^ 2) *
-        ∏ j ∈ Finset.univ.erase l,
-          ∑ K ∈ D.compsAt j G I, ∑ m ∈ K, ‖D.c j G (A.blkStart D.S.K I.1) (D.preAt I) m‖) ∧
-    (∀ h ∈ ModeComponents.upperHeights D.SP.Jst D.SP.δs, ∀ j, ∀ F ∈ D.goodCls G I j h,
-      ∀ F' ∈ D.goodCls G I j h, anc h j F = anc h j F' → F = F') := by
-  refine ⟨?_, fun l => ?_, fun h hh j F hF F' hF' he => D.anchor_injective hanc hh hF hF' he⟩
-  · refine (D.four_core_principal_bins hV hCA hCT hd2 hD hB hQ hSP hstab hK hI G hz hdim hδ hδc
-      hcl hρ hQC hCm0 hCm hQB hτc hτm hMN hCN (by omega) hDg hKf hQBf hεw hcard hΛ hJ hδs hδ16
-      hδJ hq anc hanc hxs L).trans (add_le_add le_rfl (le_of_eq ?_))
-    rw [← Finset.mul_sum, sum_compIdx_prod (fun _ => 0) (fun l => D.compsAt l G I)
-      (fun l K => ∑ m ∈ K, ‖D.c l G (A.blkStart D.S.K I.1) (D.preAt I) m‖) (fun _ => 1)]
-    simp
-  · refine (D.three_core_principal_bins hV hCA hCT hd2 hD hB hQ hSP hstab hK hI G hz hdim hδ hdδ
-      hδ8 hδc hcl hρ hQC hCm0 hCm hQB hτc hτm hMN hCN hJ3 hDg hKf hQBf hεw hcard hΛ hJ hδs hδ16
-      hδJ hq l (fun h j _ => anc h j) (fun j _ => D.anchorOKAt_of hanc j) hxs L Aw Iw hAw
-      hIw).trans (add_le_add le_rfl (le_of_eq ?_))
-    rw [← Finset.mul_sum, sum_compIdx_prod (fun k => if k = l then 1 else 0)
-      (fun l => D.compsAt l G I)
-      (fun l K => ∑ m ∈ K, ‖D.c l G (A.blkStart D.S.K I.1) (D.preAt I) m‖) (fun _ => 1)]
-    congr 1
-    rw [← prod_ite_one l (fun j => ∑ K ∈ D.compsAt j G I,
-      ∑ m ∈ K, ‖D.c j G (A.blkStart D.S.K I.1) (D.preAt I) m‖)]
-    refine Finset.prod_congr rfl fun j _ => ?_
-    by_cases hj : j = l
-    · simp [hj]
-    · simp [hj]
-
-end SideInput
-
-end ActiveSetup.BasicFamilies.FamParams
 
 end Auto
 

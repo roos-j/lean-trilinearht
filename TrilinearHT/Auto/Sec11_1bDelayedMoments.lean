@@ -1134,7 +1134,7 @@ theorem norm_waveRow_sq (G : RealDyadicGrid) (κ : LocalKernelClass) (α ν : �
     exact setIntegral_congr_fun (dyadicGridCell_measurable G I.1 I.2) (fun y _ => by
       simp only [id]; ring)
   rw [e, norm_mul, mul_pow, Complex.norm_real, Real.norm_of_nonneg (Real.sqrt_nonneg _),
-    Real.sq_sqrt (by positivity)]
+    Real.sq_sqrt (by simpa using (inv_pos.mpr hr).le)]
   rfl
 
 /-- The delayed wave rows of a sub-collection: the telescoping part, with the start term left

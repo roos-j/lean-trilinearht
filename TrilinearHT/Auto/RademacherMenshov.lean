@@ -86,26 +86,6 @@ theorem orthogonalBlock_energy {𝕜 H ι : Type*} [RCLike 𝕜]
   have h := congrArg RCLike.re he
   simpa only [map_sum, inner_self_eq_norm_sq] using h
 
-/-- At one dyadic scale, disjoint blocks cannot increase total orthogonal energy. -/
-theorem orthogonalBlocks_energy_le {𝕜 H ι : Type*} [RCLike 𝕜]
-    [NormedAddCommGroup H] [InnerProductSpace 𝕜 H]
-    (s : Finset ι) (v : ι → H)
-    (hv : ∀ i ∈ s, ∀ j ∈ s, i ≠ j → inner 𝕜 (v i) (v j) = 0)
-    (blocks : Finset (Finset ι))
-    (hdis : (blocks : Set (Finset ι)).PairwiseDisjoint id)
-    (hsub : ∀ A ∈ blocks, A ⊆ s) :
-    ∑ A ∈ blocks, ‖∑ i ∈ A, v i‖ ^ 2 ≤ ∑ i ∈ s, ‖v i‖ ^ 2 := by
-  classical
-  calc
-    _ = ∑ A ∈ blocks, ∑ i ∈ A, ‖v i‖ ^ 2 := by
-      apply Finset.sum_congr rfl
-      intro A hA
-      exact orthogonalBlock_energy A v
-        (fun i hi j hj hij => hv i (hsub A hA hi) j (hsub A hA hj) hij)
-    _ = ∑ i ∈ blocks.biUnion id, ‖v i‖ ^ 2 := (Finset.sum_biUnion hdis).symm
-    _ ≤ _ := Finset.sum_le_sum_of_subset_of_nonneg
-      (by simpa only [Finset.biUnion_subset, id_eq] using hsub) (fun _ _ _ => sq_nonneg _)
-
 theorem finiteRowNorm_le_of_sq_le {ι F : Type*} [Fintype ι] [NormedAddCommGroup F]
     (f : ι → F) {C : ℝ} (hC : 0 ≤ C) (h : ∑ i, ‖f i‖ ^ 2 ≤ C ^ 2) :
     finiteRowNorm f ≤ C := by
@@ -663,22 +643,6 @@ theorem projection_interval_differences_bessel {ι : Type*} [Fintype ι]
       exact Finset.mem_range.mpr (by have := ht i; omega)
     _ ≤ _ := projectionIncrement_energy_le P T hP hnest g
 
-/-- The disjoint-interval version of blueprint `lem:prefix`, lines 519 and 534,
-with the same jump constant and no commutation between layers. -/
-theorem nestedProjectionProduct_interval_jumps {ι : Type*} [Fintype ι]
-    (P : ℕ → ℕ → H →L[𝕜] H) (T m : ℕ)
-    (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n))
-    (hnest : ∀ l < m, ∀ i ≤ T, ∀ j ≤ T, i ≤ j → (P l i).comp (P l j) = P l i)
-    (r t : ι → ℕ) (hrt : ∀ i, r i ≤ t i) (ht : ∀ i, t i ≤ T)
-    (hdis : ∀ i j, i ≠ j → Disjoint (Finset.Ioc (r i) (t i)) (Finset.Ioc (r j) (t j)))
-    (g : H) :
-    ∑ i, ‖nestedProjectionProduct P m (t i) g - nestedProjectionProduct P m (r i) g‖ ^ 2 ≤
-      (m : ℝ) ^ 2 * projectionPrefixConstant T ^ (2 * (m - 1)) * ‖g‖ ^ 2 := by
-  apply nestedProjectionProduct_jump_rows_sq_of_bessel P T m hP hnest r t
-    (fun i => (hrt i).trans (ht i)) ht
-  intro l hl h
-  exact projection_interval_differences_bessel (P l) T (hP l hl) (hnest l hl) r t hrt ht hdis h
-
 end NestedProjections
 
 /-- A power-sized transition count has a logarithmic prefix constant,
@@ -939,61 +903,6 @@ theorem operatorComplementProduct_rows_bound {ι F : Type*} [Fintype ι]
         _ = _ := by rw [pow_succ]; ring
 
 end OperatorComplements
-
-/-- Products of orthogonal projections and their complements are
-contractions. This supplies integrability of measurable fixed averages. -/
-theorem operatorComplementProduct_norm_apply_le {𝕜 H : Type*} [RCLike 𝕜]
-    [NormedAddCommGroup H] [InnerProductSpace 𝕜 H] [CompleteSpace H]
-    (P : ℕ → H →L[𝕜] H) (θ : ℕ → Bool) (n : ℕ)
-    (hP : ∀ l < n, IsStarProjection (P l)) (z : H) :
-    ‖operatorComplementProduct P θ n z‖ ≤ ‖z‖ := by
-  induction n with
-  | zero => exact le_rfl
-  | succ n ih =>
-    have hprev := ih (fun l hl => hP l (by omega))
-    have hlast : IsStarProjection
-        (if θ n then ContinuousLinearMap.id 𝕜 H - P n else P n) := by
-      split_ifs
-      · exact (hP n (by omega)).one_sub
-      · exact hP n (by omega)
-    exact (starProjection_norm_apply_le _ hlast _).trans hprev
-
-section ComplexMeasureAverages
-open MeasureTheory
-variable {Ω : Type*} [MeasurableSpace Ω]
-variable {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F] [NormedSpace ℂ F]
-  [IsScalarTower ℝ ℂ F]
-
-/-- The norm-one scalar pairing for integration against a complex measure. -/
-noncomputable def complexMeasurePairing (F : Type*) [NormedAddCommGroup F]
-    [NormedSpace ℝ F] [NormedSpace ℂ F] [IsScalarTower ℝ ℂ F] : F →L[ℝ] ℂ →L[ℝ] F :=
-  (ContinuousLinearMap.lsmul ℝ ℂ : ℂ →L[ℝ] F →L[ℝ] F).flip
-
-/-- The ordinary scalar-valued vector-measure integral for a complex Banach space. -/
-noncomputable def complexMeasureIntegral (μ : VectorMeasure Ω ℂ) (f : Ω → F) : F :=
-  μ.integral f (complexMeasurePairing F)
-
-/-- Complex-linear maps commute with the complex-measure integral. -/
-theorem complexMeasureIntegral_map [CompleteSpace F]
-    {G : Type*} [NormedAddCommGroup G] [NormedSpace ℝ G] [NormedSpace ℂ G]
-    [IsScalarTower ℝ ℂ G] [CompleteSpace G]
-    (μ : VectorMeasure Ω ℂ) (C : F →L[ℂ] G) {f : Ω → F}
-    (hf : Integrable f μ.variation) :
-    C (complexMeasureIntegral μ f) = complexMeasureIntegral μ (fun ω => C (f ω)) := by
-  have hpair :
-      (ContinuousLinearMap.compL ℝ ℂ F G (C.restrictScalars ℝ)).comp (complexMeasurePairing F) =
-        (complexMeasurePairing G).comp (C.restrictScalars ℝ) := by
-    ext x c
-    change C (c • x) = c • C x
-    exact map_smul C c x
-  have hleft := VectorMeasure.continuousLinearMap_apply_integral
-    (μ := μ) (B := complexMeasurePairing F) (C := C.restrictScalars ℝ) hf
-  have hright := VectorMeasure.integral_continuousLinearMap_comp
-    (μ := μ) (B := complexMeasurePairing G) (C := C.restrictScalars ℝ) hf
-  rw [hpair] at hleft
-  exact hleft.trans hright.symm
-
-end ComplexMeasureAverages
 
 end Auto
 

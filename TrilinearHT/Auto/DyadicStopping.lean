@@ -62,13 +62,6 @@ theorem dyadicGridCell_volume (G : RealDyadicGrid) (s m : ℤ) :
     volume (dyadicGridCell G s m) = ENNReal.ofReal (dyadicGridLength G s) := by
   simp [dyadicGridCell, Real.volume_Ico]
 
-/-- The ordinary grid is included in the source's grid class. -/
-noncomputable def ordinaryDyadicGrid : RealDyadicGrid where
-  baseLength := 1
-  baseLength_pos := zero_lt_one
-  origin := fun _ => 0
-  alignment s := ⟨0, by simp⟩
-
 theorem dyadicGridCell_disjoint_of_lt (G : RealDyadicGrid) (s : ℤ)
     {m n : ℤ} (hmn : m < n) : Disjoint (dyadicGridCell G s m) (dyadicGridCell G s n) := by
   apply Set.disjoint_left.mpr
@@ -140,13 +133,6 @@ open scoped Classical in
 noncomputable def dyadicPathSum (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
     (a : ℤ × ℤ → ℝ≥0∞) (x : ℝ) : ℝ≥0∞ :=
   ∑ c ∈ S, (dyadicGridCell G c.1 c.2).indicator (fun _ => a c) x
-
-theorem dyadicPathSum_measurable (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
-    (a : ℤ × ℤ → ℝ≥0∞) : Measurable (dyadicPathSum G S a) := by
-  classical
-  unfold dyadicPathSum
-  exact Finset.measurable_sum _ (fun c _ =>
-    measurable_const.indicator (dyadicGridCell_measurable G c.1 c.2))
 
 /-- Blueprint `eq:path`, lines 424–428: summing cell length times weight
 is exactly the integral of the path sum on a containing root. -/
@@ -232,37 +218,6 @@ theorem restart_total_length (g : ℕ → ℝ) (hg : ∀ k, 0 ≤ g k)
 noncomputable def dyadicRootLength (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) : ℝ :=
   ∑ c ∈ S, dyadicGridLength G c.1
 
-theorem dyadicRootLength_nonneg (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) :
-    0 ≤ dyadicRootLength G S :=
-  Finset.sum_nonneg (fun c _ => (dyadicGridLength_pos G c.1).le)
-
-/-- The source restart bound from the actual per-root exceptional-child
-budgets. Taking a union or a subfamily of children can only lower its cost. -/
-theorem dyadicRestartPacking (G : RealDyadicGrid) (root : ℤ × ℤ)
-    (generation : ℕ → Finset (ℤ × ℤ)) (children : ℕ → ℤ × ℤ → Finset (ℤ × ℤ))
-    {ρ : ℝ} (hρ : 0 ≤ ρ) (hρ1 : ρ < 1) (hzero : generation 0 = {root})
-    (hnext : ∀ k, generation (k + 1) ⊆ (generation k).biUnion (children k))
-    (hchild : ∀ k c, c ∈ generation k →
-      dyadicRootLength G (children k c) ≤ ρ * dyadicGridLength G c.1) :
-    (∀ k, dyadicRootLength G (generation k) ≤ ρ ^ k * dyadicGridLength G root.1) ∧
-    Summable (fun k => dyadicRootLength G (generation k)) ∧
-    (∑' k, dyadicRootLength G (generation k)) ≤ dyadicGridLength G root.1 / (1 - ρ) := by
-  have hz : dyadicRootLength G (generation 0) ≤ dyadicGridLength G root.1 := by
-    simp [hzero, dyadicRootLength]
-  have hs (k) : dyadicRootLength G (generation (k + 1)) ≤
-      ρ * dyadicRootLength G (generation k) := by
-    calc
-      _ ≤ dyadicRootLength G ((generation k).biUnion (children k)) :=
-        Finset.sum_le_sum_of_subset_of_nonneg (hnext k)
-          (fun c _ _ => (dyadicGridLength_pos G c.1).le)
-      _ ≤ ∑ c ∈ generation k, dyadicRootLength G (children k c) :=
-        finite_union_weight_le _ _ _ (fun c => (dyadicGridLength_pos G c.1).le)
-      _ ≤ ∑ c ∈ generation k, ρ * dyadicGridLength G c.1 :=
-        Finset.sum_le_sum (fun c hc => hchild k c hc)
-      _ = _ := (Finset.mul_sum ..).symm
-  exact ⟨restart_generation_decay _ hρ hz hs,
-    restart_total_length _ (fun k => dyadicRootLength_nonneg G (generation k)) hρ hρ1 hz hs⟩
-
 open scoped Classical in
 /-- Maximal cells of a finite family, ordered by interval containment. -/
 noncomputable def maximalDyadicCells (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) :
@@ -313,23 +268,6 @@ theorem maximalDyadicCells_length_le (G : RealDyadicGrid) (S : Finset (ℤ × �
     dyadicRootLength G (maximalDyadicCells G S) ≤ dyadicRootLength G S :=
   Finset.sum_le_sum_of_subset_of_nonneg (maximalDyadicCells_subset G S)
     (fun c _ _ => (dyadicGridLength_pos G c.1).le)
-
-/-- Blueprint path-packing, line 429: take maximal cells in the union of
-several first-stop rules; their length cost is at most the sum of the costs. -/
-theorem dyadicCombineStops {ι : Type*} (G : RealDyadicGrid) (T : Finset ι)
-    (F : ι → Finset (ℤ × ℤ)) (root : ℤ × ℤ) (budget : ι → ℝ)
-    (hF : ∀ i ∈ T, dyadicRootLength G (F i) ≤ budget i * dyadicGridLength G root.1) :
-    (⋃ c ∈ maximalDyadicCells G (T.biUnion F), dyadicGridCell G c.1 c.2) =
-      (⋃ c ∈ T.biUnion F, dyadicGridCell G c.1 c.2) ∧
-    dyadicRootLength G (maximalDyadicCells G (T.biUnion F)) ≤
-      (∑ i ∈ T, budget i) * dyadicGridLength G root.1 := by
-  refine ⟨maximalDyadicCells_union G _, ?_⟩
-  calc
-    _ ≤ dyadicRootLength G (T.biUnion F) := maximalDyadicCells_length_le G _
-    _ ≤ ∑ i ∈ T, dyadicRootLength G (F i) :=
-      finite_union_weight_le T F _ (fun c => (dyadicGridLength_pos G c.1).le)
-    _ ≤ ∑ i ∈ T, budget i * dyadicGridLength G root.1 := Finset.sum_le_sum hF
-    _ = _ := (Finset.sum_mul ..).symm
 
 theorem dyadicGridCell_left_mem (G : RealDyadicGrid) (s m : ℤ) :
     dyadicGridLeft G s m ∈ dyadicGridCell G s m := by
@@ -449,12 +387,6 @@ noncomputable def dyadicRetainedCells (G : RealDyadicGrid) (S : Finset (ℤ × �
     (a : ℤ × ℤ → ℝ) (T : ℝ) : Finset (ℤ × ℤ) :=
   S.filter (fun c => dyadicAncestorSum G S a c ≤ T)
 
-theorem dyadicAncestorSum_nonneg (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
-    (a : ℤ × ℤ → ℝ) (ha : ∀ c ∈ S, 0 ≤ a c) (c : ℤ × ℤ) :
-    0 ≤ dyadicAncestorSum G S a c := by
-  classical
-  exact Finset.sum_nonneg (fun d hd => ha d (Finset.mem_filter.mp hd).1)
-
 theorem dyadicAncestorSum_mono (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
     (a : ℤ × ℤ → ℝ) (ha : ∀ c ∈ S, 0 ≤ a c) {c d : ℤ × ℤ}
     (hcd : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2) :
@@ -472,15 +404,6 @@ theorem dyadicFirstCrossings_mem (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
     c ∈ S ∧ T < dyadicAncestorSum G S a c := by
   classical
   exact Finset.mem_filter.mp (maximalDyadicCells_subset G _ hc)
-
-theorem dyadicBadCells_downward (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
-    (a : ℤ × ℤ → ℝ) (ha : ∀ c ∈ S, 0 ≤ a c) (T : ℝ)
-    {c d : ℤ × ℤ} (hc : c ∈ S) (hd : d ∈ dyadicBadCells G S a T)
-    (hcd : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2) :
-    c ∈ dyadicBadCells G S a T := by
-  classical
-  refine Finset.mem_filter.mpr ⟨hc, ?_⟩
-  exact (Finset.mem_filter.mp hd).2.trans_le (dyadicAncestorSum_mono G S a ha hcd)
 
 /-- Removing a first crossing removes exactly its cell and all original
 descendant summands. The data on earlier ancestors are left unchanged. -/
@@ -773,25 +696,6 @@ theorem dyadicHullMax_support_bound (G : RealDyadicGrid) (S : Finset (ℤ × ℤ
   obtain ⟨c, hc, hx⟩ := Set.mem_iUnion₂.mp hx
   exact Set.mem_iUnion₂.mpr ⟨c, (Finset.mem_filter.mp hc).1, hx⟩
 
-/-- Blueprint `lem:cuts`, displayed distribution estimate at lines 454–457.
-The sum of the hull superlevel measures obeys both the support and energy
-bounds, with absolute weak-type constant one. -/
-theorem dyadicHullMax_distribution {ι : Type*} (V : Finset ι) (G : RealDyadicGrid)
-    (S : ι → Finset (ℤ × ℤ)) (g : ι → ℝ → ℝ≥0∞) (R : Set ℝ)
-    (hR : ∀ ν ∈ V, ∀ c ∈ S ν, dyadicGridCell G c.1 c.2 ⊆ R)
-    {E M t : ℝ≥0∞} (ht0 : t ≠ 0) (htop : t ≠ ∞)
-    (hE : ∑ ν ∈ V, ∫⁻ x in R, g ν x ≤ E * volume R)
-    (hM : ∑ ν ∈ V, volume (⋃ c ∈ maximalDyadicCells G (S ν),
-      dyadicGridCell G c.1 c.2) ≤ M * volume R) :
-    ∑ ν ∈ V, volume {x | t < dyadicHullMax G (S ν) (g ν) x} ≤
-      min (M * volume R) (E * volume R / t) := by
-  apply le_min
-  · exact (Finset.sum_le_sum (fun ν _ => dyadicHullMax_support_bound G (S ν) (g ν) t)).trans hM
-  · apply (ENNReal.le_div_iff_mul_le (Or.inl ht0) (Or.inl htop)).mpr
-    rw [mul_comm, Finset.mul_sum]
-    exact (Finset.sum_le_sum (fun ν hν => dyadicHullMax_weak G (S ν) (g ν) R
-      (hR ν hν) t)).trans hE
-
 /-- Layer cake for a bounded nonnegative real function, with the level
 integral restricted to its finite range. -/
 theorem bounded_layercake {α : Type*} [MeasurableSpace α] (μ : Measure α)
@@ -977,29 +881,6 @@ theorem dyadicHullMax_log_integral {ι : Type*} (V : Finset ι) (G : RealDyadicG
     rw [mul_comm, Finset.mul_sum]
     exact (Finset.sum_le_sum (fun ν hν =>
       dyadicHullMax_weak G (S ν) (g ν) R (hR ν hν) (ENNReal.ofReal t))).trans hE
-
-/-- Root-normalized form of the logarithmic hull estimate in `lem:cuts`.
-The estimate on the whole line also bounds its restriction to the root. -/
-theorem dyadicHullMax_log_integral_normalized {ι : Type*} (V : Finset ι)
-    (G : RealDyadicGrid) (S : ι → Finset (ℤ × ℤ)) (g : ι → ℝ → ℝ≥0∞)
-    (root : ℤ × ℤ)
-    (hR : ∀ ν ∈ V, ∀ c ∈ S ν, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G root.1 root.2)
-    {E M T : ℝ} (hE0 : 0 ≤ E) (hM0 : 0 ≤ M) (hT : 0 ≤ T)
-    (hE : ∑ ν ∈ V, ∫⁻ x in dyadicGridCell G root.1 root.2, g ν x ≤
-      ENNReal.ofReal (E * dyadicGridLength G root.1))
-    (hM : ∑ ν ∈ V, volume (⋃ c ∈ maximalDyadicCells G (S ν),
-      dyadicGridCell G c.1 c.2) ≤ ENNReal.ofReal (M * dyadicGridLength G root.1)) :
-    ∑ ν ∈ V, ∫⁻ x, min (dyadicHullMax G (S ν) (g ν) x) (ENNReal.ofReal T) ≤
-      ENNReal.ofReal (E * (1 + Real.log (2 + M * T / E)) * dyadicGridLength G root.1) := by
-  have hL := dyadicGridLength_pos G root.1
-  have hb := dyadicHullMax_log_integral V G S g _ hR (mul_nonneg hE0 hL.le)
-    (mul_nonneg hM0 hL.le) hT hE hM
-  have hr : M * dyadicGridLength G root.1 * T / (E * dyadicGridLength G root.1) = M * T / E := by
-    rw [mul_right_comm M _ T, mul_div_mul_right _ _ (ne_of_gt hL)]
-  rw [hr] at hb
-  convert hb using 1
-  congr 1
-  ring
 
 open scoped Classical in
 /-- Partial squared hull maximum using only ancestors through the current
@@ -1624,15 +1505,6 @@ theorem dyadicFiniteTree_root_mem (G : RealDyadicGrid) (root : ℤ × ℤ) (N : 
   apply (dyadicFiniteTree_mem_iff G root root N).mpr
   exact ⟨Set.Subset.rfl, by omega⟩
 
-theorem dyadicFiniteTree_children_mem (G : RealDyadicGrid) (root c d : ℤ × ℤ) (N : ℕ)
-    (hc : c ∈ dyadicFiniteTree G root N) (hdepth : c.1 < root.1 + N)
-    (hd : d ∈ dyadicChildren G c) : d ∈ dyadicFiniteTree G root N := by
-  obtain ⟨hsub, _⟩ := (dyadicFiniteTree_mem_iff G root c N).mp hc
-  apply (dyadicFiniteTree_mem_iff G root d N).mpr
-  exact ⟨(dyadicChildren_subset G c d hd).trans hsub, by
-    have := dyadicChildren_depth G c d hd
-    omega⟩
-
 theorem dyadicFiniteTree_ancestor_mem (G : RealDyadicGrid) (root c d : ℤ × ℤ) (N : ℕ)
     (hc : c ∈ dyadicFiniteTree G root N)
     (hcd : dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G d.1 d.2)
@@ -2022,19 +1894,6 @@ theorem dyadicSizeSegment_exists (G : RealDyadicGrid) (root : ℤ × ℤ) (N : �
   · intro L hL huL
     exact hmax L (Finset.mem_filter.mpr ⟨hL, huL⟩)
 
-theorem dyadicSizeSegment_average_le (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
-    (a : ℤ × ℤ → ℝ) (K : ℤ × ℤ) {u : ℤ × ℤ} (hu : u ∈ dyadicSizeSegment G S a K) :
-    a u ≤ 2 * a K := by
-  classical
-  obtain ⟨huS, huK, hstop⟩ := Finset.mem_filter.mp hu
-  apply le_of_not_gt
-  intro hbad
-  obtain ⟨b, hb, hub⟩ := maximalDyadicCells_covers G
-    (S.filter (fun c : ℤ × ℤ => dyadicGridCell G c.1 c.2 ⊆
-      dyadicGridCell G K.1 K.2 ∧ 2 * a K < a c))
-    (Finset.mem_filter.mpr ⟨huS, huK, hbad⟩)
-  exact hstop b hb hub
-
 /-- No threshold-violating ancestor occurs between a segment cell and its root. -/
 theorem dyadicSizeSegment_no_bad_ancestor (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
     (a : ℤ × ℤ → ℝ) (K : ℤ × ℤ) {u b : ℤ × ℤ}
@@ -2116,31 +1975,6 @@ theorem dyadicSizeSegmentCuts_union_below (G : RealDyadicGrid) (root : ℤ × �
   obtain ⟨hbK, hbad⟩ := Finset.mem_filter.mp hb
   obtain ⟨hbT, hbsub⟩ := (dyadicFiniteTree_below_iff G root N hK b).mp hbK
   exact dyadicSizeSegment_no_bad_ancestor G _ a K hu hbT hbsub hbad
-
-theorem dyadicSizeSegment_root_mem (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
-    (a : ℤ × ℤ → ℝ) (K : ℤ × ℤ) (hK : K ∈ S) (ha : 0 ≤ a K) :
-    K ∈ dyadicSizeSegment G S a K := by
-  classical
-  refine Finset.mem_filter.mpr ⟨hK, Set.Subset.rfl, ?_⟩
-  intro b hb hKb
-  have hlt := dyadicNextSizeRoots_depth_lt G S a K ha hb
-  have hle := dyadicGridCell_depth_le_of_subset G K b hKb
-  omega
-
-/-- A deepest containing root is unique because same-depth dyadic cells are
-disjoint. Thus the source's row assignment is unambiguous. -/
-theorem dyadicDeepestRoot_unique (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
-    (u K L : ℤ × ℤ) (hK : K ∈ S) (hL : L ∈ S)
-    (huK : dyadicGridCell G u.1 u.2 ⊆ dyadicGridCell G K.1 K.2)
-    (huL : dyadicGridCell G u.1 u.2 ⊆ dyadicGridCell G L.1 L.2)
-    (hKm : ∀ c ∈ S, dyadicGridCell G u.1 u.2 ⊆ dyadicGridCell G c.1 c.2 → c.1 ≤ K.1)
-    (hLm : ∀ c ∈ S, dyadicGridCell G u.1 u.2 ⊆ dyadicGridCell G c.1 c.2 → c.1 ≤ L.1) :
-    K = L := by
-  have he : K.1 = L.1 := le_antisymm (hLm K hK huK) (hKm L hL huL)
-  have hx := dyadicGridCell_left_mem G u.1 u.2
-  apply Prod.ext he
-  exact dyadicGridCell_sameDepth_common_point G K.1 K.2 L.2 (huK hx)
-    (by simpa only [he] using huL hx)
 
 /-- The sharp local weak estimate integrates the density over the very same
 superlevel set. This is the distribution estimate behind the dyadic L2 bound. -/
@@ -2358,16 +2192,6 @@ theorem dyadicRealMax_l2 (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (root : 
     exact (ENNReal.ofReal_lt_ofReal_iff_of_nonneg ht.le).symm
   rw [hlevel]
   exact dyadicHullMax_weak_local G S _ _
-
-theorem dyadicRealMax_sqrt_energy_le (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
-    (root : ℤ × ℤ)
-    (hS : ∀ c ∈ S, dyadicGridCell G c.1 c.2 ⊆ dyadicGridCell G root.1 root.2)
-    (f : ℝ → ℝ) (hf : Measurable f) (hf0 : ∀ x, 0 ≤ f x) (hf2 : MemLp f 2 volume) :
-    Real.sqrt (∫ x, dyadicRealMax G S f x ^ 2) ≤ 2 * Real.sqrt (∫ x, f x ^ 2) := by
-  calc
-    _ ≤ Real.sqrt (4 * ∫ x, f x ^ 2) :=
-      Real.sqrt_le_sqrt (dyadicRealMax_l2 G S root hS f hf hf0 hf2)
-    _ = _ := by rw [Real.sqrt_mul (by norm_num : (0 : ℝ) ≤ 4)]; norm_num
 
 theorem dyadicCellAverage_le_max (G : RealDyadicGrid) (S : Finset (ℤ × ℤ))
     (f : ℝ → ℝ) (hf : ∀ x, 0 ≤ f x)
@@ -2963,18 +2787,6 @@ theorem dyadicAnchorGeneration_pairwiseDisjoint {E : Type*} [NormedAddCommGroup 
     · exact (ih hK hL he).mono (dyadicNextAnchors_mem G S f t K hcK).2.1
         (dyadicNextAnchors_mem G S f t L hdL).2.1
 
-theorem dyadicAnchorGeneration_eq_empty {E : Type*} [NormedAddCommGroup E]
-    (G : RealDyadicGrid) (root : ℤ × ℤ) (N : ℕ) (f : ℤ × ℤ → E)
-    (t : ℝ) (ht : 0 ≤ t) (n : ℕ) (hn : N < n) :
-    dyadicAnchorGeneration G (dyadicFiniteTree G root N) f t root n = ∅ := by
-  apply Finset.eq_empty_iff_forall_notMem.mpr
-  intro c hc
-  have hd := dyadicAnchorGeneration_depth G _ f t ht root n hc
-  have hT := dyadicAnchorGeneration_subset G _ f t root
-    (dyadicFiniteTree_root_mem G root N) n hc
-  have hupper := ((dyadicFiniteTree_mem_iff G root c N).mp hT).2
-  omega
-
 open scoped Classical in
 /-- Cells assigned to one anchor before its next coefficient crossing. -/
 noncomputable def dyadicAnchorSegment {E : Type*} [NormedAddCommGroup E]
@@ -3050,14 +2862,6 @@ theorem dyadicRestartGeneration_succ {E : Type*} [NormedAddCommGroup E]
       (dyadicRestartGeneration G S f t root T n).biUnion
         (fun R => dyadicAnchorGeneration G S f t R T) := by
   simp only [dyadicRestartGeneration, Nat.add_mul, Nat.one_mul, dyadicAnchorGeneration_add]
-
-theorem dyadicRestartGeneration_eq_empty {E : Type*} [NormedAddCommGroup E]
-    (G : RealDyadicGrid) (root : ℤ × ℤ) (N : ℕ) (f : ℤ × ℤ → E)
-    (t : ℝ) (ht : 0 ≤ t) (T : ℕ) (hT : 0 < T) (n : ℕ) (hn : N < n) :
-    dyadicRestartGeneration G (dyadicFiniteTree G root N) f t root T n = ∅ := by
-  apply dyadicAnchorGeneration_eq_empty G root N f t ht
-  have hmul : n ≤ n * T := by simpa using Nat.mul_le_mul_left n hT
-  omega
 
 /-- A finite attempt assigns every non-restarted cell to a spatial
 anchor generation below `T`, and the coefficient error is at most `t`. -/
@@ -3158,29 +2962,6 @@ theorem dyadicAnchorCuts_refines {E : Type*} [NormedAddCommGroup E]
   · exact maximalDyadicCells_covers G
       (dyadicAnchorGeneration G S f t root n ∪ dyadicGeneration G root N)
       (Finset.mem_union_right _ hl)
-
-/-- The initial completed partition consists exactly of the attempt root. -/
-theorem dyadicAnchorCuts_zero {E : Type*} [NormedAddCommGroup E]
-    (G : RealDyadicGrid) (S : Finset (ℤ × ℤ)) (f : ℤ × ℤ → E)
-    (t : ℝ) (root : ℤ × ℤ) (N : ℕ) (hroot : root ∈ S)
-    (hdepth : ∀ c ∈ S, c.1 ≤ root.1 + N) :
-    dyadicAnchorCuts G S f t root N 0 = {root} := by
-  classical
-  have hr := dyadicAnchorCuts_anchor_mem G S f t root N hroot hdepth 0
-    (Finset.mem_singleton_self root)
-  apply Finset.ext
-  intro c
-  constructor
-  · intro hc
-    apply Finset.mem_singleton.mpr
-    by_contra hne
-    have hdis := dyadicAnchorCuts_pairwiseDisjoint G S f t root N 0 hc hr hne
-    have hsub := ((dyadicFiniteTree_mem_iff G root c N).mp
-      (dyadicAnchorCuts_subset G S f t root N hroot hdepth 0 hc)).1
-    exact Set.disjoint_left.mp hdis (dyadicGridCell_left_mem G c.1 c.2)
-      (hsub (dyadicGridCell_left_mem G c.1 c.2))
-  · intro hc
-    simpa only [Finset.mem_singleton.mp hc] using hr
 
 open scoped Classical in
 /-- Refinement of two finite partitions restricts to an exact partition of

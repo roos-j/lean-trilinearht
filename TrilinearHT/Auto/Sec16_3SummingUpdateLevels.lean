@@ -218,15 +218,6 @@ open scoped FourierTransform ComplexConjugate ENNReal
 
 /-! ### The uniform local estimate (thm:uniform-local, blueprint lines 2906-2932) -/
 
-/-- Blueprint lines 2911-2915: first stops `J'` of the inputs, where the average of `|f_j|^q`
-exceeds `16 a_J^q`, have total length below `|J|/16` for each `j`: from
-`16 a^q Σ |J'| < Σ ∫_{J'} |f|^q ≤ a^q |J|`. -/
-theorem first_stops_length {a L S I : ℝ} (ha : 0 < a) (hlow : 16 * a * L ≤ S)
-    (hup : S ≤ a * I) : L ≤ I / 16 := by
-  have : 16 * a * L ≤ a * I := hlow.trans hup
-  rw [le_div_iff₀ (by norm_num)]
-  nlinarith
-
 /-- Blueprint lines 2927-2931 (absorption): from `C_N ≤ 1 + C A + C c C_N` with `C c ≤ 1/2`,
 `C_N ≤ 2 + 2 C A`. -/
 theorem uniform_constant_absorption {CN C A c : ℝ} (h : CN ≤ 1 + C * A + C * c * CN)
@@ -235,54 +226,6 @@ theorem uniform_constant_absorption {CN C A c : ℝ} (h : CN ≤ 1 + C * A + C *
   linarith
 
 /-! ### The main theorem: kernel reconstruction and lattices (blueprint lines 2935-3010) -/
-
-/-- Blueprint `eq:kernel-reconstruction` (line 2955): for `ψ = φ'''` with compactly supported
-continuous derivative `ψ' = φ⁽⁴⁾` and `t > 0`,
-`∫_0^∞ ψ'(t/a) da/a² = (1/t) ∫_0^∞ ψ'(s) ds = -ψ(0)/t`. -/
-theorem kernel_reconstruction {ψ ψ' : ℝ → ℝ} (hψ : HasCompactSupport ψ)
-    (hψ'c : HasCompactSupport ψ') (hψ' : Continuous ψ') (hd : ∀ x, HasDerivAt ψ (ψ' x) x)
-    {t : ℝ} (ht : 0 < t) :
-    ∫ a in Set.Ioi 0, ψ' (t / a) * (a ^ 2)⁻¹ = -ψ 0 / t := by
-  -- substitution `a ↦ 1/a`
-  have h1 : ∫ a in Set.Ioi 0, ψ' (t / a) * (a ^ 2)⁻¹ = ∫ y in Set.Ioi 0, ψ' (t * y) := by
-    rw [← integral_comp_rpow_Ioi (fun y => ψ' (t * y)) (p := -1) (by norm_num)]
-    apply setIntegral_congr_fun measurableSet_Ioi
-    intro a ha
-    have ha0 : 0 < a := ha
-    simp only [smul_eq_mul]
-    rw [show (-1 : ℝ) - 1 = -2 by norm_num, Real.rpow_neg ha0.le, Real.rpow_neg_one,
-      show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
-    norm_num
-    rw [div_eq_mul_inv, mul_comm]
-  -- scaling
-  have h2 : ∫ y in Set.Ioi 0, ψ' (t * y) = t⁻¹ * ∫ s in Set.Ioi 0, ψ' s := by
-    rw [integral_comp_mul_left_Ioi (fun s => ψ' s) 0 ht, mul_zero, smul_eq_mul]
-  -- fundamental theorem of calculus
-  have hlim : Filter.Tendsto ψ Filter.atTop (nhds 0) := by
-    obtain ⟨R, hR⟩ := hψ.isCompact.isBounded.subset_closedBall 0
-    apply tendsto_const_nhds.congr'
-    filter_upwards [Filter.eventually_gt_atTop R] with x hx
-    symm
-    apply image_eq_zero_of_notMem_tsupport
-    intro hmem
-    have := hR hmem
-    rw [Metric.mem_closedBall, Real.dist_eq, sub_zero] at this
-    have := le_abs_self x
-    linarith
-  have h3 : ∫ s in Set.Ioi 0, ψ' s = 0 - ψ 0 :=
-    integral_Ioi_of_hasDerivAt_of_tendsto' (fun x _ => hd x)
-      (hψ'.integrable_of_hasCompactSupport hψ'c).integrableOn hlim
-  rw [h1, h2, h3]
-  field_simp
-  ring
-
-/-- Blueprint lines 2962-2965: the boundary sets `r_s (ℤ + (-1)^s j/3)` are nested: a depth-`s`
-boundary is a depth-`(s+1)` boundary, since `r_s = 2 r_{s+1}`. -/
-theorem lattice_boundaries_nested (s : ℕ) (j m : ℤ) :
-    ∃ m' : ℤ, 2 * ((m : ℝ) + (-1) ^ s * j / 3) = m' + (-1) ^ (s + 1) * j / 3 := by
-  refine ⟨2 * m + (-1) ^ s * j, ?_⟩
-  push_cast
-  ring
 
 /-- Blueprint line 2985: the three-term telescoping product identity. -/
 theorem three_term_telescope {R : Type*} [CommRing R] (a₁ a₂ a₃ b₁ b₂ b₃ : R) :
@@ -1533,19 +1476,6 @@ theorem fourMarginalKernel_partition_sum {ω : ℝ → ℝ} (hω : ContDiff ℝ 
   have hsumF := congrFun (fourMarginalKernel_sum F g (fun m _ => hsmooth m)) (x, s)
   rw [htsum, ← hsumF, fourMarginalKernel_eventuallyEq hloc, fourMarginalKernel_snd hφ]
 
-/-- Blueprint lines 2951-2955 for the Gevrey partition `ω` of `lem:gevrey`:
-`Σ_m W(x - m, s) = φ⁽⁴⁾(s)`. -/
-theorem gevrey_fourMarginalKernel_partition_sum {φ : ℝ → ℂ} (hφ : ContDiff ℝ (⊤ : ℕ∞) φ)
-    (x s : ℝ) :
-    ∑' m : ℤ, fourMarginalKernel (fun p => (gevreyPartition (p.1 - m) : ℂ) * φ p.2) (x, s) =
-      iteratedDeriv 4 φ s := by
-  apply fourMarginalKernel_partition_sum _ _ gevreyPartition_tsum hφ
-  · exact contDiff_infty.mpr fun n => gevreyPartition_contDiff n
-  · intro y hy
-    rcases le_abs'.mp hy with h | h
-    · exact gevreyPartition_zero_left (by linarith)
-    · exact gevreyPartition_zero_right (by linarith)
-
 /-! ### Three interlacing lattices (thm:main, blueprint lines 2963-2967) -/
 
 /-- Blueprint lines 2963-2967: at one depth the boundaries `r(ℤ + σ j/3)`, `j ∈ {-1, 0, 1}`,
@@ -1606,17 +1536,6 @@ theorem progDeriv_tensor (j : ℝ) {A B : ℝ → ℂ} (hA : Differentiable ℝ 
   rw [h3.fderiv]
   simp [tensorKernel]
   ring
-
-/-- Linearity of `∂_S - j ∂_X` on differentiable functions. -/
-theorem progDeriv_lin (j : ℝ) {f g : ℝ × ℝ → ℂ} (hf : Differentiable ℝ f)
-    (hg : Differentiable ℝ g) (a b : ℂ) :
-    progDeriv j (fun p => a * f p + b * g p) =
-      fun p => a * progDeriv j f p + b * progDeriv j g p := by
-  funext p
-  simp only [progDeriv]
-  rw [fderiv_fun_add ((hf p).const_mul a) ((hg p).const_mul b),
-    fderiv_const_mul (hf p), fderiv_const_mul (hg p)]
-  simp
 
 /-- Linearity of `∂_S - j ∂_X` on finite combinations. -/
 theorem progDeriv_comb (j : ℝ) {ι : Type*} (s : Finset ι) (c : ι → ℂ) (f : ι → ℝ × ℝ → ℂ)
@@ -1787,8 +1706,7 @@ theorem rescaledKernel_partial_le {ι : Type*} (s : Finset ι) (c : ι → ℂ) 
               ‖iteratedDeriv n (B k) (a⁻¹ * z.2 + 0)‖) := by ring
           _ ≤ r / a * a⁻¹ ^ (m + n) * (‖c k‖ * GA k m * GB k n) := by
               gcongr
-              all_goals first | exact h1 | exact h2 |
-                exact mul_nonneg (norm_nonneg _) ((norm_nonneg _).trans h1)
+              all_goals exact mul_nonneg (norm_nonneg _) ((norm_nonneg _).trans h1)
     _ = _ := by rw [Finset.mul_sum]
 
 /-- Blueprint line 2974: the products of Gevrey bounds `G(j) = (C₀(j+1))^{C₀(j+1)}` occurring in
@@ -5142,81 +5060,6 @@ theorem activeFinal_of_activeMin {κ : LocalKernelClass} (hAM : ActiveMin κ) : 
         nlinarith
 
 namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ}
-variable (A : ActiveSetup κ c₀) (v₀ : A.L) (m : ℕ)
-
-theorem pad_card : Fintype.card (A.pad v₀ m).L = Fintype.card A.L + m := by
-  change Fintype.card (A.L ⊕ Fin m) = _
-  simp
-
-theorem pad_B : (A.pad v₀ m).B = A.B := by
-  funext l I x
-  change ∑ v : A.L ⊕ Fin m, _ = _
-  rw [Fintype.sum_sum_type]
-  change ∑ v, A.coef l I v * A.φ I v x + ∑ _j : Fin m, (0 : ℂ) * A.φ I v₀ x = _
-  simp [B]
-
-theorem pad_z : (A.pad v₀ m).z = A.z := by
-  funext p I
-  match p with
-  | 0 => simp only [z, pad_B]
-  | 1 => simp only [z, pad_B]; rfl
-  | 2 => simp only [z, pad_B]; rfl
-  | 3 => simp only [z, pad_B]; rfl
-
-theorem pad_Y : (A.pad v₀ m).Y = A.Y := by
-  funext I
-  rw [Y_eq, Y_eq, pad_B]
-  rfl
-
-end ActiveSetup
-
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀) (v₀ : A.L) (m : ℕ)
-
-theorem colBudget_le_pad : A.colBudget ≤ (A.pad v₀ m).colBudget := by
-  unfold ActiveSetup.colBudget
-  rw [pad_card]
-  change _ ≤ 2 + ((Fintype.card A.L + m : ℕ) : ℝ) * (1 + A.Dc)
-  push_cast
-  nlinarith [A.Dc_nonneg, (Nat.cast_nonneg m : (0 : ℝ) ≤ m)]
-
-theorem pad_columnRepBelow {R' : ℤ × ℤ} {CF : ℝ} (h : A.ColumnRepBelow R' CF) :
-    (A.pad v₀ m).ColumnRepBelow R' CF := by
-  intro l
-  obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h l
-  refine ⟨P₁, P₂, h₁.trans (A.colBudget_le_pad v₀ m), h₂.trans (A.colBudget_le_pad v₀ m), c₁,
-    c₂, e₁, e₂, fun I hI hIR => ?_⟩
-  rw [pad_B]
-  exact hP I hI hIR
-
-theorem pad_subRootProps {η₀ E : ℝ} (h : A.SubRootProps η₀ E) :
-    (A.pad v₀ m).SubRootProps η₀ E := by
-  intro R' hR'
-  obtain ⟨h1, h2, h3⟩ := h R' hR'
-  refine ⟨h1, ?_, A.pad_columnRepBelow v₀ m h3⟩
-  rw [pad_z]
-  exact h2
-
-theorem LevelProps.pad {k Cb : ℕ} {η₀ : ℝ} (h : A.LevelProps k Cb η₀)
-    (hm : (Fintype.card A.L : ℝ) + m ≤ Real.exp ((k : ℝ) ^ Cb)) :
-    (A.pad v₀ m).LevelProps k Cb η₀ := by
-  obtain ⟨h1, h2, h3, h4, -, h6, h7, h8, h9, h10, h11, h12, h13⟩ := h
-  refine ⟨h1, h2, h3, h4, ?_, h6, h7, ?_, ?_, h10, ?_, ?_, A.pad_subRootProps v₀ m h13⟩
-  · rw [pad_card]; push_cast; exact hm
-  · rw [pad_Y]; exact h8
-  · rw [pad_Y]; exact h9
-  · rw [pad_z]; exact h11
-  · exact hasColumnRep_of_below _ (A.pad_columnRepBelow v₀ m
-      (fun l => by
-        obtain ⟨P₁, P₂, h₁, h₂, c₁, c₂, e₁, e₂, hP⟩ := h12 l
-        exact ⟨P₁, P₂, h₁, h₂, c₁.mono (fun I hI => hI.1) le_rfl le_rfl,
-          c₂.mono (fun I hI => hI.1) le_rfl le_rfl, e₁.mono (fun I hI => hI.1),
-          e₂.mono (fun I hI => hI.1), fun I hI _ => hP I hI⟩))
-
-end ActiveSetup
-
-namespace ActiveSetup
 variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
 variable (R' : ℤ × ℤ)
 
@@ -5322,126 +5165,6 @@ theorem activeMin_of_retainedMin {κ : LocalKernelClass} (h : RetainedMin κ) : 
     _ = _ := by simp only [A]; ring
 
 namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀} (ap : A.AttemptParams)
-
-theorem leaves_length_le : ap.leaves.length ≤ 2 ^ ap.fuel :=
-  searchLeaves_length_le _ _ _ _ _ _
-
-/-- The number of base tests of one slot at one cell is at most
-`2^fuel (1 + D) P^{1 + fuel}`, uniformly in the cell. -/
-theorem card_BaseIdx_le (I : ℤ × ℤ) (l : Fin 4) :
-    Fintype.card (ap.BaseIdx I l) ≤ 2 ^ ap.fuel * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) := by
-  classical
-  have hP := ap.hP
-  have hlen : ∀ s : Fin ap.leaves.length,
-      ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length ≤ ap.fuel := fun s => by
-    have := searchLeaves_layers_length ap.fuel 1 ap.Lc ap.up₀ none (fun _ => [])
-      (leafAt ap.fuel ap.Lc ap.up₀ s) (leafAt_mem s.2) l
-    simpa using this
-  have hpow : ∀ n, n ≤ ap.fuel → ap.P ^ n ≤ ap.P ^ ap.fuel := fun n hn =>
-    Nat.pow_le_pow_right hP hn
-  rw [Fintype.card_sigma]
-  calc ∑ s : Fin ap.leaves.length, Fintype.card _
-      ≤ ∑ _s : Fin ap.leaves.length, (1 + A.vtxBound) * ap.P ^ (1 + ap.fuel) := by
-        refine Finset.sum_le_sum fun s _ => ?_
-        simp only [Fintype.card_sum, Fintype.card_prod, Fintype.card_fin, Fintype.card_pi,
-          Finset.prod_const, Finset.card_univ, Fintype.card_coe]
-        have h1 : ap.P ^ ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).dropLast.length ≤
-            ap.P ^ ap.fuel := hpow _ (by rw [List.length_dropLast]; have := hlen s; omega)
-        have h2 : ap.P ^ ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length ≤ ap.P ^ ap.fuel :=
-          hpow _ (hlen s)
-        have h3 := ap.card_groupsAt_le I (leafAt ap.fuel ap.Lc ap.up₀ s).k
-        calc ap.P * ap.P ^ ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).dropLast.length +
-              (ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k).card *
-                (ap.P * ap.P ^ ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length)
-            ≤ ap.P * ap.P ^ ap.fuel + A.vtxBound * (ap.P * ap.P ^ ap.fuel) := by gcongr
-          _ = (1 + A.vtxBound) * ap.P ^ (1 + ap.fuel) := by ring
-    _ = ap.leaves.length * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) := by
-        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
-    _ ≤ _ := Nat.mul_le_mul_right _ ap.leaves_length_le
-
-/-- The number of chain tests of one slot at one cell is at most
-`2^fuel 2^fuel (D + fuel) P^{1 + fuel}`, uniformly in the cell. -/
-theorem card_ChainIdx_le (I : ℤ × ℤ) (l : Fin 4) :
-    Fintype.card (ap.ChainIdx I l) ≤
-      2 ^ ap.fuel * (2 ^ ap.fuel * ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel))) := by
-  classical
-  have hP := ap.hP
-  have hlen : ∀ s : Fin ap.leaves.length,
-      ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).length ≤ ap.fuel := fun s => by
-    have := searchLeaves_layers_length ap.fuel 1 ap.Lc ap.up₀ none (fun _ => [])
-      (leafAt ap.fuel ap.Lc ap.up₀ s) (leafAt_mem s.2) l
-    simpa using this
-  have hpow : ∀ n, n ≤ ap.fuel → ap.P ^ n ≤ ap.P ^ ap.fuel := fun n hn =>
-    Nat.pow_le_pow_right hP hn
-  have hch : ∀ (s : Fin ap.leaves.length)
-      (i : Fin (posExpand ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).reverse).length),
-      (ap.chainOf s l i).length ≤ ap.fuel := fun s i => by
-    unfold chainOf
-    rw [List.getD_eq_getElem _ _ i.2]
-    refine (posExpand_mem_length _ _ (List.getElem_mem i.2)).trans ?_
-    rw [List.length_reverse]; exact hlen s
-  rw [Fintype.card_sigma]
-  calc ∑ s : Fin ap.leaves.length, Fintype.card _
-      ≤ ∑ _s : Fin ap.leaves.length, 2 ^ ap.fuel * ((A.vtxBound + ap.fuel) *
-          ap.P ^ (1 + ap.fuel)) := by
-        refine Finset.sum_le_sum fun s _ => ?_
-        rw [Fintype.card_sigma]
-        calc ∑ i, Fintype.card _ ≤ ∑ _i : Fin (posExpand
-              ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).reverse).length,
-              (A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel) := by
-              refine Finset.sum_le_sum fun i _ => ?_
-              simp only [Fintype.card_sum, Fintype.card_prod, Fintype.card_fin, Fintype.card_pi,
-                Finset.prod_const, Finset.card_univ, Fintype.card_coe, Fintype.card_sigma]
-              have h3 := ap.card_groupsAt_le I (leafAt ap.fuel ap.Lc ap.up₀ s).k
-              have h1 : ap.P ^ (chainHist (ap.chainOf s l i) 0).length ≤ ap.P ^ ap.fuel :=
-                hpow _ (by unfold chainHist; simpa using hch s i)
-              have h2 : ∀ k : Fin (ap.chainOf s l i).length,
-                  ap.P * ap.P ^ (chainHist (ap.chainOf s l i) (k + 1)).length ≤
-                    ap.P * ap.P ^ ap.fuel := fun k =>
-                Nat.mul_le_mul_left _ (hpow _ (by
-                  unfold chainHist; simp only [List.length_map, List.length_reverse,
-                    List.length_drop]; have := hch s i; omega))
-              calc (ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k).card *
-                    (ap.P * ap.P ^ (chainHist (ap.chainOf s l i) 0).length) +
-                    ∑ k : Fin (ap.chainOf s l i).length,
-                      ap.P * ap.P ^ (chainHist (ap.chainOf s l i) (k + 1)).length
-                  ≤ A.vtxBound * (ap.P * ap.P ^ ap.fuel) +
-                    ∑ _k : Fin (ap.chainOf s l i).length, ap.P * ap.P ^ ap.fuel := by
-                    gcongr with k
-                    unfold chainHist
-                    simp only [List.length_map, List.length_reverse, List.length_drop]
-                    have := hch s i; omega
-                _ = A.vtxBound * (ap.P * ap.P ^ ap.fuel) +
-                    (ap.chainOf s l i).length * (ap.P * ap.P ^ ap.fuel) := by
-                    rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
-                _ ≤ A.vtxBound * (ap.P * ap.P ^ ap.fuel) + ap.fuel * (ap.P * ap.P ^ ap.fuel) := by
-                    gcongr; exact hch s i
-                _ = (A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel) := by ring
-          _ = (posExpand ((leafAt ap.fuel ap.Lc ap.up₀ s).layers l).reverse).length *
-              ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel)) := by
-              rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
-          _ ≤ 2 ^ ap.fuel * ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel)) := by
-              refine Nat.mul_le_mul_right _ ((posExpand_length_le _).trans ?_)
-              rw [List.length_reverse]; exact Nat.pow_le_pow_right two_pos (hlen s)
-    _ = ap.leaves.length * (2 ^ ap.fuel * ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel))) := by
-        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
-    _ ≤ _ := Nat.mul_le_mul_right _ ap.leaves_length_le
-
-/-- The number of named tests of one slot at one cell. -/
-theorem card_TestIdx_le (I : ℤ × ℤ) (l : Fin 4) :
-    Fintype.card (ap.TestIdx I l) ≤ 2 ^ ap.fuel * ((1 + A.vtxBound) * ap.P ^ (1 + ap.fuel)) +
-      2 ^ ap.fuel * (2 ^ ap.fuel * ((A.vtxBound + ap.fuel) * ap.P ^ (1 + ap.fuel))) := by
-  rw [Fintype.card_sum]
-  exact Nat.add_le_add (ap.card_BaseIdx_le I l) (ap.card_ChainIdx_le I l)
-
-end AttemptParams
-
-end ActiveSetup
-
-namespace ActiveSetup
 variable {κ : LocalKernelClass} {c₀ : ℕ} (A : ActiveSetup κ c₀)
 
 /-- The slots of a pattern other than its marked slot carry the basic arguments. -/
@@ -5449,25 +5172,6 @@ theorem z_slot_basic (p : Fin 3) (I : ℤ × ℤ) {l : Fin 4} (hl : l ≠ A.mslo
     A.z (Fin.castSucc p) I l = A.B l I := by
   obtain ⟨i, rfl⟩ := Fin.exists_succAbove_eq hl
   exact (A.pattern_data I p).2.2.2 i
-
-/-- Every slot of a pattern is square integrable on the cell with normalized size at most
-`S + |L| D_c`. -/
-theorem z_slot_size (p : Fin 3) (I : ℤ × ℤ) (l : Fin 4) :
-    MemLp (A.z (Fin.castSucc p) I l) 2 (A.μ I) ∧
-      (eLpNorm (A.z (Fin.castSucc p) I l) 2 (A.μ I)).toReal ≤ A.S + Fintype.card A.L * A.Dc := by
-  obtain ⟨-, h1, h2, -⟩ := A.pattern_data I p
-  by_cases hl : l = A.mslot p
-  · subst hl; exact ⟨h1, h2⟩
-  · rw [A.z_slot_basic p I hl]
-    exact ⟨A.B_memLp l I, (A.B_eLpNorm_le l I).trans (le_add_of_nonneg_left A.S_nonneg)⟩
-
-/-- The augmented sizes of the pattern inputs (the hypothesis `hSz` of the localization). -/
-theorem z_cellLp_size {Mc : ℕ} (p : Fin 3) (I : ℤ × ℤ) (l : Fin 4) :
-    ‖physicalColumnInput (V := Fin Mc) (cellLp A.G I (A.z (Fin.castSucc p) I l))‖ /
-      Real.sqrt (dyadicGridLength A.G I.1) ≤ A.S + Fintype.card A.L * A.Dc := by
-  have hc0 : 0 ≤ (Fintype.card A.L : ℝ) * A.Dc := (norm_nonneg _).trans (A.B_bound 0 I 0)
-  exact norm_cellLp_div_le (A.z_slot_size p I l).1 (add_nonneg A.S_nonneg hc0)
-    (A.z_slot_size p I l).2
 
 open Classical in
 /-- The cells of an active family containing a cell are among the active cells through its left
@@ -5481,274 +5185,6 @@ theorem active_anc_card_le {δ : ℝ} (T : Finset (ℤ × ℤ)) (hT : ∀ I ∈ 
   obtain ⟨hI'T, hsub⟩ := Finset.mem_filter.mp hI'
   exact Finset.mem_filter.mpr ⟨(hT I' hI'T).1, hsub (dyadicGridCell_left_mem A.G I.1 I.2),
     (hT I' hI'T).2⟩
-
-end ActiveSetup
-
-/-- The count bound of the attempt catalogs can be met: for constants `c ≥ 0` and exponents
-`a, b` there is `T` with `(max 1 (c · C_T^b))^a ≤ T`, where `C_T = ⌈log₂(T+1)⌉ + 1` is the
-prefix constant (it grows logarithmically). -/
-theorem exists_prefix_fixed {c : ℝ} (hc : 0 ≤ c) (b a : ℕ) :
-    ∃ T : ℕ, (max 1 (c * projectionPrefixConstant T ^ b)) ^ a ≤ (T : ℝ) := by
-  set k := a * b
-  have hpos : (0 : ℝ) < 1 / (4 * (1 + c) ^ a * 2 ^ k) := by positivity
-  have ht := (tendsto_pow_const_div_const_pow_of_one_lt k (r := 2) (by norm_num)).eventually
-    (gt_mem_nhds hpos)
-  obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp ht
-  set n := N + 1
-  have hn := (hN n (Nat.le_succ N)).le
-  refine ⟨2 ^ n - 1, ?_⟩
-  have h2n : (1 : ℕ) ≤ 2 ^ n := Nat.one_le_two_pow
-  have hT : ((2 ^ n - 1 : ℕ) : ℝ) = (2 : ℝ) ^ n - 1 := by
-    rw [Nat.cast_sub h2n]; push_cast; ring
-  have hP : projectionPrefixConstant (2 ^ n - 1) = (n : ℝ) + 1 := by
-    unfold projectionPrefixConstant
-    rw [Nat.sub_add_cancel h2n, Nat.clog_pow 2 n (by norm_num)]
-  rw [hT, hP]
-  have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast Nat.succ_pos N
-  have h2pos : (0 : ℝ) < 2 ^ n := by positivity
-  have hnk : (n : ℝ) ^ k ≤ 2 ^ n / (4 * (1 + c) ^ a * 2 ^ k) := by
-    rw [div_le_iff₀ h2pos] at hn
-    rw [le_div_iff₀ (by positivity)]
-    calc (n : ℝ) ^ k * (4 * (1 + c) ^ a * 2 ^ k) =
-        (1 / (4 * (1 + c) ^ a * 2 ^ k) * 2 ^ n) * (4 * (1 + c) ^ a * 2 ^ k) * ((n : ℝ) ^ k /
-          (1 / (4 * (1 + c) ^ a * 2 ^ k) * 2 ^ n)) := by
-          field_simp
-      _ ≤ (1 / (4 * (1 + c) ^ a * 2 ^ k) * 2 ^ n) * (4 * (1 + c) ^ a * 2 ^ k) * 1 := by
-          gcongr
-          rw [div_le_one (by positivity)]
-          exact hn
-      _ = 2 ^ n := by field_simp
-  have hb1 : (1 : ℝ) ≤ ((n : ℝ) + 1) ^ b := one_le_pow₀ (by linarith)
-  have hmax : max 1 (c * ((n : ℝ) + 1) ^ b) ≤ (1 + c) * ((n : ℝ) + 1) ^ b :=
-    max_le (by nlinarith) (by nlinarith)
-  have hsucc : (n : ℝ) + 1 ≤ 2 * n := by linarith
-  calc (max 1 (c * ((n : ℝ) + 1) ^ b)) ^ a ≤ ((1 + c) * ((n : ℝ) + 1) ^ b) ^ a :=
-        pow_le_pow_left₀ (le_trans zero_le_one (le_max_left _ _)) hmax a
-    _ = (1 + c) ^ a * ((n : ℝ) + 1) ^ k := by rw [mul_pow, ← pow_mul, mul_comm b a]
-    _ ≤ (1 + c) ^ a * (2 * n) ^ k := by gcongr
-    _ = (4 * (1 + c) ^ a * 2 ^ k) * (n : ℝ) ^ k / 4 := by rw [mul_pow]; ring
-    _ ≤ (4 * (1 + c) ^ a * 2 ^ k) * (2 ^ n / (4 * (1 + c) ^ a * 2 ^ k)) / 4 := by gcongr
-    _ = 2 ^ n / 4 := by field_simp
-    _ ≤ 2 ^ n - 1 := by
-        have : (2 : ℝ) ≤ 2 ^ n := by
-          calc (2 : ℝ) = 2 ^ 1 := by norm_num
-            _ ≤ 2 ^ n := pow_le_pow_right₀ (by norm_num) (Nat.succ_pos N)
-        linarith
-
-namespace ActiveSetup
-variable {κ : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ c₀}
-
-/-- The failure roots of an attempt: the maximal failed cells of its coloring. -/
-noncomputable def AttemptParams.failRoots (ap : A.AttemptParams) : Finset (ℤ × ℤ) :=
-  maximalDyadicCells A.G (A.failedCells ap.Hed (A.cb1 ap.Hmax) (cb2 ap.Hmax) ap.ωp ap.ωh)
-
-open Classical in
-/-- The retained active cells of an attempt: active cells below no failure root. -/
-noncomputable def AttemptParams.retained (ap : A.AttemptParams) (δ : ℝ) : Finset (ℤ × ℤ) :=
-  (A.cells.filter fun I => ¬ ∃ c ∈ ap.failRoots,
-    dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G c.1 c.2).filter (A.active δ)
-
-open Classical in
-/-- The catalog certificate of an attempt (blueprint lines 1800-1831): the coarse-first list `L`
-of the retained cells with path multiplicity at most `M_p`, the count sequence `n` and threshold
-`τ₃` of the main closure (with the ratio condition and the edge scale), catalogs passing all named
-tests (base and chain tests) at the cells of `L` at the thresholds `catTau`, made of same-tag
-templates of their slot born in `L`, with rank counts at most `n r`; and label room in `M_c` for a
-helper closure of at most `W_H` helper tests per cell at threshold `τ_H` (blueprint lines
-1812-1817). -/
-def AttemptParams.AttemptCert (ap : A.AttemptParams) (cat : Fin 4 → List (CatCol A.Vtx))
-    (δ : ℝ) (Mp D WH : ℕ) (τH : ℝ) : Prop :=
-  ∃ (L : List (ℤ × ℤ)) (Tmax TmaxH Kt : ℕ) (n : ℕ → ℝ) (τ₃ : ℝ),
-    (∀ I ∈ L, I ∈ A.cells) ∧ L.Nodup ∧
-    (∀ i j (hi : i < L.length) (hj : j < L.length), i < j →
-      ¬ dyadicGridCell A.G L[i].1 L[i].2 ⊆ dyadicGridCell A.G L[j].1 L[j].2) ∧
-    (∀ I ∈ ap.retained δ, I ∈ L) ∧
-    (∀ I ∈ ap.retained δ, (L.toFinset.filter fun I' : ℤ × ℤ =>
-      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp) ∧
-    (∀ r, 1 ≤ n r) ∧ Monotone n ∧ 0 < τ₃ ∧ τ₃ ≤ 1 ∧
-    (∀ r ≤ ap.Lc + 1, n r * (Kt * (4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH)) *
-      (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) ^ 2 * Mp * (ap.Lc + 6)) / τ₃ ^ 2 ≤
-        n (r + 1)) ∧
-    Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log (τ₃ / n (ap.Lc + 1))⁻¹) ^ A.Dg) ≤
-      ap.Hed ∧
-    ap.Mc = L.length * (Tmax + TmaxH) ∧
-    (WH : ℝ) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
-      (τH / (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D))) ^ 2 < TmaxH ∧
-    ∀ l,
-      (∀ I ∈ L, ∀ w, (ap.tests (fun _ => []) I l w).Pass A.G ap.Mc I A.csrc A.Hsrc A.vtag (A.w I)
-        (ap.catTau Kt Mp (4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH))
-          (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) n (ap.tests (fun _ => []) I l w).r)
-        ap.mH (cat l)) ∧
-      (∀ d ∈ cat l, ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-        d = templateCol (A.vtag d.tag) l R γ d.birth d.rank d.tag) ∧
-      (∀ I, (L.toFinset.filter fun I' : ℤ × ℤ =>
-          dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp →
-        ∀ r ≤ ap.Lc + 5, ∀ M, ((catLabels A.G ap.Mc (cat l) I r M).card : ℝ) ≤ n r) ∧
-      (∀ d ∈ cat l, d.birth ∈ L) ∧ (cat l).length ≤ L.length * Tmax
-
-variable (A)
-
-open Classical in
-/-- Blueprint lines 2838-2840 with lines 1800-1882 (one attempt on an active pattern): for the
-basic tuple `z = B.z (p)` there are attempt parameters (pad `P`, colors at most `d₀^{30} + 1`,
-search fuel `⌈log₂ L⌉ + 1`, catalog counts and thresholds, edge scale `H_ed ≥ H_low`) and catalogs
-with a monotone coloring, such that on every subset of the retained cells (active, below no failure
-root) the active-cell minima are at most the sum over the search leaves of the localized group forms
-plus `ε |R|`. -/
-theorem attempt_instance (p : Fin 3) {D : ℕ} (hst : SameTagBound κ (A.csrc + 1) D)
-    (P : ℕ) (hP : 0 < P) {δ : ℝ} {Mp : ℕ} (hMp1 : 1 ≤ Mp)
-    (hMpb : ∀ y : ℝ, (A.cells.filter fun I =>
-      y ∈ dyadicGridCell A.G I.1 I.2 ∧ A.active δ I).card ≤ Mp)
-    (hη : 0 ≤ A.η) (Hlow : ℝ) {ε : ℝ} (hε : 0 < ε) (WH : ℕ) {τH : ℝ} (hτH : 0 < τH) :
-    ∃ (ap : A.AttemptParams) (cat : Fin 4 → List (CatCol A.Vtx)),
-      ap.z = A.z (Fin.castSucc p) ∧ ap.P = P ∧ Hlow ≤ ap.Hed ∧ ap.up₀ ≠ A.mslot p ∧
-      ap.Lc = A.cd0 ^ 30 + 1 ∧ ap.fuel = Nat.clog 2 ap.Lc + 1 ∧ ap.mH = 2 * ap.fuel + 2 ∧
-      ap.Hmax = 20 * ap.P * (ap.Lc + 1) + 40 * ap.P ∧ ap.AttemptCert cat δ Mp D WH τH ∧
-      IsMonotoneColoring A.admT (A.tagDist ap.Hed) A.vtxBound (A.cb1 ap.Hmax) (cb2 ap.Hmax)
-        Finset.univ (admCellSet (G := A.G) (R := A.R) (N := A.treeDepth))
-        (dyadicGridCell A.G A.R.1 A.R.2) ap.ωp ap.ωh ∧
-      ∀ S ⊆ ap.retained δ,
-      ∑ I ∈ S, dyadicGridLength A.G I.1 * min A.η ‖A.Hf I (A.z (Fin.castSucc p) I)‖ ≤
-        ∑ s ∈ Finset.range ap.leaves.length, ∑ I ∈ S, dyadicGridLength A.G I.1 *
-            min A.η ‖∑ G ∈ ap.groupsAt I (leafAt ap.fuel ap.Lc ap.up₀ s).k,
-              ap.Λc I (fun l => (ap.filters cat I).ball G
-                ((leafAt ap.fuel ap.Lc ap.up₀ s).role l) l
-                ((ap.filters cat I).input (leafAt ap.fuel ap.Lc ap.up₀ s).layers l))‖ +
-          ε * dyadicGridLength A.G A.R.1 := by
-  -- a basic slot
-  obtain ⟨up, hup⟩ : ∃ l : Fin 4, l ≠ A.mslot p := by
-    by_cases h : A.mslot p = 0
-    · exact ⟨1, by rw [h]; decide⟩
-    · exact ⟨0, fun h' => h h'.symm⟩
-  -- the parameters
-  set Lc := A.cd0 ^ 30 + 1
-  set fuel := Nat.clog 2 Lc + 1
-  set Hmax := 20 * P * (Lc + 1) + 40 * P
-  set mH := 2 * fuel + 2
-  set Kt := 2 ^ fuel * ((1 + A.vtxBound) * P ^ (1 + fuel)) +
-    2 ^ fuel * (2 ^ fuel * ((A.vtxBound + fuel) * P ^ (1 + fuel)))
-  have hDc := A.Dc_nonneg
-  set Sz : ℝ := |A.S| + Fintype.card A.L * A.Dc + 1
-  have hSz0 : 0 < Sz := by
-    have : 0 ≤ (Fintype.card A.L : ℝ) * A.Dc := mul_nonneg (Nat.cast_nonneg _) hDc
-    have := abs_nonneg A.S
-    linarith
-  set W : ℝ := 5 * (A.vtxBound + 2) * (Sz ^ 4 + Fintype.card A.L * A.Dc * Sz ^ 3)
-  have hW : 0 ≤ W := by
-    have : 0 ≤ (Fintype.card A.L : ℝ) * A.Dc * Sz ^ 3 := by positivity
-    positivity
-  set τ₃ : ℝ := min 1 (ε / (Mp * 2 ^ fuel * W + 1))
-  have hτ₃ : 0 < τ₃ := lt_min one_pos (div_pos hε (by positivity))
-  set E : ℝ := 2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)
-  set c0 : ℝ := Kt * 4 ^ mH * E ^ 2 * Mp * (Lc + 6) / τ₃ ^ 2
-  obtain ⟨Tmax, hTmax⟩ := exists_prefix_fixed (c := c0) (by positivity) (2 * mH) (Lc + 4)
-  set ρ : ℝ := max 1 (c0 * projectionPrefixConstant Tmax ^ (2 * mH))
-  have hρ1 : 1 ≤ ρ := le_max_left _ _
-  set n : ℕ → ℝ := fun r => ρ ^ r
-  set Hed := max Hlow
-    (Real.exp (A.Dg * (1 + Real.log A.Hsrc + Real.log (τ₃ / n (Lc + 1))⁻¹) ^ A.Dg))
-  obtain ⟨ωp, ωh, hcol⟩ := A.coloring Hed (A.cb1 Hmax) (cb2 Hmax)
-  -- the helper room
-  set cH : ℝ := 2 * (WH * 4 ^ mH * E ^ 2 / τH ^ 2)
-  obtain ⟨TmaxH, hTmaxH⟩ := exists_prefix_fixed (c := cH) (by positivity) (2 * mH) 1
-  -- the retained cells
-  set X := maximalDyadicCells A.G (A.failedCells Hed (A.cb1 Hmax) (cb2 Hmax) ωp ωh)
-  set cs := (A.cells.filter fun I => ¬ ∃ c ∈ X,
-    dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G c.1 c.2).filter (A.active δ)
-  have hcs : ∀ I ∈ cs, I ∈ A.cells ∧ A.active δ I := fun I hI =>
-    ⟨(Finset.mem_filter.mp (Finset.mem_filter.mp hI).1).1, (Finset.mem_filter.mp hI).2⟩
-  obtain ⟨L, hLcs, hnd, hord⟩ := exists_coarse_first_list A.G cs
-  let ap : A.AttemptParams :=
-    { Hed := Hed, Hmax := Hmax, ωp := ωp, ωh := ωh, P := P, hP := hP, Lc := Lc, fuel := fuel,
-      up₀ := up, Mc := L.length * (Tmax + TmaxH), mH := mH, z := A.z (Fin.castSucc p) }
-  have hret : ap.retained δ = cs := rfl
-  obtain ⟨-, -, -, hfc⟩ := A.failure_cut Hed (A.cb1 Hmax) (cb2 Hmax) ωp ωh hcol
-  have hcsL : ∀ I ∈ cs, I ∈ L := fun I hI => List.mem_toFinset.mp (hLcs ▸ hI)
-  have hL : ∀ I ∈ L, I ∈ A.cells := fun I hI =>
-    (hcs I (hLcs ▸ List.mem_toFinset.mpr hI)).1
-  have hKt1 : 1 ≤ Kt := Nat.le_add_right_of_le
-    (Nat.mul_pos (Nat.two_pow_pos _) (Nat.mul_pos (by omega) (pow_pos hP _)))
-  have hratio : ∀ r ≤ ap.Lc + 1, n r * (Kt * (4 ^ ap.mH * projectionPrefixConstant Tmax ^
-      (2 * ap.mH)) * (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) ^ 2 * Mp * (ap.Lc + 6)) /
-        τ₃ ^ 2 ≤ n (r + 1) := by
-    intro r _
-    have e : n r * (Kt * (4 ^ ap.mH * projectionPrefixConstant Tmax ^ (2 * ap.mH)) *
-        (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)) ^ 2 * Mp * (ap.Lc + 6)) / τ₃ ^ 2 =
-        n r * (c0 * projectionPrefixConstant Tmax ^ (2 * mH)) := by
-      simp only [c0, E, ap]; ring
-    rw [e]
-    calc n r * (c0 * projectionPrefixConstant Tmax ^ (2 * mH)) ≤ n r * ρ :=
-          mul_le_mul_of_nonneg_left (le_max_right _ _) (by positivity)
-      _ = n (r + 1) := by simp only [n]; ring
-  have h := ap.attempt_localization L hL hnd hord hst hKt1 hMp1
-    (fun I l => ap.card_TestIdx_le I l) (Nat.mul_le_mul_left _ (Nat.le_add_right _ _)) n
-    (fun r => one_le_pow₀ hρ1)
-    (pow_right_mono₀ hρ1) hTmax hτ₃ (min_le_left _ _) hratio (le_max_right _ _) cs hcsL
-    (fun I hI => by
-      rw [hLcs]
-      exact (A.active_anc_card_le cs hcs I).trans (hMpb _))
-    (fun I hI w hw => by
-      by_contra hns
-      exact hfc I (hcs I hI).1 (Finset.mem_filter.mp (Finset.mem_filter.mp hI).1).2
-        ⟨w, hw, hns⟩)
-    (fun I _ w hw => ((hcol.2.2.1 (A.admAt I) w hw).2.trans hcol.2.1).trans (Nat.le_succ _))
-    (fun I _ => A.z_slot_basic p I hup) (fun I _ l => (A.z_slot_size p I l).1)
-    (Nat.le_add_left _ _) ((Nat.sub_le _ _).trans_lt ((Nat.le_pow_clog one_lt_two Lc).trans_lt
-      (Nat.pow_lt_pow_right one_lt_two (Nat.lt_succ_self _))))
-    (by change fuel ≤ 2 * fuel + 2; omega)
-    (by change 20 * P * (Lc + 1) + 10 * (1 - 1) * P + P ≤ 20 * P * (Lc + 1) + 40 * P; omega)
-    hη hSz0 (fun I _ l => (A.z_cellLp_size p I l).trans (by linarith [le_abs_self A.S]))
-  obtain ⟨cat, hcat⟩ := h
-  have hMpcs : ∀ I ∈ cs, (L.toFinset.filter fun I' : ℤ × ℤ =>
-      dyadicGridCell A.G I.1 I.2 ⊆ dyadicGridCell A.G I'.1 I'.2).card ≤ Mp := fun I hI => by
-    rw [hLcs]
-    exact (A.active_anc_card_le cs hcs I).trans (hMpb _)
-  have hH : (WH : ℝ) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
-      (τH / E) ^ 2 < TmaxH := by
-    have e : (WH : ℝ) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
-        (τH / E) ^ 2 = (cH * projectionPrefixConstant TmaxH ^ (2 * mH)) / 2 := by
-      simp only [cH, ap]; field_simp
-    rw [e]
-    have h1 := hTmaxH
-    rw [pow_one] at h1
-    refine lt_of_lt_of_le ?_ h1
-    rw [lt_max_iff]
-    by_cases h0 : cH * projectionPrefixConstant TmaxH ^ (2 * mH) ≤ 1
-    · left; linarith
-    · right; push Not at h0; linarith
-  refine ⟨ap, cat, rfl, rfl, le_max_left _ _, hup, rfl, rfl, rfl, rfl,
-    ⟨L, Tmax, TmaxH, Kt, n, τ₃, hL, hnd, hord, hcsL, hMpcs, fun r => one_le_pow₀ hρ1,
-      pow_right_mono₀ hρ1,
-      hτ₃, min_le_left _ _, hratio, le_max_right _ _, rfl, hH, hcat.1⟩, hcol, fun S hS => ?_⟩
-  rw [hret] at hS
-  refine (hcat.2 S hS).trans (add_le_add le_rfl ?_)
-  have hcsS : ∀ I ∈ S, I ∈ A.cells ∧ A.active δ I := fun I hI => hcs I (hS hI)
-  -- the localization error
-  have hsum : ∑ I ∈ S, dyadicGridLength A.G I.1 ≤ Mp * dyadicGridLength A.G A.R.1 := by
-    have := integrated_cap_le A.G S (fun _ => 1) A.R (fun I hI => A.sub I (hcsS I hI).1)
-      (C := Mp) (fun x => by
-        rw [Finset.sum_const, nsmul_eq_mul, mul_one]
-        refine le_trans (Nat.cast_le.mpr (Finset.card_le_card ?_)) (Nat.cast_le.mpr (hMpb x))
-        intro I hI
-        obtain ⟨hIcs, hx⟩ := Finset.mem_filter.mp hI
-        exact Finset.mem_filter.mpr ⟨(hcsS I hIcs).1, hx, (hcsS I hIcs).2⟩)
-    simpa using this
-  have hleaves : (ap.leaves.length : ℝ) ≤ 2 ^ fuel := by exact_mod_cast ap.leaves_length_le
-  have hR := (dyadicGridLength_pos A.G A.R.1).le
-  have hτε : (Mp * 2 ^ fuel * W) * τ₃ ≤ ε := by
-    have hd : 0 < (Mp : ℝ) * 2 ^ fuel * W + 1 := by positivity
-    calc (Mp * 2 ^ fuel * W) * τ₃ ≤ (Mp * 2 ^ fuel * W) * (ε / (Mp * 2 ^ fuel * W + 1)) :=
-          mul_le_mul_of_nonneg_left (min_le_right _ _) (by positivity)
-      _ ≤ (Mp * 2 ^ fuel * W + 1) * (ε / (Mp * 2 ^ fuel * W + 1)) :=
-          mul_le_mul_of_nonneg_right (by linarith) (div_pos hε hd).le
-      _ = ε := by field_simp
-  have hcs0 : 0 ≤ ∑ I ∈ S, dyadicGridLength A.G I.1 :=
-    Finset.sum_nonneg fun I _ => (dyadicGridLength_pos A.G I.1).le
-  calc (∑ I ∈ S, dyadicGridLength A.G I.1) * (ap.leaves.length * (W * τ₃))
-      ≤ (Mp * dyadicGridLength A.G A.R.1) * (2 ^ fuel * (W * τ₃)) := by
-        gcongr
-    _ = (Mp * 2 ^ fuel * W) * τ₃ * dyadicGridLength A.G A.R.1 := by ring
-    _ ≤ ε * dyadicGridLength A.G A.R.1 := mul_le_mul_of_nonneg_right hτε hR
 
 end ActiveSetup
 
@@ -5837,79 +5273,6 @@ theorem active_mult_bound (κ : LocalKernelClass) (c₀ : ℕ) (hc : 1 ≤ c₀)
         refine Real.exp_le_exp.mpr ?_
         have hC0 : (0 : ℝ) ≤ C := Nat.cast_nonneg C
         nlinarith
-
-namespace ActiveSetup
-
-namespace AttemptParams
-variable {κ' : LocalKernelClass} {c₀ : ℕ} {A : ActiveSetup κ' c₀} {ap : A.AttemptParams}
-
-open Classical in
-/-- Blueprint lines 1812-1817 and 2236-2238 ("construct the helper rank reserved in
-Lemma closure, on these whole states and the specified histories"): with the catalog certificate
-of an attempt, any family of at most `W_H` helper tests per cell of a common rank, on fixed bases
-without private coordinates beyond the main catalog of slot `a`, admits a helper catalog of that
-rank, born at the cells of the attempt, after which all helper tests pass at the retained cells at
-threshold `τ_H`. -/
-theorem AttemptCert.helpers {cat : Fin 4 → List (CatCol A.Vtx)} {δ : ℝ} {Mp D WH : ℕ}
-    {τH : ℝ} (hcert : ap.AttemptCert cat δ Mp D WH τH) (hst : SameTagBound κ' (A.csrc + 1) D)
-    (hτH : 0 < τH) (a : Fin 4) (W : ℤ × ℤ → Type) [∀ I, Fintype (W I)]
-    (hW : ∀ I, Fintype.card (W I) ≤ WH) (tests : ∀ I, W I → VTest A.Vtx ap.Mc) (rH : ℕ)
-    (hrH : ∀ I w, (tests I w).r = rH) (htA : ∀ I w, (tests I w).t = a)
-    (hfresh : ∀ I w, FreshFrom ap.Mc (cat a).length (tests I w).base) :
-    ∃ hcat : List (CatCol A.Vtx),
-      (∀ I ∈ ap.retained δ, ∀ w, (tests I w).Pass A.G I A.csrc A.Hsrc A.vtag (A.w I) τH ap.mH
-        (cat a ++ hcat)) ∧
-      (∀ d ∈ hcat, d.birth ∈ A.cells ∧ d.rank = rH ∧ ∃ w, (tests d.birth w).M d.tag ∧
-        ∃ R ∈ residueBox (A.vtag d.tag).dim 9, ∃ γ : ℝ,
-          d = templateCol (A.vtag d.tag) a R γ d.birth rH d.tag) := by
-  obtain ⟨L, Tmax, TmaxH, Kt, n, τ₃, hL, hnd, hord, hret, -, -, -, -, -, -, -, hMc, hH,
-    hcat⟩ := hcert
-  have hMcH : (cat a).length + L.length * TmaxH ≤ ap.Mc := by
-    rw [hMc, Nat.mul_add]
-    have := (hcat a).2.2.2.2
-    omega
-  set E : ℝ := 2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D)
-  have hQ0 : 0 ≤ 4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH) := by
-    have := projectionPrefixConstant_one_le TmaxH; positivity
-  have hcap : ∀ I ∈ L, ∑ r ∈ Finset.univ.image (fun w => (tests I w).r),
-      Fintype.card (W I) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
-        ((fun _ : ℕ => τH) r / (2 * Real.exp (D * (1 + Real.log A.Hsrc) ^ D))) ^ 2 <
-        (TmaxH : ℝ) := by
-    intro I _
-    have hsub : Finset.univ.image (fun w => (tests I w).r) ⊆ {rH} := fun r hr => by
-      obtain ⟨w, -, rfl⟩ := Finset.mem_image.mp hr
-      exact Finset.mem_singleton.mpr (hrH I w)
-    have hc1 : (Finset.univ.image (fun w => (tests I w).r)).card ≤ 1 :=
-      (Finset.card_le_card hsub).trans (by simp)
-    have hterm : (Fintype.card (W I) : ℝ) *
-        (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) / (τH / E) ^ 2 ≤
-        WH * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) / (τH / E) ^ 2 := by
-      have : (Fintype.card (W I) : ℝ) ≤ WH := by exact_mod_cast hW I
-      gcongr
-    have hpos : 0 ≤ (Fintype.card (W I) : ℝ) *
-        (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) / (τH / E) ^ 2 := by
-      positivity
-    rw [Finset.sum_const, nsmul_eq_mul]
-    calc ((Finset.univ.image (fun w => (tests I w).r)).card : ℝ) *
-          (Fintype.card (W I) * (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) /
-            (τH / E) ^ 2)
-        ≤ 1 * (Fintype.card (W I) *
-            (4 ^ ap.mH * projectionPrefixConstant TmaxH ^ (2 * ap.mH)) / (τH / E) ^ 2) := by
-          gcongr; exact_mod_cast hc1
-      _ < (TmaxH : ℝ) := by rw [one_mul]; exact lt_of_le_of_lt hterm hH
-  obtain ⟨hcat', hpass, -, hbr, -, -⟩ := helper_instantiation hst A.exp_two_le_Hsrc
-    (tagOf := A.vtag) (fun x => A.vchart_dim x) L hnd hord A.w (fun I hI => A.adm I (hL I hI)) W
-    tests ap.mH
-    (fun _ => τH) (fun _ _ => hτH) hrH (cat a) hMcH hfresh hcap (Wm := Empty)
-    (fun e => e.elim) (fun e => e.elim) (fun e => τH) (fun e => e.elim)
-  refine ⟨hcat', fun I hI w => VTest.pass_mono_order _ (hpass I (hret I hI) w) (Nat.le_succ _),
-    fun d hd => ?_⟩
-  obtain ⟨hdL, hdr, w, hM, R, hR, γ, hdt⟩ := hbr d hd
-  exact ⟨hL _ hdL, hdr, w, hM, R, hR, γ, by rw [← htA d.birth w]; exact hdt⟩
-
-end AttemptParams
-
-end ActiveSetup
 
 /-! ### The eventual growth bounds of the parameters (blueprint lines 2869-2888) -/
 
@@ -6799,7 +6162,7 @@ theorem Hf_z_eq_zero_of_isEmpty_vtx (A : ActiveSetup κ c₀) (bf : A.BasicFamil
         filter_upwards [hB0] with y hy hyI
         rw [Function.update_self, A.z_slot_basic p I hl₀ne, hy hyI]; rfl
       · exact Filter.Eventually.of_forall fun y _ => by rw [Function.update_of_ne hj])
-  show localProgressionForm (dyadicGridLength A.G I.1) (A.w I) (A.z (Fin.castSucc p) I) = 0
+  change localProgressionForm (dyadicGridLength A.G I.1) (A.w I) (A.z (Fin.castSucc p) I) = 0
   rw [hcongr]
   unfold localProgressionForm
   have : ∀ z : ℝ × ℝ, A.w I z * ∏ j, Function.update (A.z (Fin.castSucc p) I) l₀ 0 j
@@ -6809,8 +6172,8 @@ theorem Hf_z_eq_zero_of_isEmpty_vtx (A : ActiveSetup κ c₀) (bf : A.BasicFamil
 
 end ActiveSetup
 
--- the assembly of one root combines many bounds of the attempt
 set_option maxHeartbeats 4000000 in
+-- the assembly of one root combines many bounds of the attempt
 open Classical in
 /-- Blueprint lines 2838-2888 on one root (prop:normalized, `eq:before-absorption` and the choice
 of `q, α, P`): the retained-attempt estimate `RetainedMin`. The setup is padded so that the
@@ -6896,7 +6259,9 @@ theorem retainedMin_holds (κ : LocalKernelClass) : RetainedMin κ := by
     positivity
   -- without labels or cells no cell is active
   by_cases hL0 : Fintype.card B.L = 0
-  · refine ⟨∅, by simp, by simp, by simp; positivity, ?_⟩
+  · refine ⟨∅, by simp, by simp, by
+      simp only [Finset.sum_empty, one_div, inv_pos, Nat.ofNat_pos, mul_nonneg_iff_of_pos_left]
+      positivity, ?_⟩
     rw [Finset.filter_false_of_mem (fun I _ => B.not_active_of_card_eq_zero hL0 _ I),
       Finset.sum_empty]
     exact hRHS0
@@ -6907,13 +6272,17 @@ theorem retainedMin_holds (κ : LocalKernelClass) : RetainedMin κ := by
   have hsubA : A.SubRootProps η₀ ((k : ℝ) ^ Cb) := ActiveSetup.SubRootProps.padDc hMpad0 hsub
   by_cases hne : B.cells.Nonempty
   swap
-  · refine ⟨∅, by simp, by simp, by simp; positivity, ?_⟩
+  · refine ⟨∅, by simp, by simp, by
+      simp only [Finset.sum_empty, one_div, inv_pos, Nat.ofNat_pos, mul_nonneg_iff_of_pos_left]
+      positivity, ?_⟩
     rw [Finset.not_nonempty_iff_eq_empty.mp hne]
     simpa using hRHS0
   by_cases hV : Nonempty bf.Vtx
   swap
   · -- without basic columns all pattern forms vanish
-    refine ⟨∅, by simp, by simp, by simp; positivity, ?_⟩
+    refine ⟨∅, by simp, by simp, by
+      simp only [Finset.sum_empty, one_div, inv_pos, Nat.ofNat_pos, mul_nonneg_iff_of_pos_left]
+      positivity, ?_⟩
     calc ∑ I ∈ (B.cells.filter (fun I => ¬ ∃ c ∈ (∅ : Finset (ℤ × ℤ)),
           dyadicGridCell B.G I.1 I.2 ⊆ dyadicGridCell B.G c.1 c.2)).filter (B.active δa),
           dyadicGridLength B.G I.1 * min B.η ‖B.Hf I (B.z (Fin.castSucc p) I)‖ = 0 := by
@@ -7343,7 +6712,7 @@ theorem retainedMin_holds (κ : LocalKernelClass) : RetainedMin κ := by
   have nB11 : (A.dBnd : ℝ) ≤ (k : ℝ) ^ cc := by linarith only [hdB, p13]
   have nB12 : Real.log AD.fp.Hed ≤ (k : ℝ) ^ cc := by
     have hHedp : 0 < fp.Hed := lt_of_lt_of_le (Real.exp_pos _) hHedge
-    show Real.log fp.Hed ≤ (k : ℝ) ^ cc
+    change Real.log fp.Hed ≤ (k : ℝ) ^ cc
     rw [Real.log_le_iff_le_exp hHedp, hHed]
     refine max_le le_rfl (max_le ?_ ?_)
     · have := Real.add_one_le_exp ((k : ℝ) ^ cc)
@@ -7529,20 +6898,6 @@ theorem retainedMin_holds (κ : LocalKernelClass) : RetainedMin κ := by
 (`activeMin_of_retainedMin`) and the two-`U` term (`activeFinal_of_activeMin`). -/
 theorem activeFinal_holds (κ : LocalKernelClass) : ActiveFinal κ :=
   activeFinal_of_activeMin (activeMin_of_retainedMin (retainedMin_holds κ))
-
-/-- Blueprint prop:normalized (lines 2827-2833) for every admissible class: there is `q ∈ (2, 3)`
-such that `eq:normalized` holds with an arbitrarily small coefficient of `C_N`. -/
-theorem normalizedAbsorption_holds (κ : LocalKernelClass) :
-    ∃ q : ℝ, 2 < q ∧ q < 3 ∧ ∀ c : ℝ, 0 < c → ∃ A : ℝ, 0 ≤ A ∧
-      ∀ N, NormalizedAbsorption κ q N A c :=
-  normalizedAbsorption_of_activeFinal κ (activeFinal_holds κ)
-
-/-- Blueprint thm:uniform-local (lines 2906-2908): every admissible class has `q ∈ [2, 3)` with
-`sup_N C_N(q) < ∞`. -/
-theorem uniform_local_holds :
-    ∀ κ : LocalKernelClass, ∃ q, 2 ≤ q ∧ q < 3 ∧ ∃ Cst : ℝ,
-      ∀ N, finiteDepthConstant κ q N ≤ Cst :=
-  uniform_of_activeFinal activeFinal_holds
 
 /-- Blueprint thm:main (lines 2934-2940): the trilinear Hilbert transform principal value exists
 pointwise on Schwartz functions, is bounded `L³ × L³ × L³ → L¹` there, and extends uniquely to a

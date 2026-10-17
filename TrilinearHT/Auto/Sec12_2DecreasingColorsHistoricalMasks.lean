@@ -683,11 +683,6 @@ theorem metaCode_inj {Nv : ℕ} {c c' : Option (Fin K.d0 × V × ℤ) × ℕ × 
   rw [K.roundCode_inj h1 h1' e1, K.roundCode_inj h5 h5' e5, e2, e3, e4]
 
 omit [DecidableEq V] in
-theorem flog32_le_of_card {X : Finset V} {Nv : ℕ} (hN : X.card ≤ Nv) (p : V → Prop)
-    [DecidablePred p] : flog32 (X.filter p).card ≤ Nv :=
-  (flog32_le _).trans ((Finset.card_le_card (Finset.filter_subset _ _)).trans hN)
-
-omit [DecidableEq V] in
 theorem roundTop_psc_mem {A : AdmState V} {v : V} (hv : v ∈ A.X) (ρ : Fin K.d0) :
     0 ≤ roundTop A.X (K.psc A.s ρ v) ∧ roundTop A.X (K.psc A.s ρ v) ≤ K.d0 := by
   refine ⟨?_, roundTop_le ⟨v, hv⟩ fun z _ => ?_⟩
@@ -2961,27 +2956,6 @@ theorem size_le_log (n : ℕ) : Nat.size n ≤ Nat.log 2 n + 1 := by
 /-- The degree `d₀ = ⌈1000 log 2D⌉` of the coloring. -/
 noncomputable def colorDegree (D : ℕ) : ℕ := ⌈1000 * Real.log (2 * D)⌉₊
 
-theorem log2_le_colorDegree {D : ℕ} (hD : 1 ≤ D) : 2 * Nat.log 2 D + 3 ≤ colorDegree D := by
-  unfold colorDegree
-  have hD' : (1 : ℝ) ≤ D := by exact_mod_cast hD
-  have hl : (Nat.log 2 D : ℝ) * Real.log 2 ≤ Real.log D := by
-    rw [← Real.log_pow]
-    apply Real.log_le_log (by positivity)
-    exact_mod_cast Nat.pow_log_le_self 2 (by omega)
-  have hl2 : (0.69 : ℝ) < Real.log 2 := by
-    have := Real.log_two_gt_d9; linarith
-  have hlogD : 0 ≤ Real.log D := Real.log_nonneg hD'
-  have h2D : Real.log (2 * D) = Real.log 2 + Real.log D := Real.log_mul (by norm_num) (by
-      positivity)
-  have : (2 * Nat.log 2 D + 3 : ℝ) ≤ 1000 * Real.log (2 * D) := by
-    rw [h2D]
-    have : (Nat.log 2 D : ℝ) ≤ Real.log D / 0.69 := by
-      rw [le_div_iff₀ (by norm_num)]; nlinarith
-    have : Real.log D / 0.69 ≤ 2 * Real.log D := by
-      rw [div_le_iff₀ (by norm_num)]; nlinarith
-    nlinarith
-  exact_mod_cast this.trans (Nat.le_ceil _)
-
 theorem colorDegree_bounds {D : ℕ} (hD : 1 ≤ D) :
     1000 * Real.log (2 * D) ≤ colorDegree D ∧ (colorDegree D : ℝ) ≤ 2001 * D := by
   unfold colorDegree
@@ -4164,9 +4138,6 @@ noncomputable def cd0 : ℕ := colorDegree A.vtxBound
 
 /-- The high scale `b₂ = 100 (H_max + 1)` (blueprint line 1716). -/
 def cb2 (Hmax : ℕ) : ℕ := 100 * (Hmax + 1)
-
-/-- The primary scale `b₁ = d₀^{10} b₂ (H_max + 1)` (blueprint line 1716). -/
-noncomputable def cb1 (Hmax : ℕ) : ℕ := A.cd0 ^ 10 * cb2 Hmax * (Hmax + 1)
 
 end ActiveSetup
 

@@ -380,19 +380,6 @@ theorem characterSpectrum_generators {G : Type*} [Fintype G] [AddCommGroup G]
   refine ⟨Λ, hΛS, ?_, hspan⟩
   exact (show (Λ.card : ℝ) ≤ ⌊B⌋₊ by exact_mod_cast hΛcard).trans (Nat.floor_le hB)
 
-/-- At full density the large spectrum consists exactly of the zero character. -/
-theorem largeCharacterSpectrum_univ {G : Type*} [Fintype G] [AddCommGroup G]
-    {η : ℝ} (hη : 0 < η) (hη1 : η ≤ 1) :
-    largeCharacterSpectrum (Finset.univ : Finset G) η = {0} := by
-  classical
-  ext ψ
-  rw [mem_largeCharacterSpectrum, Finset.mem_singleton]
-  unfold characterMean
-  rw [AddChar.expect_eq_ite]
-  by_cases hψ : ψ = 0
-  · simp [hψ, hη1]
-  · simp [hψ, not_le.mpr hη]
-
 open scoped Pointwise in
 /-- Signed spans commute with an additive equivalence. -/
 theorem addSpan_image_equiv {G H : Type*} [AddCommGroup G] [AddCommGroup H]

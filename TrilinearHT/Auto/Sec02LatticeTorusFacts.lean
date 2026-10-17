@@ -188,20 +188,6 @@ theorem coefficientBox_subset_quarter_ball {E : Type*} [NormedAddCommGroup E]
   rw [Metric.mem_closedBall, dist_zero_right]
   exact coefficientBox_partial_sum_le hn b z hz hbound Finset.univ
 
-theorem integerCoefficientBox_empty {E : Type*} [NormedAddCommGroup E]
-    [NormedSpace ℝ E] {n : ℕ} (b : Module.Basis (Fin n) ℝ E) (L : Fin n → ℤ) :
-    integerCoefficientBox b ∅ L = {0} := by
-  ext x
-  constructor
-  · rintro ⟨z, hz, _, hsum⟩
-    have hzero : z = 0 := funext fun i => hz i (Finset.notMem_empty i)
-    simpa only [hzero, Pi.zero_apply, zero_smul, Finset.sum_const_zero,
-      Set.mem_singleton_iff] using hsum.symm
-  · intro hx
-    have hx0 : x = 0 := Set.mem_singleton_iff.mp hx
-    subst x
-    exact ⟨0, by simp, by simp, by simp⟩
-
 /-- Blueprint `lem:lattice-box`, complete statement: a part of a lattice
 basis with positive integer side lengths contains the closed radius
 `(100d)^(-10d)` lattice ball and lies in the closed radius `1/4` ball;
@@ -226,25 +212,6 @@ theorem smallBallCoefficientBox {E : Type*} [NormedAddCommGroup E]
   · rw [hc]
     exact hv.2
   · simpa only [Metric.mem_closedBall, dist_zero_right] using hv.1
-
-/-- The coefficient-box theorem for an arbitrary full lattice in positive dimension. -/
-theorem smallBallCoefficientBox_fullLattice {E : Type*} [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [FiniteDimensional ℝ E] (L : Submodule ℤ E)
-    [DiscreteTopology L] [IsZLattice ℝ L] (hd : 0 < Module.finrank ℝ E) :
-    ∃ (b : Module.Basis (Fin (Module.finrank ℝ E)) ℝ E)
-      (I : Finset (Fin (Module.finrank ℝ E))) (a : Fin (Module.finrank ℝ E) → ℤ),
-      Submodule.span ℤ (Set.range b) = L ∧ (∀ i ∈ I, 1 ≤ a i) ∧
-      (Metric.closedBall (0 : E) (latticeBoxRadius (Module.finrank ℝ E)) ∩
-        (L : Set E) ⊆ integerCoefficientBox b I a) ∧
-      (integerCoefficientBox b I a ⊆ Metric.closedBall 0 (1 / 4)) ∧
-      ∀ z : Fin (Module.finrank ℝ E) → ℤ, (∀ i ∉ I, z i = 0) → (∀ i ∈ I, |z i| ≤ a i) →
-        ∀ s : Finset (Fin (Module.finrank ℝ E)), ‖∑ i ∈ s, z i • b i‖ ≤ (1 / 4 : ℝ) := by
-  let := ZLattice.module_finite ℝ L
-  let := ZLattice.module_free ℝ L
-  let b := ((Module.finBasis ℤ L).ofZLatticeBasis ℝ L).reindex (finCongr (ZLattice.rank ℝ L))
-  have hb : Submodule.span ℤ (Set.range b) = L := by
-    rw [Module.Basis.range_reindex, Module.Basis.ofZLatticeBasis_span]
-  simpa only [hb] using smallBallCoefficientBox hd b
 
 end Auto
 
@@ -323,12 +290,6 @@ theorem continuous_torusBasisEquiv_symm {d : ℕ} (b : Module.Basis (Fin d) ℤ 
   simp only [torusBasisEquiv_symm_apply]
   exact continuous_finsetSum _ (fun j _ => (continuous_apply j).zsmul _)
 
-noncomputable def torusBasisHomeomorph {d : ℕ} (b : Module.Basis (Fin d) ℤ (Fin d → ℤ)) :
-    StandardTorus d ≃ₜ StandardTorus d where
-  toEquiv := (torusBasisEquiv b).toEquiv
-  continuous_toFun := continuous_torusBasisEquiv b
-  continuous_invFun := continuous_torusBasisEquiv_symm b
-
 /-- Blueprint `lem:torus-annihilator`, line 358: an adapted integer basis
 turns annihilation by its first basis vectors into zero coordinate conditions. -/
 theorem torusAnnihilator_basis_coordinates {d r : ℕ} (L : Submodule ℤ (Fin d → ℤ))
@@ -349,14 +310,6 @@ theorem torusAnnihilator_basis_coordinates {d r : ℕ} (L : Submodule ℤ (Fin d
       rintro _ ⟨i, hi, rfl⟩
       exact h i hi
     exact hker hn
-
-theorem rationalAnnihilator_coordinates {d : ℕ} (V : Submodule ℚ (Fin d → ℚ)) :
-    ∃ r ≤ d, ∃ b : Module.Basis (Fin d) ℤ (Fin d → ℤ), ∀ x : StandardTorus d,
-      x ∈ torusAnnihilator (rationalIntegerIntersection V) ↔
-        ∀ i : Fin d, i.val < r → torusBasisEquiv b x i = 0 := by
-  obtain ⟨r, hr, b, hb⟩ := saturatedAdaptedBasis (rationalIntegerIntersection V)
-    (rationalIntegerIntersection_saturated V)
-  exact ⟨r, hr, b, torusAnnihilator_basis_coordinates _ b hb⟩
 
 /-- The coordinate torus with its first `r` coordinates equal to zero. -/
 def coordinateTorus (d r : ℕ) : Submodule ℤ (StandardTorus d) where
@@ -441,15 +394,6 @@ theorem saturatedAnnihilator_is_torus {d : ℕ} (L : Submodule ℤ (Fin d → �
   exact ⟨r, hr,
     ⟨(torusAnnihilatorCoordinateEquiv L b hb).trans (coordinateTorusTailEquiv d r)⟩,
     ⟨(torusAnnihilatorCoordinateHomeomorph L b hb).trans (coordinateTorusTailHomeomorph d r)⟩⟩
-
-theorem saturatedAnnihilator_connected {d : ℕ} (L : Submodule ℤ (Fin d → ℤ))
-    (hL : IntegerSaturated L) : ConnectedSpace (torusAnnihilator L) := by
-  obtain ⟨r, _, _, ⟨e⟩⟩ := saturatedAnnihilator_is_torus L hL
-  exact e.symm.surjective.connectedSpace e.symm.continuous
-
-theorem rationalAnnihilator_connected {d : ℕ} (V : Submodule ℚ (Fin d → ℚ)) :
-    ConnectedSpace (torusAnnihilator (rationalIntegerIntersection V)) :=
-  saturatedAnnihilator_connected _ (rationalIntegerIntersection_saturated V)
 
 theorem torusAnnihilator_isClosed {d : ℕ} (L : Submodule ℤ (Fin d → ℤ)) :
     IsClosed (torusAnnihilator L : Set (StandardTorus d)) := by
@@ -608,12 +552,6 @@ theorem saturatedAnnihilator_progression_surjective {d : ℕ}
     Function.Surjective (progressionPairHom (torusAnnihilator L) i j l) :=
   progressionPairHom_surjective (fun _ hk => saturatedAnnihilator_zsmul_surjective L hL hk) hij l
 
-theorem rationalAnnihilator_progression_surjective {d : ℕ}
-    (V : Submodule ℚ (Fin d → ℚ)) {i j : ℤ} (hij : i ≠ j) (l : ℤ) :
-    Function.Surjective
-      (progressionPairHom (torusAnnihilator (rationalIntegerIntersection V)) i j l) :=
-  saturatedAnnihilator_progression_surjective _ (rationalIntegerIntersection_saturated V) hij l
-
 theorem continuous_progressionPairHom {G : Type*} [AddCommGroup G] [TopologicalSpace G]
     [IsTopologicalAddGroup G] (i j l : ℤ) : Continuous (progressionPairHom G i j l) :=
   (continuous_fst.add (continuous_snd.zsmul (i - l))).prodMk
@@ -642,36 +580,6 @@ theorem rationalAnnihilator_progression_measurePreserving {d : ℕ}
         (torusAnnihilatorHaar (rationalIntegerIntersection V))) :=
   saturatedAnnihilator_progression_measurePreserving _
     (rationalIntegerIntersection_saturated V) hij l
-
-open scoped Classical in
-/-- Blueprint `lem:torus-annihilator`, complete statement: a rational
-annihilator is a compact connected torus; its character integrals are the
-indicator of the integer lattice; and every two-distinct-slot progression
-map is surjective and preserves Haar probability, including dimension zero. -/
-theorem rationalAnnihilator {d : ℕ} (V : Submodule ℚ (Fin d → ℚ)) :
-    ConnectedSpace (torusAnnihilator (rationalIntegerIntersection V)) ∧
-    (∃ r ≤ d, Nonempty (torusAnnihilator (rationalIntegerIntersection V) ≃ₜ
-      ({i : Fin d // r ≤ i.val} → AddCircle (1 : ℝ)))) ∧
-    (∀ n : Fin d → ℤ,
-      (∫ x : torusAnnihilator (rationalIntegerIntersection V), torusCharacter n x
-        ∂torusAnnihilatorHaar (rationalIntegerIntersection V)) =
-        if n ∈ rationalIntegerIntersection V then (1 : ℂ) else 0) ∧
-    ∀ i j : ℤ, i ≠ j → ∀ l : ℤ,
-      Function.Surjective
-        (progressionPairHom (torusAnnihilator (rationalIntegerIntersection V)) i j l) ∧
-      MeasureTheory.MeasurePreserving
-        (progressionPairHom (torusAnnihilator (rationalIntegerIntersection V)) i j l)
-        ((torusAnnihilatorHaar (rationalIntegerIntersection V)).prod
-          (torusAnnihilatorHaar (rationalIntegerIntersection V)))
-        ((torusAnnihilatorHaar (rationalIntegerIntersection V)).prod
-          (torusAnnihilatorHaar (rationalIntegerIntersection V))) := by
-  refine ⟨rationalAnnihilator_connected V, ?_, rationalAnnihilator_character_integral V, ?_⟩
-  · obtain ⟨r, hr, _, he⟩ :=
-      saturatedAnnihilator_is_torus _ (rationalIntegerIntersection_saturated V)
-    exact ⟨r, hr, he⟩
-  · intro i j hij l
-    exact ⟨rationalAnnihilator_progression_surjective V hij l,
-      rationalAnnihilator_progression_measurePreserving V hij l⟩
 
 end Auto
 

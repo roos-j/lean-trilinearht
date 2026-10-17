@@ -21,60 +21,6 @@ Formalization of blueprint Section 4, "Column projections and bounded-height fre
 section
 
 namespace Auto
-open scoped BigOperators
-
-section ComplexMeasureAverages
-open MeasureTheory
-variable {Ω : Type*} [MeasurableSpace Ω]
-variable {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F] [NormedSpace ℂ F]
-  [IsScalarTower ℝ ℂ F]
-
-theorem complexMeasurePairing_norm_le : ‖complexMeasurePairing F‖ ≤ 1 := by
-  rw [complexMeasurePairing, ContinuousLinearMap.opNorm_flip]
-  exact ContinuousLinearMap.opNorm_lsmul_le
-
-theorem complexMeasureIntegral_norm_le [CompleteSpace F] (μ : VectorMeasure Ω ℂ)
-    [IsFiniteMeasure μ.variation] (f : Ω → F) {C : ℝ} (hC : 0 ≤ C)
-    (hf : ∀ᵐ ω ∂μ.variation, ‖f ω‖ ≤ C) :
-    ‖complexMeasureIntegral μ f‖ ≤ C * μ.variation.real Set.univ := by
-  have h := VectorMeasure.norm_integral_le_of_norm_le_const
-    (μ := μ) (B := complexMeasurePairing F) hf
-  calc
-    _ ≤ C * ‖complexMeasurePairing F‖ * μ.variation.real Set.univ := h
-    _ ≤ C * 1 * μ.variation.real Set.univ := mul_le_mul_of_nonneg_right
-      (mul_le_mul_of_nonneg_left complexMeasurePairing_norm_le hC) ENNReal.toReal_nonneg
-    _ = _ := by rw [mul_one]
-
-/-- Blueprint `lem:compression`, lines 550 and 597: fixed averages of
-finite row families cost only the total variation of an arbitrary complex
-averaging measure. Coordinate integrability makes the averages genuine. -/
-theorem finiteRowNorm_complexMeasureIntegral_le {ι : Type*} [Fintype ι] [CompleteSpace F]
-    (μ : VectorMeasure Ω ℂ) [IsFiniteMeasure μ.variation] (f : Ω → ι → F)
-    (hf : ∀ i, Integrable (fun ω => f ω i) μ.variation)
-    {C : ℝ} (hC : 0 ≤ C) (hbound : ∀ᵐ ω ∂μ.variation, finiteRowNorm (f ω) ≤ C) :
-    finiteRowNorm (fun i => complexMeasureIntegral μ (fun ω => f ω i)) ≤
-      C * μ.variation.real Set.univ := by
-  let L : (ι → F) →L[ℂ] PiLp 2 (fun _ : ι => F) :=
-    (PiLp.continuousLinearEquiv 2 ℂ (fun _ : ι => F)).symm.toContinuousLinearMap
-  have hpi : Integrable f μ.variation := integrable_pi_iff.mpr hf
-  have hrow : Integrable (fun ω => WithLp.toLp 2 (f ω)) μ.variation := L.integrable_comp hpi
-  have he : WithLp.toLp 2 (fun i => complexMeasureIntegral μ (fun ω => f ω i)) =
-      complexMeasureIntegral μ (fun ω => WithLp.toLp 2 (f ω)) := by
-    ext i
-    exact (complexMeasureIntegral_map μ (PiLp.proj 2 (fun _ : ι => F) i) hrow).symm
-  change ‖WithLp.toLp 2 (fun i => complexMeasureIntegral μ (fun ω => f ω i))‖ ≤ _
-  rw [he]
-  exact complexMeasureIntegral_norm_le μ _ hC hbound
-
-end ComplexMeasureAverages
-
-end Auto
-
-end
-
-section
-
-namespace Auto
 open Filter
 open scoped Topology
 open Polynomial MeasureTheory
@@ -223,12 +169,6 @@ theorem cellColumnProjection_mem {V : Type*} [Fintype V] (D : ColumnTreeData V)
     cellColumnProjection D A hc z ∈ cellColumnRange D A hc :=
   Submodule.starProjection_apply_mem _ _
 
-theorem cellColumnProjection_fixes_column {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (v : {v // v ∈ A.labels c}) :
-    cellColumnProjection D A hc (cellColumnLp D A hc v) = cellColumnLp D A hc v := by
-  apply Submodule.starProjection_eq_self_iff.mpr
-  exact Submodule.subset_span (Set.mem_range_self v)
-
 open scoped Classical in
 /-- Membership in the projection range is exactly a constant-coefficient
 combination of the available restricted columns. -/
@@ -237,15 +177,6 @@ theorem cellColumnRange_mem_iff {V : Type*} [Fintype V] (D : ColumnTreeData V)
     z ∈ cellColumnRange D A hc ↔
       ∃ a : {v // v ∈ A.labels c} → ℂ, ∑ v, a v • cellColumnLp D A hc v = z := by
   exact Submodule.mem_span_range_iff_exists_fun ℂ
-
-open scoped Classical in
-/-- The orthogonal projection is represented by coefficients constant on
-the decision cell, exactly as required by `column-data`, line 480. -/
-theorem cellColumnProjection_representation {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
-    ∃ a : {v // v ∈ A.labels c} → ℂ,
-      ∑ v, a v • cellColumnLp D A hc v = cellColumnProjection D A hc z :=
-  (cellColumnRange_mem_iff D A hc _).mp (cellColumnProjection_mem D A hc z)
 
 /-- Multiplication of an L2 column-space vector by a measurable decision
 set, retaining its original values on the set and zero elsewhere. -/
@@ -450,10 +381,6 @@ theorem partitionColumnProjection_eq_sum {V : Type*} [Fintype V] (D : ColumnTree
       have hcomp := Submodule.starProjection_comp_starProjection_of_le hle
       exact congrArg (fun L : ColumnL2 V →L[ℂ] ColumnL2 V => L z) hcomp
 
-theorem partitionColumnProjection_norm_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) (π : ColumnStoppingPartition D) :
-    ‖partitionColumnProjection D A π‖ ≤ 1 := Submodule.starProjection_norm_le _
-
 theorem cellColumnRange_restrict_superset {V : Type*} [Fintype V] (D : ColumnTreeData V)
     (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
     {s : Set ℝ} (hs : MeasurableSet s) (hcs : dyadicGridCell D.grid c.1 c.2 ⊆ s)
@@ -583,16 +510,6 @@ theorem columnL2Restriction_inner {V : Type*} [Fintype V] (s : Set ℝ)
   · rw [Set.indicator_of_notMem hy, Set.indicator_of_notMem hy,
       inner_zero_left, inner_zero_right]
 
-/-- Exact output locality of the cell projection. -/
-theorem cellColumnProjection_output_locality {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
-    (columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
-      (dyadicGridCell_measurable D.grid c.1 c.2)).comp (cellColumnProjection D A hc) =
-        cellColumnProjection D A hc := by
-  apply ContinuousLinearMap.ext
-  intro z
-  exact cellColumnRange_fixed_restriction D A hc (cellColumnProjection_mem D A hc z)
-
 /-- Blueprint `column-data`, line 483: the cell projection is unchanged by
 right multiplication by its decision-cell indicator. -/
 theorem cellColumnProjection_input_locality {V : Type*} [Fintype V] (D : ColumnTreeData V)
@@ -626,16 +543,6 @@ structure ColumnRowFamily {V : Type*} [Fintype V] (D : ColumnTreeData V)
     (dyadicGridCell D.grid (decision i).1 (decision i).2)
     (dyadicGridCell_measurable D.grid (decision i).1 (decision i).2)) = row i
 
-/-- Left composition preserves the exact decision-cell locality equation. -/
-theorem columnRowFamily_postcompose_locality {V ι F K : Type*} [Fintype V] [Fintype ι]
-    [NormedAddCommGroup F] [NormedSpace ℂ F] [NormedAddCommGroup K] [NormedSpace ℂ K]
-    (D : ColumnTreeData V) (B : ColumnRowFamily D ι F) (L : ι → F →L[ℂ] K) (i : ι) :
-    ((L i).comp (B.row i)).comp (columnL2Restriction
-      (dyadicGridCell D.grid (B.decision i).1 (B.decision i).2)
-      (dyadicGridCell_measurable D.grid (B.decision i).1 (B.decision i).2)) =
-      (L i).comp (B.row i) := by
-  rw [ContinuousLinearMap.comp_assoc, B.input_locality]
-
 /-- Euclidean coefficient space for the labels available on a decision cell. -/
 abbrev CellCoefficients {V : Type*} [Fintype V] (D : ColumnTreeData V)
     (A : InheritedColumnMask D) (c : ℤ × ℤ) := EuclideanSpace ℂ {v // v ∈ A.labels c}
@@ -646,12 +553,6 @@ noncomputable def columnCombination {V : Type*} [Fintype V] (D : ColumnTreeData 
     (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c) (y : ℝ) :
     ColumnHilbert V :=
   ∑ v : {v // v ∈ A.labels c}, a v • privateColumnValue D.scalar D.privateWeight v y
-
-open scoped Classical in
-theorem columnCombination_physical {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) (c : ℤ × ℤ) (a : CellCoefficients D A c) (y : ℝ) :
-    columnCombination D A c a y none = ∑ v : {v // v ∈ A.labels c}, a v * D.scalar v y := by
-  simp [columnCombination, privateColumnValue_physical, smul_eq_mul]
 
 open scoped Classical in
 theorem columnCombination_private {V : Type*} [Fintype V] (D : ColumnTreeData V)
@@ -937,16 +838,6 @@ theorem cellColumnGramEquiv_symm_norm_le {V : Type*} [Fintype V] (D : ColumnTree
   convert hh using 1
   rfl
 
-/-- The Gram form is exactly the cell average of the pointwise column forms. -/
-theorem cellColumnGram_average {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells)
-    (a b : CellCoefficients D A c) :
-    inner ℂ a (cellColumnGram D A hc b) =
-      (dyadicGridLength D.grid c.1)⁻¹ •
-        ∫ y in dyadicGridCell D.grid c.1 c.2,
-          inner ℂ (columnCombination D A c a y) (columnCombination D A c b y) := by
-  rw [cellColumnGram_inner, cellColumnSynthesis_inner_integral]
-
 open scoped Classical in
 theorem cellColumnSynthesis_range {V : Type*} [Fintype V] (D : ColumnTreeData V)
     (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
@@ -1190,37 +1081,6 @@ theorem cellColumnProjection_ae_bound {V : Type*} [Fintype V] (D : ColumnTreeDat
       mul_le_mul_of_nonneg_left hb (inv_nonneg.mpr hL.le)
     _ = _ := by rw [div_eq_mul_inv]; ring
 
-/-- Blueprint `lem:coeff`, lines 492–495: the cell projection has essential
-supremum at most `D⁵` times the cell average of the input norm. -/
-theorem cellColumnProjection_eLpNorm_top_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) (z : ColumnL2 V) :
-    eLpNorm (cellColumnProjection D A hc z : ℝ → ColumnHilbert V) ∞
-      (volume.restrict (dyadicGridCell D.grid c.1 c.2)) ≤
-        ENNReal.ofReal (D.budget ^ 5 *
-          ((∫ t in dyadicGridCell D.grid c.1 c.2, ‖z t‖) / dyadicGridLength D.grid c.1)) := by
-  rw [eLpNorm_exponent_top (Lp.aestronglyMeasurable _).restrict]
-  exact eLpNormEssSup_le_of_ae_bound (cellColumnProjection_ae_bound D A hc z)
-
-theorem cellColumnSynthesis_injective {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) {c : ℤ × ℤ} (hc : c ∈ D.cells) :
-    Function.Injective (cellColumnSynthesis D A hc) := by
-  intro a b hab
-  apply cellColumnGram_injective D A hc
-  simp only [cellColumnGram, smul_apply, ContinuousLinearMap.comp_apply, hab]
-
-/-- The coefficients of a cell projection are unique, as asserted in
-blueprint `lem:coeff`, line 503. -/
-theorem cellColumnProjection_unique_coefficients {V : Type*} [Fintype V]
-    (D : ColumnTreeData V) (A : InheritedColumnMask D) {c : ℤ × ℤ}
-    (hc : c ∈ D.cells) (z : ColumnL2 V) :
-    ∃! a : CellCoefficients D A c, cellColumnSynthesis D A hc a =
-      cellColumnProjection D A hc z := by
-  refine ⟨cellProjectionCoefficients D A hc z,
-    (cellColumnProjection_eq_synthesis D A hc z).symm, ?_⟩
-  intro a ha
-  apply cellColumnSynthesis_injective D A hc
-  rw [ha, cellColumnProjection_eq_synthesis]
-
 open scoped Classical in
 /-- The physical input `(f,0)` in the column Hilbert space. -/
 noncomputable def physicalColumnInput {V : Type*} [Fintype V]
@@ -1385,18 +1245,6 @@ noncomputable def extendedColumnMask {V : Type*} [Fintype V] (D : ColumnTreeData
     obtain ⟨he, hde⟩ := Finset.mem_filter.mp he
     exact Finset.mem_biUnion.mpr ⟨e, Finset.mem_filter.mpr ⟨he, hcd.trans hde⟩, hve⟩
 
-theorem extendedColumnMask_column_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) (S : Finset (ℤ × ℤ)) (hDS : D.cells ⊆ S)
-    (hS : ∀ c ∈ S, dyadicGridCell D.grid c.1 c.2 ⊆ dyadicGridCell D.grid D.root.1 D.root.2)
-    {c : ℤ × ℤ} (hc : c ∈ D.cells) (v : {v // v ∈ A.labels c}) :
-    cellColumnLp (enlargedColumnTree D S hDS hS) (extendedColumnMask D A S hDS hS)
-      (hDS hc) ⟨v, by
-        change v.val ∈ extendedColumnLabels D A c
-        rw [extendedColumnLabels_eq D A hc]
-        exact v.property⟩ =
-      cellColumnLp D A hc v := by
-  rfl
-
 /-- Completing the tree preserves exactly the column range on every original
 cell; no extra columns have been introduced there (`lem:compression`, line 553). -/
 theorem extendedColumnMask_range_eq {V : Type*} [Fintype V] (D : ColumnTreeData V)
@@ -1525,11 +1373,6 @@ theorem columnSizeRoot_assignment {V : Type*} [Fintype V] (D : ColumnTreeData V)
         dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid L.1 L.2 → L.1 ≤ K.1 :=
   dyadicSizeSegment_exists D.grid D.root (columnCompletionDepth D) (columnCellAverage D z)
     (fun c _ => columnCellAverage_nonneg D z c) (columnCompletion_contains D hu)
-
-theorem columnSizeSegment_average_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (z : ColumnL2 V) (K : ℤ × ℤ) {u : ℤ × ℤ} (hu : u ∈ columnSizeSegment D z K) :
-    columnCellAverage D z u ≤ 2 * columnCellAverage D z K :=
-  dyadicSizeSegment_average_le D.grid _ _ K hu
 
 theorem columnSizeCuts_subset {V : Type*} [Fintype V] (D : ColumnTreeData V)
     (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
@@ -1747,13 +1590,6 @@ theorem columnMomentRepresentative_ae_bound {V : Type*} [Fintype V] (D : ColumnT
       (pow_nonneg (le_trans (by norm_num : (0 : ℝ) ≤ 2) D.two_le_budget) 5))
       (columnCellAverage_nonneg D z K)
 
-theorem columnMomentRepresentative_eLpNorm_top_le {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : InheritedColumnMask D) (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
-    eLpNorm (columnMomentRepresentative D A z hK) ∞ volume ≤
-      ENNReal.ofReal (4 * D.budget ^ 5 * columnCellAverage D z K) := by
-  rw [eLpNorm_exponent_top (Lp.aestronglyMeasurable _)]
-  exact eLpNormEssSup_le_of_ae_bound (columnMomentRepresentative_ae_bound D A z hK)
-
 /-- Blueprint `eq:moment-representative`, line 559: the representative's
 squared L2 norm is exactly its pairing with the original input. -/
 theorem columnMomentRepresentative_inner {V : Type*} [Fintype V] (D : ColumnTreeData V)
@@ -1943,10 +1779,6 @@ noncomputable def columnDyadicMax {V : Type*} [Fintype V] (D : ColumnTreeData V)
 theorem columnDyadicMax_nonneg {V : Type*} [Fintype V] (D : ColumnTreeData V)
     (z : ColumnL2 V) (x : ℝ) : 0 ≤ columnDyadicMax D z x :=
   dyadicRealMax_nonneg D.grid _ _ x
-
-theorem columnDyadicMax_measurable {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (z : ColumnL2 V) : Measurable (columnDyadicMax D z) :=
-  dyadicRealMax_measurable D.grid _ _
 
 theorem columnDyadicMax_memLp {V : Type*} [Fintype V] (D : ColumnTreeData V)
     (z : ColumnL2 V) : MemLp (columnDyadicMax D z) 2 volume :=
@@ -2296,28 +2128,6 @@ theorem columnAttempts_eq_empty {V : Type*} [Fintype V]
     simpa using Nat.mul_le_mul_left n hT
   omega
 
-open scoped Classical in
-/-- Every retained row cell has a last anchor before the restart count,
-and its last-layer coefficient error is bounded by `D⁻¹⁰ a`. -/
-theorem columnAnchors_retained_assignment {V : Type*} [Fintype V]
-    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
-    (g : ColumnL2 V) (a : ℝ) {R u : ℤ × ℤ} (hR : R ∈ D.cells) (hu : u ∈ D.cells)
-    (hur : dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid R.1 R.2)
-    (hretain : ∀ K ∈ columnAnchors D A m g a R (columnRestartCount D (m + 1)),
-      ¬dyadicGridCell D.grid u.1 u.2 ⊆ dyadicGridCell D.grid K.1 K.2) :
-    ∃ j < columnRestartCount D (m + 1), ∃ K, ∃ hK : K ∈ columnAnchors D A m g a R j,
-      u ∈ dyadicAnchorSegment D.grid D.cells (columnCoefficientField D A m g)
-        (columnAnchorTolerance D a) K ∧
-      ‖cellProductCoefficients D A hu m g -
-        cellProductCoefficients D A (columnAnchors_subset D A m g a hR j hK) m g‖ ≤
-          columnAnchorTolerance D a := by
-  obtain ⟨j, hj, K, hK, hseg, herr⟩ := dyadicAnchorGeneration_retained_assignment
-    D.grid D.cells (columnCoefficientField D A m g) (columnAnchorTolerance D a) R
-      hu hur (columnRestartCount D (m + 1)) hretain
-  refine ⟨j, hj, K, hK, hseg, ?_⟩
-  simpa only [columnCoefficientField_of_mem D A m g hu,
-    columnCoefficientField_of_mem D A m g (columnAnchors_subset D A m g a hR j hK)] using herr
-
 /-- Refining a local cut partition enlarges the inherited column range,
 even when the partition root is a proper subcell of the original tree. -/
 theorem cutColumnRange_le_of_refines {V : Type*} [Fintype V] (D : ColumnTreeData V)
@@ -2363,34 +2173,6 @@ theorem cutColumnProjection_restrict_atom {V : Type*} [Fintype V] (D : ColumnTre
       (hdis hc d.property (fun he => hdc (Subtype.ext he.symm)))
       (cellColumnProjection_mem D A (hC d.property) g)
   · simp
-
-/-- Products of the partition projections agree on every atom with the
-corresponding products of cell projections, without inter-layer commutation. -/
-theorem cutColumnProduct_restrict_atom {V : Type*} [Fintype V] (D : ColumnTreeData V)
-    (A : ℕ → InheritedColumnMask D) (C : Finset (ℤ × ℤ)) (hC : C ⊆ D.cells)
-    (hdis : (C : Set (ℤ × ℤ)).PairwiseDisjoint (fun c => dyadicGridCell D.grid c.1 c.2))
-    {c : ℤ × ℤ} (hc : c ∈ C) (k : ℕ) (g : ColumnL2 V) :
-    columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
-      (dyadicGridCell_measurable D.grid c.1 c.2)
-      (nestedProjectionProduct (fun l _ => cutColumnProjection D (A l) C hC) k 0 g) =
-    cellColumnProduct D A (hC hc) k
-      (columnL2Restriction (dyadicGridCell D.grid c.1 c.2)
-        (dyadicGridCell_measurable D.grid c.1 c.2) g) := by
-  induction k with
-  | zero => rfl
-  | succ k ih =>
-    change columnL2Restriction _ _
-      (cutColumnProjection D (A k) C hC
-        (nestedProjectionProduct (fun l _ => cutColumnProjection D (A l) C hC) k 0 g)) =
-      cellColumnProjection D (A k) (hC hc) (cellColumnProduct D A (hC hc) k _)
-    rw [cutColumnProjection_restrict_atom D (A k) C hC hdis hc]
-    have hloc := congrArg (fun L : ColumnL2 V →L[ℂ] ColumnL2 V =>
-      L (nestedProjectionProduct (fun l _ => cutColumnProjection D (A l) C hC) k 0 g))
-        (cellColumnProjection_input_locality D (A k) (hC hc))
-    change cellColumnProjection D (A k) (hC hc)
-      (columnL2Restriction _ _
-        (nestedProjectionProduct (fun l _ => cutColumnProjection D (A l) C hC) k 0 g)) = _ at hloc
-    rw [← hloc, ih]
 
 /-- A nonempty cell product depends only on the input on its own cell. -/
 theorem cellColumnProduct_input_locality {V : Type*} [Fintype V] (D : ColumnTreeData V)
@@ -2958,39 +2740,12 @@ theorem columnRestart_contraction {V : Type*} [Fintype V]
     exact ⟨columnRestart_length_le_of_pos D A m g ha' hg hR T hT,
       columnRestart_energy_le_of_pos D A m g ha' hg hR T hT⟩
 
-/-- The contraction applies to the actual bounded moment representative
-and the exact restart count chosen by the blueprint. -/
-theorem columnMoment_restart_contraction {V : Type*} [Fintype V]
-    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
-    (z : ColumnL2 V) {K R : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z)
-    (hR : R ∈ (completedColumnTree D).cells) :
-    let g := columnMomentRepresentative D (A 0) z hK
-    let a := columnCellAverage D z K
-    let T := columnRestartCount D (m + 1)
-    let C := columnAnchors (completedColumnTree D) (fun l => completedColumnMask D (A l)) m g a R T
-    (∑ r ∈ C, dyadicGridLength D.grid r.1) ≤
-      columnRestartFactor D (m + 1) T * dyadicGridLength D.grid R.1 ∧
-    (∑ r ∈ C, ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
-      (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤
-      columnRestartFactor D (m + 1) T *
-        ‖columnL2Restriction (dyadicGridCell D.grid R.1 R.2)
-          (dyadicGridCell_measurable D.grid R.1 R.2) g‖ ^ 2 :=
-  columnRestart_contraction D A m _ (columnCellAverage_nonneg D z K)
-    (columnMomentRepresentative_ae_bound D (A 0) z hK) hR _ (columnRestartCount_pos D (m + 1))
-
 /-- The exact transition count in the source makes the column restart
 factor strictly smaller than one half for every nonempty product. -/
 theorem columnRestartFactor_lt_half {V : Type*} [Fintype V]
     (D : ColumnTreeData V) {m : ℕ} (hm : 1 ≤ m) :
     columnRestartFactor D m (columnRestartCount D m) < 1 / 2 :=
   projectionRestartTime_factor_lt_half D.two_le_budget hm
-
-/-- The explicit logarithmic horizon bound used by the source numerical check. -/
-theorem columnRestartCount_prefix_le {V : Type*} [Fintype V]
-    (D : ColumnTreeData V) {m : ℕ} (hm : 1 ≤ m) :
-    projectionPrefixConstant (columnRestartCount D m) ≤
-      129 * ((m : ℝ) + 1) ^ 2 * Real.logb 2 (2 * D.budget * ((m : ℝ) + 1)) :=
-  projectionRestartTime_prefix_le D.two_le_budget hm
 
 /-- Attempt generations in the completed tree, with the original masks
 extended once and the same moment input and size at every restart. -/
@@ -3087,24 +2842,6 @@ theorem columnMomentRepresentative_root_restriction {V : Type*} [Fintype V]
   · exact Set.indicator_of_mem hyK _
   · rw [Set.indicator_of_notMem hyK, hzero hyK]
 
-/-- The two factor-two packing estimates for the source moment family. -/
-theorem columnMoment_attempt_packing {V : Type*} [Fintype V]
-    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
-    (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
-    let g := columnMomentRepresentative D (A 0) z hK
-    let F := completedColumnAttempts D A m g (columnCellAverage D z K) K
-    Summable (fun n => ∑ r ∈ F n, dyadicGridLength D.grid r.1) ∧
-      (∑' n, ∑ r ∈ F n, dyadicGridLength D.grid r.1) ≤ 2 * dyadicGridLength D.grid K.1 ∧
-    Summable (fun n => ∑ r ∈ F n,
-      ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
-        (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ∧
-      (∑' n, ∑ r ∈ F n, ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
-        (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤ 2 * ‖g‖ ^ 2 := by
-  have h := completedColumnAttempts_packing D A m (columnMomentRepresentative D (A 0) z hK)
-    (columnCellAverage_nonneg D z K) (columnMomentRepresentative_ae_bound D (A 0) z hK)
-    (columnSizeRoots_subset D z hK)
-  simpa only [columnMomentRepresentative_root_restriction D (A 0) z hK] using h
-
 /-- The finite set of all attempt roots; generations beyond this horizon
 are empty by strict descent in the completed finite tree. -/
 noncomputable def completedColumnAttemptRoots {V : Type*} [Fintype V]
@@ -3133,23 +2870,6 @@ theorem completedColumnAttemptRoots_cost_le {V : Type*} [Fintype V]
       ∑' n, ∑ r ∈ completedColumnAttempts D A m g a R n, w r := by
   apply (finite_union_weight_le _ _ w hw).trans
   exact Summable.sum_le_tsum _ (fun n _ => Finset.sum_nonneg (fun r _ => hw r)) hs
-
-/-- Blueprint `lem:compression`, line 579, as finite sums over the actual
-attempt roots: both length and moment energy have packing constant two. -/
-theorem columnMoment_attemptRoots_packing {V : Type*} [Fintype V]
-    (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
-    (z : ColumnL2 V) {K : ℤ × ℤ} (hK : K ∈ columnSizeRoots D z) :
-    let g := columnMomentRepresentative D (A 0) z hK
-    let F := completedColumnAttemptRoots D A m g (columnCellAverage D z K) K
-    (∑ r ∈ F, dyadicGridLength D.grid r.1) ≤ 2 * dyadicGridLength D.grid K.1 ∧
-      (∑ r ∈ F, ‖columnL2Restriction (dyadicGridCell D.grid r.1 r.2)
-        (dyadicGridCell_measurable D.grid r.1 r.2) g‖ ^ 2) ≤ 2 * ‖g‖ ^ 2 := by
-  have h := columnMoment_attempt_packing D A m z hK
-  constructor
-  · exact (completedColumnAttemptRoots_cost_le D A m _ _ K _
-      (fun r => (dyadicGridLength_pos D.grid r.1).le) h.1).trans h.2.1
-  · exact (completedColumnAttemptRoots_cost_le D A m _ _ K _
-      (fun _ => sq_nonneg _) h.2.2.1).trans h.2.2.2
 
 theorem completedColumnAttemptRoots_mem_of_generation {V : Type*} [Fintype V]
     (D : ColumnTreeData V) (A : ℕ → InheritedColumnMask D) (m : ℕ)
@@ -4155,47 +3875,6 @@ theorem columnSpatialCompression_complements {V ι F : Type*} [Fintype V] [Finty
       columnComplementProduct_rows_bound D A θ m z B hB
     _ = ((2 : ℝ) ^ m * columnCompressionBound D m) * ‖z‖ := (mul_assoc _ _ _).symm
     _ ≤ _ := mul_le_mul_of_nonneg_right hproduct (norm_nonneg z)
-
-/-- Blueprint `lem:compression`, lines 548–550 and 597: fixed averages
-of inherited projection/complement compositions cost exactly the total
-variation of the averaging measure. The measure may be complex; only
-measurability is required, since contraction proves integrability. -/
-theorem columnSpatialCompression_averages {Ω V ι F : Type*} [MeasurableSpace Ω]
-    [Fintype V] [Fintype ι] [NormedAddCommGroup F] [NormedSpace ℝ F] [NormedSpace ℂ F]
-    [IsScalarTower ℝ ℂ F] [CompleteSpace F]
-    (D : ColumnTreeData V) (μ : VectorMeasure Ω ℂ) [IsFiniteMeasure μ.variation]
-    (A : Ω → ℕ → InheritedColumnMask D) (θ : Ω → ℕ → Bool) (m : ℕ) (z : ColumnL2 V)
-    (B : ColumnRowFamily D ι F) (hB : B.bound ≤ 1)
-    (hmeas : ∀ i, AEStronglyMeasurable (fun ω => operatorComplementProduct
-      (fun l => cellColumnProjection D (A ω l) (B.decision_mem i)) (θ ω) m z) μ.variation) :
-    finiteRowNorm (fun i => B.row i (complexMeasureIntegral μ (fun ω =>
-      operatorComplementProduct
-        (fun l => cellColumnProjection D (A ω l) (B.decision_mem i)) (θ ω) m z))) ≤
-      ((1024 * ((m : ℝ) + 1) ^ 1024 * Real.log (2 * D.budget)) ^ (1024 * (m + 1)) * ‖z‖) *
-        μ.variation.real Set.univ := by
-  let Q := fun ω i => operatorComplementProduct
-    (fun l => cellColumnProjection D (A ω l) (B.decision_mem i)) (θ ω) m z
-  have hQ (i : ι) : Integrable (fun ω => Q ω i) μ.variation := by
-    apply memLp_one_iff_integrable.mp
-    apply MemLp.of_bound (hmeas i) ‖z‖
-    apply ae_of_all
-    intro ω
-    exact operatorComplementProduct_norm_apply_le _ (θ ω) m
-      (fun _ _ => isStarProjection_starProjection) z
-  have hrow (i : ι) : Integrable (fun ω => B.row i (Q ω i)) μ.variation :=
-    (B.row i).integrable_comp (hQ i)
-  have hlog : 0 ≤ Real.log (2 * D.budget) := zero_le_one.trans (columnBudget_log_one_le D)
-  have h := finiteRowNorm_complexMeasureIntegral_le μ (fun ω i => B.row i (Q ω i)) hrow
-    (show 0 ≤ (1024 * ((m : ℝ) + 1) ^ 1024 * Real.log (2 * D.budget)) ^
-      (1024 * (m + 1)) * ‖z‖ by positivity)
-    (ae_of_all _ (fun ω => columnSpatialCompression_complements D (A ω) (θ ω) m z B hB))
-  have he : (fun i => B.row i (complexMeasureIntegral μ (fun ω => Q ω i))) =
-      (fun i => complexMeasureIntegral μ (fun ω => B.row i (Q ω i))) := by
-    funext i
-    exact complexMeasureIntegral_map μ (B.row i) (hQ i)
-  change finiteRowNorm (fun i => B.row i (complexMeasureIntegral μ (fun ω => Q ω i))) ≤ _
-  rw [he]
-  exact h
 
 end Auto
 

@@ -152,10 +152,6 @@ theorem fitRange_succ {M : ℕ} (s : Set ℝ) (a : ℕ → ℝ → ℂ) {n : ℕ
     · exact ⟨i, by omega, rfl⟩
     · exact ⟨⟨n, hn⟩, by simp, rfl⟩
 
-theorem fitRange_mono {M : ℕ} (s : Set ℝ) (a : ℕ → ℝ → ℂ) {n n' : ℕ} (h : n ≤ n') :
-    fitRange (M := M) s a n ≤ fitRange s a n' :=
-  Submodule.span_mono fun x ⟨i, hi, hx⟩ => ⟨i, by omega, hx⟩
-
 /-- Fresh coordinates vanish on the range of the earlier columns. -/
 theorem fitRange_fresh_zero {M : ℕ} {s : Set ℝ} {a : ℕ → ℝ → ℂ} {n : ℕ} {m : Fin M}
     (hm : n ≤ (m : ℕ)) {x : ColumnL2 (Fin M)} (hx : x ∈ fitRange s a n) :
@@ -528,11 +524,6 @@ theorem starProjection_energy_le_of_le_sup {E : Type*} [NormedAddCommGroup E]
   have h3 : ‖K.starProjection (W.starProjection z)‖ ≤ ‖W.starProjection z‖ :=
     h1.trans (by simpa using mul_le_mul_of_nonneg_right h2 (norm_nonneg (W.starProjection z)))
   exact pow_le_pow_left₀ (norm_nonneg _) h3 2
-
-theorem fitAdmissible_iff {s t : Set ℝ} (hs : MeasurableSet s) (hsv : volume s < ⊤)
-    (ht : MeasurableSet t) (htv : volume t < ⊤) (φ : ℝ → ℂ) :
-    FitAdmissible s φ ↔ FitAdmissible t φ :=
-  ⟨fun h => ⟨ht, htv, h.2.2⟩, fun h => ⟨hs, hsv, h.2.2⟩⟩
 
 /-- The fit column on a disjoint union is the sum of the fit columns on the parts. -/
 theorem fitColumn_union {M : ℕ} {s₁ s₂ : Set ℝ} (hs₁ : MeasurableSet s₁) (hs₁v : volume s₁ < ⊤)
@@ -1070,19 +1061,6 @@ theorem setIntegral_fitPhys_sq_le (M : ℕ) {s : Set ℝ} (hs : MeasurableSet s)
 
 /-! ### The adaptive-fit oracle -/
 
-theorem eLpNorm_normalized_le_of_bound_Ico {a r : ℝ} (hr : 0 < r) {g : ℝ → ℂ}
-    (hg : Measurable g) {B : ℝ} (hB : ∀ y ∈ Set.Ico a (a + r), ‖g y‖ ≤ B) :
-    eLpNorm g 2 (normalizedIntervalMeasure a r) ≤ ENNReal.ofReal B := by
-  have : IsProbabilityMeasure (normalizedIntervalMeasure a r) :=
-    normalizedIntervalMeasure_probability a hr
-  have hae : ∀ᵐ y ∂normalizedIntervalMeasure a r, ‖g y‖ ≤ B := by
-    unfold normalizedIntervalMeasure
-    refine Measure.ae_smul_measure ?_ _
-    rw [← Measure.restrict_congr_set Ico_ae_eq_Icc]
-    exact ae_restrict_of_forall_mem measurableSet_Ico hB
-  refine (eLpNorm_le_of_ae_bound hg.aestronglyMeasurable hae).trans ?_
-  simp
-
 theorem eLpNorm_normalized_le_of_integral {a r : ℝ} (hr : 0 < r) {g : ℝ → ℂ}
     (hg : MemLp g 2 (volume.restrict (Set.Ico a (a + r)))) {C : ℝ} (hC : 0 ≤ C)
     (h : ∫ y in Set.Ico a (a + r), ‖g y‖ ^ 2 ≤ C ^ 2 * r) :
@@ -1191,7 +1169,7 @@ namespace FitSetup
 variable (S : FitSetup)
 
 /-- The cell of an index. -/
-abbrev cell (c : ℤ × ℤ) : Set ℝ := dyadicGridCell S.G c.1 c.2
+noncomputable abbrev cell (c : ℤ × ℤ) : Set ℝ := dyadicGridCell S.G c.1 c.2
 
 open scoped Classical in
 /-- The input `1_J f` as an `L²` class. -/
@@ -2737,11 +2715,6 @@ theorem LateRep.mono {C : StaggerCell κ} {l : Fin 4} {m m' : ℕ} (hm : m' ≤ 
   exact ⟨A₁, A₂, fun ℓ hℓ => let ⟨a, b, c⟩ := h₁ ℓ hℓ; ⟨a, b, by omega⟩,
     fun ℓ hℓ => let ⟨a, b, c⟩ := h₂ ℓ hℓ; ⟨a, b, by omega⟩, rfl⟩
 
-theorem LateRep.finL2 {C : StaggerCell κ} {l : Fin 4} {m : ℕ} {X : ℝ → ℂ}
-    (h : C.LateRep l m X) : FinL2 C.a₀ C.r X := by
-  obtain ⟨A₁, A₂, -, -, rfl⟩ := h
-  exact (C.finL2_tv l A₁).sub (C.finL2_tv l A₂)
-
 /-- Two late differences in distinct slots have pair norm at most `8 e^{-k_m}`. -/
 theorem late_pair {s s' : Fin 4} (hss : s ≠ s') {m : ℕ} (hm : 1 ≤ m) {X Y : ℝ → ℂ}
     (hX : C.LateRep s m X) (hY : C.LateRep s' m Y) {z : Fin 4 → ℝ → ℂ}
@@ -3579,7 +3552,7 @@ namespace GreedyTree
 variable (S : GreedyTree)
 
 /-- The cell of an index. -/
-abbrev cell (c : ℤ × ℤ) : Set ℝ := dyadicGridCell S.G c.1 c.2
+noncomputable abbrev cell (c : ℤ × ℤ) : Set ℝ := dyadicGridCell S.G c.1 c.2
 
 /-- The state of the attempt `d` generations below its root. -/
 noncomputable def state (d : ℕ) (c : ℤ × ℤ) : (ℕ → ℝ → ℂ) × ℕ := fitState S.G S.M S.P S.O d c
@@ -3790,27 +3763,6 @@ theorem Hyp.retained (h : S.Hyp) (hM : S.T < S.M) {u : ℤ × ℤ}
   rcases hfin with hP | hcap
   · exact hP
   · omega
-
-/-- Within a segment, deeper cells inherit the list of their ancestors. -/
-theorem Hyp.inherited (h : S.Hyp) {u u' : ℤ × ℤ} (hu : u ∈ dyadicFiniteTree S.G S.J S.N)
-    (hu' : u' ∈ dyadicFiniteTree S.G S.J S.N) (huu' : S.cell u ⊆ S.cell u')
-    (hu'K : S.cell u' ⊆ S.cell (S.seg u)) :
-    S.seg u' = S.seg u ∧ FitPrefix (S.st u) (S.st u') := by
-  obtain ⟨hKr, huK, _, hmax⟩ := h.seg_spec hu
-  obtain ⟨hK'r, hu'K', _, hmax'⟩ := h.seg_spec hu'
-  have h1 := hmax (S.seg u') hK'r (huu'.trans hu'K')
-  have h2 := hmax' (S.seg u) hKr hu'K
-  have heq : S.seg u' = S.seg u :=
-    dyadicGridCell_eq_of_common_point S.G (hu'K' (dyadicGridCell_left_mem S.G u'.1 u'.2))
-      (hu'K (dyadicGridCell_left_mem S.G u'.1 u'.2)) (by omega)
-  refine ⟨heq, ?_⟩
-  have hd1 := dyadicGridCell_depth_le_of_subset S.G u u' huu'
-  have hd2 := dyadicGridCell_depth_le_of_subset S.G u' (S.seg u) hu'K
-  have hdepth : S.depthIn u = S.depthIn u' + (u.1 - u'.1).toNat := by
-    unfold depthIn; rw [heq]; omega
-  unfold st
-  rw [hdepth]
-  exact fitState_fitPrefix S.G S.M S.P S.O (S.depthIn u') u' _ u huu' (by omega)
 
 end GreedyTree
 

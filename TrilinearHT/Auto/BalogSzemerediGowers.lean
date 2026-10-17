@@ -57,15 +57,6 @@ noncomputable def bipartiteCodegree {α β : Type*} [Fintype β]
   classical
   exact ((Finset.univ : Finset β).filter (fun b => E a b ∧ E a' b)).card
 
-theorem mem_bipartiteNeighborhood {α β : Type*} [Fintype α]
-    (E : α → β → Prop) (a : α) (b : β) : a ∈ bipartiteNeighborhood E b ↔ E a b := by
-  classical
-  simp [bipartiteNeighborhood]
-
-theorem bipartiteNeighborhood_card_le {α β : Type*} [Fintype α]
-    (E : α → β → Prop) (b : β) : (bipartiteNeighborhood E b).card ≤ Fintype.card α :=
-  Finset.card_le_univ _
-
 theorem bipartiteCodegree_symm {α β : Type*} [Fintype β]
     (E : α → β → Prop) (a a' : α) : bipartiteCodegree E a a' = bipartiteCodegree E a' a := by
   classical
@@ -75,11 +66,6 @@ theorem bipartiteCodegree_symm {α β : Type*} [Fintype β]
   simp only [Finset.mem_filter, Finset.mem_univ, true_and]
   exact and_comm
 
-theorem bipartiteCodegree_le {α β : Type*} [Fintype β]
-    (E : α → β → Prop) (a a' : α) : bipartiteCodegree E a a' ≤ Fintype.card β := by
-  classical
-  exact Finset.card_le_univ _
-
 /-- Counting edges by their second-part endpoint gives the neighborhood first moment. -/
 theorem bipartite_sum_neighborhood_card {α β : Type*} [Fintype α] [Fintype β]
     (E : α → β → Prop) :
@@ -88,23 +74,6 @@ theorem bipartite_sum_neighborhood_card {α β : Type*} [Fintype α] [Fintype β
   simp only [bipartiteNeighborhood, bipartiteEdgeCount, Finset.card_filter,
     Fintype.sum_prod_type]
   exact Finset.sum_comm
-
-/-- Common-neighbor counts are the second moment of neighborhood size. -/
-theorem bipartite_sum_neighborhood_sq {α β : Type*} [Fintype α] [Fintype β]
-    (E : α → β → Prop) :
-    ∑ b, (bipartiteNeighborhood E b).card ^ 2 = ∑ a, ∑ a', bipartiteCodegree E a a' := by
-  classical
-  simp only [bipartiteNeighborhood, bipartiteCodegree, Finset.card_filter, pow_two,
-    Finset.sum_mul, Finset.mul_sum]
-  rw [Finset.sum_comm]
-  apply Finset.sum_congr rfl
-  intro a _
-  rw [Finset.sum_comm]
-  apply Finset.sum_congr rfl
-  intro a' _
-  apply Finset.sum_congr rfl
-  intro b _
-  by_cases h : E a b <;> by_cases h' : E a' b <;> simp [h, h']
 
 /-- Finite Cauchy-Schwarz gives the lower second moment used by dependent random choice. -/
 theorem bipartite_edge_sq_le_neighborhood_sq {α β : Type*} [Fintype α] [Fintype β]
@@ -116,13 +85,6 @@ theorem bipartite_edge_sq_le_neighborhood_sq {α β : Type*} [Fintype α] [Finty
     (fun _ => (1 : ℝ)) (fun b => ((bipartiteNeighborhood E b).card : ℝ))
   simpa only [one_mul, one_pow, Finset.sum_const, Finset.card_univ, nsmul_eq_mul,
     mul_one, ← Nat.cast_sum, bipartite_sum_neighborhood_card] using h
-
-/-- Source first moment, with any common upper bound for the two part sizes. -/
-theorem bipartite_first_moment_lower {α β : Type*} [Fintype α] [Fintype β]
-    (E : α → β → Prop) {η : ℝ} {n : ℕ}
-    (hedges : η * (n : ℝ) ^ 2 ≤ bipartiteEdgeCount E) :
-    η * (n : ℝ) ^ 2 ≤ ∑ b, ((bipartiteNeighborhood E b).card : ℝ) := by
-  simpa only [← Nat.cast_sum, bipartite_sum_neighborhood_card] using hedges
 
 /-- Source second moment without division, valid also when the part-size bound is zero. -/
 theorem bipartite_second_moment_lower {α β : Type*} [Fintype α] [Fintype β]

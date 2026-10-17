@@ -750,114 +750,9 @@ theorem multiscale_meanZero_bessel {κ ι : Type*} (T : Finset κ) (r c : κ →
     (fun p i => (hprim p i).2.1) (fun p i => (hprim p i).2.2.1) hθ2s
     (fun p i y => (hprim p i).2.2.2 y) hθ2b hM F
 
-/-- Weighted absolute Fourier mass from derivative envelopes: the coefficients weighted
-by `(1 + |v|)^p` are absolutely summable with an explicit bound. -/
-theorem weighted_fourier_mass {n : ℕ} (c : (Fin n → ℤ) → ℂ) {A : ℕ → ℝ}
-    (hA : ∀ m, 0 ≤ A m) (hA0 : ∀ v, ‖c v‖ ≤ A 0)
-    (hAm : ∀ m, n < m → ∀ v, v ≠ 0 → ‖c v‖ ≤
-      A m * (Real.sqrt n / (2 * Real.pi * frequencyLength v)) ^ m) (p : ℕ) :
-    Summable (fun v => ‖c v‖ * (1 + frequencyLength v) ^ p) ∧
-      (∑' v, ‖c v‖ * (1 + frequencyLength v) ^ p) ≤
-        max (A 0) (A (p + n + 1) * Real.sqrt n ^ (p + n + 1) * 2 ^ p) +
-          2 * (7 ^ n * (A (n + 1 + p) * (Real.sqrt n / (2 * Real.pi)) ^ p * 2 ^ p) *
-            Real.sqrt n ^ (n + 1)) := by
-  have hpi : 0 < 2 * Real.pi := by positivity
-  have hsq : 0 ≤ Real.sqrt n := Real.sqrt_nonneg _
-  have hsum : Summable (fun v => ‖c v‖) :=
-    summable_norm_of_frequency_decay (hA (n + 1)) (by omega) c (hAm (n + 1) (by omega))
-  have henv := (fourier_coeff_envelope_bounds c hsum hA hA0 hAm).1 p
-  set c' : (Fin n → ℤ) → ℂ := fun v => c v * ((1 + frequencyLength v) ^ p : ℝ) with hc'
-  have hc'n : ∀ v, ‖c' v‖ = ‖c v‖ * (1 + frequencyLength v) ^ p := fun v => by
-    rw [hc', norm_mul, Complex.norm_real, Real.norm_of_nonneg (by
-      have := frequencyLength_nonneg v; positivity)]
-  set A' : ℕ → ℝ := fun m => if m = 0 then
-      max (A 0) (A (p + n + 1) * Real.sqrt n ^ (p + n + 1) * 2 ^ p)
-    else A (m + p) * (Real.sqrt n / (2 * Real.pi)) ^ p * 2 ^ p with hA'
-  have hA'0 : ∀ m, 0 ≤ A' m := fun m => by
-    simp only [hA']; split_ifs
-    · exact le_max_of_le_left (hA 0)
-    · have := hA (m + p); positivity
-  have hA'b : ∀ v, ‖c' v‖ ≤ A' 0 := fun v => by rw [hc'n]; simpa [hA'] using henv v
-  have hA'm : ∀ m, n < m → ∀ v, v ≠ 0 → ‖c' v‖ ≤
-      A' m * (Real.sqrt n / (2 * Real.pi * frequencyLength v)) ^ m := by
-    intro m hm v hv
-    have hL : 1 ≤ frequencyLength v := one_le_frequencyLength hv
-    have hL0 : 0 < frequencyLength v := by linarith
-    rw [hc'n]
-    have h1 := hAm (m + p) (by omega) v hv
-    have hm0 : m ≠ 0 := by omega
-    simp only [hA', hm0, ↓reduceIte]
-    set L := frequencyLength v
-    calc ‖c v‖ * (1 + L) ^ p ≤ (A (m + p) * (Real.sqrt n / (2 * Real.pi * L)) ^ (m + p)) *
-          (2 * L) ^ p :=
-          mul_le_mul h1 (pow_le_pow_left₀ (by linarith) (by linarith) p) (by positivity)
-            (mul_nonneg (hA _) (by positivity))
-      _ = A (m + p) * (Real.sqrt n / (2 * Real.pi)) ^ p * 2 ^ p *
-          (Real.sqrt n / (2 * Real.pi * L)) ^ m := by
-          rw [pow_add, mul_pow, div_pow, div_pow, div_pow, mul_pow]
-          field_simp
-          ring
-  have hsum' : Summable (fun v => ‖c' v‖) :=
-    summable_norm_of_frequency_decay (hA'0 (n + 1)) (by omega) c' (hA'm (n + 1) (by omega))
-  have hmass := (fourier_coeff_envelope_bounds c' hsum' hA'0 hA'b hA'm).2.2
-  have he : (fun v => ‖c' v‖) = fun v => ‖c v‖ * (1 + frequencyLength v) ^ p := funext hc'n
-  rw [he] at hsum' hmass
-  refine ⟨hsum', hmass.trans (le_of_eq ?_)⟩
-  simp only [hA', ↓reduceIte, show n + 1 ≠ 0 by omega]
-
 /-- The derivative envelope of the unit-rescaled admissible kernel at order `m`. -/
 noncomputable def kernelUnitEnvelope (κ : LocalKernelClass) (m : ℕ) : ℝ :=
   4 ^ 2 * (16 ^ m * kernelDerivBound κ m)
-
-/-- The weighted absolute Fourier mass of admissible kernels. -/
-noncomputable def kernelWeightedConst (κ : LocalKernelClass) (p : ℕ) : ℝ :=
-  max (kernelUnitEnvelope κ 0)
-      (kernelUnitEnvelope κ (p + 2 + 1) * Real.sqrt (2 : ℕ) ^ (p + 2 + 1) * 2 ^ p) +
-    2 * (7 ^ 2 * (kernelUnitEnvelope κ (2 + 1 + p) *
-      (Real.sqrt (2 : ℕ) / (2 * Real.pi)) ^ p * 2 ^ p) * Real.sqrt (2 : ℕ) ^ (2 + 1))
-
-/-- The admissible-kernel Fourier coefficients of `admissibleKernel_fourier_expansion`
-have uniformly bounded mass with polynomial weights. -/
-theorem admissibleKernel_fourier_weighted {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
-    {w : ℝ × ℝ → ℂ} (hw : IsAdmissibleLocalKernel κ a₀ r w) (p : ℕ) :
-    let c := periodicFourierCoeff (cubePeriodization (kernelUnitRescale a₀ r w) 16)
-    Summable (fun v => ‖c v‖ * (1 + frequencyLength v) ^ p) ∧
-      (∑' v, ‖c v‖ * (1 + frequencyLength v) ^ p) ≤ kernelWeightedConst κ p := by
-  intro c
-  set F := kernelUnitRescale a₀ r w with hFdef
-  have hFs : ContDiff ℝ (⊤ : ℕ∞) F := hw.smooth.comp (by fun_prop)
-  have hsupp : ∀ u, F u ≠ 0 → ∀ l, |u l| ≤ 4 := fun u hu l => kernelUnitRescale_support hr hw hu l
-  set f := cubePeriodization F 16 with hf
-  have hfs : ContDiff ℝ (⊤ : ℕ∞) f := cubePeriodization_smooth hFs (by norm_num) (by norm_num) hsupp
-  set A : ℕ → ℝ := kernelUnitEnvelope κ with hA
-  have hA0' : ∀ m, 0 ≤ A m := fun m => by
-    simp only [hA, kernelUnitEnvelope]; have := kernelDerivBound_nonneg κ m; positivity
-  have hline (m : ℕ) (i : Fin 2) (x : Fin 1 → ℝ) (t : ℝ) :
-      ‖iteratedDeriv m (fun s => f (i.insertNth s x)) t‖ ≤ A m :=
-    cubePeriodization_line_le hFs (by norm_num) (by norm_num) hsupp m
-      (fun i x t => kernelUnitRescale_line_le hr hw m i x t) i x t
-  have hB (y : Fin 2 → ℝ) : ‖f y‖ ≤ A 0 := by
-    have h := cubePeriodization_iteratedFDeriv_le hFs (R := 4) (L := 16) (by norm_num)
-      (by norm_num) hsupp 0 (A := kernelDerivBound κ 0) (fun u => by
-        rw [norm_iteratedFDeriv_zero]
-        change ‖w (a₀ + r / 2 + r * u 0, r * u 1)‖ ≤ _
-        have hb := hw.derivativeBound 0 0 (a₀ + r / 2 + r * u 0, r * u 1)
-        simpa [localKernelPartial, kernelDerivBound, kernelUnitRescale] using hb) y
-    rw [norm_iteratedFDeriv_zero] at h
-    simpa [hA, kernelUnitEnvelope] using h
-  have hexp (m : ℕ) (hm : 1 + 1 < m) := periodic_fourier_expansion (d := 1) hm f hfs.continuous
-    (cubePeriodization_periodic F 16)
-    (fun i x => (hfs.comp (contDiff_insertNth_line i x)).of_le (by exact_mod_cast le_top))
-    (hline m) hB
-  have hc0 : ∀ v, ‖c v‖ ≤ A 0 := fun v => (hexp 3 (by norm_num)).2.2.2 v
-  have hcm : ∀ m, 2 < m → ∀ v, v ≠ 0 → ‖c v‖ ≤
-      A m * (Real.sqrt (2 : ℕ) / (2 * Real.pi * frequencyLength v)) ^ m := by
-    intro m hm v hv
-    have := (hexp m (by omega)).2.2.1 v hv
-    have h2 : Real.sqrt ((1 : ℕ) + 1 : ℝ) = Real.sqrt ((2 : ℕ) : ℝ) := by norm_num
-    rw [h2] at this
-    exact this
-  exact weighted_fourier_mass c hA0' hc0 hcm p
 
 /-- A fixed unit-scale plateau bump: equal to one on `|u| ≤ 1/2 - m`, supported in
 `|u| < 1/2 - m/2`, with bounded derivatives up to order two and positive integral. -/
@@ -3026,17 +2921,6 @@ def InScaleBand (Q : ℝ → ℂ) (m : ℕ) (r : ℝ) : Prop :=
   (∀ ξ, bandAmplitude Q r ξ ≤ Real.exp (-(m : ℝ))) ∧
     ∃ ξ, Real.exp (-((m : ℝ) + 1)) < bandAmplitude Q r ξ
 
-/-- The separated form only sees its time factor on the allowed range `|t| ≤ r`. -/
-theorem separatedLocalForm_congr_time {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
-    {w : ℝ × ℝ → ℂ} (hw : IsAdmissibleLocalKernel κ a₀ r w) {Q₁ Q₂ : ℝ → ℂ}
-    (hQ : ∀ t, |t| ≤ r → Q₁ t = Q₂ t) (a b : Fin 4) (Fa Fb : ℝ → ℂ) :
-    separatedLocalForm r w Q₁ a b Fa Fb = separatedLocalForm r w Q₂ a b Fa Fb := by
-  unfold separatedLocalForm
-  congr 2; funext z
-  by_cases hz : w z = 0
-  · simp [hz]
-  rw [hQ z.2 (admissibleKernel_time_le hr hw hz)]
-
 theorem separatedLocalForm_const_mul (r : ℝ) (w : ℝ × ℝ → ℂ) (c : ℂ) (Q : ℝ → ℂ)
     (a b : Fin 4) (Fa Fb : ℝ → ℂ) :
     separatedLocalForm r w (fun t => c * Q t) a b Fa Fb =
@@ -3121,25 +3005,6 @@ theorem separatedLocalForm_hasSum {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0
     rw [integral_const_mul]; ring
   simp_rw [e]
   exact hsum.mul_left _
-
-/-- Finite version of the termwise expansion. -/
-theorem separatedLocalForm_finsetSum {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
-    {w : ℝ × ℝ → ℂ} (hw : IsAdmissibleLocalKernel κ a₀ r w) {a b : Fin 4} (hab : a ≠ b)
-    {τ : Type*} (P : Finset τ) (c : τ → ℂ) (φ : τ → ℝ → ℂ) (hφm : ∀ p, Measurable (φ p))
-    (hφ : ∀ p t, ‖φ p t‖ ≤ 1)
-    {Fa Fb : ℝ → ℂ} (hFam : Measurable Fa) (hFbm : Measurable Fb)
-    (hFa : MemLp Fa 2 (volume.restrict (Set.Ico a₀ (a₀ + r))))
-    (hFb : MemLp Fb 2 (volume.restrict (Set.Ico a₀ (a₀ + r)))) :
-    separatedLocalForm r w (fun t => ∑ p ∈ P, c p * φ p t) a b Fa Fb =
-      ∑ p ∈ P, c p * separatedLocalForm r w (φ p) a b Fa Fb := by
-  have h := separatedLocalForm_hasSum hr hw hab (τ := P) (fun p => c p) (fun p => φ p)
-    (fun p => hφm p) (fun p => hφ p) (Summable.of_finite) (Q := fun t => ∑ p ∈ P, c p * φ p t)
-    (fun t _ => by
-      have := hasSum_fintype (fun p : P => c p * φ p t)
-      rwa [Finset.sum_coe_sort P (fun p => c p * φ p t)] at this)
-    hFam hFbm hFa hFb
-  rw [← h.tsum_eq, tsum_fintype, Finset.sum_coe_sort P (fun p => c p *
-    separatedLocalForm r w (φ p) a b Fa Fb)]
 
 /-- Blueprint lem:predictors, proof line 1525 (clumps): with a tiny/large dichotomy for the
 scaled differences of a finite catalog of frequencies, the catalog splits into clumps of
@@ -3453,7 +3318,7 @@ theorem clump_cell_bound {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r)
   have htail : ‖∑' p : ↥((P : Set τ)ᶜ), c p * H (quadPhase lam (f p))‖ ≤
       ∑' p, (if p ∈ P then 0 else ‖c p‖ * ‖H (quadPhase lam (f p))‖) := by
     have hs2 : Summable (fun p : ↥((P : Set τ)ᶜ) => ‖c p * H (quadPhase lam (f p))‖) := by
-      have := hnorms.subtype ((P : Set τ)ᶜ)
+      have := hnorms.subtype (· ∈ (P : Set τ)ᶜ)
       refine this.congr fun p => ?_
       simp
     refine (norm_tsum_le_tsum_norm hs2).trans (le_of_eq ?_)
@@ -3682,7 +3547,7 @@ theorem clump_sup_error {τ : Type*} [Countable τ] [DecidableEq τ] (coef : τ 
           mul_le_mul_of_nonneg_right hAtot hK0
   have htl : ‖∑' p : ↥((P : Set τ)ᶜ), coef p * quadPhase lam (f p) t‖ ≤ τt := by
     have hs2 : Summable (fun p : ↥((P : Set τ)ᶜ) => ‖coef p * quadPhase lam (f p) t‖) := by
-      have := hc.subtype ((P : Set τ)ᶜ)
+      have := hc.subtype (· ∈ (P : Set τ)ᶜ)
       refine this.congr fun p => ?_
       simp [norm_quadPhase]
     refine (norm_tsum_le_tsum_norm hs2).trans (le_trans (le_of_eq ?_) htail)
@@ -5586,12 +5451,6 @@ theorem bsOmega_ge_lE1 (hLh : 0 ≤ Lh) : (J1 : ℝ) * bsX m Lh ^ J1 ≤ bsOmega
 
 theorem log_bsE (D m : ℕ) (Lh : ℝ) : Real.log (bsE D m Lh) = D * bsX m Lh ^ D := by
   unfold bsE; exact Real.log_exp _
-
-/-- A positive quantity bounded by a constant times `Ω^k` (generic budget closure). -/
-theorem le_const_mul_omega_pow {x a : ℝ} {k j : ℕ} (hLh : 0 ≤ Lh) (hx : x ≤ a * bsOmega D J1 m Lh
-    ^ j)
-    (ha : 0 ≤ a) (hjk : j ≤ k) : x ≤ a * bsOmega D J1 m Lh ^ k :=
-  hx.trans (mul_le_mul_of_nonneg_left (pow_le_pow_right₀ (one_le_bsOmega hLh) hjk) ha)
 
 theorem log_two_bsB1_le (hLh : 0 ≤ Lh) : Real.log (2 * bsB1 D m Lh) ≤ 3 * bsOmega D J1 m Lh := by
   have hE := bsE_one_le D m hLh
@@ -8520,14 +8379,6 @@ theorem depthConst_depthExpectation (G : RealDyadicGrid) (h : ℤ) (F : ℝ → 
     DepthConst G h (depthExpectation G h F) := fun m y hy z hz => by
   rw [depthExpectation_of_mem hy, depthExpectation_of_mem hz]
 
-theorem DepthConst.sub {G : RealDyadicGrid} {h : ℤ} {g g' : ℝ → ℂ} (hg : DepthConst G h g)
-    (hg' : DepthConst G h g') : DepthConst G h (fun y => g y - g' y) :=
-  fun m y hy z hz => by simp only [hg m y hy z hz, hg' m y hy z hz]
-
-theorem DepthConst.mul {G : RealDyadicGrid} {h : ℤ} {g g' : ℝ → ℂ} (hg : DepthConst G h g)
-    (hg' : DepthConst G h g') : DepthConst G h (fun y => g y * g' y) :=
-  fun m y hy z hz => by simp only [hg m y hy z hz, hg' m y hy z hz]
-
 /-- Constancy passes to deeper cells. -/
 theorem DepthConst.mono {G : RealDyadicGrid} {h k : ℤ} (hhk : h ≤ k) {g : ℝ → ℂ}
     (hg : DepthConst G h g) : DepthConst G k g := by
@@ -8554,42 +8405,6 @@ theorem setIntegral_mul_const_cell {G : RealDyadicGrid} {Q : ℤ × ℤ} {g : �
   rw [← integral_mul_const]
   exact setIntegral_congr_fun (dyadicGridCell_measurable G Q.1 Q.2)
     (fun y hy => by simp only [hg y hy])
-
-/-- The swap principle: if `D` and `μ` have equal integrals on every depth-`(s+n)` cell of
-`I`, they have equal integrals against every function constant on those cells. -/
-theorem setIntegral_mul_depthConst (G : RealDyadicGrid) (I : ℤ × ℤ) (n : ℕ)
-    {D μ g : ℝ → ℂ} (hg : DepthConst G (I.1 + n) g)
-    (hD : IntegrableOn D (dyadicGridCell G I.1 I.2))
-    (hμ : IntegrableOn μ (dyadicGridCell G I.1 I.2))
-    (hDμ : ∀ Q ∈ dyadicGeneration G I n,
-      ∫ y in dyadicGridCell G Q.1 Q.2, D y = ∫ y in dyadicGridCell G Q.1 Q.2, μ y) :
-    ∫ y in dyadicGridCell G I.1 I.2, D y * g y =
-      ∫ y in dyadicGridCell G I.1 I.2, μ y * g y := by
-  have hconst : ∀ Q ∈ dyadicGeneration G I n, ∀ y ∈ dyadicGridCell G Q.1 Q.2,
-      g y = g (dyadicGridLeft G Q.1 Q.2) := by
-    intro Q hQ y hy
-    have hd := dyadicGeneration_depth G I n hQ
-    have h := hg Q.2 y (by rw [← hd]; exact hy) (dyadicGridLeft G Q.1 Q.2)
-      (by rw [← hd]; exact dyadicGridCell_left_mem G Q.1 Q.2)
-    exact h
-  have hsub : ∀ Q ∈ dyadicGeneration G I n,
-      dyadicGridCell G Q.1 Q.2 ⊆ dyadicGridCell G I.1 I.2 :=
-    fun Q hQ => dyadicGeneration_subset G I n hQ
-  have hint : ∀ F : ℝ → ℂ, IntegrableOn F (dyadicGridCell G I.1 I.2) →
-      IntegrableOn (fun y => F y * g y) (dyadicGridCell G I.1 I.2) := by
-    intro F hF
-    rw [← dyadicGeneration_union G I n]
-    refine (integrableOn_finset_iUnion).mpr fun Q hQ => ?_
-    have hFQ := hF.mono_set (hsub Q hQ)
-    refine IntegrableOn.congr_fun (Integrable.mul_const hFQ (g (dyadicGridLeft G Q.1 Q.2))) ?_
-      (dyadicGridCell_measurable G Q.1 Q.2)
-    intro y hy
-    simp only [hconst Q hQ y hy]
-  rw [setIntegral_cell_eq_sum_generation G I n (hint D hD),
-    setIntegral_cell_eq_sum_generation G I n (hint μ hμ)]
-  refine Finset.sum_congr rfl fun Q hQ => ?_
-  rw [setIntegral_mul_const_cell (hconst Q hQ), setIntegral_mul_const_cell (hconst Q hQ),
-    hDμ Q hQ]
 
 /-- `∫_Q E_k F = ∫_Q F` on cells of depth at most `k`. -/
 theorem setIntegral_depthExpectation (G : RealDyadicGrid) (I : ℤ × ℤ) (n : ℕ)

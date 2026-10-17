@@ -62,15 +62,6 @@ def rademacherSum {G : Type*} [AddCommGroup G] (s u : Finset ι) (v : ι → G) 
 noncomputable def rademacherMean (s : Finset ι) (F : Finset ι → ℝ) : ℝ :=
   (2 ^ s.card : ℝ)⁻¹ * ∑ u ∈ s.powerset, F u
 
-/-- Additive maps commute with Rademacher signed sums. -/
-theorem map_rademacherSum {G G' : Type*} [AddCommGroup G] [AddCommGroup G']
-    (φ : G →+ G') (s u : Finset ι) (v : ι → G) :
-    φ (rademacherSum s u v) = rademacherSum s u (fun i => φ (v i)) := by
-  unfold rademacherSum
-  rw [map_sum]
-  refine Finset.sum_congr rfl fun i _ => ?_
-  split_ifs <;> simp
-
 /-- Adding a new index `a` with sign `-1`. -/
 theorem rademacherSum_insert_of_subset {G : Type*} [AddCommGroup G] {s u : Finset ι} {a : ι}
     (ha : a ∉ s) (hu : u ⊆ s) (v : ι → G) :
@@ -235,37 +226,6 @@ theorem sum_powerset_norm_sq_add_pow_le (s : Finset ι) (v : ι → H) {c : ℝ}
           rw [Finset.card_insert_of_notMem ha, Finset.sum_insert ha, pow_succ]
           ring
 
-/-- Exact second moment with a free base point:
-`∑_{u ⊆ s} ‖x + ∑ ε_i v_i‖² = 2^{|s|} (‖x‖² + ∑ ‖v_i‖²)`. -/
-theorem sum_powerset_norm_add_sq (s : Finset ι) (v : ι → H) :
-    ∀ x : H, ∑ u ∈ s.powerset, ‖x + rademacherSum s u v‖ ^ 2 =
-      2 ^ s.card * (‖x‖ ^ 2 + ∑ i ∈ s, ‖v i‖ ^ 2) := by
-  induction s using Finset.induction_on with
-  | empty => intro x; simp [rademacherSum]
-  | @insert a s ha ih =>
-    intro x
-    rw [Finset.sum_powerset_insert ha]
-    have e1 : ∀ u ∈ s.powerset, ‖x + rademacherSum (insert a s) u v‖ ^ 2 =
-        ‖(x - v a) + rademacherSum s u v‖ ^ 2 := by
-      intro u hu
-      rw [rademacherSum_insert_of_subset ha (Finset.mem_powerset.mp hu)]
-      rw [sub_eq_add_neg, add_assoc]
-    have e2 : ∀ u ∈ s.powerset, ‖x + rademacherSum (insert a s) (insert a u) v‖ ^ 2 =
-        ‖(x + v a) + rademacherSum s u v‖ ^ 2 := by
-      intro u _
-      rw [rademacherSum_insert_insert ha]
-      rw [add_assoc]
-    rw [Finset.sum_congr rfl e1, Finset.sum_congr rfl e2, ih, ih,
-      Finset.card_insert_of_notMem ha, Finset.sum_insert ha, pow_succ]
-    have hadd := norm_add_sq (𝕜 := 𝕜) x (v a)
-    have hsub := norm_sub_sq (𝕜 := 𝕜) x (v a)
-    linear_combination (2 : ℝ) ^ s.card * (hsub + hadd)
-
-/-- Exact second moment: `∑_{u ⊆ s} ‖∑ ε_i v_i‖² = 2^{|s|} ∑ ‖v_i‖²`. -/
-theorem sum_powerset_norm_rademacherSum_sq (s : Finset ι) (v : ι → H) :
-    ∑ u ∈ s.powerset, ‖rademacherSum s u v‖ ^ 2 = 2 ^ s.card * ∑ i ∈ s, ‖v i‖ ^ 2 := by
-  simpa using sum_powerset_norm_add_sq 𝕜 s v 0
-
 /-- Even moments: `∑_{u ⊆ s} ‖∑ ε_i v_i‖^{2n} ≤ 2^{|s|} (c ∑ ‖v_i‖²)^n` for `1 ≤ c`, `4n ≤ c+3`. -/
 theorem sum_powerset_norm_rademacherSum_pow_le (s : Finset ι) (v : ι → H) {c : ℝ}
     (hc : 1 ≤ c) (n : ℕ) (hn : 4 * (n : ℝ) ≤ c + 3) :
@@ -383,48 +343,6 @@ theorem rademacherMean_mono {ι : Type*} (s : Finset ι)
     {f g : Finset ι → ℝ} (h : ∀ u ∈ s.powerset, f u ≤ g u) :
     rademacherMean s f ≤ rademacherMean s g :=
   mul_le_mul_of_nonneg_left (Finset.sum_le_sum h) (by positivity)
-
-theorem rademacherMean_const_mul {ι : Type*} (s : Finset ι)
-    (c : ℝ) (f : Finset ι → ℝ) :
-    rademacherMean s (fun u => c * f u) = c * rademacherMean s f := by
-  simp only [rademacherMean, ← Finset.mul_sum]
-  ring
-
-/-- Two independent sign families, with a constant depending only on the moment. -/
-theorem double_signs_moment_bound {ι κ : Type*} [DecidableEq ι] [DecidableEq κ]
-    [Fintype κ] (s : Finset ι) (a : ι → κ → ℂ) {p : ℝ} (hp : 0 < p) :
-    rademacherMean s (fun u => rademacherMean Finset.univ (fun v =>
-      ‖rademacherSum Finset.univ v (fun j => rademacherSum s u (fun i => a i j))‖ ^ p)) ≤
-      (khintchineUpperConst p ^ 2 * Real.sqrt (∑ i ∈ s, ∑ j, ‖a i j‖ ^ 2)) ^ p := by
-  let b : ι → EuclideanSpace ℂ κ := fun i => WithLp.toLp 2 (a i)
-  have hb (u : Finset ι) (j : κ) :
-      (rademacherSum s u b) j = rademacherSum s u (fun i => a i j) := by
-    simp only [rademacherSum, WithLp.ofLp_sum, Finset.sum_apply]
-    apply Finset.sum_congr rfl
-    intro i _
-    split_ifs <;> rfl
-  have hnorm (u : Finset ι) :
-      Real.sqrt (∑ j, ‖rademacherSum s u (fun i => a i j)‖ ^ 2) =
-        ‖rademacherSum s u b‖ := by rw [EuclideanSpace.norm_eq]; simp only [hb]
-  have hC : 0 ≤ khintchineUpperConst p := (khintchineUpperConst_pos hp).le
-  calc _ ≤ rademacherMean s (fun u =>
-          (khintchineUpperConst p * ‖rademacherSum s u b‖) ^ p) := by
-        apply rademacherMean_mono
-        intro u _
-        simpa only [hnorm] using
-          khintchine_upper_rpow ℂ Finset.univ (fun j => rademacherSum s u (fun i => a i j)) hp
-    _ = khintchineUpperConst p ^ p *
-          rademacherMean s (fun u => ‖rademacherSum s u b‖ ^ p) := by
-        simp_rw [Real.mul_rpow hC (norm_nonneg _)]
-        exact rademacherMean_const_mul _ _ _
-    _ ≤ khintchineUpperConst p ^ p *
-          (khintchineUpperConst p * Real.sqrt (∑ i ∈ s, ‖b i‖ ^ 2)) ^ p :=
-        mul_le_mul_of_nonneg_left (khintchine_upper_rpow ℂ s b hp) (by positivity)
-    _ = _ := by
-        rw [← Real.mul_rpow hC (by positivity)]
-        congr 1
-        simp only [EuclideanSpace.norm_sq_eq, b]
-        ring
 
 /-! Finite uniform expectations used in sampling symmetrization. -/
 
@@ -813,11 +731,6 @@ theorem finiteLpNorm_add_le {G : Type*} [Fintype G] {p : ℝ} (hp : 1 ≤ p)
     _ ≤ _ := Real.Lp_add_le_of_nonneg Finset.univ (f := fun x => ‖f x‖)
       (g := fun x => ‖g x‖) hp (fun _ _ => norm_nonneg _) (fun _ _ => norm_nonneg _)
 
-theorem finiteLpNorm_sub_le {G : Type*} [Fintype G] {p : ℝ} (hp : 1 ≤ p)
-    (f g : G → ℂ) :
-    finiteLpNorm p (fun x => f x - g x) ≤ finiteLpNorm p f + finiteLpNorm p g := by
-  simpa only [sub_eq_add_neg, finiteLpNorm_neg] using finiteLpNorm_add_le hp f (fun x => -g x)
-
 theorem finiteLpNorm_translate {G : Type*} [AddGroup G] [Fintype G]
     (p : ℝ) (f : G → ℂ) (a : G) :
     finiteLpNorm p (fun x => f (x - a)) = finiteLpNorm p f := by
@@ -829,16 +742,6 @@ theorem finiteLpNorm_translate_add {G : Type*} [AddGroup G] [Fintype G]
     (p : ℝ) (f : G → ℂ) (a : G) :
     finiteLpNorm p (fun x => f (x + a)) = finiteLpNorm p f := by
   simpa only [sub_neg_eq_add] using finiteLpNorm_translate p f (-a)
-
-theorem finiteLpNorm_sum_le {G I : Type*} [Fintype G] {p : ℝ} (hp : 1 ≤ p)
-    (s : Finset I) (f : I → G → ℂ) :
-    finiteLpNorm p (fun x => ∑ i ∈ s, f i x) ≤ ∑ i ∈ s, finiteLpNorm p (f i) := by
-  classical
-  induction s using Finset.induction_on with
-  | empty => simp [finiteLpNorm_zero (lt_of_lt_of_le zero_lt_one hp)]
-  | @insert i s hi ih =>
-    simp only [Finset.sum_insert hi]
-    exact (finiteLpNorm_add_le hp (f i) (fun x => ∑ j ∈ s, f j x)).trans (add_le_add le_rfl ih)
 
 /-! ### Markov counting and the source sample size -/
 
@@ -1241,16 +1144,6 @@ theorem finiteFourier_inversion {q : ℕ} [NeZero q] (f : ZMod q → ℂ) (x : Z
   apply Finset.sum_congr rfl
   intro ξ _
   ring
-
-theorem finite_character_orthogonality {q : ℕ} [NeZero q] (ξ : ZMod q) :
-    finiteAverage (fun x => ZMod.stdAddChar (ξ * x)) = if ξ = 0 then 1 else 0 := by
-  unfold finiteAverage
-  by_cases hξ : ξ = 0
-  · simp [hξ, ZMod.card, NeZero.ne (q : ℂ)]
-  · have hs : ∑ x, ZMod.stdAddChar (ξ * x) = 0 := by
-      simpa only [AddChar.mulShift_apply] using
-        AddChar.sum_eq_zero_of_ne_one (ZMod.isPrimitive_stdAddChar q hξ)
-    simp [hs, hξ]
 
 theorem stdAddChar_conj {q : ℕ} [NeZero q] (x : ZMod q) :
     conj (ZMod.stdAddChar x) = ZMod.stdAddChar (-x) := by

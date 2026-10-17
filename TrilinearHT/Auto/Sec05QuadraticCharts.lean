@@ -112,10 +112,6 @@ theorem norm_quadraticChartLatticeSummand {d : ℕ} (A : QuadraticChartData d)
     ‖quadraticChartLatticeSummand A y n‖ = ‖A.amplitude (chartLatticeRemainder A y n)‖ := by
   rw [quadraticChartLatticeSummand, norm_mul, Circle.norm_coe, mul_one]
 
-theorem norm_quadraticChartAtom {d : ℕ} (A : QuadraticChartData d) (y : ℝ) :
-    ‖quadraticChartAtom A y‖ = ‖∑' n : Fin d → ℤ, quadraticChartLatticeSummand A y n‖ := by
-  rw [quadraticChartAtom, norm_mul, Circle.norm_coe, one_mul]
-
 /-! ### Quadratic chart lattice sums -/
 
 /-- A finite integer box containing every lattice translate that can
@@ -182,20 +178,6 @@ theorem quadraticChartAtom_eq_sum {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartDa
         quadraticChartLatticeSummand A y n := by
   rw [quadraticChartAtom, tsum_eq_sum (s := chartLatticeBox H (chartHorizontalPosition A y))
     (fun n hn => quadraticChartSummand_eq_zero_off_box A hA.support y hn)]
-
-/-- Blueprint `def:chart`, lines 635-637: at most `(2H+3)^d` nonzero
-lattice summands contribute at a point. -/
-theorem quadraticChart_nonzero_summands_card_le {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) (y : ℝ) :
-    ((quadraticChartLatticeSummand_finite_support A y).toFinset.card : ℝ) ≤ (2 * H + 3) ^ d := by
-  apply le_trans _ (chartLatticeBox_card_le (quadraticChartComplexity_parameter_pos hA).le
-    (chartHorizontalPosition A y))
-  apply Nat.cast_le.mpr
-  apply Finset.card_le_card
-  intro n hn
-  have hne := (Set.Finite.mem_toFinset _).mp hn
-  by_contra hh
-  exact hne (quadraticChartSummand_eq_zero_off_box A hA.support y hh)
 
 theorem quadraticChartAtom_norm_le {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
     (hA : QuadraticChartComplexity c₀ H A) (y : ℝ) :
@@ -309,88 +291,6 @@ theorem scaleQuadraticChartAmplitude_complexity {d c₀ : ℕ} {H : ℝ} {A : Qu
   · intro m word z
     rw [coordinateWordDerivative_scaleChart, norm_mul]
     exact (mul_le_of_le_one_left (norm_nonneg _) ha).trans (hA.derivative m word z)
-
-noncomputable def chartNormalizationFactor (d c₀ : ℕ) (H : ℝ) : ℝ :=
-  (2 * H + 3) ^ d * H ^ c₀
-
-noncomputable def chartNormalizationBudget (c₀ : ℕ) (H : ℝ) : ℝ :=
-  Real.exp ((c₀ + 10 : ℝ) * logarithmicSize H ^ 2)
-
-theorem chartNormalizationBudget_quasipolynomial (c₀ : ℕ) :
-    QuasipolynomialBound (chartNormalizationBudget c₀) := by
-  refine ⟨(c₀ + 10 : ℝ), ?_, 2, by norm_num, ?_⟩
-  · have hh := Nat.cast_nonneg (α := ℝ) c₀
-    linarith
-  · intro H _
-    exact ⟨(Real.exp_pos _).le, le_rfl⟩
-
-theorem chartNormalizationFactor_one_le (d c₀ : ℕ) {H : ℝ} (hH : 1 ≤ H) :
-    1 ≤ chartNormalizationFactor d c₀ H := by
-  have hbase : 1 ≤ 2 * H + 3 := by linarith
-  have hleft : 1 ≤ (2 * H + 3) ^ d := one_le_pow₀ hbase
-  have hright : 1 ≤ H ^ c₀ := one_le_pow₀ hH
-  unfold chartNormalizationFactor
-  nlinarith
-
-theorem chartNormalizationFactor_le_budget {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) :
-    chartNormalizationFactor d c₀ H ≤ chartNormalizationBudget c₀ H := by
-  have hH2 : 2 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hHp : 0 < H := by linarith
-  have hlogH : 2 ≤ Real.log H := by
-    have hh := Real.log_le_log (Real.exp_pos 2) hA.lower
-    rwa [Real.log_exp] at hh
-  have hbasep : 0 < 2 * H + 3 := by linarith
-  have hlogbase : Real.log (2 * H + 3) ≤ 3 * Real.log H := by
-    have hh := Real.log_le_log hbasep (show 2 * H + 3 ≤ 4 * H by linarith)
-    rw [Real.log_mul (by norm_num : (4 : ℝ) ≠ 0) hHp.ne'] at hh
-    have h4 := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 4)
-    norm_num at h4
-    linarith
-  have hN : 0 < chartNormalizationFactor d c₀ H :=
-    mul_pos (pow_pos hbasep _) (pow_pos hHp _)
-  have hlogN : Real.log (chartNormalizationFactor d c₀ H) =
-      (d : ℝ) * Real.log (2 * H + 3) + (c₀ : ℝ) * Real.log H := by
-    rw [chartNormalizationFactor, Real.log_mul (pow_pos hbasep _).ne' (pow_pos hHp _).ne',
-      Real.log_pow, Real.log_pow]
-  unfold chartNormalizationBudget
-  rw [← Real.exp_log hN]
-  apply Real.exp_le_exp.mpr
-  rw [hlogN]
-  unfold logarithmicSize
-  have hprod := mul_le_mul hA.dimension hlogbase
-    (Real.log_nonneg (show 1 ≤ 2 * H + 3 by linarith)) (show 0 ≤ Real.log H by linarith)
-  nlinarith [Nat.cast_nonneg (α := ℝ) c₀,
-    mul_nonneg (Nat.cast_nonneg (α := ℝ) c₀) (sq_nonneg (Real.log H)),
-    mul_nonneg (Nat.cast_nonneg (α := ℝ) c₀) (show 0 ≤ Real.log H by linarith)]
-
-/-- Blueprint `def:chart`, lines 635-637: normalize to an actual bounded
-chart of the same complexity, paying only a quasipolynomial external scalar. -/
-theorem quadraticChart_normalize {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
-    (hA : QuadraticChartComplexity c₀ H A) :
-    ∃ (N : ℝ) (A' : QuadraticChartData d), 1 ≤ N ∧ N ≤ chartNormalizationBudget c₀ H ∧
-      QuadraticChartComplexity c₀ H A' ∧ IsBoundedQuadraticChart A' ∧
-      ∀ y, quadraticChartAtom A y = (N : ℂ) * quadraticChartAtom A' y := by
-  let N := chartNormalizationFactor d c₀ H
-  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hN1 : 1 ≤ N := chartNormalizationFactor_one_le d c₀ hH1
-  have hNp : 0 < N := by linarith
-  have hNC : (N : ℂ) ≠ 0 := by exact_mod_cast hNp.ne'
-  have ha : ‖(N : ℂ)⁻¹‖ ≤ 1 := by
-    rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hNp]
-    simpa only [one_div] using (div_le_one hNp).mpr hN1
-  refine ⟨N, scaleQuadraticChartAmplitude (N : ℂ)⁻¹ A, hN1,
-    chartNormalizationFactor_le_budget hA, scaleQuadraticChartAmplitude_complexity hA ha, ?_, ?_⟩
-  · intro y
-    rw [scaleQuadraticChartAmplitude_atom, norm_mul, norm_inv, Complex.norm_real,
-      Real.norm_eq_abs, abs_of_pos hNp]
-    calc
-      _ ≤ N⁻¹ * N := mul_le_mul_of_nonneg_left (quadraticChartAtom_norm_le hA y)
-        (inv_nonneg.mpr hNp.le)
-      _ = 1 := inv_mul_cancel₀ hNp.ne'
-  · intro y
-    rw [scaleQuadraticChartAmplitude_atom]
-    simp [hNC]
 
 /-! ### Quadratic chart conjugation -/
 
@@ -549,8 +449,8 @@ noncomputable def productChartAmplitude {d e : ℕ} (A : QuadraticChartData d)
 
 theorem productChartAmplitude_smooth {d e : ℕ} (A : QuadraticChartData d)
     (B : QuadraticChartData e) : ContDiff ℝ (⊤ : ℕ∞) (productChartAmplitude A B) := by
-  exact (A.smooth.comp (contDiff_pi.mpr fun i => contDiff_apply ℝ ℝ (Fin.castAdd e i))).mul
-    (B.smooth.comp (contDiff_pi.mpr fun i => contDiff_apply ℝ ℝ (Fin.natAdd d i)))
+  exact (A.smooth.comp (contDiff_pi.mpr fun i => contDiff_apply ℝ _ (Fin.castAdd e i))).mul
+    (B.smooth.comp (contDiff_pi.mpr fun i => contDiff_apply ℝ _ (Fin.natAdd d i)))
 
 theorem productChartAmplitude_compact {d e : ℕ} (A : QuadraticChartData d)
     (B : QuadraticChartData e) : HasCompactSupport (productChartAmplitude A B) := by
@@ -876,76 +776,6 @@ theorem productQuadraticChart_bounded {d e : ℕ} {A : QuadraticChartData d}
   intro y
   rw [productQuadraticChart_atom, norm_mul]
   simpa only [one_mul] using mul_le_mul (hA y) (hB y) (norm_nonneg _) zero_le_one
-
-/-- A finite product of charts of arbitrary, possibly different dimensions.
-The empty list is represented by the ordinary constant phase one. -/
-noncomputable def finiteQuadraticChartProduct :
-    (L : List (Σ d : ℕ, QuadraticChartData d)) → QuadraticChartData ((L.map Sigma.fst).sum)
-  | [] => ordinaryQuadraticChart 0 0
-  | A :: L => productQuadraticChart A.2 (finiteQuadraticChartProduct L)
-
-/-- Blueprint `lem:chart-operations`: exact multiplication of any finite list of atoms. -/
-theorem finiteQuadraticChartProduct_atom (L : List (Σ d : ℕ, QuadraticChartData d)) (y : ℝ) :
-    quadraticChartAtom (finiteQuadraticChartProduct L) y =
-      (L.map (fun A => quadraticChartAtom A.2 y)).prod := by
-  induction L with
-  | nil =>
-    change quadraticChartAtom (ordinaryQuadraticChart 0 0) y = 1
-    rw [ordinaryQuadraticChart_atom]
-    simp
-  | cons A L ih =>
-    change quadraticChartAtom (productQuadraticChart A.2 (finiteQuadraticChartProduct L)) y =
-      quadraticChartAtom A.2 y * (L.map (fun B => quadraticChartAtom B.2 y)).prod
-    rw [productQuadraticChart_atom, ih]
-
-/-- Blueprint `lem:chart-operations`: bounded atoms have bounded finite products. -/
-theorem finiteQuadraticChartProduct_bounded (L : List (Σ d : ℕ, QuadraticChartData d))
-    (hL : ∀ A ∈ L, IsBoundedQuadraticChart A.2) :
-    IsBoundedQuadraticChart (finiteQuadraticChartProduct L) := by
-  induction L with
-  | nil => exact ordinaryQuadraticChart_bounded 0 0
-  | cons A L ih =>
-    exact productQuadraticChart_bounded (hL A (List.mem_cons_self ..))
-      (ih (fun B hB => hL B (List.mem_cons_of_mem _ hB)))
-
-/-- Blueprint `lem:chart-operations`: a fixed finite product has a polynomial
-height budget, with exponent depending only on the number of factors. -/
-theorem finiteQuadraticChartProduct_complexity {c₀ : ℕ} {H : ℝ}
-    (hH : Real.exp 2 ≤ H) (hc : 1 ≤ c₀)
-    (L : List (Σ d : ℕ, QuadraticChartData d))
-    (hL : ∀ A ∈ L, QuadraticChartComplexity c₀ H A.2) :
-    QuadraticChartComplexity c₀ (H ^ (6 ^ L.length)) (finiteQuadraticChartProduct L) := by
-  have hH1 : 1 ≤ H := by linarith [Real.add_one_le_exp (2 : ℝ)]
-  induction L with
-  | nil =>
-    simp only [List.length_nil, pow_zero, pow_one]
-    change QuadraticChartComplexity c₀ H (ordinaryQuadraticChart 0 0)
-    exact ordinaryQuadraticChart_complexity c₀ hH 0 0
-  | cons A L ih =>
-    have ht := ih (fun B hB => hL B (List.mem_cons_of_mem _ hB))
-    have ha := quadraticChartComplexity_mono (hL A (List.mem_cons_self ..))
-      (le_self_pow₀ hH1 (pow_ne_zero L.length (by decide : (6 : ℕ) ≠ 0)))
-    have h := productQuadraticChart_complexity ha ht hc
-    change QuadraticChartComplexity c₀ (H ^ (6 ^ (L.length + 1)))
-      (productQuadraticChart A.2 (finiteQuadraticChartProduct L))
-    rw [pow_succ, pow_mul]
-    exact h
-
-/-- The finite-product height budget is quasipolynomial for each fixed list length. -/
-theorem finiteChartProductBudget_quasipolynomial (q : ℕ) :
-    QuasipolynomialBound (fun H : ℝ => H ^ (6 ^ q)) := by
-  refine ⟨(6 ^ q : ℕ) + 1, le_add_of_nonneg_left (Nat.cast_nonneg _), 1, le_rfl, ?_⟩
-  intro H hH
-  refine ⟨pow_nonneg (by linarith) _, ?_⟩
-  have hHp : 0 < H := by linarith
-  have hlog : 0 ≤ Real.log H := Real.log_nonneg (by linarith)
-  calc
-    _ = Real.exp (((6 ^ q : ℕ) : ℝ) * Real.log H) := by
-      rw [Real.exp_nat_mul, Real.exp_log hHp]
-    _ ≤ _ := by
-      apply Real.exp_le_exp.mpr
-      simp only [logarithmicSize, pow_one]
-      nlinarith [Nat.cast_nonneg (α := ℝ) (6 ^ q)]
 
 /-! ### Chart translation offset reduction -/
 
@@ -1387,11 +1217,6 @@ theorem translateQuadraticChart_complexity {d c₀ : ℕ} {H P : ℝ}
 noncomputable def chartTranslationBudget (H : ℝ) : ℝ :=
   Real.exp (100 * logarithmicSize H ^ 3)
 
-theorem chartTranslationBudget_quasipolynomial : QuasipolynomialBound chartTranslationBudget := by
-  refine ⟨100, by norm_num, 3, by norm_num, ?_⟩
-  intro H _
-  exact ⟨(Real.exp_pos _).le, le_rfl⟩
-
 theorem chartTranslationBase_le_budget {d c₀ : ℕ} {H : ℝ} {A : QuadraticChartData d}
     (hA : QuadraticChartComplexity c₀ H A) :
     (chartTranslationBase d H) ^ 6 ≤ chartTranslationBudget H := by
@@ -1483,10 +1308,6 @@ noncomputable def multivariableChartAlongLine {k d : ℕ}
   smooth := A.smooth
   compact := A.compact
 
-def IsBoundedMultivariableQuadraticChart {k d : ℕ}
-    (A : MultivariableQuadraticChartData k d) : Prop :=
-  ∀ z, ‖multivariableQuadraticChartAtom A z‖ ≤ 1
-
 /-- The same dimension, rational height and cutoff bounds as the one-variable
 definition. Evaluation on the zero line retains precisely this charged data. -/
 def MultivariableQuadraticChartComplexity {k d : ℕ} (c₀ : ℕ) (H : ℝ)
@@ -1543,287 +1364,13 @@ theorem multivariableChartAlongLine_atom {k d : ℕ}
   change A.amplitude _ * (Real.fourierChar (chartMatrixPhase A.matrix _ _) : ℂ) = _
   rw [hh, hr]
 
-theorem multivariableChartAlongLine_bounded {k d : ℕ}
-    {A : MultivariableQuadraticChartData k d} (hA : IsBoundedMultivariableQuadraticChart A)
-    (v : Fin k → ℝ) : IsBoundedQuadraticChart (multivariableChartAlongLine A v) := by
-  intro y
-  rw [multivariableChartAlongLine_atom]
-  exact hA (y • v)
-
 /-! ### Affine substitution in several-variable charts -/
-
-section MultivariableAffine
-
-open Matrix
-
-/-- The source translation calculation of `lem:chart-operations` (lines 646-650) at an arbitrary
-horizontal position `x`: an offset `m + a`, with `m` pairing integrally with `C`, moves into the
-cutoff `χ(w + a) e(aᵀ C (w + a))` and the two linear phases and one constant phase. -/
-theorem chart_lattice_sum_translate {d : ℕ} (χ : (Fin d → ℝ) → ℂ)
-    (C : Matrix (Fin d) (Fin d) ℚ) (x a : Fin d → ℝ) (m : Fin d → ℤ)
-    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (C i j : ℝ)) :
-    (∑' n : Fin d → ℤ, χ (x + (fun i => (m i : ℝ)) + a - (fun i => (n i : ℝ))) *
-        (Real.fourierChar (chartMatrixPhase C (x + (fun i => (m i : ℝ)) + a)
-          (x + (fun i => (m i : ℝ)) + a - (fun i => (n i : ℝ)))) : ℂ)) =
-      (Real.fourierChar (chartMatrixPhase C x a + chartMatrixPhase C (fun i => (m i : ℝ)) x +
-          chartMatrixPhase C (fun i => (m i : ℝ)) a) : ℂ) *
-        ∑' n : Fin d → ℤ, (χ (x - (fun i => (n i : ℝ)) + a) *
-          (Real.fourierChar (chartMatrixPhase C a (x - (fun i => (n i : ℝ)) + a)) : ℂ)) *
-          (Real.fourierChar (chartMatrixPhase C x (x - (fun i => (n i : ℝ)))) : ℂ) := by
-  rw [← ((Equiv.addRight m).tsum_eq _), ← tsum_mul_left]
-  apply tsum_congr
-  intro n
-  obtain ⟨k, hk⟩ := chartMatrixPhase_integer_of_coefficients C m n hint
-  have hp := chartMatrixPhase_translation_identity C x a (fun i => (m i : ℝ)) (fun i => (n i : ℝ))
-  have hw : x + (fun i => (m i : ℝ)) + a - (fun i => (((Equiv.addRight m) n) i : ℝ)) =
-      x - (fun i => (n i : ℝ)) + a := by
-    funext i
-    simp only [Equiv.coe_addRight, Pi.add_apply, Pi.sub_apply, Int.cast_add]
-    ring
-  rw [hw]
-  have he : (Real.fourierChar (chartMatrixPhase C (x + (fun i => (m i : ℝ)) + a)
-      (x - (fun i => (n i : ℝ)) + a)) : ℂ) =
-      Real.fourierChar (chartMatrixPhase C x (x - (fun i => (n i : ℝ))) + chartMatrixPhase C x a +
-        chartMatrixPhase C (fun i => (m i : ℝ)) x +
-        chartMatrixPhase C a (x - (fun i => (n i : ℝ)) + a) +
-        chartMatrixPhase C (fun i => (m i : ℝ)) a) := by
-    rw [hp, ← chart_fourierChar_add_int _ k, hk]
-    congr 1
-    congr 1
-    ring
-  rw [he]
-  simp only [AddChar.map_add_eq_mul, Circle.coe_mul]
-  ring
-
-theorem chart_quadratic_sum_eq_dotProduct {k : ℕ} (Q : Matrix (Fin k) (Fin k) ℝ)
-    (z : Fin k → ℝ) : (∑ i, ∑ j, z i * Q i j * z j) = z ⬝ᵥ (Q *ᵥ z) := by
-  simp [dotProduct, Matrix.mulVec, Finset.mul_sum, mul_assoc]
-
-theorem chart_linear_sum_eq_dotProduct {k : ℕ} (b z : Fin k → ℝ) :
-    (∑ i, b i * z i) = z ⬝ᵥ b := by
-  simp [dotProduct, mul_comm]
-
-/-- The real matrix of a rational chart matrix. -/
-noncomputable def chartRealMatrix {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    Matrix (Fin d) (Fin d) ℝ := C.map (fun q => (q : ℝ))
-
-theorem chartMatrixPhase_eq_real {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (u w : Fin d → ℝ) :
-    chartMatrixPhase C u w = u ⬝ᵥ (chartRealMatrix C *ᵥ w) := by
-  simp [chartMatrixPhase, chartRealMatrix, dotProduct, Matrix.mulVec, Finset.mul_sum, mul_assoc]
-
-theorem chart_dotProduct_mulVec_right {d e : ℕ} (u : Fin d → ℝ) (M : Matrix (Fin d) (Fin e) ℝ)
-    (w : Fin e → ℝ) : u ⬝ᵥ (M *ᵥ w) = (Mᵀ *ᵥ u) ⬝ᵥ w := by
-  rw [Matrix.dotProduct_mulVec, Matrix.mulVec_transpose]
-
-theorem chart_dotProduct_mulVec_left {d k : ℕ} (V : Matrix (Fin d) (Fin k) ℝ)
-    (z : Fin k → ℝ) (w : Fin d → ℝ) : (V *ᵥ z) ⬝ᵥ w = z ⬝ᵥ (Vᵀ *ᵥ w) := by
-  rw [dotProduct_comm, Matrix.dotProduct_mulVec, Matrix.mulVec_transpose, dotProduct_comm]
-
-/-- Translation `z ↦ z + z₀` of a several-variable chart: the new linear coefficient. -/
-noncomputable def mvTranslateLinear {k d : ℕ} (A : MultivariableQuadraticChartData k d)
-    (z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : Fin k → ℝ :=
-  A.linear + A.quadratic *ᵥ z₀ + A.quadraticᵀ *ᵥ z₀ +
-    A.horizontalᵀ *ᵥ (chartRealMatrix A.matrix *ᵥ a) +
-    A.horizontalᵀ *ᵥ ((chartRealMatrix A.matrix)ᵀ *ᵥ (fun i => (m i : ℝ)))
-
-/-- Translation of a several-variable chart: the constant phase. -/
-noncomputable def mvTranslateConstant {k d : ℕ} (A : MultivariableQuadraticChartData k d)
-    (z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : ℝ :=
-  z₀ ⬝ᵥ (A.quadratic *ᵥ z₀) + z₀ ⬝ᵥ A.linear + chartMatrixPhase A.matrix (fun i => (m i : ℝ)) a
-
-/-- Blueprint `lem:chart-operations`, line 651: the translated several-variable chart, with the
-same horizontal map `V`, the same quadratic and rational matrices, and the translated cutoff of
-the one-variable calculation. -/
-noncomputable def mvTranslateChart {k d : ℕ} (A : MultivariableQuadraticChartData k d)
-    (z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) : MultivariableQuadraticChartData k d where
-  horizontal := A.horizontal
-  quadratic := A.quadratic
-  symmetric := A.symmetric
-  linear := mvTranslateLinear A z₀ m a
-  matrix := A.matrix
-  amplitude := (scaleQuadraticChartAmplitude (Real.fourierChar (z₀ ⬝ᵥ (A.quadratic *ᵥ z₀) +
-    z₀ ⬝ᵥ A.linear)) (translateQuadraticChart (multivariableChartAlongLine A 0) 0 m a)).amplitude
-  smooth := (scaleQuadraticChartAmplitude _ _).smooth
-  compact := (scaleQuadraticChartAmplitude _ _).compact
-
-theorem mvTranslate_phase_identity {k d : ℕ} (A : MultivariableQuadraticChartData k d)
-    (z z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ) :
-    (z + z₀) ⬝ᵥ (A.quadratic *ᵥ (z + z₀)) + (z + z₀) ⬝ᵥ A.linear +
-      (chartMatrixPhase A.matrix (A.horizontal *ᵥ z) a +
-        chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (A.horizontal *ᵥ z) +
-        chartMatrixPhase A.matrix (fun i => (m i : ℝ)) a) =
-    mvTranslateConstant A z₀ m a +
-      (z ⬝ᵥ (A.quadratic *ᵥ z) + z ⬝ᵥ mvTranslateLinear A z₀ m a) := by
-  have h1 : z₀ ⬝ᵥ (A.quadratic *ᵥ z) = z ⬝ᵥ (A.quadraticᵀ *ᵥ z₀) := by
-    rw [Matrix.dotProduct_mulVec, Matrix.mulVec_transpose, dotProduct_comm]
-  have h2 : chartMatrixPhase A.matrix (A.horizontal *ᵥ z) a =
-      z ⬝ᵥ (A.horizontalᵀ *ᵥ (chartRealMatrix A.matrix *ᵥ a)) := by
-    rw [chartMatrixPhase_eq_real, chart_dotProduct_mulVec_left]
-  have h3 : chartMatrixPhase A.matrix (fun i => (m i : ℝ)) (A.horizontal *ᵥ z) =
-      z ⬝ᵥ (A.horizontalᵀ *ᵥ ((chartRealMatrix A.matrix)ᵀ *ᵥ (fun i => (m i : ℝ)))) := by
-    rw [chartMatrixPhase_eq_real, chart_dotProduct_mulVec_right, dotProduct_comm,
-      chart_dotProduct_mulVec_left]
-  rw [h2, h3]
-  unfold mvTranslateConstant mvTranslateLinear
-  simp only [Matrix.mulVec_add, dotProduct_add, add_dotProduct, h1]
-  ring
-
-theorem chart_tsum_const_mul {ι : Type*} (c₁ c₂ : ℂ) (F G : ι → ℂ) :
-    (∑' n, c₁ * (c₂ * F n) * G n) = c₁ * c₂ * ∑' n, F n * G n := by
-  rw [← tsum_mul_left]
-  congr 1
-  funext n
-  ring
-
-/-- Blueprint `lem:chart-operations`, line 651: the translated several-variable chart is exactly
-the translate of the original one. -/
-theorem mvTranslateChart_atom {k d : ℕ} (A : MultivariableQuadraticChartData k d)
-    (z₀ : Fin k → ℝ) (m : Fin d → ℤ) (a : Fin d → ℝ)
-    (hoff : ∀ i, (A.horizontal *ᵥ z₀) i = (m i : ℝ) + a i)
-    (hint : ∀ i j, ∃ z : ℤ, (z : ℝ) = (m i : ℝ) * (A.matrix i j : ℝ)) (z : Fin k → ℝ) :
-    multivariableQuadraticChartAtom (mvTranslateChart A z₀ m a) z =
-      multivariableQuadraticChartAtom A (z + z₀) := by
-  have hx : A.horizontal *ᵥ (z + z₀) = A.horizontal *ᵥ z + (fun i => (m i : ℝ)) + a := by
-    rw [Matrix.mulVec_add]
-    funext i
-    simp only [Pi.add_apply, hoff i]
-    ring
-  have hph := congrArg (fun t => (Real.fourierChar t : ℂ)) (mvTranslate_phase_identity A z z₀ m a)
-  simp only [AddChar.map_add_eq_mul, Circle.coe_mul, mvTranslateConstant] at hph
-  unfold multivariableQuadraticChartAtom
-  simp only [chart_quadratic_sum_eq_dotProduct]
-  simp only [chart_linear_sum_eq_dotProduct]
-  rw [hx, chart_lattice_sum_translate A.amplitude A.matrix _ a m hint]
-  simp only [mvTranslateChart, scaleQuadraticChartAmplitude, translateQuadraticChart,
-    shiftedQuadraticChart, translatedChartAmplitude, chartTranslationConstant,
-    multivariableChartAlongLine, mul_zero, add_zero, zero_add, ne_eq, OfNat.ofNat_ne_zero,
-    not_false_eq_true, zero_pow]
-  rw [chart_tsum_const_mul]
-  simp only [AddChar.map_add_eq_mul, Circle.coe_mul]
-  linear_combination (-∑' n : Fin d → ℤ,
-      A.amplitude (A.horizontal *ᵥ z - (fun i => (n i : ℝ)) + a) *
-      (Real.fourierChar
-        (chartMatrixPhase A.matrix a (A.horizontal *ᵥ z - (fun i => (n i : ℝ)) + a)) : ℂ) *
-      (Real.fourierChar (chartMatrixPhase A.matrix (A.horizontal *ᵥ z)
-        (A.horizontal *ᵥ z - (fun i => (n i : ℝ)))) : ℂ)) * hph
-
-/-- Linear substitution `z ↦ M z` of a several-variable chart changes only the unrestricted
-horizontal map, quadratic matrix and linear coefficient. -/
-noncomputable def mvLinearChart {k k' d : ℕ} (A : MultivariableQuadraticChartData k d)
-    (M : Matrix (Fin k) (Fin k') ℝ) : MultivariableQuadraticChartData k' d where
-  horizontal := A.horizontal * M
-  quadratic := Mᵀ * A.quadratic * M
-  symmetric := by
-    unfold Matrix.IsSymm
-    rw [Matrix.transpose_mul, Matrix.transpose_mul, Matrix.transpose_transpose, A.symmetric.eq,
-      Matrix.mul_assoc]
-  linear := Mᵀ *ᵥ A.linear
-  matrix := A.matrix
-  amplitude := A.amplitude
-  smooth := A.smooth
-  compact := A.compact
-
-theorem mvLinearChart_atom {k k' d : ℕ} (A : MultivariableQuadraticChartData k d)
-    (M : Matrix (Fin k) (Fin k') ℝ) (z : Fin k' → ℝ) :
-    multivariableQuadraticChartAtom (mvLinearChart A M) z =
-      multivariableQuadraticChartAtom A (M *ᵥ z) := by
-  have hq : z ⬝ᵥ ((Mᵀ * A.quadratic * M) *ᵥ z) = (M *ᵥ z) ⬝ᵥ (A.quadratic *ᵥ (M *ᵥ z)) := by
-    rw [chart_dotProduct_mulVec_left, Matrix.mulVec_mulVec, Matrix.mulVec_mulVec,
-      Matrix.mul_assoc]
-  have hl : z ⬝ᵥ (Mᵀ *ᵥ A.linear) = (M *ᵥ z) ⬝ᵥ A.linear := by
-    rw [chart_dotProduct_mulVec_left]
-  have hh : (A.horizontal * M) *ᵥ z = A.horizontal *ᵥ (M *ᵥ z) :=
-    (Matrix.mulVec_mulVec _ _ _).symm
-  unfold multivariableQuadraticChartAtom
-  simp only [chart_quadratic_sum_eq_dotProduct]
-  simp only [chart_linear_sum_eq_dotProduct]
-  change (Real.fourierChar (z ⬝ᵥ ((Mᵀ * A.quadratic * M) *ᵥ z) + z ⬝ᵥ (Mᵀ *ᵥ A.linear)) : ℂ) *
-      ∑' n : Fin d → ℤ, A.amplitude ((A.horizontal * M) *ᵥ z - fun i => (n i : ℝ)) *
-        (Real.fourierChar (chartMatrixPhase A.matrix ((A.horizontal * M) *ᵥ z)
-          ((A.horizontal * M) *ᵥ z - fun i => (n i : ℝ))) : ℂ) = _
-  rw [hq, hl, hh]
-
-/-- Blueprint `lem:chart-operations`, line 651 ("the same calculation works with any real linear
-map `V : ℝ^k → ℝ^d` in place of `y ↦ θ y`"): every real affine substitution `z ↦ M z + z₀` of a
-several-variable chart is again such a chart, with the same Gevrey order and a quasipolynomial
-complexity bound independent of `M` and `z₀`; boundedness is preserved. -/
-theorem multivariableQuadraticChart_affine_closure {k k' d c₀ : ℕ} {H : ℝ}
-    {A : MultivariableQuadraticChartData k d} (hA : MultivariableQuadraticChartComplexity c₀ H A)
-    (hc : 1 ≤ c₀) (M : Matrix (Fin k) (Fin k') ℝ) (z₀ : Fin k → ℝ) :
-    ∃ A' : MultivariableQuadraticChartData k' d,
-      MultivariableQuadraticChartComplexity c₀ (chartTranslationBudget H) A' ∧
-      (IsBoundedMultivariableQuadraticChart A → IsBoundedMultivariableQuadraticChart A') ∧
-      ∀ z, multivariableQuadraticChartAtom A' z =
-        multivariableQuadraticChartAtom A (M *ᵥ z + z₀) := by
-  have hA' : QuadraticChartComplexity c₀ H (multivariableChartAlongLine A 0) := hA
-  obtain ⟨P, m, a, hP, hPH, hoff, ha, hint⟩ := chart_translation_offset_reduction
-    (quadraticChartComplexity_parameter_pos hA').le A.matrix hA'.height (A.horizontal *ᵥ z₀)
-  have hT : QuadraticChartComplexity c₀ (chartTranslationBudget H)
-      (multivariableChartAlongLine (mvTranslateChart A z₀ m a) 0) := by
-    have h := scaleQuadraticChartAmplitude_complexity (a := (Real.fourierChar
-      (z₀ ⬝ᵥ (A.quadratic *ᵥ z₀) + z₀ ⬝ᵥ A.linear) : ℂ))
-      (quadraticChartComplexity_mono (translateQuadraticChart_complexity hA' hc
-        (Nat.cast_nonneg P) hPH 0 m a ha) (chartTranslationBase_le_budget hA')) (by simp)
-    exact ⟨h.lower, h.dimension, h.height, h.support, h.derivative⟩
-  have hatom := mvTranslateChart_atom A z₀ m a hoff hint
-  refine ⟨mvLinearChart (mvTranslateChart A z₀ m a) M, ?_, ?_, ?_⟩
-  · exact ⟨hT.lower, hT.dimension, hT.height, hT.support, hT.derivative⟩
-  · intro hb z
-    rw [mvLinearChart_atom, hatom]
-    exact hb _
-  · intro z
-    rw [mvLinearChart_atom, hatom]
-
-end MultivariableAffine
-
-/-- Symmetric part of the rational chart matrix, as in source line 660. -/
-def chartSymmetricPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    Matrix (Fin d) (Fin d) ℚ := (1 / 2 : ℚ) • (C + C.transpose)
 
 /-- Skew-symmetric part of the rational chart matrix. -/
 def chartSkewPart {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
     Matrix (Fin d) (Fin d) ℚ := (1 / 2 : ℚ) • (C - C.transpose)
 
-/-- The source alternating matrix `A = C - C^T`. -/
-def chartAlternatingMatrix {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    Matrix (Fin d) (Fin d) ℚ := C - C.transpose
-
-theorem chartSymmetricPart_isSymm {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    (chartSymmetricPart C).IsSymm := by
-  apply Matrix.IsSymm.ext
-  intro i j
-  simp [chartSymmetricPart, add_comm]
-
-theorem chartSkewPart_transpose {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    (chartSkewPart C).transpose = -chartSkewPart C := by
-  ext i j
-  simp [chartSkewPart]
-  ring
-
-theorem chartSymmetricPart_add_skew {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    chartSymmetricPart C + chartSkewPart C = C := by
-  ext i j
-  simp [chartSymmetricPart, chartSkewPart]
-  ring
-
-theorem chartAlternatingMatrix_eq_twice_skew {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    chartAlternatingMatrix C = (2 : ℚ) • chartSkewPart C := by
-  ext i j
-  simp [chartAlternatingMatrix, chartSkewPart]
-
 /-! ### Several-variable lattice finiteness -/
-
-/-- Compact support makes the several-variable lattice sum pointwise finite,
-just as in the original one-variable atom formula. -/
-theorem multivariableChartLatticeSummand_finite_support {k d : ℕ}
-    (A : MultivariableQuadraticChartData k d) (z : Fin k → ℝ) :
-    (Function.support (fun n : Fin d → ℤ =>
-      A.amplitude (A.horizontal.mulVec z - (fun i => (n i : ℝ))) *
-        (Real.fourierChar (chartMatrixPhase A.matrix (A.horizontal.mulVec z)
-          (A.horizontal.mulVec z - (fun i => (n i : ℝ)))) : ℂ))).Finite := by
-  simpa +unfoldPartialApp only [quadraticChartLatticeSummand, multivariableChartAlongLine,
-    chartHorizontalPosition, chartLatticeRemainder, mul_one, Pi.sub_def] using
-    quadraticChartLatticeSummand_finite_support (multivariableChartAlongLine A z) 1
 
 end Auto
 

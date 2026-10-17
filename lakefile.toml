@@ -8,7 +8,7 @@ weak.linter.mathlibStandardSet = true
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "6be3d352cec3ceabd28bf85266d28646e02f1975"
+rev = "fbc1661a327737928fe9d69b74f7deaa09eecfbc"
 
 [[lean_lib]]
 name = "TrilinearHT"

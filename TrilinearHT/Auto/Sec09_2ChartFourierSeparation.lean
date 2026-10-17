@@ -1398,10 +1398,6 @@ theorem div_ge_one (h : PowLe W a x) (hy : 1 ≤ y) : PowLe W a (x / y) :=
 theorem max_one (hW : 1 ≤ W) (h : PowLe W a x) : PowLe W a (max x 1) :=
   ⟨(zero_le_one).trans (le_max_right _ _), max_le h.2 (one_le_pow₀ hW)⟩
 
-theorem log_le (h : PowLe W a x) (hx : 0 < x) : Real.log x ≤ a * Real.log W := by
-  rw [← Real.log_pow]
-  exact Real.log_le_log hx h.2
-
 end PowLe
 
 /-- The derivative envelope is a fixed power of any common bound `W` of its
@@ -1555,13 +1551,6 @@ theorem realSkewPart_map {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
   ext i j
   simp [realSkewPart, chartSkewPart]
 
-theorem realSymmetricPart_map {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) :
-    realSymmetricPart (C.map fun q => (q : ℝ)) =
-      (chartSymmetricPart C).map fun q => (q : ℝ) := by
-  ext i j
-  simp [realSymmetricPart, chartSymmetricPart]
-  ring
-
 theorem rat_mulVec_cast {d : ℕ} (M : Matrix (Fin d) (Fin d) ℚ) (w : Fin d → ℚ) (i : Fin d) :
     ((M.mulVec w i : ℚ) : ℝ) = (M.map fun q => (q : ℝ)).mulVec (fun j => (w j : ℝ)) i := by
   simp [Matrix.mulVec, dotProduct]
@@ -1577,13 +1566,6 @@ theorem chartSplitFrequencyQ_cast {d : ℕ} (Q C : Matrix (Fin d) (Fin d) ℚ) (
   simp only [chartSplitFrequencyQ, chartSplitFrequency, Pi.add_apply, Pi.neg_apply,
     Rat.cast_add, Rat.cast_neg, Rat.cast_div, Rat.cast_natCast, rat_mulVec_cast, h1,
     realSkewPart_map, Rat.cast_intCast]
-
-/-- Integer matrices for cleared denominators. -/
-theorem rat_clear_matrix {d : ℕ} (M : Matrix (Fin d) (Fin d) ℚ) {q : ℕ}
-    (hM : ∀ i j, ∃ z : ℤ, (q : ℚ) * M i j = z) :
-    ∃ Z : Matrix (Fin d) (Fin d) ℤ, ∀ i j, (q : ℚ) * M i j = Z i j := by
-  choose Z hZ using hM
-  exact ⟨Z, hZ⟩
 
 theorem rat_mulVec_int_cleared {d : ℕ} (M : Matrix (Fin d) (Fin d) ℚ) {q : ℕ}
     (hM : ∀ i j, ∃ z : ℤ, (q : ℚ) * M i j = z) (w : Fin d → ℤ) (i : Fin d) :
@@ -2794,332 +2776,7 @@ theorem pooled_shell_tail_bound {ι : Type*} [Fintype ι] {n : ℕ}
     _ = 2 * E / 2 ^ K := by
         rw [tsum_mul_left, tsum_geometric_two]; ring
 
-/-- `(3 B²)^(d²) ≤ exp (3 X³)` for the logarithmic size `X = 1 + log H + log B` of a chart budget:
-the number of rational `d × d` matrices of height at most `B` is quasipolynomial. -/
-theorem chartBudget_matrix_count {d : ℕ} {H B : ℝ} (hH : Real.exp 2 ≤ H) (hd : (d : ℝ) ≤ Real.log H)
-    (hB : 2 ≤ B) :
-    (3 * B ^ 2) ^ (d ^ 2) ≤ Real.exp (3 * (1 + Real.log H + Real.log B) ^ 3) := by
-  obtain ⟨hX3, hHX, hBX, hdX, hlB, hlH, hd2⟩ := chartBudget_basic hH hd hB
-  set X := 1 + Real.log H + Real.log B with hX
-  have hpos : 0 < 3 * B ^ 2 := by positivity
-  have hlog3 : Real.log 3 ≤ X := by
-    have := Real.log_le_sub_one_of_pos (show (0 : ℝ) < 3 by norm_num)
-    linarith
-  have hlog : Real.log (3 * B ^ 2) ≤ 3 * X := by
-    rw [Real.log_mul (by norm_num) (by positivity), Real.log_pow]
-    push_cast
-    linarith
-  rw [← Real.exp_log (pow_pos hpos _), Real.log_pow]
-  apply Real.exp_le_exp.mpr
-  have hd0 : (0 : ℝ) ≤ d := Nat.cast_nonneg d
-  have hlog0 : 0 ≤ Real.log (3 * B ^ 2) := Real.log_nonneg (by nlinarith)
-  have hdd : ((d ^ 2 : ℕ) : ℝ) ≤ X ^ 2 := by
-    push_cast
-    exact pow_le_pow_left₀ hd0 hdX 2
-  calc ((d ^ 2 : ℕ) : ℝ) * Real.log (3 * B ^ 2) ≤ X ^ 2 * (3 * X) :=
-        mul_le_mul hdd hlog hlog0 (by positivity)
-    _ = 3 * X ^ 3 := by ring
-
-/-- `49^d ≤ exp (4 X)` when `d ≤ X`. -/
-theorem forty_nine_pow_le_exp {d : ℕ} {X : ℝ} (hdX : (d : ℝ) ≤ X) :
-    (49 : ℝ) ^ d ≤ Real.exp (4 * X) := by
-  have h49 : (49 : ℝ) ≤ Real.exp 4 := by
-    have := Real.add_one_le_exp (4 : ℝ)
-    have h2 : (2 : ℝ) ≤ Real.exp 1 := by linarith [Real.add_one_le_exp (1 : ℝ)]
-    have : Real.exp 4 = Real.exp 1 ^ 4 := by rw [← Real.exp_nat_mul]; norm_num
-    rw [this]
-    have h27 : (2.7 : ℝ) ≤ Real.exp 1 := by
-      have := Real.exp_one_gt_d9
-      linarith
-    nlinarith [pow_le_pow_left₀ (by norm_num : (0 : ℝ) ≤ 2.7) h27 4]
-  calc (49 : ℝ) ^ d ≤ Real.exp 4 ^ d := pow_le_pow_left₀ (by norm_num) h49 d
-    _ = Real.exp (4 * d) := by rw [← Real.exp_nat_mul]; ring_nf
-    _ ≤ Real.exp (4 * X) := Real.exp_le_exp.mpr (by linarith)
-
-open Classical in
-/-- **Blueprint lem:chartfourier, line 1349, with the pooling step of the proof, line 1377.**
-The shell bound `eq:shell` remains true for the coefficient envelope pooled over *all* rational
-splittings `Q` of height at most `B` (the finite set `S`, of quasipolynomial size), separately for
-each resulting frequency and quadratic part, uniformly over the allowed amplitudes and bounded slow
-values: one envelope `env J ℓ` (depending only on the integer index `ℓ`) dominates every
-coefficient of every splitting and every admissible chart, and the pooled envelope mass in each
-dyadic shell `T ≤ 1 + |ℓ| < 2T`, summed over all splittings and families, is at most
-`exp(D_J X^{D_J}) T^{-J(d+1)²}`. Consequently a uniform tail `ε` of the pooled envelope requires
-only a truncation `2^K ≤ max 1 (4 exp(D_1 X^{D_1}) / ε)`, quasipolynomial in `H, B, ε⁻¹`. Here
-`X = 1 + log H + log B`. -/
-theorem splitFourierExpansion_pooled (c₀ : ℕ) (hc : 1 ≤ c₀) (k : ℕ) (R : ℝ) (hR : 0 ≤ R) :
-    ∃ D : ℕ, 1 ≤ D ∧ ∃ DJ : ℕ → ℕ, ∀ {d : ℕ} (H B : ℝ), Real.exp 2 ≤ H →
-      (d : ℝ) ≤ Real.log H → 2 ≤ B →
-      ∀ C : Matrix (Fin d) (Fin d) ℚ, (∀ i j, (rationalHeight (C i j) : ℝ) ≤ H) →
-      ∃ (S : Finset (Matrix (Fin d) (Fin d) ℚ)) (ι : S → Type) (_ : ∀ Q, Fintype (ι Q))
-        (σ : ∀ Q : S, ι Q × (Fin (d + d) → ℤ) → Fin d → ℚ)
-        (env : ℕ → (Fin (d + d) → ℤ) → ℝ),
-        (∀ Q : Matrix (Fin d) (Fin d) ℚ, Q ∈ S ↔ (Q.IsSymm ∧
-          (∀ i j, (rationalHeight (Q i j) : ℝ) ≤ B) ∧
-          (1 - Q.map (fun q => (q : ℝ))).transpose * (C.map (fun q => (q : ℝ)) -
-            (C.map (fun q => (q : ℝ))).transpose) * (1 - Q.map (fun q => (q : ℝ))) = 0)) ∧
-        (S.card : ℝ) ≤ Real.exp (D * (1 + Real.log H + Real.log B) ^ D) ∧
-        (∀ Q, (Fintype.card (ι Q) : ℝ) ≤ Real.exp (D * (1 + Real.log H + Real.log B) ^ D)) ∧
-        (∀ Q p i, (rationalHeight (σ Q p i) : ℝ) ≤
-          Real.exp (D * (1 + Real.log H + Real.log B) ^ D) * (1 + frequencyLength p.2)) ∧
-        (∀ J v, 0 ≤ env J v) ∧
-        (∀ Q : S, ∀ A : MultivariableQuadraticChartData k d, A.matrix = C →
-          MultivariableQuadraticChartComplexity c₀ H A →
-          ‖realMatrixOperator ((Q : Matrix (Fin d) (Fin d) ℚ).map (fun q => (q : ℝ)) *
-            A.horizontal)‖ ≤ B →
-          ∃ a : ι Q × (Fin (d + d) → ℤ) → ℂ,
-            (∀ z : Fin k → ℝ, (∀ i, |z i| ≤ R) →
-              HasSum (fun p => a p * (Real.fourierChar (dotProduct (fun i => (σ Q p i : ℝ))
-                  (A.horizontal.mulVec z)) : ℂ))
-                ((Real.fourierChar (-(dotProduct z ((effectiveReturnQuadratic
-                    (C.map (fun q => (q : ℝ))) A.quadratic A.horizontal
-                    ((1 - (Q : Matrix (Fin d) (Fin d) ℚ).map (fun q => (q : ℝ))) * A.horizontal)
-                    ((Q : Matrix (Fin d) (Fin d) ℚ).map (fun q => (q : ℝ)) *
-                      A.horizontal)).mulVec z) +
-                    dotProduct A.linear z)) : ℂ) * multivariableQuadraticChartAtom A z)) ∧
-            ∀ J p, ‖a p‖ ≤ env J p.2) ∧
-        (∀ (J : ℕ) (T : ℝ), 1 ≤ T →
-          (∑ Q : S, ∑ _f : ι Q, ∑ v ∈ frequencyShell (d + d) T, env J v) *
-            T ^ (J * (d + 1) ^ 2) ≤ Real.exp (DJ J * (1 + Real.log H + Real.log B) ^ DJ J)) ∧
-        ∀ ε : ℝ, 0 < ε → ∃ K : ℕ,
-          (2 : ℝ) ^ K ≤ max 1 (4 * Real.exp (DJ 1 * (1 + Real.log H + Real.log B) ^ DJ 1) / ε) ∧
-          Summable (fun p : (Σ Q : S, ι Q) × (Fin (d + d) → ℤ) =>
-            if p.2 ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength p.2 then env 1 p.2 else 0) ∧
-          ∑' p : (Σ Q : S, ι Q) × (Fin (d + d) → ℤ),
-            (if p.2 ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength p.2 then env 1 p.2 else 0) ≤ ε := by
-  obtain ⟨D, hD1, DJ, hsfe⟩ := splitFourierExpansion c₀ hc k R hR
-  refine ⟨D + 3, by omega, fun J => DJ (J + 1) + D + 10, ?_⟩
-  intro d H B hH hd hB C hC
-  obtain ⟨hX3, hHX, hBX, hdX, hlB, hlH, hd2⟩ := chartBudget_basic hH hd hB
-  set X := 1 + Real.log H + Real.log B with hXdef
-  have hX1 : 1 ≤ X := by linarith
-  set S : Finset (Matrix (Fin d) (Fin d) ℚ) := (boundedRationalMatrices d d ⌊B⌋₊).filter
-    (fun Q => Q.IsSymm ∧ (∀ i j, (rationalHeight (Q i j) : ℝ) ≤ B) ∧
-      (1 - Q.map (fun q => (q : ℝ))).transpose * (C.map (fun q => (q : ℝ)) -
-        (C.map (fun q => (q : ℝ))).transpose) * (1 - Q.map (fun q => (q : ℝ))) = 0) with hSdef
-  have hmemS : ∀ Q : Matrix (Fin d) (Fin d) ℚ, Q ∈ S ↔ (Q.IsSymm ∧
-      (∀ i j, (rationalHeight (Q i j) : ℝ) ≤ B) ∧
-      (1 - Q.map (fun q => (q : ℝ))).transpose * (C.map (fun q => (q : ℝ)) -
-        (C.map (fun q => (q : ℝ))).transpose) * (1 - Q.map (fun q => (q : ℝ))) = 0) := by
-    intro Q
-    rw [hSdef, Finset.mem_filter]
-    exact ⟨fun h => h.2,
-      fun h => ⟨mem_boundedRationalMatrices (fun i j => Nat.le_floor (h.2.1 i j)), h⟩⟩
-  have hQdata := fun Q : S => hsfe H B hH hd hB C (Q : Matrix (Fin d) (Fin d) ℚ) hC
-    ((hmemS Q).mp Q.2).1 ((hmemS Q).mp Q.2).2.1 ((hmemS Q).mp Q.2).2.2
-  dsimp only at hQdata
-  choose ι hι σ hcard hheight hexp using hQdata
-  set E : ℕ → ℝ := fun J => Real.exp (DJ (J + 1) * X ^ DJ (J + 1)) with hE
-  have hEpos : ∀ J, 0 < E J := fun J => Real.exp_pos _
-  set env : ℕ → (Fin (d + d) → ℤ) → ℝ := fun J v =>
-    E J / (1 + frequencyLength v) ^ ((J + 1) * (d + 1) ^ 2) with henv
-  have hlen1 : ∀ v : Fin (d + d) → ℤ, 1 ≤ 1 + frequencyLength v := fun v => by
-    linarith [frequencyLength_nonneg v]
-  have henv0 : ∀ J v, 0 ≤ env J v := fun J v =>
-    div_nonneg (hEpos J).le (pow_nonneg (by linarith [hlen1 v]) _)
-  -- the count of splittings
-  have hcardS : (S.card : ℝ) ≤ Real.exp (3 * X ^ 3) := by
-    have hfl : 1 ≤ ⌊B⌋₊ := Nat.le_floor (by norm_num; linarith)
-    have h1 : S.card ≤ (3 * ⌊B⌋₊ ^ 2) ^ (d ^ 2) :=
-      (Finset.card_filter_le _ _).trans (boundedRationalMatrices_card le_rfl le_rfl hfl)
-    have h2 : ((3 * ⌊B⌋₊ ^ 2) ^ (d ^ 2) : ℕ) ≤ (3 * B ^ 2) ^ (d ^ 2) := by
-      push_cast
-      gcongr
-      exact Nat.floor_le (by linarith)
-    exact (Nat.cast_le.mpr h1).trans (h2.trans (chartBudget_matrix_count hH hd hB))
-  have hmono : ∀ (c : ℝ) (e M : ℕ), c ≤ M → e ≤ M →
-      Real.exp (c * X ^ e) ≤ Real.exp (M * X ^ M) := fun c e M hc he => by
-    apply Real.exp_le_exp.mpr
-    have hXe : X ^ e ≤ X ^ M := pow_le_pow_right₀ hX1 he
-    exact mul_le_mul hc hXe (by positivity) (by positivity)
-  have hDD : Real.exp (D * X ^ D) ≤ Real.exp (((D + 3 : ℕ) : ℝ) * X ^ (D + 3)) :=
-    hmono D D (D + 3) (by push_cast; linarith) (by omega)
-  -- the pooled shell bound
-  have hshell : ∀ (J : ℕ) (T : ℝ), 1 ≤ T →
-      (∑ Q : S, ∑ _f : ι Q, ∑ v ∈ frequencyShell (d + d) T, env J v) * T ^ (J * (d + 1) ^ 2) ≤
-        Real.exp (((DJ (J + 1) + D + 10 : ℕ) : ℝ) * X ^ (DJ (J + 1) + D + 10)) := by
-    intro J T hT
-    have hT0 : 0 < T := by linarith
-    have hv : ∀ v ∈ frequencyShell (d + d) T,
-        env J v ≤ E J / T ^ ((J + 1) * (d + 1) ^ 2) := by
-      intro v hv
-      have hTv := (mem_frequencyShell.mp hv).2.1
-      exact div_le_div_of_nonneg_left (hEpos J).le (pow_pos hT0 _)
-        (pow_le_pow_left₀ hT0.le hTv _)
-    have hshellsum : ∑ v ∈ frequencyShell (d + d) T, env J v ≤
-        (7 * T) ^ (d + d) * (E J / T ^ ((J + 1) * (d + 1) ^ 2)) := by
-      calc ∑ v ∈ frequencyShell (d + d) T, env J v ≤
-            ∑ _v ∈ frequencyShell (d + d) T, E J / T ^ ((J + 1) * (d + 1) ^ 2) :=
-            Finset.sum_le_sum hv
-        _ = ((frequencyShell (d + d) T).card : ℝ) * (E J / T ^ ((J + 1) * (d + 1) ^ 2)) := by
-            rw [Finset.sum_const, nsmul_eq_mul]
-        _ ≤ (7 * T) ^ (d + d) * (E J / T ^ ((J + 1) * (d + 1) ^ 2)) :=
-            mul_le_mul_of_nonneg_right (card_frequencyShell_le hT) (by positivity)
-    have hpowT : T ^ (d + d) * T ^ (J * (d + 1) ^ 2) ≤ T ^ ((J + 1) * (d + 1) ^ 2) := by
-      rw [← pow_add]
-      exact pow_le_pow_right₀ hT (by nlinarith)
-    have hone : (7 * T) ^ (d + d) * (E J / T ^ ((J + 1) * (d + 1) ^ 2)) *
-        T ^ (J * (d + 1) ^ 2) ≤ 49 ^ d * E J := by
-      have hTp : 0 < T ^ ((J + 1) * (d + 1) ^ 2) := pow_pos hT0 _
-      rw [mul_pow, show (7 : ℝ) ^ (d + d) = 49 ^ d by rw [← two_mul, pow_mul]; norm_num]
-      rw [show 49 ^ d * T ^ (d + d) * (E J / T ^ ((J + 1) * (d + 1) ^ 2)) * T ^ (J * (d + 1) ^ 2)
-          = 49 ^ d * E J * ((T ^ (d + d) * T ^ (J * (d + 1) ^ 2)) / T ^ ((J + 1) * (d + 1) ^ 2))
-          by field_simp]
-      have : (T ^ (d + d) * T ^ (J * (d + 1) ^ 2)) / T ^ ((J + 1) * (d + 1) ^ 2) ≤ 1 :=
-        (div_le_one hTp).mpr hpowT
-      have h49 : (0 : ℝ) ≤ 49 ^ d * E J := by positivity
-      nlinarith
-    have hsumQ : ∑ Q : S, ∑ _f : ι Q, ∑ v ∈ frequencyShell (d + d) T, env J v ≤
-        (S.card : ℝ) * Real.exp (D * X ^ D) *
-          ((7 * T) ^ (d + d) * (E J / T ^ ((J + 1) * (d + 1) ^ 2))) := by
-      calc ∑ Q : S, ∑ _f : ι Q, ∑ v ∈ frequencyShell (d + d) T, env J v
-          ≤ ∑ _Q : S, Real.exp (D * X ^ D) *
-              ((7 * T) ^ (d + d) * (E J / T ^ ((J + 1) * (d + 1) ^ 2))) := by
-            apply Finset.sum_le_sum
-            intro Q _
-            rw [Finset.sum_const, Finset.card_univ, nsmul_eq_mul]
-            exact mul_le_mul (hcard Q) hshellsum
-              (Finset.sum_nonneg fun v _ => henv0 J v) (Real.exp_pos _).le
-        _ = (S.card : ℝ) * Real.exp (D * X ^ D) *
-              ((7 * T) ^ (d + d) * (E J / T ^ ((J + 1) * (d + 1) ^ 2))) := by
-            rw [Finset.sum_const, Finset.card_univ, Fintype.card_coe, nsmul_eq_mul, mul_assoc]
-    have h49 := forty_nine_pow_le_exp (d := d) hdX
-    calc (∑ Q : S, ∑ _f : ι Q, ∑ v ∈ frequencyShell (d + d) T, env J v) * T ^ (J * (d + 1) ^ 2)
-        ≤ (S.card : ℝ) * Real.exp (D * X ^ D) *
-            ((7 * T) ^ (d + d) * (E J / T ^ ((J + 1) * (d + 1) ^ 2)) * T ^ (J * (d + 1) ^ 2)) := by
-          rw [← mul_assoc]
-          exact mul_le_mul_of_nonneg_right hsumQ (by positivity)
-      _ ≤ Real.exp (3 * X ^ 3) * Real.exp (D * X ^ D) * (Real.exp (4 * X) * E J) := by
-          apply mul_le_mul (mul_le_mul_of_nonneg_right hcardS (Real.exp_pos _).le)
-            (hone.trans (mul_le_mul_of_nonneg_right h49 (hEpos J).le)) (by positivity)
-            (by positivity)
-      _ = Real.exp (3 * X ^ 3 + D * X ^ D + 4 * X ^ 1 + DJ (J + 1) * X ^ DJ (J + 1)) := by
-          simp only [hE, ← Real.exp_add, pow_one]; ring_nf
-      _ ≤ Real.exp (((DJ (J + 1) + D + 10 : ℕ) : ℝ) * X ^ (DJ (J + 1) + D + 10)) := by
-          set M := DJ (J + 1) + D + 10
-          apply Real.exp_le_exp.mpr
-          have hXM : ∀ e : ℕ, e ≤ M → X ^ e ≤ X ^ M := fun e he => pow_le_pow_right₀ hX1 he
-          have h1 := hXM 3 (by omega)
-          have h2 := hXM D (by omega)
-          have h3 := hXM 1 (by omega)
-          have h4 := hXM (DJ (J + 1)) (by omega)
-          have hXM0 : 0 ≤ X ^ M := by positivity
-          have hcast : ((M : ℕ) : ℝ) = DJ (J + 1) + D + 10 := by push_cast [M]; ring
-          rw [hcast]
-          have hD0 : (0 : ℝ) ≤ D := Nat.cast_nonneg D
-          have hDJ0 : (0 : ℝ) ≤ DJ (J + 1) := Nat.cast_nonneg _
-          nlinarith [mul_le_mul_of_nonneg_left h2 hD0, mul_le_mul_of_nonneg_left h4 hDJ0]
-  have hD0 : (0 : ℝ) ≤ D := Nat.cast_nonneg D
-  refine ⟨S, ι, hι, σ, env, hmemS,
-    hcardS.trans (hmono 3 3 (D + 3) (by push_cast; linarith) (by omega)),
-    fun Q => (hcard Q).trans hDD,
-    fun Q p i => (hheight Q p i).trans (mul_le_mul_of_nonneg_right hDD (by linarith [hlen1 p.2])),
-    henv0, ?_, hshell, ?_⟩
-  · intro Q A hAC hAH hslow
-    obtain ⟨a, hsum, -, -, hJ⟩ := hexp Q A hAC hAH hslow
-    refine ⟨a, hsum, fun J p => ?_⟩
-    have hp := (hJ (J + 1)).1 p
-    rw [henv, le_div_iff₀ (pow_pos (by linarith [hlen1 p.2]) _)]
-    exact hp
-  · intro ε hε
-    set E1 := Real.exp (((DJ (1 + 1) + D + 10 : ℕ) : ℝ) * X ^ (DJ (1 + 1) + D + 10)) with hE1
-    have hE1pos : 0 < E1 := Real.exp_pos _
-    set a : (Σ Q : S, ι Q) × (Fin (d + d) → ℤ) → ℂ := fun p => (env 1 p.2 : ℂ) with ha
-    have hnorm : ∀ p, ‖a p‖ = env 1 p.2 := fun p => by
-      rw [ha, Complex.norm_real, Real.norm_of_nonneg (henv0 1 p.2)]
-    have hsh : ∀ T : ℝ, 1 ≤ T →
-        (∑ f : (Σ Q : S, ι Q), ∑ v ∈ frequencyShell (d + d) T, ‖a (f, v)‖) * T ≤ E1 := by
-      intro T hT
-      have hsig : (∑ f : (Σ Q : S, ι Q), ∑ v ∈ frequencyShell (d + d) T, ‖a (f, v)‖) =
-          ∑ Q : S, ∑ _f : ι Q, ∑ v ∈ frequencyShell (d + d) T, env 1 v := by
-        rw [Fintype.sum_sigma]
-        simp only [hnorm]
-      rw [hsig]
-      have hTT : T ≤ T ^ (1 * (d + 1) ^ 2) :=
-        le_self_pow₀ hT (by positivity)
-      exact (mul_le_mul_of_nonneg_left hTT (Finset.sum_nonneg fun Q _ =>
-        Finset.sum_nonneg fun f _ => Finset.sum_nonneg fun v _ => henv0 1 v)).trans (hshell 1 T hT)
-    have hex : ∃ K : ℕ, 2 * E1 / ε ≤ (2 : ℝ) ^ K :=
-      pow_unbounded_of_one_lt _ (by norm_num : (1 : ℝ) < 2) |>.imp fun K hK => hK.le
-    let K := Nat.find hex
-    have hK : 2 * E1 / ε ≤ (2 : ℝ) ^ K := Nat.find_spec hex
-    obtain ⟨hs, ht⟩ := pooled_shell_tail_bound a hsh K
-    have hfun : (fun p : (Σ Q : S, ι Q) × (Fin (d + d) → ℤ) =>
-        ‖if p.2 ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength p.2 then a p else 0‖) =
-        fun p => if p.2 ≠ 0 ∧ (2 : ℝ) ^ K ≤ 1 + frequencyLength p.2 then env 1 p.2 else 0 := by
-      funext p
-      split_ifs
-      · exact hnorm p
-      · simp
-    rw [hfun] at hs ht
-    refine ⟨K, ?_, hs, ht.trans ?_⟩
-    · rcases Nat.eq_zero_or_pos K with hK0 | hK0
-      · rw [hK0, pow_zero]
-        exact le_max_left _ _
-      · have hlt : (2 : ℝ) ^ (K - 1) < 2 * E1 / ε := not_le.mp (Nat.find_min hex (by omega))
-        have : (2 : ℝ) ^ K = 2 * 2 ^ (K - 1) := by
-          rw [← pow_succ']; congr 1; omega
-        refine le_max_of_le_right ?_
-        rw [this]
-        have : 2 * (2 * E1 / ε) = 4 * E1 / ε := by ring
-        linarith
-    · rw [div_le_iff₀ (by positivity)]
-      have := (div_le_iff₀ hε).mp hK
-      nlinarith
-
 /-! ### Progression separation (lem:separation) -/
-
-/-- The fixed rational coefficients of lem:separation, line 1401: for slot
-positions `i, a, b` with `a ≠ b`, `α_i = 1`, `α_a = (i-b)/(b-a)`, `α_b = (a-i)/(b-a)`
-satisfy `Σ α_j = Σ j α_j = 0`, hence `y_i = -α_a y_a - α_b y_b` for `y_j = x + j t`. -/
-theorem separation_slot_relation (i a b : ℝ) (hab : a ≠ b) (x t : ℝ) :
-    x + i * t = -((i - b) / (b - a)) * (x + a * t) - ((a - i) / (b - a)) * (x + b * t) := by
-  have hba : b - a ≠ 0 := sub_ne_zero.mpr (Ne.symm hab)
-  field_simp
-  ring
-
-/-- The quadratic part of lem:separation, line 1405:
-`y_i² + α_a y_a² + α_b y_b² = (i-a)(i-b) t²`. -/
-theorem separation_quadratic_identity (i a b : ℝ) (hab : a ≠ b) (x t : ℝ) :
-    (x + i * t) ^ 2 + (i - b) / (b - a) * (x + a * t) ^ 2 +
-        (a - i) / (b - a) * (x + b * t) ^ 2 = (i - a) * (i - b) * t ^ 2 := by
-  have hba : b - a ≠ 0 := sub_ne_zero.mpr (Ne.symm hab)
-  field_simp
-  ring
-
-/-- The lift identity of lem:separation, line 1405. With lifts `n = d_a + (i-a)d + k_i`
-and `d_b = d_a + (b-a)d + k_b`, the lattice phases recombine into the phase
-`S (θt)ᵀ C d` of the time chart, `S = (i-a)(i-b)`, plus phases linear in the
-slot variables with the integer carries. -/
-theorem separation_lift_identity {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (θ : Fin d → ℝ)
-    (i a b : ℤ) (hab : a ≠ b) (x t : ℝ) (da dd ki kb : Fin d → ℤ) :
-    let u := fun j : ℤ => fun l => θ l * (x + j * t)
-    let αa : ℝ := (i - b) / (b - a)
-    let αb : ℝ := (a - i) / (b - a)
-    chartMatrixPhase C (u i) (fun l => ((da l + (i - a) * dd l + ki l : ℤ) : ℝ)) +
-        αa * chartMatrixPhase C (u a) (fun l => (da l : ℝ)) +
-        αb * chartMatrixPhase C (u b) (fun l => ((da l + (b - a) * dd l + kb l : ℤ) : ℝ)) =
-      ((i - a) * (i - b) : ℝ) * chartMatrixPhase C (fun l => θ l * t) (fun l => (dd l : ℝ)) +
-        chartMatrixPhase C (u i) (fun l => (ki l : ℝ)) +
-        αb * chartMatrixPhase C (u b) (fun l => (kb l : ℝ)) := by
-  intro u αa αb
-  have hba : (b : ℝ) - a ≠ 0 := sub_ne_zero.mpr (by exact_mod_cast (Ne.symm hab))
-  have hαa : αa * ((b : ℝ) - a) = i - b := by simp only [αa]; field_simp
-  have hαb : αb * ((b : ℝ) - a) = a - i := by simp only [αb]; field_simp
-  simp only [chartMatrixPhase, u]
-  push_cast
-  simp only [Finset.mul_sum]
-  rw [← Finset.sum_add_distrib, ← Finset.sum_add_distrib, ← Finset.sum_add_distrib,
-    ← Finset.sum_add_distrib]
-  apply Finset.sum_congr rfl; intro l _
-  rw [← Finset.sum_add_distrib, ← Finset.sum_add_distrib, ← Finset.sum_add_distrib,
-    ← Finset.sum_add_distrib]
-  apply Finset.sum_congr rfl; intro m _
-  have e1 : αa = (i - b) / (b - a) := rfl
-  have e2 : αb = (a - i) / (b - a) := rfl
-  rw [e1, e2]
-  field_simp
-  ring
 
 /-- The tensor Gevrey lattice partition used for the slot lifts. -/
 noncomputable def sepPartition {d : ℕ} (w : Fin d → ℝ) : ℂ :=
@@ -3616,14 +3273,6 @@ theorem mkQuadraticChart_atom {d : ℕ} (θ : Fin d → ℝ) (lam β : ℝ)
             ((fun l => θ l * y) - fun l => (n l : ℝ))) : ℂ) := by
   rfl
 
-theorem chartMatrixPhase_smul_vec {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (θ : Fin d → ℝ)
-    (y : ℝ) (w : Fin d → ℝ) :
-    chartMatrixPhase C (fun l => θ l * y) w = y * chartMatrixPhase C θ w := by
-  simp only [chartMatrixPhase, Finset.mul_sum]
-  apply Finset.sum_congr rfl; intro l _
-  apply Finset.sum_congr rfl; intro m _
-  ring
-
 theorem chartMatrixPhase_scale_matrix {d : ℕ} (C : Matrix (Fin d) (Fin d) ℚ) (q : ℚ)
     (u w : Fin d → ℝ) :
     chartMatrixPhase (q • C) u w = (q : ℝ) * chartMatrixPhase C u w := by
@@ -3772,13 +3421,13 @@ theorem sepPartition_smooth {d : ℕ} : ContDiff ℝ (⊤ : ℕ∞) (sepPartitio
   chartCoordinateProduct_smooth (contDiff_infty.mpr gevreyPartition_contDiff)
 
 theorem tripleFst_contDiff {d : ℕ} : ContDiff ℝ (⊤ : ℕ∞) (tripleFst (d := d) (α := ℝ)) := by
-  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ ℝ _
+  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ (fun _ => ℝ) _
 
 theorem tripleSnd_contDiff {d : ℕ} : ContDiff ℝ (⊤ : ℕ∞) (tripleSnd (d := d) (α := ℝ)) := by
-  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ ℝ _
+  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ (fun _ => ℝ) _
 
 theorem tripleThd_contDiff {d : ℕ} : ContDiff ℝ (⊤ : ℕ∞) (tripleThd (d := d) (α := ℝ)) := by
-  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ ℝ _
+  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ (fun _ => ℝ) _
 
 theorem sepCoupledVec_smooth {d : ℕ} {χ : (Fin d → ℝ) → ℂ} (hχ : ContDiff ℝ (⊤ : ℕ∞) χ)
     {ψ : ℝ → ℝ} (hψ : ContDiff ℝ (⊤ : ℕ∞) ψ) (i a b : ℤ) (ki kb : Fin d → ℤ) :
@@ -4408,15 +4057,6 @@ theorem tripleFstCLM_norm_le (d : ℕ) : ‖tripleFstCLM d‖ ≤ 1 := pi_proj_n
 theorem tripleSndCLM_norm_le (d : ℕ) : ‖tripleSndCLM d‖ ≤ 1 := pi_proj_norm_le _
 
 theorem tripleThdCLM_norm_le (d : ℕ) : ‖tripleThdCLM d‖ ≤ 1 := pi_proj_norm_le _
-
-theorem tripleFstCLM_apply {d : ℕ} (v : Fin (d + d + d) → ℝ) : tripleFstCLM d v = tripleFst v :=
-  rfl
-
-theorem tripleSndCLM_apply {d : ℕ} (v : Fin (d + d + d) → ℝ) : tripleSndCLM d v = tripleSnd v :=
-  rfl
-
-theorem tripleThdCLM_apply {d : ℕ} (v : Fin (d + d + d) → ℝ) : tripleThdCLM d v = tripleThd v :=
-  rfl
 
 /-- Geometric bounds for the tensor Gevrey lattice partition. -/
 theorem sepPartition_geomBound {d : ℕ} {Kρ : ℕ} (hK : 1 ≤ Kρ)
@@ -7711,146 +7351,6 @@ theorem progressionSeparation (c₀ : ℕ) (hc : 1 ≤ c₀) :
             gcongr
         _ = Real.exp (10 * X ^ 2) * (3 * T) ^ (3 * (d + e)) := by
             rw [← hX2, ← hTpow]; ring
-
-/-- **Blueprint lem:separation, eq:separation, lines 1382-1388, for charts of every dimension.** Two
-atoms of complexity `H` in slots `i, k` (charts of any dimensions `d, e ≥ 0`, as allowed by
-`def:chart`) have an exact absolutely convergent expansion `φ_i(y_i) φ_k(y_k) = Σ c ψ_a(y_a)
-ψ_b(y_b) Q(t)` with bounded factor atoms fixed independently of scale. The factor charts have
-dimension at most `log D`, the coefficients have total mass at most `D`, the terms with shell
-parameter at least `T` have mass at most `D T^{-100}`, there are at most `D (3T)^{3(d+e+2)}`
-terms of shell parameter at most `T`, and the factors of a term with shell parameter `T` have
-complexity (including the dimension bound `dimension ≤ log`) at most `(DT)^6` at a fixed Gevrey
-order, with `D = exp(D₀ (1 + log H)^{D₀})` quasipolynomial in `H`. Charts of dimension zero are
-first padded to dimension one (`exists_pad_chart`), which does not change their atoms. -/
-theorem progressionSeparation_all (c₀ : ℕ) (hc : 1 ≤ c₀) :
-    ∃ c₁ D : ℕ, 1 ≤ c₁ ∧ 1 ≤ D ∧ ∀ {d e : ℕ} (H : ℝ) (A : QuadraticChartData d)
-      (A' : QuadraticChartData e), QuadraticChartComplexity c₀ H A →
-      QuadraticChartComplexity c₀ H A' → ∀ i k a b : ℤ, a ≠ b → |i| ≤ 3 → |k| ≤ 3 →
-      |a| ≤ 3 → |b| ≤ 3 →
-      ∃ (τ : Type) (_ : Countable τ) (cf : τ → ℂ)
-        (φa φb φt : τ → QuadraticChartData (d + 1 + (e + 1))) (size : τ → ℝ),
-        (∀ x t : ℝ, HasSum (fun q => cf q * quadraticChartAtom (φa q) (x + a * t) *
-            quadraticChartAtom (φb q) (x + b * t) * quadraticChartAtom (φt q) t)
-          (quadraticChartAtom A (x + i * t) * quadraticChartAtom A' (x + k * t))) ∧
-        (∀ q, IsBoundedQuadraticChart (φa q) ∧ IsBoundedQuadraticChart (φb q) ∧
-          IsBoundedQuadraticChart (φt q)) ∧
-        (∀ q, 1 ≤ size q) ∧
-        ((d + 1 + (e + 1) : ℕ) : ℝ) ≤ D * (1 + Real.log H) ^ D ∧
-        Summable (fun q => ‖cf q‖) ∧
-        (∑' q, ‖cf q‖) ≤ Real.exp (D * (1 + Real.log H) ^ D) ∧
-        (∀ T : ℝ, 1 ≤ T → (∑' q, if T ≤ size q then ‖cf q‖ else 0) ≤
-          Real.exp (D * (1 + Real.log H) ^ D) / T ^ 100) ∧
-        (∀ q, QuadraticChartComplexity c₁
-            ((Real.exp (D * (1 + Real.log H) ^ D) * size q) ^ 6) (φa q) ∧
-          QuadraticChartComplexity c₁ ((Real.exp (D * (1 + Real.log H) ^ D) * size q) ^ 6) (φb q) ∧
-          QuadraticChartComplexity c₁
-            ((Real.exp (D * (1 + Real.log H) ^ D) * size q) ^ 6) (φt q)) ∧
-        (∀ T : ℝ, 1 ≤ T → ∃ Qs : Finset τ, (∀ q, size q ≤ T → q ∈ Qs) ∧
-          (Qs.card : ℝ) ≤
-            Real.exp (D * (1 + Real.log H) ^ D) * (3 * T) ^ (3 * (d + 1 + (e + 1)))) := by
-  obtain ⟨cp, W₀, hcp, hW₀, hpad⟩ := exists_pad_chart
-  obtain ⟨c₁, D, hc₁, hD, hsep⟩ := progressionSeparation (max c₀ cp) (le_trans hc (le_max_left _ _))
-  have hlW : 2 ≤ Real.log W₀ := by
-    rw [← Real.log_exp 2]; exact Real.log_le_log (Real.exp_pos 2) hW₀
-  set N : ℕ := ⌈6 + 6 * Real.log W₀⌉₊ with hN
-  have hN1 : (1 : ℝ) ≤ N := by
-    have := Nat.le_ceil (6 + 6 * Real.log W₀); rw [← hN] at this; linarith
-  have hNc : 6 + 6 * Real.log W₀ ≤ N := Nat.le_ceil _
-  set D' : ℕ := (D + 10) * N ^ (D + 2) with hD'
-  have hD'1 : 1 ≤ D' := by
-    have : 1 ≤ N ^ (D + 2) := Nat.one_le_pow _ _ (by exact_mod_cast (by linarith : (0 : ℝ) < N))
-    rw [hD']; nlinarith
-  refine ⟨c₁, D', hc₁, hD'1, ?_⟩
-  intro d e H A A' hA hA' i k a b hab hi hk ha hb
-  have hH1 : 1 ≤ H := by linarith [hA.lower, Real.add_one_le_exp (2 : ℝ)]
-  have hlH : 0 ≤ Real.log H := Real.log_nonneg hH1
-  set X := 1 + Real.log H with hX
-  have hX1 : 1 ≤ X := by linarith
-  obtain ⟨Ap, hApA, hApC, -⟩ := hpad A hA hc
-  obtain ⟨Ap', hApA', hApC', -⟩ := hpad A' hA' hc
-  have h := hsep (H := max H W₀ ^ 6) Ap Ap' (by omega) (by omega) hApC hApC' i k a b hab hi hk
-    ha hb
-  dsimp only at h
-  obtain ⟨τ, hτ, cf, φa, φb, φt, size, hsum, hbd, hsz, hsm, hmass, hshell, hcx, hcount, -⟩ := h
-  -- the padded logarithmic size is at most `N X`
-  set X' := 1 + Real.log (max H W₀ ^ 6) with hX'
-  have hmax0 : 0 < max H W₀ := lt_of_lt_of_le (by linarith) (le_max_left _ _)
-  have hlogmax : Real.log (max H W₀) ≤ Real.log H + Real.log W₀ := by
-    rw [← Real.log_mul (by linarith) (by linarith [Real.add_one_le_exp (2 : ℝ)])]
-    apply Real.log_le_log hmax0
-    rcases le_total H W₀ with h' | h'
-    · rw [max_eq_right h']; nlinarith
-    · rw [max_eq_left h']; nlinarith [Real.add_one_le_exp (2 : ℝ)]
-  have hX'X : X' ≤ N * X := by
-    rw [hX', Real.log_pow]
-    push_cast
-    have : 1 + 6 * (Real.log H + Real.log W₀) ≤ (6 + 6 * Real.log W₀) * X := by
-      rw [hX]; nlinarith
-    nlinarith [mul_le_mul_of_nonneg_right hNc (by linarith : (0 : ℝ) ≤ X)]
-  have hX'1 : 1 ≤ X' := by
-    rw [hX']
-    have : 0 ≤ Real.log (max H W₀ ^ 6) :=
-      Real.log_nonneg (one_le_pow₀ (le_trans hH1 (le_max_left _ _)))
-    linarith
-  have hbudget : Real.exp (D * X' ^ D) ≤ Real.exp (D' * X ^ D') := by
-    apply Real.exp_le_exp.mpr
-    have h1 : X' ^ D ≤ (N * X) ^ D := pow_le_pow_left₀ (by linarith) hX'X D
-    have h2 : (N * X : ℝ) ^ D = (N : ℝ) ^ D * X ^ D := mul_pow _ _ _
-    have hNpow : 1 ≤ N ^ (D + 2) :=
-      Nat.one_le_pow _ _ (by exact_mod_cast (by linarith : (0 : ℝ) < N))
-    have h3 : X ^ D ≤ X ^ D' := pow_le_pow_right₀ hX1 (by rw [hD']; nlinarith)
-    have h4 : (D : ℝ) * (N : ℝ) ^ D ≤ D' := by
-      rw [hD']; push_cast
-      have : (N : ℝ) ^ D ≤ (N : ℝ) ^ (D + 2) := pow_le_pow_right₀ hN1 (by omega)
-      have : (0 : ℝ) ≤ (N : ℝ) ^ D := by positivity
-      nlinarith
-    calc (D : ℝ) * X' ^ D ≤ D * ((N : ℝ) ^ D * X ^ D) := by
-          rw [← h2]; exact mul_le_mul_of_nonneg_left h1 (Nat.cast_nonneg D)
-      _ = ((D : ℝ) * (N : ℝ) ^ D) * X ^ D := by ring
-      _ ≤ D' * X ^ D' := mul_le_mul h4 h3 (by positivity) (by positivity)
-  have hcountb : Real.exp (10 * X' ^ 2) ≤ Real.exp (D' * X ^ D') := by
-    apply Real.exp_le_exp.mpr
-    have h1 : X' ^ 2 ≤ (N * X) ^ 2 := pow_le_pow_left₀ (by linarith) hX'X 2
-    have hNpow : 1 ≤ N ^ (D + 2) :=
-      Nat.one_le_pow _ _ (by exact_mod_cast (by linarith : (0 : ℝ) < N))
-    have hD'2 : 2 ≤ D' := by rw [hD']; nlinarith
-    have h3 : X ^ 2 ≤ X ^ D' := pow_le_pow_right₀ hX1 hD'2
-    have h4 : (10 : ℝ) * (N : ℝ) ^ 2 ≤ D' := by
-      rw [hD']; push_cast
-      have : (N : ℝ) ^ 2 ≤ (N : ℝ) ^ (D + 2) := pow_le_pow_right₀ hN1 (by omega)
-      have : (0 : ℝ) ≤ (N : ℝ) ^ 2 := by positivity
-      have : (10 : ℝ) ≤ D + 10 := by linarith [(Nat.cast_nonneg D : (0 : ℝ) ≤ D)]
-      nlinarith
-    calc (10 : ℝ) * X' ^ 2 ≤ 10 * ((N : ℝ) ^ 2 * X ^ 2) := by
-          rw [← mul_pow]; exact mul_le_mul_of_nonneg_left h1 (by norm_num)
-      _ = (10 * (N : ℝ) ^ 2) * X ^ 2 := by ring
-      _ ≤ D' * X ^ D' := mul_le_mul h4 h3 (by positivity) (by positivity)
-  have hdim : ((d + 1 + (e + 1) : ℕ) : ℝ) ≤ D' * X ^ D' := by
-    have hd := hA.dimension
-    have he := hA'.dimension
-    have hD'10 : (10 : ℝ) ≤ D' := by
-      have hNpow : 1 ≤ N ^ (D + 2) :=
-        Nat.one_le_pow _ _ (by exact_mod_cast (by linarith : (0 : ℝ) < N))
-      have : 10 ≤ D' := by rw [hD']; nlinarith
-      exact_mod_cast this
-    have hXD : X ≤ X ^ D' := le_self_pow₀ hX1 (by omega)
-    push_cast
-    nlinarith
-  refine ⟨τ, hτ, cf, φa, φb, φt, size, ?_, hbd, hsz, hdim, hsm, hmass.trans hbudget, ?_, ?_, ?_⟩
-  · intro x t
-    simpa only [hApA, hApA'] using hsum x t
-  · intro T hT
-    exact (hshell T hT).trans (div_le_div_of_nonneg_right hbudget (by positivity))
-  · intro q
-    have hmono6 : (Real.exp (D * X' ^ D) * size q) ^ 6 ≤ (Real.exp (D' * X ^ D') * size q) ^ 6 :=
-      pow_le_pow_left₀ (by have := hsz q; positivity)
-        (mul_le_mul_of_nonneg_right hbudget (by linarith [hsz q])) 6
-    obtain ⟨h1, h2, h3⟩ := hcx q
-    exact ⟨quadraticChartComplexity_mono h1 hmono6, quadraticChartComplexity_mono h2 hmono6,
-      quadraticChartComplexity_mono h3 hmono6⟩
-  · intro T hT
-    obtain ⟨Qs, hQs, hcard⟩ := hcount T hT
-    exact ⟨Qs, hQs, hcard.trans (mul_le_mul_of_nonneg_right hcountb (by positivity))⟩
 
 end Auto
 

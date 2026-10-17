@@ -458,37 +458,6 @@ theorem rank_change_heights_card {M : Type*} [AddCommGroup M] [Module ℚ M]
     _ = jumps.card * R := by simp
     _ ≤ Module.finrank ℚ M * R := Nat.mul_le_mul_right _ hjumps
 
-/-- Blueprint line 2012: at all but `(2d + 1) R` heights `h < N`, two increasing families
-`V_i, U_i` of subspaces of a `d`-dimensional space are stable between `h - R` and `h`. -/
-theorem stable_heights_card {M : Type*} [AddCommGroup M] [Module ℚ M]
-    [FiniteDimensional ℚ M] (V U : ℕ → Submodule ℚ M) (hV : Monotone V) (hU : Monotone U)
-    (R N : ℕ) :
-    ((Finset.range N).filter fun h => ¬(R ≤ h ∧ V (h - R) = V h ∧ U (h - R) = U h)).card ≤
-      (2 * Module.finrank ℚ M + 1) * R := by
-  classical
-  have hsub : ((Finset.range N).filter fun h => ¬(R ≤ h ∧ V (h - R) = V h ∧ U (h - R) = U h)) ⊆
-      Finset.range R ∪ ((Finset.range N).filter fun h => R ≤ h ∧ V (h - R) ≠ V h) ∪
-        ((Finset.range N).filter fun h => R ≤ h ∧ U (h - R) ≠ U h) := by
-    intro h hh
-    obtain ⟨hhN, hbad⟩ := Finset.mem_filter.mp hh
-    simp only [Finset.mem_union, Finset.mem_filter, Finset.mem_range]
-    by_cases hRh : R ≤ h
-    · by_cases hVh : V (h - R) = V h
-      · exact Or.inr ⟨Finset.mem_range.mp hhN, hRh, fun hUh => hbad ⟨hRh, hVh, hUh⟩⟩
-      · exact Or.inl (Or.inr ⟨Finset.mem_range.mp hhN, hRh, hVh⟩)
-    · exact Or.inl (Or.inl (by omega))
-  calc _ ≤ _ := Finset.card_le_card hsub
-    _ ≤ _ := Finset.card_union_le _ _
-    _ ≤ (Finset.range R).card + ((Finset.range N).filter fun h => R ≤ h ∧ V (h - R) ≠ V h).card
-        + ((Finset.range N).filter fun h => R ≤ h ∧ U (h - R) ≠ U h).card := by
-        gcongr; exact Finset.card_union_le _ _
-    _ ≤ R + Module.finrank ℚ M * R + Module.finrank ℚ M * R := by
-        gcongr
-        · simp
-        · exact rank_change_heights_card V hV R N
-        · exact rank_change_heights_card U hU R N
-    _ = (2 * Module.finrank ℚ M + 1) * R := by ring
-
 /-- The span `U_S` of integer vectors of `K_B = ι⁻¹ K` with entries at most `S` (blueprint
 line 2012). -/
 def smallKernelSpan {W : Type*} [AddCommGroup W] [Module ℚ W] {n : ℕ} (K : Submodule ℚ W)
@@ -693,50 +662,6 @@ def Core (Δ : ℕ) (goodP : ℕ → P → Prop) [∀ h, DecidablePred (goodP h)
 /-- The upper heights `eq:upper-heights`, `⌈4δJ⌉ ≤ h ≤ J`. -/
 noncomputable def upperHeights (J : ℕ) (δ : ℝ) : Finset ℕ :=
   (Finset.range (J + 1)).filter fun h => ⌈4 * δ * J⌉₊ ≤ h
-
-/-- Blueprint lines 2035-2040: two core modes in one minimal CURRENT component have identical good
-predicates on the upper heights. -/
-theorem core_good_iff (Δ : ℕ) (goodP : ℕ → P → Prop) [∀ h, DecidablePred (goodP h)]
-    (hstab : ∀ h x x', goodP h (C.π x) → C.π x' = C.π x → x' ∈ C.F h x → x' ∈ C.E (h - Δ) x)
-    {J : ℕ} (hJ : 2 ≤ J) {δ : ℝ} (hδ : 0 < δ) (hδJ : ⌈4 * δ * J⌉₊ ≤ J) {m m' : Mode}
-    (hm : C.Core Δ goodP J δ m) (hm' : C.Core Δ goodP J δ m') (hmm' : m' ∈ C.F 0 m) :
-    ∀ h ∈ upperHeights J δ, C.Good Δ goodP h m ↔ C.Good Δ goodP h m' := by
-  classical
-  -- a common good height below `⌈4δJ⌉`
-  obtain ⟨h0, hh0, hg0, hg0'⟩ : ∃ h0 < ⌈4 * δ * J⌉₊, C.Good Δ goodP h0 m ∧
-      C.Good Δ goodP h0 m' := by
-    by_contra hno
-    push Not at hno
-    have hsub : Finset.range ⌈4 * δ * J⌉₊ ⊆ C.badHeights Δ goodP J m ∪
-        C.badHeights Δ goodP J m' := by
-      intro h hh
-      have hhJ : h < J + 1 := by have := Finset.mem_range.mp hh; omega
-      simp only [Finset.mem_union, badHeights, Finset.mem_filter, Finset.mem_range]
-      by_cases hgm : C.Good Δ goodP h m
-      · exact Or.inr ⟨hhJ, hno h (Finset.mem_range.mp hh) hgm⟩
-      · exact Or.inl ⟨hhJ, hgm⟩
-    have hc := (Finset.card_le_card hsub).trans (Finset.card_union_le _ _)
-    rw [Finset.card_range] at hc
-    have hc' : (⌈4 * δ * J⌉₊ : ℝ) ≤ δ * (J + 1) + δ * (J + 1) := by
-      have : (⌈4 * δ * J⌉₊ : ℝ) ≤ ((C.badHeights Δ goodP J m).card : ℝ) +
-          (C.badHeights Δ goodP J m').card := by exact_mod_cast hc
-      have h1 : ((C.badHeights Δ goodP J m).card : ℝ) ≤ δ * (J + 1) := hm
-      have h2 : ((C.badHeights Δ goodP J m').card : ℝ) ≤ δ * (J + 1) := hm'
-      linarith
-    have hceil := Nat.le_ceil (4 * δ * J)
-    have hJr : (2 : ℝ) ≤ J := by exact_mod_cast hJ
-    nlinarith
-  have hpre := C.good_same_predecessor Δ goodP hstab hg0 hg0'
-    (C.F_mono 0 h0 m (Nat.zero_le _) hmm')
-  intro h hh
-  have hh0h : h0 ≤ h := by
-    have := (Finset.mem_filter.mp hh).2; omega
-  apply C.good_iff_of_components Δ goodP
-  · have hmem : m' ∈ C.E (h - Δ) m := by
-      apply C.E_mono (h0 - Δ) _ m (by omega)
-      rw [hpre]; exact C.E_self _ m'
-    exact C.E_eq_of_mem hmem
-  · exact (C.F_comp h m m' (C.F_mono 0 h m (Nat.zero_le _) hmm')).symm
 
 /-- Blueprint line 2045: a core mode has bad proportion at most `2δ` on the upper heights,
 for `δ ≤ 1/16` and `J ≥ 2`. -/
@@ -1516,59 +1441,6 @@ def primaryGood {P : Type*} {dz : ℕ} (dvOf : P → ℕ) (ΘOf : ∀ p, Fin (dv
     smallKernelSpan (tinySpan (ΘOf p) Hn ε) (zEmb (dvOf p) dz) (Sk (h - R)) =
       smallKernelSpan (tinySpan (ΘOf p) Hn ε) (zEmb (dvOf p) dz) (Sk h)
 
-namespace ModeSchedule
-variable (S : ModeSchedule)
-
-/-- Blueprint lem:stabilize for all primaries of a pre-cell at once, in the form required by the
-coherence argument (`ModeComponents.good_same_predecessor`, `ModeComponents.core_good_iff`): the
-primaries `p` carry frequency vectors `Θ_p = (θ_{v,p}, ϑ)` with a common `ϑ`, two modes of one
-primary differ in frequency by `a·Θ_p` with `a` of height at most `D`, and the numeric side
-conditions of `eq:mode-parameters` hold at every height `h ≥ R`. Then two modes of a primary
-that is good at `h` lying in one CURRENT component at `h` are PRE-adjacent at `h - Δ`. -/
-theorem hstab_of_primaryGood (hA : 6 ≤ S.A0) {Mode P : Type*} [Fintype Mode] [DecidableEq Mode]
-    [DecidableEq P] {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P)
-    (dvOf : P → ℕ) (θvOf : ∀ p, Fin (dvOf p) → ℝ)
-    (a0 rv rt : ℝ) (hrv : 0 ≤ rv) (hrt : S.Ξ / rv ≤ S.Ξ / rt) (hΞrt : 0 ≤ S.Ξ / rt)
-    {D Hn : ℕ} (hD : 1 ≤ D) (hHn : 1 ≤ Hn)
-    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, vecHeight a ≤ D ∧
-      ∀ y ∈ Set.Icc a0 (a0 + rv), ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
-    {Tt : ℝ} (hε : 0 ≤ Tt⁻¹ / rv)
-    (hsmall : ∀ p, (3 * Hn ^ 2 : ℝ) ^ (dvOf p + dz) * ((dvOf p + dz).factorial *
-      Hn ^ ((dvOf p + dz) ^ 2 + (dvOf p + dz))) * (Tt⁻¹ / rv) < Tt / rt)
-    (htiny : Tt⁻¹ / rv ≤ S.Ξ / rv)
-    (Eq Sk : ℕ → ℚ) (hEq0 : ∀ i, 0 ≤ Eq i) (hSk0 : ∀ i, 0 ≤ Sk i) {R Δ : ℕ} (hΔR : Δ ≤ R)
-    (hQR : ∀ p, expandConst (dvOf p + dz) D < 2 ^ (R - Δ))
-    (hzS : ∀ p h, R ≤ h → (expandConst (dvOf p + dz) D : ℚ) * (D * Eq h) + 6 ^ R *
-      ((3 * D ^ 2) ^ (dvOf p + dz) * (expandConst (dvOf p + dz) D * (D * Eq (h - R)))) ≤ Sk h)
-    (hEcur : ∀ h (z : ℤ), |(z : ℝ)| ≤ Fintype.card Mode * S.Eh h → |(z : ℚ)| ≤ D * Eq h)
-    (hcurgap : (Fintype.card Mode : ℝ) * (S.Ξ / rt) < Tt / rt)
-    (hMh : ∀ h, ∃ Mh : ℕ, (Fintype.card Mode : ℝ) * S.Eh h ≤ Mh ∧ 6 ^ h ≤ Mh ∧
-      max (D : ℝ) (3 * ((D : ℝ) * Mh) ^ 2) ≤ Hn)
-    (hBp : ∀ p h, R ≤ h → ((6 ^ (R - Δ) * ((3 * D ^ 2) ^ (dvOf p + dz) *
-      (expandConst (dvOf p + dz) D * (D * Eq (h - R)))) + dz * Sk (h - R) : ℚ) : ℝ) ≤
-        S.Eh (h - Δ))
-    (hMp : ∀ h, R ≤ h → ∃ Mp : ℕ, S.Eh (h - Δ) ≤ Mp ∧ 6 ^ (h - Δ) ≤ Mp ∧
-      max (D : ℝ) (3 * ((D : ℝ) * Mp) ^ 2) ≤ Hn) :
-    ∀ h x x', primaryGood dvOf (fun p => Fin.append (θvOf p) ϑ) Hn D (Tt⁻¹ / rv) (Tt / rt)
-      Eq Sk R h (π x) → π x' = π x →
-      x' ∈ (S.preCurrent hA ω ϑ π a0 rv rt hrt).F h x →
-      x' ∈ (S.preCurrent hA ω ϑ π a0 rv rt hrt).E (h - Δ) x := by
-  intro h x x' hg hπ hF
-  obtain ⟨hgap, hRh, hV, hU⟩ := hg
-  obtain ⟨Mh, hMh1, hMh2, hMh3⟩ := hMh h
-  obtain ⟨Mp, hMp1, hMp2, hMp3⟩ := hMp h hRh
-  have e : (fun l => Fin.append (θvOf (π x)) ϑ (Fin.natAdd (dvOf (π x)) l)) = ϑ :=
-    funext fun l => Fin.append_right _ _ _
-  have key := S.stabilize_pre hA ω (Fin.append (θvOf (π x)) ϑ) π a0 rv rt hrv hrt hΞrt hD hHn
-    (π x) (fun y y' hy hy' => by
-      rw [← hy]; exact hsame y y' (hy'.trans hy.symm)) hgap hε (hsmall _) htiny Eq Sk hEq0
-    hΔR hRh (hSk0 _) hV hU (hQR _)
-    (hzS _ h hRh) (hEcur h) hcurgap hMh1 hMh2 hMh3 (hBp _ h hRh) hMp1 hMp2 hMp3
-  rw [e] at key
-  exact ModeComponents.ofEdges_E_of_pre _ _ π _ _ _ (key x x' rfl hπ hF)
-
-end ModeSchedule
-
 open Classical in
 /-- Blueprint lem:stabilize, counting part: for a primary that is nonexceptional at the block,
 at most `(1 + d + d_z) R` heights `h < N` are not good for it. -/
@@ -1822,19 +1694,6 @@ variable {Mode P : Type*} [DecidableEq Mode] [DecidableEq P] (C : ModeComponents
 
 theorem mem_F_self (h : ℕ) (m : Mode) : m ∈ C.F h m := C.E_le_F h m (C.E_self h m)
 
-/-- Blueprint lines 2034-2035 and 2172-2191 (the representative of a final class): if `m` is a
-good mode of the CURRENT component `F_h(x₀)` of a good mode `x₀`, every mode `x` of the minimal
-component `E_0(x₀)` lies in the PRE predecessor `E_{h-Δ}(a)` of any `a ∈ E_{h-Δ}(m)`. -/
-theorem mem_pred_of_good_class (Δ : ℕ) (goodP : ℕ → P → Prop) [∀ h, DecidablePred (goodP h)]
-    (hstab : ∀ h x x', goodP h (C.π x) → C.π x' = C.π x → x' ∈ C.F h x → x' ∈ C.E (h - Δ) x)
-    {h : ℕ} {m x₀ x a : Mode} (hm : C.Good Δ goodP h m) (hx₀ : C.Good Δ goodP h x₀)
-    (hcls : C.F h x₀ = C.F h m) (hx : x ∈ C.E 0 x₀) (ha : a ∈ C.E (h - Δ) m) :
-    x ∈ C.E (h - Δ) a := by
-  have hx₀m : x₀ ∈ C.F h m := hcls ▸ C.mem_F_self h x₀
-  have hpred := C.good_same_predecessor Δ goodP hstab hm hx₀ hx₀m
-  rw [C.E_comp (h - Δ) m a ha, hpred]
-  exact C.E_mono 0 (h - Δ) x₀ (Nat.zero_le _) hx
-
 end ModeComponents
 
 /-! ## Exceptional blocks on a path (blueprint line 1996) -/
@@ -1987,13 +1846,6 @@ theorem ModeSchedule.exceptional_blocks_le (S : ModeSchedule) {Cj CA CT CK : ℕ
   exact Auto.exceptional_blocks_le Θ hH hr0 hT hK hKW b0 Bs hBs
 
 /-! ## The tiny span at a nonexceptional block of the schedule (blueprint lines 1997-1998) -/
-
-/-- Blueprint line 1998: `K_B = {w : (0, w) ∈ K_rat}`, the `ϑ`-part of the tiny span. -/
-def tinyKB {dv dz : ℕ} (Θ : Fin (dv + dz) → ℝ) (H : ℕ) (ε : ℝ) : Submodule ℚ (Fin dz → ℚ) :=
-  (tinySpan Θ H ε).comap (zEmb dv dz)
-
-theorem mem_tinyKB {dv dz : ℕ} {Θ : Fin (dv + dz) → ℝ} {H : ℕ} {ε : ℝ} {w : Fin dz → ℚ} :
-    w ∈ tinyKB Θ H ε ↔ zEmb dv dz w ∈ tinySpan Θ H ε := Iff.rfl
 
 /-- The size of the spanning constant of the tiny span: for `d ≤ d_max`, `d_max ≥ 2` and
 `1 ≤ Hn ≤ H`, `(3 Hn²)^d d! Hn^(d²+d) ≤ (d_max H)^(4 d_max⁴)`. -/
@@ -2245,30 +2097,6 @@ theorem Valid.tinySpan_small (hV : S.Valid Cj CA CT CK δs W) (hCT : 4 ≤ CT) (
 end Basics
 
 end ModeSchedule
-
-/-- Blueprint lines 1997-1998 at the chosen mode schedule: at a nonexceptional block (every vector
-of height at most `H` is tiny, `|a·Θ| ≤ T⁻¹ / r_{v_b}`, or large, `|a·Θ| ≥ T / r_{t_b}`, with
-`r_n = r₀ 2^{-n}`), every vector of height at most `H` in the rational span `K_rat` of the tiny
-height-`H` vectors is itself tiny. The spanning constant `(3H²)^d d! H^(d²+d)` is below the
-threshold ratio `T² 2^(3K)` because `T > (d_max H)^(C_T d_max⁴) Ξ` with `C_T ≥ 4`
-(`eq:mode-parameters`) and the frequency dimension is at most `d_max`. -/
-theorem ModeSchedule.tiny_of_mem_tinySpan (S : ModeSchedule) {Cj CA CT CK : ℕ} {δs W : ℝ}
-    (hV : S.Valid Cj CA CT CK δs W) (hCT : 4 ≤ CT) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
-    (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {d : ℕ} (hd : d ≤ S.dmax) (Θ : Fin d → ℝ) {r0 : ℝ}
-    (hr0 : 0 < r0) (b : ℤ)
-    (hgap : ∀ a : Fin d → ℚ, vecHeight a ≤ ⌊S.H⌋₊ →
-      |ratEval Θ a| ≤ S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) ∨
-        S.T / (r0 * (2 : ℝ) ^ (-(b + S.K))) ≤ |ratEval Θ a|)
-    {a : Fin d → ℚ} (ha : a ∈ tinySpan Θ ⌊S.H⌋₊ (S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))))
-    (haH : vecHeight a ≤ ⌊S.H⌋₊) :
-    |ratEval Θ a| ≤ S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) := by
-  have hH := hV.two_le_H hd2 hD hB hQ
-  have hHn : 1 ≤ ⌊S.H⌋₊ := Nat.le_floor (by norm_num; linarith)
-  have hT1 := hV.one_le_T (by omega) hd2 hD hB hQ
-  have hε : 0 ≤ S.T⁻¹ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K))) :=
-    div_nonneg (inv_nonneg.mpr (by linarith)) (by positivity)
-  exact Auto.tiny_of_mem_tinySpan Θ hHn hε hgap (hV.tinySpan_small hCT hd2 hD hB hQ hd hr0 b) ha
-    haH
 
 /-! ## Lem:stabilize at the chosen schedule (blueprint lines 2002-2028) -/
 
@@ -2752,41 +2580,6 @@ theorem Valid.stabGood_mem_E (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (
   exact ModeComponents.ofEdges_E_of_pre _ _ π _ _ _
     (hV.stabGood_pre hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame hJ hg hπ hF)
 
-open Classical in
-/-- Blueprint lem:stabilize (lines 2002-2028) at the chosen schedule: for a primary `p` that is
-nonexceptional at the block with start `b`, all but `3 d_max R_*^{ht}` heights `h ≤ J_*` have the
-property that two modes of `p` in one CURRENT component at height `h` are directly adjacent in PRE
-at height `h - Δ`, `Δ = 10`. The modes are those of the frozen list on the `v_b`-cell
-`[a₀, a₀ + r_{v_b}]`, at most `D_*` in number, with frequency vectors `Θ_q = (θ_{v,q}, ϑ)` of
-dimension at most `d_max` and same-primary slope differences `a·Θ_q` of height at most `D_*`
-(`eq:mode-differences`). -/
-theorem Valid.stabilize (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT)
-    (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {Mode P : Type*}
-    [Fintype Mode] [DecidableEq Mode] [DecidableEq P] (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar)
-    {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
-    (θvOf : ∀ p, Fin (dvOf p) → ℝ) (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0)
-    (b : ℤ) (a0 : ℝ)
-    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
-      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
-        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
-    (p : P) (hne : ¬ExceptionalAt (Fin.append (θvOf p) ϑ) S.H r0 S.T S.K b) :
-    ((Finset.range (S.Jstar + 1)).filter fun h => ¬(10 ≤ h ∧ ∀ x x', π x = p → π x' = p →
-      x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F h x →
-      S.gapEdge ω ϑ a0 (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))
-        (S.Ξ / (r0 * (2 : ℝ) ^ (-(b - 2 * S.K)))) (h - 10) x x')).card ≤
-      3 * S.dmax * S.Rht := by
-  refine le_trans (Finset.card_le_card ?_) (hV.stabGood_bad_card (by omega) hd2 hD hB dvOf
-    (fun q => Fin.append (θvOf q) ϑ) r0 b p (hdim p) hne (S.Jstar + 1))
-  intro h hh
-  obtain ⟨hN, hbad⟩ := Finset.mem_filter.mp hh
-  refine Finset.mem_filter.mpr ⟨hN, fun hg => hbad ⟨?_, fun x x' hx hx' hF => ?_⟩⟩
-  · obtain ⟨-, hRh, -⟩ := hg
-    have := hV.thirty_le_Rht hd2 hD
-    omega
-  · subst hx
-    exact hV.stabGood_pre hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame
-      (Nat.lt_succ_iff.mp (Finset.mem_range.mp hN)) hg hx' hF
-
 end Stabilize
 
 end ModeSchedule
@@ -2810,12 +2603,6 @@ end ModeComponents
 
 namespace ModeSchedule
 variable (S : ModeSchedule)
-
-/-- The heights good for a primary (blueprint lem:stabilize, line 2004) within the height range
-`0 ≤ h ≤ J_*` of the schedule: `h ≤ J_*` and `stabGood`. -/
-def heightGood {P : Type*} {dz : ℕ} (dvOf : P → ℕ) (ΘOf : ∀ p, Fin (dvOf p + dz) → ℝ) (r0 : ℝ)
-    (b : ℤ) (h : ℕ) (p : P) : Prop :=
-  h ≤ S.Jstar ∧ S.stabGood dvOf ΘOf r0 b h p
 
 /-- The side parameters of the coherence argument read off a schedule (blueprint lines
 2006-2024): heights `⌊H⌋`, mode-difference height `⌊D_*⌋`, gap threshold `T`, witness bounds
@@ -2855,106 +2642,6 @@ theorem Valid.two_le_Jstar (hV : S.Valid Cj CA CT CK δs W) (hCj : 1 ≤ Cj) (h�
   have h4 : (60 : ℝ) ≤ Cj * δs⁻¹ ^ 2 * S.dmax * S.Rht * Real.log (2 * S.Dm) := by nlinarith
   have : (2 : ℝ) ≤ S.Jstar := by linarith [hV.Jstar_ge]
   exact_mod_cast this
-
-/-- Lem:stabilize in the form used by the coherence argument: for the good-height predicate
-`heightGood` on the block graphs, two modes of a primary good at `h` in one CURRENT component at
-`h` are PRE-joined at `h - Δ`, at every height. -/
-theorem Valid.heightGood_stab (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA) (hCT : 4 ≤ CT)
-    (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) {Mode P : Type*}
-    [Fintype Mode] [DecidableEq Mode] [DecidableEq P] (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar)
-    {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
-    (θvOf : ∀ p, Fin (dvOf p) → ℝ) (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0)
-    (b : ℤ) (a0 : ℝ)
-    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
-      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
-        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a) :
-    ∀ h x x', S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b h
-        ((S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).π x) →
-      (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).π x' =
-        (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).π x →
-      x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F h x →
-      x' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).E (h - 10) x := by
-  intro h x x' hg hπ hF
-  exact hV.stabGood_mem_E hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame hg.1
-    hg.2 hπ hF
-
-open Classical in
-/-- Blueprint lines 2036-2037 at the chosen schedule: two modes good at `h` (`eq:good` with
-`Δ = 10` and the good-height predicate of lem:stabilize) in one CURRENT component at `h` have the
-same PRE predecessor at `h - Δ`. -/
-theorem Valid.good_same_predecessor (hV : S.Valid Cj CA CT CK δs W) (hCA : 5 ≤ CA)
-    (hCT : 4 ≤ CT) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar) (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0)
-    {Mode P : Type*} [Fintype Mode] [DecidableEq Mode] [DecidableEq P]
-    (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar) {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ)
-    (π : Mode → P) (dvOf : P → ℕ) (θvOf : ∀ p, Fin (dvOf p) → ℝ)
-    (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0) (b : ℤ) (a0 : ℝ)
-    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
-      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
-        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
-    {h : ℕ} {m m' : Mode}
-    (hm : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Good 10
-      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) h m)
-    (hm' : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Good 10
-      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) h m')
-    (hmm' : m' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F h m) :
-    (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).E (h - 10) m =
-      (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).E (h - 10) m' :=
-  ModeComponents.good_same_predecessor _ 10 _
-    (hV.heightGood_stab hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame) hm hm'
-    hmm'
-
-open Classical in
-/-- Blueprint lines 2037-2045 at the chosen schedule: two core modes (at most `δ_* (J_* + 1)` bad
-heights) in one minimal CURRENT component have identical good predicates on the upper heights
-`eq:upper-heights`, `⌈4 δ_* J_*⌉ ≤ h ≤ J_*`; they have a common good height below `⌈4 δ_* J_*⌉`,
-where their PRE predecessors agree, and by nesting at every higher height. Here `δ_* ≤ 1/16` is
-the small absolute constant, `C_J ≥ 1` the constant of `J_*`, and `D_m ≥ 2`. -/
-theorem Valid.core_good_iff (hV : S.Valid Cj CA CT CK δs W) (hCj : 1 ≤ Cj) (hCA : 5 ≤ CA)
-    (hCT : 4 ≤ CT) (hδ : 0 < δs) (hδ16 : δs ≤ 1 / 16) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
-    (hB : 2 ≤ S.Bstar) (hQ : 1 ≤ S.Q0) (hDm : 2 ≤ S.Dm) {Mode P : Type*} [Fintype Mode]
-    [DecidableEq Mode] [DecidableEq P] (hcard : (Fintype.card Mode : ℝ) ≤ S.Dstar) {dz : ℕ}
-    (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
-    (θvOf : ∀ p, Fin (dvOf p) → ℝ) (hdim : ∀ p, dvOf p + dz ≤ S.dmax) {r0 : ℝ} (hr0 : 0 < r0)
-    (b : ℤ) (a0 : ℝ)
-    (hsame : ∀ x x', π x' = π x → ∃ a : Fin (dvOf (π x) + dz) → ℚ, (vecHeight a : ℝ) ≤ S.Dstar ∧
-      ∀ y ∈ Set.Icc a0 (a0 + r0 * (2 : ℝ) ^ (-(b - 2 * S.K))),
-        ω x y - ω x' y = ratEval (Fin.append (θvOf (π x)) ϑ) a)
-    {m m' : Mode}
-    (hm : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Core 10
-      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) S.Jstar δs m)
-    (hm' : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Core 10
-      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) S.Jstar δs m')
-    (hmm' : m' ∈ (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).F 0 m) :
-    ∀ h ∈ ModeComponents.upperHeights S.Jstar δs,
-      (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Good 10
-          (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) h m ↔
-        (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Good 10
-          (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) h m' := by
-  have hJ := hV.two_le_Jstar hCj hδ (by linarith) hd2 hD hDm
-  have hδJ : ⌈4 * δs * S.Jstar⌉₊ ≤ S.Jstar := by
-    refine Nat.ceil_le.mpr ?_
-    have : (0 : ℝ) ≤ S.Jstar := Nat.cast_nonneg _
-    nlinarith
-  exact ModeComponents.core_good_iff _ 10 _
-    (hV.heightGood_stab hCA hCT hd2 hD hB hQ hcard ω ϑ π dvOf θvOf hdim hr0 b a0 hsame) hJ hδ
-    hδJ hm hm' hmm'
-
-open Classical in
-/-- Blueprint line 2045 at the chosen schedule: a core mode has bad proportion at most `2 δ_*` on
-the upper heights. -/
-theorem Valid.core_bad_proportion (hV : S.Valid Cj CA CT CK δs W) (hCj : 1 ≤ Cj) (hCA : 5 ≤ CA)
-    (hδ : 0 < δs) (hδ16 : δs ≤ 1 / 16) (hd2 : 2 ≤ S.dmax) (hD : 2 ≤ S.Dstar)
-    (hB : 2 ≤ S.Bstar) (hDm : 2 ≤ S.Dm) {Mode P : Type*} [Fintype Mode] [DecidableEq Mode]
-    [DecidableEq P] {dz : ℕ} (ω : Mode → ℝ → ℝ) (ϑ : Fin dz → ℝ) (π : Mode → P) (dvOf : P → ℕ)
-    (θvOf : ∀ p, Fin (dvOf p) → ℝ) {r0 : ℝ} (hr0 : 0 < r0) (b : ℤ) (a0 : ℝ) {m : Mode}
-    (hm : (S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).Core 10
-      (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) S.Jstar δs m) :
-    (((S.blockGraphs (hV.six_le_A0 (by omega) hd2 hD hB) ω ϑ π hr0 b a0).badHeights 10
-        (S.heightGood dvOf (fun p => Fin.append (θvOf p) ϑ) r0 b) S.Jstar m ∩
-          ModeComponents.upperHeights S.Jstar δs).card : ℝ) ≤
-      2 * δs * (ModeComponents.upperHeights S.Jstar δs).card :=
-  ModeComponents.core_bad_proportion _ 10 _ (hV.two_le_Jstar hCj hδ (by linarith) hd2 hD hDm) hδ
-    hδ16 hm
 
 end Coherence
 

@@ -27,16 +27,6 @@ open scoped FourierTransform ComplexConjugate ENNReal
 
 /-! ### Comparison on a short depth block (lem:shortblock, blueprint lines 2275-2369) -/
 
-/-- Blueprint lines 2306-2309: on the Fourier support `Σ m_j = Σ j m_j = 0` of the fast form,
-`Σ_j m_j² / c_j = 0` for `c = (-1, 3, -3, 1)`, so the multipliers `e(γ m²/c_j)` leave the form
-unchanged. -/
-theorem fast_form_quadratic_invariance (m : Fin 4 → ℚ) (h0 : m 0 + m 1 + m 2 + m 3 = 0)
-    (h1 : m 1 + 2 * m 2 + 3 * m 3 = 0) :
-    m 0 ^ 2 / (-1) + m 1 ^ 2 / 3 + m 2 ^ 2 / (-3) + m 3 ^ 2 / 1 = 0 := by
-  have hm1 : m 1 = -2 * m 2 - 3 * m 3 := by linarith
-  have hm0 : m 0 = m 2 + 2 * m 3 := by linarith
-  rw [hm0, hm1]; ring
-
 /-- Two integer pairs with the same sum and the same sum of squares agree as multisets. -/
 theorem pair_eq_of_sum_sq {m₁ m₂ m₃ m₄ : ℤ} (hs : m₁ + m₂ = m₃ + m₄)
     (hq : m₁ ^ 2 + m₂ ^ 2 = m₃ ^ 2 + m₄ ^ 2) :
@@ -71,7 +61,7 @@ theorem fourth_moment_pairing (s : Finset ℤ) (a : ℤ → ℂ) :
       · simp [X]
       · simp
     refine h1.trans ?_
-    split_ifs with hc hA hB hB <;> first | linarith | skip
+    split_ifs with hc hA hB hB <;> try linarith
     rcases pair_eq_of_sum_sq hc.1 hc.2 with h | h
     · exact absurd h hA
     · exact absurd h hB
@@ -311,35 +301,6 @@ theorem existsUnique_mem (d : Fin 4 → ℕ) : ∃! R, Valid R ∧ Mem R d := by
           by_contra hj'
           have := (hm₁.2 j hja).2 hj'; omega
       rw [hSS]
-
-/-- All slots except the heavy one have depth at least the separating depth; in a `rep`
-rectangle all slots do. -/
-theorem sep_le {R : DepthRect} {d : Fin 4 → ℕ} (hm : Mem R d) (j : Fin 4) :
-    (∀ a S h k, R = uniq a S h k → j ≠ a → sep R ≤ d j) ∧
-      (∀ S v, R = rep S v → sep R ≤ d j) := by
-  constructor
-  · rintro a S h k rfl hja
-    simp only [sep]
-    have hq : 2 * k + 1 ≤ d j / 2 ^ h := by
-      by_cases hj : j ∈ S
-      · exact ((hm.2 j hja).1 hj).ge
-      · have := (hm.2 j hja).2 hj; omega
-    calc (2 * k + 1) * 2 ^ h ≤ d j / 2 ^ h * 2 ^ h := Nat.mul_le_mul_right _ hq
-      _ ≤ d j := Nat.div_mul_le_self _ _
-  · rintro S v rfl
-    simp only [sep]
-    by_cases hj : j ∈ S
-    · exact ((hm j).1 hj).ge
-    · exact ((hm j).2 hj).le
-
-/-- Designated disjointness: at a fixed level `h` and slot assignment, distinct positions `k`
-give disjoint conditions in the heavy slot `a` and in every upper-half slot. -/
-theorem uniq_disjoint {a : Fin 4} {S : Finset (Fin 4)} {h k k' : ℕ} {d d' : Fin 4 → ℕ}
-    (hm : Mem (uniq a S h k) d) (hm' : Mem (uniq a S h k') d') (hkk : k ≠ k') :
-    d a ≠ d' a ∧ ∀ j ∈ S, j ≠ a → d j ≠ d' j := by
-  refine ⟨fun e => hkk ?_, fun j hj hja e => hkk ?_⟩
-  · have := hm.1; rw [e, hm'.1] at this; omega
-  · have := (hm.2 j hja).1 hj; rw [e, (hm'.2 j hja).1 hj] at this; omega
 
 /-- Positions at a level: for depths below `2^m`, a `uniq` rectangle has `h < m` and
 `k < 2^(m-h-1)`; a `rep` rectangle has `v < 2^m`. -/
@@ -920,9 +881,6 @@ variable {S aL lL}
 /-- The selected leaf union `E = ⋃_{i ∈ S} L_i`. -/
 def leafUnion (S : Finset ι) (aL lL : ι → ℝ) : Set ℝ := ⋃ i ∈ S, leafInterval aL lL i
 
-theorem leafUnion_measurableSet : MeasurableSet (leafUnion S aL lL) :=
-  Finset.measurableSet_biUnion _ fun _ _ => measurableSet_Ico
-
 open Classical in
 /-- The mass of `z` on the leaves meeting a set `W` is at most the total length of those leaves. -/
 theorem leaf_mass_le (hdis : (S : Set ι).PairwiseDisjoint (leafInterval aL lL))
@@ -1176,22 +1134,6 @@ theorem latticeTorus_pair (B : Finset (ℤ × ℤ)) {ε C : ℝ≥0∞} (hC1 : 1
     _ = 1 * (ε * ∑' m, F m) * (ε * ∑' m, G m) := by ring
     _ ≤ C * (ε * ∑' m, F m) * (ε * ∑' m, G m) := by gcongr
 
-/-- Blueprint `eq:absolute` on local counting measure times Haar measure (lines 2307-2340): if
-`ε² |B| ≤ C`, every fiber `{n ∈ B : n_j = m}` has at most `M` points with `ε M ≤ C`, and
-`1 ≤ C`, then the positive progression form on the slow pairs `B` and the fast torus is at most
-`C Π_j (∫ f_j)^{a_j}` for every exponent vector in the reciprocal polytope. -/
-theorem latticeTorus_power_bound (B : Finset (ℤ × ℤ)) {ε M C : ℝ≥0∞} (hC1 : 1 ≤ C)
-    (hB : ε ^ 2 * B.card ≤ C) (hM : ε * M ≤ C)
-    (hfib : ∀ j : Fin 4, ∀ m, ((B.filter fun n => latticeCoord j n = m).card : ℝ≥0∞) ≤ M)
-    (f : Fin 4 → ℤ × FastCircle → ℝ≥0∞) (hf : ∀ i, Measurable (f i))
-    {a : Fin 4 → ℝ} (ha : a ∈ reciprocalExponentPolytope 4 2) :
-    ∫⁻ x, ∏ i, f i (latticeTorusProj i x) ^ a i ∂latticeTorusMeasure B ε ≤
-      C * ∏ i, (∫⁻ y, f i y ∂latticeCircleMeasure ε) ^ a i :=
-  positivePairwise_power_bound (latticeTorusMeasure B ε) (latticeCircleMeasure ε)
-    (fun i => latticeTorusProj i) (fun i => measurable_latticeTorusProj i) C
-    (latticeTorus_empty B hB) (latticeTorus_single B hM hfib)
-    (fun i j hij => latticeTorus_pair B hC1 i j hij) f hf ha
-
 /-- `eq:absolute` on local counting measure times Haar measure, in normed form: for exponents
 `p_j ≥ 1` with `Σ 1/p_j ≤ 2`, the positive form is at most `C Π_j ‖f_j‖_{L^{p_j}}`. -/
 theorem latticeTorus_eLpNorm_bound (B : Finset (ℤ × ℤ)) {ε M C : ℝ≥0∞} (hC1 : 1 ≤ C)
@@ -1266,20 +1208,6 @@ theorem interval_centers_progression {δ c : ℝ} (hδ : 0 < δ) (hc : c < 1 / 7
   simp only [d, sub_eq_zero] at this
   exact this.symm
 
-/-- Blueprint line 2311 (`Σ_{s<t} δ/r_s ≤ C`): with `δ = β r_t` and dyadic lengths
-`r_s = r_t 2^{t-s}`, the sampling-error weights over all coarser depths sum to at most `2 β`. -/
-theorem sampling_weights_sum {β : ℝ} (hβ : 0 ≤ β) (K : ℕ) :
-    ∑ k ∈ Finset.range K, β * (1 / 2 : ℝ) ^ (k + 1) ≤ 2 * β := by
-  have h : ∑ k ∈ Finset.range K, (1 / 2 : ℝ) ^ (k + 1) ≤ 1 := by
-    have := sum_geometric_two_le K
-    calc ∑ k ∈ Finset.range K, (1 / 2 : ℝ) ^ (k + 1) =
-        (1 / 2) * ∑ k ∈ Finset.range K, (1 / 2 : ℝ) ^ k := by
-          rw [Finset.mul_sum]; congr 1; funext k; ring
-      _ ≤ (1 / 2) * 2 := by gcongr
-      _ = 1 := by norm_num
-  rw [← Finset.mul_sum]
-  nlinarith
-
 /-! ### Mixed Hölder and the block factor (lem:shortblock, blueprint lines 2357-2369) -/
 
 /-- The progression coordinate on the fast factor pushes `P ⊗ Haar(T₀²)` to `P ⊗ Haar(T₀)`. -/
@@ -1337,10 +1265,6 @@ theorem measurable_fastLift (j : Fin 4) {φ : ℝ → ℂ} (hφ : Measurable φ)
     Measurable (fastLift j φ) :=
   Measurable.ite (measurableSet_lt (measurable_fastRep j) measurable_const)
     (hφ.comp (measurable_fastRep j)) measurable_const
-
-theorem fastLift_mul (j : Fin 4) (φ ψ : ℝ → ℂ) (t : FastCircle) :
-    fastLift j (fun x => φ x * ψ x) t = fastLift j φ t * ψ (fastRep j t) := by
-  unfold fastLift; split_ifs <;> simp
 
 /-- Normalized Haar measure on `T₀²` is `1/256` times Lebesgue measure on `[0, 16)²`. -/
 theorem integral_fastHaar_prod {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ E]
@@ -1690,7 +1614,7 @@ theorem lintegral_fastLift_enorm (j : Fin 4) (φ : ℝ → ℂ) (hφ : Measurabl
   · rw [Set.indicator_of_mem hx, fastLift_coe φ hx]
     by_cases hxL : x < fastLiftLeft j + fastLiftLen j
     · rw [ite_eq_left hxL, Set.indicator_of_mem (Set.mem_Ico.mpr ⟨hx.1, hxL⟩)]
-    · rw [ite_eq_right hxL, Set.indicator_of_notMem (fun h => hxL h.2), enorm_zero,
+    · rw [ite_eq_right hxL, Set.indicator_of_notMem (fun h => hxL (Set.mem_Ico.mp h).2), enorm_zero,
         ENNReal.zero_rpow_of_pos hp]
   · have hx' : x ∉ Set.Ico (fastLiftLeft j) (fastLiftLeft j + fastLiftLen j) := fun h =>
       hx (Set.mem_Ico.mpr ⟨(Set.mem_Ico.mp h).1, by linarith [(Set.mem_Ico.mp h).2]⟩)
@@ -2015,12 +1939,6 @@ def level : DepthRect → DepthRect
   | rep S _ => rep S 0
   | uniq a S h _ => uniq a S h 0
 
-theorem heavy_level (R : DepthRect) : heavy (level R) = heavy R := by
-  cases R <;> rfl
-
-theorem desig_level (R : DepthRect) : desig (level R) = desig R := by
-  cases R <;> rfl
-
 end DepthRect
 
 /-- A finite dyadic tree piece of `lem:shortblock` (blueprint line 2276): a root cell, internal
@@ -2300,17 +2218,6 @@ section FixedStacks
 variable {H : Type*} [NormedAddCommGroup H] [InnerProductSpace ℂ H] [CompleteSpace H]
 
 /-! ### Fixed stacks for the two varying sides (blueprint lines 2400-2423) -/
-
-/-- Products of orthogonal projections are contractions. -/
-theorem nestedProjectionProduct_norm_le (P : ℕ → ℕ → H →L[ℂ] H) (T m : ℕ)
-    (hP : ∀ l < m, ∀ n ≤ T, IsStarProjection (P l n)) {n : ℕ} (hn : n ≤ T) (g : H) :
-    ‖nestedProjectionProduct P m n g‖ ≤ ‖g‖ := by
-  induction m with
-  | zero => simp [nestedProjectionProduct]
-  | succ m ih =>
-    change ‖P m n (nestedProjectionProduct P m n g)‖ ≤ ‖g‖
-    exact (starProjection_norm_apply_le _ (hP m (by omega) n hn) _).trans
-      (ih fun l hl => hP l (by omega))
 
 end FixedStacks
 

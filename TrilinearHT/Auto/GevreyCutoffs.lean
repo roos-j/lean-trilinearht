@@ -279,9 +279,6 @@ theorem gevreyDensity_nonneg (x : ℝ) : 0 ≤ gevreyDensity x :=
 theorem gevreyDensity_contDiff {n : ℕ∞} : ContDiff ℝ n gevreyDensity :=
   gevreyBump_contDiff.div_const _
 
-theorem gevreyDensity_integrable : Integrable gevreyDensity :=
-  gevreyBump_integrable.div_const _
-
 theorem gevreyDensity_integral : ∫ x : ℝ, gevreyDensity x = 1 := by
   simp only [gevreyDensity, integral_div]
   exact div_self gevreyBumpIntegral_pos.ne'
@@ -715,64 +712,6 @@ theorem gevreyIntervalCutoff_exists_derivative_bound (a b c d : ℝ) :
   refine ⟨C, hC, fun n x => (iteratedDeriv_gevreyIntervalCutoff_bound n a b c d x).trans ?_⟩
   simpa [mul_assoc, mul_left_comm, mul_comm] using h n
 
-/-- Coordinate differentiation, for the mixed partial bounds in blueprint Lemma `lem:gevrey`. -/
-noncomputable def coordinateDeriv {ι : Type*} [DecidableEq ι]
-    (i : ι) (f : (ι → ℝ) → ℝ) (x : ι → ℝ) : ℝ :=
-  deriv (fun t => f (Function.update x i t)) (x i)
-
-/-- A mixed partial, with derivative directions specified by a finite list. -/
-noncomputable def mixedPartial {ι : Type*} [DecidableEq ι]
-    : List ι → ((ι → ℝ) → ℝ) → (ι → ℝ) → ℝ
-  | [], f => f
-  | i :: l, f => coordinateDeriv i (mixedPartial l f)
-
-theorem coordinateDeriv_pi_product {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (i : ι) (f : ι → ℝ → ℝ) (x : ι → ℝ) :
-    coordinateDeriv i (fun y => ∏ j, f j (y j)) x =
-      deriv (f i) (x i) * ∏ j ∈ Finset.univ.erase i, f j (x j) := by
-  unfold coordinateDeriv
-  have heq : (fun t => ∏ j, f j (Function.update x i t j)) =
-      fun t => f i t * ∏ j ∈ Finset.univ.erase i, f j (x j) := by
-    funext t
-    rw [← Finset.mul_prod_erase Finset.univ (fun j => f j (Function.update x i t j))
-      (Finset.mem_univ i)]
-    simp only [Function.update_self]
-    congr 1
-    apply Finset.prod_congr rfl
-    intro j hj
-    have hji : j ≠ i := (Finset.mem_erase.mp hj).1
-    simp [Function.update_of_ne hji]
-  rw [heq, deriv_mul_const_field]
-
-/-- Blueprint Lemma `lem:gevrey`: mixed partials of a product cutoff factor
-into the corresponding one-variable derivatives. -/
-theorem mixedPartial_pi_product {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (l : List ι) (f : ι → ℝ → ℝ) (x : ι → ℝ) :
-    mixedPartial l (fun y => ∏ j, f j (y j)) x =
-      ∏ j, iteratedDeriv (l.count j) (f j) (x j) := by
-  induction l generalizing x with
-  | nil => simp [mixedPartial, iteratedDeriv_zero]
-  | cons i l ih =>
-    have heq : mixedPartial l (fun y => ∏ j, f j (y j)) =
-        fun y => ∏ j, iteratedDeriv (l.count j) (f j) (y j) := funext ih
-    rw [mixedPartial, heq, coordinateDeriv_pi_product,
-      ← Finset.mul_prod_erase Finset.univ
-        (fun j => iteratedDeriv ((i :: l).count j) (f j) (x j)) (Finset.mem_univ i)]
-    congr 1
-    · simp only [List.count_cons_self, iteratedDeriv_succ]
-    · apply Finset.prod_congr rfl
-      intro j hj
-      have hji : j ≠ i := (Finset.mem_erase.mp hj).1
-      simp [Ne.symm hji]
-
-/-- The product derivative bounds promised in blueprint Lemma `lem:gevrey`. -/
-theorem mixedPartial_pi_product_bound {ι : Type*} [Fintype ι] [DecidableEq ι]
-    (l : List ι) (f : ι → ℝ → ℝ) (B : ι → ℕ → ℝ) (x : ι → ℝ)
-    (h : ∀ j, |iteratedDeriv (l.count j) (f j) (x j)| ≤ B j (l.count j)) :
-    |mixedPartial l (fun y => ∏ j, f j (y j)) x| ≤ ∏ j, B j (l.count j) := by
-  rw [mixedPartial_pi_product, Finset.abs_prod]
-  exact Finset.prod_le_prod₀ (fun j _ => abs_nonneg _) (fun j _ => h j)
-
 /-- Blueprint Lemma `lem:gevrey`, partition-of-unity assertion: there is a
 nonnegative smooth compactly supported function in `(-1,1)` whose integer translates
 sum to one and whose derivatives satisfy a single fixed Gevrey bound. -/
@@ -800,27 +739,6 @@ theorem existsGevreyIntervalCutoff {a b c d : ℝ} (hab : a < b) (_hbc : b ≤ c
     gevreyIntervalCutoff_tsupport_subset_open hab hcd,
     fun _ hx => gevreyIntervalCutoff_eq_one hab hcd hx,
     gevreyIntervalCutoff_exists_derivative_bound a b c d⟩
-
-/-- The integer translates in the constructed partition are locally finite. -/
-theorem gevreyPartition_locallyFinite :
-    LocallyFinite (fun k : ℤ => Function.support (fun x : ℝ => gevreyPartition (x - k))) := by
-  intro x
-  refine ⟨Set.Ioo (x - 1) (x + 1), Ioo_mem_nhds (by linarith) (by linarith), ?_⟩
-  apply (Set.finite_Icc (⌊x⌋ - 2) (⌊x⌋ + 3)).subset
-  rintro k ⟨y, hy, hyx⟩
-  have hlo : -(3 / 4 : ℝ) < y - k := by
-    by_contra h
-    exact hy (gevreyPartition_zero_left (le_of_not_gt h))
-  have hhi : y - k < (3 / 4 : ℝ) := by
-    by_contra h
-    exact hy (gevreyPartition_zero_right (le_of_not_gt h))
-  have hf := Int.floor_le x
-  have hf' := Int.lt_floor_add_one x
-  constructor
-  · have : (⌊x⌋ : ℝ) - 2 ≤ (k : ℝ) := by linarith [hyx.1]
-    exact_mod_cast this
-  · have : (k : ℝ) ≤ (⌊x⌋ : ℝ) + 3 := by linarith [hyx.2]
-    exact_mod_cast this
 
 theorem gevrey_endpoint_cutoff_uniform_derivative {B ε : ℝ}
     (hB : 8 ≤ B) (hM : max 1 gevreyBumpIntegral⁻¹ ≤ B)
