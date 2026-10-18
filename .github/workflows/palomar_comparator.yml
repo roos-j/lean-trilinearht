@@ -1,0 +1,73 @@
+name: Palomar comparator
+
+# Manual check of Solution.lean against Challenge.lean with the sandboxed `lake comparator` of the
+# toolchain in lean-toolchain, replaying the proof through Lean's kernel and the bundled
+# independent kernels (NanoDa and con-ron), as Palomar does. Adapted from
+# PalomarRegistry/PalomarTemplate (Apache-2.0), scripts/verify-comparator.sh.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  comparator:
+    name: Check statement against solution
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: leanprover/lean-action@v1
+        with:
+          build: false
+
+      - name: Install bubblewrap for the comparator sandbox
+        # Ubuntu 24.04 restricts unprivileged user namespaces through AppArmor, which `bwrap`
+        # needs; the runner is disposable.
+        run: |
+          sudo apt-get update -qq >/dev/null
+          sudo apt-get install -y -qq bubblewrap >/dev/null
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Run the toolchain's lake comparator
+        run: |
+          set -euo pipefail
+          prefix=$(lean --print-prefix)
+          for tool in lake leanexport leanchecker nanoda_bin con-ron; do
+            if [ ! -x "$prefix/bin/$tool" ]; then
+              echo "error: the toolchain does not bundle $tool" >&2
+              exit 1
+            fi
+          done
+          # Palomar rejects `external_kernels` in a submitted comparator.json and registers the
+          # bundled kernels itself; this temporary copy does the same.
+          config="$RUNNER_TEMP/comparator.json"
+          python3 - comparator.json "$config" "$prefix" <<'PY'
+          import json, pathlib, sys
+          source, destination, prefix = sys.argv[1:]
+          config = json.loads(pathlib.Path(source).read_text(encoding="utf-8"))
+          if "external_kernels" in config:
+              raise SystemExit(f"{source}: external_kernels is not a submitter field")
+          config.pop("enable_nanoda", None)
+          config["external_kernels"] = {
+              "nanoda": [f"{prefix}/bin/nanoda_bin"],
+              "con-ron": [f"{prefix}/bin/con-ron"],
+          }
+          pathlib.Path(destination).write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+          PY
+          lake exe cache get
+          lake comparator --config "$config"

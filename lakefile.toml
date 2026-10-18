@@ -1,6 +1,6 @@
 name = "trilinearht"
 version = "0.1.0"
-defaultTargets = ["TrilinearHT"]
+defaultTargets = ["TrilinearHT", "Challenge", "Solution"]
 
 [leanOptions]
 weak.linter.mathlibStandardSet = true
@@ -12,3 +12,10 @@ rev = "fbc1661a327737928fe9d69b74f7deaa09eecfbc"
 
 [[lean_lib]]
 name = "TrilinearHT"
+
+# The Palomar / Comparator statement of record (imports only Mathlib) and its solution.
+[[lean_lib]]
+name = "Challenge"
+
+[[lean_lib]]
+name = "Solution"

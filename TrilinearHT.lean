@@ -1,4 +1,6 @@
-import TrilinearHT.Theorems
+module
+
+public import TrilinearHT.Theorems
 
 open TrilinearHT
 
