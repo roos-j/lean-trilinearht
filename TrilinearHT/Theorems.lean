@@ -6,7 +6,8 @@ Authors: Joris Roos
 module
 
 public import TrilinearHT.Defs
-public import Mathlib
+public import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
+public import Mathlib.MeasureTheory.Function.LpSeminorm.Defs
 
 import TrilinearHT.Auto.Sec16_3SummingUpdateLevels
 
