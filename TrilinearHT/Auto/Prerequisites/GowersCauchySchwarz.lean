@@ -6,7 +6,7 @@ Authors: Codex
 module
 
 public import Mathlib
-public import TrilinearHT.Auto.KhintchineSampling
+public import TrilinearHT.Auto.Prerequisites.KhintchineSampling
 
 /-!
 # Gowers-Cauchy-Schwarz and cube continuity

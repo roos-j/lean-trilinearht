@@ -10,9 +10,9 @@ complete | 2026-10-11 11:35:58 ET | thm:main, line 2940, proof 2999-3008 | Uniqu
 
 The Fourier localization needs compact cutoffs and a locally finite integer partition with uniform all-orders Gevrey bounds. Pinned Mathlib supplies smooth expNegInvGlue and smooth
 transitions but no quantitative Gevrey derivative or partition theorem; the repository's already-proved construction supplies this substantial classical calculus prerequisite. Move
-that entire independent development, without duplicating or changing its proofs, into TrilinearHT/Auto/GevreyCutoffs.lean. Its general interval, affine-rescaling and finite-product
-statements use only Mathlib and local definitions. This is the reusable-prerequisite exception, not a machine-blueprint section split. Verified references: blueprint lem:gevrey,
-lines 107–126, and Mathlib.Analysis.SpecialFunctions.SmoothTransition. Recorded before module creation at 2026-10-09 09:58:48 ET.
+that entire independent development, without duplicating or changing its proofs, into TrilinearHT/Auto/Prerequisites/GevreyCutoffs.lean. Its general interval, affine-rescaling and
+finite-product statements use only Mathlib and local definitions. This is the reusable-prerequisite exception, not a machine-blueprint section split. Verified references: blueprint
+lem:gevrey, lines 107–126, and Mathlib.Analysis.SpecialFunctions.SmoothTransition. Recorded before module creation at 2026-10-09 09:58:48 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -26,9 +26,9 @@ complete | 2026-10-08 22:24:10 ET | lem:gevrey, line 126 | Rescaling and multidi
 The chart development and later Fourier splitting use the general derivative-to-Fourier-decay, absolute convergence and quantitative uniform truncation theorem on
 finite-dimensional tori. Pinned Mathlib has Fourier completeness and summability interfaces, but searches found no matching explicit derivative-order, dimension and tail estimate.
 This is a substantial classical Fourier-analysis prerequisite. Move the entire already-proved 702-line independent development, without changing its mathematics, into
-TrilinearHT/Auto/FourierApproximation.lean. A declaration-reference scan found no external project dependencies; its statements and local definitions use only Mathlib. This invokes
-the reusable-prerequisite exception, not a source-section split. Verified references: blueprint lem:fourier-foundation, lines 130-146, and Mathlib.Analysis.Fourier.AddCircleMulti.
-Preserve the existing attribution to ../lean-dfr. Recorded before creation at 2026-10-09 13:27:14 ET.
+TrilinearHT/Auto/Prerequisites/FourierApproximation.lean. A declaration-reference scan found no external project dependencies; its statements and local definitions use only
+Mathlib. This invokes the reusable-prerequisite exception, not a source-section split. Verified references: blueprint lem:fourier-foundation, lines 130-146, and
+Mathlib.Analysis.Fourier.AddCircleMulti. Preserve the existing attribution to ../lean-dfr. Recorded before creation at 2026-10-09 13:27:14 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -41,9 +41,9 @@ complete | 2026-10-09 13:30:19 ET | lem:fourier-foundation, lines 130-146 | Inde
 The finite inverse argument needs the classical Balog-Szemeredi-Gowers energy-to-small-difference theorem and its dense bipartite four-path prerequisite. Pinned Mathlib supplies
 Finset.addEnergy and basic finite inequalities, but direct searches found no quantitative BSG or dependent-random-choice four-path theorem; searches of ../lean-spherical,
 ../lean-dfr and ../lean-variationalsw found no adequate replacement. This substantial textbook additive-combinatorics theorem qualifies for the reusable-prerequisite exception.
-Develop exactly one independent module, TrilinearHT/Auto/BalogSzemerediGowers.lean, with general finite bipartite relations and finite subsets of arbitrary abelian groups. Its
-statements and supporting definitions use only Mathlib and that module, including Mathlib additive energy. Verified reference: blueprint lem:four-paths, lines 668-680, and lem:BSG,
-lines 683-698. Recorded before module creation at 2026-10-09 14:47:46 ET.
+Develop exactly one independent module, TrilinearHT/Auto/Prerequisites/BalogSzemerediGowers.lean, with general finite bipartite relations and finite subsets of arbitrary abelian
+groups. Its statements and supporting definitions use only Mathlib and that module, including Mathlib additive energy. Verified reference: blueprint lem:four-paths, lines 668-680,
+and lem:BSG, lines 683-698. Recorded before module creation at 2026-10-09 14:47:46 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -61,10 +61,10 @@ complete | 2026-10-09 15:20:55 ET | lem:BSG, lines 683-698 | Energy-to-small-dif
 The finite inverse theorem and dense Bogolyubov argument need Chang's quantitative spectrum-generating theorem and the Bohr-set cardinality estimate. Pinned Mathlib has
 AddDissociated, maximal dissociated span, and AddDissociated.randomisation (the Riesz-product mean identity), but direct searches found no quantitative spectrum cardinality bound
 or Bohr-set pigeonhole estimate; searches of ../lean-spherical, ../lean-dfr and ../lean-variationalsw found no replacement. This is a substantial classical finite harmonic-analysis
-theorem. Create exactly one independent module, TrilinearHT/Auto/ChangSpectrum.lean, using only Mathlib and local definitions for finite abelian groups, additive characters, and
-circle-valued homomorphisms. Reuse the existing randomisation and dissociation proofs. The source cyclic statement will be connected to the project's normalized Fourier transform
-in the main file. This is the reusable-prerequisite exception, not a blueprint-section split. Verified reference: blueprint lem:Chang, lines 730-764. Recorded before creation at
-2026-10-09 15:25:46 ET.
+theorem. Create exactly one independent module, TrilinearHT/Auto/Prerequisites/ChangSpectrum.lean, using only Mathlib and local definitions for finite abelian groups, additive
+characters, and circle-valued homomorphisms. Reuse the existing randomisation and dissociation proofs. The source cyclic statement will be connected to the project's normalized
+Fourier transform in the main file. This is the reusable-prerequisite exception, not a blueprint-section split. Verified reference: blueprint lem:Chang, lines 730-764. Recorded
+before creation at 2026-10-09 15:25:46 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -77,13 +77,14 @@ complete | 2026-10-09 15:49:08 ET | lem:Chang, lines 739-764 | Spectrum generati
 
 The later almost-period and signed-stack arguments need the general Khintchine upper inequality and its empirical-sampling consequence. Searches of pinned Mathlib Probability and
 Analysis found no Khintchine or symmetrization/sampling moment theorem; the repository already contains a complete proof adapted from ../lean-variationalsw. Extract that
-substantial textbook probability prerequisite, unchanged, into TrilinearHT/Auto/KhintchineSampling.lean. Include all sign, independent-copy, finite-mean, finite-Lp and convolution
-definitions it uses. A declaration-reference scan found only finiteAverage and finiteConvolution as outside dependencies; move those definitions too, so all statements depend only
-on Mathlib and local definitions. This invokes the reusable-prerequisite exception, not a blueprint section split. Extend this same independent empirical-sampling module with the
-Croot-Sisask almost-period consequence, blueprint lem:almostperiods, lines 766-784, using its existing probability norms and sampling theorem. No additional module is needed.
-Verified reference: blueprint lem:finite-fourier, lines 177-209; preserve sibling attribution. Recorded before creation at 2026-10-09 13:58:52 ET. Consolidation recorded at
-2026-10-09 21:22:18 ET: move the already-proved finite Fourier foundations from main into this module, beside their local finiteAverage, finiteConvolution and uniformMean
-primitives (the finite-inverse trilinear selection, lines 1148-1157, is in Sec07FiniteInverse). The unchanged foundation statements depend only on Mathlib and this module.
+substantial textbook probability prerequisite, unchanged, into TrilinearHT/Auto/Prerequisites/KhintchineSampling.lean. Include all sign, independent-copy, finite-mean, finite-Lp
+and convolution definitions it uses. A declaration-reference scan found only finiteAverage and finiteConvolution as outside dependencies; move those definitions too, so all
+statements depend only on Mathlib and local definitions. This invokes the reusable-prerequisite exception, not a blueprint section split. Extend this same independent
+empirical-sampling module with the Croot-Sisask almost-period consequence, blueprint lem:almostperiods, lines 766-784, using its existing probability norms and sampling theorem. No
+additional module is needed. Verified reference: blueprint lem:finite-fourier, lines 177-209; preserve sibling attribution. Recorded before creation at 2026-10-09 13:58:52 ET.
+Consolidation recorded at 2026-10-09 21:22:18 ET: move the already-proved finite Fourier foundations from main into this module, beside their local finiteAverage, finiteConvolution
+and uniformMean primitives (the finite-inverse trilinear selection, lines 1148-1157, is in Sec07FiniteInverse). The unchanged foundation statements depend only on Mathlib and this
+module.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -101,10 +102,10 @@ complete | 2026-10-09 16:10:28 ET | lem:almostperiods, lines 775 and 783 | Itera
 The finite inverse argument needs the classical quasipolynomial dense Bogolyubov theorem: for every nonempty subset A of a finite cyclic group, 2A-2A contains a Bohr set with rank
 O(log^4(1/alpha)), reciprocal radius O(alpha^(-1) log^4(1/alpha)), and density exp(-O(log^5(1/alpha))). Searches of pinned Mathlib additive combinatorics/Fourier and
 ../lean-spherical, ../lean-dfr and ../lean-variationalsw found no such theorem. This substantial named theorem qualifies for the reusable-prerequisite exception. Create exactly one
-module, TrilinearHT/Auto/DenseBogolyubov.lean, general over all positive cyclic moduli and arbitrary finite subsets. Its theorem statements and local definitions use Mathlib/local
-vocabulary; proofs may reuse the already-verified KhintchineSampling and ChangSpectrum modules, as explicitly permitted by the skill. Do not import the main proof module or create
-a cycle. The main module has 9489 lines, but mathematical substance, not file length, justifies this split. Verified reference: blueprint lem:dense-Bohr, lines 786-820. Recorded
-before creation at 2026-10-09 16:10:28 ET.
+module, TrilinearHT/Auto/Prerequisites/DenseBogolyubov.lean, general over all positive cyclic moduli and arbitrary finite subsets. Its theorem statements and local definitions use
+Mathlib/local vocabulary; proofs may reuse the already-verified KhintchineSampling and ChangSpectrum modules, as explicitly permitted by the skill. Do not import the main proof
+module or create a cycle. The main module has 9489 lines, but mathematical substance, not file length, justifies this split. Verified reference: blueprint lem:dense-Bohr, lines
+786-820. Recorded before creation at 2026-10-09 16:10:28 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -119,9 +120,9 @@ complete | 2026-10-09 16:47:09 ET | lem:dense-Bohr, lines 786-820 | Quasipolynom
 
 The decomposition in lem:inverse, lines 1218-1239, requires a substantial general Hilbert-space separation theorem for finite atomic sums and two seminorm balls, together with
 probability-L2 dual bounds. Mathlib supplies Hahn--Banach, Riesz representation and convex hulls but no matching quantitative atomic decomposition theorem; the sibling
-lean-spherical convex-duality module concerns scalar convex functions. Develop TrilinearHT/Auto/HilbertAtomicDecomposition.lean under the reusable-prerequisite exception, using
-only Mathlib and definitions local to that module in its statements. The general result will take an independently stated inverse-correlation hypothesis; the main file must
-discharge it using continuous_inverse. This is not a split along machine-blueprint sections. Recorded before creation at 2026-10-10 00:38:41 ET.
+lean-spherical convex-duality module concerns scalar convex functions. Develop TrilinearHT/Auto/Prerequisites/HilbertAtomicDecomposition.lean under the reusable-prerequisite
+exception, using only Mathlib and definitions local to that module in its statements. The general result will take an independently stated inverse-correlation hypothesis; the main
+file must discharge it using continuous_inverse. This is not a split along machine-blueprint sections. Recorded before creation at 2026-10-10 00:38:41 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -132,8 +133,8 @@ complete | 2026-10-10 01:01:37 ET | lem:inverse proof, line 1239 | Closure and f
 
 The mixed cube estimates used by lem:cube-foundation and later local von Neumann arguments require the classical Gowers–Cauchy–Schwarz inequality, its U3 seminorm, and eight-input
 L2 continuity. A search of pinned Mathlib found no Gowers development; Haar integration and Holder provide only its ingredients. Move the already-proved general Haar-probability
-construction and its supporting cube definitions, without duplication, into TrilinearHT/Auto/GowersCauchySchwarz.lean. The inspected statements use only Mathlib and local
-definitions, and a declaration-dependency scan found no remaining main-file dependencies. This substantial general additive-combinatorial theorem qualifies for the
+construction and its supporting cube definitions, without duplication, into TrilinearHT/Auto/Prerequisites/GowersCauchySchwarz.lean. The inspected statements use only Mathlib and
+local definitions, and a declaration-dependency scan found no remaining main-file dependencies. This substantial general additive-combinatorial theorem qualifies for the
 reusable-prerequisite exception; it is not a machine-blueprint section split. Verified source: blueprint cube-definition, lines 162–175, and lem:cube-foundation, lines 216–237.
 Recorded before creation at 2026-10-09 10:55:13 ET. Extension recorded at 2026-10-09 21:49:19 ET: the continuous inverse requires finite-to-continuous convergence of cell-averaged
 cube integrals (lines 1183-1189). Searches of pinned Mathlib and sibling repositories found no ready Gowers discretization theorem. Develop the general cube discretization in this
@@ -151,8 +152,8 @@ complete | 2026-10-09 00:24:23 ET | lem:cube-foundation, lines 227–237 | Conti
 # Fefferman–Stein maximal inequality prerequisite
 
 The mixed maximal estimate in lem:vector-maximal needs the general vector Hardy–Littlewood theorem, absent from pinned Mathlib; the textbook Fefferman–Stein theorem is a
-substantial reusable prerequisite, developed for general exponents and finite inner measure spaces in TrilinearHT/Auto/FeffermanStein.lean, adapting the finite Hilbert-family proof
-in ../lean-variationalsw.
+substantial reusable prerequisite, developed for general exponents and finite inner measure spaces in TrilinearHT/Auto/Prerequisites/FeffermanStein.lean, adapting the finite
+Hilbert-family proof in ../lean-variationalsw.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -167,8 +168,8 @@ complete | 2026-10-09 00:48:15 ET | lem:vector-maximal, lines 248–250, permitt
 The successive-minima transference principle is needed by lem:transference and lem:lattice-box; pinned Mathlib supplies dual lattices and Minkowski's first theorem but no adequate
 successive-minima product bound. This is a substantial classical geometry-of-numbers theorem, here for arbitrary finite-dimensional real inner-product spaces, full lattices and
 compact symmetric convex bodies, with constants independent of the lattice and body. Its statement and all supporting definitions depend only on Mathlib and the dedicated
-TrilinearHT/Auto/LatticeTransference.lean. The already-proved integer-basis, reduced-basis and transference development is moved together before the main file reaches its
-10000-line limit; the coefficient-box application is in Sec02. Verified references are blueprint lem:integer-basis, lem:reduced-basis and lem:transference, and pinned
+TrilinearHT/Auto/Prerequisites/LatticeTransference.lean. The already-proved integer-basis, reduced-basis and transference development is moved together before the main file reaches
+its 10000-line limit; the coefficient-box application is in Sec02. Verified references are blueprint lem:integer-basis, lem:reduced-basis and lem:transference, and pinned
 Mathlib.MeasureTheory.Group.GeometryOfNumbers and Mathlib.LinearAlgebra.BilinearForm.DualLattice.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
@@ -197,11 +198,11 @@ complete | 2026-10-09 02:34:55 ET | lem:transference, line 314 | Linear transpor
 
 The rational height bounds needed throughout the finite coefficient constructions are absent from pinned Mathlib: its rational heights, determinants and projections do not provide
 the required uniform counting, inverse, pivot right-inverse and projection estimates. Effective rational linear algebra via common denominators and Cramer's rule is a substantial
-reusable development, including real scalar extension and operator norms. The complete development moves together to TrilinearHT/Auto/RationalLinearAlgebra.lean; all statements and
-local definitions depend only on Mathlib. This invokes the reusable-prerequisite exception, not a split along machine-generated blueprint sections. Verified references are
-blueprint lem:rational-linear, lines 416–420, and the pinned Mathlib rational, matrix adjugate, rank and orthogonal-projection developments. The independently reusable height-bin
-theorem (lem:height, lines 603–619) extends this same module using its local rationalHeight and sharp denominator/minor bounds; no project-specific operator data enter its
-statements.
+reusable development, including real scalar extension and operator norms. The complete development moves together to TrilinearHT/Auto/Prerequisites/RationalLinearAlgebra.lean; all
+statements and local definitions depend only on Mathlib. This invokes the reusable-prerequisite exception, not a split along machine-generated blueprint sections. Verified
+references are blueprint lem:rational-linear, lines 416–420, and the pinned Mathlib rational, matrix adjugate, rank and orthogonal-projection developments. The independently
+reusable height-bin theorem (lem:height, lines 603–619) extends this same module using its local rationalHeight and sharp denominator/minor bounds; no project-specific operator
+data enter its statements.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -224,9 +225,9 @@ complete | 2026-10-09 13:27:14 ET | lem:height, lines 616-617 | Coordinate supre
 # Dyadic stopping and logarithmic hull maximal prerequisite
 
 The fixed-function hull cuts in lem:cuts need a general finite dyadic stopping theorem absent from pinned Mathlib; finite integration, Markov and layer-cake results supply its
-classical ingredients. The complete grid, path packing and first-crossing development in TrilinearHT/Auto/DyadicStopping.lean is independently stated for arbitrary real dyadic
-grids, finite families and normed-space-valued L2 functions, using only Mathlib and its own definitions. Its dedicated module is justified before creation at 2026-10-09 06:18:23 ET
-and serves later root-normalized attempts as well as path-packing and lem:cuts.
+classical ingredients. The complete grid, path packing and first-crossing development in TrilinearHT/Auto/Prerequisites/DyadicStopping.lean is independently stated for arbitrary
+real dyadic grids, finite families and normed-space-valued L2 functions, using only Mathlib and its own definitions. Its dedicated module is justified before creation at 2026-10-09
+06:18:23 ET and serves later root-normalized attempts as well as path-packing and lem:cuts.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -262,8 +263,8 @@ complete | 2026-10-09 10:27:41 ET | lem:compression, lines 569–572 | Jump ance
 
 Justification: the dyadic-prefix row estimate and noncommuting nested-product consequences needed by lem:prefix (lines 508–535) are absent from pinned Mathlib and searched sibling
 repositories. The classical Rademacher–Menshov dyadic decomposition is a substantial general Hilbert-space theorem (Tao, 247A Lecture Notes 2, page 31, Q14–Q15); one independent
-Mathlib-only module, TrilinearHT/Auto/RademacherMenshov.lean, will contain the finite row version, nested projections and disjoint-interval jumps, with no project-specific column
-data. Recorded before creation at 2026-10-09 07:32:32 ET.
+Mathlib-only module, TrilinearHT/Auto/Prerequisites/RademacherMenshov.lean, will contain the finite row version, nested projections and disjoint-interval jumps, with no
+project-specific column data. Recorded before creation at 2026-10-09 07:32:32 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
@@ -283,8 +284,8 @@ complete | 2026-10-09 12:11:54 ET | lem:compression, lines 550 and 597 | Finite 
 Justification: lem:shortblock (lines 2328-2340: "Minkowski and the sign moments give (E‖F^σ(n,·)‖_2^a)^(1/a) ≤ C_a e_j(n)", and the deletion bound) needs Minkowski's integral
 inequality (L^p norm of an integral at most the integral of L^p norms). Searches of pinned Mathlib (MeasureTheory/Integral/MeanInequalities: only the two-function Minkowski
 inequality) and the repository found no integral version. It is a named textbook theorem (Stein, Singular Integrals, Appendix A.1; Hardy–Littlewood–Pólya, Inequalities, Thm 202).
-Stated for ℝ≥0∞-valued jointly measurable f, σ-finite μ, s-finite ν, p ≥ 1, depending only on Mathlib, in TrilinearHT/Auto/MinkowskiIntegralInequality.lean. Recorded before
-creation at 2026-10-11 14:44:15 ET.
+Stated for ℝ≥0∞-valued jointly measurable f, σ-finite μ, s-finite ν, p ≥ 1, depending only on Mathlib, in TrilinearHT/Auto/Prerequisites/MinkowskiIntegralInequality.lean. Recorded
+before creation at 2026-10-11 14:44:15 ET.
 
 status | timestamp (YYYY-MM-DD HH:MM:SS ET) | exact source location | brief mathematical step
 --- | --- | --- | ---
