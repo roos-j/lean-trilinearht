@@ -6,8 +6,8 @@ Authors: Codex
 module
 
 public import Mathlib
-public import TrilinearHT.Auto.KhintchineSampling
-public import TrilinearHT.Auto.ChangSpectrum
+public import TrilinearHT.Auto.Prerequisites.KhintchineSampling
+public import TrilinearHT.Auto.Prerequisites.ChangSpectrum
 
 /-!
 # The quasipolynomial dense Bogolyubov theorem

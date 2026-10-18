@@ -6,20 +6,20 @@ Authors: Claude
 module
 
 public import Mathlib
-public import TrilinearHT.Auto.RationalLinearAlgebra
-public import TrilinearHT.Auto.FourierApproximation
-public import TrilinearHT.Auto.GevreyCutoffs
-public import TrilinearHT.Auto.KhintchineSampling
-public import TrilinearHT.Auto.ChangSpectrum
-public import TrilinearHT.Auto.DenseBogolyubov
-public import TrilinearHT.Auto.GowersCauchySchwarz
-public import TrilinearHT.Auto.BalogSzemerediGowers
-public import TrilinearHT.Auto.HilbertAtomicDecomposition
-public import TrilinearHT.Auto.FeffermanStein
-public import TrilinearHT.Auto.LatticeTransference
-public import TrilinearHT.Auto.DyadicStopping
-public import TrilinearHT.Auto.RademacherMenshov
-public import TrilinearHT.Auto.MinkowskiIntegralInequality
+public import TrilinearHT.Auto.Prerequisites.RationalLinearAlgebra
+public import TrilinearHT.Auto.Prerequisites.FourierApproximation
+public import TrilinearHT.Auto.Prerequisites.GevreyCutoffs
+public import TrilinearHT.Auto.Prerequisites.KhintchineSampling
+public import TrilinearHT.Auto.Prerequisites.ChangSpectrum
+public import TrilinearHT.Auto.Prerequisites.DenseBogolyubov
+public import TrilinearHT.Auto.Prerequisites.GowersCauchySchwarz
+public import TrilinearHT.Auto.Prerequisites.BalogSzemerediGowers
+public import TrilinearHT.Auto.Prerequisites.HilbertAtomicDecomposition
+public import TrilinearHT.Auto.Prerequisites.FeffermanStein
+public import TrilinearHT.Auto.Prerequisites.LatticeTransference
+public import TrilinearHT.Auto.Prerequisites.DyadicStopping
+public import TrilinearHT.Auto.Prerequisites.RademacherMenshov
+public import TrilinearHT.Auto.Prerequisites.MinkowskiIntegralInequality
 
 /-!
 # Section 1: Foundations, conventions, and proof interfaces

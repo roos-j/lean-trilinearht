@@ -6,9 +6,9 @@ Authors: Codex
 module
 
 public import Mathlib
-public import TrilinearHT.Auto.GowersCauchySchwarz
-public import TrilinearHT.Auto.ChangSpectrum
-public import TrilinearHT.Auto.DenseBogolyubov
+public import TrilinearHT.Auto.Prerequisites.GowersCauchySchwarz
+public import TrilinearHT.Auto.Prerequisites.ChangSpectrum
+public import TrilinearHT.Auto.Prerequisites.DenseBogolyubov
 
 /-!
 # Balog-Szemeredi-Gowers and dense bipartite paths

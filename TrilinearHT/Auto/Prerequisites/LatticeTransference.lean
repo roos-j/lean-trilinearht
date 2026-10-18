@@ -6,7 +6,7 @@ Authors: Codex
 module
 
 public import Mathlib
-public import TrilinearHT.Auto.RationalLinearAlgebra
+public import TrilinearHT.Auto.Prerequisites.RationalLinearAlgebra
 
 /-!
 # Lattice transference via reduced bases
