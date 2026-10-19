@@ -377,7 +377,7 @@ theorem rational_pivot_minor {m n : ℕ} (A : Matrix (Fin m) (Fin n) ℚ) :
     omega
   subst s
   refine ⟨r, hrm, hrn, rows, cols, ?_, hspan⟩
-  have hunit := Matrix.linearIndependent_row_iff_isUnit.mp hrows
+  have hunit := Matrix.linearIndependent_rows_iff_isUnit.mp hrows
   exact isUnit_iff_ne_zero.mp ((Matrix.isUnit_iff_isUnit_det _).mp hunit)
 
 /-- Place a small matrix in specified rows and columns, with zero entries
@@ -1093,7 +1093,7 @@ theorem rational_pivot_minor_of_dependent {m n : ℕ} (A : Matrix (Fin m) (Fin n
   have hli : LinearIndependent ℚ (fun j => A.col (cols j)) := by
     apply LinearIndependent.of_comp L
     change LinearIndependent ℚ (A.submatrix rows cols).col
-    exact Matrix.linearIndependent_col_iff_isUnit.mpr
+    exact Matrix.linearIndependent_cols_iff_isUnit.mpr
       ((Matrix.isUnit_iff_isUnit_det _).mpr (isUnit_iff_ne_zero.mpr hdet))
   have hrank : r = (Set.range A.col).finrank ℚ := by
     have h := linearIndependent_iff_card_eq_finrank_span.mp hli

@@ -614,7 +614,7 @@ theorem cubeAverage_add_expansion {G : Type*} [AddCommGroup G] [MeasurableSpace 
     norm_cubeIntegrand_le (cubeChoice f g σ) (norm_cubeChoice_le f g hbf hbg σ)
   have hi (σ : (Fin j → Bool) → Bool) (h : Fin j → G) :
       Integrable (cubeIntegrand (cubeChoice f g σ) h) μ :=
-    integrable_of_measurable_bounded ((hm σ).comp (measurable_const.prodMk measurable_id)) (hb σ h)
+    integrable_of_measurable_bounded ((hm σ).of_uncurry_left (x := h)) (hb σ h)
   have ho (σ : (Fin j → Bool) → Bool) : Integrable (fun h : Fin j → G =>
       ∫ x, cubeIntegrand (cubeChoice f g σ) h x ∂μ) (Measure.pi (fun _ => μ)) := by
     apply integrable_of_measurable_bounded

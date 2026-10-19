@@ -3421,13 +3421,13 @@ theorem sepPartition_smooth {d : ℕ} : ContDiff ℝ (⊤ : ℕ∞) (sepPartitio
   chartCoordinateProduct_smooth (contDiff_infty.mpr gevreyPartition_contDiff)
 
 theorem tripleFst_contDiff {d : ℕ} : ContDiff ℝ (⊤ : ℕ∞) (tripleFst (d := d) (α := ℝ)) := by
-  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ (fun _ => ℝ) _
+  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ _ _
 
 theorem tripleSnd_contDiff {d : ℕ} : ContDiff ℝ (⊤ : ℕ∞) (tripleSnd (d := d) (α := ℝ)) := by
-  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ (fun _ => ℝ) _
+  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ _ _
 
 theorem tripleThd_contDiff {d : ℕ} : ContDiff ℝ (⊤ : ℕ∞) (tripleThd (d := d) (α := ℝ)) := by
-  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ (fun _ => ℝ) _
+  apply contDiff_pi.mpr; intro l; exact contDiff_apply ℝ _ _
 
 theorem sepCoupledVec_smooth {d : ℕ} {χ : (Fin d → ℝ) → ℂ} (hχ : ContDiff ℝ (⊤ : ℕ∞) χ)
     {ψ : ℝ → ℝ} (hψ : ContDiff ℝ (⊤ : ℕ∞) ψ) (i a b : ℤ) (ki kb : Fin d → ℤ) :
@@ -5337,8 +5337,8 @@ theorem separated_form_le {κ : LocalKernelClass} {a₀ r : ℝ} (hr : 0 < r) {w
   set Gb := I.indicator Fb with hGb
   have hGam : Measurable Ga := hFam.indicator hIm
   have hGbm : Measurable Gb := hFbm.indicator hIm
-  have hGa2 : MemLp Ga 2 := (memLp_indicator_iff_restrict hIm.nullMeasurableSet).mpr hFa2
-  have hGb2 : MemLp Gb 2 := (memLp_indicator_iff_restrict hIm.nullMeasurableSet).mpr hFb2
+  have hGa2 : MemLp Ga 2 := (memLp_indicator_iff_restrict hIm).mpr hFa2
+  have hGb2 : MemLp Gb 2 := (memLp_indicator_iff_restrict hIm).mpr hFb2
   have hGa1 : Integrable Ga := (integrable_indicator_iff hIm).mpr (hFa2.integrable one_le_two)
   have hGb1 : Integrable Gb := (integrable_indicator_iff hIm).mpr (hFb2.integrable one_le_two)
   have hGas : ∀ y, Ga y ≠ 0 → y ∈ I := fun y hy => by

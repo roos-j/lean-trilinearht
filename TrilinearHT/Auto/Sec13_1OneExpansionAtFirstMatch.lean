@@ -551,7 +551,7 @@ theorem profile_mean_bounds {δ : ℝ} (hδ : 0 < δ) (hδ' : δ ≤ 1 / 4) :
     · rw [Set.indicator_of_mem hs, branchProfile_eq_one hδ hs.1 hs.2]
     · rw [Set.indicator_of_notMem hs]; exact (branchProfile_mem δ s).1
   · have h1 : ∫ s in Set.Icc (0 : ℝ) 1, (1 - A.indicator (fun _ => (1 : ℝ)) s) = 4 * δ := by
-      rw [integral_sub (integrableOn_const (by simp)) hindint, hind]
+      rw [integral_sub (integrableOn_const (C := (1 : ℝ)) (by simp)) hindint, hind]
       simp
     rw [← h1]
     apply setIntegral_mono (hint _ (continuous_const.sub (hcont.pow 2)))
@@ -1880,7 +1880,7 @@ theorem augMode_memLp {J : Set ℝ} (hJ : MeasurableSet J) (hJf : volume J ≠ �
     (hψ : Measurable ψ) (hψb : ∀ y, ‖ψ y‖ ≤ 1) (ε : ℝ) (m : V) :
     MemLp (augMode J ψ ε m) 2 volume := by
   have : IsFiniteMeasure (volume.restrict J) := isFiniteMeasure_restrict.mpr hJf
-  refine (memLp_indicator_iff_restrict hJ.nullMeasurableSet).mpr ?_
+  refine (memLp_indicator_iff_restrict hJ).mpr ?_
   refine MemLp.of_bound (((hψ.smul_const _).add measurable_const).aestronglyMeasurable)
     (1 + Real.sqrt ε) (Filter.Eventually.of_forall fun y => ?_)
   refine (norm_add_le _ _).trans (add_le_add ?_ ?_)
@@ -5737,7 +5737,7 @@ theorem gBall_cell_rep (l : Fin 4) (s : List (CatCol bf.Vtx)) (mb : bf.MainBudge
         (mainScalar fp.Mc (bf.origCols l) s) (mainWeight fp.Mc (bf.origCols l)) Φ)) 2 volume := by
       intro Φ hΦ
       have h := (bf.mainLabel_memLp l s a (fp.brank j)
-        (mainLabelsM_subset _ _ _ _ _ hΦ)).indicator hmU.nullMeasurableSet
+        (mainLabelsM_subset _ _ _ _ _ hΦ)).indicator hmU
       rwa [Set.indicator_indicator, Set.inter_eq_left.mpr hUa] at h
     have hproj : ∀ p : Fin fp.P, colRelabel (bf.rv fp.Mc s) (columnL2Restriction cU hmU
         (((bf.mainBase fp.Mc s mb).withMask (fp.ballMaskT l s mb G j p)).proj u z)) ∈ M := by
@@ -5923,7 +5923,7 @@ theorem frozen_endpoint {Md : Type} [Fintype Md] (l : Fin 4) (s : List (CatCol b
         (mainScalar fp.Mc (bf.origCols l) s) (mainWeight fp.Mc (bf.origCols l)) Φ)) 2 volume := by
       intro Φ hΦ
       have h := (bf.mainLabel_memLp l s a (fp.brank j)
-        (mainLabelsM_subset _ _ _ _ _ hΦ)).indicator hmU.nullMeasurableSet
+        (mainLabelsM_subset _ _ _ _ _ hΦ)).indicator hmU
       rwa [Set.indicator_indicator, Set.inter_eq_left.mpr hUa] at h
     obtain ⟨cS, hcS⟩ : ∃ cS : bf.Lab ⊕ Fin fp.Mc → ℂ,
         cS = fun Φ => if Φ ∈ S then c Φ else 0 := ⟨_, rfl⟩

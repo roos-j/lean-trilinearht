@@ -3638,7 +3638,7 @@ theorem pv_form_bound {ω φ : ℝ → ℝ} (hω : ContDiff ℝ (⊤ : ℕ∞) �
       intro i
       have : IsFiniteMeasure (volume.restrict (Set.Icc (-S n) (S n))) :=
         isFiniteMeasure_restrict.mpr (by simp)
-      exact (memLp_indicator_iff_restrict measurableSet_Icc.nullMeasurableSet).mpr
+      exact (memLp_indicator_iff_restrict measurableSet_Icc).mpr
         (MemLp.of_bound (hfm i).aestronglyMeasurable Mf
           (Filter.Eventually.of_forall (hfb i)))
     have hftc : ∀ i, HasCompactSupport (ft n i) := fun i =>
@@ -6192,6 +6192,257 @@ theorem Hf_z_eq_zero_of_isEmpty_vtx (A : ActiveSetup κ c₀) (bf : A.BasicFamil
 
 end ActiveSetup
 
+/-! Steps of `retainedMin_holds`. Each lemma below is one step of that proof, stated over the
+hypotheses and local definitions (as `let`s) of the proof that it uses, so that it is
+elaborated in a small local context instead of the long context of the whole proof. -/
+
+open Classical in
+/-- Step `nHedτ₂` of `retainedMin_holds`, over the part of its context that it uses. -/
+theorem retainedMin_holds_nHedτ₂ :
+    ∀ (κ : LocalKernelClass) (c' : ℕ) (Cb : ℕ) (Ca : ℝ),
+    let b : ℕ := Cb + (1 : ℕ);
+    let m : ℕ := (3 : ℕ) * Cb + (2 : ℕ);
+    let c₃ : ℕ := (3 : ℕ) * Cb + (3 : ℕ);
+    let c : ℕ := (90 : ℕ) * b + c₃ + (100 : ℕ);
+    ∀ (C : ℕ) (hDg1 : (1 : ℕ) ≤ max c' ((2 : ℕ) * tagKρ) + (1 : ℕ)),
+    let Dg : ℕ := choose (curvatureGraph κ (max c' ((2 : ℕ) * tagKρ) + (1 : ℕ)) hDg1);
+    let a₀ : ℕ := C + c + (1 : ℕ);
+    let cc : ℕ := (a₀ + (1 : ℕ)) * (Dg + (2 : ℕ));
+    ∀ (Mpad : ℝ),
+    let L₄ : ℝ := Real.log ((4 : ℝ) + Mpad);
+    let lW : ℝ := Real.log ActiveSetup.padW;
+    let cH : ℝ := Real.log ((↑tagKρ : ℝ) ^ ((2 : ℕ) * tagKρ) + (20 : ℝ));
+    ∀ (hMpad0 : (0 : ℝ) ≤ Mpad) (k : ℕ) (B : ActiveSetup κ c'),
+    let A : ActiveSetup κ c' := B.padDc Mpad hMpad0;
+    ∀ (bf : A.BasicFamilies),
+    let Y : ℝ := L₄ + (2 : ℝ) * (↑k : ℝ) ^ b;
+    A.colBudget ≤ Real.exp Y →
+      Real.log A.Hsrc ≤ Real.log ((↑tagKρ : ℝ) ^ ((2 : ℕ) * tagKρ) + (20 : ℝ)) + (2 : ℝ) *
+        (Real.log ActiveSetup.padW + Y) → (2 : ℝ) ≤ A.colBudget →
+    let Mp : ℕ := ⌈Real.exp (Ca * (↑k : ℝ) ^ ((3 : ℕ) * Cb + (2 : ℕ)))⌉₊;
+    let τ₃ : ℝ := Real.exp (-(↑k : ℝ) ^ c₃);
+    τ₃ = Real.exp (-(↑k : ℝ) ^ c₃) → (0 : ℝ) < τ₃ →
+      (↑Mp : ℝ) ≤ Real.exp (Ca * (↑k : ℝ) ^ m) + (1 : ℝ) → ∀ (fp : bf.FamParams) (n : ℕ → ℝ),
+      (∀ (r : ℕ), (0 : ℝ) ≤ n r) → (∀ (r : ℕ), (4 : ℝ) ≤ n r) →
+      (∀ r ≤ fp.Lc + (5 : ℕ), n r ≤ Real.exp ((↑k : ℝ) ^ C)) → (∀ (x : ℝ), (1 : ℝ) ≤ x → √x ≤ x) →
+    let T : ℝ := Y + (↑k : ℝ) ^ C + Ca * (↑k : ℝ) ^ m + (2 : ℝ);
+    T = Y + (↑k : ℝ) ^ C + Ca * (↑k : ℝ) ^ m + (2 : ℝ) → (0 : ℝ) ≤ (↑k : ℝ) ^ C →
+      (0 : ℝ) ≤ Ca * (↑k : ℝ) ^ m → (0 : ℝ) ≤ Y →
+      (∀ (x y : ℝ), Real.exp x * Real.exp y = Real.exp (x + y)) → (2 : ℝ) ≤ Real.log A.Hsrc →
+      (∀ (w : ℝ), (0 : ℝ) ≤ w → w ≤ (1 : ℝ) + (cH + (2 : ℝ) * (lW + Y)) + Real.log (6 : ℝ) +
+        (3 : ℝ) * (Y + (↑k : ℝ) ^ C + Ca * (↑k : ℝ) ^ m + (2 : ℝ)) + (↑k : ℝ) ^ c₃ + (2 : ℝ) *
+        (Y + (3 : ℝ)) → (↑A.Dg : ℝ) * w ^ A.Dg ≤ (↑k : ℝ) ^ cc) →
+    Real.exp (A.Dg * (1 + Real.log A.Hsrc +
+    Real.log (τ₃ / (1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) *
+    (A.colBudget * Real.sqrt (2 * A.colBudget + (1 + Mp) * n (fp.Lc + 5)))))⁻¹) ^ A.Dg) ≤
+    Real.exp ((k : ℝ) ^ cc) := by
+  intro κ c' Cb Ca b m c₃ c C hDg1 Dg a₀ cc Mpad L₄ lW cH hMpad0 k B A bf Y hcbY hHsB hcb2 Mp τ₃
+    hτ₃def hτ0 hMpup fp n hnpos hn4 hnle hsqle T hTdef hkC0 hkm0 hY0 hexpd hHs2 hbase
+  apply Real.exp_le_exp.mpr
+  set! Z := 2 * A.colBudget + (1 + Mp) * n (fp.Lc + 5) with hZ
+  rewrite [← hZ] at ⊢
+  have! hcb0 : 0 ≤ A.colBudget := by linarith only [hcb2]
+  have! hMp0 : (0 : ℝ) ≤ Mp := Nat.cast_nonneg _
+  have! hn5' := hnle (fp.Lc + 5) le_rfl
+  have! hZ1 : 1 ≤ Z := by
+    have! this := mul_nonneg (by linarith only [hMp0] : (0 : ℝ) ≤ 1 + Mp) (hnpos (fp.Lc + 5))
+    rw [hZ]; linarith only [this, hcb2]
+  have! hZb : Z ≤ 5 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) := by
+    have! h1 : 2 * A.colBudget ≤ 2 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) := by
+      have! this := Real.exp_le_exp.mpr (show Y ≤ Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C by
+        linarith only [hkC0, hkm0])
+      linarith only [hcbY, this]
+    have! h2 : (1 + (Mp : ℝ)) * n (fp.Lc + 5) ≤
+        (2 + Real.exp (Ca * (k : ℝ) ^ m)) * Real.exp ((k : ℝ) ^ C) :=
+      mul_le_mul (by linarith only [hMpup]) hn5' (hnpos _) (by positivity)
+    have! h3 : (2 + Real.exp (Ca * (k : ℝ) ^ m)) * Real.exp ((k : ℝ) ^ C) ≤
+        3 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) := by
+      have! e1 : Real.exp (Ca * (k : ℝ) ^ m) * Real.exp ((k : ℝ) ^ C) =
+          Real.exp (Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) := hexpd _ _
+      have! h4 : Real.exp (Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) ≤
+          Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) :=
+        Real.exp_le_exp.mpr (by linarith only [hY0])
+      have! h5 : Real.exp ((k : ℝ) ^ C) ≤ Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) :=
+        Real.exp_le_exp.mpr (by linarith only [hY0, hkm0])
+      nlinarith only [e1, h4, h5]
+    rw [hZ]; linarith only [h1, h2, h3]
+  have! hsq4 : Real.sqrt (n (fp.Lc + 4)) ≤ Real.exp ((k : ℝ) ^ C) :=
+    (hsqle _ (by linarith only [hn4 (fp.Lc + 4)])).trans (hnle _ (by omega))
+  have! hsqZ := hsqle Z hZ1
+  have! hy1 : A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z) ≤
+      Real.exp Y * Real.exp ((k : ℝ) ^ C) *
+        (Real.exp Y * (5 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C))) := by
+    gcongr
+    exact hsqZ.trans hZb
+  have! hy2 : Real.exp Y * Real.exp ((k : ℝ) ^ C) *
+      (Real.exp Y * (5 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C))) =
+      5 * Real.exp (3 * Y + 2 * (k : ℝ) ^ C + Ca * (k : ℝ) ^ m) := by
+    have! e : Real.exp (3 * Y + 2 * (k : ℝ) ^ C + Ca * (k : ℝ) ^ m) =
+        Real.exp Y * Real.exp ((k : ℝ) ^ C) *
+          (Real.exp Y * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C)) := by
+      rw [hexpd, hexpd, hexpd]; congr 1; ring
+    rw [e]; ring
+  have! hy3 : 1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z) ≤
+      6 * Real.exp (3 * T) := by
+    have! h1 := Real.one_le_exp (show 0 ≤ 3 * Y + 2 * (k : ℝ) ^ C + Ca * (k : ℝ) ^ m by
+      linarith only [hY0, hkC0, hkm0])
+    have! h2 : Real.exp (3 * Y + 2 * (k : ℝ) ^ C + Ca * (k : ℝ) ^ m) ≤ Real.exp (3 * T) :=
+      Real.exp_le_exp.mpr (by rw [hTdef]; linarith only [hkC0, hkm0])
+    linarith only [hy1, hy2, h1, h2]
+  have! hyp : 0 < 1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z) := by
+    positivity
+  have! hlogy : Real.log (1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) *
+      (A.colBudget * Real.sqrt Z)) ≤ Real.log 6 + 3 * T := by
+    have! this := Real.log_le_log hyp hy3
+    rwa [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at this
+  have! hlogy0 : 0 ≤ Real.log (1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) *
+      (A.colBudget * Real.sqrt Z)) := Real.log_nonneg (by
+    have! this : 0 ≤ A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z) := by
+      positivity
+    linarith only [this])
+  have! hlτ : Real.log ((τ₃ / (1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) *
+      (A.colBudget * Real.sqrt Z)))⁻¹) = Real.log (1 + A.colBudget *
+        Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z)) + (k : ℝ) ^ c₃ := by
+    rw [inv_div, Real.log_div hyp.ne' hτ0.ne', hτ₃def, Real.log_exp]; ring
+  rw [hlτ]
+  have! hkc₃ : (0 : ℝ) ≤ (k : ℝ) ^ c₃ := by positivity
+  refine hbase _ (by linarith only [hHs2, hlogy0, hkc₃]) ?_
+  rw [hTdef] at hlogy
+  linarith only [hHsB, hlogy, hY0]
+
+open Classical in
+/-- Step `nHedτ'` of `retainedMin_holds`, over the part of its context that it uses. -/
+theorem retainedMin_holds_nHedτ' :
+    ∀ (κ : LocalKernelClass) (c' : ℕ) (Cb : ℕ) (Ca : ℝ),
+    let b : ℕ := Cb + (1 : ℕ);
+    let m : ℕ := (3 : ℕ) * Cb + (2 : ℕ);
+    let c₃ : ℕ := (3 : ℕ) * Cb + (3 : ℕ);
+    let c : ℕ := (90 : ℕ) * b + c₃ + (100 : ℕ);
+    ∀ (C : ℕ) (hDg1 : (1 : ℕ) ≤ max c' ((2 : ℕ) * tagKρ) + (1 : ℕ)),
+    let Dg : ℕ := choose (curvatureGraph κ (max c' ((2 : ℕ) * tagKρ) + (1 : ℕ)) hDg1);
+    let a₀ : ℕ := C + c + (1 : ℕ);
+    let cc : ℕ := (a₀ + (1 : ℕ)) * (Dg + (2 : ℕ));
+    ∀ (Mpad : ℝ),
+    let L₄ : ℝ := Real.log ((4 : ℝ) + Mpad);
+    let lW : ℝ := Real.log ActiveSetup.padW;
+    let cH : ℝ := Real.log ((↑tagKρ : ℝ) ^ ((2 : ℕ) * tagKρ) + (20 : ℝ));
+    ∀ (hMpad0 : (0 : ℝ) ≤ Mpad) (k : ℕ) (B : ActiveSetup κ c'),
+    let A : ActiveSetup κ c' := B.padDc Mpad hMpad0;
+    ∀ (bf : A.BasicFamilies),
+    let Y : ℝ := L₄ + (2 : ℝ) * (↑k : ℝ) ^ b;
+    A.colBudget ≤ Real.exp Y →
+      Real.log A.Hsrc ≤ Real.log ((↑tagKρ : ℝ) ^ ((2 : ℕ) * tagKρ) + (20 : ℝ)) + (2 : ℝ) *
+        (Real.log ActiveSetup.padW + Y) → (2 : ℝ) ≤ A.colBudget → ∀ (fp : bf.FamParams) (n : ℕ → ℝ),
+      (∀ (r : ℕ), (0 : ℝ) ≤ n r) → (∀ r ≤ fp.Lc + (5 : ℕ), n r ≤ Real.exp ((↑k : ℝ) ^ C)) →
+      (0 : ℝ) ≤ (↑k : ℝ) ^ C → (0 : ℝ) ≤ Ca * (↑k : ℝ) ^ m → (0 : ℝ) ≤ Y →
+      (∀ (x y : ℝ), Real.exp x * Real.exp y = Real.exp (x + y)) → (2 : ℝ) ≤ Real.log A.Hsrc →
+      (∀ (w : ℝ), (0 : ℝ) ≤ w → w ≤ (1 : ℝ) + (cH + (2 : ℝ) * (lW + Y)) + Real.log (6 : ℝ) +
+        (3 : ℝ) * (Y + (↑k : ℝ) ^ C + Ca * (↑k : ℝ) ^ m + (2 : ℝ)) + (↑k : ℝ) ^ c₃ + (2 : ℝ) *
+        (Y + (3 : ℝ)) → (↑A.Dg : ℝ) * w ^ A.Dg ≤ (↑k : ℝ) ^ cc) →
+    Real.exp (A.Dg * (1 + Real.log A.Hsrc +
+    Real.log (1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2)) ^ A.Dg) ≤
+    Real.exp ((k : ℝ) ^ cc) := by
+  intro κ c' Cb Ca b m c₃ c C hDg1 Dg a₀ cc Mpad L₄ lW cH hMpad0 k B A bf Y hcbY hHsB hcb2 fp n
+    hnpos hnle hkC0 hkm0 hY0 hexpd hHs2 hbase
+  apply Real.exp_le_exp.mpr
+  have! hcb0 : 0 ≤ A.colBudget := by linarith only [hcb2]
+  have! hn5' := hnle (fp.Lc + 5) le_rfl
+  have! hc0 : 0 ≤ 8 * A.colBudget + n (fp.Lc + 5) := by
+    linarith only [hcb0, hnpos (fp.Lc + 5)]
+  have! h1 : (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) ≤
+      10 * Real.exp (Y + (k : ℝ) ^ C) := by
+    have! h2 := (Nat.ceil_lt_add_one hc0).le
+    have! h3 : Real.exp Y ≤ Real.exp (Y + (k : ℝ) ^ C) :=
+      Real.exp_le_exp.mpr (by linarith only [hkC0])
+    have! h4 : Real.exp ((k : ℝ) ^ C) ≤ Real.exp (Y + (k : ℝ) ^ C) :=
+      Real.exp_le_exp.mpr (by linarith only [hY0])
+    have! h5 := Real.one_le_exp (show 0 ≤ Y + (k : ℝ) ^ C by linarith only [hY0, hkC0])
+    linarith only [h2, hcbY, hn5', h3, h4, h5]
+  have! h6 : A.colBudget ^ 2 ≤ Real.exp (2 * Y) := by
+    rw [show 2 * Y = Y + Y by ring, ← hexpd, sq]
+    exact mul_le_mul hcbY hcbY hcb0 (Real.exp_pos _).le
+  have! h7 : 1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2 ≤
+      11 * Real.exp (3 * Y + (k : ℝ) ^ C) := by
+    have! h8 := mul_le_mul h1 h6 (by positivity) (by positivity)
+    have! e : 10 * Real.exp (Y + (k : ℝ) ^ C) * Real.exp (2 * Y) =
+        10 * Real.exp (3 * Y + (k : ℝ) ^ C) := by
+      rw [mul_assoc, hexpd]; ring_nf
+    have! h9 := Real.one_le_exp (show 0 ≤ 3 * Y + (k : ℝ) ^ C by linarith only [hY0, hkC0])
+    linarith only [h8, e, h9]
+  have! hpos : 0 < 1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2 := by
+    positivity
+  have! hlog : Real.log (1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2) ≤
+      Real.log 11 + (3 * Y + (k : ℝ) ^ C) := by
+    have! this := Real.log_le_log hpos h7
+    rwa [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at this
+  have! hlog0 : 0 ≤ Real.log (1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) *
+      A.colBudget ^ 2) := Real.log_nonneg (by
+    have! this : 0 ≤ (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2 := by positivity
+    linarith only [this])
+  have! hl11 : Real.log 11 ≤ Real.log 6 + 6 := by
+    have! h1 : Real.log 11 ≤ Real.log (6 * Real.exp 6) := Real.log_le_log (by norm_num) (by
+      have! this := Real.add_one_le_exp (6 : ℝ); linarith only [this])
+    rwa [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at h1
+  have! hkc₃ : (0 : ℝ) ≤ (k : ℝ) ^ c₃ := by positivity
+  refine hbase _ (by linarith only [hHs2, hlog0]) ?_
+  linarith only [hHsB, hlog, hl11, hY0, hkC0, hkm0, hkc₃]
+
+open Classical in
+/-- Step `nh3` of `retainedMin_holds`, over the part of its context that it uses. -/
+theorem retainedMin_holds_nh3 :
+    ∀ (κ : LocalKernelClass) (c' : ℕ) (Cb : ℕ) (θ₀ : ℝ),
+    let b : ℕ := Cb + (1 : ℕ);
+    ∀ (Cl : ℕ), (1 : ℕ) ≤ Cl →
+    let α : ℝ := (1 / 1200 : ℝ) / ((4 : ℝ) * ((↑Cl : ℝ) + (1 : ℝ) + (1 : ℝ)));
+    ∀ (Mpad : ℝ),
+    let L₄ : ℝ := Real.log ((4 : ℝ) + Mpad);
+    ∀ (hMpad0 : (0 : ℝ) ≤ Mpad), (0 : ℝ) ≤ L₄ → ∀ (k : ℕ) (B : ActiveSetup κ c') (p : Fin (3 : ℕ)),
+      (3 : ℕ) ≤ k →
+    let η₀ : ℝ := Real.exp ((-2 : ℝ) * (↑k : ℝ) ^ θ₀);
+    let A : ActiveSetup κ c' := B.padDc Mpad hMpad0;
+    ∀ (bf : A.BasicFamilies),
+    let Y : ℝ := L₄ + (2 : ℝ) * (↑k : ℝ) ^ b;
+    (4 : ℝ) * ((6000 : ℝ) ^ (30 : ℕ) * Y ^ (30 : ℕ) + (1 : ℝ)) * (↑Cl : ℝ) * ((2 : ℝ) +
+        ((↑Cl : ℝ) + (1 : ℝ)) * ((2 : ℝ) * α * (↑k : ℝ) ^ θ₀ + (1 : ℝ))) ^ (6 : ℕ) * Real.exp
+        (((1 : ℝ) + Real.log ((2 : ℝ) * (↑k : ℝ))) ^ (2 : ℕ)) ^ Cl ≤ Real.exp (α * (↑k : ℝ) ^ θ₀ /
+        (4 : ℝ)) →
+    let P : ℕ := ⌈η₀ ^ (-α)⌉₊;
+    Real.exp ((2 : ℝ) * α * (↑k : ℝ) ^ θ₀) ≤ (↑P : ℝ) →
+      (↑P : ℝ) ≤ Real.exp ((2 : ℝ) * α * (↑k : ℝ) ^ θ₀) + (1 : ℝ) → (1 : ℝ) ≤ (↑P : ℝ) →
+      ∀ (fp : bf.FamParams), (∀ (x y : ℝ), Real.exp x * Real.exp y = Real.exp (x + y)) →
+    let Nl : ℕ := (searchList A.famFuel fp.Lc (A.basicSlot p)).length;
+    (↑Nl : ℝ) ≤ (4 : ℝ) * ((6000 : ℝ) ^ (30 : ℕ) * Y ^ (30 : ℕ) + (1 : ℝ)) →
+    (Nl : ℝ) * Cl * (2 + ((Cl : ℝ) + 1) * Real.log P) ^ 6 *
+    Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl ≤ (P : ℝ) ^ (1 / 8 : ℝ) := by
+  intro κ c' Cb θ₀ b Cl hCl1 α Mpad L₄ hMpad0 hL₄0 k B p hk3 η₀ A bf Y x5 P hPlo hPup hP1 fp hexpd
+    Nl hNlF'
+  have! hlP0 : 0 ≤ Real.log P := Real.log_nonneg hP1
+  have! hlP : Real.log P ≤ 2 * α * (k : ℝ) ^ θ₀ + 1 := by
+    have! hPL1 : (1 : ℝ) ≤ Real.exp (2 * α * (k : ℝ) ^ θ₀) := Real.one_le_exp (by positivity)
+    have! h1 : (P : ℝ) ≤ Real.exp (2 * α * (k : ℝ) ^ θ₀ + 1) := by
+      rw [← hexpd]
+      have! he : (2 : ℝ) ≤ Real.exp 1 := by
+        have! this := Real.add_one_le_exp (1 : ℝ); linarith only [this]
+      nlinarith only [hPup, he, hPL1]
+    have! this := Real.log_le_log (by linarith only [hP1]) h1
+    rwa [Real.log_exp] at this
+  have! h6 : (2 + ((Cl : ℝ) + 1) * Real.log P) ^ 6 ≤
+      (2 + ((Cl : ℝ) + 1) * (2 * α * (k : ℝ) ^ θ₀ + 1)) ^ 6 := by
+    gcongr
+  have! hP8 : Real.exp (α * (k : ℝ) ^ θ₀ / 4) ≤ (P : ℝ) ^ (1 / 8 : ℝ) := by
+    have! e :
+        Real.exp (α * (k : ℝ) ^ θ₀ / 4) = Real.exp (2 * α * (k : ℝ) ^ θ₀) ^ (1 / 8 : ℝ) := by
+      rw [← Real.exp_mul]; ring_nf
+    rw [e]
+    exact Real.rpow_le_rpow (Real.exp_pos _).le hPlo (by norm_num)
+  calc (Nl : ℝ) * Cl * (2 + ((Cl : ℝ) + 1) * Real.log P) ^ 6 *
+        Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl
+      ≤ 4 * (6000 ^ 30 * Y ^ 30 + 1) * Cl *
+          (2 + ((Cl : ℝ) + 1) * (2 * α * (k : ℝ) ^ θ₀ + 1)) ^ 6 *
+          Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl := by gcongr
+    _ ≤ _ := x5
+    _ ≤ _ := hP8
+
 open Classical in
 /-- Blueprint lines 2838-2888 on one root (prop:normalized, `eq:before-absorption` and the choice
 of `q, α, P`): the retained-attempt estimate `RetainedMin`. The setup is padded so that the
@@ -6210,7 +6461,8 @@ theorem retainedMin_holds (κ : LocalKernelClass) : RetainedMin κ := by
   set c₃ : ℕ := 3 * Cb + 3 with hc₃
   set c : ℕ := 90 * b + c₃ + 100 with hcdef
   obtain ⟨C, k₀, hk₀, hatt⟩ := ActiveSetup.BasicFamilies.exists_attempt c Dst
-  set! Dg : ℕ := Classical.choose (curvatureGraph κ (max c' (2 * tagKρ) + 1) (by omega)) with hDg
+  have! hDg1 : 1 ≤ max c' (2 * tagKρ) + 1 := by omega
+  set! Dg : ℕ := Classical.choose (curvatureGraph κ (max c' (2 * tagKρ) + 1) hDg1) with hDg
   set! a₀ : ℕ := C + c + 1 with ha₀
   set! cc : ℕ := (a₀ + 1) * (Dg + 2) with hccdef
   have! hcc1 : 1 ≤ cc := by rw [hccdef]; exact Nat.mul_pos (Nat.succ_pos _) (Nat.succ_pos _)
@@ -6480,123 +6732,14 @@ theorem retainedMin_holds (κ : LocalKernelClass) : RetainedMin κ := by
   have! nHedτ₂ : Real.exp (A.Dg * (1 + Real.log A.Hsrc +
       Real.log (τ₃ / (1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) *
         (A.colBudget * Real.sqrt (2 * A.colBudget + (1 + Mp) * n (fp.Lc + 5)))))⁻¹) ^ A.Dg) ≤
-      Real.exp ((k : ℝ) ^ cc) := by
-    apply Real.exp_le_exp.mpr
-    set! Z := 2 * A.colBudget + (1 + Mp) * n (fp.Lc + 5) with hZ
-    rewrite [← hZ] at ⊢
-    have! hcb0 : 0 ≤ A.colBudget := by linarith only [hcb2]
-    have! hMp0 : (0 : ℝ) ≤ Mp := Nat.cast_nonneg _
-    have! hn5' := hnle (fp.Lc + 5) le_rfl
-    have! hZ1 : 1 ≤ Z := by
-      have! this := mul_nonneg (by linarith only [hMp0] : (0 : ℝ) ≤ 1 + Mp) (hnpos (fp.Lc + 5))
-      rw [hZ]; linarith only [this, hcb2]
-    have! hZb : Z ≤ 5 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) := by
-      have! h1 : 2 * A.colBudget ≤ 2 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) := by
-        have! this := Real.exp_le_exp.mpr (show Y ≤ Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C by
-          linarith only [hkC0, hkm0])
-        linarith only [hcbY, this]
-      have! h2 : (1 + (Mp : ℝ)) * n (fp.Lc + 5) ≤
-          (2 + Real.exp (Ca * (k : ℝ) ^ m)) * Real.exp ((k : ℝ) ^ C) :=
-        mul_le_mul (by linarith only [hMpup]) hn5' (hnpos _) (by positivity)
-      have! h3 : (2 + Real.exp (Ca * (k : ℝ) ^ m)) * Real.exp ((k : ℝ) ^ C) ≤
-          3 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) := by
-        have! e1 : Real.exp (Ca * (k : ℝ) ^ m) * Real.exp ((k : ℝ) ^ C) =
-            Real.exp (Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) := hexpd _ _
-        have! h4 : Real.exp (Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) ≤
-            Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) :=
-          Real.exp_le_exp.mpr (by linarith only [hY0])
-        have! h5 : Real.exp ((k : ℝ) ^ C) ≤ Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C) :=
-          Real.exp_le_exp.mpr (by linarith only [hY0, hkm0])
-        nlinarith only [e1, h4, h5]
-      rw [hZ]; linarith only [h1, h2, h3]
-    have! hsq4 : Real.sqrt (n (fp.Lc + 4)) ≤ Real.exp ((k : ℝ) ^ C) :=
-      (hsqle _ (by linarith only [hn4 (fp.Lc + 4)])).trans (hnle _ (by omega))
-    have! hsqZ := hsqle Z hZ1
-    have! hy1 : A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z) ≤
-        Real.exp Y * Real.exp ((k : ℝ) ^ C) *
-          (Real.exp Y * (5 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C))) := by
-      gcongr
-      exact hsqZ.trans hZb
-    have! hy2 : Real.exp Y * Real.exp ((k : ℝ) ^ C) *
-        (Real.exp Y * (5 * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C))) =
-        5 * Real.exp (3 * Y + 2 * (k : ℝ) ^ C + Ca * (k : ℝ) ^ m) := by
-      have! e : Real.exp (3 * Y + 2 * (k : ℝ) ^ C + Ca * (k : ℝ) ^ m) =
-          Real.exp Y * Real.exp ((k : ℝ) ^ C) *
-            (Real.exp Y * Real.exp (Y + Ca * (k : ℝ) ^ m + (k : ℝ) ^ C)) := by
-        rw [hexpd, hexpd, hexpd]; congr 1; ring
-      rw [e]; ring
-    have! hy3 : 1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z) ≤
-        6 * Real.exp (3 * T) := by
-      have! h1 := Real.one_le_exp (show 0 ≤ 3 * Y + 2 * (k : ℝ) ^ C + Ca * (k : ℝ) ^ m by
-        linarith only [hY0, hkC0, hkm0])
-      have! h2 : Real.exp (3 * Y + 2 * (k : ℝ) ^ C + Ca * (k : ℝ) ^ m) ≤ Real.exp (3 * T) :=
-        Real.exp_le_exp.mpr (by rw [hTdef]; linarith only [hkC0, hkm0])
-      linarith only [hy1, hy2, h1, h2]
-    have! hyp : 0 < 1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z) := by
-      positivity
-    have! hlogy : Real.log (1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) *
-        (A.colBudget * Real.sqrt Z)) ≤ Real.log 6 + 3 * T := by
-      have! this := Real.log_le_log hyp hy3
-      rwa [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at this
-    have! hlogy0 : 0 ≤ Real.log (1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) *
-        (A.colBudget * Real.sqrt Z)) := Real.log_nonneg (by
-      have! this : 0 ≤ A.colBudget * Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z) := by
-        positivity
-      linarith only [this])
-    have! hlτ : Real.log ((τ₃ / (1 + A.colBudget * Real.sqrt (n (fp.Lc + 4)) *
-        (A.colBudget * Real.sqrt Z)))⁻¹) = Real.log (1 + A.colBudget *
-          Real.sqrt (n (fp.Lc + 4)) * (A.colBudget * Real.sqrt Z)) + (k : ℝ) ^ c₃ := by
-      rw [inv_div, Real.log_div hyp.ne' hτ0.ne', hτ₃def, Real.log_exp]; ring
-    rw [hlτ]
-    have! hkc₃ : (0 : ℝ) ≤ (k : ℝ) ^ c₃ := by positivity
-    refine hbase _ (by linarith only [hHs2, hlogy0, hkc₃]) ?_
-    rw [hTdef] at hlogy
-    linarith only [hHsB, hlogy, hY0]
+      Real.exp ((k : ℝ) ^ cc) :=
+    retainedMin_holds_nHedτ₂ κ c' Cb Ca C hDg1 Mpad hMpad0 k B bf hcbY hHsB hcb2 hτ₃def hτ0 hMpup
+      fp n hnpos hn4 hnle hsqle hTdef hkC0 hkm0 hY0 hexpd hHs2 hbase
   have! nHedτ' : Real.exp (A.Dg * (1 + Real.log A.Hsrc +
       Real.log (1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2)) ^ A.Dg) ≤
-      Real.exp ((k : ℝ) ^ cc) := by
-    apply Real.exp_le_exp.mpr
-    have! hcb0 : 0 ≤ A.colBudget := by linarith only [hcb2]
-    have! hn5' := hnle (fp.Lc + 5) le_rfl
-    have! hc0 : 0 ≤ 8 * A.colBudget + n (fp.Lc + 5) := by
-      linarith only [hcb0, hnpos (fp.Lc + 5)]
-    have! h1 : (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) ≤
-        10 * Real.exp (Y + (k : ℝ) ^ C) := by
-      have! h2 := (Nat.ceil_lt_add_one hc0).le
-      have! h3 : Real.exp Y ≤ Real.exp (Y + (k : ℝ) ^ C) :=
-        Real.exp_le_exp.mpr (by linarith only [hkC0])
-      have! h4 : Real.exp ((k : ℝ) ^ C) ≤ Real.exp (Y + (k : ℝ) ^ C) :=
-        Real.exp_le_exp.mpr (by linarith only [hY0])
-      have! h5 := Real.one_le_exp (show 0 ≤ Y + (k : ℝ) ^ C by linarith only [hY0, hkC0])
-      linarith only [h2, hcbY, hn5', h3, h4, h5]
-    have! h6 : A.colBudget ^ 2 ≤ Real.exp (2 * Y) := by
-      rw [show 2 * Y = Y + Y by ring, ← hexpd, sq]
-      exact mul_le_mul hcbY hcbY hcb0 (Real.exp_pos _).le
-    have! h7 : 1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2 ≤
-        11 * Real.exp (3 * Y + (k : ℝ) ^ C) := by
-      have! h8 := mul_le_mul h1 h6 (by positivity) (by positivity)
-      have! e : 10 * Real.exp (Y + (k : ℝ) ^ C) * Real.exp (2 * Y) =
-          10 * Real.exp (3 * Y + (k : ℝ) ^ C) := by
-        rw [mul_assoc, hexpd]; ring_nf
-      have! h9 := Real.one_le_exp (show 0 ≤ 3 * Y + (k : ℝ) ^ C by linarith only [hY0, hkC0])
-      linarith only [h8, e, h9]
-    have! hpos : 0 < 1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2 := by
-      positivity
-    have! hlog : Real.log (1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2) ≤
-        Real.log 11 + (3 * Y + (k : ℝ) ^ C) := by
-      have! this := Real.log_le_log hpos h7
-      rwa [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at this
-    have! hlog0 : 0 ≤ Real.log (1 + (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) *
-        A.colBudget ^ 2) := Real.log_nonneg (by
-      have! this : 0 ≤ (⌈8 * A.colBudget + n (fp.Lc + 5)⌉₊ : ℝ) * A.colBudget ^ 2 := by positivity
-      linarith only [this])
-    have! hl11 : Real.log 11 ≤ Real.log 6 + 6 := by
-      have! h1 : Real.log 11 ≤ Real.log (6 * Real.exp 6) := Real.log_le_log (by norm_num) (by
-        have! this := Real.add_one_le_exp (6 : ℝ); linarith only [this])
-      rwa [Real.log_mul (by norm_num) (Real.exp_pos _).ne', Real.log_exp] at h1
-    have! hkc₃ : (0 : ℝ) ≤ (k : ℝ) ^ c₃ := by positivity
-    refine hbase _ (by linarith only [hHs2, hlog0]) ?_
-    linarith only [hHsB, hlog, hl11, hY0, hkC0, hkm0, hkc₃]
+      Real.exp ((k : ℝ) ^ cc) :=
+    retainedMin_holds_nHedτ' κ c' Cb Ca C hDg1 Mpad hMpad0 k B bf hcbY hHsB hcb2 fp n hnpos hnle
+      hkC0 hkm0 hY0 hexpd hHs2 hbase
   have! hHedge : Real.exp ((k : ℝ) ^ cc) ≤ fp.Hed := by rw [hHed]; exact le_max_left _ _
   let AD : bf.AttemptData p :=
     { fp := fp, cat := cat, Tc := Tc, hTc := hTcA, Mp := Mp, hMp1 := hMp1, hmult := hmultTc,
@@ -6842,33 +6985,9 @@ theorem retainedMin_holds (κ : LocalKernelClass) : RetainedMin κ := by
       _ ≤ _ := hPlo
   have! nh2 : (Cl : ℝ) * kD ^ Cl + 2 ≤ P := x4.trans hPlo
   have! nh3 : (Nl : ℝ) * Cl * (2 + ((Cl : ℝ) + 1) * Real.log P) ^ 6 *
-      Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl ≤ (P : ℝ) ^ (1 / 8 : ℝ) := by
-    have! hlP0 : 0 ≤ Real.log P := Real.log_nonneg hP1
-    have! hlP : Real.log P ≤ 2 * α * (k : ℝ) ^ θ₀ + 1 := by
-      have! hPL1 : (1 : ℝ) ≤ Real.exp (2 * α * (k : ℝ) ^ θ₀) := Real.one_le_exp (by positivity)
-      have! h1 : (P : ℝ) ≤ Real.exp (2 * α * (k : ℝ) ^ θ₀ + 1) := by
-        rw [← hexpd]
-        have! he : (2 : ℝ) ≤ Real.exp 1 := by
-          have! this := Real.add_one_le_exp (1 : ℝ); linarith only [this]
-        nlinarith only [hPup, he, hPL1]
-      have! this := Real.log_le_log (by linarith only [hP1]) h1
-      rwa [Real.log_exp] at this
-    have! h6 : (2 + ((Cl : ℝ) + 1) * Real.log P) ^ 6 ≤
-        (2 + ((Cl : ℝ) + 1) * (2 * α * (k : ℝ) ^ θ₀ + 1)) ^ 6 := by
-      gcongr
-    have! hP8 : Real.exp (α * (k : ℝ) ^ θ₀ / 4) ≤ (P : ℝ) ^ (1 / 8 : ℝ) := by
-      have! e :
-          Real.exp (α * (k : ℝ) ^ θ₀ / 4) = Real.exp (2 * α * (k : ℝ) ^ θ₀) ^ (1 / 8 : ℝ) := by
-        rw [← Real.exp_mul]; ring_nf
-      rw [e]
-      exact Real.rpow_le_rpow (Real.exp_pos _).le hPlo (by norm_num)
-    calc (Nl : ℝ) * Cl * (2 + ((Cl : ℝ) + 1) * Real.log P) ^ 6 *
-          Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl
-        ≤ 4 * (6000 ^ 30 * Y ^ 30 + 1) * Cl *
-            (2 + ((Cl : ℝ) + 1) * (2 * α * (k : ℝ) ^ θ₀ + 1)) ^ 6 *
-            Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl := by gcongr
-      _ ≤ _ := x5
-      _ ≤ _ := hP8
+      Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl ≤ (P : ℝ) ^ (1 / 8 : ℝ) :=
+    retainedMin_holds_nh3 κ c' Cb θ₀ Cl hCl1 Mpad hMpad0 hL₄0 k B p hk3 bf x5 hPlo hPup hP1 fp
+      hexpd hNlF'
   have! nh4 : (Nl : ℝ) * (Cl * (kD * P) ^ Cl * Real.exp ((1 + Real.log (2 * (k : ℝ))) ^ 2) ^ Cl *
       (((P : ℝ) + 1) ^ 2 * τ₃ + Real.exp (Cl * (k : ℝ) ^ cc) * (Real.sqrt δ + Real.exp (-kD))) +
         Cl * Real.exp (-(k : ℝ))) + Mp * W ≤

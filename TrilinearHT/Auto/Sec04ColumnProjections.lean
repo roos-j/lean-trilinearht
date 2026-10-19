@@ -124,7 +124,7 @@ theorem cellColumn_memLp {V : Type*} [Fintype V] (D : ColumnTreeData V)
     MemLp ((dyadicGridCell D.grid c.1 c.2).indicator
       (privateColumnValue D.scalar D.privateWeight v)) 2 volume := by
   apply (memLp_indicator_iff_restrict
-    (dyadicGridCell_measurable D.grid c.1 c.2).nullMeasurableSet).mpr
+    (dyadicGridCell_measurable D.grid c.1 c.2)).mpr
   let : IsFiniteMeasure (volume.restrict (dyadicGridCell D.grid c.1 c.2)) :=
     isFiniteMeasure_restrict.mpr (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
   have hm := privateColumnValue_measurable D.scalar D.privateWeight v (D.scalar_measurable v)
@@ -182,7 +182,7 @@ theorem cellColumnRange_mem_iff {V : Type*} [Fintype V] (D : ColumnTreeData V)
 set, retaining its original values on the set and zero elsewhere. -/
 noncomputable def columnL2Indicator {V : Type*} [Fintype V] (s : Set ℝ)
     (hs : MeasurableSet s) (z : ColumnL2 V) : ColumnL2 V :=
-  MemLp.toLp (s.indicator z) (MemLp.indicator hs.nullMeasurableSet (Lp.memLp z))
+  MemLp.toLp (s.indicator z) (MemLp.indicator hs (Lp.memLp z))
 
 theorem columnL2Indicator_coeFn {V : Type*} [Fintype V] (s : Set ℝ)
     (hs : MeasurableSet s) (z : ColumnL2 V) :
@@ -218,7 +218,7 @@ theorem columnL2Indicator_norm_le {V : Type*} [Fintype V] (s : Set ℝ)
     (hs : MeasurableSet s) (z : ColumnL2 V) : ‖columnL2Indicator s hs z‖ ≤ ‖z‖ := by
   unfold columnL2Indicator
   rw [Lp.norm_toLp, Lp.norm_def]
-  exact ENNReal.toReal_mono (Lp.eLpNorm_ne_top z) (eLpNorm_indicator_le z hs.nullMeasurableSet)
+  exact ENNReal.toReal_mono (Lp.eLpNorm_ne_top z) (eLpNorm_indicator_le z hs)
 
 /-- The bounded linear decision-set restriction operator. -/
 noncomputable def columnL2Restriction {V : Type*} [Fintype V] (s : Set ℝ)
@@ -754,7 +754,7 @@ theorem columnCombination_memLp {V : Type*} [Fintype V] (D : ColumnTreeData V)
     MemLp (columnCombination D A c a) 2
       (volume.restrict (dyadicGridCell D.grid c.1 c.2)) := by
   apply (memLp_indicator_iff_restrict
-    (dyadicGridCell_measurable D.grid c.1 c.2).nullMeasurableSet).mp
+    (dyadicGridCell_measurable D.grid c.1 c.2)).mp
   exact (memLp_congr_ae (cellColumnSynthesis_coeFn D A hc a)).mp
     (Lp.memLp (cellColumnSynthesis D A hc a))
 
@@ -2573,7 +2573,7 @@ theorem columnL2Restriction_energy_le {V : Type*} [Fintype V] (G : RealDyadicGri
   calc
     _ ≤ ∫ _y in dyadicGridCell G c.1 c.2, B ^ 2 := by
       apply integral_mono_of_nonneg (ae_of_all _ (fun _ => sq_nonneg _))
-        (integrableOn_const hfin)
+        (integrableOn_const (C := B ^ 2) hfin)
       filter_upwards [ae_restrict_of_ae hg] with y hy
       exact (sq_le_sq₀ (norm_nonneg _) hB).mpr hy
     _ = _ := by
@@ -3065,7 +3065,7 @@ theorem birthColumn_memLp {V : Type*} [Fintype V] (D : ColumnTreeData V) (v : V)
     MemLp ((dyadicGridCell D.grid (D.birth v).1 (D.birth v).2).indicator
       (privateColumnValue D.scalar D.privateWeight v)) 2 volume := by
   apply (memLp_indicator_iff_restrict
-    (dyadicGridCell_measurable D.grid (D.birth v).1 (D.birth v).2).nullMeasurableSet).mpr
+    (dyadicGridCell_measurable D.grid (D.birth v).1 (D.birth v).2)).mpr
   let : IsFiniteMeasure (volume.restrict (dyadicGridCell D.grid (D.birth v).1 (D.birth v).2)) :=
     isFiniteMeasure_restrict.mpr (by rw [dyadicGridCell_volume]; exact ENNReal.ofReal_ne_top)
   exact MemLp.of_bound

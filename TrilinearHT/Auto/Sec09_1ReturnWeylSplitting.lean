@@ -211,6 +211,33 @@ open scoped Topology
 open AddCircle
 open scoped FourierTransform
 
+/-- Backport of Mathlib's `Real.norm_fourier_le_integral_norm`, which postdates the pinned Mathlib
+revision: the Fourier transform is bounded pointwise by the `L¹` norm. -/
+theorem norm_fourier_le_integral_norm {V E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E]
+    [NormedAddCommGroup V] [InnerProductSpace ℝ V] [MeasurableSpace V] [BorelSpace V]
+    [FiniteDimensional ℝ V] (f : V → E) (w : V) :
+    ‖𝓕 f w‖ ≤ ∫ v, ‖f v‖ :=
+  VectorFourier.norm_fourierIntegral_le_integral_norm 𝐞 _ (innerₗ V) f w
+
+/-- Backport of Mathlib's `Real.one_add_pow_mul_norm_fourier_le`, which postdates the pinned
+Mathlib revision: if `f` and its first `n` derivatives are integrable, then the Fourier transform of
+`f` decays like `|u| ^ (-n)`, with an explicit bound which is also nontrivial at `u = 0`. -/
+theorem one_add_pow_mul_norm_fourier_le {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E]
+    {f : ℝ → E} {n : ℕ} (hf : ContDiff ℝ n f)
+    (h'f : ∀ k ≤ n, Integrable (iteratedDeriv k f)) (u : ℝ) :
+    (1 + |u| ^ n) * ‖𝓕 f u‖ ≤
+      (∫ v, ‖f v‖) + ((2 * Real.pi) ^ n)⁻¹ * ∫ v, ‖iteratedDeriv n f v‖ := by
+  rw [one_add_mul]
+  apply add_le_add (norm_fourier_le_integral_norm f u)
+  rw [inv_mul_eq_div, le_div_iff₀ (by positivity)]
+  calc
+    _ = (2 * Real.pi * |u|) ^ n * ‖𝓕 f u‖ := by rw [mul_pow]; ring
+    _ = ‖𝓕 (iteratedDeriv n f) u‖ := by
+      rw [Real.fourier_iteratedDeriv hf (fun k hk ↦ h'f k (mod_cast hk)) le_rfl, norm_smul,
+        norm_pow]
+      simp [abs_of_nonneg Real.pi_nonneg]
+    _ ≤ _ := norm_fourier_le_integral_norm _ u
+
 /-- A finite first absolute moment bounds the derivative of the Fourier
 integral, hence its global Lipschitz constant. Used in lem:weyl, line 1333. -/
 theorem fourier_first_moment_lipschitz {E : Type*}
@@ -220,7 +247,7 @@ theorem fourier_first_moment_lipschitz {E : Type*}
     ‖𝓕 f ξ - 𝓕 f η‖ ≤ (2 * Real.pi * ∫ x, ‖x‖ * ‖f x‖) * ‖ξ - η‖ := by
   have hd (x : E) : ‖fderiv ℝ (𝓕 f) x‖ ≤ 2 * Real.pi * ∫ y, ‖y‖ * ‖f y‖ := by
     rw [Real.fderiv_fourier hf hm]
-    apply (Real.norm_fourier_le_integral_norm _ x).trans_eq
+    apply (norm_fourier_le_integral_norm _ x).trans_eq
     simp only [VectorFourier.norm_fourierSMulRight]
     rw [← integral_const_mul]
     congr 1
@@ -242,7 +269,7 @@ theorem fourier_sub_norm_le_integral {E : Type*}
     exact integral_sub ((Real.fourierIntegral_convergent_iff ξ).mpr hf)
       ((Real.fourierIntegral_convergent_iff ξ).mpr hg)
   rw [← he]
-  exact Real.norm_fourier_le_integral_norm _ _
+  exact norm_fourier_le_integral_norm _ _
 
 /-- Translation of the argument changes only the Fourier phase. -/
 theorem fourier_translate_norm {E : Type*}

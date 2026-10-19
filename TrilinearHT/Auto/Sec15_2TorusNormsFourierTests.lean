@@ -497,7 +497,7 @@ theorem fourier_decay_of_support {f : ℝ → ℂ} (hf : ContDiff ℝ (⊤ : ℕ
     refine HasCompactSupport.intro (isCompact_Icc (a := -R) (b := R)) fun x hx => ?_
     refine iteratedDeriv_eq_zero_of_support hsupp k ?_
     by_contra h; push Not at h; exact hx (abs_le.mp h)
-  have h := Real.one_add_pow_mul_norm_fourier_le (n := J) (hf.of_le (by exact_mod_cast le_top))
+  have h := one_add_pow_mul_norm_fourier_le (n := J) (hf.of_le (by exact_mod_cast le_top))
     hint q
   have h1 : ∫ v, ‖f v‖ ≤ 2 * R * A₀ := integral_norm_le_of_support hR hA₀ fun x hx => by
     by_contra hne; have := hsupp x hne; linarith
